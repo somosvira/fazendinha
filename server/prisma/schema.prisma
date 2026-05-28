@@ -1,0 +1,110 @@
+// Modelo de dados — Sistema de Gestão Financeira Rio Novo
+// Reproduz o relatório gerencial de fluxo de caixa (regime de CAIXA) da fazenda.
+// situacao=LIQUIDADO alimenta o Realizado; ABERTO alimenta a Projeção.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Natureza {
+  CREDITO // entrada (receita)
+  DEBITO // saída (despesa)
+}
+
+enum Situacao {
+  ABERTO // a vencer -> Projeção
+  LIQUIDADO // realizado -> Resultado Operacional
+  LIQUIDADO_PARCIAL
+}
+
+// Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
+model CentroCusto {
+  id            Int          @id @default(autoincrement())
+  nome          String       @unique
+  ehInvestimento Boolean     @default(false)
+  ordem         Int          @default(0)
+  lancamentos   Lancamento[]
+}
+
+// Plano de contas gerencial: Grupo -> Categoria.
+model GrupoCategoria {
+  id         Int         @id @default(autoincrement())
+  nome       String      @unique
+  ordem      Int         @default(0)
+  categorias Categoria[]
+}
+
+model Categoria {
+  id               Int            @id @default(autoincrement())
+  nome             String
+  grupoCategoria   GrupoCategoria @relation(fields: [grupoCategoriaId], references: [id])
+  grupoCategoriaId Int
+  lancamentos      Lancamento[]
+
+  @@unique([grupoCategoriaId, nome])
+}
+
+model ContaBancaria {
+  id           Int          @id @default(autoincrement())
+  nome         String       @unique
+  banco        String?
+  saldoInicial Decimal      @default(0) @db.Decimal(14, 2)
+  lancamentos  Lancamento[]
+}
+
+model ClienteFornecedor {
+  id          Int          @id @default(autoincrement())
+  nome        String       @unique
+  documento   String?
+  lancamentos Lancamento[]
+}
+
+// Meses contábeis fechados: lançamentos cuja data de caixa cai num mês fechado
+// não podem ser criados/editados/excluídos.
+model FechamentoMensal {
+  id         Int      @id @default(autoincrement())
+  ano        Int
+  mes        Int // 1-12
+  fechadoEm  DateTime @default(now())
+  observacao String?
+
+  @@unique([ano, mes])
+}
+
+model Lancamento {
+  id              Int       @id @default(autoincrement())
+  natureza        Natureza
+  // valor sempre positivo; o sinal no relatório vem da natureza
+  valor           Decimal   @db.Decimal(14, 2)
+  dataCompetencia DateTime  @db.Date
+  dataVencimento  DateTime  @db.Date
+  dataLiquidacao  DateTime? @db.Date
+  situacao        Situacao  @default(ABERTO)
+  estornado       Boolean   @default(false)
+
+  numeroDocumento String?
+  numeroParcela   Int?
+  totalParcelas   Int?
+  descricao       String?
+
+  categoria           Categoria          @relation(fields: [categoriaId], references: [id])
+  categoriaId         Int
+  centroCusto         CentroCusto        @relation(fields: [centroCustoId], references: [id])
+  centroCustoId       Int
+  contaBancaria       ContaBancaria?     @relation(fields: [contaBancariaId], references: [id])
+  contaBancariaId     Int?
+  clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
+  clienteFornecedorId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([situacao, dataLiquidacao])
+  @@index([situacao, dataVencimento])
+  @@index([centroCustoId])
+}
