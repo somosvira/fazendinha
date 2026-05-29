@@ -1,56 +1,26 @@
-import { useEffect, useState } from "react";
-import { apiGet } from "./api";
+/* Rio Novo — raiz */
 
-type HealthState =
-  | { status: "loading" }
-  | { status: "up" }
-  | { status: "down"; reason: string };
+import { useState } from "react";
+import { Masthead, type Tab } from "./components/Shell";
+import { Dashboard } from "./components/Dashboard";
+import { Gastos } from "./components/Gastos";
+import { Lancar } from "./components/Lancar";
+import { PlanoContas } from "./components/PlanoContas";
+import { IA } from "./components/IA";
+import { Relatorio } from "./components/Relatorio";
 
 export function App() {
-  const [api, setApi] = useState<HealthState>({ status: "loading" });
-  const [db, setDb] = useState<HealthState>({ status: "loading" });
-
-  useEffect(() => {
-    apiGet<{ ok: boolean }>("/health")
-      .then((r) => setApi(r.ok ? { status: "up" } : { status: "down", reason: "resposta inválida" }))
-      .catch((e: Error) => setApi({ status: "down", reason: e.message }));
-
-    apiGet<{ ok: boolean; db?: string; error?: string }>("/health/db")
-      .then((r) =>
-        setDb(r.ok ? { status: "up" } : { status: "down", reason: r.error ?? "db indisponível" })
-      )
-      .catch((e: Error) => setDb({ status: "down", reason: e.message }));
-  }, []);
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   return (
-    <div className="app">
-      <header>
-        <h1>Fazenda Rio Novo</h1>
-        <small>setup pronto — aguardando design</small>
-      </header>
-      <main>
-        <section className="card">
-          <h2>Status</h2>
-          <ul>
-            <li>
-              API: <StatusBadge state={api} />
-            </li>
-            <li>
-              Banco (Neon): <StatusBadge state={db} />
-            </li>
-          </ul>
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function StatusBadge({ state }: { state: HealthState }) {
-  if (state.status === "loading") return <span className="badge loading">verificando…</span>;
-  if (state.status === "up") return <span className="badge up">up</span>;
-  return (
-    <span className="badge down" title={state.reason}>
-      down ({state.reason})
-    </span>
+    <>
+      <Masthead current={tab} onNav={setTab} />
+      {tab === "dashboard" && <Dashboard onNav={setTab} />}
+      {tab === "gastos" && <Gastos onNav={setTab} />}
+      {tab === "lancar" && <Lancar onNav={setTab} />}
+      {tab === "plano" && <PlanoContas onNav={setTab} />}
+      {tab === "ia" && <IA />}
+      {tab === "relatorio" && <Relatorio onNav={setTab} />}
+    </>
   );
 }

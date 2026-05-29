@@ -1,68 +1,40 @@
-const TOKEN_KEY = "rionovo_token";
+/* Cliente HTTP minimalista para a API do Rio Novo.
+ * Backend está em outra porta; Vite faz proxy de /api → 41873 (vite.config.ts).
+ */
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (t: string) => localStorage.setItem(TOKEN_KEY, t);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
-
-let onUnauthorized: () => void = () => {};
-export function setUnauthorizedHandler(fn: () => void) {
-  onUnauthorized = fn;
-}
-
-async function request(path: string, opts: RequestInit = {}): Promise<Response> {
-  const token = getToken();
-  const res = await fetch(`/api${path}`, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts.headers ?? {}),
-    },
-  });
-  if (res.status === 401) {
-    clearToken();
-    onUnauthorized();
-    throw new Error("Sessão expirada");
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`/api${path}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} em ${path}: ${body || res.statusText}`);
   }
-  return res;
+  return res.json();
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const r = await request(path);
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
-  return r.json();
-}
+/**
+ * GET /api/dashboard — agregados (timeline 23m, DRE 2025/2026YTD, categorias top 12, etc.).
+ *
+ * Compat: o frontend foi escrito contra o mock onde `categoriasReais[i].grupo`
+ * é o display da atividade ("Atv. Leiteira") e `subgrupo` é o GrupoCategoria.
+ * O backend devolve `grupo = GrupoCategoria`. Reescreve aqui para casar.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchDashboard(): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d: any = await getJson("/dashboard");
 
-export async function apiSend<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const r = await request(path, { method, body: body !== undefined ? JSON.stringify(body) : undefined });
-  if (!r.ok) {
-    const msg = (await r.json().catch(() => ({}))).error;
-    throw new Error(typeof msg === "string" ? msg : "Falha na operação");
-  }
-  return r.status === 204 ? (undefined as T) : r.json();
-}
+  const atvLabel: Record<string, string> = {
+    leite: "Atv. Leiteira",
+    cafe: "Plantio Café",
+    outros: "Outros / Estrutural",
+  };
 
-export async function download(path: string, filename: string) {
-  const r = await request(path);
-  if (!r.ok) throw new Error("Falha ao gerar arquivo");
-  const blob = await r.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  d.categoriasReais = (d.categoriasReais ?? []).map((c: any) => ({
+    ...c,
+    subgrupo: c.grupo,
+    grupo: atvLabel[c.atividade] ?? c.grupo ?? "—",
+  }));
 
-export async function login(usuario: string, senha: string): Promise<void> {
-  const r = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ usuario, senha }),
-  });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "Falha no login");
-  const { token } = await r.json();
-  setToken(token);
+  return d;
 }
