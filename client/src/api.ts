@@ -2,6 +2,8 @@
  * Backend está em outra porta; Vite faz proxy de /api → 41873 (vite.config.ts).
  */
 
+import { buildSubcategorias, buildVolumeLeite, fornecedores } from "./data/cockpitSupplements";
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`/api${path}`);
   if (!res.ok) {
@@ -35,6 +37,14 @@ export async function fetchDashboard(): Promise<any> {
     subgrupo: c.grupo,
     grupo: atvLabel[c.atividade] ?? c.grupo ?? "—",
   }));
+
+  // Suplementos que o backend ainda não modela (subcategorias, fornecedores,
+  // volume de leite). Casados por nome de categoria — ver cockpitSupplements.ts.
+  d.subcategorias = buildSubcategorias(d.categoriasReais);
+  d.fornecedores = fornecedores;
+  if (d.k2025 && d.k2026YTD) {
+    d.volumeLeite = buildVolumeLeite(d.k2025, d.k2026YTD);
+  }
 
   return d;
 }

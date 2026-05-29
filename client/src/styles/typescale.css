@@ -1,0 +1,133 @@
+/* Rio Novo — escala tipográfica ampliada (legibilidade 60+)
+   Carregado por último: sobrescreve tamanhos pequenos por equivalência de seletor. */
+
+/* base */
+body { font-size: 17.5px; }
+.body { font-size: 17px; }
+.body-l { font-size: 19px; }
+.body-s { font-size: 15px; }
+.caption { font-size: 13px; }
+.eyebrow { font-size: 12px; }
+
+/* masthead / nav */
+.nav-tab { font-size: 14px; }
+.brand-name { font-size: 19px; }
+.user-chip { font-size: 14px; }
+
+/* report header */
+.report-header .h1, .h1 { font-size: 38px; }
+
+/* ===== KPI cockpit ===== */
+.kpi-cockpit-title { font-size: 42px; }
+.kpi-cock .lbl { font-size: 12px; }
+.kpi-cock .val { font-size: 34px; }
+.kpi-cock .sub { font-size: 13px; }
+
+/* ===== section heads ===== */
+.dash-sec-title { font-size: 28px; }
+
+/* ===== donut legend (gasto por categoria) ===== */
+.donut-legend-head { font-size: 11px; }
+.legend-name { font-size: 15px; }
+.legend-val { font-size: 16px; }
+.legend-pct { font-size: 13px; }
+.legend-only { font-size: 11px; }
+
+/* ===== explorar categoria ===== */
+.ex-cell .l { font-size: 12px; }
+.ex-cell .v { font-size: 26px; }
+.cat-dd-trigger { font-size: 15px; }
+.cat-dd-opt-nm { font-size: 15px; }
+.cat-dd-opt-val { font-size: 15px; }
+.forn-mini-top .nm { font-size: 15px; }
+.forn-mini-top .vl { font-size: 17px; }
+
+/* ===== atividade split ===== */
+.atv-split-h .nm { font-size: 24px; }
+.atv-bar-row .lbl { font-size: 12px; }
+.atv-bar-row .amt { font-size: 15px; }
+.atv-margem .l { font-size: 12px; }
+.atv-margem .v { font-size: 24px; }
+
+/* ===== subcategorias (tipos de X) ===== */
+.drill-subhint { font-size: 17px; }
+.subcat-th { font-size: 11px; }
+.sc-nm-txt { font-size: 15px; }
+.sc-nm-txt small { font-size: 12px; }
+.sc-lanc { font-size: 15px; }
+.sc-val { font-size: 17px; }
+.sc-pct { font-size: 13px; }
+
+/* ===== lançamentos + nota ===== */
+.lanc-panel-title { font-size: 24px; }
+.lanc-table thead th { font-size: 11px; }
+.lanc-table tbody td { font-size: 14.5px; }
+.ld-val { font-size: 15px; }
+.ld-nf, .nf-link { font-size: 13px; }
+.drawer-meta-grid .mcell .ml { font-size: 12px; }
+.drawer-meta-grid .mcell .mv { font-size: 16px; }
+
+/* ===== drill head / stats ===== */
+.drill-head .cat-name { font-size: 46px; }
+.drill-stats .cell .l { font-size: 12px; }
+.drill-stats .cell .v { font-size: 24px; }
+.breadcrumb { font-size: 14px; }
+.breadcrumb .crumb-btn { font-size: 14px; }
+
+/* ===== DRE ===== */
+.dre-table thead th { font-size: 12px; }
+.dre-row td { font-size: 15px; }
+.dre-row.bold td { font-size: 16px; }
+.dre-row.bold .dre-num { font-size: 19px; }
+
+/* ===== inconsistências ===== */
+.inc-title { font-size: 18px; }
+.inc-valor { font-size: 23px; }
+.inc-impacto .lbl { font-size: 11px; }
+.inc-impacto .txt { font-size: 13px; }
+
+/* ===== timeline / chart legends ===== */
+.legend { font-size: 13px; }
+.chart-tick-text { font-size: 12px; }
+
+/* ===== gastos table ===== */
+.expense-table thead th { font-size: 12px; }
+.expense-table tbody td { font-size: 15px; }
+.expense-table tbody td.amount { font-size: 17px; }
+.gastos-summary .sum .label { font-size: 12px; }
+.gastos-summary .sum .val { font-size: 27px; }
+.filter-chip { font-size: 14px; }
+
+/* ===== forms (lançar) ===== */
+.field-label { font-size: 14px; }
+.field-input, .field-textarea { font-size: 16px; }
+.form-section-title { font-size: 12px; }
+.cat-chip { font-size: 14px; }
+.chip-group .chip { font-size: 14px; }
+
+/* ===== plano de contas ===== */
+.tree-cat-head .cnm { font-size: 16px; }
+.tree-sub .snm { font-size: 14px; }
+.ia-suggestion-card .ttl { font-size: 17px; }
+.ia-suggestion-card .det { font-size: 13px; }
+
+/* ===== IA chat ===== */
+.ia-prompt { font-size: 16px; }
+.msg.ai .ai-narrative { font-size: 19px; }
+.msg.ai p { font-size: 17px; }
+.msg.user .bubble { font-size: 17px; }
+.ia-input { font-size: 17px; }
+.ai-mini-table th, .ai-mini-table td { font-size: 15px; }
+
+/* ===== date picker ===== */
+.drp-trigger { font-size: 14px; }
+.drp-preset { font-size: 14px; }
+.cal-day { font-size: 15px; }
+.drp-readout-cell .v { font-size: 19px; }
+
+/* ===== relatório editorial ===== */
+.section-title { font-size: 30px; }
+.section-lede { font-size: 19px; }
+.kpi-value { font-size: 46px; }
+.verdict-line { font-size: 23px; }
+.verdict-detail { font-size: 15px; }
