@@ -11,8 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
-    "seed": "tsx prisma/seed.ts",
-    "import": "tsx prisma/import.ts"
+    "seed": "tsx --env-file=.env prisma/seed.ts",
+    "import": "tsx --env-file=.env prisma/import.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
