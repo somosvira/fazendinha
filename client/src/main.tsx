@@ -4,8 +4,10 @@ import { App } from "./App";
 import "./styles/base.css";
 import "./styles/dashboard.css";
 import "./styles/dashboard-v2.css";
+import "./styles/cockpit.css";
 import "./styles/forms.css";
 import "./styles/datepicker.css";
+import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
