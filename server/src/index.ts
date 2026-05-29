@@ -9,7 +9,14 @@ import { healthRouter } from "./routes/health.js";
 const app = new Hono();
 
 app.use("*", logger());
-app.use("/api/*", cors());
+
+const corsOrigins = env.CORS_ORIGIN?.split(",").map((s) => s.trim()).filter(Boolean);
+app.use(
+  "/api/*",
+  cors({
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
+  })
+);
 
 app.route("/api", healthRouter);
 app.route("/api", dashboardRouter);
