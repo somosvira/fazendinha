@@ -1,7 +1,11 @@
-/* Rio Novo — Dashboard v2 (data-driven, brutal honesty) */
+/* Rio Novo — Dashboard v2 (data-driven, brutal honesty)
+ *
+ * Estado: lê de GET /api/dashboard (server agrega o Neon real).
+ * Componentes filhos recebem `R` como prop em vez de importar do mock.
+ */
 
-import { useState } from "react";
-import R from "../data/rionovo";
+import { useEffect, useState } from "react";
+import { fetchDashboard } from "../api";
 import { DateRangePicker, DateRange } from "./DateRangePicker";
 import { MonthlyTrendChart } from "./charts";
 import type { Tab } from "./Shell";
@@ -30,7 +34,8 @@ function fmtBRL(n: number, opts: { compact?: boolean; decimals?: number } = {}):
 
 export { fmtBRL };
 
-function TimelineChart({ startIdx = 0, endIdx = 22 }: { startIdx?: number; endIdx?: number }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TimelineChart({ R, startIdx = 0, endIdx = 22 }: { R: any; startIdx?: number; endIdx?: number }) {
   const W = 1180,
     H = 380;
   const padL = 64,
@@ -213,7 +218,16 @@ function TimelineChart({ startIdx = 0, endIdx = 22 }: { startIdx?: number; endId
   );
 }
 
-function HeroBand({ range, setRange }: { range: DateRange; setRange: (r: DateRange) => void }) {
+function HeroBand({
+  R,
+  range,
+  setRange,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  R: any;
+  range: DateRange;
+  setRange: (r: DateRange) => void;
+}) {
   return (
     <div className="hero-band">
       <div className="hero-band-l">
@@ -250,7 +264,8 @@ function HeroBand({ range, setRange }: { range: DateRange; setRange: (r: DateRan
   );
 }
 
-function TimelineSection() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TimelineSection({ R }: { R: any }) {
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(22);
   const slices = [
@@ -288,7 +303,7 @@ function TimelineSection() {
         </div>
       </div>
 
-      <TimelineChart startIdx={from} endIdx={to} />
+      <TimelineChart R={R} startIdx={from} endIdx={to} />
 
       <div className="legend timeline-legend" style={{ paddingLeft: 64, marginTop: 6 }}>
         <span>
@@ -346,7 +361,8 @@ function DRERow({
   );
 }
 
-function DRESection() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DRESection({ R }: { R: any }) {
   const k25 = R.k2025;
   const k26 = R.k2026YTD;
   const sumAtRange = (a: number[], idx: number[]) => idx.reduce((s, i) => s + a[i], 0);
@@ -441,11 +457,31 @@ function DRESection() {
   );
 }
 
-function CategoriasReais({ onDrill }: { onDrill?: (id: string) => void }) {
+type CatRow = {
+  id: number;
+  nome: string;
+  flag?: string;
+  grupo: string;
+  subgrupo: string;
+  total23m: number;
+  ytd2026: number;
+  delta: number;
+  atividade: string;
+};
+
+function CategoriasReais({
+  R,
+  onDrill,
+}: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const top = R.categoriasReais.slice().sort((a: any, b: any) => b.total23m - a.total23m).slice(0, 12);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const max = Math.max(...top.map((c: any) => c.total23m));
+  R: any;
+  onDrill?: (id: number) => void;
+}) {
+  const top: CatRow[] = R.categoriasReais
+    .slice()
+    .sort((a: CatRow, b: CatRow) => b.total23m - a.total23m)
+    .slice(0, 12);
+  const max = Math.max(...top.map((c) => c.total23m));
 
   return (
     <section className="cats-real">
@@ -461,7 +497,7 @@ function CategoriasReais({ onDrill }: { onDrill?: (id: string) => void }) {
       </div>
 
       <div className="cats-real-list">
-        {top.map((c: { id: string; nome: string; flag?: string; grupo: string; subgrupo: string; total23m: number; ytd2026: number; delta: number; atividade: string }, i: number) => {
+        {top.map((c, i) => {
           const w = (c.total23m / max) * 100;
           const colorVar =
             c.atividade === "leite" ? "var(--leite)" : c.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
@@ -503,7 +539,8 @@ function CategoriasReais({ onDrill }: { onDrill?: (id: string) => void }) {
   );
 }
 
-function InconsistenciasSection() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function InconsistenciasSection({ R }: { R: any }) {
   return (
     <section className="inc-section">
       <div className="brutal-head">
@@ -558,16 +595,18 @@ function InconsistenciasSection() {
 }
 
 function CategoryDrill({
+  R,
   catId,
   onBack,
   onNav,
 }: {
-  catId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  R: any;
+  catId: number;
   onBack: () => void;
   onNav: (t: Tab) => void;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cat = R.categoriasReais.find((c: any) => c.id === catId);
+  const cat = R.categoriasReais.find((c: CatRow) => c.id === catId);
   if (!cat)
     return (
       <div className="shell-wide">
@@ -580,19 +619,17 @@ function CategoryDrill({
       </div>
     );
 
-  const monthlyKey = (
+  // categoriasDetalhe (drill-down rico) ainda vem do mock — backend não devolve ainda.
+  // Aqui usamos o nome da categoria para tentar achar um detalhe correspondente.
+  const detalheKey = (
     {
-      racao: "racao",
-      curral: "curral",
-      pessoalSal: "pessoal",
-      medic: "medicamento",
-      insumosCafe: "insumosCafe",
-      combust: "combustivel",
-      manutencao: "manutencao",
-      energia: "energia",
+      Ração: "racao",
+      Curral: "curral",
+      "Pessoal — Salário": "pessoal",
+      "Medicamento Animal": "medicamento",
     } as Record<string, string>
-  )[catId];
-  const detalhe = monthlyKey ? R.categoriasDetalhe?.[monthlyKey] : null;
+  )[cat.nome];
+  const detalhe = detalheKey ? R.categoriasDetalhe?.[detalheKey] : null;
 
   return (
     <div className="shell-wide">
@@ -656,7 +693,7 @@ function CategoryDrill({
           <MonthlyTrendChart
             current={detalhe.monthly12m}
             prior={detalhe.monthlyPriorYear}
-            labels={R.MESES_12M}
+            labels={R.MESES_12M ?? []}
             color="var(--cafe)"
           />
           <div className="drill-insight" style={{ marginTop: 20 }}>
@@ -670,7 +707,7 @@ function CategoryDrill({
         <div style={{ padding: 60, textAlign: "center" }}>
           <div className="caption" style={{ fontStyle: "italic" }}>
             Quebra mensal e por fornecedor desta categoria será mostrada quando os dados detalhados estiverem
-            indexados.
+            indexados no backend.
           </div>
         </div>
       )}
@@ -687,21 +724,61 @@ function CategoryDrill({
   );
 }
 
+function LoadingShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="shell-wide">
+      <div
+        style={{
+          padding: "120px 0",
+          textAlign: "center",
+          color: "var(--ink-3)",
+          fontFamily: "var(--serif)",
+          fontStyle: "italic",
+          fontSize: 18,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
   const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
-  const [drillCat, setDrillCat] = useState<string | null>(null);
+  const [drillCat, setDrillCat] = useState<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [data, setData] = useState<any | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
-  if (drillCat) {
-    return <CategoryDrill catId={drillCat} onBack={() => setDrillCat(null)} onNav={onNav} />;
+  useEffect(() => {
+    fetchDashboard().then(setData).catch(setError);
+  }, []);
+
+  if (error) {
+    return (
+      <LoadingShell>
+        Não foi possível carregar o dashboard.
+        <div style={{ fontSize: 13, marginTop: 12, fontStyle: "normal", color: "var(--neg)" }}>
+          {error.message}
+        </div>
+      </LoadingShell>
+    );
+  }
+  if (!data) {
+    return <LoadingShell>Carregando dados do Neon…</LoadingShell>;
+  }
+
+  if (drillCat !== null) {
+    return <CategoryDrill R={data} catId={drillCat} onBack={() => setDrillCat(null)} onNav={onNav} />;
   }
 
   return (
     <div className="shell-wide">
-      <HeroBand range={range} setRange={setRange} />
-      <TimelineSection />
-      <DRESection />
-      <CategoriasReais onDrill={setDrillCat} />
-      <InconsistenciasSection />
+      <HeroBand R={data} range={range} setRange={setRange} />
+      <TimelineSection R={data} />
+      <DRESection R={data} />
+      <CategoriasReais R={data} onDrill={setDrillCat} />
+      <InconsistenciasSection R={data} />
 
       <div
         style={{
@@ -712,7 +789,7 @@ export function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
         }}
       >
         <span className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Fonte: planilha BPO 04/05/2026 · próxima entrega 04/jun/2026
+          Fonte: Neon (via /api/dashboard) · agregado em runtime
         </span>
         <button className="crumb-btn" onClick={() => onNav("relatorio")}>
           ver Relatório editorial →
