@@ -12,7 +12,7 @@ Existe um Excel real (`Relatório Rio Novo 2026.05.04.xlsx`) e um extrator Pytho
 
 - Monorepo **pnpm workspaces** (lockfile único na raiz). Workspaces: `client`, `server`.
 - Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**.
-- Frontend: **React 18 + Vite 6 + TypeScript**, gráficos com **Recharts**.
+- Frontend: **React 18 + Vite 6 + TypeScript**. Gráficos são **SVG inline próprios** em `client/src/components/charts.tsx` — sem chart lib. `recharts` está em `package.json` por inércia; pode ser removido se ninguém usar.
 - Banco: **Neon** (Postgres serverless). Conexão usa endpoint **pooled** (PgBouncer transaction mode).
 
 ## Comandos
@@ -82,14 +82,31 @@ router.post("/x", zValidator("json", schema), async (c) => {
 });
 ```
 
-Estado pós-setup: **apenas `routes/health.ts` existe**. Auth, lançamentos, cadastros, relatórios, fechamentos ainda não foram implementados — esperando o design do Claude Design.
+Estado atual: **apenas `routes/health.ts` existe**. Auth, lançamentos, cadastros, relatórios, fechamentos não foram implementados — o frontend roda 100% em mock por enquanto.
 
 ### Frontend (`client/src/`)
 
-- `main.tsx` → `App.tsx`. O `App.tsx` atual é um shell mínimo que pinga `/api/health` e `/api/health/db`; será substituído quando o design chegar.
-- `api.ts` — wrapper de fetch já pronto: `apiGet`, `apiSend`, `download`, `login`, gerenciamento de token JWT em localStorage (`rionovo_token`), handler global de 401 (`setUnauthorizedHandler`). **Reaproveitar** em vez de fazer fetch direto.
-- `types.ts` está vazio aguardando o design.
-- Vite faz proxy de `/api` para `http://localhost:41873` (ver `vite.config.ts`).
+O design (vindo do Claude Design — handoff bundle de 2026-05-28) já está implementado como protótipo navegável com dados mock. Backend não está plugado ainda.
+
+- `main.tsx` → `App.tsx`. O `App.tsx` troca de aba via `useState<Tab>` (sem react-router). Tabs: `dashboard`, `gastos`, `lancar`, `plano`, `ia`, `relatorio`.
+- `components/Shell.tsx` — `Masthead` (header escuro com 6 abas + chip do usuário "Marco Antônio") e `ReportHeader` (eyebrow + h1 + DateRangePicker opcional). Tipo `Tab` exportado daqui.
+- `components/DateRangePicker.tsx` — calendário pt-BR com 11 presets. Usado em Dashboard/Gastos/Relatorio. "Hoje" está pinned a 28/mai/2026 para casar com o mock.
+- `components/charts.tsx` — SVG inline: `MonthlyFlowChart`, `WaterfallChart`, `MiniBarChart`, `MonthlyTrendChart`, `Donut`. Exporta também os formatadores `fmt`, `fmtBR`, `fmtMoney`, `fmtMoneyExact` — **reusar daqui**, não recriar.
+- `components/Gastos.tsx` exporta `ActivityPill` (pill colorida Leite/Café/Outros/Misto) — `IA.tsx` importa daí em vez de duplicar.
+- `data/rionovo.ts` — fonte única dos dados mock. Export default `R` (tipado como `any`). Consolida 3 arquivos JS do design original (data, dataCategorias, dataPlano). Os números refletem a planilha real Jul/2024→Mai/2026.
+
+Estilos em `client/src/styles/` (5 arquivos importados de `main.tsx`):
+- `base.css` (paleta + tipografia + componentes compartilhados, **define as variáveis CSS**)
+- `dashboard.css`, `dashboard-v2.css`, `forms.css`, `datepicker.css`
+
+Cores de atividade são variáveis CSS — `--leite` (brass), `--cafe` (deep coffee), `--outros` (sage olive). **Sempre referenciar via var()**, não hardcodar hex.
+
+Fontes carregadas de Google Fonts no `index.html`: Newsreader (serif, displays) + DM Sans (sans, body). Não bundlar.
+
+Vite faz proxy de `/api` para `http://localhost:41873` (ver `vite.config.ts`) — pronto para quando o backend for plugado.
+
+#### Padrão de "olhar a fonte de dados real" no Dashboard
+A pergunta editorial "**O leite paga o leite?**" foi removida do Dashboard a pedido do usuário e existe **só no Relatório**. Dashboard tem 4 seções numeradas (I Timeline 23m · II DRE · III Categorias · IV Inconsistências). Não recolocar no Dashboard.
 
 ### Schema Prisma
 
@@ -105,6 +122,13 @@ Migrations em `server/prisma/migrations/` foram aplicadas no Neon via `migrate d
 
 ## Convenções
 
-- ESM em tudo (`"type": "module"`). Imports relativos de `.ts` usam extensão `.js` (ex.: `import { env } from "./env.js"`) porque o TypeScript com `module: ESNext` + Node ESM exige assim.
+- ESM em tudo (`"type": "module"`). No **server**, imports relativos de `.ts` precisam terminar em `.js` (ex.: `import { env } from "./env.js"`) — Node ESM exige. No **client** (Vite + bundler resolution), imports relativos **não** levam extensão.
 - Code/comments podem ser em PT-BR (consistente com a base existente).
 - Não criar arquivos `.md` de documentação extra a não ser que pedido — o README e este arquivo já cobrem.
+
+## Quando o backend for plugado (futuro)
+
+Hoje os componentes leem direto de `R` (mock). Para conectar:
+1. Criar rotas Hono em `server/src/routes/` espelhando a forma do mock (campos do `R.categoriasReais`, `R.gastos`, `R.k2025`, etc.).
+2. Criar um wrapper de fetch tipado em `client/src/` (existiu um `api.ts` no setup inicial — está no git history se quiser reaproveitar).
+3. Substituir imports de `data/rionovo.ts` por hooks/query que batem na API. Manter `rionovo.ts` como referência da forma até a migração terminar.
