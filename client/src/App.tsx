@@ -1,71 +1,56 @@
 import { useEffect, useState } from "react";
-import { Dashboard } from "./pages/Dashboard";
-import { Relatorio } from "./pages/Relatorio";
-import { Mensal } from "./pages/Mensal";
-import { Diario } from "./pages/Diario";
-import { Lancamentos } from "./pages/Lancamentos";
-import { Cadastros } from "./pages/Cadastros";
-import { Fechamento } from "./pages/Fechamento";
-import { Login } from "./pages/Login";
-import { clearToken, download, getToken, setUnauthorizedHandler } from "./api";
+import { apiGet } from "./api";
 
-type Tab = "painel" | "relatorio" | "mensal" | "diario" | "lancamentos" | "cadastros" | "fechamento";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "painel", label: "Painel" },
-  { id: "relatorio", label: "Resultado Operacional" },
-  { id: "mensal", label: "Mensal" },
-  { id: "diario", label: "Diário" },
-  { id: "lancamentos", label: "Lançamentos" },
-  { id: "cadastros", label: "Cadastros" },
-  { id: "fechamento", label: "Fechamento" },
-];
+type HealthState =
+  | { status: "loading" }
+  | { status: "up" }
+  | { status: "down"; reason: string };
 
 export function App() {
-  const [authed, setAuthed] = useState(!!getToken());
-  const [tab, setTab] = useState<Tab>("painel");
+  const [api, setApi] = useState<HealthState>({ status: "loading" });
+  const [db, setDb] = useState<HealthState>({ status: "loading" });
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setAuthed(false));
-  }, []);
+    apiGet<{ ok: boolean }>("/health")
+      .then((r) => setApi(r.ok ? { status: "up" } : { status: "down", reason: "resposta inválida" }))
+      .catch((e: Error) => setApi({ status: "down", reason: e.message }));
 
-  if (!authed) return <Login onLogin={() => setAuthed(true)} />;
+    apiGet<{ ok: boolean; db?: string; error?: string }>("/health/db")
+      .then((r) =>
+        setDb(r.ok ? { status: "up" } : { status: "down", reason: r.error ?? "db indisponível" })
+      )
+      .catch((e: Error) => setDb({ status: "down", reason: e.message }));
+  }, []);
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo">🐄</span>
-          <div>
-            <h1>Fazenda Rio Novo</h1>
-            <small>Gestão financeira · regime de caixa</small>
-          </div>
-        </div>
-        <div className="header-right">
-          <button className="btn-export ghost" onClick={() => download("/relatorios/completo.xlsx", "Relatório Rio Novo.xlsx")}>
-            ⬇ Planilha completa
-          </button>
-          <button className="btn-logout" onClick={() => { clearToken(); setAuthed(false); }}>
-            Sair
-          </button>
-        </div>
+      <header>
+        <h1>Fazenda Rio Novo</h1>
+        <small>setup pronto — aguardando design</small>
       </header>
-      <nav className="tabs main-tabs">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
       <main>
-        {tab === "painel" && <Dashboard />}
-        {tab === "relatorio" && <Relatorio />}
-        {tab === "mensal" && <Mensal />}
-        {tab === "diario" && <Diario />}
-        {tab === "lancamentos" && <Lancamentos />}
-        {tab === "cadastros" && <Cadastros />}
-        {tab === "fechamento" && <Fechamento />}
+        <section className="card">
+          <h2>Status</h2>
+          <ul>
+            <li>
+              API: <StatusBadge state={api} />
+            </li>
+            <li>
+              Banco (Neon): <StatusBadge state={db} />
+            </li>
+          </ul>
+        </section>
       </main>
     </div>
+  );
+}
+
+function StatusBadge({ state }: { state: HealthState }) {
+  if (state.status === "loading") return <span className="badge loading">verificando…</span>;
+  if (state.status === "up") return <span className="badge up">up</span>;
+  return (
+    <span className="badge down" title={state.reason}>
+      down ({state.reason})
+    </span>
   );
 }

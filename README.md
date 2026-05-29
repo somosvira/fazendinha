@@ -1,89 +1,64 @@
 # Sistema de Gestão Financeira — Fazenda Rio Novo
 
-Reescreve, como software próprio, o **relatório gerencial de fluxo de caixa** que hoje é
-montado em Excel (tabelas dinâmicas lendo bancos Access do BPO). Os lançamentos passam a
-viver em banco próprio (PostgreSQL) e os relatórios são gerados por código — visualizados
-na tela e exportáveis em `.xlsx` idêntico ao original (workbook multi-abas).
+Reescreve, como software próprio, o **relatório gerencial de fluxo de caixa** que hoje é montado em Excel (tabelas dinâmicas lendo bancos Access do BPO). Os lançamentos passam a viver em banco próprio (PostgreSQL/Neon) e os relatórios são gerados por código.
 
-Regime de **caixa**: lançamentos `LIQUIDADO` alimentam o *Realizado*; `ABERTO` (a vencer)
-alimentam a *Projeção*.
+Regime de **caixa**: lançamentos `LIQUIDADO` alimentam o *Realizado*; `ABERTO` (a vencer) alimentam a *Projeção*.
 
 ## Stack
 
-- **Backend:** Node.js + TypeScript, Express, Prisma ORM, ExcelJS, Zod, JWT — `server/`
+- **Backend:** Node.js + TypeScript, [Hono](https://hono.dev/), Prisma ORM, Zod — `server/`
 - **Frontend:** React + TypeScript + Vite — `client/`
-- **Banco:** PostgreSQL (database `rionovo`)
+- **Banco:** PostgreSQL via [Neon](https://neon.tech/) (serverless)
+- **Monorepo:** pnpm workspaces
 
-## Modelo de dados (`server/prisma/schema.prisma`)
+## Estrutura
 
-`Lancamento` (natureza, valor, datas de competência/vencimento/liquidação, situação, estorno)
-relaciona-se com `Categoria` (dentro de `GrupoCategoria`), `CentroCusto`, `ContaBancaria`
-e `ClienteFornecedor`. `FechamentoMensal` registra meses bloqueados. Espelha o modelo
-extraído do relatório original.
+```
+fazendinha/
+├── client/          frontend Vite + React
+├── server/          backend Hono + Prisma
+├── scripts/         utilitários Python (extrator do .xlsx legado)
+└── package.json     orquestração do workspace
+```
 
-## Como rodar
+## Pré-requisitos
 
-Pré-requisitos: Node 18+, pnpm, PostgreSQL rodando.
+- Node 20+
+- pnpm 10+
+- Projeto Neon (free tier resolve)
+
+## Setup
 
 ```bash
-# 1. Banco
-createdb rionovo            # ajuste DATABASE_URL em server/.env se necessário
-
-# 2. Backend (porta 41873)
-cd server
+# 1. Instalar dependências
 pnpm install
-pnpm prisma:migrate         # cria as tabelas
-pnpm run import             # importa o histórico real do .xlsx (recomendado)
-#   OU: pnpm seed           # popula apenas dados de exemplo
-pnpm dev
 
-# 3. Frontend (porta 41875, faz proxy de /api -> 41873)
-cd ../client
-pnpm install
+# 2. Configurar conexão com o Neon
+cp server/.env.example server/.env
+# edite server/.env e cole o DATABASE_URL do Neon
+
+# 3. Aplicar o schema no banco
+pnpm prisma:migrate
+
+# 4. Subir tudo (backend em :41873, frontend em :41875)
 pnpm dev
 ```
 
-Abra http://localhost:41875 e entre com **admin / rionovo** (configurável em `server/.env`).
+Abra http://localhost:41875.
 
-### Importar histórico do .xlsx
+## Scripts úteis
 
-```bash
-python3 scripts/extract_rio_novo.py "Relatório Rio Novo 2026.05.04.xlsx" server/prisma/rio_novo.json
-cd server && pnpm run import
-```
+| Comando | O que faz |
+|---|---|
+| `pnpm dev` | Sobe server e client em paralelo |
+| `pnpm dev:server` | Só o backend |
+| `pnpm dev:client` | Só o frontend |
+| `pnpm build` | Build de produção dos dois |
+| `pnpm prisma:generate` | Regera o Prisma Client |
+| `pnpm prisma:migrate` | Aplica migrations no Neon |
+| `pnpm prisma:studio` | Abre o Prisma Studio |
 
-O extrator lê o pivotCache do arquivo, filtra `*Fonte = RIO NOVO` e gera ~6.700 lançamentos
-reais (validados contra os totais do relatório original).
+## Health checks
 
-## API
-
-Todas as rotas sob `/api` (exceto `/api/health` e `/api/auth/login`) exigem `Authorization: Bearer <token>`.
-
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/auth/login` | `{usuario, senha}` → `{token}` |
-| GET | `/api/relatorios/dashboard?tipo=REALIZADO\|PROJECAO` | painel por atividade (Leite/Café/Outros) |
-| GET | `/api/relatorios/resultado-operacional?tipo=REALIZADO\|PROJECAO` | relatório em JSON |
-| GET | `/api/relatorios/resultado-operacional.xlsx?tipo=...` | download `.xlsx` |
-| GET | `/api/relatorios/meses` | meses realizados disponíveis |
-| GET | `/api/relatorios/mensal/:mes[/xlsx]` | detalhe mensal (categoria × centro) |
-| GET | `/api/relatorios/diario/:mes[/xlsx]` | realizado diário |
-| GET | `/api/relatorios/completo.xlsx` | **workbook completo** (todas as abas) |
-| GET/POST/PUT/DELETE | `/api/lancamentos[/:id]` | CRUD de lançamentos (respeita fechamento) |
-| GET/POST/PUT/DELETE | `/api/cadastros/{centros-custo,grupos,categorias,contas,fornecedores}[/:id]` | CRUD de cadastros |
-| GET/POST/DELETE | `/api/fechamentos[/:ano/:mes]` | fechamento mensal |
-
-## Status
-
-- [x] Modelo de dados + migração + seed
-- [x] Motor de agregação do `Resultado Operacional` (mês × centro de custo × grupo × categoria)
-- [x] Exportação `.xlsx` formatada (validada contra os números reais)
-- [x] **Painel** visual (recharts): separa Leite × Café × Outros, com KPIs (receita/despesa/investimento/lucro), donut de despesas por grupo, lucro mensal por atividade e entradas×saídas mensais; filtro por ano e Realizado/Projeção
-- [x] Telas: **Painel**, Resultado, **Mensal**, **Diário**, Lançamentos, **Cadastros**, **Fechamento**
-- [x] Abas mensais detalhadas + `Realizado_Diário` + **workbook completo** (27 abas)
-- [x] Importação do histórico real do `.xlsx` (~6.700 lançamentos)
-- [x] CRUD dos cadastros pela interface
-- [x] Autenticação (JWT, login/logout)
-- [x] Fechamento mensal (bloqueia lançamentos em meses fechados)
-- [ ] Próximos: múltiplos usuários/permissões, conciliação bancária, dashboard/gráficos
-```
+- `GET http://localhost:41873/api/health` → `{ "ok": true }`
+- `GET http://localhost:41873/api/health/db` → `{ "ok": true, "db": "up" }` (valida Prisma + Neon)

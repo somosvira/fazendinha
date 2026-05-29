@@ -1,27 +1,17 @@
-import express from "express";
-import cors from "cors";
-import { exigirAuth } from "./auth.js";
-import { authRouter } from "./routes/auth.js";
-import { cadastrosRouter } from "./routes/cadastros.js";
-import { lancamentosRouter } from "./routes/lancamentos.js";
-import { relatoriosRouter } from "./routes/relatorios.js";
-import { fechamentosRouter } from "./routes/fechamentos.js";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+import { env } from "./env.js";
+import { healthRouter } from "./routes/health.js";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const app = new Hono();
 
-// Públicas
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
-app.use("/api/auth", authRouter);
+app.use("*", logger());
+app.use("/api/*", cors());
 
-// Protegidas
-app.use("/api/cadastros", exigirAuth, cadastrosRouter);
-app.use("/api/lancamentos", exigirAuth, lancamentosRouter);
-app.use("/api/relatorios", exigirAuth, relatoriosRouter);
-app.use("/api/fechamentos", exigirAuth, fechamentosRouter);
+app.route("/api", healthRouter);
 
-const port = Number(process.env.PORT ?? 41873);
-app.listen(port, () => {
+serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
 });

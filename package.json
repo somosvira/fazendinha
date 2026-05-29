@@ -1,0 +1,19 @@
+{
+  "name": "fazendinha",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.7.1",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:server": "pnpm --filter rionovo-server run dev",
+    "dev:client": "pnpm --filter rionovo-client run dev",
+    "build": "pnpm -r run build",
+    "prisma:generate": "pnpm --filter rionovo-server run prisma:generate",
+    "prisma:migrate": "pnpm --filter rionovo-server run prisma:migrate",
+    "prisma:studio": "pnpm --filter rionovo-server run prisma:studio"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
