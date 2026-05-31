@@ -240,11 +240,21 @@ function WhatsappMock() {
   );
 }
 
+// TODO: trocar quando a rota POST /api/lancamentos existir.
+// Por enquanto o upload anexa a nota a um Lancamento pré-existente (ex.: seed id=1).
+const LANCAMENTO_ID_PLACEHOLDER = 1;
+
+type UploadStatus = "idle" | "enviando" | "PENDENTE" | "VALIDA" | "ATENCAO" | "REJEITADA" | "ERRO";
+
 function LancarForm({ onSuccess }: { onSuccess: () => void }) {
   const [photo, setPhoto] = useState<{ name: string; size: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [iaUsed, setIaUsed] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
+
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [uploadMensagem, setUploadMensagem] = useState<string | null>(null);
+  const [arquivoId, setArquivoId] = useState<number | null>(null);
 
   const [fornecedor, setFornecedor] = useState("");
   const [valor, setValor] = useState("");
@@ -256,12 +266,59 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
   const [cat, setCat] = useState<CatValue>({ grupoId: null, categoriaId: null, subcategoria: null });
   const [obs, setObs] = useState("");
 
-  const onPickFile = (file?: File | null) => {
-    if (file) setPhoto({ name: file.name || "nota-fiscal.jpg", size: file.size || 248123 });
+  const pollStatus = async (id: number) => {
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const res = await fetch(`/api/nota-fiscal/arquivo/${id}`);
+        if (!res.ok) continue;
+        const json = await res.json();
+        const status = json.arquivo?.statusValidacao;
+        if (status && status !== "PENDENTE") {
+          setUploadStatus(status as UploadStatus);
+          setUploadMensagem(json.arquivo.mensagemValidacao ?? null);
+          return;
+        }
+      } catch {
+        // segue tentando
+      }
+    }
+    setUploadMensagem("OCR demorou mais que o esperado — confira em breve.");
+  };
+
+  const onPickFile = async (file?: File | null) => {
+    if (!file) return;
+    setPhoto({ name: file.name || "nota-fiscal", size: file.size || 0 });
+    setArquivoId(null);
+    setUploadStatus("enviando");
+    setUploadMensagem("Verificando arquivo…");
+    try {
+      const form = new FormData();
+      form.append("arquivo", file);
+      const res = await fetch(`/api/lancamentos/${LANCAMENTO_ID_PLACEHOLDER}/nota-fiscal`, {
+        method: "POST",
+        body: form,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setUploadStatus("ERRO");
+        setUploadMensagem(json.erro || `Falha no upload (HTTP ${res.status})`);
+        return;
+      }
+      setArquivoId(json.arquivo.id);
+      setUploadStatus("PENDENTE");
+      setUploadMensagem("Analisando conteúdo (OCR)…");
+      pollStatus(json.arquivo.id);
+    } catch (e: unknown) {
+      setUploadStatus("ERRO");
+      setUploadMensagem(e instanceof Error ? e.message : "Falha no upload");
+    }
   };
 
   const runIA = () => {
     setIaUsed(true);
+    // TODO: aproveitar ocrTexto retornado por GET /api/nota-fiscal/arquivo/:id
+    // ou migrar para Textract AnalyzeExpense, que devolve fornecedor/valor/data estruturados.
     setTimeout(() => {
       setFornecedor("Cooperativa Boa Vista");
       setValor("38450,00");
@@ -275,7 +332,8 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
     }, 400);
   };
 
-  const canSubmit = !!(photo && fornecedor && valor && cat.categoriaId && atividade);
+  const uploadBloqueia = uploadStatus === "enviando" || uploadStatus === "REJEITADA" || uploadStatus === "ERRO";
+  const canSubmit = !!(photo && fornecedor && valor && cat.categoriaId && atividade && !uploadBloqueia);
 
   return (
     <div className="lancar-shell">
@@ -333,15 +391,59 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
                   </button>
                   <button
                     className="btn-ghost danger"
-                    onClick={() => {
+                    onClick={async () => {
+                      // Remove no backend se já subiu — best-effort.
+                      if (arquivoId != null) {
+                        try {
+                          await fetch(
+                            `/api/lancamentos/${LANCAMENTO_ID_PLACEHOLDER}/nota-fiscal/${arquivoId}`,
+                            { method: "DELETE" },
+                          );
+                        } catch {
+                          // ignora; o user pode tentar de novo
+                        }
+                      }
                       setPhoto(null);
                       setIaUsed(false);
+                      setArquivoId(null);
+                      setUploadStatus("idle");
+                      setUploadMensagem(null);
                     }}
                   >
                     Remover
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {photo && uploadStatus !== "idle" && (
+          <div
+            className="ia-fill-banner"
+            style={{
+              marginTop: 14,
+              background:
+                uploadStatus === "VALIDA"
+                  ? "rgba(56, 142, 60, 0.08)"
+                  : uploadStatus === "ATENCAO"
+                    ? "rgba(245, 166, 35, 0.10)"
+                    : uploadStatus === "REJEITADA" || uploadStatus === "ERRO"
+                      ? "rgba(211, 47, 47, 0.08)"
+                      : undefined,
+            }}
+          >
+            <span className="icon-dot"></span>
+            <div className="body">
+              <strong>
+                {uploadStatus === "enviando" && "Enviando arquivo…"}
+                {uploadStatus === "PENDENTE" && "Validando nota fiscal (OCR)…"}
+                {uploadStatus === "VALIDA" && "Nota fiscal verificada."}
+                {uploadStatus === "ATENCAO" && "Atenção: arquivo aceito, mas precisa revisão manual."}
+                {uploadStatus === "REJEITADA" && "Não parece ser uma nota fiscal."}
+                {uploadStatus === "ERRO" && "Falha no upload."}
+              </strong>
+              {uploadMensagem ? <> {uploadMensagem}</> : null}
             </div>
           </div>
         )}
@@ -524,9 +626,15 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
           <span className="help">
             {!photo
               ? "Anexe a nota fiscal para liberar o lançamento."
-              : !canSubmit
-                ? "Complete os campos obrigatórios marcados com asterisco."
-                : "Tudo pronto. O lançamento aparecerá no dashboard imediatamente."}
+              : uploadStatus === "enviando" || uploadStatus === "PENDENTE"
+                ? "Aguarde a validação da nota terminar."
+                : uploadStatus === "REJEITADA"
+                  ? "Nota rejeitada — remova e envie outra antes de salvar."
+                  : uploadStatus === "ERRO"
+                    ? "Falha no upload — tente remover e enviar novamente."
+                    : !canSubmit
+                      ? "Complete os campos obrigatórios marcados com asterisco."
+                      : "Tudo pronto. O lançamento aparecerá no dashboard imediatamente."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn-ghost">Salvar rascunho</button>

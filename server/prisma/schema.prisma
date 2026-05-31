@@ -22,6 +22,13 @@ enum Situacao {
   LIQUIDADO_PARCIAL
 }
 
+enum StatusValidacaoNF {
+  PENDENTE // aguardando validação assíncrona (OCR)
+  VALIDA // bate >= 2 critérios (CNPJ, chave NFe, termos "NOTA FISCAL"/"DANFE"...)
+  ATENCAO // bate 1 critério — registrado mas pede revisão humana
+  REJEITADA // 0 critérios ou falhou validação síncrona
+}
+
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
 model CentroCusto {
   id            Int          @id @default(autoincrement())
@@ -101,10 +108,41 @@ model Lancamento {
   clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
   clienteFornecedorId Int?
 
+  notasFiscais NotaFiscalArquivo[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([situacao, dataLiquidacao])
   @@index([situacao, dataVencimento])
   @@index([centroCustoId])
+}
+
+// Anexos de nota fiscal (foto ou PDF) atrelados a um Lançamento.
+// Relação 1-N para suportar DANFE+XML, complementares e re-uploads sem perder histórico.
+// Storage físico em S3 (ou local em dev). Lifecycle tier-down: Standard -> IA -> Glacier IR -> Deep Archive.
+model NotaFiscalArquivo {
+  id           Int        @id @default(autoincrement())
+  lancamento   Lancamento @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+  lancamentoId Int
+
+  // localização física
+  storageDriver String // "r2" | "local"
+  bucket        String?
+  storageKey    String  @unique // ex.: notas/123/<sha256>.pdf
+  mimeType      String
+  tamanhoBytes  Int
+  sha256        String  @unique // bloqueia duplicata global (mesmo arquivo subido 2x)
+
+  // resultado da validação
+  statusValidacao   StatusValidacaoNF @default(PENDENTE)
+  mensagemValidacao String?
+  ocrTexto          String?           @db.Text
+  cnpjEmissor       String?
+  chaveAcessoNfe    String?           @db.VarChar(44)
+
+  criadoEm    DateTime  @default(now())
+  validadoEm  DateTime?
+
+  @@index([lancamentoId, statusValidacao])
 }
