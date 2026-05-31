@@ -7,9 +7,24 @@ import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
 import { detectText } from "../../lib/ocr.js";
 
-const REGEX_CNPJ = /\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/;
-const REGEX_CHAVE_NFE = /\b\d{44}\b/;
+// Regex aplicadas no texto original do OCR. Permitem até alguns separadores
+// (espaços, pontos, hífens) entre os grupos de dígitos — o Tesseract costuma
+// confundir um pelo outro.
+//
+// CNPJ formatado: XX.XXX.XXX/XXXX-XX (14 dígitos em 5 grupos).
+const REGEX_CNPJ = /\d{2}\D{0,2}\d{3}\D{0,2}\d{3}\D{1,2}\d{4}\D{1,2}\d{2}/;
+// Chave NFe: 44 dígitos em 11 grupos de 4 (formato impresso da DANFE).
+const REGEX_CHAVE_NFE = /\d{4}(?:\D{0,3}\d{4}){10}/;
 const REGEX_TERMOS_NF = /\b(NOTA FISCAL|DANFE|CFOP|EMITENTE|NF-?e)\b/i;
+
+function formatarCnpj(matchRaw: string): string {
+  const d = matchRaw.replace(/\D/g, "").slice(0, 14);
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12, 14)}`;
+}
+
+function extrairDigitos(matchRaw: string, n: number): string {
+  return matchRaw.replace(/\D/g, "").slice(0, n);
+}
 
 export async function validarAssincrono(arquivoId: number): Promise<void> {
   const arq = await prisma.notaFiscalArquivo.findUnique({ where: { id: arquivoId } });
@@ -73,8 +88,8 @@ export async function validarAssincrono(arquivoId: number): Promise<void> {
       statusValidacao,
       mensagemValidacao,
       ocrTexto: texto,
-      cnpjEmissor: cnpjMatch?.[0] ?? null,
-      chaveAcessoNfe: chaveMatch?.[0] ?? null,
+      cnpjEmissor: cnpjMatch ? formatarCnpj(cnpjMatch[0]) : null,
+      chaveAcessoNfe: chaveMatch ? extrairDigitos(chaveMatch[0], 44) : null,
       validadoEm: new Date(),
     },
   });

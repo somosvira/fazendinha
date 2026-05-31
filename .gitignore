@@ -8,3 +8,9 @@ coverage/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Tesseract.js — language data baixado no primeiro recognize(), fica no cwd do server.
+*.traineddata
+
+# Driver de storage local (STORAGE_DRIVER=local) grava notas aqui em dev.
+.uploads/
