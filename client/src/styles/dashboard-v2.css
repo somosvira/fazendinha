@@ -408,12 +408,18 @@
   font-size: 22px;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .inc-title {
   font-family: var(--serif);
   font-size: 17px;
   line-height: 1.3;
   letter-spacing: -0.005em;
+}
+.inc-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px;
 }
 .inc-detalhe {
   font-size: 13px;

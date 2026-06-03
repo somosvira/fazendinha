@@ -421,7 +421,90 @@
   letter-spacing: -0.015em;
 }
 
-/* ============ WHATSAPP MOCKUP ============ */
+/* ============ ENTRADA / SAÍDA TOGGLE ============ */
+
+.es-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 22px 0 8px;
+}
+.es-btn {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 120ms, background 120ms;
+}
+.es-btn:hover { border-color: var(--ink-3); }
+.es-arrow {
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  font-family: var(--serif);
+  font-size: 24px;
+  border: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.es-txt { display: flex; flex-direction: column; gap: 2px; }
+.es-txt strong { font-family: var(--serif); font-size: 22px; letter-spacing: -0.01em; color: var(--ink); font-weight: 400; }
+.es-txt small { font-size: 13px; color: var(--ink-3); }
+
+.es-btn.saida.active {
+  border-color: var(--neg);
+  background: var(--bg-card);
+  box-shadow: inset 3px 0 0 var(--neg);
+}
+.es-btn.saida.active .es-arrow { color: var(--neg); border-color: var(--neg); }
+.es-btn.entrada.active {
+  border-color: var(--pos);
+  background: var(--bg-card);
+  box-shadow: inset 3px 0 0 var(--pos);
+}
+.es-btn.entrada.active .es-arrow { color: var(--pos); border-color: var(--pos); }
+
+/* ============ RECEITA — TIPOS ============ */
+
+.receita-tipos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.receita-tipo {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.receita-tipo:hover { border-color: var(--ink-3); }
+.receita-tipo.active { border-color: var(--ink); background: var(--bg-card-2); }
+.receita-tipo .rt-sw { width: 14px; height: 14px; flex-shrink: 0; }
+.receita-tipo .rt-nm { font-size: 15px; color: var(--ink); }
+
+.receita-context {
+  margin-top: 18px;
+  border: 1px solid var(--rule);
+  background: var(--bg-card);
+  padding: 20px 22px;
+}
+.rc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.rc-icon { width: 14px; height: 14px; }
+.rc-title { font-family: var(--serif); font-size: 20px; letter-spacing: -0.005em; }
+.rc-body { font-size: 14px; color: var(--ink-2); line-height: 1.6; margin: 0; }
+.rc-body strong { color: var(--ink); font-weight: 500; }
+
+/* entrada success */
+.lancado-card .checkmark.entrada { border-color: var(--pos); color: var(--pos); }
+.entrada-btn { background: var(--pos); }
+.entrada-btn:hover:not(:disabled) { background: var(--pos); }
+
+@media (max-width: 1100px) {
+  .es-toggle { grid-template-columns: 1fr; }
+  .receita-tipos { grid-template-columns: 1fr; }
+}
 
 .wa-frame {
   background: var(--bg-card);

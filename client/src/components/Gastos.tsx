@@ -6,6 +6,9 @@ import { ReportHeader } from "./Shell";
 import { fmtMoneyExact } from "./charts";
 import type { Tab } from "./Shell";
 import type { DateRange } from "./DateRangePicker";
+import type { User } from "../data/acessos";
+import { AnomaliasStrip } from "./Vigilancia";
+import { anomalias } from "./../data/anomalias";
 
 export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   if (mix) {
@@ -170,7 +173,7 @@ function ExpenseDrawer({ gasto, onClose }: { gasto: Gasto | null; onClose: () =>
   );
 }
 
-export function Gastos({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
+export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
   const [range, setRange] = useState<DateRange>({ start: new Date(2026, 4, 1), end: new Date(2026, 4, 28) });
   const [filterAct, setFilterAct] = useState<"Tudo" | "Leite" | "Café" | "Outros">("Tudo");
   const [filterInvest, setFilterInvest] = useState<"Tudo" | "Custeio" | "Investimento">("Tudo");
@@ -197,12 +200,22 @@ export function Gastos({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
   const totalInvest = filtered.filter((g) => g.investimento).reduce((s, g) => s + g.valor, 0);
 
   return (
-    <div className="shell-wide">
+    <div className={"shell-wide " + (user && !user.flags.includes("verValores") ? "mask-values" : "")}>
       <ReportHeader
         subtitle="Gastos — exploração descritiva"
         range={range}
         onRangeChange={setRange}
         updatedAt={R.UPDATED_AT}
+      />
+
+      <AnomaliasStrip
+        R={{ anomalias }}
+        onNav={onNav}
+        onDrill={(catId) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const c = R.categoriasReais.find((x: any) => x.id === catId);
+          if (c) setSearch(c.nome.split(" ")[0]);
+        }}
       />
 
       <div className="gastos-toolbar">

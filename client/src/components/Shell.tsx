@@ -1,20 +1,31 @@
 /* Rio Novo — masthead + nav shell */
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { DateRangePicker, DateRange } from "./DateRangePicker";
+import { PAPEIS, type User } from "../data/acessos";
 
-export type Tab = "dashboard" | "gastos" | "lancar" | "plano" | "ia" | "relatorio";
+export type Tab = "dashboard" | "gastos" | "lancar" | "plano" | "ia" | "relatorio" | "acessos";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "gastos", label: "Gastos" },
-  { id: "lancar", label: "Lançar" },
-  { id: "plano", label: "Categorias" },
-  { id: "ia", label: "IA" },
-  { id: "relatorio", label: "Relatório" },
-];
+export type NavTab = { id: Tab; label: string };
 
-export function Masthead({ current, onNav }: { current: Tab; onNav: (t: Tab) => void }) {
+export function Masthead({
+  current,
+  onNav,
+  tabs,
+  user,
+  allUsers,
+  onSwitchUser,
+}: {
+  current: Tab;
+  onNav: (t: Tab) => void;
+  tabs: NavTab[];
+  user: User;
+  allUsers: User[] | null;
+  onSwitchUser: (id: string) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
+
   return (
     <header className="masthead">
       <div className="masthead-inner">
@@ -26,7 +37,7 @@ export function Masthead({ current, onNav }: { current: Tab; onNav: (t: Tab) => 
           </div>
         </div>
         <nav className="nav-tabs">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               className="nav-tab"
@@ -38,9 +49,34 @@ export function Masthead({ current, onNav }: { current: Tab; onNav: (t: Tab) => 
           ))}
         </nav>
         <div className="mast-right">
-          <div className="user-chip">
-            <div className="user-avatar">M</div>
-            <span>Marco Antônio</span>
+          <div
+            className={"user-chip " + (allUsers ? "has-menu" : "")}
+            onClick={() => allUsers && setMenuOpen((o) => !o)}
+          >
+            <div className="user-avatar">{user.inicial}</div>
+            <span>{user.nome.split(" ")[0]}</span>
+            {allUsers && <span className="chip-chev">▾</span>}
+            {menuOpen && allUsers && (
+              <div className="user-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="user-menu-head">Entrar como (demonstração)</div>
+                {allUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    className="user-menu-opt"
+                    onClick={() => {
+                      onSwitchUser(u.id);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span className="umo-av">{u.inicial}</span>
+                    <span className="umo-info">
+                      <div className="umo-nome">{u.nome}</div>
+                      <div className="umo-papel">{papelNome(u)}</div>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
