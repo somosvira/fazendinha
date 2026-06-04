@@ -24,6 +24,17 @@ const envSchema = z
     // OCR via Tesseract.js (gratuito, roda em Node). Em dev/teste deixe "false" para
     // boot mais rápido (sem download dos ~70MB de language data português).
     OCR_ENABLED: z.coerce.boolean().default(false),
+
+    // Bot WhatsApp (Baileys). false (default) = não carrega Baileys, server sobe limpo.
+    WHATSAPP_ENABLED: z.coerce.boolean().default(false),
+    // CSV E.164 sem "+". Ex.: "5532991234567,5511988887777". Vazia = ninguém autorizado.
+    WHATSAPP_NUMEROS_AUTORIZADOS: z.string().default(""),
+    // Diretório (relativo ao cwd do server) onde Baileys persiste a sessão.
+    WHATSAPP_AUTH_DIR: z.string().default(".baileys-auth"),
+
+    // Claude Vision para extrair dados estruturados da nota fiscal.
+    ANTHROPIC_API_KEY: z.string().optional(),
+    ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
   })
   .superRefine((v, ctx) => {
     if (v.STORAGE_DRIVER === "r2") {
@@ -35,6 +46,16 @@ const envSchema = z
         ctx.addIssue({ code: "custom", path: ["R2_SECRET_ACCESS_KEY"], message: "obrigatório quando STORAGE_DRIVER=r2" });
       if (!v.R2_BUCKET_NOTAS)
         ctx.addIssue({ code: "custom", path: ["R2_BUCKET_NOTAS"], message: "obrigatório quando STORAGE_DRIVER=r2" });
+    }
+    if (v.WHATSAPP_ENABLED) {
+      if (!v.ANTHROPIC_API_KEY)
+        ctx.addIssue({ code: "custom", path: ["ANTHROPIC_API_KEY"], message: "obrigatório quando WHATSAPP_ENABLED=true" });
+      if (!v.WHATSAPP_NUMEROS_AUTORIZADOS.trim())
+        ctx.addIssue({
+          code: "custom",
+          path: ["WHATSAPP_NUMEROS_AUTORIZADOS"],
+          message: "obrigatório quando WHATSAPP_ENABLED=true — whitelist não pode ser vazia",
+        });
     }
   });
 

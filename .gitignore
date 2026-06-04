@@ -14,3 +14,7 @@ __pycache__/
 
 # Driver de storage local (STORAGE_DRIVER=local) grava notas aqui em dev.
 .uploads/
+
+# Credenciais do Baileys (multifileauthstate). Equivale à sessão WhatsApp pareada;
+# se vazar, quem tem o conteúdo controla a conta. NUNCA commitar.
+.baileys-auth/

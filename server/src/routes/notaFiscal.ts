@@ -5,8 +5,7 @@
 import { Hono } from "hono";
 import { prisma } from "../db.js";
 import { getStorage, verifyLocalToken } from "../lib/storage.js";
-import { validarUploadSincrono } from "../services/notaFiscal/validacaoSincrona.js";
-import { agendarValidacaoAssincrona } from "../services/notaFiscal/validacaoAssincrona.js";
+import { uploadArquivoNotaFiscalHttp } from "../services/notaFiscal/uploadArquivo.js";
 import { assertMesAberto, FechamentoMensalError } from "../services/fechamento.js";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -58,9 +57,6 @@ export const notaFiscalRouter = new Hono()
       return c.json({ erro: `arquivo excede ${MAX_UPLOAD_BYTES / 1024 / 1024}MB` }, 413);
     }
 
-    const lancamento = await prisma.lancamento.findUnique({ where: { id: lancamentoId } });
-    if (!lancamento) return c.json({ erro: "lançamento não encontrado" }, 404);
-
     let form: FormData;
     try {
       form = await c.req.formData();
@@ -75,45 +71,13 @@ export const notaFiscalRouter = new Hono()
     const buffer = Buffer.from(await file.arrayBuffer());
     const mimeTypeDeclarado = file.type || "application/octet-stream";
 
-    const validacao = await validarUploadSincrono({ buffer, mimeTypeDeclarado });
-    if (!validacao.ok) {
-      return c.json({ erro: validacao.mensagem, codigo: validacao.codigo }, 400);
+    const resultado = await uploadArquivoNotaFiscalHttp({ lancamentoId, buffer, mimeTypeDeclarado });
+    if (!resultado.ok) {
+      const payload: Record<string, unknown> = { erro: resultado.mensagem, codigo: resultado.codigo };
+      if (resultado.duplicata) payload.arquivoExistente = resultado.duplicata;
+      return c.json(payload, resultado.httpStatus);
     }
-    const { sha256, mimeTypeReal, ext } = validacao;
-
-    // Dedupe global por sha256
-    const duplicata = await prisma.notaFiscalArquivo.findUnique({ where: { sha256 } });
-    if (duplicata) {
-      return c.json(
-        {
-          erro: "este arquivo já foi enviado antes (mesmo hash)",
-          codigo: "DUPLICATA",
-          arquivoExistente: { id: duplicata.id, lancamentoId: duplicata.lancamentoId },
-        },
-        409,
-      );
-    }
-
-    const storage = await getStorage();
-    const storageKey = `notas/${lancamentoId}/${sha256}.${ext}`;
-    const put = await storage.putObject({ key: storageKey, body: buffer, contentType: mimeTypeReal });
-
-    const arquivo = await prisma.notaFiscalArquivo.create({
-      data: {
-        lancamentoId,
-        storageDriver: put.storageDriver,
-        bucket: put.bucket,
-        storageKey: put.storageKey,
-        mimeType: mimeTypeReal,
-        tamanhoBytes: buffer.length,
-        sha256,
-        statusValidacao: "PENDENTE",
-      },
-    });
-
-    agendarValidacaoAssincrona(arquivo.id);
-
-    return c.json({ arquivo: serializeArquivo(arquivo) }, 201);
+    return c.json({ arquivo: serializeArquivo(resultado.arquivo) }, 201);
   })
 
   // GET /api/lancamentos/:id/nota-fiscal  (lista + URLs assinadas)

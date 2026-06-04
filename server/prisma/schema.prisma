@@ -29,6 +29,17 @@ enum StatusValidacaoNF {
   REJEITADA // 0 critérios ou falhou validação síncrona
 }
 
+// Estados de uma confirmação pendente vinda do WhatsApp.
+// Lançamento só é criado quando o usuário confirma — antes disso só a imagem
+// está no storage e a extração da IA fica em JSON.
+enum StatusConfirmacaoWA {
+  AGUARDANDO    // esperando resposta do usuário no WhatsApp
+  CONFIRMADA    // virou Lancamento
+  CANCELADA     // usuário cancelou OU foi substituída por foto nova (override)
+  EXPIRADA      // passou expiraEm sem resposta
+  ERRO_EXTRACAO // Claude Vision falhou — sem cartão enviado
+}
+
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
 model CentroCusto {
   id            Int          @id @default(autoincrement())
@@ -108,7 +119,8 @@ model Lancamento {
   clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
   clienteFornecedorId Int?
 
-  notasFiscais NotaFiscalArquivo[]
+  notasFiscais         NotaFiscalArquivo[]
+  confirmacoesWhatsapp WhatsAppConfirmacaoPendente[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,4 +157,46 @@ model NotaFiscalArquivo {
   validadoEm  DateTime?
 
   @@index([lancamentoId, statusValidacao])
+}
+
+// Fluxo do bot WhatsApp: foto recebida -> imagem persistida no storage + extração
+// pela Claude Vision -> cartão de confirmação enviado -> usuário responde
+// Confirmar/Cancelar -> vira (ou não) Lancamento.
+//
+// O Lancamento não é criado antecipadamente: categoriaId/centroCustoId são FKs
+// obrigatórias e o "Ajustar" futuro seria mais limpo se o lançamento real só
+// nasce após o "Confirmar". A imagem fica no storage com key "notas/_wa/<sha>.<ext>"
+// até a confirmação; depois disso o NotaFiscalArquivo aponta pra essa mesma key.
+model WhatsAppConfirmacaoPendente {
+  id Int @id @default(autoincrement())
+
+  telefone   String // E.164 sem "+" (ex.: "5532991234567")
+  jid        String // remoteJid do Baileys (ex.: "5532991234567@s.whatsapp.net")
+  mensagemId String // key.id da mensagem que trouxe a foto — idempotência
+
+  // localização da imagem no storage (mesmo formato do NotaFiscalArquivo)
+  storageDriver String
+  bucket        String?
+  storageKey    String
+  sha256        String @unique
+  mimeType      String
+  tamanhoBytes  Int
+
+  // resultado da Claude Vision: ExtracaoNF serializada
+  dadosExtraidos Json
+  modeloIa       String
+  tokensInput    Int?
+  tokensOutput   Int?
+
+  status       StatusConfirmacaoWA @default(AGUARDANDO)
+  lancamentoId Int?
+  lancamento   Lancamento?         @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  decididoEm DateTime?
+
+  @@index([telefone, status])
+  @@index([status, expiraEm])
+  @@index([mensagemId])
 }

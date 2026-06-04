@@ -26,3 +26,20 @@ app.route("/api", notaFiscalRouter);
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
 });
+
+// Bot WhatsApp (Baileys) — gateado por WHATSAPP_ENABLED. Quando false, esses
+// imports lazy nem disparam o carregamento de @whiskeysockets/baileys.
+if (env.WHATSAPP_ENABLED) {
+  const { iniciarBotWhatsapp, encerrarBotWhatsapp } = await import("./services/whatsapp/bot.js");
+  const { iniciarCleanupConfirmacoes } = await import("./services/whatsapp/cleanup.js");
+  iniciarBotWhatsapp().catch((e) => {
+    console.error("[wpp] inicialização do bot falhou:", e);
+  });
+  iniciarCleanupConfirmacoes();
+  const shutdown = async () => {
+    await encerrarBotWhatsapp();
+    process.exit(0);
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
