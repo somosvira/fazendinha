@@ -29,6 +29,16 @@ enum StatusValidacaoNF {
   REJEITADA // 0 critérios ou falhou validação síncrona
 }
 
+// Ciclo de vida do upload de NF enquanto o usuário ainda não confirmou o
+// lançamento. AGUARDANDO -> CONFIRMADO (virou Lancamento+NotaFiscalArquivo)
+// ou -> CANCELADO/EXPIRADO (cleanup apaga o arquivo do storage).
+enum StatusUploadPendente {
+  AGUARDANDO
+  CONFIRMADO
+  CANCELADO
+  EXPIRADO
+}
+
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
 model CentroCusto {
   id            Int          @id @default(autoincrement())
@@ -108,7 +118,8 @@ model Lancamento {
   clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
   clienteFornecedorId Int?
 
-  notasFiscais NotaFiscalArquivo[]
+  notasFiscais       NotaFiscalArquivo[]
+  uploadsPendentes   NotaFiscalUploadPendente[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,4 +156,34 @@ model NotaFiscalArquivo {
   validadoEm  DateTime?
 
   @@index([lancamentoId, statusValidacao])
+}
+
+// Upload de NF antes da criação do Lancamento. O arquivo já está no storage
+// (key notas/_pendente/<sha>.<ext>), mas nada foi gravado no histórico real
+// ainda. Quando o usuário submete o form, esta pendente vira Lancamento +
+// NotaFiscalArquivo numa transação (status CONFIRMADO). Se cancelar/abandonar,
+// o cleanup hourly apaga o arquivo do storage.
+model NotaFiscalUploadPendente {
+  id            Int     @id @default(autoincrement())
+
+  storageDriver String
+  bucket        String?
+  storageKey    String  @unique
+  sha256        String  @unique // bloqueia subir 2x a mesma foto antes de confirmar
+  mimeType      String
+  tamanhoBytes  Int
+
+  // OCR síncrono não roda aqui (precisaria do mesmo pipeline assíncrono);
+  // o texto é populado opcionalmente pela validação síncrona / IA futura.
+  ocrTexto      String? @db.Text
+
+  status        StatusUploadPendente @default(AGUARDANDO)
+  lancamentoId  Int?
+  lancamento    Lancamento?          @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  decididoEm DateTime?
+
+  @@index([status, expiraEm])
 }

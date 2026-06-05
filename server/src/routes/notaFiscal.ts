@@ -1,13 +1,14 @@
-// Rotas de Nota Fiscal — upload em proxy (browser → backend → storage).
-// O backend roda validação síncrona ANTES de subir ao storage e dispara a
-// validação assíncrona (OCR) DEPOIS, sem bloquear o response.
+// Rotas de Nota Fiscal.
+// Fluxo correto: o upload entra como NotaFiscalUploadPendente (não amarrado
+// a Lancamento). Só na confirmação do form, via POST /api/lancamentos, é
+// que vira NotaFiscalArquivo definitivo. O upload "antigo" que criava
+// NotaFiscalArquivo direto não existe mais.
 
 import { Hono } from "hono";
 import { prisma } from "../db.js";
 import { getStorage, verifyLocalToken } from "../lib/storage.js";
-import { validarUploadSincrono } from "../services/notaFiscal/validacaoSincrona.js";
-import { agendarValidacaoAssincrona } from "../services/notaFiscal/validacaoAssincrona.js";
 import { assertMesAberto, FechamentoMensalError } from "../services/fechamento.js";
+import { uploadPendenteNotaFiscal, cancelarPendente } from "../services/notaFiscal/uploadPendente.js";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -45,22 +46,13 @@ function serializeArquivo(a: {
 // ─── Router ──────────────────────────────────────────────────────────────
 
 export const notaFiscalRouter = new Hono()
-  // POST /api/lancamentos/:id/nota-fiscal  (multipart)
-  .post("/lancamentos/:id/nota-fiscal", async (c) => {
-    const lancamentoId = Number(c.req.param("id"));
-    if (!Number.isInteger(lancamentoId) || lancamentoId <= 0) {
-      return c.json({ erro: "id de lançamento inválido" }, 400);
-    }
-
-    // Rejeita antes de bufferizar quando o cliente diz que vai mandar mais que o teto
+  // POST /api/nota-fiscal/upload-pendente  (multipart) — NOVO fluxo
+  // Sobe pra notas/_pendente/<sha>.<ext>; nada é amarrado a Lancamento.
+  .post("/nota-fiscal/upload-pendente", async (c) => {
     const contentLength = Number(c.req.header("content-length") ?? 0);
     if (contentLength > MAX_UPLOAD_BYTES + 1024) {
       return c.json({ erro: `arquivo excede ${MAX_UPLOAD_BYTES / 1024 / 1024}MB` }, 413);
     }
-
-    const lancamento = await prisma.lancamento.findUnique({ where: { id: lancamentoId } });
-    if (!lancamento) return c.json({ erro: "lançamento não encontrado" }, 404);
-
     let form: FormData;
     try {
       form = await c.req.formData();
@@ -71,49 +63,64 @@ export const notaFiscalRouter = new Hono()
     if (!(file instanceof File)) {
       return c.json({ erro: "campo 'arquivo' ausente no multipart" }, 400);
     }
-
     const buffer = Buffer.from(await file.arrayBuffer());
     const mimeTypeDeclarado = file.type || "application/octet-stream";
 
-    const validacao = await validarUploadSincrono({ buffer, mimeTypeDeclarado });
-    if (!validacao.ok) {
-      return c.json({ erro: validacao.mensagem, codigo: validacao.codigo }, 400);
-    }
-    const { sha256, mimeTypeReal, ext } = validacao;
-
-    // Dedupe global por sha256
-    const duplicata = await prisma.notaFiscalArquivo.findUnique({ where: { sha256 } });
-    if (duplicata) {
+    const r = await uploadPendenteNotaFiscal({ buffer, mimeTypeDeclarado });
+    if (!r.ok) {
       return c.json(
         {
-          erro: "este arquivo já foi enviado antes (mesmo hash)",
-          codigo: "DUPLICATA",
-          arquivoExistente: { id: duplicata.id, lancamentoId: duplicata.lancamentoId },
+          erro: r.mensagem,
+          codigo: r.codigo,
+          arquivoExistente: r.arquivoExistente,
         },
-        409,
+        r.status,
       );
     }
+    return c.json(
+      {
+        pendente: {
+          id: r.pendente.id,
+          sha256: r.pendente.sha256,
+          mimeType: r.pendente.mimeType,
+          tamanhoBytes: r.pendente.tamanhoBytes,
+          expiraEm: r.pendente.expiraEm.toISOString(),
+        },
+        retomada: r.retomada,
+      },
+      r.retomada ? 200 : 201,
+    );
+  })
 
-    const storage = await getStorage();
-    const storageKey = `notas/${lancamentoId}/${sha256}.${ext}`;
-    const put = await storage.putObject({ key: storageKey, body: buffer, contentType: mimeTypeReal });
-
-    const arquivo = await prisma.notaFiscalArquivo.create({
-      data: {
-        lancamentoId,
-        storageDriver: put.storageDriver,
-        bucket: put.bucket,
-        storageKey: put.storageKey,
-        mimeType: mimeTypeReal,
-        tamanhoBytes: buffer.length,
-        sha256,
-        statusValidacao: "PENDENTE",
+  // GET /api/nota-fiscal/upload-pendente/:id
+  .get("/nota-fiscal/upload-pendente/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) return c.json({ erro: "id inválido" }, 400);
+    const p = await prisma.notaFiscalUploadPendente.findUnique({ where: { id } });
+    if (!p) return c.json({ erro: "pendente não encontrado" }, 404);
+    return c.json({
+      pendente: {
+        id: p.id,
+        sha256: p.sha256,
+        mimeType: p.mimeType,
+        tamanhoBytes: p.tamanhoBytes,
+        status: p.status,
+        criadoEm: p.criadoEm.toISOString(),
+        expiraEm: p.expiraEm.toISOString(),
+        decididoEm: p.decididoEm?.toISOString() ?? null,
+        lancamentoId: p.lancamentoId,
       },
     });
+  })
 
-    agendarValidacaoAssincrona(arquivo.id);
-
-    return c.json({ arquivo: serializeArquivo(arquivo) }, 201);
+  // DELETE /api/nota-fiscal/upload-pendente/:id
+  // Marca CANCELADO. Storage é apagado depois pelo cleanup (24h) pra dar
+  // janela de retomada caso o usuário reenvie a mesma foto.
+  .delete("/nota-fiscal/upload-pendente/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id) || id <= 0) return c.json({ erro: "id inválido" }, 400);
+    const ok = await cancelarPendente(id);
+    return c.json({ ok });
   })
 
   // GET /api/lancamentos/:id/nota-fiscal  (lista + URLs assinadas)
@@ -200,10 +207,16 @@ export const notaFiscalRouter = new Hono()
       return c.json({ erro: "endpoint só disponível com STORAGE_DRIVER=local" }, 404);
     }
 
-    const arq = await prisma.notaFiscalArquivo.findUnique({ where: { storageKey: key } });
-    if (!arq) return c.json({ erro: "arquivo não encontrado" }, 404);
+    // Aceita tanto NotaFiscalArquivo (definitivo) quanto NotaFiscalUploadPendente
+    // (preview do form antes de confirmar).
+    const [arq, pend] = await Promise.all([
+      prisma.notaFiscalArquivo.findUnique({ where: { storageKey: key } }),
+      prisma.notaFiscalUploadPendente.findUnique({ where: { storageKey: key } }),
+    ]);
+    const meta = arq ?? pend;
+    if (!meta) return c.json({ erro: "arquivo não encontrado" }, 404);
     const buffer = await storage.getObjectBuffer({ key });
-    c.header("Content-Type", arq.mimeType);
+    c.header("Content-Type", meta.mimeType);
     c.header("Cache-Control", "private, max-age=300");
     return c.body(new Uint8Array(buffer));
   });

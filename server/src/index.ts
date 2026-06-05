@@ -3,9 +3,12 @@ import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
+import { cadastrosRouter } from "./routes/cadastros.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { healthRouter } from "./routes/health.js";
+import { lancamentosRouter } from "./routes/lancamentos.js";
 import { notaFiscalRouter } from "./routes/notaFiscal.js";
+import { iniciarCleanupPendentes } from "./services/notaFiscal/cleanupPendentes.js";
 
 const app = new Hono();
 
@@ -21,8 +24,12 @@ app.use(
 
 app.route("/api", healthRouter);
 app.route("/api", dashboardRouter);
+app.route("/api", cadastrosRouter);
+app.route("/api", lancamentosRouter);
 app.route("/api", notaFiscalRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
 });
+
+iniciarCleanupPendentes();
