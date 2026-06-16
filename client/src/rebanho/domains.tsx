@@ -42,10 +42,55 @@ export const reproducao: DomainConfig = {
   ],
 };
 
-// Placeholders mínimos — preenchidos na Task 18.
-const vazio: DomainConfig = { titulo: "", eyebrow: "Rebanho · 522 animais", kpis: () => [], worklists: [], colunas: [] };
-export const animal: DomainConfig = { ...vazio, titulo: "Animal" };
-export const sanidade: DomainConfig = { ...vazio, titulo: "Sanidade" };
-export const nutricao: DomainConfig = { ...vazio, titulo: "Nutrição" };
+export const animal: DomainConfig = {
+  titulo: "Animal", eyebrow: "Rebanho · 522 animais",
+  kpis: (rs) => [
+    { lab: "Total", val: String(rs.length) },
+    { lab: "Em lactação", val: String(rs.filter((r) => r.del !== undefined).length) },
+    { lab: "Prenhes", val: String(rs.filter((r) => r.statusReprodutivo === "PRENHE").length) },
+    { lab: "Vazias", val: String(rs.filter((r) => r.statusReprodutivo === "VAZIA").length), tom: "up" },
+  ],
+  worklists: [{ id: "todas", label: "Todas as fêmeas", selecionar: (rs) => rs }],
+  colunas: [
+    { nome: "Lactação", render: (r) => r.ordemLactacao ? `${r.ordemLactacao}ª` : "—" },
+    { nome: "DEL", render: (r) => r.del ?? "—" },
+    { nome: "Produção", render: (r) => r.producaoMediaDia ? `${r.producaoMediaDia} L/d` : "—" },
+    { nome: "Status", render: (r) => pill(r.statusReprodutivo.toLowerCase()) },
+  ],
+};
+
+export const sanidade: DomainConfig = {
+  titulo: "Sanidade", eyebrow: "Rebanho · 522 animais",
+  kpis: (rs) => [
+    { lab: "CCS alto", val: String(rs.filter((r) => (r.ccs ?? 0) >= 400).length), d: "≥ 400 mil", tom: "up" },
+    { lab: "CCS subindo", val: String(rs.filter((r) => r.ccsTendencia === "subindo").length), tom: "up" },
+    { lab: "Em tratamento", val: "2" },
+    { lab: "CCS médio", val: "248", sufixo: "mil" },
+  ],
+  worklists: [
+    { id: "ccs", label: "CCS alto / subindo", alerta: true, selecionar: (rs) => rs.filter((r) => (r.ccs ?? 0) >= 400 || r.ccsTendencia === "subindo") },
+    { id: "todas", label: "Todas", selecionar: (rs) => rs },
+  ],
+  colunas: [
+    { nome: "CCS", render: (r) => r.ccs ? `${r.ccs} mil` : "—" },
+    { nome: "Tendência", render: (r) => r.ccsTendencia === "subindo" ? pill("subindo", "bad") : pill(r.ccsTendencia ?? "—") },
+    { nome: "DEL", render: (r) => r.del ?? "—" },
+  ],
+};
+
+export const nutricao: DomainConfig = {
+  titulo: "Nutrição", eyebrow: "Rebanho · 522 animais",
+  kpis: (rs) => [
+    { lab: "Lotes ativos", val: "3" },
+    { lab: "Alta Produção", val: String(rs.filter((r) => (r.producaoMediaDia ?? 0) >= 28).length) },
+    { lab: "Produção média", val: "26,4", sufixo: "L" },
+  ],
+  worklists: [{ id: "lote", label: "Por lote", selecionar: (rs) => rs }],
+  colunas: [
+    { nome: "Produção", render: (r) => r.producaoMediaDia ? `${r.producaoMediaDia} L/d` : "—" },
+    { nome: "Lote sugerido", render: (r) => (r.producaoMediaDia ?? 0) >= 28 ? pill("Alta Produção") : pill("Média Produção", "warn") },
+    { nome: "DEL", render: (r) => r.del ?? "—" },
+  ],
+};
 
 export const DOMAINS = { animal, reproducao, sanidade, nutricao } as const;
