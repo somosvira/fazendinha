@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Tesseract OCR trained models (baixar via setup script / pacote do sistema)
+*.traineddata
