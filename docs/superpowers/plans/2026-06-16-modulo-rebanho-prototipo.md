@@ -1149,7 +1149,7 @@ export function RebanhoApp() {
       {nav.animalId
         ? <AnimalCockpit animalId={nav.animalId} onVoltar={nav.voltarAoRebanho} onAbrirAnimal={nav.abrirAnimal} />
         : domainKey
-          ? <HerdDomainView config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
+          ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
           : <main className="rb-main"><div className="rb-eyebrow">Em breve</div><div className="rb-head"><h1>{nav.tab === "ia" ? "IA" : "Dashboard"}</h1></div><p className="rb-sub">Esta aba entra numa próxima etapa.</p></main>}
     </div>
   );
