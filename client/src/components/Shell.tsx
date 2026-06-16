@@ -4,7 +4,7 @@ import { ReactNode, useState } from "react";
 import { DateRangePicker, DateRange } from "./DateRangePicker";
 import { PAPEIS, type User } from "../data/acessos";
 
-export type Tab = "dashboard" | "gastos" | "lancar" | "plano" | "ia" | "relatorio" | "acessos";
+export type Tab = "dashboard" | "gastos" | "lancar" | "plano" | "ia" | "relatorio" | "acessos" | "rebanho";
 
 export type NavTab = { id: Tab; label: string };
 
