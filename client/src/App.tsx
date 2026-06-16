@@ -13,6 +13,7 @@ import { PlanoContas } from "./components/PlanoContas";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
+import { RebanhoApp } from "./rebanho/RebanhoApp";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
@@ -50,6 +51,7 @@ export function App() {
       label: a.label,
     }));
     if (isAdmin) base.push({ id: "acessos", label: "Acessos" });
+    base.push({ id: "rebanho", label: "Rebanho" });
     return base;
   }, [effectiveUser, isAdmin]);
 
@@ -67,6 +69,8 @@ export function App() {
     setViewAsId(id === realUserId ? null : id);
     setTab("dashboard");
   };
+
+  if (tab === "rebanho") return <RebanhoApp />;
 
   return (
     <>

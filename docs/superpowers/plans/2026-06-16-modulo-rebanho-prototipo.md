@@ -747,10 +747,21 @@ git commit -m "feat(rebanho): sidebar navigation component"
 
 - [ ] **Step 1: Create `client/src/rebanho/components/IaInsight.tsx`**
 ```tsx
+import { Fragment } from "react";
 import type { IaInsight } from "../types";
 
-function html(texto: string) {
-  return { dangerouslySetInnerHTML: { __html: texto } };
+// Ênfase <b>…</b> renderizada com SEGURANÇA — nunca dangerouslySetInnerHTML
+// (o texto do insight virá da IA/servidor). Fora de <b></b> = texto puro escapado.
+function Enfase({ texto }: { texto: string }) {
+  const partes = texto.split(/(<b>.*?<\/b>)/g);
+  return (
+    <>
+      {partes.map((parte, i) => {
+        const m = parte.match(/^<b>(.*?)<\/b>$/);
+        return m ? <strong key={i}>{m[1]}</strong> : <Fragment key={i}>{parte}</Fragment>;
+      })}
+    </>
+  );
 }
 
 // Banner horizontal (nível rebanho)
@@ -759,7 +770,7 @@ export function IaInsightBand({ insight }: { insight: IaInsight }) {
   return (
     <div className="rb-ia-band">
       <div className="rb-ia-dot">✦</div>
-      <p {...html(insight.texto)} />
+      <p><Enfase texto={insight.texto} /></p>
       {cta && <button className="rb-btn pri cta">{cta.label}</button>}
     </div>
   );
@@ -772,7 +783,7 @@ export function IaInsightCard({ insight }: { insight: IaInsight }) {
       <div className="rb-ia-dot">✦</div>
       <div style={{ flex: 1 }}>
         <h4>A IA notou um padrão</h4>
-        <p {...html(insight.texto)} />
+        <p><Enfase texto={insight.texto} /></p>
         <div className="rb-ia-act">
           {insight.acoes.map((a, i) => (
             <button key={i} className={"rb-btn" + (a.primaria ? " pri" : "")}>{a.label}</button>
@@ -1138,7 +1149,7 @@ export function RebanhoApp() {
       {nav.animalId
         ? <AnimalCockpit animalId={nav.animalId} onVoltar={nav.voltarAoRebanho} onAbrirAnimal={nav.abrirAnimal} />
         : domainKey
-          ? <HerdDomainView config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
+          ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
           : <main className="rb-main"><div className="rb-eyebrow">Em breve</div><div className="rb-head"><h1>{nav.tab === "ia" ? "IA" : "Dashboard"}</h1></div><p className="rb-sub">Esta aba entra numa próxima etapa.</p></main>}
     </div>
   );
