@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 __pycache__/
 *.pyc
+
+# brainstorming visual companion
+.superpowers/
