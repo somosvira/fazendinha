@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
+  parseDoenca, parseAplicacao,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -102,4 +103,25 @@ test("parseEvento: parto (tipo 7) → PARTO com cria", () => {
   assert.equal(e.tipoParto, "1");
   assert.equal(e.numCrias, 1);
   assert.equal(e.sexoCria, "M");
+});
+
+test("parseDoenca → OCORRENCIA com doença/dtFim/dias", () => {
+  const e = parseDoenca("1002~|~Mastite clínica~|~2025-03-01~|~2025-03-08~|~7~|~obs");
+  assert.equal(e.numero, "1002");
+  assert.equal(e.tipo, "OCORRENCIA");
+  assert.equal(e.doenca, "Mastite clínica");
+  assert.equal(e.data, "2025-03-01");
+  assert.equal(e.dtFim, "2025-03-08");
+  assert.equal(e.diasTratamento, 7);
+  assert.equal(e.observacao, "obs");
+});
+
+test("parseAplicacao → APLICACAO com produto/dose/carência", () => {
+  const e = parseAplicacao("1002~|~Dectomax~|~2025-04-10~|~10 ml~|~30~|~");
+  assert.equal(e.tipo, "APLICACAO");
+  assert.equal(e.produto, "Dectomax");
+  assert.equal(e.data, "2025-04-10");
+  assert.equal(e.dose, "10 ml");
+  assert.equal(e.carencia, 30);
+  assert.equal(e.observacao, null);
 });
