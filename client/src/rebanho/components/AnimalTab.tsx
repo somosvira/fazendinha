@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAnimais, useSetores } from "../api";
-import { HerdDomainView } from "./HerdDomainView";
+import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
 import { DOMAINS } from "../domains";
 import type { ResumoAnimal } from "../types";
 
@@ -32,31 +32,37 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
     ]),
   );
 
-  return (
-    <div style={{ position: "relative" }}>
-      {/* Filtro de status — sempre visível, espelha "Baixado: Não/Sim/Todos" do Ideagri */}
-      <div className="rb-seg" style={{ position: "absolute", left: 40, top: 30, zIndex: 2, display: "flex", gap: 6 }}>
+  // Controles (filtro de status + setor + novo) — renderizados na toolbar do header
+  // (em fluxo normal, sem sobrepor o cabeçalho). Espelha o filtro do Ideagri.
+  const controles = (
+    <>
+      <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
         {OPCOES.map((o) => (
           <button key={o.k} className="rb-btn" aria-pressed={status === o.k} onClick={() => setStatus(o.k)}>
             {o.lab}
           </button>
         ))}
       </div>
-      <select className="rb-select" value={setor} onChange={(e) => setSetor(e.target.value)} style={{ position: "absolute", left: 220, top: 30, zIndex: 2 }}>
+      <select className="rb-select" value={setor} onChange={(e) => setSetor(e.target.value)}>
         <option value="">Todos os setores</option>
         {(setores ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
-      <button className="rb-btn pri" style={{ position: "absolute", right: 40, top: 30, zIndex: 2 }} onClick={onNovo}>
-        + Novo animal
-      </button>
-
-      {loading ? (
-        <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Animal</h1></div><p className="rb-sub">Carregando…</p></main>
-      ) : erro ? (
-        <main className="rb-main"><div className="rb-head"><h1>Animal</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>
-      ) : (
-        <HerdDomainView config={DOMAINS.animal} resumos={resumos} onAbrirAnimal={onAbrirAnimal} nomes={nomes} />
-      )}
-    </div>
+      <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={onNovo}>+ Novo animal</button>
+    </>
   );
+
+  if (loading || erro) {
+    return (
+      <main className="rb-main">
+        <div className="rb-eyebrow">{DOMAINS.animal.eyebrow}</div>
+        <div className="rb-head"><h1>Animal</h1><div className="period">📅 Junho 2026 ▾</div></div>
+        <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>
+        {loading
+          ? <p className="rb-sub">Carregando…</p>
+          : <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>}
+      </main>
+    );
+  }
+
+  return <HerdDomainView config={DOMAINS.animal} resumos={resumos} onAbrirAnimal={onAbrirAnimal} nomes={nomes} controles={controles} />;
 }
