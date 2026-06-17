@@ -75,11 +75,24 @@ interface EventoJson {
   sexoCria: string | null;
   observacao: string | null;
 }
+interface EventoSanitarioJson {
+  numero: string;
+  tipo: "OCORRENCIA" | "APLICACAO" | "EXAME" | "MASTITE" | "VACINA";
+  data: string;
+  doenca?: string | null;
+  dtFim?: string | null;
+  diasTratamento?: number | null;
+  produto?: string | null;
+  dose?: string | null;
+  carencia?: number | null;
+  observacao?: string | null;
+}
 interface RebanhoJson {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
   eventos: EventoJson[];
+  eventosSanitarios: EventoSanitarioJson[];
 }
 
 // datas vêm como "YYYY-MM-DD" (campos @db.Date) — fixar em UTC para não escorregar de dia
@@ -210,8 +223,29 @@ async function main() {
     eventosInseridos += r.count;
   }
 
+  // --- Eventos sanitários (createMany em lotes) — DOENCAANIMAL + APLICACAOPRODUTO ---
+  const sanitarioRows = (dados.eventosSanitarios ?? [])
+    .filter((e) => idByNumero.has(e.numero) && e.data)
+    .map((e) => ({
+      animalId: idByNumero.get(e.numero)!,
+      tipo: e.tipo,
+      data: d(e.data)!,
+      doenca: e.doenca ?? null,
+      dtFim: d(e.dtFim),
+      diasTratamento: e.diasTratamento ?? null,
+      produto: e.produto ?? null,
+      dose: e.dose ?? null,
+      carencia: e.carencia ?? null,
+      observacao: e.observacao ?? null,
+    }));
+  let sanitariosInseridos = 0;
+  for (let i = 0; i < sanitarioRows.length; i += CHUNK) {
+    const r = await prisma.eventoSanitario.createMany({ data: sanitarioRows.slice(i, i + CHUNK) });
+    sanitariosInseridos += r.count;
+  }
+
   const emLactacao = resumoRows.filter((r) => r.del != null).length;
-  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos.`);
+  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários.`);
 }
 
 main()
