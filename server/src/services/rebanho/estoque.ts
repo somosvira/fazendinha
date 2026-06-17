@@ -1,4 +1,5 @@
 import { prisma } from "../../db.js";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { resolverLancamentoDaEntrada } from "./ponte.calc.js";
@@ -98,7 +99,8 @@ export async function registrarMovimento(input: MovimentoInput) {
   const produto = await prisma.produto.findUnique({ where: { id: input.produtoId } });
   if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
   const custo = input.custoUnitario ?? (produto.custoUnitario != null ? Number(produto.custoUnitario) : 0);
-  const valorTotal = Math.round(input.quantidade * custo * 100) / 100;
+  // Decimal exato (não float) — este valor alimenta o livro financeiro real (Lancamento.valor).
+  const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
   const data = new Date(input.data);
   const m = await prisma.movimentoEstoque.create({
     data: {
