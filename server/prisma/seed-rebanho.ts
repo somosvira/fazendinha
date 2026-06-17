@@ -1,3 +1,13 @@
+// Seed de DEMONSTRAÇÃO do rebanho (8 vacas) + cadastros que o módulo precisa:
+// Produtos / Dietas / Grupos (Alta/Média Produção, Bezerreiro) / Estoque / Fornecedores.
+//
+// Ordem recomendada (dev/worktree) para chegar ao rebanho REAL da fazenda:
+//   1) `pnpm --filter rionovo-server run seed:rebanho`   → este seed (produtos/dietas/grupos/estoque)
+//   2) `pnpm --filter rionovo-server run import:rebanho`  → SUBSTITUI os 8 animais demo pelo rebanho
+//      real do Ideagri (824 animais, 1.621 controles), preservando produtos/estoque/lançamentos/dietas.
+//      Os Grupos criados aqui são reaproveitados por nome (upsert) — as FKs do Estoque seguem válidas.
+// Os animais demo deste seed NÃO precisam ser removidos: o import:rebanho os substitui.
+
 import { PrismaClient, SexoAnimal, CategoriaAnimal } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -254,6 +264,7 @@ async function main() {
   const totalMovimentos = 2 + saidas.length;
 
   console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${totalMovimentos} movimentos de estoque (${lancamentosGerados} lançamentos de compra gerados).`);
+  console.log("Para o rebanho REAL, rode em seguida: pnpm --filter rionovo-server run import:rebanho");
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
