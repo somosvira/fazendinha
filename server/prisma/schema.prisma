@@ -108,3 +108,92 @@ model Lancamento {
   @@index([situacao, dataVencimento])
   @@index([centroCustoId])
 }
+
+enum SexoAnimal {
+  F
+  M
+}
+
+enum CategoriaAnimal {
+  BEZERRA
+  NOVILHA
+  VACA
+  BEZERRO
+  TOURO
+}
+
+enum StatusAnimal {
+  ATIVO
+  BAIXADO
+}
+
+enum StatusReprodutivo {
+  PEV
+  VAZIA
+  INSEMINADA
+  PRENHE
+}
+
+model Raca {
+  id      Int      @id @default(autoincrement())
+  nome    String   @unique
+  animais Animal[]
+}
+
+model Grupo {
+  id      Int      @id @default(autoincrement())
+  nome    String   @unique
+  animais Animal[]
+}
+
+model Animal {
+  id               Int             @id @default(autoincrement())
+  numero           String          @unique
+  nome             String?
+  sexo             SexoAnimal
+  categoria        CategoriaAnimal
+  raca             Raca?           @relation(fields: [racaId], references: [id])
+  racaId           Int?
+  grauSangue       String?
+  dataNascimento   DateTime?       @db.Date
+  dataEntrada      DateTime        @db.Date
+  brincoEletronico String?
+  sisbov           String?
+  mae              Animal?         @relation("Maternidade", fields: [maeId], references: [id])
+  maeId            Int?
+  pai              Animal?         @relation("Paternidade", fields: [paiId], references: [id])
+  paiId            Int?
+  paiNome          String?
+  filhosMae        Animal[]        @relation("Maternidade")
+  filhosPai        Animal[]        @relation("Paternidade")
+  grupo            Grupo?          @relation(fields: [grupoId], references: [id])
+  grupoId          Int?
+  setor            String?
+  status           StatusAnimal    @default(ATIVO)
+  dataBaixa        DateTime?       @db.Date
+  motivoBaixa      String?
+  resumo           ResumoAnimal?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status])
+  @@index([grupoId])
+}
+
+model ResumoAnimal {
+  animal            Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId          Int               @id
+  statusReprodutivo StatusReprodutivo @default(VAZIA)
+  del               Int?
+  ordemLactacao     Int?
+  producaoMediaDia  Decimal?          @db.Decimal(6, 2)
+  producao305       Int?
+  ccs               Int?
+  ccsTendencia      String?
+  ultimoDgData      DateTime?         @db.Date
+  ultimoDgResultado String?
+  iepProjetado      Int?
+  diasGestacao      Int?
+  previsaoSecagem   DateTime?         @db.Date
+  atualizadoEm      DateTime          @updatedAt
+}
