@@ -114,6 +114,28 @@ function parseControle(linha) {
   };
 }
 
+// CDTIPOREPRODUCAO → TipoEventoReprodutivo (1/2/3 IA-cobertura-TE, 4 diagnóstico, 7 parto).
+// Não há CIO nem SECAGEM em REPRODUCAO (deferidos).
+const TIPO_EV = { "1": "INSEMINACAO", "2": "INSEMINACAO", "3": "INSEMINACAO", "4": "DIAGNOSTICO", "7": "PARTO" };
+export function parseEvento(linha) {
+  const f = linha.split(SEP);
+  const cdtipo = f[1];
+  const tipo = TIPO_EV[cdtipo] ?? "INSEMINACAO";
+  const observacao = cdtipo === "2" ? "Cobertura (monta natural)" : cdtipo === "3" ? "Transferência de embrião" : null;
+  return {
+    numero: f[0],
+    tipo,
+    data: s(f[2]),
+    reprodutor: s(f[3]),
+    resultado: cdtipo === "4" ? (f[4] === "P" ? "positivo" : f[4] === "N" ? "negativo" : null) : null,
+    dtPartoPrevista: s(f[5]),
+    tipoParto: cdtipo === "7" ? s(f[6]) : null,
+    numCrias: cdtipo === "7" ? n(f[7]) : null,
+    sexoCria: cdtipo === "7" ? s(f[8]) : null,
+    observacao,
+  };
+}
+
 function diasGestacao(repro, hoje) {
   if (!repro || repro.ultimoDgResultado !== "positivo" || !repro.dtPrevParto) return null;
   const faltam = diasEntre(hoje, repro.dtPrevParto); // pode ser negativo
@@ -154,12 +176,14 @@ function main() {
   const prodPorNum = new Map();
   const reproPorNum = new Map();
   const controles = [];
+  const eventos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
     else if (l.startsWith("@P@")) { const p = parseProducao(l.slice(3)); prodPorNum.set(p.numero, p); }
     else if (l.startsWith("@R@")) { const r = parseReproducao(l.slice(3)); reproPorNum.set(r.numero, r); }
     else if (l.startsWith("@L@")) controles.push(parseControle(l.slice(3)));
+    else if (l.startsWith("@E@")) eventos.push(parseEvento(l.slice(3)));
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
@@ -168,7 +192,7 @@ function main() {
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles };
+  const out = { geradoEm, animais, controles, eventos };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -178,6 +202,7 @@ function main() {
   console.error(`  animais=${animais.length} (ATIVO=${ativos.length} BAIXADO=${animais.length - ativos.length})`);
   console.error(`  ativos por categoria: ${JSON.stringify(cnt(ativos, "categoria"))}`);
   console.error(`  em lactação=${animais.filter((a) => a.resumo.del != null).length} · controles=${controles.length}`);
+  console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
 }
 
 // roda main() só quando executado direto (não nos testes)
