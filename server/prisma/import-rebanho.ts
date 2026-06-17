@@ -92,12 +92,19 @@ interface EventoSanitarioJson {
   resultadoCultivo?: string | null;
   observacao?: string | null;
 }
+interface PesagemJson {
+  numero: string;
+  data: string;
+  peso: number;
+  gmd: number | null;
+}
 interface RebanhoJson {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
   eventos: EventoJson[];
   eventosSanitarios: EventoSanitarioJson[];
+  pesagens: PesagemJson[];
 }
 
 // datas vêm como "YYYY-MM-DD" (campos @db.Date) — fixar em UTC para não escorregar de dia
@@ -254,8 +261,18 @@ async function main() {
     sanitariosInseridos += r.count;
   }
 
+  // --- Pesagens (createMany em lotes) — PESO do Ideagri --------------------------
+  const pesagemRows = (dados.pesagens ?? [])
+    .filter((p) => idByNumero.has(p.numero) && p.data && p.peso != null)
+    .map((p) => ({ animalId: idByNumero.get(p.numero)!, data: d(p.data)!, peso: p.peso, gmd: p.gmd ?? null }));
+  let pesagensInseridas = 0;
+  for (let i = 0; i < pesagemRows.length; i += CHUNK) {
+    const r = await prisma.pesagem.createMany({ data: pesagemRows.slice(i, i + CHUNK) });
+    pesagensInseridas += r.count;
+  }
+
   const emLactacao = resumoRows.filter((r) => r.del != null).length;
-  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários.`);
+  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários, ${pesagensInseridas} pesagens.`);
 }
 
 main()
