@@ -57,10 +57,45 @@ model ContaBancaria {
   lancamentos  Lancamento[]
 }
 
+enum TipoProduto {
+  MEDICAMENTO
+  RACAO
+  INSUMO
+  MINERAL
+  OUTRO
+}
+
+enum TipoPessoa {
+  CLIENTE
+  FORNECEDOR
+  AMBOS
+}
+
+model Produto {
+  id            Int         @id @default(autoincrement())
+  nome          String      @unique
+  tipo          TipoProduto @default(INSUMO)
+  unidade       String      @default("un")
+  custoUnitario Decimal?    @db.Decimal(12, 2)
+  carencia      Int?
+  percentualMS  Decimal?    @db.Decimal(5, 2)
+  estocavel     Boolean     @default(true)
+  minimoEstoque Decimal?    @db.Decimal(12, 2)
+  ativo         Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([tipo])
+}
+
 model ClienteFornecedor {
   id          Int          @id @default(autoincrement())
   nome        String       @unique
   documento   String?
+  tipo        TipoPessoa   @default(FORNECEDOR)
+  telefone    String?
+  email       String?
+  ativo       Boolean      @default(true)
   lancamentos Lancamento[]
 }
 

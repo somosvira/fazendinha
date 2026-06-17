@@ -13,6 +13,7 @@ import { rebanhoDashboardRouter } from "./routes/rebanho/dashboard.js";
 import { iaRouter } from "./routes/rebanho/ia.js";
 import { configRouter } from "./routes/rebanho/config.js";
 import { producaoRouter } from "./routes/rebanho/producao.js";
+import { cadastrosRouter } from "./routes/rebanho/cadastros.js";
 
 const app = new Hono();
 
@@ -36,6 +37,7 @@ app.route("/api", rebanhoDashboardRouter);
 app.route("/api", iaRouter);
 app.route("/api", configRouter);
 app.route("/api", producaoRouter);
+app.route("/api", cadastrosRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);

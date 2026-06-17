@@ -21,14 +21,17 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string }) => {
+// monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
+function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
+  if (!f) return "";
   const p = new URLSearchParams();
-  if (f?.status) p.set("status", f.status);
-  if (f?.grupoId) p.set("grupoId", String(f.grupoId));
-  if (f?.q) p.set("q", f.q);
-  const qs = p.toString();
-  return req<Animal[]>(`/rebanho/animais${qs ? `?${qs}` : ""}`);
-};
+  for (const [k, v] of Object.entries(f)) if (v != null && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
+
+export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string }) =>
+  req<Animal[]>(`/rebanho/animais${qs(f)}`);
 export const obterAnimal = (id: string) => req<Animal>(`/rebanho/animais/${id}`);
 export const criarAnimal = (input: AnimalForm) => req<Animal>(`/rebanho/animais`, { method: "POST", body: JSON.stringify(input) });
 export const editarAnimal = (id: string, input: Partial<AnimalForm>) => req<Animal>(`/rebanho/animais/${id}`, { method: "PATCH", body: JSON.stringify(input) });
@@ -174,6 +177,49 @@ export function useProducao() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => { setLoading(true); setErro(null); obterProducao().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+// ── Cadastros (Fatia 8): Produtos + Fornecedores ───────────────────────────
+export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
+export interface ProdutoDTO { id: number; nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; carencia: number | null; percentualMS: number | null; estocavel: boolean; minimoEstoque: number | null; ativo: boolean; }
+export interface ProdutoInput { nome: string; tipo: TipoProduto; unidade: string; custoUnitario?: number; carencia?: number; percentualMS?: number; estocavel?: boolean; minimoEstoque?: number; ativo?: boolean; }
+export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
+export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(p) });
+export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+
+export type TipoPessoa = "CLIENTE" | "FORNECEDOR" | "AMBOS";
+export interface FornecedorDTO { id: number; nome: string; documento: string | null; tipo: TipoPessoa; telefone: string | null; email: string | null; ativo: boolean; }
+export interface FornecedorInput { nome: string; documento?: string; tipo?: TipoPessoa; telefone?: string; email?: string; ativo?: boolean; }
+export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<FornecedorDTO[]>(`/rebanho/fornecedores${qs(f)}`);
+export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(p) });
+export const editarFornecedor = (id: number, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+
+export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
+  const [data, setData] = useState<ProdutoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const key = JSON.stringify(f ?? {});
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarProdutos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useFornecedores(f?: { tipo?: string; q?: string }) {
+  const [data, setData] = useState<FornecedorDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const key = JSON.stringify(f ?? {});
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarFornecedores(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
 }

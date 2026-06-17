@@ -21,8 +21,8 @@
 6. **Custo vaca/dia** (o norte da Tássila) = sairá da Fatia 9 (Estoque): consumo de insumo valorizado, alocado à atividade leiteira, ÷ (vacas × dias). Liga os módulos rebanho↔financeiro via `Produto→ContaGerencial` e `MovimentoEstoque→CentroCusto`. O lado de **consumo** é a parte nova/difícil (nem o Ideagri da 777 tem preenchido).
 
 ## Status por fatia (atualizo conforme avança)
-- **Fatia 7 — Configurações + Produção (3 modos):** backend ✅ (motor TDD + endpoints + seed; review aprovado — Jurema ~28 L/d, rateio ok, sem tocar reprodução/CCS). Client 🔄. Spec/plano em `docs/superpowers/{specs,plans}/2026-06-17-rebanho-real-fatia7-producao*`.
-- **Fatia 8 — Cadastros (Produto + Fornecedor):** ⏳ a iniciar.
+- **Fatia 7 — Configurações + Produção (3 modos):** ✅ **concluída, PR #23 mergeado, verificada no navegador** (ORDENHA → ranking real total 185 L/d; troca pra TANQUE/LOTE → registrar lote 900 L → rateio 225 L/d). Backend 57 testes, client 22, reviews aprovados.
+- **Fatia 8 — Cadastros (Produto + Fornecedor):** 🔄 **em andamento.** Decisões: (7) `Produto` com `tipo` **funcional** (MEDICAMENTO/RACAO/INSUMO/MINERAL/OUTRO) — melhor que o P/S genérico do Ideagri; (8) **Fornecedor estende o `ClienteFornecedor`** existente (não duplica), com tipo/contato/ativo; (9) aba **Cadastros no rodapé** do sidebar. Deferido: Sanidade passar a referenciar `Produto` por FK (follow-up); link `Produto`↔`Categoria` financeira (entra na Fatia 9). Spec/plano em `docs/superpowers/{specs,plans}/2026-06-17-rebanho-real-fatia8-cadastros*`.
 - **Fatia 9 — Estoque + custo vaca/dia:** ⏳ a iniciar.
 
 ## ⚠️ Precisa de você (sem isso eu não fecho 100%)
