@@ -17,6 +17,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-reproducao": <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>,
   "reb-sanidade": <path d="M12 6v12M6 12h12"/>,
   "reb-nutricao": <path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12c2-2 4-3 6-4"/>,
+  "reb-producao": <><path d="M8 3h8l-1 4H9z"/><path d="M9 7l-2 4v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-4"/><path d="M7 13h10"/></>,
   "reb-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
 };
 
@@ -26,6 +27,7 @@ const REBANHO_ITENS: { id: Tab; label: string }[] = [
   { id: "reb-reproducao", label: "Reprodução" },
   { id: "reb-sanidade", label: "Sanidade" },
   { id: "reb-nutricao", label: "Nutrição" },
+  { id: "reb-producao", label: "Produção" },
   { id: "reb-ia", label: "IA do rebanho" },
 ];
 

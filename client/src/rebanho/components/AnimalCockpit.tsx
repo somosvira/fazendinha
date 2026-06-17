@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useAnimal, useTimeline } from "../api";
+import { useAnimal, useTimeline, useConfig } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { EventoForm } from "./EventoForm";
+import { ControleForm } from "./ControleForm";
 import type { Animal } from "../types";
 
 function fmtPrevSecagem(iso?: string | null) {
@@ -22,7 +23,11 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 }) {
   const { data: a, loading, erro, recarregar } = useAnimal(animalId);
   const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
+  const { data: cfg } = useConfig();
   const [registrando, setRegistrando] = useState(false);
+  const [registrandoControle, setRegistrandoControle] = useState(false);
+  const modo = cfg?.producaoModo ?? "ORDENHA";
+  const tanque = modo === "TANQUE_LOTE";
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
   if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
@@ -46,6 +51,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           {a.ativo && (
             <span className="rb-head-actions">
               <button className="rb-btn pri" onClick={() => setRegistrando(true)}>+ Registrar evento</button>
+              {!tanque && <button className="rb-btn" onClick={() => setRegistrandoControle(true)}>+ Registrar controle</button>}
               <button className="rb-btn" onClick={() => onEditar(a)}>Editar</button>
               <button className="rb-btn" onClick={() => onBaixa(a)}>Dar baixa</button>
             </span>
@@ -56,7 +62,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
       {r && (
         <div className="rb-stats">
           <div className="rb-stat"><div className="k">DEL</div><div className="v">{r.del ?? "—"}<u>d</u></div><div className="t">pico passou</div></div>
-          <div className="rb-stat"><div className="k">Produção</div><div className="v">{r.producaoMediaDia ?? "—"}<u>L/d</u></div><div className="t rb-ok">média 7d ↗</div></div>
+          <div className="rb-stat"><div className="k">Produção</div><div className="v">{r.producaoMediaDia ?? "—"}<u>L/d</u></div><div className={"t" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tanque ? "rateio do lote" : r.producaoTendencia === "subindo" ? "↗ subindo" : r.producaoTendencia === "descendo" ? "↘ descendo" : "estável"}</div></div>
           <div className="rb-stat"><div className="k">Reprodução</div><div className="v" style={{ fontSize: 18, paddingTop: 5 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div><div className="t">DG+ {r.ultimoDgData ? new Date(r.ultimoDgData).toLocaleDateString("pt-BR") : "—"}</div></div>
           <div className="rb-stat"><div className="k">IEP previsto</div><div className="v">{r.iepProjetado ?? "—"}<u>d</u></div><div className="t rb-ok">meta ≤ 400</div></div>
           <div className="rb-stat"><div className="k">Prev. secagem</div><div className="v" style={{ fontSize: 18, paddingTop: 5 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div><div className="t">programada</div></div>
@@ -79,6 +85,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
             <div className="rb-kv"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
             <div className="rb-kv"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
             <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
+            {tanque && <p className="rb-sec-sub" style={{ margin: "8px 0 0" }}>Produção estimada por rateio do lote.</p>}
           </div>
           <div className="rb-box">
             <h4>Genealogia</h4>
@@ -98,6 +105,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
       </div>
 
       {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarEventos(); recarregar(); }} />}
+      {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarEventos(); recarregar(); }} />}
     </main>
   );
 }

@@ -9,6 +9,7 @@ import { IaView } from "../components/IaView";
 import { AppSidebar } from "../../components/AppSidebar";
 import { RebanhoContent } from "../RebanhoContent";
 import { ConfiguracoesView } from "../components/ConfiguracoesView";
+import { ProducaoTab } from "../components/ProducaoTab";
 import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
@@ -23,6 +24,7 @@ describe("render smoke", () => {
     expect(html).toContain("IA financeira");
     expect(html).toContain("Acessos");
     expect(html).toContain("Configurações");
+    expect(html).toContain("Produção");
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
@@ -41,6 +43,12 @@ describe("render smoke", () => {
   it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {
     const html = renderToString(h(ConfiguracoesView));
     expect(html).toContain("Configurações");
+    expect(html).toContain("Carregando");
+  });
+
+  it("ProducaoTab renders the loading shell (fetches /rebanho/producao)", () => {
+    const html = renderToString(h(ProducaoTab));
+    expect(html).toContain("Produção");
     expect(html).toContain("Carregando");
   });
 
