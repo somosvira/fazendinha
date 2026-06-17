@@ -22,8 +22,8 @@
 
 ## Status por fatia (atualizo conforme avança)
 - **Fatia 7 — Configurações + Produção (3 modos):** ✅ **concluída, PR #23 mergeado, verificada no navegador** (ORDENHA → ranking real total 185 L/d; troca pra TANQUE/LOTE → registrar lote 900 L → rateio 225 L/d). Backend 57 testes, client 22, reviews aprovados.
-- **Fatia 8 — Cadastros (Produto + Fornecedor):** 🔄 **em andamento.** Decisões: (7) `Produto` com `tipo` **funcional** (MEDICAMENTO/RACAO/INSUMO/MINERAL/OUTRO) — melhor que o P/S genérico do Ideagri; (8) **Fornecedor estende o `ClienteFornecedor`** existente (não duplica), com tipo/contato/ativo; (9) aba **Cadastros no rodapé** do sidebar. Deferido: Sanidade passar a referenciar `Produto` por FK (follow-up); link `Produto`↔`Categoria` financeira (entra na Fatia 9). Spec/plano em `docs/superpowers/{specs,plans}/2026-06-17-rebanho-real-fatia8-cadastros*`.
-- **Fatia 9 — Estoque + custo vaca/dia:** ⏳ a iniciar.
+- **Fatia 8 — Cadastros (Produto + Fornecedor):** ✅ **concluída, PR #24 mergeado, verificada** (5 produtos semeados com custo formatado; fornecedores reusando os ~409 do financeiro). Decisões: `Produto.tipo` funcional; Fornecedor estende `ClienteFornecedor`; aba Cadastros no rodapé. **Follow-up:** lista de fornecedores fica longa (409 do financeiro) → paginação/filtro padrão depois; Sanidade→FK de Produto.
+- **Fatia 9 — Estoque + custo vaca/dia:** 🔄 **em andamento** (o **norte** da Tássila). Decisões: (10) `MovimentoEstoque` ENTRADA/SAIDA/AJUSTE; **saldo computado** (não armazenado); (11) **custo vaca/dia (MVP)** = Σ saídas valorizadas no período ÷ (vacas em lactação × dias) — função pura TDD, período 30d; (12) aba **Estoque no grupo REBANHO**. **Deferido (catalogado):** compra gerar `Lancamento` financeiro automático (link Estoque↔financeiro completo); alocação por centro de custo; importação NOTA/XML; validade/FEFO. Spec/plano em `docs/superpowers/{specs,plans}/2026-06-17-rebanho-real-fatia9-estoque*`.
 
 ## ⚠️ Precisa de você (sem isso eu não fecho 100%)
 - **IA modo real:** ainda depende de `ANTHROPIC_API_KEY` no `server/.env` (a aba IA funciona em modo demo sem ela). Já documentado em `docs/HANDOFF-noturno-2026-06-17.md`.
