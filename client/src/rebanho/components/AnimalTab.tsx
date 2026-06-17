@@ -23,8 +23,8 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
       a.id,
       {
         nome: a.ativo
-          ? a.nome
-          : `${a.nome} · baixa ${a.dataBaixa ?? ""}${a.motivoBaixa ? ` (${a.motivoBaixa})` : ""}`.trim(),
+          ? (a.nome ?? "")
+          : `${a.nome ?? ""} · baixa ${a.dataBaixa ?? ""}${a.motivoBaixa ? ` (${a.motivoBaixa})` : ""}`.trim(),
         numero: a.numero,
       },
     ]),

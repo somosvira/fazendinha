@@ -11,7 +11,9 @@
  * Ativo ⇔ DTBAIXA IS NULL. (522 ativos + 109 baixados = 631)
  */
 SET HEADING OFF;
-SET WIDTH LINHA 500;
+-- largura folgada: a linha concatenada de um animal chega a ~250 chars; 2000 dá
+-- margem p/ nomes/setores/pelagens longos sem truncar campos (isql trunca calado).
+SET WIDTH LINHA 2000;
 
 /* ── ANIMAIS (631) ────────────────────────────────────────────────────────── */
 SELECT '@A@' || a.NUMERO

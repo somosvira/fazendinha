@@ -1,8 +1,8 @@
 // Importador do rebanho REAL do Ideagri.
 //
-// Consome `server/prisma/rebanho_real.json` (produzido e commitado pelo controller a
-// partir do Firebird do Ideagri: 824 animais, 103 em lactação, 1.621 controles) e
-// substitui o rebanho de demonstração pelo rebanho real da fazenda.
+// Consome `server/prisma/rebanho_real.json` (gerado por `scripts/extract-rebanho.sh`
+// a partir do Firebird do Ideagri: 631 animais — 522 ativos + 109 baixados —, 103 em
+// lactação, 1.621 controles) e substitui o rebanho de demonstração pelo real da fazenda.
 //
 // Espelha o pipeline do financeiro (extração → JSON → importador): aqui só lemos o JSON
 // commitado e populamos Animal + ResumoAnimal + Lactacao (aberta) + ControleLeiteiro,

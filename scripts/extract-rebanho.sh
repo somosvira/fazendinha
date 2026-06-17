@@ -27,11 +27,18 @@ cp "$IDEAGRI_DB" "$SCRATCH/DADOS777_x.FDB"
 echo "→ rodando o dump via isql…"
 cp "$HERE/rebanho-dump.sql" "$SCRATCH/rebanho-dump.sql"
 DUMP="$SCRATCH/dump.txt"
+# erros do isql vão p/ log (não p/ /dev/null) — o SU$APPENDBLOBTOFILE é ruído inócuo.
 "$ISQL" -user SYSDBA -password masterkey "$SCRATCH_WIN\\DADOS777_x.FDB" \
-  -i "$SCRATCH_WIN\\rebanho-dump.sql" 2>/dev/null | tr -d '\r' > "$DUMP"
+  -i "$SCRATCH_WIN\\rebanho-dump.sql" 2>"$SCRATCH/isql.err" | tr -d '\r' > "$DUMP"
 
 A=$(awk '/^@A@/{c++} END{print c+0}' "$DUMP")
 echo "  linhas @A@ = $A (esperado 631)"
+# guard: aborta antes de sobrescrever o JSON se o dump veio vazio/quebrado (isql falhou).
+if [ "$A" -lt 100 ]; then
+  echo "ERRO: dump com $A animais (<100) — isql provavelmente falhou. JSON NÃO foi tocado." >&2
+  grep -v 'SU\$APPENDBLOBTOFILE\|^$' "$SCRATCH/isql.err" | head >&2 || true
+  exit 1
+fi
 if [ "$A" -ne 631 ]; then
   echo "AVISO: contagem de animais (@A@=$A) ≠ 631 — os dados do Ideagri podem ter mudado. Conferir antes de importar." >&2
 fi

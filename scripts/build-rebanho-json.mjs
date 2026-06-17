@@ -18,7 +18,10 @@ const n = (x) => (x == null || x === "" ? null : Number(x));
 export function categoriaDe(cd, sexo) {
   const m = { "7": "VACA", "6": "NOVILHA", "2": "TOURO", "3": "TOURO", "4": "TOURO" };
   if (m[cd]) return m[cd];
-  return sexo === "F" ? "BEZERRA" : "BEZERRO"; // CD 1/5 — em crescimento
+  // CD 1/5 = "em crescimento" → bezerra/bezerro por sexo. Qualquer outro CD cai
+  // aqui também; avisa para que surpresas numa re-extração futura não passem caladas.
+  if (cd !== "1" && cd !== "5") console.warn(`categoriaDe: CDCATEGORIA não mapeado: ${cd} (sexo=${sexo}) — usando fallback`);
+  return sexo === "F" ? "BEZERRA" : "BEZERRO";
 }
 
 // Pelagem é cor; refino de composição racial fica deferido. Default Girolando
