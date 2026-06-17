@@ -36,7 +36,9 @@ export function diasEntre(de, ate) {
   return Math.floor((b - a) / 86_400_000);
 }
 
-// Linha @A@ (sem o prefixo) → objeto animal. 14 campos.
+// Linha @A@ (sem o prefixo) → objeto animal. 15 campos.
+// Setor (localização física, f12) e grupo (lote de manejo atual, f14) são
+// dimensões DISTINTAS no Ideagri (ANIMALINFO_CADASTRO.SETOR vs .GRUPO).
 export function parseAnimal(linha) {
   const f = linha.split(SEP);
   const sexo = f[2];
@@ -55,6 +57,7 @@ export function parseAnimal(linha) {
     motivoBaixa: s(f[11]),
     setor: s(f[12]),
     raca: racaDe(f[13]),
+    grupo: s(f[14]), // lote de manejo (null = "sem grupo")
   };
 }
 
@@ -159,9 +162,8 @@ function main() {
     else if (l.startsWith("@L@")) controles.push(parseControle(l.slice(3)));
   }
 
-  const grupos = new Set(); // grupo = setor por enquanto (como na Fatia 12)
+  const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
   for (const a of animais) {
-    a.grupo = a.setor ?? null;
     if (a.grupo) grupos.add(a.grupo);
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
