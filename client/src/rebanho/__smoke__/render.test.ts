@@ -12,6 +12,7 @@ import { ConfiguracoesView } from "../components/ConfiguracoesView";
 import { CadastrosView } from "../components/CadastrosView";
 import { ProducaoTab } from "../components/ProducaoTab";
 import { EstoqueTab } from "../components/EstoqueTab";
+import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
@@ -29,6 +30,7 @@ describe("render smoke", () => {
     expect(html).toContain("Cadastros");
     expect(html).toContain("Produção");
     expect(html).toContain("Estoque");
+    expect(html).toContain("Custo");
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
@@ -67,6 +69,12 @@ describe("render smoke", () => {
   it("EstoqueTab renders the loading shell (fetches /rebanho/estoque/*)", () => {
     const html = renderToString(h(EstoqueTab));
     expect(html).toContain("Estoque");
+    expect(html).toContain("Carregando");
+  });
+
+  it("CustoProducaoTab renders the loading shell (fetches /rebanho/custo-producao)", () => {
+    const html = renderToString(h(CustoProducaoTab));
+    expect(html).toContain("Custo de Produção");
     expect(html).toContain("Carregando");
   });
 

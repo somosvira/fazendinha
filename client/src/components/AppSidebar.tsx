@@ -20,6 +20,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-nutricao": <path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12c2-2 4-3 6-4"/>,
   "reb-producao": <><path d="M8 3h8l-1 4H9z"/><path d="M9 7l-2 4v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-4"/><path d="M7 13h10"/></>,
   "reb-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
+  "reb-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "reb-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
 };
 
@@ -31,6 +32,7 @@ const REBANHO_ITENS: { id: Tab; label: string }[] = [
   { id: "reb-nutricao", label: "Nutrição" },
   { id: "reb-producao", label: "Produção" },
   { id: "reb-estoque", label: "Estoque" },
+  { id: "reb-custo", label: "Custo" },
   { id: "reb-ia", label: "IA do rebanho" },
 ];
 
