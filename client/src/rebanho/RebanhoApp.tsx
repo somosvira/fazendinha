@@ -2,6 +2,7 @@ import { useRebanhoNav } from "./nav";
 import { Sidebar } from "./components/Sidebar";
 import { HerdDomainView } from "./components/HerdDomainView";
 import { AnimalCockpit } from "./components/AnimalCockpit";
+import { DashboardView } from "./components/DashboardView";
 import { DOMAINS } from "./domains";
 import { resumos, insightDoRebanho } from "./mock";
 
@@ -16,7 +17,9 @@ export function RebanhoApp() {
         ? <AnimalCockpit animalId={nav.animalId} onVoltar={nav.voltarAoRebanho} onAbrirAnimal={nav.abrirAnimal} />
         : domainKey
           ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
-          : <main className="rb-main"><div className="rb-eyebrow">Em breve</div><div className="rb-head"><h1>{nav.tab === "ia" ? "IA" : "Dashboard"}</h1></div><p className="rb-sub">Esta aba entra numa próxima etapa.</p></main>}
+          : nav.tab === "dashboard"
+            ? <DashboardView onNav={nav.irPara} />
+            : <main className="rb-main"><div className="rb-eyebrow">Em breve</div><div className="rb-head"><h1>IA</h1></div><p className="rb-sub">Esta aba entra na próxima etapa.</p></main>}
     </div>
   );
 }

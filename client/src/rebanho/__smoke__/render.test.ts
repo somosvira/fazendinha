@@ -5,6 +5,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { RebanhoApp } from "../RebanhoApp";
 import { AnimalCockpit } from "../components/AnimalCockpit";
+import { DashboardView } from "../components/DashboardView";
 
 describe("render smoke", () => {
   it("RebanhoApp renders the default Reprodução herd view", () => {
@@ -25,5 +26,13 @@ describe("render smoke", () => {
     expect(html).toContain("Diagnóstico de gestação"); // reprodução event
     expect(html).toContain("<strong>245 → 389 → 512 mil cél/mL</strong>"); // Enfase rendered <b> safely as <strong>
     expect(html).not.toContain("dangerouslySetInnerHTML");
+  });
+
+  it("DashboardView renders herd KPIs, domain cards and alerts", () => {
+    const html = renderToString(h(DashboardView, { onNav: () => {} }));
+    expect(html).toContain("Rebanho ativo");
+    expect(html).toContain("522");
+    expect(html).toContain("Animais em situação de alerta");
+    expect(html).toContain("Secagens atrasadas");
   });
 });
