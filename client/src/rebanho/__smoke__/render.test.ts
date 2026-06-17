@@ -13,6 +13,7 @@ import { CadastrosView } from "../components/CadastrosView";
 import { ProducaoTab } from "../components/ProducaoTab";
 import { EstoqueTab } from "../components/EstoqueTab";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
+import { AnimalTab } from "../components/AnimalTab";
 import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
@@ -94,5 +95,13 @@ describe("render smoke", () => {
     // A thread começa vazia (sem conteúdo enlatado) — só aparece após perguntar.
     expect(html).not.toContain("Jurema #1234");
     expect(html).not.toContain("dangerouslySetInnerHTML");
+  });
+
+  it("AnimalTab renders the status filter (Ativos/Baixados/Todos), visible while loading", () => {
+    const html = renderToString(h(AnimalTab, { onAbrirAnimal: () => {}, onNovo: () => {} }));
+    expect(html).toContain("Ativos");
+    expect(html).toContain("Baixados");
+    expect(html).toContain("Todos");
+    expect(html).toContain("+ Novo animal");
   });
 });
