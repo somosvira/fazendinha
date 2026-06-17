@@ -351,7 +351,7 @@ function AIResponseVet({ resp }: { resp: any }) {
             {resp.estoque}
           </div>
         </div>
-        <button className="alert-cta">Registrar uso →</button>
+        <button type="button" className="alert-cta" disabled title="Em desenvolvimento">Registrar uso →</button>
       </div>
     </div>
   );
@@ -582,6 +582,11 @@ export function IA() {
                   placeholder={speech.listening ? "Ouvindo… pode falar" : "Pergunte sobre os números da fazenda…"}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onInput={(e) => {
+                    const t = e.currentTarget;
+                    t.style.height = "auto";
+                    t.style.height = Math.min(t.scrollHeight, 200) + "px";
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -589,6 +594,7 @@ export function IA() {
                     }
                   }}
                   rows={1}
+                  style={{ maxHeight: 200, overflowY: "auto" }}
                 />
                 <div className="ia-composer-row">
                   <div className="ia-scope-pill">
@@ -691,13 +697,13 @@ export function IA() {
             <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 18 }}>
               <h4>Filtros ativos</h4>
               <div className="row-wrap" style={{ marginTop: 10 }}>
-                <span className="filter-chip">
+                <span className="scope-pill">
                   <span className="chip-label">Período</span> Tudo
                 </span>
-                <span className="filter-chip">
+                <span className="scope-pill">
                   <span className="chip-label">Atividade</span> Todas
                 </span>
-                <span className="filter-chip">
+                <span className="scope-pill">
                   <span className="chip-label">Pilha</span> Tudo
                 </span>
               </div>

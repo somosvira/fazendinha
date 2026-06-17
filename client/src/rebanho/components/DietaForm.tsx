@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { criarDieta, type DietaDTO } from "../api";
+import { useEscClose } from "../../hooks/useEscClose";
 export function DietaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: (d: DietaDTO) => void }) {
+  useEscClose(onFechar);
   const [f, setF] = useState({ nome: "", descricao: "", pb: "", edMcal: "" });
   const [erro, setErro] = useState<string | null>(null); const [salvando, setSalvando] = useState(false);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -10,6 +12,6 @@ export function DietaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo
     <label className="rb-fld">Descrição<input value={f.descricao} onChange={(e) => set("descricao", e.target.value)} /></label>
     <label className="rb-fld">% Proteína bruta<input type="number" value={f.pb} onChange={(e) => set("pb", e.target.value)} /></label>
     <label className="rb-fld">Energia (Mcal/kg)<input type="number" value={f.edMcal} onChange={(e) => set("edMcal", e.target.value)} /></label>
-    {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-    <div className="rb-drawer-actions"><button className="rb-btn" onClick={onFechar}>Cancelar</button><button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button></div>
+    {erro && <p className="rb-err">{erro}</p>}
+    <div className="rb-drawer-actions"><button type="button" className="rb-btn" onClick={onFechar}>Cancelar</button><button type="button" className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button></div>
   </aside></>); }

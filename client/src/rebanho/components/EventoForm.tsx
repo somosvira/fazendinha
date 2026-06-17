@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { registrarEvento, registrarEventoSanidade, type EventoPayload, type EventoSanidadePayload } from "../api";
+import { useEscClose } from "../../hooks/useEscClose";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
@@ -10,6 +11,7 @@ const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
 ];
 
 export function EventoForm({ animalId, onFechar, onSalvo }: { animalId: string; onFechar: () => void; onSalvo: () => void }) {
+  useEscClose(onFechar);
   const [dominio, setDominio] = useState<"reproducao" | "sanidade">("reproducao");
   const [tipo, setTipo] = useState<EventoPayload["tipo"]>("INSEMINACAO");
   const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>("EXAME");
@@ -92,10 +94,10 @@ export function EventoForm({ animalId, onFechar, onSalvo }: { animalId: string; 
           {tipoSan === "VACINA" && <label className="rb-fld">Produto*<input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></label>}
         </>}
         <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></label>
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        {erro && <p className="rb-err">{erro}</p>}
         <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
+          <button type="button" className="rb-btn" onClick={onFechar}>Cancelar</button>
+          <button type="button" className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
         </div>
       </aside>
     </>

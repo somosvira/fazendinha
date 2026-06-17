@@ -528,8 +528,16 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           <span>
             Receita = leite (Embaré) + café (safra 01/2026) + venda de bezerros e descarte. Custeio é gasto
             recorrente da operação; Investimento é compra de gado, máquina e plantio. Inclui R$ 84 mil em
-            lançamentos sem alocação confiável de atividade, redistribuídos pelo maior valor —
-            <a href="#"> ver detalhes</a>.
+            lançamentos sem alocação confiável de atividade, redistribuídos pelo maior valor —{" "}
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled
+              title="Em desenvolvimento"
+              style={{ padding: "2px 8px", fontSize: 12, letterSpacing: "0.02em", textTransform: "none" }}
+            >
+              ver detalhes
+            </button>.
           </span>
         </div>
       </section>

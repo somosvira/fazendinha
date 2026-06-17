@@ -229,8 +229,9 @@
   text-align: left;
 }
 .cat-dd-opt:last-child { border-bottom: none; }
-.cat-dd-opt:hover { background: var(--bg-card-2); }
+.cat-dd-opt:hover, .cat-dd-opt.hl { background: var(--bg-card-2); }
 .cat-dd-opt.active { background: var(--bg-card-2); }
+.cat-dd-opt.hl { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cat-dd-opt-nm { font-size: 14px; color: var(--ink); }
 .cat-dd-opt-val { font-family: var(--serif); font-size: 14px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 

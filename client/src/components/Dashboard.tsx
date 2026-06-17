@@ -10,7 +10,7 @@
  * do cliente; aqui é número, gráfico e drill.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { fetchDashboard } from "../api";
 import { DateRangePicker, type DateRange } from "./DateRangePicker";
 import type { Tab } from "./Shell";
@@ -427,25 +427,67 @@ function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CategoryDropdown({ items, value, onChange }: { items: any[]; value: CatId; onChange: (id: CatId) => void }) {
   const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
+  useEffect(() => {
+    if (open) setHighlight(items.findIndex((c) => c.id === value));
+    else setHighlight(-1);
+  }, [open, items, value]);
   const sel = items.find((c) => c.id === value);
+  const choose = (i: number) => {
+    onChange(items[i].id);
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, items.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Home") { e.preventDefault(); setHighlight(0); }
+    else if (e.key === "End") { e.preventDefault(); setHighlight(items.length - 1); }
+    else if (e.key === "Enter" || e.key === " ") { if (highlight >= 0) { e.preventDefault(); choose(highlight); } }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); triggerRef.current?.focus(); }
+  };
   return (
-    <div className="cat-dd" ref={ref}>
-      <button className="cat-dd-trigger" aria-expanded={open} onClick={() => setOpen(!open)}>
+    <div className="cat-dd" ref={ref} onKeyDown={onKeyDown}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="cat-dd-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="cat-dd-menu"
+        onClick={() => setOpen(!open)}
+      >
         <span className="cat-dd-sw" style={{ background: sel ? (sel.atividade === "leite" ? "var(--leite)" : sel.atividade === "cafe" ? "var(--cafe)" : "var(--outros)") : "var(--ink-3)" }}></span>
         <span className="cat-dd-label">{sel ? sel.nome : "Selecione…"}</span>
-        <span className="cat-dd-chev">▾</span>
+        <span className="cat-dd-chev" aria-hidden="true">▾</span>
       </button>
       {open && (
-        <div className="cat-dd-menu">
-          {items.map((c) => (
-            <button key={c.id} className={"cat-dd-opt " + (c.id === value ? "active" : "")} onClick={() => { onChange(c.id); setOpen(false); }}>
+        <div className="cat-dd-menu" id="cat-dd-menu" role="listbox">
+          {items.map((c, i) => (
+            <button
+              key={c.id}
+              type="button"
+              role="option"
+              aria-selected={c.id === value}
+              className={"cat-dd-opt " + (c.id === value ? "active" : "") + (i === highlight ? " hl" : "")}
+              onClick={() => choose(i)}
+              onMouseEnter={() => setHighlight(i)}
+            >
               <span className="cat-dd-sw" style={{ background: c.atividade === "leite" ? "var(--leite)" : c.atividade === "cafe" ? "var(--cafe)" : "var(--outros)" }}></span>
               <span className="cat-dd-opt-nm">{c.nome}</span>
               <span className="cat-dd-opt-val mono-nums">{fmtBRL(c.total23m)}</span>

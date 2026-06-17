@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { ReportHeader } from "./Shell";
 import { ABAS, FLAGS, PAPEIS, UPDATED_AT, type User } from "../data/acessos";
+import { useEscClose } from "../hooks/useEscClose";
 
 function StatusBadge({ status }: { status: User["status"] }) {
   const map: Record<string, { label: string; cls: string }> = {
@@ -23,56 +24,65 @@ function InviteModal({
   onClose: () => void;
   onInvite: (v: { nome: string; email: string; papel: string }) => void;
 }) {
+  useEscClose(onClose);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState("gestor");
+  const canSubmit = !!nome && !!email;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <span className="ttl">Convidar pessoa</span>
-          <button className="close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="field">
-            <label className="field-label">Nome</label>
-            <input className="field-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Sandra Oliveira" />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSubmit) onInvite({ nome, email, papel });
+          }}
+        >
+          <div className="modal-head">
+            <span className="ttl">Convidar pessoa</span>
+            <button type="button" className="close" onClick={onClose} aria-label="Fechar">
+              ×
+            </button>
           </div>
-          <div className="field">
-            <label className="field-label">E-mail</label>
-            <input className="field-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@email.com" />
-          </div>
-          <div className="field">
-            <label className="field-label">Papel inicial</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {Object.entries(PAPEIS)
-                .filter(([k]) => k !== "proprietario")
-                .map(([k, p]) => (
-                  <button key={k} type="button" className={"papel-opt " + (papel === k ? "active" : "")} onClick={() => setPapel(k)}>
-                    <span className="papel-radio">{papel === k ? "●" : "○"}</span>
-                    <span className="papel-txt">
-                      <strong>{p.nome}</strong>
-                      <small>{p.desc}</small>
-                    </span>
-                  </button>
-                ))}
+          <div className="modal-body">
+            <div className="field">
+              <label className="field-label" htmlFor="invite-nome">Nome</label>
+              <input id="invite-nome" className="field-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Sandra Oliveira" required autoComplete="name" />
+            </div>
+            <div className="field">
+              <label className="field-label" htmlFor="invite-email">E-mail</label>
+              <input id="invite-email" type="email" className="field-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@email.com" required autoComplete="email" />
+            </div>
+            <div className="field">
+              <label className="field-label">Papel inicial</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {Object.entries(PAPEIS)
+                  .filter(([k]) => k !== "proprietario")
+                  .map(([k, p]) => (
+                    <button key={k} type="button" className={"papel-opt " + (papel === k ? "active" : "")} onClick={() => setPapel(k)}>
+                      <span className="papel-radio">{papel === k ? "●" : "○"}</span>
+                      <span className="papel-txt">
+                        <strong>{p.nome}</strong>
+                        <small>{p.desc}</small>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <div className="caption" style={{ fontStyle: "italic" }}>
+              A pessoa recebe um e-mail com link de acesso. Você pode ajustar exatamente o que ela vê depois de convidar.
             </div>
           </div>
-          <div className="caption" style={{ fontStyle: "italic" }}>
-            A pessoa recebe um e-mail com link de acesso. Você pode ajustar exatamente o que ela vê depois de convidar.
+          <div className="modal-foot">
+            <button type="button" className="btn-ghost" onClick={onClose}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary" disabled={!canSubmit}>
+              Enviar convite →
+            </button>
           </div>
-        </div>
-        <div className="modal-foot">
-          <button className="btn-ghost" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn-primary" disabled={!nome || !email} onClick={() => onInvite({ nome, email, papel })}>
-            Enviar convite →
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -199,8 +209,8 @@ function PermissionEditor({
               Ver o sistema como {user.nome.split(" ")[0]} →
             </button>
             <div className="perm-actions-r">
-              {user.status === "pendente" && <button className="btn-ghost">Reenviar convite</button>}
-              <button className="btn-ghost danger">Revogar acesso</button>
+              {user.status === "pendente" && <button type="button" className="btn-ghost" disabled title="Em desenvolvimento">Reenviar convite</button>}
+              <button type="button" className="btn-ghost danger" disabled title="Em desenvolvimento">Revogar acesso</button>
             </div>
           </div>
         </>

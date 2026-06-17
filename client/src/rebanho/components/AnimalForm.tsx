@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import type { Animal } from "../types";
 import { criarAnimal, editarAnimal, darBaixa, listarRacas, listarGrupos, type RacaDTO, type GrupoDTO } from "../api";
+import { useEscClose } from "../../hooks/useEscClose";
 
 type Modo = "novo" | "editar" | "baixa";
 
+const CATEGORIAS: { v: string; label: string }[] = [
+  { v: "BEZERRA", label: "Bezerra" },
+  { v: "NOVILHA", label: "Novilha" },
+  { v: "VACA", label: "Vaca" },
+  { v: "BEZERRO", label: "Bezerro" },
+  { v: "TOURO", label: "Touro" },
+];
+
 export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; animal?: Animal; onFechar: () => void; onSalvo: () => void }) {
+  useEscClose(onFechar);
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -56,7 +66,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
             <label className="rb-fld">Número*<input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></label>
             <label className="rb-fld">Nome<input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></label>
             <label className="rb-fld">Sexo<select value={f.sexo} onChange={(e) => set("sexo", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option></select></label>
-            <label className="rb-fld">Categoria<select value={f.categoria} onChange={(e) => set("categoria", e.target.value)}>{["BEZERRA","NOVILHA","VACA","BEZERRO","TOURO"].map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label className="rb-fld">Categoria<select value={f.categoria} onChange={(e) => set("categoria", e.target.value)}>{CATEGORIAS.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}</select></label>
             <label className="rb-fld">Raça<select value={f.racaId} onChange={(e) => set("racaId", e.target.value)}><option value="">—</option>{racas.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}</select></label>
             <label className="rb-fld">Grau de sangue<input value={f.grauSangue} onChange={(e) => set("grauSangue", e.target.value)} placeholder="Girolando 5/8" /></label>
             <label className="rb-fld">Grupo<select value={f.grupoId} onChange={(e) => set("grupoId", e.target.value)}><option value="">—</option>{grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</select></label>
@@ -65,10 +75,10 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
             <label className="rb-fld">Brinco eletrônico<input value={f.brincoEletronico} onChange={(e) => set("brincoEletronico", e.target.value)} /></label>
           </>
         )}
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        {erro && <p className="rb-err">{erro}</p>}
         <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
+          <button type="button" className="rb-btn" onClick={onFechar}>Cancelar</button>
+          <button type="button" className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
         </div>
       </aside>
     </>

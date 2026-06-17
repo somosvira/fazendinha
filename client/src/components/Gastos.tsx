@@ -9,6 +9,7 @@ import type { DateRange } from "./DateRangePicker";
 import type { User } from "../data/acessos";
 import { AnomaliasStrip } from "./Vigilancia";
 import { anomalias } from "./../data/anomalias";
+import { useEscClose } from "../hooks/useEscClose";
 
 export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   if (mix) {
@@ -40,6 +41,7 @@ type Gasto = {
 };
 
 function ExpenseDrawer({ gasto, onClose }: { gasto: Gasto | null; onClose: () => void }) {
+  useEscClose(onClose);
   if (!gasto) return null;
   const splits = gasto.mix
     ? [
@@ -219,16 +221,18 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
       />
 
       <div className="gastos-toolbar">
-        <div
+        <button
+          type="button"
           className="filter-chip"
           aria-pressed={filterAct === "Tudo"}
           onClick={() => setFilterAct("Tudo")}
         >
           <span className="chip-label">Atividade</span> Tudo
-        </div>
+        </button>
         {(["Leite", "Café", "Outros"] as const).map((a) => (
-          <div
+          <button
             key={a}
+            type="button"
             className="filter-chip"
             aria-pressed={filterAct === a}
             onClick={() => setFilterAct(a)}
@@ -244,26 +248,28 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
               }}
             ></span>
             {a}
-          </div>
+          </button>
         ))}
         <div style={{ width: 1, height: 28, background: "var(--rule)", margin: "0 6px" }}></div>
         {(["Tudo", "Custeio", "Investimento"] as const).map((k) => (
-          <div
+          <button
             key={k}
+            type="button"
             className="filter-chip"
             aria-pressed={filterInvest === k}
             onClick={() => setFilterInvest(k)}
           >
             <span className="chip-label">Pilha</span> {k}
-          </div>
+          </button>
         ))}
         <div className="search-box">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="16" y1="16" x2="21" y2="21"></line>
           </svg>
           <input
             placeholder="Buscar fornecedor, categoria…"
+            aria-label="Buscar fornecedor ou categoria"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -309,7 +315,18 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
           </thead>
           <tbody>
             {filtered.map((g) => (
-              <tr key={g.id} className={selected?.id === g.id ? "active" : ""} onClick={() => setSelected(g)}>
+              <tr
+                key={g.id}
+                className={selected?.id === g.id ? "active" : ""}
+                tabIndex={0}
+                onClick={() => setSelected(g)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(g);
+                  }
+                }}
+              >
                 <td className="date">{g.data}</td>
                 <td>
                   <span className="supplier">{g.fornecedor}</span>
@@ -333,7 +350,16 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
 
       <div style={{ padding: "40px 0 60px" }}>
         <div className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Mostrando 15 de 8.412 lançamentos · <a href="#">carregar mais →</a>
+          Mostrando 15 de 8.412 lançamentos ·{" "}
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled
+            title="Em desenvolvimento"
+            style={{ padding: "2px 8px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase" }}
+          >
+            carregar mais →
+          </button>
         </div>
       </div>
 

@@ -154,4 +154,15 @@
 .rb-drawer h3 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 16px; }
 .rb-fld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
 .rb-fld input, .rb-fld select { font-family: var(--sans); font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; padding: 9px 11px; background: var(--bg-card); }
+.rb-fld select, .rb-fld-inline {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path fill='%2378736B' d='M6 8L0 0h12z'/></svg>");
+  background-repeat: no-repeat; background-position: right 11px center; background-size: 10px;
+  padding-right: 30px;
+}
+.rb-fld-inline {
+  font-family: var(--sans); font-size: 13.5px; color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 8px; padding: 7px 11px; background: var(--bg-card);
+}
+.rb-err { color: var(--neg); font-size: 13px; margin: 0; }
 .rb-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }

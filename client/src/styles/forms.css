@@ -353,7 +353,7 @@
   border-bottom: 1px solid var(--rule-soft);
   display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
 }
-.ac-option:hover { background: var(--bg-card-2); }
+.ac-option:hover, .ac-option.active { background: var(--bg-card-2); }
 .ac-option:last-child { border-bottom: none; }
 .ac-option .ac-nm { font-size: 14px; color: var(--ink); }
 .ac-option .ac-sub { font-size: 11px; color: var(--ink-3); }

@@ -5,8 +5,10 @@ import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { fmtMoney } from "./charts";
 import type { Tab } from "./Shell";
+import { useEscClose } from "../hooks/useEscClose";
 
 function NewCategoryModal({ onClose }: { onClose: () => void }) {
+  useEscClose(onClose);
   const [nome, setNome] = useState("");
   const [grupoId, setGrupoId] = useState("insumos-animais");
   const [pilha, setPilha] = useState<"Custeio" | "Investimento">("Custeio");
@@ -70,7 +72,7 @@ function NewCategoryModal({ onClose }: { onClose: () => void }) {
           <button className="btn-ghost" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn-primary" onClick={onClose} disabled={!nome}>
+          <button type="button" className="btn-primary" disabled title="Em desenvolvimento">
             Criar categoria →
           </button>
         </div>
@@ -135,7 +137,7 @@ function TreeCat({
           {subs.map((s, i) => (
             <TreeSub key={i} sub={s} />
           ))}
-          <button className="tree-sub-add" type="button">
+          <button className="tree-sub-add" type="button" disabled title="Em desenvolvimento">
             <span className="bullet">+</span>
             <span>adicionar subcategoria</span>
           </button>
@@ -242,8 +244,8 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
           />
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <button className="btn-ghost">Exportar CSV</button>
-          <button className="btn-primary" onClick={() => setShowNew(true)}>
+          <button type="button" className="btn-ghost" disabled title="Em desenvolvimento">Exportar CSV</button>
+          <button type="button" className="btn-primary" onClick={() => setShowNew(true)}>
             + Nova categoria
           </button>
         </div>
@@ -298,8 +300,8 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
                   <div className="ttl">{s.titulo}</div>
                   <div className="det">{s.detalhe}</div>
                   <div className="row">
-                    <button className="btn-mini">{s.acao}</button>
-                    <button className="btn-mini ghost">Ignorar</button>
+                    <button type="button" className="btn-mini" disabled title="Em desenvolvimento">{s.acao}</button>
+                    <button type="button" className="btn-mini ghost" disabled title="Em desenvolvimento">Ignorar</button>
                   </div>
                 </div>
               ),

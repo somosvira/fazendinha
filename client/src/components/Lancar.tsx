@@ -1,6 +1,6 @@
 /* Rio Novo — Lançar gasto */
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import type { Tab } from "./Shell";
@@ -98,6 +98,8 @@ function CategoryCascade({
               type="button"
               className="cat-chip"
               style={{ borderStyle: "dashed", color: "var(--ink-3)" }}
+              disabled
+              title="Em desenvolvimento"
             >
               + criar subcategoria
             </button>
@@ -110,6 +112,7 @@ function CategoryCascade({
 
 function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const list: any[] = R.fornecedores;
   const filtered = useMemo(() => {
@@ -118,6 +121,25 @@ function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: stri
     return list.filter((f) => f.nome.toLowerCase().includes(v)).slice(0, 8);
   }, [value, list]);
   const showCreateNew = value && !list.find((f) => f.nome.toLowerCase() === value.toLowerCase());
+  const total = filtered.length + (showCreateNew ? 1 : 0);
+
+  const choose = (i: number) => {
+    if (i < filtered.length) onChange(filtered[i].nome);
+    setOpen(false);
+    setHighlight(-1);
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, total - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { if (highlight >= 0) { e.preventDefault(); choose(highlight); } }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); setHighlight(-1); }
+  };
 
   return (
     <div className="ac-wrapper">
@@ -125,23 +147,30 @@ function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: stri
         className="field-input"
         value={value}
         placeholder="Digite o nome do fornecedor…"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="fornecedor-listbox"
+        aria-autocomplete="list"
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
+          setHighlight(-1);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 160)}
+        onBlur={() => { setOpen(false); setHighlight(-1); }}
+        onKeyDown={onKeyDown}
       />
       {open && (filtered.length > 0 || showCreateNew) && (
-        <div className="ac-dropdown">
-          {filtered.map((f) => (
+        <div className="ac-dropdown" id="fornecedor-listbox" role="listbox">
+          {filtered.map((f, i) => (
             <div
               key={f.nome}
-              className="ac-option"
-              onMouseDown={() => {
-                onChange(f.nome);
-                setOpen(false);
-              }}
+              className={"ac-option" + (i === highlight ? " active" : "")}
+              role="option"
+              aria-selected={i === highlight}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(i)}
+              onMouseEnter={() => setHighlight(i)}
             >
               <div>
                 <div className="ac-nm">{f.nome}</div>
@@ -151,7 +180,14 @@ function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: stri
             </div>
           ))}
           {showCreateNew && (
-            <div className="ac-option new" onMouseDown={() => setOpen(false)}>
+            <div
+              className={"ac-option new" + (highlight === filtered.length ? " active" : "")}
+              role="option"
+              aria-selected={highlight === filtered.length}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(filtered.length)}
+              onMouseEnter={() => setHighlight(filtered.length)}
+            >
               <div>
                 <div className="ac-nm">+ Cadastrar “{value}” como novo fornecedor</div>
               </div>
@@ -248,7 +284,7 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
 
   const [fornecedor, setFornecedor] = useState("");
   const [valor, setValor] = useState("");
-  const [data, setData] = useState("28/05/2026");
+  const [data, setData] = useState("2026-05-28");
   const [conta, setConta] = useState("bb-1234-5");
   const [pago, setPago] = useState(true);
   const [atividade, setAtividade] = useState<string | null>(null);
@@ -396,10 +432,10 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
                 Data<span className="req">*</span>
               </label>
               <input
+                type="date"
                 className="field-input"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
-                placeholder="dd/mm/aaaa"
               />
             </div>
           </div>
@@ -429,7 +465,7 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
               <span className="t">Pagamento efetuado</span>
               <span className="s">Marque desligado se for previsão de pagamento.</span>
             </div>
-            <div role="button" className="toggle" aria-pressed={pago} onClick={() => setPago(!pago)}></div>
+            <button type="button" className="toggle" aria-pressed={pago} aria-label="Pagamento efetuado" onClick={() => setPago(!pago)}></button>
           </div>
         </div>
 
@@ -494,12 +530,13 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
                 Marque para compra de gado, máquinas, plantio novo, benfeitorias — não entra no custeio operacional.
               </span>
             </div>
-            <div
-              role="button"
+            <button
+              type="button"
               className="toggle"
               aria-pressed={investimento}
+              aria-label="É investimento, não custeio"
               onClick={() => setInvestimento(!investimento)}
-            ></div>
+            ></button>
           </div>
         </div>
 
@@ -514,10 +551,6 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
               placeholder="Ex.: compra mensal de ração concentrada — entrega via Cooperativa."
             />
           </div>
-          <div className="field">
-            <label className="field-label">Etiquetas (opcional)</label>
-            <input className="field-input" placeholder="ex.: safra-26, talhão-4, rebanho-girolando" />
-          </div>
         </div>
 
         <div className="form-footer">
@@ -529,8 +562,8 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
                 : "Tudo pronto. O lançamento aparecerá no dashboard imediatamente."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-ghost">Salvar rascunho</button>
-            <button className="btn-primary" disabled={!canSubmit} onClick={onSuccess}>
+            <button type="button" className="btn-ghost" disabled title="Em desenvolvimento">Salvar rascunho</button>
+            <button type="button" className="btn-primary" disabled={!canSubmit} onClick={onSuccess}>
               Registrar gasto →
             </button>
           </div>
@@ -622,12 +655,29 @@ const TIPOS_RECEITA: TipoReceita[] = [
 /* Comprador autocomplete (por tipo de receita) */
 function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (v: string) => void; fontes: string[] }) {
   const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
   const filtered = useMemo(() => {
     if (!value) return fontes;
     const v = value.toLowerCase();
     return fontes.filter((f) => f.toLowerCase().includes(v));
   }, [value, fontes]);
   const showNew = value && !fontes.find((f) => f.toLowerCase() === value.toLowerCase());
+  const total = filtered.length + (showNew ? 1 : 0);
+
+  const choose = (i: number) => {
+    if (i < filtered.length) onChange(filtered[i]);
+    setOpen(false);
+    setHighlight(-1);
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) { setOpen(true); return; }
+    if (!open) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, total - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { if (highlight >= 0) { e.preventDefault(); choose(highlight); } }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); setHighlight(-1); }
+  };
 
   return (
     <div className="ac-wrapper">
@@ -635,23 +685,30 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
         className="field-input"
         value={value}
         placeholder="Quem comprou / pagou…"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="comprador-listbox"
+        aria-autocomplete="list"
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
+          setHighlight(-1);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 160)}
+        onBlur={() => { setOpen(false); setHighlight(-1); }}
+        onKeyDown={onKeyDown}
       />
       {open && (filtered.length > 0 || showNew) && (
-        <div className="ac-dropdown">
-          {filtered.map((f) => (
+        <div className="ac-dropdown" id="comprador-listbox" role="listbox">
+          {filtered.map((f, i) => (
             <div
               key={f}
-              className="ac-option"
-              onMouseDown={() => {
-                onChange(f);
-                setOpen(false);
-              }}
+              className={"ac-option" + (i === highlight ? " active" : "")}
+              role="option"
+              aria-selected={i === highlight}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(i)}
+              onMouseEnter={() => setHighlight(i)}
             >
               <div>
                 <div className="ac-nm">{f}</div>
@@ -659,7 +716,14 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
             </div>
           ))}
           {showNew && (
-            <div className="ac-option new" onMouseDown={() => setOpen(false)}>
+            <div
+              className={"ac-option new" + (highlight === filtered.length ? " active" : "")}
+              role="option"
+              aria-selected={highlight === filtered.length}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(filtered.length)}
+              onMouseEnter={() => setHighlight(filtered.length)}
+            >
               <div>
                 <div className="ac-nm">+ Cadastrar "{value}" como novo cliente</div>
               </div>
@@ -680,7 +744,7 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
   const [comprador, setComprador] = useState("Embaré Indústria (laticínio)");
   const [valor, setValor] = useState("");
   const [qtd, setQtd] = useState("");
-  const [data, setData] = useState("31/05/2026");
+  const [data, setData] = useState("2026-05-31");
   const [conta, setConta] = useState("sicred-9012");
   const [recebido, setRecebido] = useState(true);
   const [doc, setDoc] = useState<{ name: string; size: number } | null>(null);
@@ -833,7 +897,7 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
               <label className="field-label">
                 Data<span className="req">*</span>
               </label>
-              <input className="field-input" value={data} onChange={(e) => setData(e.target.value)} placeholder="dd/mm/aaaa" />
+              <input type="date" className="field-input" value={data} onChange={(e) => setData(e.target.value)} />
             </div>
           </div>
 
@@ -874,7 +938,7 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
               <span className="t">Valor já recebido</span>
               <span className="s">Desligue se for uma venda a prazo / a receber.</span>
             </div>
-            <div role="button" className="toggle" aria-pressed={recebido} onClick={() => setRecebido(!recebido)}></div>
+            <button type="button" className="toggle" aria-pressed={recebido} aria-label="Valor já recebido" onClick={() => setRecebido(!recebido)}></button>
           </div>
         </div>
 
@@ -893,8 +957,9 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
               : "Tudo pronto. A entrada aparecerá no Dashboard e melhora o fluxo do mês."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-ghost">Salvar rascunho</button>
+            <button type="button" className="btn-ghost" disabled title="Em desenvolvimento">Salvar rascunho</button>
             <button
+              type="button"
               className="btn-primary entrada-btn"
               disabled={!canSubmit}
               onClick={() =>

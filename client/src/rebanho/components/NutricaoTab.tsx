@@ -6,7 +6,7 @@ export function NutricaoTab() {
   const { data: dietas, recarregar: recarregarDietas } = useDietas();
   const [novaDieta, setNovaDieta] = useState(false);
   if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Nutrição</h1></div><p className="rb-sub">Carregando…</p></main>;
-  if (erro) return <main className="rb-main"><div className="rb-head"><h1>Nutrição</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
+  if (erro) return <main className="rb-main"><div className="rb-head"><h1>Nutrição</h1></div><p className="rb-err">Erro: {erro}</p></main>;
   const trocar = async (grupoId: number, dietaId: string) => { await atribuirDieta(grupoId, dietaId ? Number(dietaId) : null); recarregar(); };
   return (
     <main className="rb-main">
@@ -17,7 +17,7 @@ export function NutricaoTab() {
         <thead><tr><th>Lote</th><th>Animais</th><th>Produção média</th><th>Dieta</th></tr></thead>
         <tbody>{lotes.map((l) => (
           <tr key={l.id}><td className="rb-anm">{l.nome}</td><td>{l.numAnimais}</td><td>{l.producaoMedia != null ? `${l.producaoMedia} L/d` : "—"}</td>
-            <td><select value={l.dietaId ?? ""} onChange={(e) => trocar(l.id, e.target.value)}><option value="">—</option>{dietas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</select></td></tr>
+            <td><select className="rb-fld-inline" value={l.dietaId ?? ""} onChange={(e) => trocar(l.id, e.target.value)} aria-label={`Dieta do lote ${l.nome}`}><option value="">—</option>{dietas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</select></td></tr>
         ))}</tbody>
       </table>
       <h2 className="rb-sec-title" style={{ marginTop: 28 }}>Dietas cadastradas</h2>

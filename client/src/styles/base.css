@@ -686,6 +686,17 @@ section.report-section:last-child { border-bottom: none; }
 .filter-chip[aria-pressed="true"] { background: var(--mast-bg); color: var(--mast-ink); border-color: var(--mast-bg); }
 .filter-chip .chip-label { color: var(--ink-3); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
 .filter-chip[aria-pressed="true"] .chip-label { color: var(--mast-ink-2); }
+.scope-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--rule-soft);
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
+}
+.scope-pill .chip-label { color: var(--ink-mute); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
 .search-box {
   margin-left: auto;
   display: flex; align-items: center; gap: 8px;
