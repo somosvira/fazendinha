@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre,
+  categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -71,4 +71,35 @@ test("delEStatusLactacao: lactação aberta → del + lactacaoAberta; seca → d
   assert.equal(seca.lactacaoAberta, null);
   // sem início → seca
   assert.equal(delEStatusLactacao({ dtInicioUltLac: null, dtUltSecagem: null }, hoje).del, null);
+});
+
+test("parseEvento: IA (tipo 1) → INSEMINACAO com reprodutor", () => {
+  const e = parseEvento("1002~|~1~|~2025-07-31~|~BRUISER~|~~|~~|~~|~~|~");
+  assert.equal(e.numero, "1002");
+  assert.equal(e.tipo, "INSEMINACAO");
+  assert.equal(e.data, "2025-07-31");
+  assert.equal(e.reprodutor, "BRUISER");
+  assert.equal(e.resultado, null);
+});
+
+test("parseEvento: diagnóstico (tipo 4) P → DIAGNOSTICO positivo + previsão de parto", () => {
+  const e = parseEvento("1002~|~4~|~2025-08-20~|~~|~P~|~2026-05-01~|~~|~~|~");
+  assert.equal(e.tipo, "DIAGNOSTICO");
+  assert.equal(e.resultado, "positivo");
+  assert.equal(e.dtPartoPrevista, "2026-05-01");
+  // N → negativo
+  assert.equal(parseEvento("1002~|~4~|~2025-08-20~|~~|~N~|~~|~~|~~|~").resultado, "negativo");
+});
+
+test("parseEvento: cobertura (2) e TE (3) → INSEMINACAO com observação", () => {
+  assert.match(parseEvento("1~|~2~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /Cobertura/);
+  assert.match(parseEvento("1~|~3~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /embri/i);
+});
+
+test("parseEvento: parto (tipo 7) → PARTO com cria", () => {
+  const e = parseEvento("1027~|~7~|~2023-09-12~|~~|~~|~~|~1~|~1~|~M");
+  assert.equal(e.tipo, "PARTO");
+  assert.equal(e.tipoParto, "1");
+  assert.equal(e.numCrias, 1);
+  assert.equal(e.sexoCria, "M");
 });
