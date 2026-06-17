@@ -1,5 +1,5 @@
 /* Módulo Rebanho — escopo .rb (não vaza pro financeiro) */
-.rb { --side-w: 222px; background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
+.rb { background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
 
 /* sidebar */
 .rb-side { position: fixed; top: 0; left: 0; bottom: 0; width: var(--side-w); background: var(--mast-bg); color: var(--mast-ink); display: flex; flex-direction: column; padding: 18px 0; z-index: 5; }
@@ -19,7 +19,7 @@
 .rb-side .user .nm { font-size: 13px; color: var(--mast-ink); } .rb-side .user .rl { font-size: 11px; color: var(--mast-ink-2); }
 
 /* content shell */
-.rb-main { margin-left: var(--side-w); max-width: 1100px; padding: 26px 40px 70px; }
+.rb-main { max-width: 1100px; padding: 26px 40px 70px; }
 .rb-eyebrow { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--cafe); font-weight: 700; }
 .rb-crumb { font-size: 12.5px; color: var(--ink-3); margin-bottom: 16px; background: none; border: 0; cursor: pointer; font-family: var(--sans); padding: 0; }
 .rb-crumb b { color: var(--ink-2); }
