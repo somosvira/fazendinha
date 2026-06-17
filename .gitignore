@@ -11,3 +11,4 @@ __pycache__/
 
 # brainstorming visual companion
 .superpowers/
+*.traineddata
