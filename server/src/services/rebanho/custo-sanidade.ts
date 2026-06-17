@@ -55,10 +55,21 @@ export async function agregarCustoSanidade(meses = 12) {
   }
 
   const rateio = ratearCustoSanidade(totalMedicamento, [...porAnimalMap.values()]);
-  const topProdutos = [...porProduto.entries()]
-    .map(([produto, n]) => ({ produto, n }))
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 8);
+
+  // Custo EXATO por produto (Fatia 21): custoUnitario do Produto (Cadastros) × nº aplicações.
+  // Null quando o produto não tem preço — o usuário precifica no Cadastros.
+  const precos = new Map<string, number | null>();
+  for (const p of await prisma.produto.findMany({ select: { nome: true, custoUnitario: true } })) {
+    precos.set(p.nome, p.custoUnitario != null ? Number(p.custoUnitario) : null);
+  }
+  const produtos = [...porProduto.entries()]
+    .map(([produto, n]) => {
+      const cu = precos.get(produto) ?? null;
+      return { produto, n, custoUnitario: cu, custoExato: cu != null ? Math.round(cu * n * 100) / 100 : null };
+    })
+    .sort((a, b) => b.n - a.n);
+  const custoExatoTotal = Math.round(produtos.reduce((s, p) => s + (p.custoExato ?? 0), 0) * 100) / 100;
+  const produtosPrecificados = produtos.filter((p) => p.custoUnitario != null).length;
 
   return {
     periodoMeses: meses,
@@ -66,9 +77,12 @@ export async function agregarCustoSanidade(meses = 12) {
     totalAplicacoes: rateio.totalAplicacoes,
     custoPorAplicacao: rateio.custoPorAplicacao,
     topAnimais: rateio.animais.slice(0, 10),
-    topProdutos,
+    produtos: produtos.slice(0, 15),
+    custoExatoTotal,
+    produtosPrecificados,
+    produtosTotais: produtos.length,
     nota:
       "Estimativa por volume: gasto real de Medicamento Animal ÷ nº de aplicações. " +
-      "Não pondera custo por produto (o Ideagri não tem custo por produto preenchido).",
+      "Para o custo exato, precifique os produtos no Cadastros (custo unitário por aplicação).",
   };
 }
