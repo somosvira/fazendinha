@@ -14,8 +14,8 @@ test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
   assert.equal(categoriaDe("4", "M"), "TOURO");
 });
 
-test("parseAnimal lê linha @A@ (baixado com motivo) — vazios viram null", () => {
-  const linha = "1002~|~CATARINA~|~F~|~7~|~2019-06-01~|~2022-10-01~|~~|~~|~0~|~BAIXADO~|~2026-04-10~|~Venda~|~Principal - Leite~|~";
+test("parseAnimal lê linha @A@ (15 campos: setor e grupo separados) — vazios viram null", () => {
+  const linha = "1002~|~CATARINA~|~F~|~7~|~2019-06-01~|~2022-10-01~|~~|~~|~0~|~BAIXADO~|~2026-04-10~|~Venda~|~Principal - Leite~|~~|~Vacas secas";
   const a = parseAnimal(linha);
   assert.equal(a.numero, "1002");
   assert.equal(a.nome, "CATARINA");
@@ -30,10 +30,17 @@ test("parseAnimal lê linha @A@ (baixado com motivo) — vazios viram null", () 
   assert.equal(a.motivoBaixa, "Venda");
   assert.equal(a.setor, "Principal - Leite");
   assert.equal(a.raca, "Girolando"); // pelagem vazia → default
+  assert.equal(a.grupo, "Vacas secas"); // lote de manejo, separado do setor
+});
+
+test("parseAnimal: animal sem grupo → grupo null (setor preservado)", () => {
+  const a = parseAnimal("10~|~~|~F~|~7~|~2023-05-13~|~2023-05-13~|~~|~~|~0~|~ATIVO~|~~|~~|~Principal - Leite~|~~|~");
+  assert.equal(a.setor, "Principal - Leite");
+  assert.equal(a.grupo, null);
 });
 
 test("parseAnimal: ativo sem nome → nome null, dataBaixa/motivo null", () => {
-  const a = parseAnimal("10~|~~|~F~|~7~|~2023-05-13~|~2023-05-13~|~~|~~|~0~|~ATIVO~|~~|~~|~Principal~|~Girolando");
+  const a = parseAnimal("10~|~~|~F~|~7~|~2023-05-13~|~2023-05-13~|~~|~~|~0~|~ATIVO~|~~|~~|~Principal~|~Girolando~|~");
   assert.equal(a.nome, null);
   assert.equal(a.status, "ATIVO");
   assert.equal(a.dataBaixa, null);
