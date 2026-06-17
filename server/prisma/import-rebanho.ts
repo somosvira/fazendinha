@@ -49,6 +49,7 @@ interface AnimalJson {
   numPartosEntrada: number | null;
   status: StatusAnimal;
   dataBaixa: string | null;
+  motivoBaixa: string | null;
   setor: string | null;
   raca: string | null;
   grupo: string | null;
@@ -112,6 +113,7 @@ async function main() {
     numPartosEntrada: a.numPartosEntrada ?? 0,
     status: a.status,
     dataBaixa: d(a.dataBaixa),
+    motivoBaixa: a.motivoBaixa ?? null,
   }));
   await prisma.animal.createMany({ data: animaisRows });
   console.log(`Animais inseridos: ${animaisRows.length}.`);
