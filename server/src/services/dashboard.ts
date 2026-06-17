@@ -73,7 +73,7 @@ export async function buildDashboard() {
       natureza: true,
       valor: true,
       dataLiquidacao: true,
-      categoria: { select: { id: true, nome: true, grupoCategoria: { select: { nome: true } } } },
+      categoria: { select: { id: true, nome: true, classificacao: true, grupoCategoria: { select: { nome: true } } } },
       centroCusto: { select: { nome: true, ehInvestimento: true } },
     },
   });
@@ -104,6 +104,10 @@ export async function buildDashboard() {
   };
   const catMap = new Map<number, CatAcc>();
 
+  // Captura a categoria "Animal Aquisição" e sua classificação (Fatia 22).
+  let animAqCatId: number | null = null;
+  let animAqCls: "CUSTEIO" | "INVESTIMENTO" | null = null;
+
   for (const l of lancamentos) {
     if (!l.dataLiquidacao) continue;
     const idx = mesIndex(l.dataLiquidacao);
@@ -112,7 +116,13 @@ export async function buildDashboard() {
     const v = toNum(l.valor);
     const atv = atividadeDe(l.centroCusto.nome);
     const catNome = l.categoria.nome;
-    const misclass = CATEGORIAS_MISCLASSIFICADAS.has(catNome);
+    // Override de classificação (Fatia 22). null = pendente (default reclassificado).
+    const cls = l.categoria.classificacao; // "CUSTEIO" | "INVESTIMENTO" | null
+    const isAnimAq = catNome === "Animal Aquisição";
+    if (isAnimAq) { animAqCatId = l.categoria.id; animAqCls = cls; }
+    // Revertido p/ BPO: Animal Aquisição volta pro custeio (sai dos misclassificados).
+    const animAqRevertido = isAnimAq && cls === "CUSTEIO";
+    const misclass = CATEGORIAS_MISCLASSIFICADAS.has(catNome) && !animAqRevertido;
     // A flag ehInvestimento no schema veio do import, que respeitou
     // capitalização exata. "Plantio Café - investimento" entrou com false.
     // Fallback: detecta "investimento" no nome do centro.
@@ -152,7 +162,8 @@ export async function buildDashboard() {
           grupo: l.categoria.grupoCategoria.nome,
           monthly: zeros(),
           atividade: atv,
-          flag: misclass ? "investimento-misclassificado" : undefined,
+          // ⚠ só enquanto pendente; some quando Animal Aquisição é decidida (confirma/reverte).
+          flag: misclass && !(isAnimAq && cls != null) ? "investimento-misclassificado" : undefined,
         };
         catMap.set(l.categoria.id, acc);
       }
@@ -242,16 +253,21 @@ export async function buildDashboard() {
 
   // ----- inconsistências (curadas — derivar automaticamente fica para outro PR)
   const inconsistencias = [
-    {
-      id: "animal-aq",
-      severidade: "alta",
-      titulo: "“Animal Aquisição” marcado como custeio",
-      valor: Math.round(totals23m.animalAquisicao),
-      detalhe:
-        "Compras de matrizes (Animal Aquisição) estão classificadas como Custeio. Pela natureza (compra de animal vivo), são Investimento — quando reclassificado, o operacional do leite em 2025 piora bem menos do que aparenta.",
-      acao: "Reclassificar como Investimento",
-      impacto: "Operacional do leite 2025 sai de aparente +R$ 102k para real −R$ 703k",
-    },
+    // Animal Aquisição: card só enquanto pendente (Fatia 22). Carrega categoriaId
+    // para os botões reais (confirmar reclassificação / reverter para custeio BPO).
+    ...(animAqCls == null
+      ? [{
+          id: "animal-aq",
+          severidade: "alta",
+          categoriaId: animAqCatId,
+          titulo: "“Animal Aquisição” reclassificada para investimento",
+          valor: Math.round(totals23m.animalAquisicao),
+          detalhe:
+            "A IA reclassificou as compras de matrizes (Animal Aquisição) de Custeio para Investimento — é compra de animal vivo, não custeio do leite. Confirme para manter, ou reverta para a classificação do BPO (custeio).",
+          acao: "Confirmar reclassificação",
+          impacto: "Mantém o operacional do leite 2025 em −R$ 703k (real). Reverter volta para o aparente +R$ 102k do BPO.",
+        }]
+      : []),
     {
       id: "rn-caminhao",
       severidade: "media",

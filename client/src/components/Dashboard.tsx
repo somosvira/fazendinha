@@ -10,8 +10,8 @@
  * do cliente; aqui é número, gráfico e drill.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchDashboard } from "../api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fetchDashboard, reclassificarCategoria } from "../api";
 import { DateRangePicker, type DateRange } from "./DateRangePicker";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
@@ -723,7 +723,7 @@ function DRESection({ R }: { R: R }) {
 
 /* ========== INCONSISTÊNCIAS (kept, compact strip) ========== */
 
-function InconsistenciasSection({ R }: { R: R }) {
+function InconsistenciasSection({ R, onReclassificar }: { R: R; onReclassificar: () => void }) {
   return (
     <section className="cockpit-section" style={{ borderBottom: "none" }}>
       <div className="dash-sec-head">
@@ -746,8 +746,19 @@ function InconsistenciasSection({ R }: { R: R }) {
               <span className="txt">{it.impacto}</span>
             </div>
             <div className="inc-actions">
-              <button className="btn-primary" style={{ padding: "7px 13px", fontSize: 12 }}>{it.acao}</button>
-              <button className="btn-ghost" style={{ padding: "7px 11px", fontSize: 12 }}>Ignorar</button>
+              {it.categoriaId ? (
+                <>
+                  <button className="btn-primary" style={{ padding: "7px 13px", fontSize: 12 }}
+                    onClick={() => reclassificarCategoria(it.categoriaId, "INVESTIMENTO").then(onReclassificar)}>{it.acao}</button>
+                  <button className="btn-ghost" style={{ padding: "7px 11px", fontSize: 12 }}
+                    onClick={() => reclassificarCategoria(it.categoriaId, "CUSTEIO").then(onReclassificar)}>Reverter para custeio (BPO)</button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-primary" style={{ padding: "7px 13px", fontSize: 12 }}>{it.acao}</button>
+                  <button className="btn-ghost" style={{ padding: "7px 11px", fontSize: 12 }}>Ignorar</button>
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -2027,9 +2038,8 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    fetchDashboard().then(setData).catch(setError);
-  }, []);
+  const recarregar = useCallback(() => { fetchDashboard().then(setData).catch(setError); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
 
   if (error) {
     return (
@@ -2090,7 +2100,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
       <ProdutividadeRebanho R={data} />
       <TimelineSection R={data} onMonthClick={setMonthIdx} />
       <DRESection R={data} />
-      <InconsistenciasSection R={data} />
+      <InconsistenciasSection R={data} onReclassificar={recarregar} />
       <div style={{ padding: "28px 0 60px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
           Fonte: Neon (via /api/dashboard) · agregado em runtime

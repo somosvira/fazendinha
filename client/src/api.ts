@@ -69,3 +69,12 @@ export async function fetchDashboard(): Promise<any> {
 
   return d;
 }
+
+export async function reclassificarCategoria(id: number, classificacao: "INVESTIMENTO" | "CUSTEIO"): Promise<void> {
+  const res = await fetch(`/api/categorias/${id}/classificacao`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ classificacao }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}

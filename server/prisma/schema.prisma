@@ -40,11 +40,19 @@ model GrupoCategoria {
   categorias Categoria[]
 }
 
+// Override gerencial da classificação de uma categoria (custeio × investimento).
+// null = pendente (deriva da regra padrão); decidido pelo usuário no dashboard.
+enum ClassificacaoCategoria {
+  CUSTEIO
+  INVESTIMENTO
+}
+
 model Categoria {
-  id               Int            @id @default(autoincrement())
+  id               Int                     @id @default(autoincrement())
   nome             String
-  grupoCategoria   GrupoCategoria @relation(fields: [grupoCategoriaId], references: [id])
+  grupoCategoria   GrupoCategoria          @relation(fields: [grupoCategoriaId], references: [id])
   grupoCategoriaId Int
+  classificacao    ClassificacaoCategoria?
   lancamentos      Lancamento[]
   produtos         Produto[]
 
