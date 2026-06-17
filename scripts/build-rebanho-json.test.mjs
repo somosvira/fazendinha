@@ -38,6 +38,14 @@ test("parseAnimal: animal sem grupo → grupo null (setor preservado)", () => {
   const a = parseAnimal("10~|~~|~F~|~7~|~2023-05-13~|~2023-05-13~|~~|~~|~0~|~ATIVO~|~~|~~|~Principal - Leite~|~~|~");
   assert.equal(a.setor, "Principal - Leite");
   assert.equal(a.grupo, null);
+  assert.equal(a.maeNumero, null);
+  assert.equal(a.paiNome, null);
+});
+
+test("parseAnimal: genealogia (mãe nº + pai nome)", () => {
+  const a = parseAnimal("66~|~~|~F~|~6~|~2023-01-01~|~2023-01-01~|~~|~~|~0~|~ATIVO~|~~|~~|~Mexicana~|~1/2 HO, GO~|~Recria 1~|~DB04~|~HALIFAX SXL");
+  assert.equal(a.maeNumero, "DB04");
+  assert.equal(a.paiNome, "HALIFAX SXL");
 });
 
 test("parseAnimal: ativo sem nome → nome null, dataBaixa/motivo null", () => {

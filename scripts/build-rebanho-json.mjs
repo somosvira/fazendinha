@@ -58,6 +58,8 @@ export function parseAnimal(linha) {
     setor: s(f[12]),
     raca: racaDe(f[13]),
     grupo: s(f[14]), // lote de manejo (null = "sem grupo")
+    maeNumero: s(f[15]), // número da mãe (linkada no import se estiver no rebanho)
+    paiNome: s(f[16]), // nome do pai/touro (string — pode ser sêmen, não animal)
   };
 }
 
