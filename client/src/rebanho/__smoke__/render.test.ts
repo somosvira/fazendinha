@@ -7,6 +7,7 @@ import { RebanhoApp } from "../RebanhoApp";
 import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
 import { AppSidebar } from "../../components/AppSidebar";
+import { RebanhoContent } from "../RebanhoContent";
 import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
@@ -20,6 +21,11 @@ describe("render smoke", () => {
     expect(html).toContain("Painel");
     expect(html).toContain("IA financeira");
     expect(html).toContain("Acessos");
+  });
+
+  it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
+    const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
+    expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
   it("RebanhoApp renders the default Reprodução tab (live-fetched)", () => {
