@@ -16,6 +16,7 @@ import { producaoRouter } from "./routes/rebanho/producao.js";
 import { cadastrosRouter } from "./routes/rebanho/cadastros.js";
 import { estoqueRouter } from "./routes/rebanho/estoque.js";
 import { custoProducaoRouter } from "./routes/rebanho/custo-producao.js";
+import { custoSanidadeRouter } from "./routes/rebanho/custo-sanidade.js";
 import { financeiroRefRouter } from "./routes/rebanho/financeiro-ref.js";
 
 const app = new Hono();
@@ -43,6 +44,7 @@ app.route("/api", producaoRouter);
 app.route("/api", cadastrosRouter);
 app.route("/api", estoqueRouter);
 app.route("/api", custoProducaoRouter);
+app.route("/api", custoSanidadeRouter);
 app.route("/api", financeiroRefRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
