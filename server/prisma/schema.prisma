@@ -173,6 +173,9 @@ model Animal {
   dataBaixa        DateTime?       @db.Date
   motivoBaixa      String?
   resumo           ResumoAnimal?
+  numPartosEntrada    Int                 @default(0)
+  eventosReprodutivos EventoReprodutivo[]
+  lactacoes           Lactacao[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -196,4 +199,44 @@ model ResumoAnimal {
   diasGestacao      Int?
   previsaoSecagem   DateTime?         @db.Date
   atualizadoEm      DateTime          @updatedAt
+}
+
+enum TipoEventoReprodutivo {
+  CIO
+  INSEMINACAO
+  DIAGNOSTICO
+  PARTO
+  SECAGEM
+}
+
+model EventoReprodutivo {
+  id              Int                   @id @default(autoincrement())
+  animal          Animal                @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId        Int
+  tipo            TipoEventoReprodutivo
+  data            DateTime              @db.Date
+  observacao      String?
+  reprodutor      String?
+  protocolo       String?
+  resultado       String?
+  dtPartoPrevista DateTime?             @db.Date
+  tipoParto       String?
+  numCrias        Int?
+  sexoCria        String?
+  motivoSecagem   String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([animalId, data])
+}
+
+model Lactacao {
+  id       Int       @id @default(autoincrement())
+  animal   Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId Int
+  numero   Int
+  dtInicio DateTime  @db.Date
+  dtFim    DateTime? @db.Date
+
+  @@index([animalId])
 }
