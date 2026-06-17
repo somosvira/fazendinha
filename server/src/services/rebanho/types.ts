@@ -10,7 +10,7 @@ export interface AnimalDTO {
   brincoEletronico: string | null; sisbov: string | null;
   maeId: string | null; maeNome: string | null; maeNumero: string | null;
   paiNome: string | null;
-  grupoId: number | null; grupoNome: string | null; setor: string | null;
+  grupoId: number | null; grupoNome: string | null; dietaNome: string | null; setor: string | null;
   ativo: boolean; dataBaixa: string | null; motivoBaixa: string | null;
   resumo: ResumoDTO | null;
 }
