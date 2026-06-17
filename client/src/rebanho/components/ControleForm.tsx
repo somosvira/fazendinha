@@ -15,11 +15,12 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
 
   async function salvar() {
+    const p: ControlePayload = { data: f.data };
+    if (modo === "ORDENHA") { p.peso1 = num(f.peso1); p.peso2 = num(f.peso2); p.peso3 = num(f.peso3); }
+    else { p.pesoTotal = num(f.pesoTotal); }
+    if ((p.peso1 ?? p.peso2 ?? p.peso3 ?? p.pesoTotal) == null) { setErro("Informe ao menos um peso."); return; }
     setSalvando(true); setErro(null);
     try {
-      const p: ControlePayload = { data: f.data };
-      if (modo === "ORDENHA") { p.peso1 = num(f.peso1); p.peso2 = num(f.peso2); p.peso3 = num(f.peso3); }
-      else { p.pesoTotal = num(f.pesoTotal); }
       await registrarControle(animalId, p);
       onSalvo();
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
