@@ -6,8 +6,22 @@ import { renderToString } from "react-dom/server";
 import { RebanhoApp } from "../RebanhoApp";
 import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
+import { AppSidebar } from "../../components/AppSidebar";
+import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
+  it("AppSidebar renders both groups and the user chip", () => {
+    const html = renderToString(h(AppSidebar, {
+      current: "dashboard", onNav: () => {}, financeiro: [{ id: "dashboard", label: "Dashboard" }, { id: "ia", label: "IA" }],
+      isAdmin: true, user: usuarios[0], allUsers: usuarios, onSwitchUser: () => {},
+    }));
+    expect(html).toContain("Financeiro");
+    expect(html).toContain("Rebanho");
+    expect(html).toContain("Painel");
+    expect(html).toContain("IA financeira");
+    expect(html).toContain("Acessos");
+  });
+
   it("RebanhoApp renders the default Reprodução tab (live-fetched)", () => {
     const html = renderToString(h(RebanhoApp));
     expect(html).toContain("Reprodução");
