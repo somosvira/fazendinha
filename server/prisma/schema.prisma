@@ -29,6 +29,7 @@ model CentroCusto {
   ehInvestimento Boolean     @default(false)
   ordem         Int          @default(0)
   lancamentos   Lancamento[]
+  produtos      Produto[]
 }
 
 // Plano de contas gerencial: Grupo -> Categoria.
@@ -45,6 +46,7 @@ model Categoria {
   grupoCategoria   GrupoCategoria @relation(fields: [grupoCategoriaId], references: [id])
   grupoCategoriaId Int
   lancamentos      Lancamento[]
+  produtos         Produto[]
 
   @@unique([grupoCategoriaId, nome])
 }
@@ -82,6 +84,12 @@ model Produto {
   estocavel     Boolean     @default(true)
   minimoEstoque Decimal?    @db.Decimal(12, 2)
   ativo         Boolean     @default(true)
+  // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
+  // que a compra (ENTRADA) deste produto deve lançar.
+  categoria     Categoria?   @relation(fields: [categoriaId], references: [id])
+  categoriaId   Int?
+  centroCusto   CentroCusto? @relation(fields: [centroCustoId], references: [id])
+  centroCustoId Int?
   movimentos    MovimentoEstoque[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -137,6 +145,8 @@ model Lancamento {
   contaBancariaId     Int?
   clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
   clienteFornecedorId Int?
+  // Movimento de estoque que gerou este lançamento (ponte compra→financeiro), se houver.
+  movimentoEstoque    MovimentoEstoque?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -394,6 +404,9 @@ model MovimentoEstoque {
   grupoId       Int?
   fornecedor    ClienteFornecedor? @relation(fields: [fornecedorId], references: [id])
   fornecedorId  Int?
+  // Lançamento financeiro gerado pela ENTRADA (compra), se houver (ponte compra→financeiro).
+  lancamento    Lancamento? @relation(fields: [lancamentoId], references: [id])
+  lancamentoId  Int?        @unique
   observacao    String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
