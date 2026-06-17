@@ -69,12 +69,17 @@ export const animal: DomainConfig = {
 
 export const sanidade: DomainConfig = {
   titulo: "Sanidade", eyebrow: "Rebanho · 522 animais",
-  kpis: (rs) => [
-    { lab: "CCS alto", val: String(rs.filter((r) => (r.ccs ?? 0) >= 400).length), d: "≥ 400 mil", tom: "up" },
-    { lab: "CCS subindo", val: String(rs.filter((r) => r.ccsTendencia === "subindo").length), tom: "up" },
-    { lab: "Em tratamento", val: "2" },
-    { lab: "CCS médio", val: "248", sufixo: "mil" },
-  ],
+  kpis: (rs) => {
+    const altos = rs.filter((r) => (r.ccs ?? 0) >= 400).length;
+    const subindo = rs.filter((r) => r.ccsTendencia === "subindo").length;
+    const comCcs = rs.filter((r) => typeof r.ccs === "number");
+    const media = comCcs.length ? Math.round(comCcs.reduce((a, r) => a + (r.ccs ?? 0), 0) / comCcs.length) : 0;
+    return [
+      { lab: "CCS alto", val: String(altos), d: "≥ 400 mil", tom: "up" },
+      { lab: "CCS subindo", val: String(subindo), tom: "up" },
+      { lab: "CCS médio", val: String(media), sufixo: "mil" },
+    ];
+  },
   worklists: [
     { id: "ccs", label: "CCS alto / subindo", alerta: true, selecionar: (rs) => rs.filter((r) => (r.ccs ?? 0) >= 400 || r.ccsTendencia === "subindo") },
     { id: "todas", label: "Todas", selecionar: (rs) => rs },
