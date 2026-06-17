@@ -45,24 +45,35 @@ export async function agregarCustoSanidade(meses = 12) {
     where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde } },
     select: { produto: true, animal: { select: { numero: true, nome: true } } },
   });
+  // Preços do Produto (Cadastros) — null quando não precificado.
+  const precos = new Map<string, number | null>();
+  for (const p of await prisma.produto.findMany({ select: { nome: true, custoUnitario: true } })) {
+    precos.set(p.nome, p.custoUnitario != null ? Number(p.custoUnitario) : null);
+  }
+
   const porAnimalMap = new Map<string, AnimalAplic>();
   const porProduto = new Map<string, number>();
+  const exatoPorAnimal = new Map<string, number>(); // soma do custoUnitario dos produtos precificados
   for (const a of aplics) {
     const num = a.animal.numero;
     const cur = porAnimalMap.get(num) ?? { numero: num, nome: a.animal.nome ?? num, n: 0 };
     cur.n++;
     porAnimalMap.set(num, cur);
-    if (a.produto) porProduto.set(a.produto, (porProduto.get(a.produto) ?? 0) + 1);
+    if (a.produto) {
+      porProduto.set(a.produto, (porProduto.get(a.produto) ?? 0) + 1);
+      const cu = precos.get(a.produto);
+      if (cu != null) exatoPorAnimal.set(num, (exatoPorAnimal.get(num) ?? 0) + cu);
+    }
   }
 
   const rateio = ratearCustoSanidade(totalMedicamento, [...porAnimalMap.values()]);
+  // Custo exato por animal (Fatia 26): soma dos produtos precificados que ele recebeu.
+  const topAnimais = rateio.animais.slice(0, 10).map((a) => ({
+    ...a,
+    custoExato: Math.round((exatoPorAnimal.get(a.numero) ?? 0) * 100) / 100,
+  }));
 
-  // Custo EXATO por produto (Fatia 21): custoUnitario do Produto (Cadastros) × nº aplicações.
-  // Null quando o produto não tem preço — o usuário precifica no Cadastros.
-  const precos = new Map<string, number | null>();
-  for (const p of await prisma.produto.findMany({ select: { nome: true, custoUnitario: true } })) {
-    precos.set(p.nome, p.custoUnitario != null ? Number(p.custoUnitario) : null);
-  }
+  // Custo EXATO por produto (Fatia 21): custoUnitario × nº aplicações.
   const produtos = [...porProduto.entries()]
     .map(([produto, n]) => {
       const cu = precos.get(produto) ?? null;
@@ -77,7 +88,7 @@ export async function agregarCustoSanidade(meses = 12) {
     totalMedicamento,
     totalAplicacoes: rateio.totalAplicacoes,
     custoPorAplicacao: rateio.custoPorAplicacao,
-    topAnimais: rateio.animais.slice(0, 10),
+    topAnimais,
     produtos: produtos.slice(0, 15),
     custoExatoTotal,
     produtosPrecificados,
