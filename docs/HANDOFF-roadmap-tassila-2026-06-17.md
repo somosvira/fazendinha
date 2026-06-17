@@ -48,6 +48,11 @@ Depois do roadmap da Tássila pronto, você pediu pra **ligar o Estoque (custo v
 - **Custo de Produção (Fatia 11):** custeio do leite real por componente + custo vaca/dia, com o custo/litro honestamente pendente de escala.
 - **Pra liberar o custo/litro de ponta a ponta:** popular a produção em escala da fazenda inteira (a maior pendência funcional do loop, além do multi-tenant).
 
+## Continuação — rebanho real do Ideagri (destrava o custo/litro)
+Você apontou o Excel `Relatório Rio Novo 2026.05.04.xlsx` achando que tinha a produção real — mas ele é **só financeiro** (tem "Venda de Leite" em R$, zero litros/rebanho). A produção real está no **Ideagri** (`DADOS777.FDB`). Você aprovou **importar o rebanho real** (substituindo a demo).
+- **Fatia 12 — Import do rebanho real:** 🔄 em andamento. Eu (controller) extraí do Ideagri e commitei `server/prisma/rebanho_real.json`: **824 animais** (173 vacas, 357 novilhas, 287 bezerras, 4 touros), **103 em lactação**, **1.621 controles de leite**, produção **~2.827 L/dia** (~27,5 L/vaca). Read-models do Ideagri (`ANIMALINFO_*`) → nosso `ResumoAnimal` direto. O subagente escreve o importador Prisma. Spec/plano `…fatia12-import-real*`.
+- **Fatia 13 — Custo/litro real:** ⏳ a seguir. Com a produção real, **o custo/litro fecha**: R$ 5,45mi/ano ÷ ~1,03M L/ano ≈ **R$ 5,29/litro** (realista, bate com os ~R$ 5,10 do dashboard). A aba Custo de Produção troca o card "pendente" pelo número real.
+
 ## Notas técnicas
 - Tudo segue o padrão: Hono router→service + Prisma (`db push`) + Zod; React + fetchers/hooks + drawers; motor de recálculo puro testado (TDD). Cada fatia: spec → plano → subagente (backend, depois client) → review (spec+qualidade) → PR. Decisões de produto tomo sozinho e anoto aqui.
 - Base no Ideagri lida do Firebird local (`DADOS777.FDB`) — ver memória `ideagri-data-access`.
