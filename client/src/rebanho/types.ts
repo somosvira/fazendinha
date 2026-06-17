@@ -22,6 +22,7 @@ export interface Animal {
   grupoAtual?: string;   // lote
   grupoId?: number | null;
   grupoNome?: string | null;
+  dietaNome?: string | null;
   setor?: string | null;
   ativo: boolean;
   dataBaixa?: string | null;
