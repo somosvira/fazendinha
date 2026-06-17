@@ -39,9 +39,10 @@ export async function agregarCustoSanidade(meses = 12) {
   });
   const totalMedicamento = Math.round(lancs.reduce((s, l) => s + toNum(l.valor), 0) * 100) / 100;
 
-  // Aplicações reais por animal + ranking de produtos.
+  // Aplicações reais por animal + ranking de produtos (inclui VACINA — também é
+  // consumo de produto veterinário; só o tipo na timeline difere).
   const aplics = await prisma.eventoSanitario.findMany({
-    where: { tipo: "APLICACAO", data: { gte: desde } },
+    where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde } },
     select: { produto: true, animal: { select: { numero: true, nome: true } } },
   });
   const porAnimalMap = new Map<string, AnimalAplic>();

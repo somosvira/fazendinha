@@ -275,7 +275,8 @@ async function main() {
   // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO)
   // SEM tocar no custoUnitario (preserva o que o usuário preencher). Idempotente.
   const produtosAplicados = new Set<string>();
-  for (const e of dados.eventosSanitarios ?? []) if (e.tipo === "APLICACAO" && e.produto) produtosAplicados.add(e.produto);
+  for (const e of dados.eventosSanitarios ?? [])
+    if ((e.tipo === "APLICACAO" || e.tipo === "VACINA") && e.produto) produtosAplicados.add(e.produto);
   for (const nome of produtosAplicados) {
     await prisma.produto.upsert({ where: { nome }, update: {}, create: { nome, tipo: "MEDICAMENTO" } });
   }

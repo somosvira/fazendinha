@@ -126,6 +126,12 @@ test("parseAplicacao → APLICACAO com produto/dose/carência", () => {
   assert.equal(e.observacao, null);
 });
 
+test("parseAplicacao → VACINA quando o produto é vacina", () => {
+  assert.equal(parseAplicacao("1002~|~VACINA POLI-STAR~|~2025-03-16~|~~|~~|~").tipo, "VACINA");
+  assert.equal(parseAplicacao("1002~|~Vacina Rotatec~|~2025-03-16~|~~|~~|~").tipo, "VACINA");
+  assert.equal(parseAplicacao("1002~|~Lactotropin~|~2025-03-16~|~~|~~|~").tipo, "APLICACAO");
+});
+
 test("parseAnalise → EXAME com ccs/gordura/proteína", () => {
   const e = parseAnalise("1002~|~2025-05-10~|~512~|~3.80~|~3.20~|~");
   assert.equal(e.numero, "1002");

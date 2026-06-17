@@ -150,14 +150,16 @@ export function parseDoenca(linha) {
   };
 }
 
-// APLICACAOPRODUTO → EventoSanitario APLICACAO. Campos: numero, produto, data, dose, carencia, obs.
+// APLICACAOPRODUTO → EventoSanitario. Vacinas (nome "Vacina…") viram tipo VACINA;
+// o resto, APLICACAO. Campos: numero, produto, data, dose, carencia, obs.
 export function parseAplicacao(linha) {
   const f = linha.split(SEP);
+  const produto = s(f[1]);
   return {
     numero: f[0],
-    tipo: "APLICACAO",
+    tipo: produto && /vacina/i.test(produto) ? "VACINA" : "APLICACAO",
     data: s(f[2]),
-    produto: s(f[1]),
+    produto,
     dose: s(f[3]),
     carencia: n(f[4]),
     observacao: s(f[5]),
