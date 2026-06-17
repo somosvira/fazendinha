@@ -32,6 +32,7 @@ export const listFiltrosSchema = z.object({
   status: z.enum(["ATIVO", "BAIXADO", "TODOS"]).default("ATIVO"),
   grupoId: z.coerce.number().int().positive().optional(),
   q: z.string().max(40).optional(),
+  setor: z.string().max(40).optional(),
 });
 
 export type CriarAnimalInput = z.infer<typeof criarAnimalSchema>;

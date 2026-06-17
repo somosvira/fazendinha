@@ -14,6 +14,7 @@ function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: s
 export const animaisRouter = new Hono()
   .get("/rebanho/grupos", async (c) => c.json(await svc.listarGrupos()))
   .get("/rebanho/racas", async (c) => c.json(await svc.listarRacas()))
+  .get("/rebanho/setores", async (c) => c.json(await svc.listarSetores()))
   .get("/rebanho/animais", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarAnimais(c.req.valid("query"))))
   .get("/rebanho/animais/:id", async (c) => {
     const dto = await svc.obterAnimal(Number(c.req.param("id")));

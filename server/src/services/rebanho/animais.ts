@@ -16,9 +16,20 @@ export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {
   const where: any = {};
   if (f.status !== "TODOS") where.status = f.status;
   if (f.grupoId) where.grupoId = f.grupoId;
+  if (f.setor) where.setor = f.setor;
   if (f.q) where.OR = [{ numero: { contains: f.q, mode: "insensitive" } }, { nome: { contains: f.q, mode: "insensitive" } }];
   const rows = await prisma.animal.findMany({ where, include, orderBy: { numero: "asc" } });
   return rows.map(toAnimalDTO);
+}
+
+export async function listarSetores(): Promise<string[]> {
+  const rows = await prisma.animal.findMany({
+    where: { setor: { not: null } },
+    select: { setor: true },
+    distinct: ["setor"],
+    orderBy: { setor: "asc" },
+  });
+  return rows.map((a) => a.setor!);
 }
 
 export async function obterAnimal(id: number): Promise<AnimalDTO | null> {
