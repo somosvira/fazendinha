@@ -224,4 +224,34 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
+export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; }
+export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
+
+export const listarSaldos = () => req<SaldoDTO[]>(`/rebanho/estoque/saldos`);
+export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
+export const registrarMovimento = (p: MovimentoInput) => req<{ id: number }>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
+export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
+export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
+
+export function useSaldos() {
+  const [data, setData] = useState<SaldoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarSaldos().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useCustoVacaDia(dias = 30) {
+  const [data, setData] = useState<CustoVacaDia | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoVacaDia(dias).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [dias]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export type { ResumoAnimal };
