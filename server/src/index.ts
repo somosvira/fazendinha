@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { categoriasRouter } from "./routes/categorias.js";
 import { healthRouter } from "./routes/health.js";
 import { animaisRouter } from "./routes/rebanho/animais.js";
 import { eventosRouter } from "./routes/rebanho/eventos.js";
@@ -33,6 +34,7 @@ app.use(
 
 app.route("/api", healthRouter);
 app.route("/api", dashboardRouter);
+app.route("/api", categoriasRouter);
 app.route("/api", animaisRouter);
 app.route("/api", eventosRouter);
 app.route("/api", sanidadeRouter);
