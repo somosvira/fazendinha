@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { HerdDomainView } from "./components/HerdDomainView";
 import { AnimalCockpit } from "./components/AnimalCockpit";
 import { AnimalTab } from "./components/AnimalTab";
+import { ReproducaoTab } from "./components/ReproducaoTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { DashboardView } from "./components/DashboardView";
 import { IaView } from "./components/IaView";
@@ -23,11 +24,13 @@ export function RebanhoApp() {
         ? <AnimalCockpit key={recarga} animalId={nav.animalId} onVoltar={nav.voltarAoRebanho} onAbrirAnimal={nav.abrirAnimal} onEditar={(a) => setForm({ modo: "editar", animal: a })} onBaixa={(a) => setForm({ modo: "baixa", animal: a })} />
         : domainKey === "animal"
           ? <AnimalTab key={recarga} onAbrirAnimal={nav.abrirAnimal} onNovo={() => setForm({ modo: "novo" })} />
-          : domainKey
-            ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
-            : nav.tab === "dashboard"
-              ? <DashboardView onNav={nav.irPara} />
-              : <IaView />}
+          : domainKey === "reproducao"
+            ? <ReproducaoTab onAbrirAnimal={nav.abrirAnimal} />
+            : domainKey
+              ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
+              : nav.tab === "dashboard"
+                ? <DashboardView onNav={nav.irPara} />
+                : <IaView />}
       {form && <AnimalForm modo={form.modo} animal={form.animal} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
     </div>
   );
