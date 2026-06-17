@@ -52,9 +52,9 @@ export async function agregarCustoProducao(meses = 12) {
   // Custo vaca/dia (real): reusa o motor do Estoque (consumo de insumo ÷ vacas×dias).
   const cvd = await calcularCustoVacaDia(30); // { custoVacaDia, vacasEmLactacao, totalConsumo }
 
-  // Litros estimados do período (transparência) — produção média das vacas em
-  // lactação × dias do período. Só para mostrar a escala da produção seed; NÃO
-  // vira divisor de custo/litro (escalas incompatíveis — ver nota).
+  // Litros estimados do período — produção média/dia das vacas em lactação × dias.
+  // Com o rebanho real importado (Ideagri), isto já é a escala da fazenda inteira,
+  // então alimenta o custo/litro de verdade (é uma estimativa: produção atual × dias).
   const dias = meses * 30;
   const animais = await prisma.animal.findMany({
     where: { status: "ATIVO", resumo: { del: { not: null } } },
@@ -63,6 +63,9 @@ export async function agregarCustoProducao(meses = 12) {
   const litrosDia = animais.reduce((s, a) => s + toNum(a.resumo?.producaoMediaDia), 0);
   const litrosPeriodoEstimado = Math.round(litrosDia * dias);
 
+  const custoLitro =
+    litrosPeriodoEstimado > 0 ? Math.round((quebra.total / litrosPeriodoEstimado) * 100) / 100 : null;
+
   return {
     periodoMeses: meses,
     custeioLeiteTotal: quebra.total,
@@ -70,7 +73,10 @@ export async function agregarCustoProducao(meses = 12) {
     custoVacaDia: cvd.custoVacaDia,
     vacasEmLactacao: cvd.vacasEmLactacao,
     litrosPeriodoEstimado,
-    custoLitro: null as number | null,
-    nota: "Custo/litro real requer produção em escala da fazenda inteira; hoje a produção é demonstração (8 vacas).",
+    litrosDia: Math.round(litrosDia * 10) / 10,
+    custoLitro,
+    nota:
+      "Estimativa: custeio do leite (Atividade Leiteira) ÷ litros produzidos no período " +
+      "(produção atual das vacas em lactação × dias). Refina conforme entram novos controles leiteiros.",
   };
 }
