@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAnimal, useEventos } from "../api";
+import { useAnimal, useTimeline } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
@@ -21,7 +21,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   onBaixa: (a: Animal) => void;
 }) {
   const { data: a, loading, erro, recarregar } = useAnimal(animalId);
-  const { data: eventos, recarregar: recarregarEventos } = useEventos(animalId);
+  const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
   const [registrando, setRegistrando] = useState(false);
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
