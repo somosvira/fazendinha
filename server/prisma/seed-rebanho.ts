@@ -163,7 +163,30 @@ async function main() {
     await recomputarProducaoDoAnimal(a.id);
   }
 
-  console.log(`Seed rebanho ok: ${animais.length} animais.`);
+  // Cadastros: Produtos (catálogo remédio/ração/insumo). Idempotente: limpa e recria.
+  await prisma.produto.deleteMany({});
+  const produtos = [
+    { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, carencia: 96, estocavel: true, minimoEstoque: 4 },
+    { nome: "Ração Lactação Alta", tipo: "RACAO", unidade: "kg", custoUnitario: 2.1, percentualMS: 88, estocavel: true, minimoEstoque: 500 },
+    { nome: "Núcleo Mineral", tipo: "MINERAL", unidade: "kg", custoUnitario: 5.4, percentualMS: 96, estocavel: true, minimoEstoque: 100 },
+    { nome: "Sêmen Lance 884", tipo: "INSUMO", unidade: "dose", custoUnitario: 45, estocavel: true, minimoEstoque: 10 },
+    { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", custoUnitario: 62, carencia: 120, estocavel: true, minimoEstoque: 2 },
+  ] as const;
+  for (const p of produtos) await prisma.produto.create({ data: p as any });
+
+  // Cadastros: Fornecedores (estende ClienteFornecedor). Upsert por nome — não duplica
+  // os que o financeiro já criou, só garante tipo/contato.
+  const fornecedores = [
+    { nome: "Cargill", tipo: "FORNECEDOR", documento: "60.498.706/0001-57", telefone: "1130991000", email: "atendimento@cargill.com" },
+    { nome: "Coop. Boa Vista", tipo: "FORNECEDOR", documento: "12.345.678/0001-99", telefone: "3432221100", email: "contato@coopboavista.com.br" },
+    { nome: "Agropecuária Rio Novo", tipo: "AMBOS", telefone: "3499887766" },
+  ] as const;
+  for (const f of fornecedores) {
+    const { nome, ...rest } = f;
+    await prisma.clienteFornecedor.upsert({ where: { nome }, update: rest as any, create: { nome, ...(rest as any) } });
+  }
+
+  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores.`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
