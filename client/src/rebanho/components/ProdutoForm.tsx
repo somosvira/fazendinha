@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { criarProduto, editarProduto, type ProdutoDTO, type TipoProduto } from "../api";
+import { useEffect, useState } from "react";
+import { criarProduto, editarProduto, listarCategorias, listarCentrosCusto, type ProdutoDTO, type RefDTO, type TipoProduto } from "../api";
 
 const TIPOS: { id: TipoProduto; label: string }[] = [
   { id: "MEDICAMENTO", label: "Medicamento" },
@@ -19,10 +19,19 @@ export function ProdutoForm({ produto, onFechar, onSalvo }: { produto?: ProdutoD
     percentualMS: produto?.percentualMS != null ? String(produto.percentualMS) : "",
     estocavel: produto?.estocavel ?? true,
     minimoEstoque: produto?.minimoEstoque != null ? String(produto.minimoEstoque) : "",
+    categoriaId: produto?.categoriaId != null ? String(produto.categoriaId) : "",
+    centroCustoId: produto?.centroCustoId != null ? String(produto.centroCustoId) : "",
   });
+  const [categorias, setCategorias] = useState<RefDTO[]>([]);
+  const [centros, setCentros] = useState<RefDTO[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
+
+  useEffect(() => {
+    listarCategorias().then(setCategorias).catch(() => {});
+    listarCentrosCusto().then(setCentros).catch(() => {});
+  }, []);
 
   async function salvar() {
     setSalvando(true); setErro(null);
@@ -36,6 +45,8 @@ export function ProdutoForm({ produto, onFechar, onSalvo }: { produto?: ProdutoD
         percentualMS: f.percentualMS ? Number(f.percentualMS) : undefined,
         estocavel: f.estocavel,
         minimoEstoque: f.minimoEstoque ? Number(f.minimoEstoque) : undefined,
+        categoriaId: f.categoriaId ? Number(f.categoriaId) : null,
+        centroCustoId: f.centroCustoId ? Number(f.centroCustoId) : null,
       };
       if (produto) await editarProduto(produto.id, payload);
       else await criarProduto(payload);
@@ -58,6 +69,18 @@ export function ProdutoForm({ produto, onFechar, onSalvo }: { produto?: ProdutoD
           <input type="checkbox" checked={f.estocavel} onChange={(e) => set("estocavel", e.target.checked)} style={{ width: "auto" }} />Estocável
         </label>
         <label className="rb-fld">Estoque mínimo<input type="number" value={f.minimoEstoque} onChange={(e) => set("minimoEstoque", e.target.value)} /></label>
+        <label className="rb-fld">Categoria contábil
+          <select value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
+            <option value="">—</option>
+            {categorias.map((cat) => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
+          </select>
+        </label>
+        <label className="rb-fld">Centro de custo
+          <select value={f.centroCustoId} onChange={(e) => set("centroCustoId", e.target.value)}>
+            <option value="">—</option>
+            {centros.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
+          </select>
+        </label>
         {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
         <div className="rb-drawer-actions">
           <button className="rb-btn" onClick={onFechar}>Cancelar</button>
