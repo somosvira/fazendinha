@@ -77,7 +77,7 @@ export function ProducaoTab() {
             <thead><tr><th>Vaca</th><th>Produção</th></tr></thead>
             <tbody>{(data.ranking ?? []).map((r) => (
               <tr key={r.numero}>
-                <td className="rb-anm">{r.nome || `#${r.numero}`} <small>#{r.numero}</small></td>
+                <td className="rb-anm">{r.nome ? <>{r.nome} <small>#{r.numero}</small></> : <>#{r.numero}</>}</td>
                 <td>{r.litros} L/d</td>
               </tr>
             ))}</tbody>

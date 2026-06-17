@@ -42,7 +42,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 
       <div className="rb-head">
         <div>
-          <h1>{a.nome || `#${a.numero}`} <small>· #{a.numero}</small></h1>
+          <h1>{a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}</h1>
           <div className="rb-sub">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
         </div>
         <div className="rb-chips">

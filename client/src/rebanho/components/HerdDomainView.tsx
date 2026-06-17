@@ -4,14 +4,17 @@ import type { ResumoAnimal, IaInsight } from "../types";
 import { getAnimal } from "../mock";
 import { IaInsightBand } from "./IaInsight";
 
+export const RB_TOOLBAR: React.CSSProperties = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" };
+
 export function HerdDomainView({
-  config, resumos, insight, onAbrirAnimal, nomes,
+  config, resumos, insight, onAbrirAnimal, nomes, controles,
 }: {
   config: DomainConfig;
   resumos: ResumoAnimal[];
   insight?: IaInsight;
   onAbrirAnimal: (id: string) => void;
   nomes?: Record<string, { nome: string; numero: string }>;
+  controles?: React.ReactNode;
 }) {
   const [wlId, setWlId] = useState(config.worklists[0]?.id);
   const wl = config.worklists.find((w) => w.id === wlId);
@@ -25,6 +28,8 @@ export function HerdDomainView({
         <h1>{config.titulo}</h1>
         <div className="period">📅 Junho 2026 ▾</div>
       </div>
+
+      {controles && <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>}
 
       {kpis.length > 0 && (
         <div className="rb-kstrip" style={{ ["--cols" as any]: kpis.length }}>
