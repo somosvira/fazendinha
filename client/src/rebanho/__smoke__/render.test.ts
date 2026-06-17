@@ -9,6 +9,7 @@ import { IaView } from "../components/IaView";
 import { AppSidebar } from "../../components/AppSidebar";
 import { RebanhoContent } from "../RebanhoContent";
 import { ConfiguracoesView } from "../components/ConfiguracoesView";
+import { CadastrosView } from "../components/CadastrosView";
 import { ProducaoTab } from "../components/ProducaoTab";
 import { usuarios } from "../../data/acessos";
 
@@ -24,6 +25,7 @@ describe("render smoke", () => {
     expect(html).toContain("IA financeira");
     expect(html).toContain("Acessos");
     expect(html).toContain("Configurações");
+    expect(html).toContain("Cadastros");
     expect(html).toContain("Produção");
   });
 
@@ -44,6 +46,14 @@ describe("render smoke", () => {
     const html = renderToString(h(ConfiguracoesView));
     expect(html).toContain("Configurações");
     expect(html).toContain("Carregando");
+  });
+
+  it("CadastrosView renders sub-abas and the loading shell (fetches /rebanho/produtos)", () => {
+    const html = renderToString(h(CadastrosView));
+    expect(html).toContain("Cadastros");     // título
+    expect(html).toContain("Produtos");       // sub-aba
+    expect(html).toContain("Fornecedores");   // sub-aba
+    expect(html).toContain("Carregando");     // shell de loading (sem fetch no SSR)
   });
 
   it("ProducaoTab renders the loading shell (fetches /rebanho/producao)", () => {

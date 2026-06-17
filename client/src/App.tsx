@@ -16,6 +16,7 @@ import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
+import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
@@ -68,7 +69,7 @@ export function App() {
   // Redireciona só quando a aba ativa é financeira e não permitida (reb-* sempre ok)
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
-    if (isReb || tab === "acessos" || tab === "config") return;
+    if (isReb || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +100,7 @@ export function App() {
         {tab === "acessos" &&
           (isAdmin ? <Acessos users={users} setUsers={setUsers} onViewAs={enterViewAs} /> : <GatedTab user={effectiveUser} abaLabel="Acessos" />)}
         {tab === "config" && <ConfiguracoesView />}
+        {tab === "cadastros" && <CadastrosView />}
       </>
     );
 
