@@ -24,10 +24,10 @@ export function categoriaDe(cd, sexo) {
   return sexo === "F" ? "BEZERRA" : "BEZERRO";
 }
 
-// Pelagem é cor; refino de composição racial fica deferido. Default Girolando
-// (raça dominante do rebanho), usado quando a pelagem está vazia.
-export function racaDe(pelagem) {
-  return s(pelagem) ?? "Girolando";
+// Composição racial real do animal (ANIMALINFO_CADASTRO.RACA: "1/2 GL, GO",
+// "3/4 HO, GL", "Nelore", "Girolando"…). Default "Girolando" quando vazia.
+export function racaDe(raca) {
+  return s(raca) ?? "Girolando";
 }
 
 export function diasEntre(de, ate) {
