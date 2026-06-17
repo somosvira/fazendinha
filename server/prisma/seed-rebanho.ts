@@ -120,6 +120,22 @@ async function main() {
   function stripNull(r: any) {
     return { statusReprodutivo: r.statusReprodutivo, del: r.del, ordemLactacao: r.ordemLactacao, ultimoDgData: r.ultimoDgData ? new Date(r.ultimoDgData) : null, ultimoDgResultado: r.ultimoDgResultado, diasGestacao: r.diasGestacao, iepProjetado: r.iepProjetado, previsaoSecagem: r.previsaoSecagem ? new Date(r.previsaoSecagem) : null };
   }
+
+  // Dietas (nutrição lot-level) — upsert idempotente por nome + atribuição aos lotes.
+  const dietas = [
+    { nome: "Lactação Alta", descricao: "vacas de alta produção", pb: 18, edMcal: 1.68 },
+    { nome: "Lactação Média", descricao: "vacas de média produção", pb: 16, edMcal: 1.55 },
+    { nome: "Pré-parto", descricao: "transição", pb: 14, edMcal: 1.45 },
+    { nome: "Bezerreiro", descricao: "aleitamento/recria", pb: 20, edMcal: 1.80 },
+  ];
+  const dietaIdByNome: Record<string, number> = {};
+  for (const d of dietas) dietaIdByNome[d.nome] = (await prisma.dieta.upsert({ where: { nome: d.nome }, update: { descricao: d.descricao, pb: d.pb, edMcal: d.edMcal }, create: d })).id;
+  const lotesDieta: Record<string, string> = { "Alta Produção": "Lactação Alta", "Média Produção": "Lactação Média", "Bezerreiro": "Bezerreiro" };
+  for (const [grupoNome, dietaNome] of Object.entries(lotesDieta)) {
+    const g = await prisma.grupo.findUnique({ where: { nome: grupoNome } });
+    if (g) await prisma.grupo.update({ where: { id: g.id }, data: { dietaId: dietaIdByNome[dietaNome] } });
+  }
+
   console.log(`Seed rebanho ok: ${animais.length} animais.`);
 }
 
