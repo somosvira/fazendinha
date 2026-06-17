@@ -41,6 +41,7 @@ export function toAnimalDTO(a: any): AnimalDTO {
     paiNome: a.paiNome ?? null,
     grupoId: a.grupoId ?? null,
     grupoNome: a.grupo?.nome ?? null,
+    dietaNome: a.grupo?.dieta?.nome ?? null,
     setor: a.setor ?? null,
     ativo: a.status === "ATIVO",
     dataBaixa: iso(a.dataBaixa),

@@ -8,6 +8,7 @@ import { healthRouter } from "./routes/health.js";
 import { animaisRouter } from "./routes/rebanho/animais.js";
 import { eventosRouter } from "./routes/rebanho/eventos.js";
 import { sanidadeRouter } from "./routes/rebanho/sanidade.js";
+import { nutricaoRouter } from "./routes/rebanho/nutricao.js";
 
 const app = new Hono();
 
@@ -26,6 +27,7 @@ app.route("/api", dashboardRouter);
 app.route("/api", animaisRouter);
 app.route("/api", eventosRouter);
 app.route("/api", sanidadeRouter);
+app.route("/api", nutricaoRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);

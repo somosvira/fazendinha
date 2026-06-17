@@ -9,7 +9,7 @@ export class AnimalError extends Error {
   }
 }
 
-const include = { raca: true, grupo: true, mae: true, resumo: true } as const;
+const include = { raca: true, grupo: { include: { dieta: true } }, mae: true, resumo: true } as const;
 const d = (s?: string) => (s ? new Date(s) : undefined);
 
 export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {

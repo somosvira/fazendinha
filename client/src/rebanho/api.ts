@@ -111,4 +111,22 @@ export function useAnimal(id: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+export interface DietaDTO { id: number; nome: string; descricao: string | null; pb: number | null; edMcal: number | null; ativo: boolean; }
+export interface LoteDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; numAnimais: number; producaoMedia: number | null; }
+export interface DietaInput { nome: string; descricao?: string; pb?: number; edMcal?: number; }
+export const listarDietas = () => req<DietaDTO[]>(`/rebanho/dietas`);
+export const criarDieta = (p: DietaInput) => req<DietaDTO>(`/rebanho/dietas`, { method: "POST", body: JSON.stringify(p) });
+export const editarDieta = (id: number, p: DietaInput) => req<DietaDTO>(`/rebanho/dietas/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export const listarLotes = () => req<LoteDTO[]>(`/rebanho/lotes`);
+export const atribuirDieta = (grupoId: number, dietaId: number | null) => req<{ ok: true }>(`/rebanho/lotes/${grupoId}/dieta`, { method: "POST", body: JSON.stringify({ dietaId }) });
+export function useLotes() {
+  const [data, setData] = useState<LoteDTO[]>([]); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarLotes().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, erro, recarregar };
+}
+export function useDietas() {
+  const [data, setData] = useState<DietaDTO[]>([]); const recarregar = useCallback(() => { listarDietas().then(setData).catch(() => {}); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]); return { data, recarregar };
+}
+
 export type { ResumoAnimal };
