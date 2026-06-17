@@ -5,7 +5,7 @@ import type { IaInsight } from "../types";
 // O texto do insight virá da IA/servidor no futuro; nunca injetamos HTML cru.
 // Tudo fora de <b></b> é texto puro (escapado pelo React); o conteúdo de <b>
 // é renderizado como filho de <strong> (também escapado). Sem vetor de XSS.
-function Enfase({ texto }: { texto: string }) {
+export function Enfase({ texto }: { texto: string }) {
   const partes = texto.split(/(<b>.*?<\/b>)/g);
   return (
     <>
