@@ -175,6 +175,7 @@ model Animal {
   resumo           ResumoAnimal?
   numPartosEntrada    Int                 @default(0)
   eventosReprodutivos EventoReprodutivo[]
+  eventosSanitarios   EventoSanitario[]
   lactacoes           Lactacao[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -239,4 +240,37 @@ model Lactacao {
   dtFim    DateTime? @db.Date
 
   @@index([animalId])
+}
+
+enum TipoEventoSanitario {
+  OCORRENCIA
+  APLICACAO
+  EXAME
+  MASTITE
+  VACINA
+}
+
+model EventoSanitario {
+  id            Int                 @id @default(autoincrement())
+  animal        Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId      Int
+  tipo          TipoEventoSanitario
+  data          DateTime            @db.Date
+  observacao    String?
+  doenca        String?
+  dtFim         DateTime?           @db.Date
+  diasTratamento Int?
+  produto       String?
+  dose          String?
+  carencia      Int?
+  loteProduto   String?
+  ccs           Int?
+  gordura       Decimal?            @db.Decimal(4, 2)
+  proteina      Decimal?            @db.Decimal(4, 2)
+  quarto        String?
+  severidade    String?
+  resultadoCultivo String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  @@index([animalId, data])
 }

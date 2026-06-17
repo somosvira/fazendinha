@@ -93,6 +93,30 @@ async function main() {
     const pc = producaoCcs[numero];
     if (pc) await prisma.resumoAnimal.update({ where: { animalId: a.id }, data: pc });
   }
+
+  // Eventos sanitários (CCS/mastite/aplicação) — idempotente via deleteMany global.
+  // O CCS do resumo passa a ser COMPUTADO dos exames (substitui os valores hardcoded
+  // do bloco de produção acima); produção/estado reprodutivo NÃO são tocados.
+  await prisma.eventoSanitario.deleteMany({});
+  const { recomputarResumoSanidade } = await import("../src/services/rebanho/sanidade.recompute.js");
+  const sanPorAnimal: Record<string, any[]> = {
+    "1234": [ { tipo: "EXAME", data: new Date("2026-03-12"), ccs: 245 }, { tipo: "EXAME", data: new Date("2026-04-12"), ccs: 389 }, { tipo: "EXAME", data: new Date("2026-05-12"), ccs: 512 }, { tipo: "MASTITE", data: new Date("2026-04-14"), quarto: "PD", severidade: "clínica" }, { tipo: "APLICACAO", data: new Date("2026-04-14"), produto: "Mastijet", dose: "1 bisnaga", carencia: 96, loteProduto: "MAST-2231" } ],
+    "1305": [ { tipo: "EXAME", data: new Date("2026-04-01"), ccs: 280 }, { tipo: "EXAME", data: new Date("2026-05-01"), ccs: 300 } ],
+    "1188": [ { tipo: "EXAME", data: new Date("2026-05-10"), ccs: 180 } ],
+    "0942": [ { tipo: "EXAME", data: new Date("2026-05-10"), ccs: 240 } ],
+    "0877": [ { tipo: "EXAME", data: new Date("2026-05-10"), ccs: 150 } ],
+    "0871": [ { tipo: "EXAME", data: new Date("2026-05-10"), ccs: 130 } ],
+    "1421": [ { tipo: "EXAME", data: new Date("2026-05-10"), ccs: 210 } ],
+  };
+  const isoS = (d: Date) => d.toISOString().slice(0, 10);
+  for (const [numero, evs] of Object.entries(sanPorAnimal)) {
+    const a = await prisma.animal.findUnique({ where: { numero } });
+    if (!a) continue;
+    for (const e of evs) await prisma.eventoSanitario.create({ data: { animalId: a.id, ...e } });
+    const r = recomputarResumoSanidade(evs.map((e: any) => ({ tipo: e.tipo, data: isoS(e.data), ccs: e.ccs ?? null })));
+    await prisma.resumoAnimal.update({ where: { animalId: a.id }, data: { ccs: r.ccs, ccsTendencia: r.ccsTendencia } });
+  }
+
   function stripNull(r: any) {
     return { statusReprodutivo: r.statusReprodutivo, del: r.del, ordemLactacao: r.ordemLactacao, ultimoDgData: r.ultimoDgData ? new Date(r.ultimoDgData) : null, ultimoDgResultado: r.ultimoDgResultado, diasGestacao: r.diasGestacao, iepProjetado: r.iepProjetado, previsaoSecagem: r.previsaoSecagem ? new Date(r.previsaoSecagem) : null };
   }
