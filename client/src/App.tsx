@@ -42,6 +42,7 @@ const REB: Record<string, RebSub> = {
   "reb-nutricao": "nutricao",
   "reb-producao": "producao",
   "reb-estoque": "estoque",
+  "reb-custo": "custo",
   "reb-ia": "ia",
 };
 

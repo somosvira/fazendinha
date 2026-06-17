@@ -260,4 +260,26 @@ export function useCustoVacaDia(dias = 30) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Custo de Produção (Fatia 11): quebra real do custeio do leite ──────────
+export interface CustoProducao {
+  periodoMeses: number;
+  custeioLeiteTotal: number;
+  breakdown: { categoria: string; valor: number; pct: number }[];
+  custoVacaDia: number | null;
+  vacasEmLactacao: number;
+  litrosPeriodoEstimado: number;
+  custoLitro: number | null;
+  nota: string;
+}
+export const obterCustoProducao = (meses = 12) => req<CustoProducao>(`/rebanho/custo-producao?meses=${meses}`);
+
+export function useCustoProducao(meses = 12) {
+  const [data, setData] = useState<CustoProducao | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoProducao(meses).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [meses]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export type { ResumoAnimal };
