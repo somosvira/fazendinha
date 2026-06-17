@@ -85,6 +85,11 @@ interface EventoSanitarioJson {
   produto?: string | null;
   dose?: string | null;
   carencia?: number | null;
+  ccs?: number | null;
+  gordura?: number | null;
+  proteina?: number | null;
+  quarto?: string | null;
+  resultadoCultivo?: string | null;
   observacao?: string | null;
 }
 interface RebanhoJson {
@@ -236,6 +241,11 @@ async function main() {
       produto: e.produto ?? null,
       dose: e.dose ?? null,
       carencia: e.carencia ?? null,
+      ccs: e.ccs ?? null,
+      gordura: e.gordura ?? null,
+      proteina: e.proteina ?? null,
+      quarto: e.quarto ?? null,
+      resultadoCultivo: e.resultadoCultivo ?? null,
       observacao: e.observacao ?? null,
     }));
   let sanitariosInseridos = 0;

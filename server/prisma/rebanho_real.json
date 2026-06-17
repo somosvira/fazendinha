@@ -103267,6 +103267,4401 @@
       "dose": "2",
       "carencia": null,
       "observacao": null
+    },
+    {
+      "numero": "1001",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 256,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1001",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 261,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1001",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 333,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1001",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2345,
+      "gordura": 7.03,
+      "proteina": 3.32,
+      "observacao": null
+    },
+    {
+      "numero": "1001",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 358,
+      "gordura": 4.72,
+      "proteina": 3.69,
+      "observacao": null
+    },
+    {
+      "numero": "1002",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1096,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1002",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3268,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1002",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1355,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1004",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 558,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1004",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 298,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1004",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 9999,
+      "gordura": 2.73,
+      "proteina": 3.39,
+      "observacao": null
+    },
+    {
+      "numero": "1004",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 971,
+      "gordura": 4.08,
+      "proteina": 3.35,
+      "observacao": null
+    },
+    {
+      "numero": "1005",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1241,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1005",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 609,
+      "gordura": 4.97,
+      "proteina": 2.82,
+      "observacao": null
+    },
+    {
+      "numero": "1005",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 9999,
+      "gordura": 2.23,
+      "proteina": 4.05,
+      "observacao": null
+    },
+    {
+      "numero": "1006",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1017,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1006",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1363,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1006",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1416,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1006",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1168,
+      "gordura": 4.44,
+      "proteina": 3.72,
+      "observacao": null
+    },
+    {
+      "numero": "1009",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 5734,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1009",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 255,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1009",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 9999,
+      "gordura": 6.71,
+      "proteina": 5.07,
+      "observacao": null
+    },
+    {
+      "numero": "1011",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 64,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1011",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 97,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1011",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 83,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1012",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 133,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1012",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 157,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1012",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 496,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1012",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 193,
+      "gordura": 3.9,
+      "proteina": 3.45,
+      "observacao": null
+    },
+    {
+      "numero": "1012",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 255,
+      "gordura": 4.33,
+      "proteina": 3.8,
+      "observacao": null
+    },
+    {
+      "numero": "1013",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 21,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1013",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 97,
+      "gordura": 5.11,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1013",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 132,
+      "gordura": 5.39,
+      "proteina": 3.7,
+      "observacao": null
+    },
+    {
+      "numero": "1014",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1517,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1014",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3735,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1014",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1259,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1014",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 3276,
+      "gordura": 7.87,
+      "proteina": 4.18,
+      "observacao": null
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 502,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 337,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 312,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 729,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2916,
+      "gordura": 4.73,
+      "proteina": 3.53,
+      "observacao": null
+    },
+    {
+      "numero": "1015",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1290,
+      "gordura": 5.04,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1016",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 496,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1016",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 997,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1016",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 843,
+      "gordura": 7.99,
+      "proteina": 3.71,
+      "observacao": null
+    },
+    {
+      "numero": "1017",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1247,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1017",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1027,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1017",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2863,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1017",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 175,
+      "gordura": 5.23,
+      "proteina": 3.59,
+      "observacao": null
+    },
+    {
+      "numero": "1018",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 171,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1018",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 232,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1018",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 914,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1018",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 314,
+      "gordura": 5.95,
+      "proteina": 3.86,
+      "observacao": null
+    },
+    {
+      "numero": "1018",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 744,
+      "gordura": 6.73,
+      "proteina": 3.93,
+      "observacao": null
+    },
+    {
+      "numero": "1019",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 194,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1019",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 360,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1019",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1039,
+      "gordura": 4.76,
+      "proteina": 4.14,
+      "observacao": null
+    },
+    {
+      "numero": "1019",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 5075,
+      "gordura": 7.07,
+      "proteina": 4.07,
+      "observacao": null
+    },
+    {
+      "numero": "1022",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 895,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1022",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 4500,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1022",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 3525,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1022",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1801,
+      "gordura": 3.14,
+      "proteina": 3.49,
+      "observacao": null
+    },
+    {
+      "numero": "1022",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 3998,
+      "gordura": 3.73,
+      "proteina": 3.75,
+      "observacao": null
+    },
+    {
+      "numero": "1024",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 272,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1024",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 94,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1024",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 85,
+      "gordura": 4.39,
+      "proteina": 3.36,
+      "observacao": null
+    },
+    {
+      "numero": "1024",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 609,
+      "gordura": 5.07,
+      "proteina": 3.6,
+      "observacao": null
+    },
+    {
+      "numero": "1025",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 339,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1025",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 16,
+      "gordura": 2.26,
+      "proteina": 3.26,
+      "observacao": null
+    },
+    {
+      "numero": "1025",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 10,
+      "gordura": 5.31,
+      "proteina": 3.27,
+      "observacao": null
+    },
+    {
+      "numero": "1026",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 301,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1026",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 899,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1026",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1009,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1026",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 575,
+      "gordura": 3.8,
+      "proteina": 4.48,
+      "observacao": null
+    },
+    {
+      "numero": "1026",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1612,
+      "gordura": 2.86,
+      "proteina": 4.46,
+      "observacao": null
+    },
+    {
+      "numero": "1027",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 228,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1027",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 44,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1027",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 4904,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1027",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 492,
+      "gordura": 1.89,
+      "proteina": 3.52,
+      "observacao": null
+    },
+    {
+      "numero": "1027",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1295,
+      "gordura": 6,
+      "proteina": 3.41,
+      "observacao": null
+    },
+    {
+      "numero": "1028",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1122,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1028",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 140,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1028",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 116,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1028",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 71,
+      "gordura": 3.04,
+      "proteina": 3.39,
+      "observacao": null
+    },
+    {
+      "numero": "1028",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 463,
+      "gordura": 4.61,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1029",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 673,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1029",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 2152,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1029",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1504,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1029",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1029,
+      "gordura": 3.16,
+      "proteina": 3.27,
+      "observacao": null
+    },
+    {
+      "numero": "1029",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2143,
+      "gordura": 4.59,
+      "proteina": 3.35,
+      "observacao": null
+    },
+    {
+      "numero": "1031",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 817,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1031",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 19,
+      "gordura": 3.75,
+      "proteina": 3.11,
+      "observacao": null
+    },
+    {
+      "numero": "1031",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 153,
+      "gordura": 5.63,
+      "proteina": 3.13,
+      "observacao": null
+    },
+    {
+      "numero": "1032",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 4403,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1032",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 4353,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1033",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 456,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1033",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 2481,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1033",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2782,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1033",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 880,
+      "gordura": 4.85,
+      "proteina": 3.49,
+      "observacao": null
+    },
+    {
+      "numero": "1033",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2494,
+      "gordura": 6,
+      "proteina": 3.63,
+      "observacao": null
+    },
+    {
+      "numero": "1034",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 54,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1034",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 119,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1034",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 80,
+      "gordura": 4.1,
+      "proteina": 3.59,
+      "observacao": null
+    },
+    {
+      "numero": "1034",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 258,
+      "gordura": 6.9,
+      "proteina": 3.59,
+      "observacao": null
+    },
+    {
+      "numero": "1035",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 46,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1035",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 37,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1035",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 101,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1036",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 264,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1036",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 227,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1036",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 500,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1036",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 720,
+      "gordura": 4.8,
+      "proteina": 3.73,
+      "observacao": null
+    },
+    {
+      "numero": "1037",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 630,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1037",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 672,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1037",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 652,
+      "gordura": 4.95,
+      "proteina": 4.56,
+      "observacao": null
+    },
+    {
+      "numero": "1038",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1500,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1038",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1540,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1038",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 914,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1038",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1678,
+      "gordura": 4.65,
+      "proteina": 3.67,
+      "observacao": null
+    },
+    {
+      "numero": "1039",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 101,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1039",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 91,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1039",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 296,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1039",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 120,
+      "gordura": 3.06,
+      "proteina": 3.98,
+      "observacao": null
+    },
+    {
+      "numero": "1039",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 194,
+      "gordura": 5.14,
+      "proteina": 3.99,
+      "observacao": null
+    },
+    {
+      "numero": "1040",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 13,
+      "gordura": 2.82,
+      "proteina": 2.93,
+      "observacao": null
+    },
+    {
+      "numero": "1040",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 15,
+      "gordura": 4.96,
+      "proteina": 3.1,
+      "observacao": null
+    },
+    {
+      "numero": "1046",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2102,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1046",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 5795,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1046",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 5833,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1046",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1619,
+      "gordura": 2.78,
+      "proteina": 3.16,
+      "observacao": null
+    },
+    {
+      "numero": "1046",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2449,
+      "gordura": 4.73,
+      "proteina": 3.42,
+      "observacao": null
+    },
+    {
+      "numero": "1047",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 981,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1047",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3384,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1047",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 4934,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1047",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 980,
+      "gordura": 3.97,
+      "proteina": 3.77,
+      "observacao": null
+    },
+    {
+      "numero": "1047",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2498,
+      "gordura": 6.4,
+      "proteina": 3.75,
+      "observacao": null
+    },
+    {
+      "numero": "1051",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 37,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1051",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 40,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1051",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 68,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1051",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 35,
+      "gordura": 2.38,
+      "proteina": 3.52,
+      "observacao": null
+    },
+    {
+      "numero": "1051",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 36,
+      "gordura": 5.86,
+      "proteina": 3.72,
+      "observacao": null
+    },
+    {
+      "numero": "1052",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 88,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1052",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 62,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1052",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 57,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1052",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 65,
+      "gordura": 4.8,
+      "proteina": 3.7,
+      "observacao": null
+    },
+    {
+      "numero": "1054",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 438,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1054",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 44,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1054",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 85,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1054",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 48,
+      "gordura": 4.38,
+      "proteina": 3.14,
+      "observacao": null
+    },
+    {
+      "numero": "1054",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 115,
+      "gordura": 4.29,
+      "proteina": 3.12,
+      "observacao": null
+    },
+    {
+      "numero": "1055",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1031,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1055",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 434,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1055",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 500,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1055",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 51,
+      "gordura": 1.25,
+      "proteina": 3.17,
+      "observacao": null
+    },
+    {
+      "numero": "1055",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 27,
+      "gordura": 2.63,
+      "proteina": 3.13,
+      "observacao": null
+    },
+    {
+      "numero": "1056",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 233,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1056",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 319,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1056",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 131,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1056",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1659,
+      "gordura": 5.37,
+      "proteina": 3.85,
+      "observacao": null
+    },
+    {
+      "numero": "1056",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 3311,
+      "gordura": 5.08,
+      "proteina": 3.7,
+      "observacao": null
+    },
+    {
+      "numero": "1057",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 9,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1057",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 157,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1057",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 169,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1057",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 35,
+      "gordura": 2.67,
+      "proteina": 3.43,
+      "observacao": null
+    },
+    {
+      "numero": "1057",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 267,
+      "gordura": 6.44,
+      "proteina": 3.26,
+      "observacao": null
+    },
+    {
+      "numero": "1058",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 611,
+      "gordura": 4.48,
+      "proteina": 3.18,
+      "observacao": null
+    },
+    {
+      "numero": "1058",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 652,
+      "gordura": 3.97,
+      "proteina": 3.15,
+      "observacao": null
+    },
+    {
+      "numero": "1060",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 4262,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1060",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1470,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1060",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2698,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1060",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 988,
+      "gordura": 4.95,
+      "proteina": 3.88,
+      "observacao": null
+    },
+    {
+      "numero": "1063",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 21,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1063",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 31,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1063",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 27,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1063",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 93,
+      "gordura": 1.94,
+      "proteina": 2.85,
+      "observacao": null
+    },
+    {
+      "numero": "1063",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 74,
+      "gordura": 3.4,
+      "proteina": 2.96,
+      "observacao": null
+    },
+    {
+      "numero": "1064",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 160,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1064",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 358,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1064",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 486,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1064",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 658,
+      "gordura": 4.26,
+      "proteina": 3.06,
+      "observacao": null
+    },
+    {
+      "numero": "1064",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1869,
+      "gordura": 5.42,
+      "proteina": 3.18,
+      "observacao": null
+    },
+    {
+      "numero": "1065",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2599,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1065",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 6404,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1065",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 5636,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1066",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 105,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1066",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 512,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1066",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 520,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1066",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2366,
+      "gordura": 3.46,
+      "proteina": 3.41,
+      "observacao": null
+    },
+    {
+      "numero": "1066",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 9999,
+      "gordura": 4.38,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1067",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 189,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1067",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 118,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1067",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 124,
+      "gordura": 4.07,
+      "proteina": 3.24,
+      "observacao": null
+    },
+    {
+      "numero": "1067",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 50,
+      "gordura": 4.54,
+      "proteina": 3.07,
+      "observacao": null
+    },
+    {
+      "numero": "1069",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 105,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1069",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 135,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1069",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 209,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1069",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 202,
+      "gordura": 4.63,
+      "proteina": 3.37,
+      "observacao": null
+    },
+    {
+      "numero": "1070",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 174,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1070",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 2393,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1070",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 47,
+      "gordura": 3.86,
+      "proteina": 2.72,
+      "observacao": null
+    },
+    {
+      "numero": "1073",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 8,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1073",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 10,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1073",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 30,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1073",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 381,
+      "gordura": 4.35,
+      "proteina": 3.93,
+      "observacao": null
+    },
+    {
+      "numero": "1074",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 3228,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1074",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1368,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1074",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 3611,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1074",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 4433,
+      "gordura": 4.29,
+      "proteina": 3.29,
+      "observacao": null
+    },
+    {
+      "numero": "1075",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2015,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1075",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1151,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1075",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2439,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1076",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 554,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1076",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 335,
+      "gordura": 1.89,
+      "proteina": 3.17,
+      "observacao": null
+    },
+    {
+      "numero": "1076",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 9999,
+      "gordura": 4.63,
+      "proteina": 3.45,
+      "observacao": null
+    },
+    {
+      "numero": "1077",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 6160,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1078",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 3224,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1078",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 9999,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1078",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 7229,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1078",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 338,
+      "gordura": 3.99,
+      "proteina": 3.06,
+      "observacao": null
+    },
+    {
+      "numero": "1079",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 32,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1079",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 22,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1079",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 40,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1079",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 85,
+      "gordura": 6.04,
+      "proteina": 3.53,
+      "observacao": null
+    },
+    {
+      "numero": "1079",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 263,
+      "gordura": 6.02,
+      "proteina": 3.79,
+      "observacao": null
+    },
+    {
+      "numero": "1081",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 978,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1081",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3183,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "2",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 53,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "2",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 83,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "2",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 26,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "2",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 7,
+      "gordura": 2.12,
+      "proteina": 3.29,
+      "observacao": null
+    },
+    {
+      "numero": "2",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 24,
+      "gordura": 4.82,
+      "proteina": 3.42,
+      "observacao": null
+    },
+    {
+      "numero": "21",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 23,
+      "gordura": 3.45,
+      "proteina": 2.81,
+      "observacao": null
+    },
+    {
+      "numero": "21",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 17,
+      "gordura": 4.72,
+      "proteina": 2.89,
+      "observacao": null
+    },
+    {
+      "numero": "3",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1342,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "3",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1617,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "3",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1148,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "3",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 693,
+      "gordura": 4.2,
+      "proteina": 2.96,
+      "observacao": null
+    },
+    {
+      "numero": "3",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1347,
+      "gordura": 4.66,
+      "proteina": 2.96,
+      "observacao": null
+    },
+    {
+      "numero": "1082",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 113,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1082",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 15,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1082",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 506,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1084",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2452,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1084",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 824,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1084",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2215,
+      "gordura": 3.02,
+      "proteina": 3.39,
+      "observacao": null
+    },
+    {
+      "numero": "1084",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2888,
+      "gordura": 4.37,
+      "proteina": 3.76,
+      "observacao": null
+    },
+    {
+      "numero": "1085",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 681,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1085",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 610,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1085",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 3768,
+      "gordura": 4.43,
+      "proteina": 3.62,
+      "observacao": null
+    },
+    {
+      "numero": "1085",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1010,
+      "gordura": 7.79,
+      "proteina": 3.77,
+      "observacao": null
+    },
+    {
+      "numero": "1086",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 50,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1086",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 27,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1086",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 29,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1086",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 41,
+      "gordura": 3.68,
+      "proteina": 3.82,
+      "observacao": null
+    },
+    {
+      "numero": "1086",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 93,
+      "gordura": 6.33,
+      "proteina": 3.77,
+      "observacao": null
+    },
+    {
+      "numero": "1088",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 30,
+      "gordura": 2.86,
+      "proteina": 3.85,
+      "observacao": null
+    },
+    {
+      "numero": "1088",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 10,
+      "gordura": 4.06,
+      "proteina": 3.07,
+      "observacao": null
+    },
+    {
+      "numero": "1089",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 415,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1089",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 849,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1089",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 421,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1089",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1244,
+      "gordura": 4.13,
+      "proteina": 3.29,
+      "observacao": null
+    },
+    {
+      "numero": "1089",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2295,
+      "gordura": 6.91,
+      "proteina": 3.59,
+      "observacao": null
+    },
+    {
+      "numero": "1090",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 159,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1090",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 72,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1090",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 110,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1091",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2146,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1091",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 6221,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1092",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 106,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1092",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 161,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1092",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 36,
+      "gordura": 4.01,
+      "proteina": 2.77,
+      "observacao": null
+    },
+    {
+      "numero": "1093",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1132,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1093",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 2444,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1093",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2057,
+      "gordura": 3.32,
+      "proteina": 3.14,
+      "observacao": null
+    },
+    {
+      "numero": "1094",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 293,
+      "gordura": 3.06,
+      "proteina": 3.2,
+      "observacao": null
+    },
+    {
+      "numero": "1094",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 132,
+      "gordura": 4.09,
+      "proteina": 3.28,
+      "observacao": null
+    },
+    {
+      "numero": "1095",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 37,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1095",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 24,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1095",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 49,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1095",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 3175,
+      "gordura": 5.75,
+      "proteina": 3.8,
+      "observacao": null
+    },
+    {
+      "numero": "1096",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 61,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1096",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 32,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1096",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 35,
+      "gordura": 3.89,
+      "proteina": 3.32,
+      "observacao": null
+    },
+    {
+      "numero": "1096",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 9999,
+      "gordura": 6.9,
+      "proteina": 5.1,
+      "observacao": null
+    },
+    {
+      "numero": "1099",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 31,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1099",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 23,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1099",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 30,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1099",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 93,
+      "gordura": 5.63,
+      "proteina": 4.15,
+      "observacao": null
+    },
+    {
+      "numero": "1100",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 2554,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1100",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 206,
+      "gordura": 4.54,
+      "proteina": 2.98,
+      "observacao": null
+    },
+    {
+      "numero": "1100",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 404,
+      "gordura": 4.29,
+      "proteina": 3.22,
+      "observacao": null
+    },
+    {
+      "numero": "1102",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 23,
+      "gordura": 3.07,
+      "proteina": 3.5,
+      "observacao": null
+    },
+    {
+      "numero": "1102",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 41,
+      "gordura": 4.97,
+      "proteina": 2.79,
+      "observacao": null
+    },
+    {
+      "numero": "1105",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 7651,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1105",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 981,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1105",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1201,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1105",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 2382,
+      "gordura": 2.57,
+      "proteina": 4.22,
+      "observacao": null
+    },
+    {
+      "numero": "1107",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 154,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1107",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 482,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1107",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 570,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1107",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 368,
+      "gordura": 3.73,
+      "proteina": 3.48,
+      "observacao": null
+    },
+    {
+      "numero": "1109",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 950,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1109",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3342,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1110",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 312,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1110",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 383,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1110",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 910,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1110",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 579,
+      "gordura": 5.19,
+      "proteina": 3.97,
+      "observacao": null
+    },
+    {
+      "numero": "1110",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1186,
+      "gordura": 5.81,
+      "proteina": 4.07,
+      "observacao": null
+    },
+    {
+      "numero": "1111",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 29,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1111",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1441,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1111",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 546,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1111",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 59,
+      "gordura": 4.33,
+      "proteina": 3.31,
+      "observacao": null
+    },
+    {
+      "numero": "1111",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 39,
+      "gordura": 5.76,
+      "proteina": 3.39,
+      "observacao": null
+    },
+    {
+      "numero": "1112",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 17,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1112",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 11,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1112",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 440,
+      "gordura": 2.79,
+      "proteina": 3.22,
+      "observacao": null
+    },
+    {
+      "numero": "1112",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 468,
+      "gordura": 4.03,
+      "proteina": 3.31,
+      "observacao": null
+    },
+    {
+      "numero": "1114",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 9,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1114",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 33,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1114",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 38,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1114",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 49,
+      "gordura": 5.74,
+      "proteina": 3.93,
+      "observacao": null
+    },
+    {
+      "numero": "1115",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 9999,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1115",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1307,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1115",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 6027,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1115",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 9999,
+      "gordura": 9.47,
+      "proteina": 4.34,
+      "observacao": null
+    },
+    {
+      "numero": "1117",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 260,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1117",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 221,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1117",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 161,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1117",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 108,
+      "gordura": 4.84,
+      "proteina": 4.1,
+      "observacao": null
+    },
+    {
+      "numero": "1118",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 536,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1118",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 410,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1118",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 724,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1118",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 402,
+      "gordura": 2.6,
+      "proteina": 3.52,
+      "observacao": null
+    },
+    {
+      "numero": "1119",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 715,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1119",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3207,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1119",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 338,
+      "gordura": 7.15,
+      "proteina": 3.53,
+      "observacao": null
+    },
+    {
+      "numero": "1119",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 356,
+      "gordura": 5.23,
+      "proteina": 3.36,
+      "observacao": null
+    },
+    {
+      "numero": "1120",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 45,
+      "gordura": 6.44,
+      "proteina": 4.03,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 132,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1121",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 141,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 281,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 5633,
+      "gordura": 2.85,
+      "proteina": 3.73,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 840,
+      "gordura": 4.37,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1123",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 30,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1123",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 43,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1123",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 30,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1123",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 31,
+      "gordura": 3.69,
+      "proteina": 3.33,
+      "observacao": null
+    },
+    {
+      "numero": "1123",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 19,
+      "gordura": 4.92,
+      "proteina": 3.33,
+      "observacao": null
+    },
+    {
+      "numero": "1124",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 926,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1124",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1657,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1124",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 7914,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1124",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 726,
+      "gordura": 2.74,
+      "proteina": 3.35,
+      "observacao": null
+    },
+    {
+      "numero": "1124",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1188,
+      "gordura": 5.6,
+      "proteina": 3.21,
+      "observacao": null
+    },
+    {
+      "numero": "1125",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1041,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1125",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1627,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1125",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 1192,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1125",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1450,
+      "gordura": 3.31,
+      "proteina": 3.4,
+      "observacao": null
+    },
+    {
+      "numero": "1126",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 169,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1126",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 231,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1126",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 292,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1126",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 406,
+      "gordura": 6.74,
+      "proteina": 3.82,
+      "observacao": null
+    },
+    {
+      "numero": "1126",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1600,
+      "gordura": 7.06,
+      "proteina": 3.69,
+      "observacao": null
+    },
+    {
+      "numero": "1127",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 12,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1127",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 13,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1127",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 22,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1127",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 19,
+      "gordura": 4.65,
+      "proteina": 3.84,
+      "observacao": null
+    },
+    {
+      "numero": "1127",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 25,
+      "gordura": 4.42,
+      "proteina": 3.99,
+      "observacao": null
+    },
+    {
+      "numero": "1128",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 33,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1128",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 97,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1128",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 49,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1128",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 107,
+      "gordura": 4.05,
+      "proteina": 3.38,
+      "observacao": null
+    },
+    {
+      "numero": "1128",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 74,
+      "gordura": 7.59,
+      "proteina": 3.49,
+      "observacao": null
+    },
+    {
+      "numero": "1129",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1786,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1129",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3338,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1129",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2311,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1129",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 141,
+      "gordura": 3.97,
+      "proteina": 3.51,
+      "observacao": null
+    },
+    {
+      "numero": "1129",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1909,
+      "gordura": 4.66,
+      "proteina": 3.55,
+      "observacao": null
+    },
+    {
+      "numero": "1130",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1146,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1130",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 873,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1130",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 3408,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1130",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1951,
+      "gordura": 4.3,
+      "proteina": 3.61,
+      "observacao": null
+    },
+    {
+      "numero": "1130",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 2184,
+      "gordura": 5.46,
+      "proteina": 3.69,
+      "observacao": null
+    },
+    {
+      "numero": "1131",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 34,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1131",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 27,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1131",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 52,
+      "gordura": 4.61,
+      "proteina": 3.51,
+      "observacao": null
+    },
+    {
+      "numero": "1131",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 18,
+      "gordura": 7.17,
+      "proteina": 3.73,
+      "observacao": null
+    },
+    {
+      "numero": "1135",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 547,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1135",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 248,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1136",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 173,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1136",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 241,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1136",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 847,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1136",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 501,
+      "gordura": 3.91,
+      "proteina": 3.67,
+      "observacao": null
+    },
+    {
+      "numero": "1139",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 377,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1139",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 1014,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1139",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2301,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1139",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 343,
+      "gordura": 2.16,
+      "proteina": 3.28,
+      "observacao": null
+    },
+    {
+      "numero": "1139",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 1176,
+      "gordura": 4.06,
+      "proteina": 3.25,
+      "observacao": null
+    },
+    {
+      "numero": "1140",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 53,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1140",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 76,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1140",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 223,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1141",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 244,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1141",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 164,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1141",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 148,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1141",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 109,
+      "gordura": 6.62,
+      "proteina": 3.56,
+      "observacao": null
+    },
+    {
+      "numero": "1141",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 85,
+      "gordura": 5.3,
+      "proteina": 3.74,
+      "observacao": null
+    },
+    {
+      "numero": "1142",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 287,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1142",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 783,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1142",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 296,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1142",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 568,
+      "gordura": 2.75,
+      "proteina": 3.99,
+      "observacao": null
+    },
+    {
+      "numero": "1143",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 33,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1143",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 25,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1143",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 57,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1143",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 60,
+      "gordura": 4.14,
+      "proteina": 3.98,
+      "observacao": null
+    },
+    {
+      "numero": "1143",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 545,
+      "gordura": 6.84,
+      "proteina": 4.11,
+      "observacao": null
+    },
+    {
+      "numero": "1144",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1405,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1144",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 3835,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1144",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 2052,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1144",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 430,
+      "gordura": 7.28,
+      "proteina": 3.51,
+      "observacao": null
+    },
+    {
+      "numero": "1146",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 67,
+      "gordura": 3.2,
+      "proteina": 3.03,
+      "observacao": null
+    },
+    {
+      "numero": "1146",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 222,
+      "gordura": 5.38,
+      "proteina": 3.29,
+      "observacao": null
+    },
+    {
+      "numero": "1147",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 181,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1147",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 432,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1147",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 114,
+      "gordura": 5.05,
+      "proteina": 3.22,
+      "observacao": null
+    },
+    {
+      "numero": "1148",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 1863,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1148",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 497,
+      "gordura": 3.34,
+      "proteina": 3.81,
+      "observacao": null
+    },
+    {
+      "numero": "1150",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 135,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1150",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 540,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1150",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 883,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1150",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 4383,
+      "gordura": 3.49,
+      "proteina": 3.64,
+      "observacao": null
+    },
+    {
+      "numero": "1151",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 697,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1151",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 145,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1151",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 378,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1151",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 292,
+      "gordura": 3.76,
+      "proteina": 3.8,
+      "observacao": null
+    },
+    {
+      "numero": "1152",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 5627,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1152",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 2534,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1152",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 817,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1152",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 385,
+      "gordura": 4.42,
+      "proteina": 4.09,
+      "observacao": null
+    },
+    {
+      "numero": "1153",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 69,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1153",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 103,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1153",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 50,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1153",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 102,
+      "gordura": 6.93,
+      "proteina": 3.87,
+      "observacao": null
+    },
+    {
+      "numero": "10",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 49,
+      "gordura": 2.95,
+      "proteina": 2.88,
+      "observacao": null
+    },
+    {
+      "numero": "10",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 27,
+      "gordura": 2.96,
+      "proteina": 2.99,
+      "observacao": null
+    },
+    {
+      "numero": "5",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 442,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "5",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 53,
+      "gordura": 3.1,
+      "proteina": 2.99,
+      "observacao": null
+    },
+    {
+      "numero": "5",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 86,
+      "gordura": 5.28,
+      "proteina": 3.06,
+      "observacao": null
+    },
+    {
+      "numero": "1154",
+      "tipo": "EXAME",
+      "data": "2025-09-27",
+      "ccs": 70,
+      "gordura": null,
+      "proteina": null,
+      "observacao": "---"
+    },
+    {
+      "numero": "1154",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 218,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1154",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 269,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1154",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 316,
+      "gordura": 3.49,
+      "proteina": 3.24,
+      "observacao": null
+    },
+    {
+      "numero": "1154",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 597,
+      "gordura": 4.33,
+      "proteina": 3.29,
+      "observacao": null
+    },
+    {
+      "numero": "1155",
+      "tipo": "EXAME",
+      "data": "2025-10-29",
+      "ccs": 74,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1155",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 70,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1155",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 30,
+      "gordura": 3.42,
+      "proteina": 3.45,
+      "observacao": null
+    },
+    {
+      "numero": "1155",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 25,
+      "gordura": 4.25,
+      "proteina": 3.56,
+      "observacao": null
+    },
+    {
+      "numero": "1156",
+      "tipo": "EXAME",
+      "data": "2025-11-18",
+      "ccs": 72,
+      "gordura": null,
+      "proteina": null,
+      "observacao": null
+    },
+    {
+      "numero": "1156",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 16,
+      "gordura": 4.42,
+      "proteina": 2.86,
+      "observacao": null
+    },
+    {
+      "numero": "1156",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 17,
+      "gordura": 4.97,
+      "proteina": 3.1,
+      "observacao": null
+    },
+    {
+      "numero": "3004",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 42,
+      "gordura": 4.19,
+      "proteina": 2.66,
+      "observacao": null
+    },
+    {
+      "numero": "3002",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 317,
+      "gordura": 4.5,
+      "proteina": 3.46,
+      "observacao": null
+    },
+    {
+      "numero": "3002",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 85,
+      "gordura": 4.47,
+      "proteina": 2.98,
+      "observacao": null
+    },
+    {
+      "numero": "3005",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 58,
+      "gordura": 4.55,
+      "proteina": 3.1,
+      "observacao": null
+    },
+    {
+      "numero": "3007",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 687,
+      "gordura": 4.26,
+      "proteina": 3.23,
+      "observacao": null
+    },
+    {
+      "numero": "3001",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 47,
+      "gordura": 2.71,
+      "proteina": 3.15,
+      "observacao": null
+    },
+    {
+      "numero": "3003",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 64,
+      "gordura": 4.83,
+      "proteina": 2.57,
+      "observacao": null
+    },
+    {
+      "numero": "3006",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 42,
+      "gordura": 5.69,
+      "proteina": 2.86,
+      "observacao": null
+    },
+    {
+      "numero": "3009",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 135,
+      "gordura": 4.49,
+      "proteina": 3.45,
+      "observacao": null
+    },
+    {
+      "numero": "3000",
+      "tipo": "EXAME",
+      "data": "2026-02-16",
+      "ccs": 1798,
+      "gordura": 4.83,
+      "proteina": 3.14,
+      "observacao": null
+    },
+    {
+      "numero": "3000",
+      "tipo": "EXAME",
+      "data": "2026-03-24",
+      "ccs": 169,
+      "gordura": 3.93,
+      "proteina": 2.75,
+      "observacao": null
+    },
+    {
+      "numero": "1058",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1089",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1094",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1146",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1111",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1095",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1076",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1112",
+      "tipo": "MASTITE",
+      "data": "2026-02-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1084",
+      "tipo": "MASTITE",
+      "data": "2026-02-07",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3000",
+      "tipo": "MASTITE",
+      "data": "2026-02-12",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1112",
+      "tipo": "MASTITE",
+      "data": "2026-02-24",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1076",
+      "tipo": "MASTITE",
+      "data": "2026-02-27",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1096",
+      "tipo": "MASTITE",
+      "data": "2026-03-16",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1058",
+      "tipo": "MASTITE",
+      "data": "2026-03-21",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1076",
+      "tipo": "MASTITE",
+      "data": "2026-03-22",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1121",
+      "tipo": "MASTITE",
+      "data": "2026-03-23",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3005",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3006",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3007",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3009",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "3012",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1059",
+      "tipo": "MASTITE",
+      "data": "2026-03-29",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
+    },
+    {
+      "numero": "1034",
+      "tipo": "MASTITE",
+      "data": "2026-03-30",
+      "quarto": null,
+      "resultadoCultivo": null,
+      "observacao": null
     }
   ]
 }

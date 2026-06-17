@@ -164,6 +164,35 @@ export function parseAplicacao(linha) {
   };
 }
 
+// ANALISELEITE → EventoSanitario EXAME. Campos: numero, data, ccs, gordura, proteina, obs.
+export function parseAnalise(linha) {
+  const f = linha.split(SEP);
+  return {
+    numero: f[0],
+    tipo: "EXAME",
+    data: s(f[1]),
+    ccs: n(f[2]),
+    gordura: n(f[3]),
+    proteina: n(f[4]),
+    observacao: s(f[5]),
+  };
+}
+
+// MAMITE → EventoSanitario MASTITE. Quartos AD/AE/PD/PE (não-vazios) → "AD, PE"; micro → cultivo.
+const QUARTOS = ["AD", "AE", "PD", "PE"];
+export function parseMamite(linha) {
+  const f = linha.split(SEP);
+  const quartos = QUARTOS.filter((_, i) => s(f[2 + i]) != null);
+  return {
+    numero: f[0],
+    tipo: "MASTITE",
+    data: s(f[1]),
+    quarto: quartos.length ? quartos.join(", ") : null,
+    resultadoCultivo: s(f[6]),
+    observacao: s(f[7]),
+  };
+}
+
 function diasGestacao(repro, hoje) {
   if (!repro || repro.ultimoDgResultado !== "positivo" || !repro.dtPrevParto) return null;
   const faltam = diasEntre(hoje, repro.dtPrevParto); // pode ser negativo
@@ -215,6 +244,8 @@ function main() {
     else if (l.startsWith("@E@")) eventos.push(parseEvento(l.slice(3)));
     else if (l.startsWith("@D@")) eventosSanitarios.push(parseDoenca(l.slice(3)));
     else if (l.startsWith("@V@")) eventosSanitarios.push(parseAplicacao(l.slice(3)));
+    else if (l.startsWith("@Q@")) eventosSanitarios.push(parseAnalise(l.slice(3)));
+    else if (l.startsWith("@M@")) eventosSanitarios.push(parseMamite(l.slice(3)));
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
-  parseDoenca, parseAplicacao,
+  parseDoenca, parseAplicacao, parseAnalise, parseMamite,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -124,4 +124,25 @@ test("parseAplicacao → APLICACAO com produto/dose/carência", () => {
   assert.equal(e.dose, "10 ml");
   assert.equal(e.carencia, 30);
   assert.equal(e.observacao, null);
+});
+
+test("parseAnalise → EXAME com ccs/gordura/proteína", () => {
+  const e = parseAnalise("1002~|~2025-05-10~|~512~|~3.80~|~3.20~|~");
+  assert.equal(e.numero, "1002");
+  assert.equal(e.tipo, "EXAME");
+  assert.equal(e.data, "2025-05-10");
+  assert.equal(e.ccs, 512);
+  assert.equal(e.gordura, 3.8);
+  assert.equal(e.proteina, 3.2);
+});
+
+test("parseMamite → MASTITE com quarto + cultivo", () => {
+  const e = parseMamite("1002~|~2025-03-01~|~S~|~~|~~|~S~|~Staphylococcus aureus~|~obs");
+  assert.equal(e.tipo, "MASTITE");
+  assert.equal(e.data, "2025-03-01");
+  assert.equal(e.quarto, "AD, PE");
+  assert.equal(e.resultadoCultivo, "Staphylococcus aureus");
+  assert.equal(e.observacao, "obs");
+  // sem quartos marcados → quarto null
+  assert.equal(parseMamite("1~|~2025-01-01~|~~|~~|~~|~~|~~|~").quarto, null);
 });
