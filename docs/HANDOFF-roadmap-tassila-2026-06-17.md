@@ -38,6 +38,11 @@
 - **Sanidade/Nutrição → FK de `Produto`** (hoje `produto`/`loteProduto` são texto livre na Sanidade).
 - **Custo vaca/dia** hoje soma todo consumo de saídas; refinar por categoria de insumo / alocação à atividade leiteira.
 
+## Continuação — fechar o loop do custo (você escolheu este caminho)
+Depois do roadmap da Tássila pronto, você pediu pra **ligar o Estoque (custo vaca/dia) ao financeiro (custo/litro)** — hoje vivem separados. Descoberta: o financeiro **agrega `Lancamento` real** (6.704 linhas, via `buildDashboard`), mas o custo/litro é mock e não há como *criar* lançamento pelo app. Dividido em 2 fatias:
+- **Fatia 10 — Ponte (compra → lançamento):** 🔄 em andamento. `Produto` ganha `categoriaId`/`centroCustoId` (plano de contas); uma **ENTRADA** no Estoque gera um `Lancamento` real (DÉBITO, LIQUIDADO, categoria+centro do produto, fornecedor) que entra no fluxo de caixa. Respeita `FechamentoMensal` (hoje 0 → no-op). Nunca bloqueia o registro de estoque. Alvos reais: centro "Atividade Leiteira", categorias "Ração"/"Medicamento Animal". Spec/plano `…fatia10-ponte-financeiro*`.
+- **Fatia 11 — Custo de Produção (custo/litro real):** ⏳ a seguir. Aba que calcula custo/litro = custeio do leite (`Lancamento`) ÷ litros produzidos (Produção) + custo vaca/dia + quebra por componente. Troca o mock R$ 11,82 por número real.
+
 ## Notas técnicas
 - Tudo segue o padrão: Hono router→service + Prisma (`db push`) + Zod; React + fetchers/hooks + drawers; motor de recálculo puro testado (TDD). Cada fatia: spec → plano → subagente (backend, depois client) → review (spec+qualidade) → PR. Decisões de produto tomo sozinho e anoto aqui.
 - Base no Ideagri lida do Firebird local (`DADOS777.FDB`) — ver memória `ideagri-data-access`.
