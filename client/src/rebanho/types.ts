@@ -9,16 +9,24 @@ export interface Animal {
   nome: string;
   sexo: Sexo;
   categoria: CategoriaAnimal;
-  raca: string;          // "Girolando 5/8"
-  dataNascimento: string; // ISO "YYYY-MM-DD"
+  raca: string | null;   // "Girolando 5/8"
+  grauSangue?: string | null;
+  dataNascimento: string | null; // ISO "YYYY-MM-DD"
   dataEntrada: string;
-  brincoEletronico?: string;
-  sisbov?: string;
-  maeId?: string;
-  paiNome?: string;
+  brincoEletronico?: string | null;
+  sisbov?: string | null;
+  maeId?: string | null;
+  maeNome?: string | null;
+  maeNumero?: string | null;
+  paiNome?: string | null;
   grupoAtual?: string;   // lote
-  setor?: string;
+  grupoId?: number | null;
+  grupoNome?: string | null;
+  setor?: string | null;
   ativo: boolean;
+  dataBaixa?: string | null;
+  motivoBaixa?: string | null;
+  resumo?: ResumoAnimal | null;
 }
 
 // Read-model pré-computado por animal (espelha ANIMALINFO_* do Ideagri)

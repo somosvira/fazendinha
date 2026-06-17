@@ -139,3 +139,15 @@
 .rb-ia-side h4 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 12px; }
 .rb-ins { background: var(--bg-card); border: 1px solid var(--rule-soft); border-left: 3px solid var(--leite); border-radius: 9px; padding: 11px 13px; margin-bottom: 10px; font-size: 12.5px; color: var(--ink-2); display: flex; gap: 9px; }
 .rb-ins .dot { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--mast-bg); color: var(--leite); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 11px; }
+
+/* estado vazio + ações do cabeçalho (ficha) */
+.rb-empty { border: 1px dashed var(--rule); border-radius: 10px; padding: 22px; color: var(--ink-3); font-size: 13.5px; background: var(--bg-card-2); }
+.rb-head-actions { display: flex; gap: 8px; }
+
+/* drawer de formulário (novo/editar/baixa) */
+.rb-drawer-bg { position: fixed; inset: 0; background: rgba(14,19,17,.35); z-index: 10; }
+.rb-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; background: var(--bg); border-left: 1px solid var(--rule); z-index: 11; padding: 24px; overflow-y: auto; box-shadow: -8px 0 30px rgba(0,0,0,.12); }
+.rb-drawer h3 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 16px; }
+.rb-fld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
+.rb-fld input, .rb-fld select { font-family: var(--sans); font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); border: 1px solid var(--rule); border-radius: 8px; padding: 9px 11px; background: var(--bg-card); }
+.rb-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
