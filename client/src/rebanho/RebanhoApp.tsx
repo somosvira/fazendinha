@@ -5,6 +5,7 @@ import { HerdDomainView } from "./components/HerdDomainView";
 import { AnimalCockpit } from "./components/AnimalCockpit";
 import { AnimalTab } from "./components/AnimalTab";
 import { ReproducaoTab } from "./components/ReproducaoTab";
+import { SanidadeTab } from "./components/SanidadeTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { DashboardView } from "./components/DashboardView";
 import { IaView } from "./components/IaView";
@@ -26,6 +27,8 @@ export function RebanhoApp() {
           ? <AnimalTab key={recarga} onAbrirAnimal={nav.abrirAnimal} onNovo={() => setForm({ modo: "novo" })} />
           : domainKey === "reproducao"
             ? <ReproducaoTab onAbrirAnimal={nav.abrirAnimal} />
+            : domainKey === "sanidade"
+            ? <SanidadeTab onAbrirAnimal={nav.abrirAnimal} />
             : domainKey
               ? <HerdDomainView key={domainKey} config={DOMAINS[domainKey]} resumos={resumos} insight={insightDoRebanho(domainKey)} onAbrirAnimal={nav.abrirAnimal} />
               : nav.tab === "dashboard"
