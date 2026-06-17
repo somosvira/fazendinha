@@ -18,7 +18,7 @@ const pill = (txt: string, tom?: "warn" | "bad") => <span className={"rb-pill" +
 
 export const reproducao: DomainConfig = {
   titulo: "Reprodução",
-  eyebrow: "Rebanho · 522 animais",
+  eyebrow: "Rebanho · Sítio São Francisco",
   kpis: (rs) => {
     const n = rs.length || 1;
     const prenhes = rs.filter((r) => r.statusReprodutivo === "PRENHE").length;
@@ -51,10 +51,10 @@ export const reproducao: DomainConfig = {
 };
 
 export const animal: DomainConfig = {
-  titulo: "Animal", eyebrow: "Rebanho · 522 animais",
+  titulo: "Animal", eyebrow: "Rebanho · Sítio São Francisco",
   kpis: (rs) => [
     { lab: "Total", val: String(rs.length) },
-    { lab: "Em lactação", val: String(rs.filter((r) => r.del !== undefined).length) },
+    { lab: "Em lactação", val: String(rs.filter((r) => r.del != null).length) },
     { lab: "Prenhes", val: String(rs.filter((r) => r.statusReprodutivo === "PRENHE").length) },
     { lab: "Vazias", val: String(rs.filter((r) => r.statusReprodutivo === "VAZIA").length), tom: "up" },
   ],
@@ -68,7 +68,7 @@ export const animal: DomainConfig = {
 };
 
 export const sanidade: DomainConfig = {
-  titulo: "Sanidade", eyebrow: "Rebanho · 522 animais",
+  titulo: "Sanidade", eyebrow: "Rebanho · Sítio São Francisco",
   kpis: (rs) => {
     const altos = rs.filter((r) => (r.ccs ?? 0) >= 400).length;
     const subindo = rs.filter((r) => r.ccsTendencia === "subindo").length;
@@ -92,7 +92,7 @@ export const sanidade: DomainConfig = {
 };
 
 export const nutricao: DomainConfig = {
-  titulo: "Nutrição", eyebrow: "Rebanho · 522 animais",
+  titulo: "Nutrição", eyebrow: "Rebanho · Sítio São Francisco",
   kpis: (rs) => [
     { lab: "Lotes ativos", val: "3" },
     { lab: "Alta Produção", val: String(rs.filter((r) => (r.producaoMediaDia ?? 0) >= 28).length) },
