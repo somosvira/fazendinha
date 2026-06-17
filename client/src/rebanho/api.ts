@@ -11,7 +11,13 @@ export interface AnimalForm {
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
-  if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error((b as any).error || `HTTP ${res.status}`); }
+  if (!res.ok) {
+    const b: any = await res.json().catch(() => null);
+    let msg = `HTTP ${res.status}`;
+    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: número duplicado)
+    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
+    throw new Error(msg);
+  }
   return res.json();
 }
 
