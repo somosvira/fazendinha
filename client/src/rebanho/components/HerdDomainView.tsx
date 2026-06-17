@@ -5,12 +5,13 @@ import { getAnimal } from "../mock";
 import { IaInsightBand } from "./IaInsight";
 
 export function HerdDomainView({
-  config, resumos, insight, onAbrirAnimal,
+  config, resumos, insight, onAbrirAnimal, nomes,
 }: {
   config: DomainConfig;
   resumos: ResumoAnimal[];
   insight?: IaInsight;
   onAbrirAnimal: (id: string) => void;
+  nomes?: Record<string, { nome: string; numero: string }>;
 }) {
   const [wlId, setWlId] = useState(config.worklists[0]?.id);
   const wl = config.worklists.find((w) => w.id === wlId);
@@ -59,7 +60,7 @@ export function HerdDomainView({
             <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
               {linhas.map((r) => {
-                const a = getAnimal(r.animalId);
+                const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
                   <tr className="row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
                     <td className="rb-anm">{a?.nome} <small>#{a?.numero}</small></td>
