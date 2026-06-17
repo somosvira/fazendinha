@@ -133,6 +133,7 @@ export function CustoProducaoTab() {
                     <th style={{ width: "40%" }}>Participação</th>
                     <th>Nº aplicações</th>
                     <th>Custo estimado</th>
+                    <th>Custo exato</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -149,6 +150,7 @@ export function CustoProducaoTab() {
                         </td>
                         <td>{a.n}</td>
                         <td>{money(a.custoEstimado)}</td>
+                        <td>{a.custoExato > 0 ? money(a.custoExato) : "—"}</td>
                       </tr>
                     );
                   })}
