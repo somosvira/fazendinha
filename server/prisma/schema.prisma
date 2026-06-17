@@ -109,6 +109,51 @@ model Lancamento {
   @@index([centroCustoId])
 }
 
+enum ModoProducao {
+  ORDENHA
+  TOTAL_DIARIO
+  TANQUE_LOTE
+}
+
+// Configuração da fazenda (linha única / singleton).
+model Configuracao {
+  id           Int          @id @default(1)
+  producaoModo ModoProducao @default(ORDENHA)
+  atualizadoEm DateTime     @updatedAt
+}
+
+// Controle leiteiro por animal (modos ORDENHA / TOTAL_DIARIO).
+model ControleLeiteiro {
+  id        Int      @id @default(autoincrement())
+  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId  Int
+  data      DateTime @db.Date
+  peso1     Decimal? @db.Decimal(6, 2) // ordenha manhã
+  peso2     Decimal? @db.Decimal(6, 2) // tarde
+  peso3     Decimal? @db.Decimal(6, 2) // noite
+  pesoTotal Decimal  @db.Decimal(6, 2) // total do dia (soma das ordenhas ou total diário)
+  origem    String   @default("manual") // manual | integracao
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([animalId, data])
+}
+
+// Produção por lote/tanque (modo TANQUE_LOTE) — per-animal vem por rateio.
+model ProducaoLote {
+  id        Int      @id @default(autoincrement())
+  grupo     Grupo?   @relation(fields: [grupoId], references: [id])
+  grupoId   Int? // null = tanque da fazenda inteira
+  data      DateTime @db.Date
+  litros    Decimal  @db.Decimal(10, 2)
+  origem    String   @default("manual")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([grupoId, data])
+  @@index([data])
+}
+
 enum SexoAnimal {
   F
   M
@@ -146,6 +191,7 @@ model Grupo {
   animais Animal[]
   dieta    Dieta? @relation(fields: [dietaId], references: [id])
   dietaId  Int?
+  producoesLote ProducaoLote[]
 }
 
 model Dieta {
@@ -191,6 +237,7 @@ model Animal {
   eventosReprodutivos EventoReprodutivo[]
   eventosSanitarios   EventoSanitario[]
   lactacoes           Lactacao[]
+  controlesLeiteiros  ControleLeiteiro[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -206,6 +253,7 @@ model ResumoAnimal {
   ordemLactacao     Int?
   producaoMediaDia  Decimal?          @db.Decimal(6, 2)
   producao305       Int?
+  producaoTendencia String?
   ccs               Int?
   ccsTendencia      String?
   ultimoDgData      DateTime?         @db.Date

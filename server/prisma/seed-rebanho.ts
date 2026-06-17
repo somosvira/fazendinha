@@ -136,6 +136,33 @@ async function main() {
     if (g) await prisma.grupo.update({ where: { id: g.id }, data: { dietaId: dietaIdByNome[dietaNome] } });
   }
 
+  // Produção — controles leiteiros (modo ORDENHA padrão). Idempotente: limpa e recria.
+  // Computado pelo motor de produção (sobrescreve os producaoMediaDia hardcoded acima).
+  await prisma.configuracao.upsert({ where: { id: 1 }, create: { id: 1, producaoModo: "ORDENHA" }, update: { producaoModo: "ORDENHA" } });
+  await prisma.controleLeiteiro.deleteMany({});
+  await prisma.producaoLote.deleteMany({});
+  // por animal: 3 controles semanais (mais antigo → mais recente). Jurema sobe 26→28→30 (~28, subindo).
+  const controlesPorAnimal: Record<string, number[]> = {
+    "1234": [26, 28, 30], // Jurema ~28 subindo
+    "1188": [31, 31, 31], // Aurora ~31
+    "0942": [24, 24, 24], // Bonita ~24
+    "1305": [21, 22, 23], // Cravina ~22 subindo
+    "0877": [33, 33, 33], // Dália ~33
+    "1421": [26, 26, 26], // Estrela ~26
+    "0871": [21, 21, 21], // Jandira ~21
+  };
+  const { recomputarProducaoDoAnimal } = await import("../src/services/rebanho/producao.js");
+  for (const [numero, pesos] of Object.entries(controlesPorAnimal)) {
+    const a = await prisma.animal.findUnique({ where: { numero } });
+    if (!a) continue;
+    // datas: 14, 7 e 0 dias atrás (o último é o mais recente)
+    for (let i = 0; i < pesos.length; i++) {
+      const data = ddmm((pesos.length - 1 - i) * 7);
+      await prisma.controleLeiteiro.create({ data: { animalId: a.id, data, pesoTotal: pesos[i] } });
+    }
+    await recomputarProducaoDoAnimal(a.id);
+  }
+
   console.log(`Seed rebanho ok: ${animais.length} animais.`);
 }
 

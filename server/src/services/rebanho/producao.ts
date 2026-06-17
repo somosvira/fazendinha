@@ -1,0 +1,101 @@
+import { prisma } from "../../db.js";
+import { obterConfig } from "./config.js";
+import { recomputarProducaoAnimal, ratearProducao, producao305De, type ControleIn } from "./producao.recompute.js";
+import { type ControleInput, type ProducaoLoteInput } from "./producao.schemas.js";
+import { toTimelineControle } from "./producao.mappers.js";
+
+const iso = (x: Date) => x.toISOString().slice(0, 10);
+
+export class ProducaoError extends Error {
+  constructor(public code: "NAO_ENCONTRADO", m: string) { super(m); }
+}
+
+export async function recomputarProducaoDoAnimal(animalId: number): Promise<void> {
+  const animal = await prisma.animal.findUnique({ where: { id: animalId }, include: { lactacoes: true } });
+  if (!animal) return;
+  const temLact = animal.lactacoes.some((l) => l.dtFim == null);
+  const { producaoModo } = await obterConfig();
+  let r: { producaoMediaDia: number | null; producao305: number | null; producaoTendencia: string | null };
+  if (producaoModo === "TANQUE_LOTE") {
+    // último ProducaoLote do grupo do animal; senão da fazenda (grupoId null)
+    const doGrupo = animal.grupoId != null ? await prisma.producaoLote.findFirst({ where: { grupoId: animal.grupoId }, orderBy: { data: "desc" } }) : null;
+    const lote = doGrupo ?? (await prisma.producaoLote.findFirst({ where: { grupoId: null }, orderBy: { data: "desc" } }));
+    let mediaDia: number | null = null;
+    if (lote) {
+      const escopo = lote.grupoId != null ? { grupoId: lote.grupoId } : {};
+      const vacas = await prisma.animal.count({ where: { status: "ATIVO", ...escopo, resumo: { del: { not: null } } } });
+      mediaDia = ratearProducao(Number(lote.litros), vacas);
+    }
+    r = { producaoMediaDia: mediaDia, producao305: producao305De(mediaDia, temLact), producaoTendencia: null };
+  } else {
+    const ctrls = await prisma.controleLeiteiro.findMany({ where: { animalId }, orderBy: { data: "desc" } });
+    const arr: ControleIn[] = ctrls.map((c) => ({ data: iso(c.data), pesoTotal: Number(c.pesoTotal) }));
+    r = recomputarProducaoAnimal(arr, temLact);
+  }
+  await prisma.resumoAnimal.upsert({
+    where: { animalId },
+    create: { animalId, producaoMediaDia: r.producaoMediaDia, producao305: r.producao305, producaoTendencia: r.producaoTendencia },
+    update: { producaoMediaDia: r.producaoMediaDia, producao305: r.producao305, producaoTendencia: r.producaoTendencia },
+  });
+}
+
+export async function recomputarProducaoTodos(): Promise<void> {
+  const ids = (await prisma.animal.findMany({ where: { status: "ATIVO" }, select: { id: true } })).map((a) => a.id);
+  for (const id of ids) await recomputarProducaoDoAnimal(id);
+}
+
+export async function registrarControle(animalId: number, input: ControleInput) {
+  if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new ProducaoError("NAO_ENCONTRADO", "animal não encontrado");
+  const total = input.pesoTotal ?? (Number(input.peso1 ?? 0) + Number(input.peso2 ?? 0) + Number(input.peso3 ?? 0));
+  const c = await prisma.controleLeiteiro.create({
+    data: { animalId, data: new Date(input.data), peso1: input.peso1, peso2: input.peso2, peso3: input.peso3, pesoTotal: total },
+  });
+  await recomputarProducaoDoAnimal(animalId);
+  return toTimelineControle(c);
+}
+
+export async function excluirControle(id: number) {
+  const c = await prisma.controleLeiteiro.findUnique({ where: { id } });
+  if (!c) throw new ProducaoError("NAO_ENCONTRADO", "controle não encontrado");
+  await prisma.controleLeiteiro.delete({ where: { id } });
+  await recomputarProducaoDoAnimal(c.animalId);
+}
+
+export async function registrarProducaoLote(input: ProducaoLoteInput) {
+  const l = await prisma.producaoLote.create({ data: { grupoId: input.grupoId ?? null, data: new Date(input.data), litros: input.litros } });
+  // recomputa os animais afetados
+  const where = l.grupoId != null ? { status: "ATIVO" as const, grupoId: l.grupoId } : { status: "ATIVO" as const };
+  for (const a of await prisma.animal.findMany({ where, select: { id: true } })) await recomputarProducaoDoAnimal(a.id);
+  return { id: l.id };
+}
+
+export async function excluirProducaoLote(id: number) {
+  const l = await prisma.producaoLote.findUnique({ where: { id } });
+  if (!l) throw new ProducaoError("NAO_ENCONTRADO", "produção de lote não encontrada");
+  await prisma.producaoLote.delete({ where: { id } });
+  const where = l.grupoId != null ? { status: "ATIVO" as const, grupoId: l.grupoId } : { status: "ATIVO" as const };
+  for (const a of await prisma.animal.findMany({ where, select: { id: true } })) await recomputarProducaoDoAnimal(a.id);
+}
+
+export async function agregarProducao() {
+  const { producaoModo } = await obterConfig();
+  const animais = await prisma.animal.findMany({ where: { status: "ATIVO" }, include: { resumo: true } });
+  const emLact = animais.filter((a) => a.resumo?.del != null);
+  const totalDia = Math.round(emLact.reduce((s, a) => s + (a.resumo?.producaoMediaDia != null ? Number(a.resumo.producaoMediaDia) : 0), 0) * 10) / 10;
+  const mediaVaca = emLact.length ? Math.round((totalDia / emLact.length) * 10) / 10 : null;
+  if (producaoModo === "TANQUE_LOTE") {
+    const grupos = await prisma.grupo.findMany({ include: { animais: { where: { status: "ATIVO" }, include: { resumo: true } } } });
+    const lotes = await Promise.all(
+      grupos.map(async (g) => {
+        const ult = await prisma.producaoLote.findFirst({ where: { grupoId: g.id }, orderBy: { data: "desc" } });
+        const vacas = g.animais.filter((a) => a.resumo?.del != null).length;
+        return { grupo: g.nome, litros: ult ? Number(ult.litros) : null, vacas, rateio: ult && vacas ? Math.round((Number(ult.litros) / vacas) * 10) / 10 : null };
+      }),
+    );
+    return { modo: producaoModo, totalDia, emLactacao: emLact.length, lotes };
+  }
+  const ranking = emLact
+    .map((a) => ({ numero: a.numero, nome: a.nome, litros: a.resumo?.producaoMediaDia != null ? Number(a.resumo.producaoMediaDia) : 0 }))
+    .sort((x, y) => y.litros - x.litros);
+  return { modo: producaoModo, totalDia, mediaVaca, emLactacao: emLact.length, ranking };
+}
