@@ -6,6 +6,7 @@ import { renderToString } from "react-dom/server";
 import { RebanhoApp } from "../RebanhoApp";
 import { AnimalCockpit } from "../components/AnimalCockpit";
 import { DashboardView } from "../components/DashboardView";
+import { IaView } from "../components/IaView";
 
 describe("render smoke", () => {
   it("RebanhoApp renders the default Reprodução herd view", () => {
@@ -34,5 +35,14 @@ describe("render smoke", () => {
     expect(html).toContain("522");
     expect(html).toContain("Animais em situação de alerta");
     expect(html).toContain("Secagens atrasadas");
+  });
+
+  it("IaView renders chat, suggestions and the insights feed safely", () => {
+    const html = renderToString(h(IaView));
+    expect(html).toContain("Pergunte qualquer coisa sobre a fazenda");
+    expect(html).toContain("CCS alto e subindo");   // suggested prompt
+    expect(html).toContain("Jurema #1234");          // IA answer content
+    expect(html).toContain("Insights da semana");    // side feed
+    expect(html).not.toContain("dangerouslySetInnerHTML");
   });
 });
