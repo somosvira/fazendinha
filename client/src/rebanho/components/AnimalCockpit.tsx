@@ -76,6 +76,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           <div className="rb-box">
             <h4>Estado atual</h4>
             <div className="rb-kv"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
+            <div className="rb-kv"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
             <div className="rb-kv"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
             <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
           </div>
