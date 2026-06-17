@@ -77,6 +77,7 @@ describe("render smoke", () => {
     const html = renderToString(h(CustoProducaoTab));
     expect(html).toContain("Custo de Produção");
     expect(html).toContain("Carregando");
+    expect(html).toContain("Custo de sanidade");
   });
 
   it("DashboardView renders the loading shell (it now fetches live)", () => {

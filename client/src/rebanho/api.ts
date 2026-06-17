@@ -270,6 +270,27 @@ export function useCustoVacaDia(dias = 30) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Custo de Sanidade (Fatia 18): gasto real de medicamento rateado por aplicações ──────────
+export interface CustoSanidade {
+  periodoMeses: number;
+  totalMedicamento: number;
+  totalAplicacoes: number;
+  custoPorAplicacao: number;
+  topAnimais: { numero: string; nome: string; n: number; custoEstimado: number }[];
+  topProdutos: { produto: string; n: number }[];
+  nota: string;
+}
+export const obterCustoSanidade = (meses = 12) => req<CustoSanidade>(`/rebanho/custo-sanidade?meses=${meses}`);
+
+export function useCustoSanidade(meses = 12) {
+  const [data, setData] = useState<CustoSanidade | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoSanidade(meses).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [meses]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 // ── Custo de Produção (Fatia 11): quebra real do custeio do leite ──────────
 export interface CustoProducao {
   periodoMeses: number;
