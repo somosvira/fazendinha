@@ -73,6 +73,11 @@ async function main() {
 
   const { reconstruirLactacoes, recomputarResumoReproducao } = await import("../src/services/rebanho/reproducao.recompute.js");
   const isoStr = (d: Date) => d.toISOString().slice(0, 10);
+  // limpeza global: remove eventos/lactações órfãos (ex.: deixados por smoke tests)
+  // e resumos de bezerras (não têm estado reprodutivo) — deixa o estado pristino.
+  await prisma.eventoReprodutivo.deleteMany({});
+  await prisma.lactacao.deleteMany({});
+  await prisma.resumoAnimal.deleteMany({ where: { animal: { categoria: { in: ["BEZERRA", "BEZERRO"] } } } });
   for (const [numero, evs] of Object.entries(eventosPorAnimal)) {
     const a = await prisma.animal.findUnique({ where: { numero } });
     if (!a) continue;
