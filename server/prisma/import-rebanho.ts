@@ -271,8 +271,17 @@ async function main() {
     pesagensInseridas += r.count;
   }
 
+  // --- Produtos aplicados → Cadastros (upsert por nome, p/ o usuário precificar) ---
+  // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO)
+  // SEM tocar no custoUnitario (preserva o que o usuário preencher). Idempotente.
+  const produtosAplicados = new Set<string>();
+  for (const e of dados.eventosSanitarios ?? []) if (e.tipo === "APLICACAO" && e.produto) produtosAplicados.add(e.produto);
+  for (const nome of produtosAplicados) {
+    await prisma.produto.upsert({ where: { nome }, update: {}, create: { nome, tipo: "MEDICAMENTO" } });
+  }
+
   const emLactacao = resumoRows.filter((r) => r.del != null).length;
-  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários, ${pesagensInseridas} pesagens.`);
+  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários, ${pesagensInseridas} pesagens, ${produtosAplicados.size} produtos aplicados (Cadastros).`);
 }
 
 main()
