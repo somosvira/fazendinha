@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/estoque.js";
 
-const err = (e: unknown) => (e instanceof svc.EstoqueError ? ({ NAO_ENCONTRADO: 404 } as const)[e.code] : 500);
+const err = (e: unknown) => (e instanceof svc.EstoqueError ? ({ NAO_ENCONTRADO: 404, MES_FECHADO: 409 } as const)[e.code] : 500);
 
 export const estoqueRouter = new Hono()
   .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos()))

@@ -17,6 +17,9 @@ export const produtoSchema = z.object({
   estocavel: z.boolean().optional(),
   minimoEstoque: z.number().nonnegative().optional(),
   ativo: z.boolean().optional(),
+  // Mapeamento contábil (ponte com o financeiro). Nullable para permitir desvincular.
+  categoriaId: z.number().int().nullable().optional(),
+  centroCustoId: z.number().int().nullable().optional(),
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 
@@ -31,22 +34,28 @@ const produtoDTO = (p: any) => ({
   estocavel: p.estocavel,
   minimoEstoque: p.minimoEstoque != null ? Number(p.minimoEstoque) : null,
   ativo: p.ativo,
+  categoriaId: p.categoriaId ?? null,
+  centroCustoId: p.centroCustoId ?? null,
+  categoriaNome: p.categoria?.nome ?? null,
+  centroCustoNome: p.centroCusto?.nome ?? null,
 });
+
+const produtoInclude = { categoria: true, centroCusto: true } as const;
 
 export async function listarProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
   const where: any = {};
   if (f?.tipo) where.tipo = f.tipo;
   if (f?.ativo != null) where.ativo = f.ativo;
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
-  return (await prisma.produto.findMany({ where, orderBy: { nome: "asc" } })).map(produtoDTO);
+  return (await prisma.produto.findMany({ where, orderBy: { nome: "asc" }, include: produtoInclude })).map(produtoDTO);
 }
 export async function criarProduto(input: ProdutoInput) {
   if (await prisma.produto.findUnique({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `produto ${input.nome} já existe`);
-  return produtoDTO(await prisma.produto.create({ data: input }));
+  return produtoDTO(await prisma.produto.create({ data: input, include: produtoInclude }));
 }
 export async function editarProduto(id: number, input: Partial<ProdutoInput>) {
   if (!(await prisma.produto.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "produto não encontrado");
-  return produtoDTO(await prisma.produto.update({ where: { id }, data: input }));
+  return produtoDTO(await prisma.produto.update({ where: { id }, data: input, include: produtoInclude }));
 }
 
 export const fornecedorSchema = z.object({
