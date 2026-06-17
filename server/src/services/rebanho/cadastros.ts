@@ -76,7 +76,7 @@ export async function listarFornecedores(f?: { tipo?: string; q?: string }) {
   return (await prisma.clienteFornecedor.findMany({ where, orderBy: { nome: "asc" } })).map(fornDTO);
 }
 export async function criarFornecedor(input: FornecedorInput) {
-  if (await prisma.clienteFornecedor.findFirst({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
+  if (await prisma.clienteFornecedor.findUnique({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
   return fornDTO(await prisma.clienteFornecedor.create({ data: { ...input, email: input.email || null } }));
 }
 export async function editarFornecedor(id: number, input: Partial<FornecedorInput>) {

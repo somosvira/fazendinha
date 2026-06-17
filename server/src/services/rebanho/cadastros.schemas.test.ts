@@ -36,4 +36,7 @@ describe("fornecedorSchema", () => {
   it("rejeita nome vazio", () => {
     expect(fornecedorSchema.safeParse({ nome: "" }).success).toBe(false);
   });
+  it("rejeita tipo inválido", () => {
+    expect(fornecedorSchema.safeParse({ nome: "Cargill", tipo: "PESSOA_FISICA" }).success).toBe(false);
+  });
 });
