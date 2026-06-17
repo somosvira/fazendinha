@@ -49,7 +49,7 @@ export function useAnimal(id: string | null) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => {
-    if (!id) return;
+    if (!id) { setData(null); setLoading(false); return; }
     setLoading(true); setErro(null);
     obterAnimal(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, [id]);

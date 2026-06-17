@@ -16,7 +16,18 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
     brincoEletronico: animal?.brincoEletronico ?? "", grupoId: animal?.grupoId ?? "", racaId: "",
     motivo: "",
   });
-  useEffect(() => { listarRacas().then(setRacas); listarGrupos().then(setGrupos); }, []);
+  useEffect(() => {
+    listarRacas().then((rs) => {
+      setRacas(rs);
+      // edição: pré-seleciona a raça casando o nome (o DTO carrega o nome, não o id)
+      if (animal?.raca) {
+        const m = rs.find((r) => r.nome === animal.raca);
+        if (m) setF((s) => ({ ...s, racaId: String(m.id) }));
+      }
+    });
+    listarGrupos().then(setGrupos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
   async function salvar() {
