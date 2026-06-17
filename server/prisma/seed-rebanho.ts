@@ -165,7 +165,11 @@ async function main() {
 
   // Cadastros: Produtos (catálogo remédio/ração/insumo). Idempotente: limpa e recria.
   // Movimentos de estoque referenciam Produto (FK) — limpar antes de apagar os produtos.
+  // Ponte compra→financeiro: as ENTRADAS geram Lancamento ("Compra: …"). Para não
+  // acumular a cada seed, limpar os lançamentos gerados ANTES de recriar os movimentos.
+  // (Os movimentos referenciam o lançamento por FK — limpá-los primeiro libera o delete.)
   await prisma.movimentoEstoque.deleteMany({});
+  await prisma.lancamento.deleteMany({ where: { descricao: { startsWith: "Compra:" } } });
   await prisma.produto.deleteMany({});
   const produtos = [
     { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, carencia: 96, estocavel: true, minimoEstoque: 4 },
@@ -175,6 +179,25 @@ async function main() {
     { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", custoUnitario: 62, carencia: 120, estocavel: true, minimoEstoque: 2 },
   ] as const;
   for (const p of produtos) await prisma.produto.create({ data: p as any });
+
+  // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
+  // todos no centro de custo "Atividade Leiteira". O Sêmen fica SEM categoria de propósito,
+  // para demonstrar o caminho "compra sem lançamento" (lancamentoCriado:false).
+  const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
+  const racaoCatId = await catId("Ração");
+  const medCatId = await catId("Medicamento Animal");
+  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: "Atividade Leiteira" } }))?.id ?? null;
+  const mapaContabil: Record<string, number | null> = {
+    "Ração Lactação Alta": racaoCatId,
+    "Núcleo Mineral": racaoCatId,
+    "Mastijet": medCatId,
+    "Antibiótico X": medCatId,
+    // "Sêmen Lance 884": sem categoria (demonstra compra que não gera lançamento)
+  };
+  for (const [nome, categoriaId] of Object.entries(mapaContabil)) {
+    if (categoriaId == null) continue;
+    await prisma.produto.update({ where: { nome }, data: { categoriaId, centroCustoId: leiteiraId } });
+  }
 
   // Cadastros: Fornecedores (estende ClienteFornecedor). Upsert por nome — não duplica
   // os que o financeiro já criou, só garante tipo/contato.
@@ -198,32 +221,39 @@ async function main() {
   const cargill = await prisma.clienteFornecedor.findUnique({ where: { nome: "Cargill" } });
   const racao = prodByName["Ração Lactação Alta"];
   const nucleo = prodByName["Núcleo Mineral"];
-  const mov = (
-    produto: { id: number; custo: number } | undefined,
-    tipo: "ENTRADA" | "SAIDA",
-    quantidade: number,
-    offsetDias: number,
-    extra: { fornecedorId?: number; observacao?: string } = {},
-  ) => {
+  const isoOffset = (offsetDias: number) => ddmm(offsetDias).toISOString().slice(0, 10);
+  // SAIDA: criação direta (não passa pela ponte — consumo não gera lançamento).
+  const saida = (produto: { id: number; custo: number } | undefined, quantidade: number, offsetDias: number, observacao?: string) => {
     if (!produto) return null;
     const valorTotal = Math.round(quantidade * produto.custo * 100) / 100;
     return prisma.movimentoEstoque.create({
-      data: { produtoId: produto.id, tipo, data: ddmm(offsetDias), quantidade, custoUnitario: produto.custo, valorTotal, fornecedorId: extra.fornecedorId ?? null, observacao: extra.observacao ?? null },
+      data: { produtoId: produto.id, tipo: "SAIDA", data: ddmm(offsetDias), quantidade, custoUnitario: produto.custo, valorTotal, observacao: observacao ?? null },
     });
   };
-  const movimentos = [
-    // Entradas (compras via Cargill)
-    mov(racao, "ENTRADA", 1500, 20, { fornecedorId: cargill?.id, observacao: "Compra de ração — Cargill" }),
-    mov(nucleo, "ENTRADA", 200, 20, { fornecedorId: cargill?.id, observacao: "Compra de núcleo mineral — Cargill" }),
-    // Saídas de consumo recente (~900 kg de ração nos últimos dias)
-    mov(racao, "SAIDA", 300, 6, { observacao: "Consumo lote Alta Produção" }),
-    mov(racao, "SAIDA", 300, 4, { observacao: "Consumo lote Alta Produção" }),
-    mov(racao, "SAIDA", 300, 2, { observacao: "Consumo lote Alta Produção" }),
-    mov(nucleo, "SAIDA", 40, 3, { observacao: "Consumo núcleo mineral" }),
-  ].filter(Boolean);
-  await Promise.all(movimentos as Promise<unknown>[]);
 
-  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${movimentos.length} movimentos de estoque.`);
+  // ENTRADA (compra): passa pela ponte real (registrarMovimento) → gera Lancamento financeiro.
+  const { registrarMovimento } = await import("../src/services/rebanho/estoque.js");
+  let lancamentosGerados = 0;
+  const comprar = async (produto: { id: number; custo: number } | undefined, quantidade: number, offsetDias: number, observacao?: string) => {
+    if (!produto) return;
+    const r = await registrarMovimento({ produtoId: produto.id, tipo: "ENTRADA", data: isoOffset(offsetDias), quantidade, custoUnitario: produto.custo, fornecedorId: cargill?.id, observacao });
+    if (r.lancamentoCriado) lancamentosGerados++;
+  };
+  // Entradas (compras via Cargill) — geram lançamentos (ponte compra→financeiro).
+  await comprar(racao, 1500, 20, "Compra de ração — Cargill");
+  await comprar(nucleo, 200, 20, "Compra de núcleo mineral — Cargill");
+
+  // Saídas de consumo recente (~900 kg de ração nos últimos dias) — não geram lançamento.
+  const saidas = [
+    saida(racao, 300, 6, "Consumo lote Alta Produção"),
+    saida(racao, 300, 4, "Consumo lote Alta Produção"),
+    saida(racao, 300, 2, "Consumo lote Alta Produção"),
+    saida(nucleo, 40, 3, "Consumo núcleo mineral"),
+  ].filter(Boolean);
+  await Promise.all(saidas as Promise<unknown>[]);
+  const totalMovimentos = 2 + saidas.length;
+
+  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${totalMovimentos} movimentos de estoque (${lancamentosGerados} lançamentos de compra gerados).`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
