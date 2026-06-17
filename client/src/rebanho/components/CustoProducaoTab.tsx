@@ -158,7 +158,7 @@ export function CustoProducaoTab() {
           )}
 
           {/* Top produtos */}
-          {san.topProdutos.length > 0 && (
+          {san.produtos.length > 0 && (
             <>
               <h2 className="rb-sec-title">Produtos mais aplicados</h2>
               <table className="rb-tbl">
@@ -166,17 +166,24 @@ export function CustoProducaoTab() {
                   <tr>
                     <th>Produto</th>
                     <th>Nº</th>
+                    <th>Custo unit.</th>
+                    <th>Custo total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {san.topProdutos.map((p) => (
+                  {san.produtos.map((p) => (
                     <tr key={p.produto}>
                       <td>{p.produto}</td>
                       <td>{p.n.toLocaleString("pt-BR")}</td>
+                      <td>{p.custoUnitario != null ? money(p.custoUnitario) : "—"}</td>
+                      <td>{p.custoExato != null ? money(p.custoExato) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <p className="rb-sub">
+                Custo exato: {money(san.custoExatoTotal)} · {san.produtosPrecificados} de {san.produtosTotais} produtos precificados — defina o custo unitário no Cadastros.
+              </p>
             </>
           )}
 

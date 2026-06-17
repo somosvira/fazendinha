@@ -277,7 +277,10 @@ export interface CustoSanidade {
   totalAplicacoes: number;
   custoPorAplicacao: number;
   topAnimais: { numero: string; nome: string; n: number; custoEstimado: number }[];
-  topProdutos: { produto: string; n: number }[];
+  produtos: { produto: string; n: number; custoUnitario: number | null; custoExato: number | null }[];
+  custoExatoTotal: number;
+  produtosPrecificados: number;
+  produtosTotais: number;
   nota: string;
 }
 export const obterCustoSanidade = (meses = 12) => req<CustoSanidade>(`/rebanho/custo-sanidade?meses=${meses}`);
