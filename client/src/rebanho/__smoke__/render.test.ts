@@ -17,12 +17,12 @@ describe("render smoke", () => {
     expect(html).toContain("Marco Antônio");   // sidebar/masthead montou
   });
 
-  it("DashboardView renders herd KPIs, domain cards and alerts", () => {
+  it("DashboardView renders the loading shell (it now fetches live)", () => {
+    // A view agora busca /rebanho/dashboard via useDashboard; em SSR (sem fetch)
+    // renderiza o shell de carregamento sem lançar.
     const html = renderToString(h(DashboardView, { onNav: () => {} }));
-    expect(html).toContain("Rebanho ativo");
-    expect(html).toContain("522");
-    expect(html).toContain("Animais em situação de alerta");
-    expect(html).toContain("Secagens atrasadas");
+    expect(html).toContain("Dashboard");
+    expect(html).toContain("Carregando");
   });
 
   it("IaView renders chat, suggestions and the insights feed safely", () => {
