@@ -74,6 +74,30 @@ export function useEventos(id: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+export interface EventoSanidadePayload {
+  tipo: "OCORRENCIA" | "APLICACAO" | "EXAME" | "MASTITE" | "VACINA";
+  data: string; observacao?: string;
+  doenca?: string; diasTratamento?: number;
+  produto?: string; dose?: string; carencia?: number; loteProduto?: string;
+  ccs?: number; gordura?: number; proteina?: number;
+  quarto?: string; severidade?: string; resultadoCultivo?: string;
+}
+export const montarTimeline = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/timeline`);
+export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/animais/${id}/sanidade`, { method: "POST", body: JSON.stringify(p) });
+
+export function useTimeline(id: string | null) {
+  const [data, setData] = useState<EventoTimeline[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!id) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    montarTimeline(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [id]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export function useAnimal(id: string | null) {
   const [data, setData] = useState<Animal | null>(null);
   const [loading, setLoading] = useState(true);
