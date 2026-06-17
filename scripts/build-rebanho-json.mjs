@@ -178,6 +178,17 @@ export function parseAnalise(linha) {
   };
 }
 
+// PESO → Pesagem. Campos: numero, data, peso (kg), gmd (ganho médio diário, do Ideagri).
+export function parsePesagem(linha) {
+  const f = linha.split(SEP);
+  return {
+    numero: f[0],
+    data: s(f[1]),
+    peso: n(f[2]),
+    gmd: n(f[3]),
+  };
+}
+
 // MAMITE → EventoSanitario MASTITE. Quartos AD/AE/PD/PE (não-vazios) → "AD, PE"; micro → cultivo.
 const QUARTOS = ["AD", "AE", "PD", "PE"];
 export function parseMamite(linha) {
@@ -235,6 +246,7 @@ function main() {
   const controles = [];
   const eventos = [];
   const eventosSanitarios = [];
+  const pesagens = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -246,6 +258,7 @@ function main() {
     else if (l.startsWith("@V@")) eventosSanitarios.push(parseAplicacao(l.slice(3)));
     else if (l.startsWith("@Q@")) eventosSanitarios.push(parseAnalise(l.slice(3)));
     else if (l.startsWith("@M@")) eventosSanitarios.push(parseMamite(l.slice(3)));
+    else if (l.startsWith("@W@")) pesagens.push(parsePesagem(l.slice(3)));
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
@@ -254,7 +267,7 @@ function main() {
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles, eventos, eventosSanitarios };
+  const out = { geradoEm, animais, controles, eventos, eventosSanitarios, pesagens };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -266,6 +279,7 @@ function main() {
   console.error(`  em lactação=${animais.filter((a) => a.resumo.del != null).length} · controles=${controles.length}`);
   console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
   console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
+  console.error(`  pesagens=${pesagens.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

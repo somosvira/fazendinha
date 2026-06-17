@@ -286,6 +286,7 @@ model Animal {
   eventosSanitarios   EventoSanitario[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
+  pesagens            Pesagem[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -350,6 +351,18 @@ model Lactacao {
   dtFim    DateTime? @db.Date
 
   @@index([animalId])
+}
+
+// Pesagens corporais (Ideagri PESO) — peso e ganho médio diário (GMD) por data.
+model Pesagem {
+  id       Int      @id @default(autoincrement())
+  animal   Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId Int
+  data     DateTime @db.Date
+  peso     Decimal  @db.Decimal(7, 2)
+  gmd      Decimal? @db.Decimal(6, 3)
+
+  @@index([animalId, data])
 }
 
 enum TipoEventoSanitario {

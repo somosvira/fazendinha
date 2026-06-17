@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
-  parseDoenca, parseAplicacao, parseAnalise, parseMamite,
+  parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -145,4 +145,14 @@ test("parseMamite → MASTITE com quarto + cultivo", () => {
   assert.equal(e.observacao, "obs");
   // sem quartos marcados → quarto null
   assert.equal(parseMamite("1~|~2025-01-01~|~~|~~|~~|~~|~~|~").quarto, null);
+});
+
+test("parsePesagem → peso + gmd", () => {
+  const p = parsePesagem("42~|~2025-11-20~|~382.5~|~0.85");
+  assert.equal(p.numero, "42");
+  assert.equal(p.data, "2025-11-20");
+  assert.equal(p.peso, 382.5);
+  assert.equal(p.gmd, 0.85);
+  // gmd vazio → null
+  assert.equal(parsePesagem("42~|~2025-01-01~|~300~|~").gmd, null);
 });
