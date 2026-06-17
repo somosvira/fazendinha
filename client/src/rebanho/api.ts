@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Animal, ResumoAnimal } from "./types";
+import type { Animal, ResumoAnimal, EventoTimeline } from "./types";
 
 export interface RacaDTO { id: number; nome: string }
 export interface GrupoDTO { id: number; nome: string }
@@ -46,6 +46,30 @@ export function useAnimais(f?: { status?: string; grupoId?: number; q?: string }
     listarAnimais(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export interface EventoPayload {
+  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+  data: string; observacao?: string;
+  reprodutor?: string; protocolo?: string;
+  resultado?: "positivo" | "negativo"; dtPartoPrevista?: string;
+  numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
+}
+export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
+export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
+export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
+
+export function useEventos(id: string | null) {
+  const [data, setData] = useState<EventoTimeline[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!id) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarEventos(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [id]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
 }
