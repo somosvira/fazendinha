@@ -268,6 +268,7 @@ export interface CustoProducao {
   custoVacaDia: number | null;
   vacasEmLactacao: number;
   litrosPeriodoEstimado: number;
+  litrosDia: number;
   custoLitro: number | null;
   nota: string;
 }

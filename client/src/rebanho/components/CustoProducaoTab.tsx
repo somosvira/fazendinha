@@ -27,18 +27,24 @@ export function CustoProducaoTab() {
   }
 
   const custoTxt = data.custoVacaDia != null ? money(data.custoVacaDia) : "—";
+  const custoLitroTxt = data.custoLitro != null ? money(data.custoLitro) : "—";
 
   return (
     <main className="rb-main">
       <div className="rb-eyebrow">Rebanho · custo de produção</div>
       <div className="rb-head"><h1>Custo de Produção</h1></div>
 
-      {/* Headline KPIs — custeio do leite (real, destaque) + custo vaca/dia + vacas em lactação */}
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
+      {/* Headline KPIs — custo/litro (real, herói) + custeio do leite + custo vaca/dia + vacas em lactação */}
+      <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
         <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className="lab">Custo / litro</div>
+          <div className="val" style={{ fontSize: 30, color: "var(--cafe)" }}>{custoLitroTxt}</div>
+          <div className="d">custeio do leite ÷ litros do período</div>
+        </div>
+        <div className="rb-k">
           <div className="lab">Custeio do leite (real)</div>
-          <div className="val" style={{ fontSize: 30, color: "var(--cafe)" }}>{money(data.custeioLeiteTotal)}</div>
-          <div className="d">últimos {data.periodoMeses} meses · lançamentos da Atividade Leiteira</div>
+          <div className="val" style={{ fontSize: 22 }}>{money(data.custeioLeiteTotal)}</div>
+          <div className="d">{data.periodoMeses} meses · Atividade Leiteira</div>
         </div>
         <div className="rb-k">
           <div className="lab">Custo vaca/dia</div>
@@ -48,7 +54,7 @@ export function CustoProducaoTab() {
         <div className="rb-k">
           <div className="lab">Vacas em lactação</div>
           <div className="val">{data.vacasEmLactacao}</div>
-          <div className="d">base do rateio</div>
+          <div className="d">≈ {litros(data.litrosDia)} L/dia</div>
         </div>
       </div>
 
@@ -76,24 +82,29 @@ export function CustoProducaoTab() {
         </table>
       )}
 
-      {/* Card de transparência — por que não há custo/litro */}
+      {/* Card de transparência — como o custo/litro é calculado */}
       <div className="rb-box" style={{ marginTop: 26 }}>
-        <h3 style={{ margin: "0 0 6px" }}>Custo/litro — pendente</h3>
+        <h3 style={{ margin: "0 0 6px" }}>Como calculamos o custo/litro</h3>
         <p className="rb-sub" style={{ marginTop: 0 }}>{data.nota}</p>
-        <div className="rb-kstrip" style={{ ["--cols" as any]: 2, marginTop: 8 }}>
+        <div className="rb-kstrip" style={{ ["--cols" as any]: 3, marginTop: 8 }}>
           <div className="rb-k">
             <div className="lab">Custeio (real)</div>
             <div className="val" style={{ fontSize: 20 }}>{money(data.custeioLeiteTotal)}</div>
             <div className="d">fazenda inteira · {data.periodoMeses} meses</div>
           </div>
           <div className="rb-k">
-            <div className="lab">Produção (demonstração)</div>
+            <div className="lab">Litros do período</div>
             <div className="val" style={{ fontSize: 20 }}>{litros(data.litrosPeriodoEstimado)} L</div>
-            <div className="d">seed de {data.vacasEmLactacao} vacas em lactação</div>
+            <div className="d">{data.vacasEmLactacao} vacas × ≈ {litros(data.litrosDia)} L/dia</div>
+          </div>
+          <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
+            <div className="lab">Custo / litro</div>
+            <div className="val" style={{ fontSize: 20, color: "var(--cafe)" }}>{custoLitroTxt}</div>
+            <div className="d">custeio ÷ litros</div>
           </div>
         </div>
         <p className="rb-sub" style={{ marginBottom: 0 }}>
-          Dividir o custeio da fazenda inteira pela produção do seed daria um custo/litro sem sentido. O número real só aparece quando houver produção em escala da fazenda.
+          Os litros são uma estimativa: a produção média atual das vacas em lactação projetada para o período. À medida que entram novos controles leiteiros, o número se aproxima da produção realizada de fato.
         </p>
       </div>
     </main>
