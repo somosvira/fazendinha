@@ -164,6 +164,8 @@ async function main() {
   }
 
   // Cadastros: Produtos (catálogo remédio/ração/insumo). Idempotente: limpa e recria.
+  // Movimentos de estoque referenciam Produto (FK) — limpar antes de apagar os produtos.
+  await prisma.movimentoEstoque.deleteMany({});
   await prisma.produto.deleteMany({});
   const produtos = [
     { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, carencia: 96, estocavel: true, minimoEstoque: 4 },
@@ -186,7 +188,42 @@ async function main() {
     await prisma.clienteFornecedor.upsert({ where: { nome }, update: rest as any, create: { nome, ...(rest as any) } });
   }
 
-  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores.`);
+  // Estoque: movimentos (entradas de compra + saídas de consumo recente). Idempotente
+  // (a tabela já foi limpa acima, antes do produto.deleteMany, por causa da FK).
+  // Saldo é computado (entradas − saídas); custo vaca/dia = Σ saídas valorizadas ÷ (vacas×dias).
+  const prodByName: Record<string, { id: number; custo: number }> = {};
+  for (const p of await prisma.produto.findMany({ where: { nome: { in: ["Ração Lactação Alta", "Núcleo Mineral"] } } })) {
+    prodByName[p.nome] = { id: p.id, custo: p.custoUnitario != null ? Number(p.custoUnitario) : 0 };
+  }
+  const cargill = await prisma.clienteFornecedor.findUnique({ where: { nome: "Cargill" } });
+  const racao = prodByName["Ração Lactação Alta"];
+  const nucleo = prodByName["Núcleo Mineral"];
+  const mov = (
+    produto: { id: number; custo: number } | undefined,
+    tipo: "ENTRADA" | "SAIDA",
+    quantidade: number,
+    offsetDias: number,
+    extra: { fornecedorId?: number; observacao?: string } = {},
+  ) => {
+    if (!produto) return null;
+    const valorTotal = Math.round(quantidade * produto.custo * 100) / 100;
+    return prisma.movimentoEstoque.create({
+      data: { produtoId: produto.id, tipo, data: ddmm(offsetDias), quantidade, custoUnitario: produto.custo, valorTotal, fornecedorId: extra.fornecedorId ?? null, observacao: extra.observacao ?? null },
+    });
+  };
+  const movimentos = [
+    // Entradas (compras via Cargill)
+    mov(racao, "ENTRADA", 1500, 20, { fornecedorId: cargill?.id, observacao: "Compra de ração — Cargill" }),
+    mov(nucleo, "ENTRADA", 200, 20, { fornecedorId: cargill?.id, observacao: "Compra de núcleo mineral — Cargill" }),
+    // Saídas de consumo recente (~900 kg de ração nos últimos dias)
+    mov(racao, "SAIDA", 300, 6, { observacao: "Consumo lote Alta Produção" }),
+    mov(racao, "SAIDA", 300, 4, { observacao: "Consumo lote Alta Produção" }),
+    mov(racao, "SAIDA", 300, 2, { observacao: "Consumo lote Alta Produção" }),
+    mov(nucleo, "SAIDA", 40, 3, { observacao: "Consumo núcleo mineral" }),
+  ].filter(Boolean);
+  await Promise.all(movimentos as Promise<unknown>[]);
+
+  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${movimentos.length} movimentos de estoque.`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
