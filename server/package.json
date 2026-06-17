@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "seed": "tsx --env-file=.env prisma/seed.ts",
     "seed:rebanho": "tsx --env-file=.env prisma/seed-rebanho.ts",
-    "import": "tsx --env-file=.env prisma/import.ts"
+    "import": "tsx --env-file=.env prisma/import.ts",
+    "import:rebanho": "tsx --env-file=.env prisma/import-rebanho.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
