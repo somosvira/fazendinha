@@ -165,7 +165,7 @@ function main() {
 
   const out = { geradoEm, animais, controles };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
-  writeFileSync(dest, JSON.stringify(out, null, 0));
+  writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
   const ativos = animais.filter((a) => a.status === "ATIVO");
   const cnt = (arr, k) => arr.reduce((m, x) => ((m[x[k]] = (m[x[k]] || 0) + 1), m), {});
