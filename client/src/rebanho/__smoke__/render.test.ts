@@ -103,5 +103,6 @@ describe("render smoke", () => {
     expect(html).toContain("Baixados");
     expect(html).toContain("Todos");
     expect(html).toContain("+ Novo animal");
+    expect(html).toContain("Todos os setores");
   });
 });

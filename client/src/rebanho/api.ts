@@ -30,7 +30,7 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
   return s ? `?${s}` : "";
 }
 
-export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string }) =>
+export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string; setor?: string }) =>
   req<Animal[]>(`/rebanho/animais${qs(f)}`);
 export const obterAnimal = (id: string) => req<Animal>(`/rebanho/animais/${id}`);
 export const criarAnimal = (input: AnimalForm) => req<Animal>(`/rebanho/animais`, { method: "POST", body: JSON.stringify(input) });
@@ -38,8 +38,18 @@ export const editarAnimal = (id: string, input: Partial<AnimalForm>) => req<Anim
 export const darBaixa = (id: string, input: { motivo: string; data?: string }) => req<Animal>(`/rebanho/animais/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
 export const listarGrupos = () => req<GrupoDTO[]>(`/rebanho/grupos`);
 export const listarRacas = () => req<RacaDTO[]>(`/rebanho/racas`);
+export const listarSetores = () => req<string[]>(`/rebanho/setores`);
 
-export function useAnimais(f?: { status?: string; grupoId?: number; q?: string }) {
+export function useSetores() {
+  const [data, setData] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarSetores().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string }) {
   const [data, setData] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
