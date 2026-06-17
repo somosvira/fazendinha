@@ -82,6 +82,7 @@ model Produto {
   estocavel     Boolean     @default(true)
   minimoEstoque Decimal?    @db.Decimal(12, 2)
   ativo         Boolean     @default(true)
+  movimentos    MovimentoEstoque[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -97,6 +98,7 @@ model ClienteFornecedor {
   email       String?
   ativo       Boolean      @default(true)
   lancamentos Lancamento[]
+  movimentosEstoque MovimentoEstoque[]
 }
 
 // Meses contábeis fechados: lançamentos cuja data de caixa cai num mês fechado
@@ -227,6 +229,7 @@ model Grupo {
   dieta    Dieta? @relation(fields: [dietaId], references: [id])
   dietaId  Int?
   producoesLote ProducaoLote[]
+  movimentosEstoque MovimentoEstoque[]
 }
 
 model Dieta {
@@ -370,4 +373,31 @@ model EventoSanitario {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   @@index([animalId, data])
+}
+
+enum TipoMovimento {
+  ENTRADA
+  SAIDA
+  AJUSTE
+}
+
+model MovimentoEstoque {
+  id            Int           @id @default(autoincrement())
+  produto       Produto       @relation(fields: [produtoId], references: [id])
+  produtoId     Int
+  tipo          TipoMovimento
+  data          DateTime      @db.Date
+  quantidade    Decimal       @db.Decimal(12, 2)
+  custoUnitario Decimal       @db.Decimal(12, 2)
+  valorTotal    Decimal       @db.Decimal(14, 2)
+  grupo         Grupo?             @relation(fields: [grupoId], references: [id])
+  grupoId       Int?
+  fornecedor    ClienteFornecedor? @relation(fields: [fornecedorId], references: [id])
+  fornecedorId  Int?
+  observacao    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([produtoId, data])
+  @@index([tipo, data])
 }
