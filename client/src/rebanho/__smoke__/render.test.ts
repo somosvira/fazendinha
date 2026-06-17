@@ -8,12 +8,13 @@ import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
 
 describe("render smoke", () => {
-  it("RebanhoApp renders the default Reprodução herd view", () => {
+  it("RebanhoApp renders the default Reprodução tab (live-fetched)", () => {
     const html = renderToString(h(RebanhoApp));
     expect(html).toContain("Reprodução");
-    expect(html).toContain("A inseminar");
-    expect(html).toContain("Aurora");          // first row of the inseminar work-list
-    expect(html).toContain("concepção caiu");  // proactive IA band
+    // A aba Reprodução agora busca os resumos reais via useAnimais; em SSR
+    // (sem fetch) renderiza o shell de carregamento sem lançar.
+    expect(html).toContain("Carregando…");
+    expect(html).toContain("Marco Antônio");   // sidebar/masthead montou
   });
 
   it("DashboardView renders herd KPIs, domain cards and alerts", () => {

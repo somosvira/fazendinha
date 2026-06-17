@@ -1,6 +1,9 @@
-import { useAnimal } from "../api";
+import { useState } from "react";
+import { useAnimal, useEventos } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
+import { Timeline } from "./Timeline";
+import { EventoForm } from "./EventoForm";
 import type { Animal } from "../types";
 
 function fmtPrevSecagem(iso?: string | null) {
@@ -17,7 +20,9 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   onEditar: (a: Animal) => void;
   onBaixa: (a: Animal) => void;
 }) {
-  const { data: a, loading, erro } = useAnimal(animalId);
+  const { data: a, loading, erro, recarregar } = useAnimal(animalId);
+  const { data: eventos, recarregar: recarregarEventos } = useEventos(animalId);
+  const [registrando, setRegistrando] = useState(false);
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
   if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
@@ -40,6 +45,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           {r?.ordemLactacao && <span className="rb-chip lact">{r.ordemLactacao}ª lactação · DEL {r.del}</span>}
           {a.ativo && (
             <span className="rb-head-actions">
+              <button className="rb-btn pri" onClick={() => setRegistrando(true)}>+ Registrar evento</button>
               <button className="rb-btn" onClick={() => onEditar(a)}>Editar</button>
               <button className="rb-btn" onClick={() => onBaixa(a)}>Dar baixa</button>
             </span>
@@ -62,7 +68,9 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         <div>
           <h3 className="rb-sec-title">Linha do tempo</h3>
           <p className="rb-sec-sub">Todos os domínios costurados — reprodução, sanidade, nutrição e produção em uma história só.</p>
-          <div className="rb-empty">Nenhum lançamento ainda. Os eventos (cio, IA, parto, sanidade…) aparecem aqui quando você registrar na aba Reprodução — em breve.</div>
+          {eventos.length === 0
+            ? <div className="rb-empty">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
+            : <Timeline eventos={eventos} />}
         </div>
         <div>
           <div className="rb-box">
@@ -87,6 +95,8 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           )}
         </div>
       </div>
+
+      {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarEventos(); recarregar(); }} />}
     </main>
   );
 }

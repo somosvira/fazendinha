@@ -19,15 +19,23 @@ const pill = (txt: string, tom?: "warn" | "bad") => <span className={"rb-pill" +
 export const reproducao: DomainConfig = {
   titulo: "Reprodução",
   eyebrow: "Rebanho · 522 animais",
-  kpis: (rs) => [
-    { lab: "Aptas", val: String(rs.filter((r) => r.statusReprodutivo === "PEV").length), d: "no PEV" },
-    { lab: "Servidas", val: String(rs.filter((r) => r.statusReprodutivo === "INSEMINADA").length), d: "aguardando DG" },
-    { lab: "Gestantes", val: String(rs.filter((r) => r.statusReprodutivo === "PRENHE").length), d: "↗ +4", tom: "ok" },
-    { lab: "Vazias", val: String(rs.filter((r) => r.statusReprodutivo === "VAZIA").length), d: "atrasadas", tom: "up" },
-    { lab: "Taxa prenhez", val: "31", sufixo: "%", d: "↓ era 42%", tom: "up" },
-    { lab: "IEP médio", val: "488", sufixo: "d", d: "meta 430", tom: "up" },
-    { lab: "Partos previstos", val: "13", d: "próx. 30d" },
-  ],
+  kpis: (rs) => {
+    const n = rs.length || 1;
+    const prenhes = rs.filter((r) => r.statusReprodutivo === "PRENHE").length;
+    const vazias = rs.filter((r) => r.statusReprodutivo === "VAZIA").length;
+    const servidas = rs.filter((r) => r.statusReprodutivo === "INSEMINADA").length;
+    const aptas = rs.filter((r) => r.statusReprodutivo === "PEV").length;
+    const ieps = rs.map((r) => r.iepProjetado).filter((x): x is number => typeof x === "number");
+    const iepMedio = ieps.length ? Math.round(ieps.reduce((a, b) => a + b, 0) / ieps.length) : null;
+    return [
+      { lab: "Aptas", val: String(aptas), d: "no PEV" },
+      { lab: "Servidas", val: String(servidas), d: "aguardando DG" },
+      { lab: "Gestantes", val: String(prenhes), d: "prenhes" },
+      { lab: "Vazias", val: String(vazias), tom: "up" },
+      { lab: "Taxa prenhez", val: String(Math.round((prenhes / n) * 100)), sufixo: "%" },
+      { lab: "IEP médio", val: iepMedio ? String(iepMedio) : "—", sufixo: iepMedio ? "d" : undefined },
+    ];
+  },
   worklists: [
     { id: "inseminar", label: "A inseminar", selecionar: aInseminar },
     { id: "dg", label: "DG pendente", selecionar: dgPendente },
