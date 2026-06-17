@@ -8,6 +8,7 @@ import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
 import { AppSidebar } from "../../components/AppSidebar";
 import { RebanhoContent } from "../RebanhoContent";
+import { ConfiguracoesView } from "../components/ConfiguracoesView";
 import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
@@ -21,6 +22,7 @@ describe("render smoke", () => {
     expect(html).toContain("Painel");
     expect(html).toContain("IA financeira");
     expect(html).toContain("Acessos");
+    expect(html).toContain("Configurações");
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
@@ -34,6 +36,12 @@ describe("render smoke", () => {
     expect(html).toContain("Rebanho");       // grupo
     expect(html).toContain("Painel");        // item rebanho
     expect(html).not.toContain("nav-tabs");  // top bar removida
+  });
+
+  it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {
+    const html = renderToString(h(ConfiguracoesView));
+    expect(html).toContain("Configurações");
+    expect(html).toContain("Carregando");
   });
 
   it("DashboardView renders the loading shell (it now fetches live)", () => {

@@ -108,6 +108,8 @@
 .rb-dcard ul { margin: 0; padding: 0; list-style: none; }
 .rb-dcard li { font-size: 13px; color: var(--ink-2); padding: 4px 0; border-bottom: 1px dashed var(--rule-soft); }
 .rb-dcard li:last-child { border: 0; }
+.rb-dcard.on { border-color: var(--cafe); box-shadow: inset 0 0 0 1px var(--cafe); }
+.rb-dcard:disabled { cursor: default; opacity: .85; }
 .rb-alerts { background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 10px; padding: 14px 16px; align-self: start; }
 .rb-alerts h4 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
 .rb-alert { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border: 0; border-bottom: 1px solid var(--rule-soft); cursor: pointer; background: none; font-family: var(--sans); font-size: 13.5px; color: var(--ink-2); text-align: left; }

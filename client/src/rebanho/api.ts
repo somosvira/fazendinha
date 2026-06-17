@@ -140,4 +140,42 @@ export function useDashboard() {
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
 export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
 
+// ── Configuração + Produção (Fatia 7) ──────────────────────────────────────
+export type ModoProducao = "ORDENHA" | "TOTAL_DIARIO" | "TANQUE_LOTE";
+export const obterConfig = () => req<{ producaoModo: ModoProducao }>(`/rebanho/config`);
+export const salvarConfig = (producaoModo: ModoProducao) => req<{ producaoModo: ModoProducao }>(`/rebanho/config`, { method: "PATCH", body: JSON.stringify({ producaoModo }) });
+
+export function useConfig() {
+  const [data, setData] = useState<{ producaoModo: ModoProducao } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterConfig().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export interface ControlePayload { data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number }
+export const registrarControle = (animalId: string, p: ControlePayload) => req<EventoTimeline>(`/rebanho/animais/${animalId}/producao`, { method: "POST", body: JSON.stringify(p) });
+export const excluirControle = (id: string) => req<{ ok: true }>(`/rebanho/producao/${id}`, { method: "DELETE" });
+export const registrarProducaoLote = (p: { grupoId?: number; data: string; litros: number }) => req<{ id: number }>(`/rebanho/producao-lote`, { method: "POST", body: JSON.stringify(p) });
+export const excluirProducaoLote = (id: string) => req<{ ok: true }>(`/rebanho/producao-lote/${id}`, { method: "DELETE" });
+
+export interface ProducaoAgg {
+  modo: ModoProducao;
+  totalDia: number;
+  mediaVaca?: number | null;
+  emLactacao: number;
+  ranking?: { numero: string; nome: string | null; litros: number }[];
+  lotes?: { grupo: string; litros: number | null; vacas: number; rateio: number | null }[];
+}
+export const obterProducao = () => req<ProducaoAgg>(`/rebanho/producao`);
+export function useProducao() {
+  const [data, setData] = useState<ProducaoAgg | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterProducao().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export type { ResumoAnimal };

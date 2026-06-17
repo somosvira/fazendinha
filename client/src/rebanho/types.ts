@@ -38,6 +38,7 @@ export interface ResumoAnimal {
   ordemLactacao?: number;
   producaoMediaDia?: number;    // L/d
   producao305?: number;
+  producaoTendencia?: "subindo" | "estavel" | "descendo" | null;
   ccs?: number;                 // mil cél/mL
   ccsTendencia?: "subindo" | "estavel" | "caindo";
   ultimoDgData?: string;        // ISO
