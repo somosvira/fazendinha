@@ -105,6 +105,7 @@ async function main() {
     categoria: a.categoria,
     racaId: a.raca ? racaId.get(a.raca)! : null,
     grupoId: a.grupo ? grupoId.get(a.grupo)! : null,
+    setor: a.setor ?? null,
     dataNascimento: d(a.dataNascimento),
     // dataEntrada é obrigatória: fallback nascimento → geradoEm
     dataEntrada: d(a.dataEntrada) ?? d(a.dataNascimento) ?? d(dados.geradoEm)!,
