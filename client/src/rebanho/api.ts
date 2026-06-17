@@ -137,4 +137,7 @@ export function useDashboard() {
   useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, erro };
 }
 
+export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
+export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
+
 export type { ResumoAnimal };
