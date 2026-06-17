@@ -27,10 +27,11 @@ describe("render smoke", () => {
 
   it("IaView renders chat, suggestions and the insights feed safely", () => {
     const html = renderToString(h(IaView));
-    expect(html).toContain("Pergunte qualquer coisa sobre a fazenda");
+    expect(html).toContain("Pergunte qualquer coisa sobre a fazenda");  // intro
     expect(html).toContain("CCS alto e subindo");   // suggested prompt
-    expect(html).toContain("Jurema #1234");          // IA answer content
     expect(html).toContain("Insights da semana");    // side feed
+    // A thread começa vazia (sem conteúdo enlatado) — só aparece após perguntar.
+    expect(html).not.toContain("Jurema #1234");
     expect(html).not.toContain("dangerouslySetInnerHTML");
   });
 });

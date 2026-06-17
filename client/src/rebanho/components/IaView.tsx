@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { insights } from "../mock";
 import { Enfase } from "./IaInsight";
+import { perguntarIA } from "../api";
 
 const SUGESTOES = [
   "Quais vacas estão com CCS alto e subindo?",
@@ -10,27 +12,29 @@ const SUGESTOES = [
 
 type Msg =
   | { de: "user"; txt: string }
-  | { de: "ia"; txt: string; lista?: string[]; rodape?: string };
-
-const CONVERSA: Msg[] = [
-  { de: "user", txt: "Quais vacas estão com CCS alto e subindo?" },
-  {
-    de: "ia",
-    txt: "Encontrei 2 vacas com CCS ≥ 400 mil e tendência de alta:",
-    lista: [
-      "Jurema #1234 — 512 mil, ↑ 3 controles · teve mastite clínica em abril",
-      "Cravina #1305 — em alta · vazia atrasada",
-    ],
-    rodape: "Recomendo cultura no próximo controle da Jurema.",
-  },
-  { de: "user", txt: "Por que a taxa de prenhez caiu?" },
-  {
-    de: "ia",
-    txt: 'A concepção caiu de 42% → 31% nos últimos 3 lotes de IATF, concentrada no reprodutor "Lance 884". Pode ser a partida de sêmen ou o manejo do protocolo. Quer que eu compare por inseminador e por touro?',
-  },
-];
+  | { de: "ia"; txt: string; lista?: string[]; rodape?: string; modo?: "ia" | "demo" };
 
 export function IaView() {
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  async function enviar(p: string) {
+    const pergunta = p.trim();
+    if (!pergunta || enviando) return;
+    setMsgs((m) => [...m, { de: "user", txt: pergunta }]);
+    setTexto("");
+    setEnviando(true);
+    try {
+      const resp = await perguntarIA(pergunta);
+      setMsgs((m) => [...m, { de: "ia", txt: resp.resposta, lista: resp.lista, rodape: resp.rodape, modo: resp.modo }]);
+    } catch {
+      setMsgs((m) => [...m, { de: "ia", txt: "Não consegui responder agora." }]);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
     <main className="rb-main">
       <div className="rb-eyebrow">Assistente · Rúmi</div>
@@ -40,28 +44,37 @@ export function IaView() {
         <div className="rb-chat">
           <p className="rb-chat-intro">Pergunte qualquer coisa sobre a fazenda — produção, reprodução, sanidade, nutrição. A IA lê o contexto do rebanho e responde com os dados reais.</p>
           <div className="rb-suggest">
-            {SUGESTOES.map((s) => <button key={s} className="rb-chip-q">{s}</button>)}
+            {SUGESTOES.map((s) => (
+              <button key={s} className="rb-chip-q" onClick={() => enviar(s)} disabled={enviando}>{s}</button>
+            ))}
           </div>
           <div className="rb-thread">
-            {CONVERSA.map((m, i) =>
+            {msgs.map((m, i) =>
               m.de === "user" ? (
                 <div key={i} className="rb-msg user">{m.txt}</div>
               ) : (
                 <div key={i} className="rb-msg ia">
                   <div className="av">✦</div>
                   <div className="bubble">
-                    {m.txt}
+                    <Enfase texto={m.txt} />
                     {m.lista && <ul>{m.lista.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     {m.rodape && <div className="rodape">{m.rodape}</div>}
+                    {m.modo === "demo" && <span className="rb-chip-demo">modo demonstração</span>}
                   </div>
                 </div>
               ),
             )}
           </div>
-          <div className="rb-chat-input">
-            <input placeholder="Pergunte qualquer coisa sobre a fazenda…" aria-label="Pergunta para a IA" />
-            <button>✦ Enviar</button>
-          </div>
+          <form className="rb-chat-input" onSubmit={(e) => { e.preventDefault(); enviar(texto); }}>
+            <input
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              placeholder="Pergunte qualquer coisa sobre a fazenda…"
+              aria-label="Pergunta para a IA"
+              disabled={enviando}
+            />
+            <button type="submit" disabled={enviando || !texto.trim()}>✦ {enviando ? "Enviando…" : "Enviar"}</button>
+          </form>
         </div>
 
         <aside className="rb-ia-side">
