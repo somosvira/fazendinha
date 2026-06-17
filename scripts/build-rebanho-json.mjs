@@ -136,6 +136,34 @@ export function parseEvento(linha) {
   };
 }
 
+// DOENCAANIMAL → EventoSanitario OCORRENCIA. Campos: numero, doenca, dtInicio, dtFim, diasTrat, obs.
+export function parseDoenca(linha) {
+  const f = linha.split(SEP);
+  return {
+    numero: f[0],
+    tipo: "OCORRENCIA",
+    data: s(f[2]),
+    doenca: s(f[1]),
+    dtFim: s(f[3]),
+    diasTratamento: n(f[4]),
+    observacao: s(f[5]),
+  };
+}
+
+// APLICACAOPRODUTO → EventoSanitario APLICACAO. Campos: numero, produto, data, dose, carencia, obs.
+export function parseAplicacao(linha) {
+  const f = linha.split(SEP);
+  return {
+    numero: f[0],
+    tipo: "APLICACAO",
+    data: s(f[2]),
+    produto: s(f[1]),
+    dose: s(f[3]),
+    carencia: n(f[4]),
+    observacao: s(f[5]),
+  };
+}
+
 function diasGestacao(repro, hoje) {
   if (!repro || repro.ultimoDgResultado !== "positivo" || !repro.dtPrevParto) return null;
   const faltam = diasEntre(hoje, repro.dtPrevParto); // pode ser negativo
@@ -177,6 +205,7 @@ function main() {
   const reproPorNum = new Map();
   const controles = [];
   const eventos = [];
+  const eventosSanitarios = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -184,6 +213,8 @@ function main() {
     else if (l.startsWith("@R@")) { const r = parseReproducao(l.slice(3)); reproPorNum.set(r.numero, r); }
     else if (l.startsWith("@L@")) controles.push(parseControle(l.slice(3)));
     else if (l.startsWith("@E@")) eventos.push(parseEvento(l.slice(3)));
+    else if (l.startsWith("@D@")) eventosSanitarios.push(parseDoenca(l.slice(3)));
+    else if (l.startsWith("@V@")) eventosSanitarios.push(parseAplicacao(l.slice(3)));
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
@@ -192,7 +223,7 @@ function main() {
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles, eventos };
+  const out = { geradoEm, animais, controles, eventos, eventosSanitarios };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -203,6 +234,7 @@ function main() {
   console.error(`  ativos por categoria: ${JSON.stringify(cnt(ativos, "categoria"))}`);
   console.error(`  em lactação=${animais.filter((a) => a.resumo.del != null).length} · controles=${controles.length}`);
   console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
+  console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
 }
 
 // roda main() só quando executado direto (não nos testes)
