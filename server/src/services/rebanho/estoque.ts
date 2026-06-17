@@ -11,16 +11,22 @@ export class EstoqueError extends Error {
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
-export const movimentoSchema = z.object({
-  produtoId: z.number().int(),
-  tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]),
-  data: naoFutura,
-  quantidade: z.number().positive(),
-  custoUnitario: z.number().nonnegative().optional(),
-  grupoId: z.number().int().optional(),
-  fornecedorId: z.number().int().optional(),
-  observacao: z.string().max(200).optional(),
-});
+export const movimentoSchema = z
+  .object({
+    produtoId: z.number().int(),
+    tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]),
+    data: naoFutura,
+    quantidade: z.number(),
+    custoUnitario: z.number().nonnegative().optional(),
+    grupoId: z.number().int().optional(),
+    fornecedorId: z.number().int().optional(),
+    observacao: z.string().max(200).optional(),
+  })
+  // ENTRADA/SAIDA exigem quantidade positiva; AJUSTE aceita negativa (correção de saldo) mas nunca zero.
+  .superRefine((v, ctx) => {
+    if (v.quantidade === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "quantidade não pode ser zero", path: ["quantidade"] });
+    else if (v.tipo !== "AJUSTE" && v.quantidade < 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "quantidade deve ser positiva", path: ["quantidade"] });
+  });
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
 export async function listarSaldos() {
@@ -106,7 +112,7 @@ export async function excluirMovimento(id: number) {
 export async function calcularCustoVacaDia(periodoDias = 30) {
   const hoje = iso(new Date());
   const vacas = await prisma.animal.count({ where: { status: "ATIVO", resumo: { del: { not: null } } } });
-  const limite = new Date();
+  const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
   limite.setDate(limite.getDate() - periodoDias);
   const saidas = await prisma.movimentoEstoque.findMany({
     where: { tipo: "SAIDA", data: { gte: limite } },

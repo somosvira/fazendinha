@@ -16,8 +16,14 @@ describe("movimentoSchema", () => {
   it("rejeita sem produtoId", () => {
     expect(movimentoSchema.safeParse({ tipo: "ENTRADA", data: ontem, quantidade: 10 }).success).toBe(false);
   });
-  it("rejeita quantidade <= 0", () => {
+  it("rejeita quantidade zero", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: ontem, quantidade: 0 }).success).toBe(false);
+  });
+  it("rejeita ENTRADA com quantidade negativa", () => {
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: ontem, quantidade: -5 }).success).toBe(false);
+  });
+  it("aceita AJUSTE com quantidade negativa (correção de saldo)", () => {
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -5 }).success).toBe(true);
   });
   it("rejeita data futura", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: amanha, quantidade: 10 }).success).toBe(false);
