@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { RebanhoApp } from "../RebanhoApp";
+import { App } from "../../App";
 import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
 import { AppSidebar } from "../../components/AppSidebar";
@@ -28,13 +28,12 @@ describe("render smoke", () => {
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
-  it("RebanhoApp renders the default Reprodução tab (live-fetched)", () => {
-    const html = renderToString(h(RebanhoApp));
-    expect(html).toContain("Reprodução");
-    // A aba Reprodução agora busca os resumos reais via useAnimais; em SSR
-    // (sem fetch) renderiza o shell de carregamento sem lançar.
-    expect(html).toContain("Carregando…");
-    expect(html).toContain("Marco Antônio");   // sidebar/masthead montou
+  it("App renders the unified sidebar (no top bar)", () => {
+    const html = renderToString(h(App));
+    expect(html).toContain("Financeiro");   // grupo
+    expect(html).toContain("Rebanho");       // grupo
+    expect(html).toContain("Painel");        // item rebanho
+    expect(html).not.toContain("nav-tabs");  // top bar removida
   });
 
   it("DashboardView renders the loading shell (it now fetches live)", () => {

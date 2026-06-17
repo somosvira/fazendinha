@@ -43,7 +43,14 @@
 
   /* spacing */
   --gutter: 32px;
+
+  /* sidebar */
+  --side-w: 222px;
 }
+
+/* shell único: sidebar fixa + main com offset */
+.app { min-height: 100vh; background: var(--bg); color: var(--ink); }
+.app-main { margin-left: var(--side-w); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
