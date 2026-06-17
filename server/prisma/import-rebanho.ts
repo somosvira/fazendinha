@@ -53,6 +53,8 @@ interface AnimalJson {
   setor: string | null;
   raca: string | null;
   grupo: string | null;
+  maeNumero: string | null;
+  paiNome: string | null;
   resumo: ResumoJson;
 }
 interface ControleJson {
@@ -153,6 +155,7 @@ async function main() {
     status: a.status,
     dataBaixa: d(a.dataBaixa),
     motivoBaixa: a.motivoBaixa ?? null,
+    paiNome: a.paiNome ?? null,
   }));
   await prisma.animal.createMany({ data: animaisRows });
   console.log(`Animais inseridos: ${animaisRows.length}.`);
@@ -160,6 +163,19 @@ async function main() {
   // numero → id (para resumos/lactações/controles)
   const idByNumero = new Map<string, number>();
   for (const a of await prisma.animal.findMany({ select: { id: true, numero: true } })) idByNumero.set(a.numero, a.id);
+
+  // --- Genealogia: 2ª passada — linka maeId (mãe precisa já existir) -----------
+  let maesLinkadas = 0;
+  for (const a of dados.animais) {
+    if (!a.maeNumero) continue;
+    const filhoId = idByNumero.get(a.numero);
+    const maeId = idByNumero.get(a.maeNumero);
+    if (filhoId != null && maeId != null && filhoId !== maeId) {
+      await prisma.animal.update({ where: { id: filhoId }, data: { maeId } });
+      maesLinkadas++;
+    }
+  }
+  console.log(`Genealogia: ${maesLinkadas} mães linkadas.`);
 
   // --- ResumoAnimal (createMany) -------------------------------------------
   const resumoRows = dados.animais.map((a) => {
