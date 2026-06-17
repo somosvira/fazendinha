@@ -3,6 +3,10 @@
  */
 
 import { buildSubcategorias, buildVolumeLeite, fornecedores } from "./data/cockpitSupplements";
+import { buildFolego, buildProjecaoLeite, buildProjecaoFluxo } from "./data/projecao";
+import { orcamento, buildProdutividade } from "./data/gestao";
+import { buildCompromissos, buildRuptura } from "./data/ruptura";
+import { anomalias, historicoPreco, analisePreco } from "./data/anomalias";
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`/api${path}`);
@@ -45,6 +49,23 @@ export async function fetchDashboard(): Promise<any> {
   if (d.k2025 && d.k2026YTD) {
     d.volumeLeite = buildVolumeLeite(d.k2025, d.k2026YTD);
   }
+
+  // Derivados do cockpit v3 (fôlego, break-even, fluxo, ruptura). Calculados a
+  // partir das séries do payload — ver data/projecao.ts e data/ruptura.ts.
+  d.folego = buildFolego(d);
+  d.projecaoLeite = buildProjecaoLeite(d);
+  d.projecaoFluxo = buildProjecaoFluxo(d, d.projecaoLeite);
+  d.compromissos = buildCompromissos();
+  d.rupturaCaixa = buildRuptura(d, d.folego);
+
+  // Gestão (orçado×realizado, produtividade do rebanho) — definidos fora do BPO.
+  d.orcamento = orcamento;
+  d.produtividade = buildProdutividade();
+
+  // Vigilância da IA (anomalias + histórico de preço por insumo).
+  d.anomalias = anomalias;
+  d.historicoPreco = historicoPreco;
+  d.analisePreco = analisePreco;
 
   return d;
 }

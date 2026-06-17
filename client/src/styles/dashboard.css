@@ -272,8 +272,9 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
-.drill-head .total-block .dlt { font-size: 13px; }
+.drill-head .total-block .dlt { font-size: 13px; white-space: nowrap; }
 
 .drill-stats {
   display: grid;
@@ -389,3 +390,5 @@
 /* tile mini sparkline color */
 .sparkline-area { opacity: 0.18; }
 .sparkline-line { stroke-width: 1.5; fill: none; }
+
+.drill-head .total-block .dlt { font-size: 13px; }

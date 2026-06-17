@@ -9,5 +9,6 @@ coverage/
 __pycache__/
 *.pyc
 
-# Tesseract OCR trained models (baixar via setup script / pacote do sistema)
+# brainstorming visual companion
+.superpowers/
 *.traineddata

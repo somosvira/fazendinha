@@ -14,9 +14,29 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchDashboard } from "../api";
 import { DateRangePicker, type DateRange } from "./DateRangePicker";
 import type { Tab } from "./Shell";
+import type { User } from "../data/acessos";
+import { PAPEIS } from "../data/acessos";
+import { RupturaCaixa } from "./RupturaCaixa";
+import { PrecoAlerta } from "./Vigilancia";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
+
+/* id de categoria: o payload usa id numérico (Prisma) nas reais e slug string nas
+ * sintetizadas; orçamento/anomalias referenciam slugs de design. Aceita ambos. */
+type CatId = string | number;
+
+// slugs de design → nome da categoria no payload (fallback do drill por orçado/anomalia)
+const SLUG_TO_NOME: Record<string, string> = {
+  racao: "Ração",
+  curral: "Curral",
+  pessoalSal: "Pessoal — Salário",
+  medic: "Medicamento Animal",
+  combust: "Combustível",
+  manutencao: "Manutenção",
+  energia: "Energia Elétrica",
+  animalAq: "Animal Aquisição",
+};
 
 const DASH_TODAY = new Date(2026, 4, 4);
 const DEFAULT_RANGE: DateRange = { start: new Date(2024, 6, 1), end: DASH_TODAY };
@@ -80,7 +100,19 @@ function categoryMonthly(cat: any): number[] {
 
 /* ========== TIMELINE CHART (kept, compact) ========== */
 
-function TimelineChart({ R, startIdx = 0, endIdx = 22, height = 340 }: { R: R; startIdx?: number; endIdx?: number; height?: number }) {
+function TimelineChart({
+  R,
+  startIdx = 0,
+  endIdx = 22,
+  height = 340,
+  onMonthClick,
+}: {
+  R: R;
+  startIdx?: number;
+  endIdx?: number;
+  height?: number;
+  onMonthClick?: (idx: number) => void;
+}) {
   const W = 1180, H = height;
   const padL = 64, padR = 24, padT = 24, padB = 52;
   const innerW = W - padL - padR;
@@ -130,8 +162,17 @@ function TimelineChart({ R, startIdx = 0, endIdx = 22, height = 340 }: { R: R; s
       {meses.map((m, i) => {
         const x = padL + i * xBand + (xBand - barW) / 2;
         const recLeite = recL[i], recCafe = recC[i];
+        const globalIdx = startIdx + i;
         return (
-          <g key={i}>
+          <g
+            key={i}
+            className={onMonthClick ? "tl-month-g" : ""}
+            style={onMonthClick ? { cursor: "pointer" } : undefined}
+            onClick={onMonthClick ? () => onMonthClick(globalIdx) : undefined}
+          >
+            {onMonthClick && (
+              <rect x={padL + i * xBand} y={padT - 4} width={xBand} height={innerH + 8} fill="var(--ink)" opacity="0" className="tl-hit" />
+            )}
             {recLeite > 0 && <rect x={x} y={yScale(recLeite)} width={barW} height={yScale(0) - yScale(recLeite)} fill="var(--leite)" />}
             {recCafe > 0 && <rect x={x} y={yScale(recLeite + recCafe)} width={barW} height={yScale(recLeite) - yScale(recLeite + recCafe)} fill="var(--cafe)" />}
             {cusP[i] > 0 && <rect x={x} y={yScale(0)} width={barW} height={yScale(-cusP[i]) - yScale(0)} fill="var(--cafe)" opacity="0.85" />}
@@ -148,9 +189,9 @@ function TimelineChart({ R, startIdx = 0, endIdx = 22, height = 340 }: { R: R; s
           </g>
         );
       })}
-      <polyline fill="none" stroke="var(--ink)" strokeWidth="1.4"
+      <polyline fill="none" stroke="var(--ink)" strokeWidth="1.4" style={{ pointerEvents: "none" }}
         points={meses.map((_, i) => `${padL + i * xBand + xBand / 2},${yScale(tot[i])}`).join(" ")} />
-      {meses.map((_, i) => <circle key={"p" + i} cx={padL + i * xBand + xBand / 2} cy={yScale(tot[i])} r="2.5" fill="var(--bg)" stroke="var(--ink)" strokeWidth="1.2" />)}
+      {meses.map((_, i) => <circle key={"p" + i} cx={padL + i * xBand + xBand / 2} cy={yScale(tot[i])} r="2.5" fill="var(--bg)" stroke="var(--ink)" strokeWidth="1.2" style={{ pointerEvents: "none" }} />)}
       <defs>
         <pattern id="stripes-neg" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
           <rect width="4" height="4" fill="var(--neg)" opacity="0.35" />
@@ -271,7 +312,7 @@ function Donut({ segments, total, onSliceClick, hovered, setHovered }: {
 
 /* ========== SECTION 1 — GASTO POR CATEGORIA (interactive donut) ========== */
 
-function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: number) => void }) {
+function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void }) {
   const [period, setPeriod] = useState<"23m" | "ytd">("23m");
   const [act, setAct] = useState("tudo");
   const [off, setOff] = useState<Record<string, boolean>>({});
@@ -384,7 +425,7 @@ function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: number) => void
 /* ========== SECTION 2 — EXPLORAR CATEGORIA (dropdown) ========== */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CategoryDropdown({ items, value, onChange }: { items: any[]; value: number; onChange: (id: number) => void }) {
+function CategoryDropdown({ items, value, onChange }: { items: any[]; value: CatId; onChange: (id: CatId) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -416,10 +457,10 @@ function CategoryDropdown({ items, value, onChange }: { items: any[]; value: num
   );
 }
 
-function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: number) => void }) {
+function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = R.categoriasReais.slice().sort((a: any, b: any) => b.total23m - a.total23m);
-  const [catId, setCatId] = useState<number>(items[0].id);
+  const [catId, setCatId] = useState<CatId>(items[0].id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cat = items.find((c: any) => c.id === catId) ?? items[0];
 
@@ -717,7 +758,7 @@ function InconsistenciasSection({ R }: { R: R }) {
 
 /* ========== TIMELINE (compact) ========== */
 
-function TimelineSection({ R }: { R: R }) {
+function TimelineSection({ R, onMonthClick }: { R: R; onMonthClick?: (idx: number) => void }) {
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(22);
   const slices = [
@@ -730,7 +771,7 @@ function TimelineSection({ R }: { R: R }) {
     <section className="cockpit-section">
       <div className="dash-sec-head">
         <div className="dash-sec-titles">
-          <span className="eyebrow">Linha do tempo</span>
+          <span className="eyebrow">Linha do tempo · clique num mês para abrir</span>
           <h2 className="dash-sec-title">Fluxo mês a mês</h2>
         </div>
         <div className="timeline-slices">
@@ -739,7 +780,7 @@ function TimelineSection({ R }: { R: R }) {
           ))}
         </div>
       </div>
-      <TimelineChart R={R} startIdx={from} endIdx={to} height={320} />
+      <TimelineChart R={R} startIdx={from} endIdx={to} height={320} onMonthClick={onMonthClick} />
       <div className="legend timeline-legend" style={{ paddingLeft: 64, marginTop: 6 }}>
         <span><span className="legend-dot" style={{ background: "var(--leite)" }}></span>Receita Leite</span>
         <span><span className="legend-dot" style={{ background: "var(--cafe)" }}></span>Receita Café</span>
@@ -902,6 +943,8 @@ function NotaDrawer({ R, cat, sub, row, onClose }: { R: R; cat: any; sub: any; r
               {row.marca} — {sub.nome.toLowerCase()}. Compra de {row.dataLabel} junto a {sub.fornecedor}, paga via PIX. Categorizado automaticamente pela IA a partir da leitura da nota.
             </div>
           </div>
+
+          {R.analisePreco && R.analisePreco(row.marca) && <PrecoAlerta R={R} marca={row.marca} />}
         </div>
       </div>
     </div>
@@ -1046,17 +1089,40 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
   );
 }
 
-function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: number; onBack: () => void; onNav: (t: Tab) => void }) {
+function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack: () => void; onNav: (t: Tab) => void }) {
+  // resolve por id do payload; se vier um slug de design (orçado/anomalia), casa por nome
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cat = R.categoriasReais.find((c: any) => c.id === catId);
+  const cat =
+    R.categoriasReais.find((c: any) => c.id === catId) ||
+    (typeof catId === "string" && SLUG_TO_NOME[catId]
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        R.categoriasReais.find((c: any) => c.nome === SLUG_TO_NOME[catId])
+      : undefined);
   const [period, setPeriod] = useState<"23m" | "ytd">("23m");
-  if (!cat) return null;
+  if (!cat) {
+    return (
+      <div className="shell-wide">
+        <div className="breadcrumb">
+          <button className="crumb-btn" onClick={onBack}>Dashboard</button>
+          <span className="sep">›</span>
+          <span className="now">Categoria</span>
+        </div>
+        <LoadingShell>
+          Categoria sem detalhe disponível neste período.
+          <div style={{ marginTop: 14 }}>
+            <button className="crumb-btn" onClick={onBack}>← voltar ao Dashboard</button>
+          </div>
+        </LoadingShell>
+      </div>
+    );
+  }
+  const drillKey = cat.id;
   const monthly = categoryMonthly(cat);
   const media = Math.round(cat.total23m / 23);
   const maxIdx = monthly.indexOf(Math.max(...monthly));
   const corAtv = cat.atividade === "leite" ? "var(--leite)" : cat.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
-  const hasSubs = !!R.subcategorias[catId];
-  const nSubs = hasSubs ? R.subcategorias[catId].length : 0;
+  const hasSubs = !!R.subcategorias[drillKey];
+  const nSubs = hasSubs ? R.subcategorias[drillKey].length : 0;
 
   return (
     <div className="shell-wide">
@@ -1124,6 +1190,817 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: number; onBac
 
 /* ========== ROOT ========== */
 
+/* ========== RESUMO EXECUTIVO DA IA ========== */
+
+function ResumoExecutivo({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
+  const [open, setOpen] = useState(true);
+
+  const itens: { tipo: string; label: string; icon: string; texto: JSX.Element; cta: { label: string; act: (() => void) | null } }[] = [
+    {
+      tipo: "mudou",
+      label: "O que mudou",
+      icon: "→",
+      texto: (
+        <>
+          Entrou o relatório de <strong>04/mai</strong>. O <strong>Curral</strong> disparou — R$ 786 mil no ano,{" "}
+          <strong className="rx-neg">+142%</strong> sobre 2025, puxado por Energisa, Siloking e madeira (parece reforma). Café fechou a
+          safra única em <strong>R$ 304 mil</strong>.
+        </>
+      ),
+      cta: { label: "ver Curral", act: () => onNav("gastos") },
+    },
+    {
+      tipo: "preocupa",
+      label: "O que preocupa",
+      icon: "!",
+      texto: (
+        <>
+          Caixa operacional de <strong>{fmtBRL(R.caixaHoje.total, { compact: false })}</strong> cobre só ~<strong>6 dias</strong> da
+          queima de ~<strong className="rx-neg">{fmtBRL(Math.abs(R.folego.queimaMensal))}</strong>/mês — o negócio roda por{" "}
+          <strong>aporte do proprietário</strong>. O leite ainda não se paga: déficit operacional de{" "}
+          <strong className="rx-neg">R$ 700 mil</strong> em 2025.
+        </>
+      ),
+      cta: { label: "ver caixa & aporte", act: null },
+    },
+    {
+      tipo: "decidir",
+      label: "O que decidir",
+      icon: "?",
+      texto: (
+        <>
+          R$ <strong>1,31 mi</strong> de "Animal Aquisição" seguem em custeio — <strong>reclassificar como investimento</strong> limpa a
+          leitura. E vale decidir o ritmo de compra de gado: pausar corta o aporte mensal quase pela metade, de{" "}
+          <strong className="rx-neg">~R$ 988 mil</strong> para <strong className="rx-pos">~R$ 502 mil</strong>/mês.
+        </>
+      ),
+      cta: { label: "simular cenários", act: () => onNav("ia") },
+    },
+  ];
+
+  return (
+    <section className={"resumo-exec " + (open ? "" : "collapsed")}>
+      <div className="rx-head">
+        <div className="rx-head-l">
+          <span className="rx-badge">
+            <span className="dot"></span>IA · Resumo executivo
+          </span>
+          <span className="rx-sub">Gerado quando o BPO entregou a planilha · {R.UPDATED_AT}</span>
+        </div>
+        <button className="rx-toggle" onClick={() => setOpen((o) => !o)}>
+          {open ? "ocultar" : "mostrar"}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <div className="rx-lede">
+            Marco, leitura de 30 segundos: <strong>a fazenda não está quebrando — está financiando crescimento</strong>, mas o caixa
+            pede atenção e o leite ainda consome mais do que entrega.
+          </div>
+          <div className="rx-grid">
+            {itens.map((it, i) => (
+              <div key={i} className={"rx-card rx-" + it.tipo}>
+                <div className="rx-card-head">
+                  <span className="rx-icon">{it.icon}</span>
+                  <span className="rx-label">{it.label}</span>
+                </div>
+                <div className="rx-text">{it.texto}</div>
+                {it.cta && it.cta.act && (
+                  <button className="rx-cta" onClick={it.cta.act}>
+                    {it.cta.label} →
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ========== FÔLEGO DE CAIXA (aporte do proprietário) ========== */
+
+function FolegoCaixa({ R }: { R: R }) {
+  const f = R.folego;
+  const pf = R.projecaoFluxo;
+
+  const burnTotal = Math.abs(f.queimaMensal);
+  const burnOp = Math.abs(f.queimaCusteioMensal);
+  const pctOp = (burnOp / burnTotal) * 100;
+  const pctInv = 100 - pctOp;
+  const diasCaixa = f.caixa / (burnTotal / 30);
+  const reducao = ((burnTotal - burnOp) / burnTotal) * 100;
+
+  const fluxo = pf.fluxoProj as { mes: string; caixaFim: number }[];
+  const W = 360, H = 96, padL = 6, padR = 6, padT = 10, padB = 18;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const caixas = [f.caixa, ...fluxo.map((x) => x.caixaFim)];
+  const maxC = Math.max(...caixas, 0);
+  const minC = Math.min(...caixas, 0);
+  const range = maxC - minC || 1;
+  const yC = (v: number) => padT + innerH - ((v - minC) / range) * innerH;
+  const xC = (i: number) => padL + (i / (caixas.length - 1)) * innerW;
+  const linePts = caixas.map((v, i) => `${xC(i)},${yC(v)}`).join(" ");
+  const aporteAcum = Math.abs(Math.min(...fluxo.map((x) => x.caixaFim)) - f.caixa);
+
+  return (
+    <section className="folego-section">
+      <div className="dash-sec-head">
+        <div className="dash-sec-titles">
+          <span className="eyebrow">Saúde financeira</span>
+          <h2 className="dash-sec-title">Caixa & aporte do proprietário</h2>
+        </div>
+        <span className="folego-flag warn">Sustentado por aporte</span>
+      </div>
+
+      <div className="folego-grid">
+        <div className="folego-main sev-warn">
+          <span className="fm-eyebrow">Aporte mensal para manter o ritmo atual</span>
+          <div className="fm-big mono-nums">
+            {fmtBRL(burnTotal, { compact: false })}
+            <span className="fm-unit"> /mês</span>
+          </div>
+          <div className="fm-sub">
+            O caixa operacional de <strong className="mono-nums">{fmtBRL(f.caixa, { compact: false })}</strong> cobre só{" "}
+            <strong>~{Math.round(diasCaixa)} dias</strong> da queima. O negócio roda por <strong>aporte do proprietário</strong>, não por
+            geração própria.
+          </div>
+          <div className="fm-gauge">
+            <div className="fa-split-bar" style={{ height: 12, border: "1px solid var(--rule)" }}>
+              <div style={{ width: `${pctOp}%`, background: "var(--cafe)" }} title="Operacional"></div>
+              <div style={{ width: `${pctInv}%`, background: "var(--outros)" }} title="Investimento"></div>
+            </div>
+            <div className="fa-split-legend" style={{ marginTop: 8 }}>
+              <span>
+                <span className="legend-dot" style={{ background: "var(--cafe)" }}></span>Déficit operacional {pctOp.toFixed(0)}%
+              </span>
+              <span>
+                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Investimento {pctInv.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="folego-alt">
+          <span className="fa-eyebrow">Se pausar o investimento em rebanho</span>
+          <div className="fa-big mono-nums">
+            {fmtBRL(burnOp, { compact: false })}
+            <span className="fa-unit"> /mês</span>
+          </div>
+          <div className="fa-sub">
+            O aporte cai <strong className="mono-nums">~{reducao.toFixed(0)}%</strong> — de {fmtBRL(burnTotal)} para {fmtBRL(burnOp)}/mês.
+            Mas o <strong>déficit operacional não some</strong>: o leite ainda consome mais do que entrega. Pausar investir ajuda, não
+            resolve sozinho.
+          </div>
+          <div className="fa-split">
+            <div className="fa-mini-compare">
+              <div className="fmc-row">
+                <span className="fmc-lbl">Hoje</span>
+                <div className="fmc-bar">
+                  <div style={{ width: "100%", background: "var(--neg)" }}></div>
+                </div>
+                <span className="fmc-val mono-nums">{fmtBRL(burnTotal)}</span>
+              </div>
+              <div className="fmc-row">
+                <span className="fmc-lbl">Sem invest.</span>
+                <div className="fmc-bar">
+                  <div style={{ width: `${pctOp}%`, background: "var(--cafe)" }}></div>
+                </div>
+                <span className="fmc-val mono-nums">{fmtBRL(burnOp)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="folego-proj">
+          <div className="fp-head">
+            <span className="fp-eyebrow">Capital consumido · 6 meses</span>
+            <span className="fp-warn">~{fmtBRL(aporteAcum)} de aporte</span>
+          </div>
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+            <line x1={padL} x2={W - padR} y1={yC(0)} y2={yC(0)} stroke="var(--neg)" strokeWidth="1" strokeDasharray="3 3" />
+            <text x={W - padR} y={yC(0) - 3} textAnchor="end" style={{ fontSize: 9, fill: "var(--neg)", fontFamily: "var(--sans)" }}>
+              R$ 0
+            </text>
+            <polyline points={linePts} fill="none" stroke="var(--ink)" strokeWidth="1.6" />
+            {caixas.map((v, i) => (
+              <circle key={i} cx={xC(i)} cy={yC(v)} r="2.5" fill={v < 0 ? "var(--neg)" : "var(--bg)"} stroke={v < 0 ? "var(--neg)" : "var(--ink)"} strokeWidth="1.2" />
+            ))}
+            {["hoje", ...fluxo.map((x) => x.mes.replace(/\/\d{2}/, ""))].map(
+              (m, i) =>
+                (i % 2 === 0 || i === caixas.length - 1) && (
+                  <text key={i} x={xC(i)} y={H - 4} textAnchor="middle" style={{ fontSize: 9, fill: "var(--ink-3)", fontFamily: "var(--sans)" }}>
+                    {m}
+                  </text>
+                ),
+            )}
+          </svg>
+          <div className="fp-foot">
+            Sem aporte, o caixa fecha o período em <strong className="mono-nums">{fmtBRL(fluxo[fluxo.length - 1].caixaFim)}</strong> — ou
+            seja, é o capital que o proprietário precisa injetar conforme o investimento desacelera.
+          </div>
+        </div>
+      </div>
+
+      <div className="footnote" style={{ marginTop: 16 }}>
+        <span className="dagger">†</span>
+        <span>
+          Queima média dos 4 meses fechados de 2026 (Jan–Abr): {fmtBRL(burnTotal)}/mês, sendo {pctOp.toFixed(0)}% déficit operacional e{" "}
+          {pctInv.toFixed(0)}% investimento. Para o caixa parar de cair sem aporte, seria preciso zerar o déficit do leite <em>e</em> a
+          compra de gado — ou injetar ~{fmtBRL(burnTotal)}/mês.
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/* ========== PROJEÇÃO / BREAK-EVEN DO LEITE ========== */
+
+function BreakEvenLeite({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
+  const pl = R.projecaoLeite;
+  const proj = pl.proj as { mes: string; custoLitro: number; preco: number }[];
+  const beIdx = pl.breakEvenIdx;
+
+  const W = 1180, H = 320;
+  const padL = 56, padR = 130, padT = 24, padB = 46;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const allY = [...proj.map((p) => p.custoLitro), ...proj.map((p) => p.preco), pl.custoLitroHoje];
+  const yMax = Math.ceil(Math.max(...allY) * 1.1);
+  const yMin = 0;
+  const yS = (v: number) => padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const n = proj.length;
+  const xS = (i: number) => padL + (i / (n - 1)) * innerW;
+
+  const custoPts = proj.map((p, i) => `${xS(i)},${yS(p.custoLitro)}`).join(" ");
+  const precoPts = proj.map((p, i) => `${xS(i)},${yS(p.preco)}`).join(" ");
+
+  const ticks: number[] = [];
+  for (let v = 0; v <= yMax; v += yMax > 10 ? 4 : 2) ticks.push(v);
+
+  const beX = beIdx >= 0 ? xS(beIdx) : null;
+
+  return (
+    <section className="be-section">
+      <div className="dash-sec-head">
+        <div className="dash-sec-titles">
+          <span className="eyebrow">Projeção · próximos 12 meses</span>
+          <h2 className="dash-sec-title">Quando o leite passa a pagar o leite?</h2>
+        </div>
+        <span className="caption" style={{ fontStyle: "italic" }}>
+          premissas: matrizes entram em produção, custeio +1,5%/mês
+        </span>
+      </div>
+
+      <div className="be-kpis">
+        <div className="be-kpi">
+          <span className="l">Custo / litro hoje</span>
+          <span className="v mono-nums neg">R$ {pl.custoLitroHoje.toFixed(2).replace(".", ",")}</span>
+          <span className="s">contra R$ {pl.precoLitro.toFixed(2).replace(".", ",")} de venda</span>
+        </div>
+        <div className="be-kpi">
+          <span className="l">Volume hoje</span>
+          <span className="v mono-nums">
+            {(pl.volMesHoje / 1000).toFixed(0)} mil L<span style={{ fontSize: 14 }}>/mês</span>
+          </span>
+          <span className="s">~{Math.round(pl.volMesHoje / 30).toLocaleString("pt-BR")} L/dia</span>
+        </div>
+        <div className="be-kpi hl">
+          <span className="l">Break-even projetado</span>
+          <span className="v mono-nums">{pl.breakEvenMes || "—"}</span>
+          <span className="s">{beIdx >= 0 ? `em ${beIdx + 1} meses` : "fora do horizonte de 12m"}</span>
+        </div>
+        <div className="be-kpi">
+          <span className="l">Custo / litro no break-even</span>
+          <span className="v mono-nums pos">{beIdx >= 0 ? "R$ " + proj[beIdx].custoLitro.toFixed(2).replace(".", ",") : "—"}</span>
+          <span className="s">cai com diluição do volume</span>
+        </div>
+      </div>
+
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", marginTop: 8 }}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={padL} x2={W - padR} y1={yS(v)} y2={yS(v)} className={v === 0 ? "chart-axis" : "grid-line"} />
+            <text x={padL - 8} y={yS(v) + 4} textAnchor="end" className="chart-tick-text">
+              R$ {v}
+            </text>
+          </g>
+        ))}
+
+        {beIdx >= 0 && beX !== null && <rect x={padL} y={padT} width={beX - padL} height={innerH} fill="var(--neg)" opacity="0.05" />}
+        {beIdx >= 0 && beX !== null && <line x1={beX} x2={beX} y1={padT} y2={padT + innerH} stroke="var(--pos)" strokeWidth="1.2" strokeDasharray="4 3" />}
+
+        <polyline points={precoPts} fill="none" stroke="var(--leite)" strokeWidth="2" />
+        <polyline points={custoPts} fill="none" stroke="var(--neg)" strokeWidth="2" />
+
+        {proj.map((p, i) => (
+          <g key={i}>
+            <circle cx={xS(i)} cy={yS(p.custoLitro)} r="2.5" fill="var(--bg)" stroke="var(--neg)" strokeWidth="1.2" />
+            <circle cx={xS(i)} cy={yS(p.preco)} r="2.5" fill="var(--bg)" stroke="var(--leite)" strokeWidth="1.2" />
+            {(i % 2 === 0 || i === n - 1) && (
+              <text x={xS(i)} y={H - padB + 18} textAnchor="middle" className="chart-tick-text">
+                {p.mes.replace(/\/\d{2}/, "")}
+              </text>
+            )}
+          </g>
+        ))}
+
+        <text x={xS(n - 1) + 8} y={yS(proj[n - 1].preco) + 4} className="be-line-label" style={{ fill: "var(--leite)" }}>
+          preço/L
+        </text>
+        <text x={xS(n - 1) + 8} y={yS(proj[n - 1].custoLitro) + 4} className="be-line-label" style={{ fill: "var(--neg)" }}>
+          custo/L
+        </text>
+        {beIdx >= 0 && beX !== null && (
+          <text x={beX} y={padT - 6} textAnchor="middle" style={{ fontFamily: "var(--serif)", fontSize: 13, fill: "var(--pos)" }}>
+            break-even
+          </text>
+        )}
+      </svg>
+
+      <div className="be-foot">
+        <div className="be-foot-txt">
+          <strong>Leitura:</strong> o custo por litro hoje está em <span className="neg-txt">R$ {pl.custoLitroHoje.toFixed(2).replace(".", ",")}</span>{" "}
+          porque o volume caiu enquanto o rebanho passa por reposição. Conforme as matrizes compradas (R$ 2,2 mi) entram em produção, o
+          volume diluí o custo fixo e a curva cruza o preço de venda
+          {beIdx >= 0 ? (
+            <>
+              {" "}
+              por volta de <strong>{pl.breakEvenMes}</strong>.
+            </>
+          ) : (
+            <> — mas ainda não dentro de 12 meses no cenário base.</>
+          )}
+        </div>
+        <button className="btn-secondary" onClick={() => onNav && onNav("ia")}>
+          Simular cenários com a IA →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* ========== ORÇADO × REALIZADO ========== */
+
+function OrcadoRealizado({ R, onDrill }: { R: R; onDrill: (id: string) => void }) {
+  const orc = R.orcamento;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const itens = orc.itens.map((it: any) => ({ ...it, delta: it.realizado - it.orcado, pct: (it.realizado / it.orcado) * 100 }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalOrc = itens.reduce((s: number, i: any) => s + i.orcado, 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalReal = itens.reduce((s: number, i: any) => s + i.realizado, 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const estourou = itens.filter((i: any) => i.realizado > i.orcado).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maxVal = Math.max(...itens.map((i: any) => Math.max(i.orcado, i.realizado)));
+  return (
+    <section className="cockpit-section">
+      <div className="dash-sec-head">
+        <div className="dash-sec-titles">
+          <span className="eyebrow">Controle · {orc.periodo}</span>
+          <h2 className="dash-sec-title">Orçado × Realizado</h2>
+        </div>
+        <span className={"orc-flag " + (totalReal > totalOrc ? "over" : "ok")}>
+          {totalReal > totalOrc ? `${estourou} categorias acima do teto` : "dentro do orçamento"}
+        </span>
+      </div>
+      <div className="orc-summary">
+        <div className="orc-sum-cell">
+          <span className="l">Orçado total</span>
+          <span className="v mono-nums">{fmtBRL(totalOrc)}</span>
+        </div>
+        <div className="orc-sum-cell">
+          <span className="l">Realizado</span>
+          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--neg)" : "var(--pos)" }}>
+            {fmtBRL(totalReal)}
+          </span>
+        </div>
+        <div className="orc-sum-cell">
+          <span className="l">Desvio</span>
+          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--neg)" : "var(--pos)" }}>
+            {totalReal > totalOrc ? "▲ +" : "▼ "}
+            {fmtBRL(Math.abs(totalReal - totalOrc))}
+          </span>
+        </div>
+      </div>
+      <div className="orc-list">
+        <div className="orc-head-row">
+          <span>Categoria</span>
+          <span className="orc-bars-head">Orçado vs realizado</span>
+          <span style={{ textAlign: "right" }}>Realizado</span>
+          <span style={{ textAlign: "right" }}>Desvio</span>
+          <span style={{ textAlign: "right" }}>%</span>
+        </div>
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {itens.map((it: any) => {
+          const over = it.realizado > it.orcado;
+          const wOrc = (it.orcado / maxVal) * 100;
+          const wReal = (it.realizado / maxVal) * 100;
+          return (
+            <button key={it.catId} className="orc-row" onClick={() => onDrill && onDrill(it.catId)}>
+              <span className="orc-nome">{it.nome}</span>
+              <span className="orc-bars">
+                <span className="orc-bar-track">
+                  <span className="orc-bar-orc" style={{ width: `${wOrc}%` }}></span>
+                  <span className={"orc-bar-real " + (over ? "over" : "under")} style={{ width: `${wReal}%` }}></span>
+                </span>
+              </span>
+              <span className="orc-real mono-nums">{fmtBRL(it.realizado)}</span>
+              <span className={"orc-delta mono-nums " + (over ? "over" : "under")}>
+                {over ? "+" : "−"}
+                {fmtBRL(Math.abs(it.delta))}
+              </span>
+              <span className={"orc-pct mono-nums " + (over ? "over" : "under")}>{it.pct.toFixed(0)}%</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="orc-legend">
+        <span>
+          <span className="orc-swatch orc-line"></span>Teto orçado
+        </span>
+        <span>
+          <span className="orc-swatch over"></span>Acima do teto
+        </span>
+        <span>
+          <span className="orc-swatch under"></span>Dentro do teto
+        </span>
+        <span className="caption" style={{ marginLeft: "auto", fontStyle: "italic" }}>
+          Curral é quem mais estoura — puxado pela reforma do galpão.
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/* ========== PRODUTIVIDADE DO REBANHO ========== */
+
+function ProdutividadeRebanho({ R }: { R: R }) {
+  const p = R.produtividade;
+  const atual = p.litrosVacaAtual;
+  const meta = p.metaLitrosVaca;
+  const gap = meta - atual;
+  const pctMeta = (atual / meta) * 100;
+  const W = 760, H = 220, padL = 44, padR = 70, padT = 18, padB = 34;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const vals = p.litrosVaca as number[];
+  const yMax = Math.max(...vals, meta) * 1.1;
+  const yMin = Math.min(...vals) * 0.85;
+  const yS = (v: number) => padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+  const xS = (i: number) => padL + (i / (vals.length - 1)) * innerW;
+  const linePts = vals.map((v, i) => `${xS(i)},${yS(v)}`).join(" ");
+  const vacas = p.vacasLactacao[p.vacasLactacao.length - 1];
+  const litrosExtraDia = Math.round(gap * vacas);
+  const receitaExtraMes = Math.round(litrosExtraDia * 30 * 3.5);
+  return (
+    <section className="cockpit-section">
+      <div className="dash-sec-head">
+        <div className="dash-sec-titles">
+          <span className="eyebrow">Operação · a alavanca do break-even</span>
+          <h2 className="dash-sec-title">Produtividade do rebanho</h2>
+        </div>
+        <span className="caption" style={{ fontStyle: "italic" }}>
+          litros por vaca em lactação, por dia
+        </span>
+      </div>
+      <div className="prod-grid">
+        <div className="prod-kpis">
+          <div className="prod-kpi big">
+            <span className="l">Hoje</span>
+            <span className="v mono-nums">
+              {atual}
+              <small> L/vaca/dia</small>
+            </span>
+            <div className="prod-meta-bar">
+              <div className="pmb-track">
+                <div className="pmb-fill" style={{ width: `${Math.min(100, pctMeta)}%` }}></div>
+              </div>
+              <span className="pmb-cap">
+                {pctMeta.toFixed(0)}% da meta de {meta} L
+              </span>
+            </div>
+          </div>
+          <div className="prod-kpi">
+            <span className="l">Média 12m</span>
+            <span className="v mono-nums">{p.litrosVacaMedia} L</span>
+          </div>
+          <div className="prod-kpi">
+            <span className="l">Vacas em lactação</span>
+            <span className="v mono-nums">
+              {vacas}
+              <small> de {p.totalRebanho}</small>
+            </span>
+          </div>
+          <div className="prod-rebanho">
+            <span className="pr-head">Composição do rebanho</span>
+            <div className="pr-bar">
+              <div style={{ width: `${(vacas / p.totalRebanho) * 100}%`, background: "var(--leite)" }}></div>
+              <div style={{ width: `${(p.vacasSecas / p.totalRebanho) * 100}%`, background: "var(--cafe-2)" }}></div>
+              <div style={{ width: `${(p.novilhas / p.totalRebanho) * 100}%`, background: "var(--outros)" }}></div>
+              <div style={{ width: `${(p.bezerros / p.totalRebanho) * 100}%`, background: "var(--outros-2)" }}></div>
+            </div>
+            <div className="pr-legend">
+              <span>
+                <span className="legend-dot" style={{ background: "var(--leite)" }}></span>Lactação {vacas}
+              </span>
+              <span>
+                <span className="legend-dot" style={{ background: "var(--cafe-2)" }}></span>Secas {p.vacasSecas}
+              </span>
+              <span>
+                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Novilhas {p.novilhas}
+              </span>
+              <span>
+                <span className="legend-dot" style={{ background: "var(--outros-2)" }}></span>Bezerros {p.bezerros}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="prod-chart-wrap">
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+            {[yMin, (yMin + yMax) / 2, yMax].map((v, i) => (
+              <g key={i}>
+                <line x1={padL} x2={W - padR} y1={yS(v)} y2={yS(v)} className="grid-line" />
+                <text x={padL - 8} y={yS(v) + 4} textAnchor="end" className="chart-tick-text">
+                  {v.toFixed(0)}L
+                </text>
+              </g>
+            ))}
+            <line x1={padL} x2={W - padR} y1={yS(meta)} y2={yS(meta)} stroke="var(--pos)" strokeWidth="1.2" strokeDasharray="4 3" />
+            <text x={W - padR + 6} y={yS(meta) + 4} className="be-line-label" style={{ fill: "var(--pos)" }}>
+              meta {meta}L
+            </text>
+            <polyline points={linePts} fill="none" stroke="var(--leite)" strokeWidth="2" />
+            {vals.map((v, i) => (
+              <g key={i}>
+                <circle cx={xS(i)} cy={yS(v)} r="2.5" fill="var(--bg-card)" stroke="var(--leite)" strokeWidth="1.2" />
+                {(i % 2 === 0 || i === vals.length - 1) && (
+                  <text x={xS(i)} y={H - padB + 18} textAnchor="middle" className="chart-tick-text">
+                    {p.meses[i].replace(/\/\d{2}/, "")}
+                  </text>
+                )}
+              </g>
+            ))}
+          </svg>
+          <div className="prod-insight">
+            <span className="pi-tag">Análise da IA</span>
+            Cada vaca entrega <strong>{atual} L/dia</strong> contra a meta de <strong>{meta} L</strong>. Fechar esse gap de{" "}
+            {gap.toFixed(1)} L significaria <strong className="pos-txt"> +{litrosExtraDia.toLocaleString("pt-BR")} L/dia</strong> — cerca
+            de <strong className="pos-txt">{fmtBRL(receitaExtraMes)}/mês</strong> a mais de receita, com o mesmo rebanho. É a alavanca
+            que mais aproxima o break-even, antes de comprar mais matrizes.
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ========== DETALHE DO MÊS (timeline clicável) ========== */
+
+function MonthPilhaBar({ label, value, total, color, dashed, flag }: { label: string; value: number; total: number; color: string; dashed?: boolean; flag?: boolean }) {
+  const pct = total > 0 ? (value / total) * 100 : 0;
+  return (
+    <div className="pilha-row">
+      <div className="pilha-top">
+        <span className="pilha-nm">
+          <span
+            className="sw"
+            style={{
+              background: flag ? "transparent" : color,
+              backgroundImage: flag ? "repeating-linear-gradient(45deg, var(--neg) 0 2px, transparent 2px 4px)" : "none",
+              border: flag ? "1px solid var(--neg)" : dashed ? "1px dashed var(--outros)" : "none",
+              opacity: dashed ? 0.6 : 1,
+            }}
+          ></span>
+          {label}
+        </span>
+        <span className="pilha-vl mono-nums">{fmtBRL(value)}</span>
+      </div>
+      <div className="pilha-track">
+        <div className="pilha-fill" style={{ width: `${pct}%`, background: color, opacity: dashed ? 0.4 : 1 }}></div>
+      </div>
+    </div>
+  );
+}
+
+function MonthDetail({
+  R,
+  monthIdx,
+  onBack,
+  onNav,
+  onDrill,
+  onMonthChange,
+}: {
+  R: R;
+  monthIdx: number;
+  onBack: () => void;
+  onNav: (t: Tab) => void;
+  onDrill: (id: string) => void;
+  onMonthChange: (idx: number) => void;
+}) {
+  const mes = R.MESES_23M[monthIdx];
+  const parcial = mes.includes("*");
+  const mesLabel = mes.replace("*", "");
+
+  const recLeite = R.receitaLeite[monthIdx];
+  const recCafe = R.receitaCafe[monthIdx];
+  const receita = recLeite + recCafe;
+  const custeio = R.custeioLeitePuro[monthIdx] + R.custeioCafe[monthIdx] + R.sedeOutros[monthIdx];
+  const animAq = R.animalAquisicao[monthIdx];
+  const invest = R.investLeite[monthIdx] + R.investCafe[monthIdx] + animAq;
+  const fluxo = R.totalGeral[monthIdx];
+  const opLeite = recLeite - R.custeioLeitePuro[monthIdx];
+
+  const cats = R.categoriasReais
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((c: any) => ({ ...c, mesVal: (categoryMonthly(c)[monthIdx] || 0) }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((c: any) => c.mesVal > 0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: any, b: any) => b.mesVal - a.mesVal);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maxCat = Math.max(...cats.map((c: any) => c.mesVal), 1);
+
+  const prevIdx = monthIdx > 0 ? monthIdx - 1 : null;
+  const nextIdx = monthIdx < R.MESES_23M.length - 1 ? monthIdx + 1 : null;
+
+  const KPIS = [
+    { l: "Receita", v: receita, tone: "" },
+    { l: "Custeio", v: -custeio, tone: "" },
+    { l: "Investimento", v: -invest, tone: "" },
+    { l: "Fluxo do mês", v: fluxo, tone: fluxo < 0 ? "neg" : "pos" },
+  ];
+
+  return (
+    <div className="shell-wide">
+      <div className="breadcrumb">
+        <button className="crumb-btn" onClick={onBack}>
+          Dashboard
+        </button>
+        <span className="sep">›</span>
+        <button className="crumb-btn" onClick={onBack}>
+          Fluxo mês a mês
+        </button>
+        <span className="sep">›</span>
+        <span className="now">{mesLabel}</span>
+      </div>
+
+      <div className="drill-head">
+        <div className="title-block">
+          <span className="eyebrow">Fluxo completo do mês{parcial ? " · mês parcial" : ""}</span>
+          <div className="cat-name">{mesLabel}</div>
+        </div>
+        <div className="month-nav">
+          {prevIdx != null && (
+            <button className="crumb-btn" onClick={() => onMonthChange(prevIdx)}>
+              ‹ {R.MESES_23M[prevIdx].replace("*", "")}
+            </button>
+          )}
+          {nextIdx != null && (
+            <button className="crumb-btn" onClick={() => onMonthChange(nextIdx)}>
+              {R.MESES_23M[nextIdx].replace("*", "")} ›
+            </button>
+          )}
+        </div>
+        <div className="total-block">
+          <span className="eyebrow">Fluxo líquido</span>
+          <span className="v mono-nums" style={{ color: fluxo < 0 ? "var(--neg)" : "var(--pos)" }}>
+            {fmtBRL(fluxo)}
+          </span>
+        </div>
+      </div>
+
+      <div className="drill-stats">
+        {KPIS.map((k, i) => (
+          <div className="cell" key={i}>
+            <span className="l">{k.l}</span>
+            <span className="v mono-nums" style={{ color: k.tone === "neg" ? "var(--neg)" : k.tone === "pos" ? "var(--pos)" : "var(--ink)" }}>
+              {fmtBRL(k.v)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="month-grid">
+        <div className="month-panel">
+          <div className="panel-title">
+            <h3>Receita do mês</h3>
+          </div>
+          <div className="month-rec">
+            <div className="month-rec-row">
+              <span className="sw" style={{ background: "var(--leite)" }}></span>
+              <span className="nm">Leite (Embaré)</span>
+              <span className="vl mono-nums">{fmtBRL(recLeite)}</span>
+            </div>
+            {recCafe > 0 && (
+              <div className="month-rec-row">
+                <span className="sw" style={{ background: "var(--cafe)" }}></span>
+                <span className="nm">Café (safra)</span>
+                <span className="vl mono-nums">{fmtBRL(recCafe)}</span>
+              </div>
+            )}
+          </div>
+          <div className="month-op">
+            <div className="op-line">
+              <span>O leite pagou o leite?</span>
+              <span className="op-verdict" style={{ color: opLeite >= 0 ? "var(--pos)" : "var(--neg)" }}>
+                {opLeite >= 0 ? "Sim" : "Não"} · {opLeite >= 0 ? "+" : "−"}
+                {fmtBRL(Math.abs(opLeite))}
+              </span>
+            </div>
+            <div className="caption">Receita leite − custeio puro do leite no mês.</div>
+          </div>
+        </div>
+
+        <div className="month-panel">
+          <div className="panel-title">
+            <h3>Para onde foi o dinheiro</h3>
+          </div>
+          <div className="month-pilhas">
+            <MonthPilhaBar label="Custeio operacional" value={custeio} total={custeio + invest} color="var(--cafe)" />
+            {animAq > 0 && <MonthPilhaBar label="Animal Aquisição (invest. em custeio)" value={animAq} total={custeio + invest} color="var(--neg)" flag />}
+            <MonthPilhaBar label="Investimento" value={invest - animAq} total={custeio + invest} color="var(--outros)" dashed />
+          </div>
+        </div>
+      </div>
+
+      <section className="cockpit-section" style={{ borderBottom: "none", paddingTop: 30 }}>
+        <div className="dash-sec-head">
+          <div className="dash-sec-titles">
+            <span className="eyebrow">Detalhe · {mesLabel}</span>
+            <h2 className="dash-sec-title">Gastos do mês por categoria</h2>
+          </div>
+          <span className="caption" style={{ fontStyle: "italic" }}>
+            {cats.length} categorias com lançamento · clique para abrir
+          </span>
+        </div>
+        <div className="cats-real-list">
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {cats.map((c: any, i: number) => {
+            const w = (c.mesVal / maxCat) * 100;
+            const cor = c.atividade === "leite" ? "var(--leite)" : c.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
+            return (
+              <button key={c.id} className="cat-real-row" onClick={() => onDrill(c.id)}>
+                <span className="rnk">{String(i + 1).padStart(2, "0")}</span>
+                <div className="nm-cell">
+                  <span className="nm">
+                    {c.nome}
+                    {c.flag && (
+                      <span className="flag-warn" title="Classificação marcada pela IA">
+                        ⚠
+                      </span>
+                    )}
+                  </span>
+                  <span className="sub">
+                    {c.grupo} · {c.subgrupo}
+                  </span>
+                </div>
+                <div className="bar-cell">
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${w}%`, background: cor }}></div>
+                  </div>
+                </div>
+                <span className="tot mono-nums">{fmtBRL(c.mesVal)}</span>
+                <span className="ytd mono-nums">
+                  <small>do mês</small>
+                  {((c.mesVal / (custeio + invest)) * 100).toFixed(0)}%
+                </span>
+                <span className="dlt"></span>
+                <span className="arr serif">›</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div style={{ padding: "30px 0 60px", display: "flex", justifyContent: "space-between" }}>
+        <button className="crumb-btn" onClick={onBack}>
+          ← voltar ao Dashboard
+        </button>
+        <button className="crumb-btn" onClick={() => onNav("ia")}>
+          perguntar à IA sobre {mesLabel} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ========== MÁSCARA DE VALORES (permissão) ========== */
+
+function ValueMaskNotice({ user }: { user: User }) {
+  return (
+    <div className="mask-notice">
+      <span className="mask-eye">🔒</span>
+      <span>
+        Valores em R$ ocultos para o perfil{" "}
+        <strong>{user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome}</strong>. A estrutura — categorias,
+        proporções e tendências — segue visível. O proprietário libera valores em Acessos.
+      </span>
+    </div>
+  );
+}
+
 function LoadingShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell-wide">
@@ -1143,9 +2020,10 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
+export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
   const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
-  const [drillCat, setDrillCat] = useState<number | null>(null);
+  const [drillCat, setDrillCat] = useState<CatId | null>(null);
+  const [monthIdx, setMonthIdx] = useState<number | null>(null);
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
@@ -1167,17 +2045,50 @@ export function Dashboard({ onNav }: { onNav: (t: Tab) => void }) {
     return <LoadingShell>Carregando dados do Neon…</LoadingShell>;
   }
 
+  const maskVals = !!user && !user.flags.includes("verValores");
+
   if (drillCat !== null) {
-    return <CategoryDrill R={data} catId={drillCat} onBack={() => setDrillCat(null)} onNav={onNav} />;
+    return (
+      <div className={maskVals ? "mask-values" : ""}>
+        {maskVals && user && <ValueMaskNotice user={user} />}
+        <CategoryDrill R={data} catId={drillCat} onBack={() => setDrillCat(null)} onNav={onNav} />
+      </div>
+    );
+  }
+
+  if (monthIdx != null) {
+    return (
+      <div className={maskVals ? "mask-values" : ""}>
+        {maskVals && user && <ValueMaskNotice user={user} />}
+        <MonthDetail
+          R={data}
+          monthIdx={monthIdx}
+          onBack={() => setMonthIdx(null)}
+          onNav={onNav}
+          onMonthChange={setMonthIdx}
+          onDrill={(id) => {
+            setMonthIdx(null);
+            setDrillCat(id);
+          }}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="shell-wide">
+    <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
+      {maskVals && user && <ValueMaskNotice user={user} />}
+      <ResumoExecutivo R={data} onNav={onNav} />
+      <RupturaCaixa R={data} onNav={onNav} />
       <KpiCockpit R={data} range={range} setRange={setRange} />
+      <FolegoCaixa R={data} />
+      <BreakEvenLeite R={data} onNav={onNav} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
       <ExplorarCategoria R={data} onDrill={setDrillCat} />
       <AtividadeSplit R={data} />
-      <TimelineSection R={data} />
+      <OrcadoRealizado R={data} onDrill={setDrillCat} />
+      <ProdutividadeRebanho R={data} />
+      <TimelineSection R={data} onMonthClick={setMonthIdx} />
       <DRESection R={data} />
       <InconsistenciasSection R={data} />
       <div style={{ padding: "28px 0 60px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
