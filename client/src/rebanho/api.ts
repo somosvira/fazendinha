@@ -129,4 +129,12 @@ export function useDietas() {
   useEffect(() => { recarregar(); }, [recarregar]); return { data, recarregar };
 }
 
+export interface DashboardData { kpis: { rebanhoAtivo: number; emLactacao: number; secas: number; producaoMedia: number | null; gestantes: number; prenhez: number }; dominios: { tab: string; titulo: string; linhas: string[] }[]; alertas: { label: string; n: number; tab: string; tom: "bad" | "ok" }[]; }
+export const obterDashboard = () => req<DashboardData>(`/rebanho/dashboard`);
+export function useDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterDashboard().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, erro };
+}
+
 export type { ResumoAnimal };
