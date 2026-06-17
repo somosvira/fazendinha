@@ -63,10 +63,23 @@ interface ControleJson {
   peso3: number | null;
   pesoTotal: number;
 }
+interface EventoJson {
+  numero: string;
+  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+  data: string;
+  reprodutor: string | null;
+  resultado: string | null;
+  dtPartoPrevista: string | null;
+  tipoParto: string | null;
+  numCrias: number | null;
+  sexoCria: string | null;
+  observacao: string | null;
+}
 interface RebanhoJson {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
+  eventos: EventoJson[];
 }
 
 // datas vêm como "YYYY-MM-DD" (campos @db.Date) — fixar em UTC para não escorregar de dia
@@ -176,8 +189,29 @@ async function main() {
     controlesInseridos += r.count;
   }
 
+  // --- Eventos reprodutivos (createMany em lotes) — REPRODUCAO do Ideagri -----
+  const eventoRows = (dados.eventos ?? [])
+    .filter((e) => idByNumero.has(e.numero) && e.data)
+    .map((e) => ({
+      animalId: idByNumero.get(e.numero)!,
+      tipo: e.tipo,
+      data: d(e.data)!,
+      reprodutor: e.reprodutor ?? null,
+      resultado: e.resultado ?? null,
+      dtPartoPrevista: d(e.dtPartoPrevista),
+      tipoParto: e.tipoParto ?? null,
+      numCrias: e.numCrias ?? null,
+      sexoCria: e.sexoCria ?? null,
+      observacao: e.observacao ?? null,
+    }));
+  let eventosInseridos = 0;
+  for (let i = 0; i < eventoRows.length; i += CHUNK) {
+    const r = await prisma.eventoReprodutivo.createMany({ data: eventoRows.slice(i, i + CHUNK) });
+    eventosInseridos += r.count;
+  }
+
   const emLactacao = resumoRows.filter((r) => r.del != null).length;
-  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas).`);
+  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos.`);
 }
 
 main()
