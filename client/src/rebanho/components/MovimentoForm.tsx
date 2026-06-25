@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, listarCategorias, listarCentrosCusto, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type RefDTO, type MovimentoResult, type MovimentoInput } from "../api";
+import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type MovimentoResult, type MovimentoInput } from "../api";
 import { HOJE } from "../HOJE";
+import { ProdutoForm } from "./ProdutoForm";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -8,39 +9,34 @@ const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "AJUSTE", label: "Ajuste (inventário)" },
 ];
 
+function money(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [fornecedores, setFornecedores] = useState<FornecedorDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
-  const [categorias, setCategorias] = useState<RefDTO[]>([]);
-  const [centros, setCentros] = useState<RefDTO[]>([]);
-  const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", custoUnitario: "", fornecedorId: "", grupoId: "", observacao: "", categoriaId: "", centroCustoId: "", gerarLancamento: true });
+  const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", fornecedorId: "", grupoId: "", observacao: "", gerarLancamento: true });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<MovimentoResult | null>(null);
+  const [novoProduto, setNovoProduto] = useState(false);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
 
+  async function carregarProdutos(selecionarId?: number) {
+    const ps = await listarProdutos({ ativo: true });
+    const estocaveis = ps.filter((p) => p.estocavel);
+    setProdutos(estocaveis);
+    if (selecionarId) setF((s) => ({ ...s, produtoId: String(selecionarId) }));
+  }
+
   useEffect(() => {
-    listarProdutos({ ativo: true }).then((ps) => setProdutos(ps.filter((p) => p.estocavel))).catch(() => {});
+    carregarProdutos().catch(() => {});
     listarFornecedores().then(setFornecedores).catch(() => {});
     listarGrupos().then(setGrupos).catch(() => {});
-    listarCategorias().then(setCategorias).catch(() => {});
-    listarCentrosCusto().then(setCentros).catch(() => {});
   }, []);
 
   const produtoSel = produtos.find((p) => String(p.id) === f.produtoId) || null;
-  const custoHint = produtoSel?.custoUnitario != null ? `Padrão: ${produtoSel.custoUnitario}` : "Custo unitário (R$)";
-
-  // Ao escolher/trocar o produto, pré-preenche categoria/centro com o mapeamento contábil dele.
-  function escolherProduto(id: string) {
-    const p = produtos.find((x) => String(x.id) === id) || null;
-    setF((s) => ({
-      ...s,
-      produtoId: id,
-      categoriaId: p?.categoriaId != null ? String(p.categoriaId) : "",
-      centroCustoId: p?.centroCustoId != null ? String(p.centroCustoId) : "",
-    }));
-  }
+  const semContabil = produtoSel && f.tipo === "ENTRADA" && (produtoSel.categoriaId == null || produtoSel.centroCustoId == null);
 
   async function salvar() {
     if (!f.produtoId) { setErro("Selecione um produto."); return; }
@@ -53,31 +49,57 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
         tipo: f.tipo,
         data: f.data,
         quantidade: Number(f.quantidade),
-        custoUnitario: f.custoUnitario ? Number(f.custoUnitario) : undefined,
         fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
         grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
         observacao: f.observacao || undefined,
         gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
-        categoriaId: ehEntrada && f.categoriaId ? Number(f.categoriaId) : undefined,
-        centroCustoId: ehEntrada && f.centroCustoId ? Number(f.centroCustoId) : undefined,
       };
       const r = await registrarMovimento(payload);
-      setResultado(r); // mostra o feedback no drawer; o usuário fecha (recarrega) quando quiser
+      setResultado(r);
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
   }
 
-  // Após salvar, exibe o desfecho da ponte financeira e fecha (recarregando) ao confirmar.
+  // Após salvar, mostra um recibo claro do que aconteceu.
   if (resultado) {
+    const tipoLabel = TIPOS.find((t) => t.id === f.tipo)?.label.split(" ")[0] ?? f.tipo;
+    const qtdNum = Number(f.quantidade);
+    const valorTotal = produtoSel?.custoUnitario != null ? Number(produtoSel.custoUnitario) * Math.abs(qtdNum) : null;
     return (
       <>
         <div className="rb-drawer-bg" onClick={onSalvo} />
-        <aside className="rb-drawer">
-          <h3>Movimento registrado</h3>
-          {resultado.lancamentoCriado
-            ? <p style={{ color: "var(--leite)", fontSize: 15 }}>✓ Lançamento gerado</p>
-            : <p style={{ color: "var(--ink-3)", fontSize: 14 }}>Sem lançamento: {resultado.motivo ?? "não aplicável"}</p>}
-          <div className="rb-drawer-actions">
-            <button className="rb-btn pri" onClick={onSalvo}>Fechar</button>
+        <aside className="rb-drawer rb-success">
+          <div className="rb-success-check">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="24" cy="24" r="21" />
+              <path d="M15 24l7 7 12-14" />
+            </svg>
+          </div>
+          <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
+          <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
+            <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
+            {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
+          </p>
+          <div className="rb-success-line">
+            {resultado.lancamentoCriado ? (
+              <>
+                <span className="rb-success-dot ok">✓</span>
+                <div>
+                  <b>Lançamento financeiro gerado</b>
+                  <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="rb-success-dot off">—</span>
+                <div>
+                  <b>Sem lançamento financeiro</b>
+                  <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="rb-drawer-actions" style={{ justifyContent: "center", marginTop: 22 }}>
+            <button className="rb-btn pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</button>
           </div>
         </aside>
       </>
@@ -90,15 +112,29 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
       <aside className="rb-drawer">
         <h3>Registrar movimento</h3>
         <label className="rb-fld">Tipo<select value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
-        <label className="rb-fld">Produto*
-          <select value={f.produtoId} onChange={(e) => escolherProduto(e.target.value)}>
+
+        <div className="rb-fld">
+          <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            Produto*
+            <button type="button" onClick={() => setNovoProduto(true)} style={{ background: "transparent", border: 0, color: "var(--cafe)", fontSize: 12.5, fontFamily: "var(--sans)", fontStyle: "normal", cursor: "pointer", padding: 0 }}>+ novo produto</button>
+          </span>
+          <select value={f.produtoId} onChange={(e) => set("produtoId", e.target.value)}>
             <option value="">Selecione…</option>
             {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
           </select>
-        </label>
+        </div>
+
+        {produtoSel && (
+          <div style={{ marginTop: -6, marginBottom: 14, fontSize: 12.5, color: "var(--ink-3)", fontFamily: "var(--sans)" }}>
+            {produtoSel.custoUnitario != null
+              ? <>Custo cadastrado: <b style={{ color: "var(--ink-2)" }}>{money(Number(produtoSel.custoUnitario))}</b> / {produtoSel.unidade}</>
+              : <span style={{ color: "var(--neg)" }}>Sem custo cadastrado — edite o produto pra definir.</span>}
+            {semContabil && <span style={{ display: "block", color: "var(--neg)", marginTop: 4 }}>Falta categoria ou centro de custo no produto — o lançamento financeiro pode não ser gerado.</span>}
+          </div>
+        )}
+
         <label className="rb-fld">Data*<input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
-        <label className="rb-fld">Quantidade*{f.tipo === "AJUSTE" && <small style={{ textTransform: "none", letterSpacing: 0, color: "var(--ink-3)" }}> — negativo subtrai</small>}<input type="number" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></label>
-        <label className="rb-fld">Custo unitário (R$)<input type="number" min={0} step="0.01" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} placeholder={custoHint} /></label>
+        <label className="rb-fld">Quantidade*{f.tipo === "AJUSTE" && <small style={{ color: "var(--ink-3)", fontStyle: "normal", marginLeft: 4 }}>— negativo subtrai</small>}<input type="number" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></label>
         {f.tipo === "ENTRADA" && (
           <label className="rb-fld">Fornecedor
             <select value={f.fornecedorId} onChange={(e) => set("fornecedorId", e.target.value)}>
@@ -116,23 +152,9 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </label>
         )}
         {f.tipo === "ENTRADA" && (
-          <>
-            <label className="rb-fld">Categoria
-              <select value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
-                <option value="">—</option>
-                {categorias.map((cat) => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
-              </select>
-            </label>
-            <label className="rb-fld">Centro de custo
-              <select value={f.centroCustoId} onChange={(e) => set("centroCustoId", e.target.value)}>
-                <option value="">—</option>
-                {centros.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
-              </select>
-            </label>
-            <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8, textTransform: "none", letterSpacing: 0 }}>
-              <input type="checkbox" checked={f.gerarLancamento} onChange={(e) => set("gerarLancamento", e.target.checked)} style={{ width: "auto" }} />Gerar lançamento financeiro
-            </label>
-          </>
+          <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal" }}>
+            <input type="checkbox" checked={f.gerarLancamento} onChange={(e) => set("gerarLancamento", e.target.checked)} style={{ width: "auto" }} />Gerar lançamento financeiro
+          </label>
         )}
         <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></label>
         {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
@@ -141,6 +163,13 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
         </div>
       </aside>
+      {novoProduto && (
+        <ProdutoForm
+          stacked
+          onFechar={() => setNovoProduto(false)}
+          onSalvo={(criado) => { setNovoProduto(false); carregarProdutos(criado?.id).catch(() => {}); }}
+        />
+      )}
     </>
   );
 }

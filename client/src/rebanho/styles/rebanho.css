@@ -164,10 +164,44 @@
 .rb-empty { border: 1px dashed var(--rule); border-radius: 10px; padding: 22px; color: var(--ink-3); font-size: 13.5px; background: var(--bg-card-2); }
 .rb-head-actions { display: flex; gap: 8px; }
 
-/* drawer de formulário (novo/editar/baixa) */
-.rb-drawer-bg { position: fixed; inset: 0; background: rgba(14,19,17,.35); z-index: 10; }
-.rb-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; background: var(--bg); border-left: 1px solid var(--rule); z-index: 11; padding: 24px; overflow-y: auto; box-shadow: -8px 0 30px rgba(0,0,0,.12); }
-.rb-drawer h3 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 16px; }
+/* modal de formulário (novo/editar/baixa) — antes era drawer lateral */
+.rb-drawer-bg { position: fixed; inset: 0; background: rgba(14,19,17,.45); backdrop-filter: blur(2px); z-index: 10; animation: rb-fade-in .15s ease; }
+.rb-drawer { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 32px)); max-height: min(86vh, calc(100vh - 48px)); background: var(--bg); border: 1px solid var(--rule); border-radius: 12px; z-index: 11; padding: 28px 28px 24px; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.18); animation: rb-modal-in .18s ease; }
+.rb-drawer h3 { font-family: var(--serif); font-weight: 500; font-size: 22px; margin: 0 0 18px; }
+/* modal aninhado (ex.: cadastrar produto a partir do registrar movimento) */
+.rb-drawer-bg.rb-stacked { background: rgba(14,19,17,.55); z-index: 20; }
+.rb-drawer.rb-stacked { z-index: 21; }
+@keyframes rb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rb-modal-in { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+/* success state do modal */
+.rb-drawer.rb-success { max-width: 440px; }
+.rb-success-check { display: flex; justify-content: center; margin-top: 4px; animation: rb-check-pop .3s cubic-bezier(.34,1.56,.64,1); }
+.rb-success-check svg { width: 64px; height: 64px; color: var(--pos); }
+.rb-success-check svg circle { animation: rb-check-circle .4s ease-out backwards; stroke-dasharray: 132; stroke-dashoffset: 0; }
+.rb-success-check svg path { animation: rb-check-path .25s ease-out .25s backwards; stroke-dasharray: 30; stroke-dashoffset: 0; }
+@keyframes rb-check-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes rb-check-circle { from { stroke-dashoffset: 132; } to { stroke-dashoffset: 0; } }
+@keyframes rb-check-path { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
+.rb-success-line { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 10px; font-size: 13.5px; }
+.rb-success-line b { font-weight: 600; color: var(--ink); }
+.rb-success-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+.rb-success-dot.ok { background: color-mix(in srgb, var(--pos) 14%, transparent); color: var(--pos); }
+.rb-success-dot.off { background: var(--rule-soft); color: var(--ink-3); }
+/* modal de confirmação destrutiva */
+.rb-drawer.rb-confirm { max-width: 460px; }
+.rb-confirm-icon { display: flex; justify-content: center; margin-top: 2px; }
+.rb-confirm-icon svg { width: 44px; height: 44px; color: var(--neg); }
+.rb-confirm-recibo { background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; }
+.rb-confirm-recibo .rb-kv { padding: 6px 0; font-size: 13px; }
+.rb-confirm-recibo .rb-kv:last-child { border-bottom: 0; }
+.rb-confirm-warn { display: flex; gap: 12px; align-items: flex-start; background: color-mix(in srgb, var(--neg) 8%, transparent); border-left: 3px solid var(--neg); border-radius: 6px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); line-height: 1.45; margin-bottom: 16px; }
+.rb-confirm-warn span { font-size: 16px; line-height: 1; color: var(--neg); flex: none; }
+.rb-confirm-warn b { color: var(--ink); font-weight: 600; }
+.rb-confirm-ack { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; font-size: 13.5px; color: var(--ink-2); font-family: var(--sans); cursor: pointer; user-select: none; }
+.rb-confirm-ack input[type="checkbox"] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--neg); cursor: pointer; flex: none; }
+.rb-btn-danger { background: var(--neg); color: #fff; border: 0; font-weight: 600; }
+.rb-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--neg) 88%, black); }
+.rb-btn-danger:disabled { background: color-mix(in srgb, var(--neg) 35%, var(--rule-soft)); color: rgba(255,255,255,.8); cursor: not-allowed; }
 .rb-fld { display: flex; flex-direction: column; gap: 6px; font-family: var(--serif); font-style: italic; font-size: 13px; font-weight: 400; color: var(--ink-3); text-transform: none; letter-spacing: 0; margin-bottom: 14px; }
 .rb-fld input, .rb-fld select, .rb-fld textarea { font-family: var(--sans); font-style: normal; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; padding: 8px 2px; background: transparent; transition: border-color .15s ease; }
 .rb-fld input:focus, .rb-fld select:focus, .rb-fld textarea:focus { outline: 0; border-bottom-color: var(--cafe); }
@@ -248,6 +282,6 @@ input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-sty
   .rb-k:nth-child(3n+1) { border-left: 1px solid var(--rule-soft); padding-left: 22px; }
   .rb-k:nth-child(2n+1) { border-left: 0; padding-left: 2px; }
 
-  /* drawer de formulário ocupa quase a tela toda */
-  .rb-drawer { width: min(420px, 92vw); padding: 20px; }
+  /* modal ocupa quase a tela toda */
+  .rb-drawer { width: calc(100vw - 24px); max-height: calc(100vh - 24px); padding: 22px 20px 18px; border-radius: 10px; }
 }

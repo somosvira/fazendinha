@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, type MovimentoDTO } from "../api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, type MovimentoDTO, type ProdutoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
+import { ProdutoForm } from "./ProdutoForm";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -15,19 +16,61 @@ function useMovimentos() {
   return { data, loading, erro, recarregar };
 }
 
+type SortKey = "nome" | "tipo" | "valor";
+type SortDir = "asc" | "desc";
+
 export function EstoqueTab() {
   const custo = useCustoVacaDia();
   const saldos = useSaldos();
   const movimentos = useMovimentos();
   const [form, setForm] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [soAbaixoMin, setSoAbaixoMin] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
+  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  const [editando, setEditando] = useState<ProdutoDTO | null>(null);
+  const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
 
-  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); };
+  const carregarProdutos = useCallback(() => {
+    listarProdutos({ ativo: true }).then(setProdutos).catch(() => {});
+  }, []);
+  useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
 
-  async function excluir(m: MovimentoDTO) {
-    if (!confirm(`Excluir movimento de ${m.produto}?`)) return;
-    await excluirMovimento(m.id);
-    recarregarTudo();
+  function trocarSort(key: SortKey) {
+    setSort((s) => {
+      if (s.key !== key) return { key, dir: key === "valor" ? "desc" : "asc" };
+      return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+    });
   }
+
+  const saldosVisiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    const filtrados = saldos.data.filter((s) => {
+      if (soAbaixoMin && !s.abaixoMinimo) return false;
+      if (!termo) return true;
+      return s.nome.toLowerCase().includes(termo) || s.tipo.toLowerCase().includes(termo);
+    });
+    const mult = sort.dir === "asc" ? 1 : -1;
+    return [...filtrados].sort((a, b) => {
+      switch (sort.key) {
+        case "tipo": return a.tipo.localeCompare(b.tipo, "pt-BR") * mult || a.nome.localeCompare(b.nome, "pt-BR");
+        case "valor": return (a.valor - b.valor) * mult;
+        case "nome":
+        default: return a.nome.localeCompare(b.nome, "pt-BR") * mult;
+      }
+    });
+  }, [saldos.data, busca, soAbaixoMin, sort]);
+
+  const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
+
+  function abrirEdicao(produtoId: number) {
+    const p = produtos.find((x) => x.id === produtoId);
+    if (p) setEditando(p);
+  }
+
+  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); carregarProdutos(); };
+
+  // exclusão real acontece dentro do modal de confirmação
 
   if (custo.loading && saldos.loading && movimentos.loading) {
     return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Estoque</h1></div><p className="rb-sub">Carregando…</p></main>;
@@ -54,20 +97,56 @@ export function EstoqueTab() {
       {custo.erro && <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro no custo: {custo.erro}</p>}
 
       {/* Saldos */}
-      <h2 className="rb-sec-title">Saldos de estoque</h2>
+      <div className="rb-listhead" style={{ marginTop: 4 }}>
+        <h2 className="rb-sec-title" style={{ margin: 0 }}>Saldos de estoque</h2>
+        <span className="hint">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
+      </div>
+      {saldos.data.length > 0 && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
+          <input
+            type="search"
+            className="rb-fld"
+            placeholder="Buscar por nome ou tipo…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            style={{ flex: "1 1 240px", maxWidth: 360 }}
+          />
+          {nAbaixoMin > 0 && (
+            <button
+              type="button"
+              className={"rb-chip-q" + (soAbaixoMin ? " on" : "")}
+              onClick={() => setSoAbaixoMin((v) => !v)}
+              style={soAbaixoMin ? { borderColor: "var(--neg)", color: "var(--neg)" } : undefined}
+            >
+              ⚠ Só abaixo do mínimo ({nAbaixoMin})
+            </button>
+          )}
+        </div>
+      )}
       {saldos.loading ? <p className="rb-sub">Carregando…</p>
         : saldos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {saldos.erro}</p>
         : saldos.data.length === 0 ? <div className="rb-empty">Nenhum produto estocável cadastrado.</div>
+        : saldosVisiveis.length === 0 ? <div className="rb-empty">Nenhum produto bate com a busca.</div>
         : (
           <div className="rb-tbl-wrap"><table className="rb-tbl">
-            <thead><tr><th>Produto</th><th>Tipo</th><th>Saldo</th><th>Valor</th><th>Mínimo</th></tr></thead>
-            <tbody>{saldos.data.map((s) => (
+            <thead><tr>
+              <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
+              <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
+              <th>Saldo</th>
+              <th><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
+              <th>Mínimo</th>
+              <th></th>
+            </tr></thead>
+            <tbody>{saldosVisiveis.map((s) => (
               <tr key={s.produtoId}>
                 <td className="rb-anm">{s.nome} {s.abaixoMinimo && <span className="rb-pill bad">⚠ abaixo do mínimo</span>}</td>
                 <td>{s.tipo}</td>
                 <td>{qtd(s.saldo)} {s.unidade}</td>
                 <td>{money(s.valor)}</td>
                 <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
+                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                  <button className="rb-btn" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</button>
+                </td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -92,13 +171,104 @@ export function EstoqueTab() {
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => excluir(m)}>Excluir</button></td>
+                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => setExcluindo(m)}>Excluir</button></td>
               </tr>
             ))}</tbody>
           </table></div>
         )}
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
+      {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
+      {excluindo && (
+        <ConfirmarExclusao
+          movimento={excluindo}
+          onCancelar={() => setExcluindo(null)}
+          onConfirmado={() => { setExcluindo(null); recarregarTudo(); }}
+        />
+      )}
     </main>
+  );
+}
+
+function ConfirmarExclusao({ movimento, onCancelar, onConfirmado }: { movimento: MovimentoDTO; onCancelar: () => void; onConfirmado: () => void }) {
+  const [aceito, setAceito] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function confirmar() {
+    setExcluindo(true); setErro(null);
+    try {
+      await excluirMovimento(movimento.id);
+      onConfirmado();
+    } catch (e: any) {
+      setErro(e.message ?? "Erro ao excluir.");
+      setExcluindo(false);
+    }
+  }
+
+  const dataFmt = new Date(movimento.data).toLocaleDateString("pt-BR");
+
+  return (
+    <>
+      <div className="rb-drawer-bg" onClick={excluindo ? undefined : onCancelar} />
+      <aside className="rb-drawer rb-confirm" role="alertdialog" aria-labelledby="rb-confirm-title">
+        <div className="rb-confirm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
+        <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
+          Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
+        </p>
+
+        <div className="rb-confirm-recibo">
+          <div className="rb-kv"><span>Data</span><b>{dataFmt}</b></div>
+          <div className="rb-kv"><span>Produto</span><b>{movimento.produto}</b></div>
+          <div className="rb-kv"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></div>
+          <div className="rb-kv"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></div>
+          <div className="rb-kv"><span>Valor</span><b>{money(movimento.valorTotal)}</b></div>
+        </div>
+
+        <div className="rb-confirm-warn">
+          <span>⚠</span>
+          <div>
+            <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
+            Movimentos em mês fechado não podem ser excluídos.
+          </div>
+        </div>
+
+        <label className="rb-confirm-ack">
+          <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
+          Entendo que esta exclusão é permanente.
+        </label>
+
+        {erro && <p style={{ color: "var(--neg)", fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
+
+        <div className="rb-drawer-actions" style={{ justifyContent: "space-between", marginTop: 18 }}>
+          <button className="rb-btn" onClick={onCancelar} disabled={excluindo}>Cancelar</button>
+          <button className="rb-btn rb-btn-danger" onClick={confirmar} disabled={!aceito || excluindo}>
+            {excluindo ? "Excluindo…" : "Excluir definitivamente"}
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function SortBtn({ label, active, dir, onClick }: { label: string; active: boolean; dir: SortDir; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", color: "inherit", font: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}
+    >
+      {label}
+      <span style={{ fontSize: 10, opacity: active ? 1 : 0.35, color: active ? "var(--cafe)" : "var(--ink-mute)", lineHeight: 1 }}>
+        {active ? (dir === "asc" ? "▲" : "▼") : "⇅"}
+      </span>
+    </button>
   );
 }
