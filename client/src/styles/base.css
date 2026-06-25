@@ -1125,3 +1125,64 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
+
+/* ============================================================
+   Mobile / Tablet — financeiro
+   Drawer (sidebar) já é tratado em rebanho.css; aqui cuidamos
+   dos reflows de conteúdo do lado financeiro.
+   ============================================================ */
+
+@media (max-width: 1100px) {
+  /* shells largos passam a respirar com o viewport */
+  .shell, .shell-wide { padding: 0 24px; max-width: 100%; }
+
+  /* hero do dashboard: 3 colunas (saldos | sep | título) vira pilha */
+  .hero-band { grid-template-columns: 1fr !important; gap: 22px !important; }
+  .hero-band-divider { display: none !important; }
+  .hero-band-r { padding-left: 0 !important; }
+  .hero-flux { grid-template-columns: 1fr !important; }
+
+  /* cards de 4 colunas */
+  .brutal-cards, .inc-grid, .three-up, .context-cards-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .two-up { grid-template-columns: 1fr !important; }
+
+  /* DRE e linhas de categoria — scroll horizontal */
+  .dre-section, .cats-real { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dre-table { min-width: 640px; }
+  .cat-real-row { min-width: 720px; }
+
+  /* report header: meta volta pra baixo */
+  .report-header { grid-template-columns: 1fr !important; }
+  .report-meta { text-align: left !important; align-items: flex-start !important; }
+}
+
+@media (max-width: 900px) {
+  :root { --gutter: 18px; }
+
+  /* topbar mobile (rb-topbar) já entra; main perde offset da sidebar */
+  .app-main { margin-left: 0; }
+
+  .shell, .shell-wide { padding: 0 16px; }
+
+  /* masthead financeiro (caso volte a ter um) */
+  .masthead-inner { grid-template-columns: 1fr; padding: 14px 16px; gap: 12px; }
+
+  /* títulos um tom menor */
+  .h1, h1.h1 { font-size: 28px; line-height: 1.15; }
+  .report-header { padding: 22px 0 18px; }
+
+  /* tudo em coluna única abaixo desse limite */
+  .brutal-cards, .inc-grid, .three-up, .context-cards-row { grid-template-columns: 1fr !important; }
+  .timeline-slices { flex-wrap: wrap; }
+
+  /* viewas banner (admin) */
+  .viewas-banner { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; }
+}
+
+@media (max-width: 600px) {
+  .h1, h1.h1 { font-size: 24px; }
+  .shell, .shell-wide { padding: 0 12px; }
+}
+
+/* drawer-friendly: trava o scroll do body quando o drawer está aberto */
+body.no-scroll { overflow: hidden; }

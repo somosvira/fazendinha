@@ -50,7 +50,7 @@ export function CustoProducaoTab() {
           {data.breakdown.length === 0 ? (
             <div className="rb-empty">Sem custeio do leite no período.</div>
           ) : (
-            <table className="rb-tbl">
+            <div className="rb-tbl-wrap"><table className="rb-tbl">
               <thead><tr><th>Categoria</th><th style={{ width: "45%" }}>Participação</th><th>Valor</th><th>%</th></tr></thead>
               <tbody>
                 {data.breakdown.map((l) => (
@@ -66,7 +66,7 @@ export function CustoProducaoTab() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
 
           {/* Card de transparência — como o custo/litro é calculado */}
@@ -126,7 +126,7 @@ export function CustoProducaoTab() {
           {san.topAnimais.length > 0 && (
             <>
               <h2 className="rb-sec-title">Animais com maior custo estimado</h2>
-              <table className="rb-tbl">
+              <div className="rb-tbl-wrap"><table className="rb-tbl">
                 <thead>
                   <tr>
                     <th>Animal</th>
@@ -155,7 +155,7 @@ export function CustoProducaoTab() {
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </>
           )}
 
@@ -163,7 +163,7 @@ export function CustoProducaoTab() {
           {san.produtos.length > 0 && (
             <>
               <h2 className="rb-sec-title">Produtos mais aplicados</h2>
-              <table className="rb-tbl">
+              <div className="rb-tbl-wrap"><table className="rb-tbl">
                 <thead>
                   <tr>
                     <th>Produto</th>
@@ -182,7 +182,7 @@ export function CustoProducaoTab() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <p className="rb-sub">
                 Custo exato: {money(san.custoExatoTotal)} · {san.produtosPrecificados} de {san.produtosTotais} produtos precificados — defina o custo unitário no Cadastros.
               </p>

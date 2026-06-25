@@ -80,18 +80,20 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         </div>
         <div>
           <div className="rb-box">
-            <h4>Estado atual</h4>
-            <div className="rb-kv"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
-            <div className="rb-kv"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
-            <div className="rb-kv"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
-            <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
-            {tanque && <p className="rb-sec-sub" style={{ margin: "8px 0 0" }}>Produção estimada por rateio do lote.</p>}
-          </div>
-          <div className="rb-box">
-            <h4>Genealogia</h4>
-            <div className="rb-ped">
-              {a.maeId ? <div>Mãe <button onClick={() => onAbrirAnimal(a.maeId!)}>{a.maeNome ?? "—"} #{a.maeNumero ?? "—"}</button></div> : <div>Mãe <span style={{ color: "var(--ink-mute)" }}>—</span></div>}
-              <div>Pai <span style={{ color: "var(--ink-mute)" }}>{a.paiNome ?? "—"}</span></div>
+            <div className="rb-box-section">
+              <h4>Estado atual</h4>
+              <div className="rb-kv"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
+              <div className="rb-kv"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
+              <div className="rb-kv"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
+              <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
+              {tanque && <p className="rb-sec-sub" style={{ margin: "8px 0 0" }}>Produção estimada por rateio do lote.</p>}
+            </div>
+            <div className="rb-box-section">
+              <h4>Genealogia</h4>
+              <div className="rb-ped">
+                {a.maeId ? <div>Mãe <button onClick={() => onAbrirAnimal(a.maeId!)}>{a.maeNome ?? "—"} #{a.maeNumero ?? "—"}</button></div> : <div>Mãe <span style={{ color: "var(--ink-mute)" }}>—</span></div>}
+                <div>Pai <span style={{ color: "var(--ink-mute)" }}>{a.paiNome ?? "—"}</span></div>
+              </div>
             </div>
           </div>
           {r && (

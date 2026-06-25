@@ -61,19 +61,19 @@ export function ProducaoTab() {
       {tanque ? (
         <>
           <h2 className="rb-sec-title">Lotes</h2>
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Lote</th><th>Litros/dia</th><th>Vacas</th><th>Rateio por vaca</th></tr></thead>
             <tbody>{(data.lotes ?? []).map((l, i) => (
               <tr key={i}><td className="rb-anm">{l.grupo}</td><td>{l.litros != null ? `${l.litros} L` : "—"}</td><td>{l.vacas}</td><td>{l.rateio != null ? `${l.rateio} L/d` : "—"}</td></tr>
             ))}</tbody>
-          </table>
+          </table></div>
           {(data.lotes ?? []).length === 0 && <div className="rb-empty" style={{ marginTop: 12 }}>Nenhuma produção de lote registrada ainda.</div>}
           <LoteForm onSalvo={recarregar} />
         </>
       ) : (
         <>
           <h2 className="rb-sec-title">Ranking de produção</h2>
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Vaca</th><th>Produção</th></tr></thead>
             <tbody>{(data.ranking ?? []).map((r) => (
               <tr key={r.numero}>
@@ -81,7 +81,7 @@ export function ProducaoTab() {
                 <td>{r.litros} L/d</td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
           {(data.ranking ?? []).length === 0 && <div className="rb-empty" style={{ marginTop: 12 }}>Nenhuma vaca em lactação com produção registrada.</div>}
           <p className="rb-sub" style={{ marginTop: 14 }}>Registre controles na ficha de cada animal (+ Registrar controle).</p>
         </>

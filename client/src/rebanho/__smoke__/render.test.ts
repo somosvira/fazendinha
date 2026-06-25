@@ -21,6 +21,7 @@ describe("render smoke", () => {
     const html = renderToString(h(AppSidebar, {
       current: "dashboard", onNav: () => {}, financeiro: [{ id: "dashboard", label: "Dashboard" }, { id: "ia", label: "IA" }],
       isAdmin: true, user: usuarios[0], allUsers: usuarios, onSwitchUser: () => {},
+      mobileOpen: false, onMobileToggle: () => {},
     }));
     expect(html).toContain("Financeiro");
     expect(html).toContain("Rebanho");

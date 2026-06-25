@@ -61,7 +61,7 @@ export function HerdDomainView({
             <h3>{wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}</h3>
             <span className="hint">clique numa linha pra abrir a ficha</span>
           </div>
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
               {linhas.map((r) => {
@@ -74,7 +74,7 @@ export function HerdDomainView({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </>
       )}
     </main>
