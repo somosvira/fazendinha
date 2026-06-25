@@ -51,6 +51,19 @@ export function App() {
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // body lock + tecla esc fecham o drawer mobile
+  useEffect(() => {
+    if (!mobileOpen) return;
+    document.body.classList.add("no-scroll");
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.classList.remove("no-scroll");
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen]);
 
   const effectiveUser = useMemo(() => {
     const id = viewAsId || realUserId;
@@ -116,8 +129,10 @@ export function App() {
         user={effectiveUser}
         allUsers={viewAsId ? null : users}
         onSwitchUser={enterViewAs}
+        mobileOpen={mobileOpen}
+        onMobileToggle={setMobileOpen}
       />
-      <main className="app-main">
+      <main className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         {viewAsId && (
           <div className="viewas-banner">
             <span className="eye">👁</span>

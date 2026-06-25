@@ -65,7 +65,7 @@ function Produtos() {
         : erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
         : data.length === 0 ? <p className="rb-sub">Nenhum produto encontrado.</p>
         : (
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Custo</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((p) => (
               <tr key={p.id}>
@@ -80,7 +80,7 @@ function Produtos() {
                 </td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         )}
 
       {novo && <ProdutoForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}
@@ -117,7 +117,7 @@ function Fornecedores() {
         : erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
         : data.length === 0 ? <p className="rb-sub">Nenhum fornecedor encontrado.</p>
         : (
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((fr) => (
               <tr key={fr.id}>
@@ -132,7 +132,7 @@ function Fornecedores() {
                 </td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         )}
 
       {novo && <FornecedorForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}

@@ -59,7 +59,7 @@ export function EstoqueTab() {
         : saldos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {saldos.erro}</p>
         : saldos.data.length === 0 ? <div className="rb-empty">Nenhum produto estocável cadastrado.</div>
         : (
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Produto</th><th>Tipo</th><th>Saldo</th><th>Valor</th><th>Mínimo</th></tr></thead>
             <tbody>{saldos.data.map((s) => (
               <tr key={s.produtoId}>
@@ -70,7 +70,7 @@ export function EstoqueTab() {
                 <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         )}
 
       {/* Movimentos */}
@@ -82,7 +82,7 @@ export function EstoqueTab() {
         : movimentos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {movimentos.erro}</p>
         : movimentos.data.length === 0 ? <div className="rb-empty">Nenhum movimento registrado ainda.</div>
         : (
-          <table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtde</th><th>Valor</th><th>Origem/destino</th><th></th></tr></thead>
             <tbody>{movimentos.data.map((m) => (
               <tr key={m.id}>
@@ -95,7 +95,7 @@ export function EstoqueTab() {
                 <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => excluir(m)}>Excluir</button></td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
         )}
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
