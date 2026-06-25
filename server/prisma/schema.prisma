@@ -9,6 +9,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Natureza {
@@ -20,6 +21,28 @@ enum Situacao {
   ABERTO // a vencer -> Projeção
   LIQUIDADO // realizado -> Resultado Operacional
   LIQUIDADO_PARCIAL
+}
+
+enum StatusValidacaoNF {
+  PENDENTE
+  VALIDA
+  ATENCAO
+  REJEITADA
+}
+
+enum StatusUploadPendente {
+  AGUARDANDO
+  CONFIRMADO
+  CANCELADO
+  EXPIRADO
+}
+
+enum StatusConfirmacaoWA {
+  AGUARDANDO
+  CONFIRMADA
+  CANCELADA
+  EXPIRADA
+  ERRO_EXTRACAO
 }
 
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
@@ -155,6 +178,10 @@ model Lancamento {
   clienteFornecedorId Int?
   // Movimento de estoque que gerou este lançamento (ponte compra→financeiro), se houver.
   movimentoEstoque    MovimentoEstoque?
+
+  notasFiscais         NotaFiscalArquivo[]
+  uploadsPendentes     NotaFiscalUploadPendente[]
+  confirmacoesWhatsapp WhatsAppConfirmacaoPendente[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -434,4 +461,83 @@ model MovimentoEstoque {
 
   @@index([produtoId, data])
   @@index([tipo, data])
+}
+
+model NotaFiscalArquivo {
+  id           Int        @id @default(autoincrement())
+  lancamento   Lancamento @relation(fields: [lancamentoId], references: [id], onDelete: Cascade)
+  lancamentoId Int
+
+  storageDriver String
+  bucket        String?
+  storageKey    String  @unique
+  mimeType      String
+  tamanhoBytes  Int
+  sha256        String  @unique
+
+  statusValidacao   StatusValidacaoNF @default(PENDENTE)
+  mensagemValidacao String?
+  ocrTexto          String?           @db.Text
+  cnpjEmissor       String?
+  chaveAcessoNfe    String?           @db.VarChar(44)
+
+  criadoEm   DateTime  @default(now())
+  validadoEm DateTime?
+
+  @@index([lancamentoId, statusValidacao])
+}
+
+model NotaFiscalUploadPendente {
+  id Int @id @default(autoincrement())
+
+  storageDriver String
+  bucket        String?
+  storageKey    String  @unique
+  sha256        String  @unique
+  mimeType      String
+  tamanhoBytes  Int
+
+  ocrTexto String? @db.Text
+
+  status       StatusUploadPendente @default(AGUARDANDO)
+  lancamentoId Int?
+  lancamento   Lancamento?          @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  decididoEm DateTime?
+
+  @@index([status, expiraEm])
+}
+
+model WhatsAppConfirmacaoPendente {
+  id Int @id @default(autoincrement())
+
+  telefone   String
+  jid        String
+  mensagemId String
+
+  storageDriver String
+  bucket        String?
+  storageKey    String
+  sha256        String @unique
+  mimeType      String
+  tamanhoBytes  Int
+
+  dadosExtraidos Json
+  modeloIa       String
+  tokensInput    Int?
+  tokensOutput   Int?
+
+  status       StatusConfirmacaoWA @default(AGUARDANDO)
+  lancamentoId Int?
+  lancamento   Lancamento?         @relation(fields: [lancamentoId], references: [id], onDelete: SetNull)
+
+  criadoEm   DateTime  @default(now())
+  expiraEm   DateTime
+  decididoEm DateTime?
+
+  @@index([telefone, status])
+  @@index([status, expiraEm])
+  @@index([mensagemId])
 }
