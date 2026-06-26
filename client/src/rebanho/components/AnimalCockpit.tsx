@@ -192,7 +192,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         </div>
       </div>
 
-      {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarTudo(); }} />}
+      {registrando && <EventoForm animalId={animalId} animal={a} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarTudo(); }} />}
       {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarTudo(); }} />}
     </main>
   );
