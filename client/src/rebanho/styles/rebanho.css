@@ -189,6 +189,12 @@
 .rb-ins { background: var(--bg-card); border: 1px solid var(--rule-soft); border-left: 3px solid var(--leite); border-radius: 9px; padding: 11px 13px; margin-bottom: 10px; font-size: 14px; color: var(--ink-2); display: flex; gap: 9px; }
 .rb-ins .dot { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--mast-bg); color: var(--leite); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 14px; }
 
+/* paginação simples (tabelas) */
+.rb-pag { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-family: var(--sans); font-size: 13.5px; color: var(--ink-3); }
+.rb-pag-info { font-style: italic; }
+.rb-pag-ctrl { display: flex; align-items: center; gap: 10px; }
+.rb-pag-page { color: var(--ink-2); font-weight: 600; }
+
 /* estado vazio + ações do cabeçalho (ficha) */
 .rb-empty { border: 1px dashed var(--rule); border-radius: 10px; padding: 22px; color: var(--ink-3); font-size: 14px; background: var(--bg-card-2); }
 .rb-head-actions { display: flex; gap: 8px; }
@@ -234,6 +240,12 @@
 .rb-fld { display: flex; flex-direction: column; gap: 6px; font-family: var(--serif); font-style: italic; font-size: 14px; font-weight: 500; color: var(--ink-3); text-transform: none; letter-spacing: 0; margin-bottom: 14px; }
 .rb-fld input, .rb-fld select, .rb-fld textarea { font-family: var(--sans); font-style: normal; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; padding: 8px 2px; background: transparent; transition: border-color .15s ease; }
 .rb-fld input:focus, .rb-fld select:focus, .rb-fld textarea:focus { outline: 0; border-bottom-color: var(--cafe); }
+/* select dentro de .rb-fld: remove a seta nativa do browser e desenha uma própria
+   (sem isso o select fica com a seta de plataforma sobre o underline minimalista) */
+.rb-fld select { appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 22px; cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2374705e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
+  background-repeat: no-repeat; background-position: right 2px center; }
+.rb-fld select:hover { border-bottom-color: var(--ink-2); }
 /* quando .rb-fld é aplicado direto em um input (caso da busca), preserva o look de input */
 input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-style: normal; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); background: var(--bg-card); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; }
 .rb-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }

@@ -180,11 +180,21 @@ export function useAnimalInsights(id: string | null) {
 export interface DietaDTO { id: number; nome: string; descricao: string | null; pb: number | null; edMcal: number | null; ativo: boolean; }
 export interface LoteDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; numAnimais: number; producaoMedia: number | null; }
 export interface DietaInput { nome: string; descricao?: string; pb?: number; edMcal?: number; }
+export interface LoteInput { nome: string; dietaId?: number | null; animalIds: number[]; }
+export interface AnimalLoteDTO { id: number; numero: string; nome: string | null; categoria: Animal["categoria"]; }
+export interface LoteDetalheDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; animais: AnimalLoteDTO[]; }
+export interface AnimalDisponivelDTO { id: number; numero: string; nome: string | null; categoria: Animal["categoria"]; grupoId: number | null; grupoNome: string | null; }
 export const listarDietas = () => req<DietaDTO[]>(`/rebanho/dietas`);
 export const criarDieta = (p: DietaInput) => req<DietaDTO>(`/rebanho/dietas`, { method: "POST", body: JSON.stringify(p) });
 export const editarDieta = (id: number, p: DietaInput) => req<DietaDTO>(`/rebanho/dietas/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export const excluirDieta = (id: number) => req<{ ok: true }>(`/rebanho/dietas/${id}`, { method: "DELETE" });
 export const listarLotes = () => req<LoteDTO[]>(`/rebanho/lotes`);
+export const obterLote = (id: number) => req<LoteDetalheDTO>(`/rebanho/lotes/${id}`);
+export const criarLote = (p: LoteInput) => req<LoteDetalheDTO>(`/rebanho/lotes`, { method: "POST", body: JSON.stringify(p) });
+export const editarLote = (id: number, p: LoteInput) => req<LoteDetalheDTO>(`/rebanho/lotes/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export const excluirLote = (id: number) => req<{ ok: true }>(`/rebanho/lotes/${id}`, { method: "DELETE" });
 export const atribuirDieta = (grupoId: number, dietaId: number | null) => req<{ ok: true }>(`/rebanho/lotes/${grupoId}/dieta`, { method: "POST", body: JSON.stringify({ dietaId }) });
+export const listarAnimaisDisponiveis = () => req<AnimalDisponivelDTO[]>(`/rebanho/animais-disponiveis`);
 export function useLotes() {
   const [data, setData] = useState<LoteDTO[]>([]); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => { setLoading(true); setErro(null); listarLotes().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
@@ -193,6 +203,11 @@ export function useLotes() {
 export function useDietas() {
   const [data, setData] = useState<DietaDTO[]>([]); const recarregar = useCallback(() => { listarDietas().then(setData).catch(() => {}); }, []);
   useEffect(() => { recarregar(); }, [recarregar]); return { data, recarregar };
+}
+export function useAnimaisDisponiveis() {
+  const [data, setData] = useState<AnimalDisponivelDTO[]>([]); const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarAnimaisDisponiveis().then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, recarregar };
 }
 
 export interface DashboardData { kpis: { rebanhoAtivo: number; emLactacao: number; secas: number; producaoMedia: number | null; gestantes: number; prenhez: number }; dominios: { tab: string; titulo: string; linhas: string[] }[]; alertas: { label: string; n: number; tab: string; tom: "bad" | "ok" }[]; }
