@@ -57,6 +57,9 @@ export interface ResumoAnimal {
 }
 
 // Evento normalizado — única forma consumida pela timeline no protótipo.
+// Os 5 campos da timeline editorial: data, título, detalhe (quem),
+// impacto (R$ ou produtivo) e próximo passo. interpretação automática vem
+// separada via map `interpretacao[dominio:id]`.
 export interface EventoTimeline {
   id: string;
   animalId: string;
@@ -66,6 +69,9 @@ export interface EventoTimeline {
   detalhe?: string;
   alerta?: boolean;
   marcador?: string;   // ex.: "início da 3ª lactação" (separador na timeline)
+  responsavel?: string;   // quem realizou (operador / vet / sistema)
+  impacto?: string;       // impacto financeiro ou produtivo
+  proximoPasso?: string;  // próxima ação ("retorno em 14 dias")
 }
 
 export interface IaInsight {

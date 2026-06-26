@@ -18,6 +18,28 @@ function fmtPrevSecagem(iso?: string | null) {
   return `${d.getDate().toString().padStart(2, "0")}/${meses[d.getMonth()]}`;
 }
 
+function diasAte(iso?: string | null): number | null {
+  if (!iso) return null;
+  const alvo = new Date(iso).getTime();
+  const hoje = new Date(HOJE).getTime();
+  return Math.round((alvo - hoje) / 86400000);
+}
+
+function delInterpretacao(del: number | null | undefined): string {
+  if (del == null) return "";
+  if (del < 60) return "Início da lactação";
+  if (del < 150) return "Plena lactação";
+  if (del < 240) return "Persistência boa";
+  return "Próxima da secagem";
+}
+
+function ccsClassificacao(ccs: number | null | undefined): { texto: string; tom: "lucro" | "atencao" | "prejuizo" | "" } {
+  if (ccs == null) return { texto: "Sem leitura", tom: "" };
+  if (ccs < 200) return { texto: "Excelente", tom: "lucro" };
+  if (ccs < 400) return { texto: "Atenção", tom: "atencao" };
+  return { texto: "Alarme — investigar", tom: "prejuizo" };
+}
+
 export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onBaixa }: {
   animalId: string;
   onVoltar: () => void;
@@ -37,7 +59,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const recarregarTudo = () => { recarregar(); recarregarEventos(); recarregarInsights(); };
 
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
-  if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
+  if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--prejuizo)" }}>Erro: {erro}</p></main>;
   if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
 
   const r = a.resumo;
@@ -70,15 +92,70 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         </div>
       </div>
 
-      {/* I — KPI strip: rentabilidade primeiro, depois operacionais */}
+      {/* I — KPI strip: rentabilidade primeiro, depois operacionais.
+              Cada KPI responde 3 perguntas (o quê + significado + ação/impacto) */}
       {(insights || r) && (
         <div className="rb-kstrip" style={{ ["--cols" as any]: insights ? 5 : 6 }}>
           {insights && <RentabilidadeKpi f={insights.financeiro} />}
-          {r && <div className="rb-k"><div className="lab">DEL</div><div className="val">{r.del ?? "—"}<u>d</u></div><div className="d">pico passou</div></div>}
-          {r && <div className="rb-k"><div className="lab">Produção</div><div className="val">{r.producaoMediaDia ?? "—"}<u>L/d</u></div><div className={"d" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tanque ? "rateio do lote" : r.producaoTendencia === "subindo" ? "↗ subindo" : r.producaoTendencia === "descendo" ? "↘ descendo" : "estável"}</div></div>}
-          {r && <div className="rb-k"><div className="lab">CCS</div><div className="val">{r.ccs ?? "—"}<u>mil</u></div><div className={"d" + (r.ccsTendencia === "subindo" ? " rb-up" : "")}>{r.ccsTendencia === "subindo" ? "↑ subindo" : "estável"}</div></div>}
-          {r && <div className="rb-k"><div className="lab">Reprodução</div><div className="val" style={{ fontSize: 18, paddingTop: 5 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div><div className="d">DG+ {r.ultimoDgData ? new Date(r.ultimoDgData).toLocaleDateString("pt-BR") : "—"}</div></div>}
-          {r && <div className="rb-k"><div className="lab">Prev. secagem</div><div className="val" style={{ fontSize: 18, paddingTop: 5 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div><div className="d">programada</div></div>}
+          {r && (() => {
+            const diasSec = diasAte(r.previsaoSecagem);
+            return (
+              <div className="rb-k">
+                <div className="lab">DEL</div>
+                <div className="val">{r.del ?? "—"}<u>d</u></div>
+                <div className="d">{delInterpretacao(r.del)}</div>
+                {diasSec != null && diasSec > 0 && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>Faltam {diasSec} dias para secagem</div>}
+              </div>
+            );
+          })()}
+          {r && (() => {
+            const litros = r.producaoMediaDia;
+            const precoLitro = insights?.financeiro?.precoLeite;
+            const receitaDia = litros != null && precoLitro != null ? litros * precoLitro : null;
+            const tendTexto = tanque
+              ? "rateio do lote"
+              : r.producaoTendencia === "subindo" ? "Subindo nas últimas 4 semanas"
+              : r.producaoTendencia === "descendo" ? "Caindo — investigar"
+              : "Estável nas últimas 4 semanas";
+            return (
+              <div className="rb-k">
+                <div className="lab">Produção</div>
+                <div className="val">{litros ?? "—"}<u>L/d</u></div>
+                <div className={"d" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tendTexto}</div>
+                {receitaDia != null && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>Receita R$ {receitaDia.toFixed(2).replace(".", ",")}/dia</div>}
+              </div>
+            );
+          })()}
+          {r && (() => {
+            const cls = ccsClassificacao(r.ccs);
+            const tomCls = cls.tom === "lucro" ? " rb-ok" : (cls.tom === "prejuizo" || cls.tom === "atencao") ? " rb-up" : "";
+            return (
+              <div className="rb-k">
+                <div className="lab">CCS</div>
+                <div className="val">{r.ccs ?? "—"}<u>mil</u></div>
+                <div className={"d" + tomCls}>{cls.texto}</div>
+                {r.ccsTendencia === "subindo" && <div className="kpi-cock-imp is-neg" style={{ marginTop: 4 }}>Tendência de alta — risco de mastite</div>}
+              </div>
+            );
+          })()}
+          {r && (() => {
+            const diasDG = diasAte(r.ultimoDgData);
+            return (
+              <div className="rb-k">
+                <div className="lab">Reprodução</div>
+                <div className="val" style={{ fontSize: 22, paddingTop: 4 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div>
+                <div className="d">{r.ultimoDgData ? `DG ${new Date(r.ultimoDgData).toLocaleDateString("pt-BR")}` : "Sem DG registrado"}</div>
+                {diasDG != null && diasDG < 0 && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>{Math.abs(diasDG)} dias atrás</div>}
+              </div>
+            );
+          })()}
+          {r && (
+            <div className="rb-k">
+              <div className="lab">Prev. secagem</div>
+              <div className="val" style={{ fontSize: 22, paddingTop: 4 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div>
+              <div className="d">Programada pelo sistema</div>
+            </div>
+          )}
         </div>
       )}
 

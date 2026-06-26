@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
+import { ContextStrip } from "./ContextStrip";
+import { formatRangeLabel } from "./DateRangePicker";
 import { fmtMoneyExact } from "./charts";
 import type { Tab } from "./Shell";
 import type { DateRange } from "./DateRangePicker";
@@ -206,6 +208,14 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
         range={range}
         onRangeChange={setRange}
         updatedAt={R.UPDATED_AT}
+      />
+
+      <ContextStrip
+        items={[
+          { label: "Período", value: formatRangeLabel(range) },
+          { label: "Atividade", value: filterAct === "Tudo" ? "Todas" : filterAct },
+          { label: "Tipo", value: filterInvest === "Tudo" ? "Custeio + investimento" : filterInvest },
+        ]}
       />
 
       <AnomaliasStrip

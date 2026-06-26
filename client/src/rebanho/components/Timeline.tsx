@@ -15,6 +15,8 @@ export function Timeline({ eventos, interpretacao }: { eventos: EventoTimeline[]
       <div className="rb-tl-marker">2026</div>
       {eventos.map((e) => {
         const interp = interpretacao?.[`${e.dominio}:${e.id}`];
+        // Detalhe + responsável: regra "o quê + quem realizou".
+        const quem = e.responsavel ? `${e.detalhe ? `${e.detalhe} · ` : ""}por ${e.responsavel}` : e.detalhe;
         return (
           <div key={e.id}>
             {e.marcador && <div className="rb-tl-marker">— {e.marcador} —</div>}
@@ -22,8 +24,10 @@ export function Timeline({ eventos, interpretacao }: { eventos: EventoTimeline[]
               <span className="when">{fmtDia(e.data)}</span>
               <span className={"tag " + e.dominio}>{DOM_LABEL[e.dominio]}</span>
               <h5>{e.titulo}{e.alerta && <span className="flag"> ↑ alerta</span>}</h5>
-              {e.detalhe && <p>{e.detalhe}</p>}
-              {interp && <p className="rb-tl-int"><span>Sistema</span> {interp}</p>}
+              {quem && <p>{quem}</p>}
+              {interp && <p className="rb-tl-int"><span>Interpretação</span> {interp}</p>}
+              {e.impacto && <p className="rb-tl-impact"><span>Impacto</span> {e.impacto}</p>}
+              {e.proximoPasso && <p className="rb-tl-next"><span>Próximo passo</span> {e.proximoPasso}</p>}
             </div>
           </div>
         );

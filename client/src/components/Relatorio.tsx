@@ -47,10 +47,10 @@ function KpiHero({
             <div className={"kpi-delta " + (good ? "up" : "down")}>
               <span className="arrow">{up ? "▲" : "▼"}</span>
               <span>
-                {fmtMoney(Math.abs(delta), { compact: true })} ({Math.abs(deltaPct).toFixed(0)}%) vs mesmo período 2025
+                {fmtMoney(Math.abs(delta), { compact: true })} ({Math.abs(deltaPct).toFixed(0)}%) vs mesmo período de 2025
               </span>
             </div>
-            <div className="kpi-note">{note}</div>
+            <div className="kpi-note">{note}{good ? " · acima do esperado" : " · abaixo do esperado"}</div>
           </div>
         );
       })}
@@ -300,7 +300,7 @@ function ActivityCard({
         <span className="key">Margem op.</span>
         <span
           className={"val mono-nums "}
-          style={{ color: isNegMargem ? "var(--neg)" : "var(--pos)" }}
+          style={{ color: isNegMargem ? "var(--prejuizo)" : "var(--lucro)" }}
         >
           {atv.margemOp >= 0 ? "+" : ""}
           {fmtMoney(atv.margemOp)}
@@ -550,7 +550,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           lede="Dos R$ 4,00 mi negativos no ano, 89% é compra de gado, máquinas e plantio — capital novo entrando, não dinheiro perdido."
           right={
             <div className="legend">
-              <span style={{ color: "var(--neg)" }}>89% investimento</span>
+              <span style={{ color: "var(--prejuizo)" }}>89% investimento</span>
             </div>
           }
         />
