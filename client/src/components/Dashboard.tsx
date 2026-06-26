@@ -12,12 +12,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchDashboard, reclassificarCategoria } from "../api";
-import { DateRangePicker, type DateRange } from "./DateRangePicker";
+import { DateRangePicker, formatRangeLabel, type DateRange } from "./DateRangePicker";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
 import { RupturaCaixa } from "./RupturaCaixa";
 import { PrecoAlerta } from "./Vigilancia";
+import { ContextStrip } from "./ContextStrip";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -194,8 +195,8 @@ function TimelineChart({
       {meses.map((_, i) => <circle key={"p" + i} cx={padL + i * xBand + xBand / 2} cy={yScale(tot[i])} r="2.5" fill="var(--bg)" stroke="var(--ink)" strokeWidth="1.2" style={{ pointerEvents: "none" }} />)}
       <defs>
         <pattern id="stripes-neg" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-          <rect width="4" height="4" fill="var(--neg)" opacity="0.35" />
-          <line x1="0" y1="0" x2="0" y2="4" stroke="var(--neg)" strokeWidth="0.8" />
+          <rect width="4" height="4" fill="var(--prejuizo)" opacity="0.35" />
+          <line x1="0" y1="0" x2="0" y2="4" stroke="var(--prejuizo)" strokeWidth="0.8" />
         </pattern>
       </defs>
     </svg>
@@ -514,7 +515,7 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
         </div>
         <div className="ex-cell">
           <span className="l">vs 2025</span>
-          <span className="v mono-nums" style={{ color: cat.delta > 0 ? "var(--neg)" : "var(--pos)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}%</span>
+          <span className="v mono-nums" style={{ color: cat.delta > 0 ? "var(--prejuizo)" : "var(--lucro)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}%</span>
         </div>
       </div>
 
@@ -601,7 +602,7 @@ function AtividadeSplit({ R }: { R: R }) {
               </div>
               <div className="atv-margem">
                 <span className="l">Margem operacional</span>
-                <span className="v mono-nums" style={{ color: margem >= 0 ? "var(--pos)" : "var(--neg)" }}>
+                <span className="v mono-nums" style={{ color: margem >= 0 ? "var(--lucro)" : "var(--prejuizo)" }}>
                   {margem >= 0 ? "+" : "−"}{fmtBRL(Math.abs(margem))}
                 </span>
               </div>
@@ -626,14 +627,55 @@ function KpiCockpit({ R, range, setRange }: { R: R; range: DateRange; setRange: 
     .reduce((s: number, i: any) => s + i.total23m, 0);
   const invest23 = t.investLeite + t.investCafe + t.animalAquisicao + investOutros;
   const custoLitro = R.volumeLeite?.custoPorLitro2025 ?? 0;
+  const margemUnit = 3.20 - custoLitro;
+  const margemNeg = margemUnit < 0;
 
-  const kpis = [
-    { lbl: "Caixa hoje", val: fmtBRL(R.caixaHoje.total, { compact: false }), sub: "3 contas", tone: "" },
-    { lbl: "Receita 23m", val: fmtBRL(receita23), sub: "leite + café", tone: "" },
-    { lbl: "Custeio 23m", val: fmtBRL(custeio23), sub: "operacional puro", tone: "" },
-    { lbl: "Investimento 23m", val: fmtBRL(invest23), sub: "gado, máquina, café", tone: "" },
-    { lbl: "Fluxo líquido 23m", val: fmtBRL(t.totalGeral), sub: "89% investimento", tone: "neg" },
-    { lbl: "Custo / litro 2025", val: "R$ " + custoLitro.toFixed(2).replace(".", ","), sub: "vs R$ 3,20 venda", tone: "neg" },
+  const kpis: { lbl: string; val: string; sub: string; tone: string; int?: string; imp?: string }[] = [
+    {
+      lbl: "Caixa hoje",
+      val: fmtBRL(R.caixaHoje.total, { compact: false }),
+      sub: "3 contas",
+      tone: "",
+      int: "Saldo positivo",
+      imp: "Cobre 1,7 mês de custeio",
+    },
+    {
+      lbl: "Receita 23m",
+      val: fmtBRL(receita23),
+      sub: "leite + café",
+      tone: "",
+      int: "Entrada do ciclo de caixa",
+    },
+    {
+      lbl: "Custeio 23m",
+      val: fmtBRL(custeio23),
+      sub: "operacional puro",
+      tone: "",
+      int: "Saída sem investimento",
+    },
+    {
+      lbl: "Investimento 23m",
+      val: fmtBRL(invest23),
+      sub: "gado, máquina, café",
+      tone: "",
+      int: "Não entra na conta operacional",
+    },
+    {
+      lbl: "Fluxo líquido 23m",
+      val: fmtBRL(t.totalGeral),
+      sub: "89% investimento",
+      tone: "neg",
+      int: "No vermelho por causa do investimento",
+      imp: "Operação cobre o operacional",
+    },
+    {
+      lbl: "Custo / litro 2025",
+      val: "R$ " + custoLitro.toFixed(2).replace(".", ","),
+      sub: "vs R$ 3,20 venda",
+      tone: margemNeg ? "neg" : "",
+      int: margemNeg ? "Acima do preço de venda" : "Dentro da margem",
+      imp: `Margem ${margemNeg ? "−" : "+"}R$ ${Math.abs(margemUnit).toFixed(2).replace(".", ",")} / litro`,
+    },
   ];
 
   return (
@@ -651,6 +693,8 @@ function KpiCockpit({ R, range, setRange }: { R: R; range: DateRange; setRange: 
             <span className="lbl">{k.lbl}</span>
             <span className={"val mono-nums " + k.tone}>{k.val}</span>
             <span className="sub">{k.sub}</span>
+            {k.int ? <span className="kpi-cock-int">{k.int}</span> : null}
+            {k.imp ? <span className={"kpi-cock-imp mono-nums" + (k.tone === "neg" ? " is-neg" : "")}>{k.imp}</span> : null}
           </div>
         ))}
       </div>
@@ -1154,7 +1198,7 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
         <div className="total-block">
           <span className="eyebrow">Total 23 meses</span>
           <span className="v mono-nums">{fmtBRL(cat.total23m)}</span>
-          <span className="dlt" style={{ color: cat.delta > 0 ? "var(--neg)" : "var(--pos)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}% vs 2025</span>
+          <span className="dlt" style={{ color: cat.delta > 0 ? "var(--prejuizo)" : "var(--lucro)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}% vs 2025</span>
         </div>
       </div>
 
@@ -1370,7 +1414,7 @@ function FolegoCaixa({ R }: { R: R }) {
               <div className="fmc-row">
                 <span className="fmc-lbl">Hoje</span>
                 <div className="fmc-bar">
-                  <div style={{ width: "100%", background: "var(--neg)" }}></div>
+                  <div style={{ width: "100%", background: "var(--prejuizo)" }}></div>
                 </div>
                 <span className="fmc-val mono-nums">{fmtBRL(burnTotal)}</span>
               </div>
@@ -1391,13 +1435,13 @@ function FolegoCaixa({ R }: { R: R }) {
             <span className="fp-warn">~{fmtBRL(aporteAcum)} de aporte</span>
           </div>
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-            <line x1={padL} x2={W - padR} y1={yC(0)} y2={yC(0)} stroke="var(--neg)" strokeWidth="1" strokeDasharray="3 3" />
-            <text x={W - padR} y={yC(0) - 3} textAnchor="end" style={{ fontSize: 9, fill: "var(--neg)", fontFamily: "var(--sans)" }}>
+            <line x1={padL} x2={W - padR} y1={yC(0)} y2={yC(0)} stroke="var(--prejuizo)" strokeWidth="1" strokeDasharray="3 3" />
+            <text x={W - padR} y={yC(0) - 3} textAnchor="end" style={{ fontSize: 9, fill: "var(--prejuizo)", fontFamily: "var(--sans)" }}>
               R$ 0
             </text>
             <polyline points={linePts} fill="none" stroke="var(--ink)" strokeWidth="1.6" />
             {caixas.map((v, i) => (
-              <circle key={i} cx={xC(i)} cy={yC(v)} r="2.5" fill={v < 0 ? "var(--neg)" : "var(--bg)"} stroke={v < 0 ? "var(--neg)" : "var(--ink)"} strokeWidth="1.2" />
+              <circle key={i} cx={xC(i)} cy={yC(v)} r="2.5" fill={v < 0 ? "var(--prejuizo)" : "var(--bg)"} stroke={v < 0 ? "var(--prejuizo)" : "var(--ink)"} strokeWidth="1.2" />
             ))}
             {["hoje", ...fluxo.map((x) => x.mes.replace(/\/\d{2}/, ""))].map(
               (m, i) =>
@@ -1499,15 +1543,15 @@ function BreakEvenLeite({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
           </g>
         ))}
 
-        {beIdx >= 0 && beX !== null && <rect x={padL} y={padT} width={beX - padL} height={innerH} fill="var(--neg)" opacity="0.05" />}
-        {beIdx >= 0 && beX !== null && <line x1={beX} x2={beX} y1={padT} y2={padT + innerH} stroke="var(--pos)" strokeWidth="1.2" strokeDasharray="4 3" />}
+        {beIdx >= 0 && beX !== null && <rect x={padL} y={padT} width={beX - padL} height={innerH} fill="var(--prejuizo)" opacity="0.05" />}
+        {beIdx >= 0 && beX !== null && <line x1={beX} x2={beX} y1={padT} y2={padT + innerH} stroke="var(--lucro)" strokeWidth="1.2" strokeDasharray="4 3" />}
 
         <polyline points={precoPts} fill="none" stroke="var(--leite)" strokeWidth="2" />
-        <polyline points={custoPts} fill="none" stroke="var(--neg)" strokeWidth="2" />
+        <polyline points={custoPts} fill="none" stroke="var(--prejuizo)" strokeWidth="2" />
 
         {proj.map((p, i) => (
           <g key={i}>
-            <circle cx={xS(i)} cy={yS(p.custoLitro)} r="2.5" fill="var(--bg)" stroke="var(--neg)" strokeWidth="1.2" />
+            <circle cx={xS(i)} cy={yS(p.custoLitro)} r="2.5" fill="var(--bg)" stroke="var(--prejuizo)" strokeWidth="1.2" />
             <circle cx={xS(i)} cy={yS(p.preco)} r="2.5" fill="var(--bg)" stroke="var(--leite)" strokeWidth="1.2" />
             {(i % 2 === 0 || i === n - 1) && (
               <text x={xS(i)} y={H - padB + 18} textAnchor="middle" className="chart-tick-text">
@@ -1520,11 +1564,11 @@ function BreakEvenLeite({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
         <text x={xS(n - 1) + 8} y={yS(proj[n - 1].preco) + 4} className="be-line-label" style={{ fill: "var(--leite)" }}>
           preço/L
         </text>
-        <text x={xS(n - 1) + 8} y={yS(proj[n - 1].custoLitro) + 4} className="be-line-label" style={{ fill: "var(--neg)" }}>
+        <text x={xS(n - 1) + 8} y={yS(proj[n - 1].custoLitro) + 4} className="be-line-label" style={{ fill: "var(--prejuizo)" }}>
           custo/L
         </text>
         {beIdx >= 0 && beX !== null && (
-          <text x={beX} y={padT - 6} textAnchor="middle" style={{ fontFamily: "var(--serif)", fontSize: 13, fill: "var(--pos)" }}>
+          <text x={beX} y={padT - 6} textAnchor="middle" style={{ fontFamily: "var(--serif)", fontSize: 13, fill: "var(--lucro)" }}>
             break-even
           </text>
         )}
@@ -1584,13 +1628,13 @@ function OrcadoRealizado({ R, onDrill }: { R: R; onDrill: (id: string) => void }
         </div>
         <div className="orc-sum-cell">
           <span className="l">Realizado</span>
-          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--neg)" : "var(--pos)" }}>
+          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--prejuizo)" : "var(--lucro)" }}>
             {fmtBRL(totalReal)}
           </span>
         </div>
         <div className="orc-sum-cell">
           <span className="l">Desvio</span>
-          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--neg)" : "var(--pos)" }}>
+          <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--prejuizo)" : "var(--lucro)" }}>
             {totalReal > totalOrc ? "▲ +" : "▼ "}
             {fmtBRL(Math.abs(totalReal - totalOrc))}
           </span>
@@ -1738,8 +1782,8 @@ function ProdutividadeRebanho({ R }: { R: R }) {
                 </text>
               </g>
             ))}
-            <line x1={padL} x2={W - padR} y1={yS(meta)} y2={yS(meta)} stroke="var(--pos)" strokeWidth="1.2" strokeDasharray="4 3" />
-            <text x={W - padR + 6} y={yS(meta) + 4} className="be-line-label" style={{ fill: "var(--pos)" }}>
+            <line x1={padL} x2={W - padR} y1={yS(meta)} y2={yS(meta)} stroke="var(--lucro)" strokeWidth="1.2" strokeDasharray="4 3" />
+            <text x={W - padR + 6} y={yS(meta) + 4} className="be-line-label" style={{ fill: "var(--lucro)" }}>
               meta {meta}L
             </text>
             <polyline points={linePts} fill="none" stroke="var(--leite)" strokeWidth="2" />
@@ -1779,8 +1823,8 @@ function MonthPilhaBar({ label, value, total, color, dashed, flag }: { label: st
             className="sw"
             style={{
               background: flag ? "transparent" : color,
-              backgroundImage: flag ? "repeating-linear-gradient(45deg, var(--neg) 0 2px, transparent 2px 4px)" : "none",
-              border: flag ? "1px solid var(--neg)" : dashed ? "1px dashed var(--outros)" : "none",
+              backgroundImage: flag ? "repeating-linear-gradient(45deg, var(--prejuizo) 0 2px, transparent 2px 4px)" : "none",
+              border: flag ? "1px solid var(--prejuizo)" : dashed ? "1px dashed var(--outros)" : "none",
               opacity: dashed ? 0.6 : 1,
             }}
           ></span>
@@ -1876,7 +1920,7 @@ function MonthDetail({
         </div>
         <div className="total-block">
           <span className="eyebrow">Fluxo líquido</span>
-          <span className="v mono-nums" style={{ color: fluxo < 0 ? "var(--neg)" : "var(--pos)" }}>
+          <span className="v mono-nums" style={{ color: fluxo < 0 ? "var(--prejuizo)" : "var(--lucro)" }}>
             {fmtBRL(fluxo)}
           </span>
         </div>
@@ -1886,7 +1930,7 @@ function MonthDetail({
         {KPIS.map((k, i) => (
           <div className="cell" key={i}>
             <span className="l">{k.l}</span>
-            <span className="v mono-nums" style={{ color: k.tone === "neg" ? "var(--neg)" : k.tone === "pos" ? "var(--pos)" : "var(--ink)" }}>
+            <span className="v mono-nums" style={{ color: k.tone === "neg" ? "var(--prejuizo)" : k.tone === "pos" ? "var(--lucro)" : "var(--ink)" }}>
               {fmtBRL(k.v)}
             </span>
           </div>
@@ -1915,7 +1959,7 @@ function MonthDetail({
           <div className="month-op">
             <div className="op-line">
               <span>O leite pagou o leite?</span>
-              <span className="op-verdict" style={{ color: opLeite >= 0 ? "var(--pos)" : "var(--neg)" }}>
+              <span className="op-verdict" style={{ color: opLeite >= 0 ? "var(--lucro)" : "var(--prejuizo)" }}>
                 {opLeite >= 0 ? "Sim" : "Não"} · {opLeite >= 0 ? "+" : "−"}
                 {fmtBRL(Math.abs(opLeite))}
               </span>
@@ -1930,7 +1974,7 @@ function MonthDetail({
           </div>
           <div className="month-pilhas">
             <MonthPilhaBar label="Custeio operacional" value={custeio} total={custeio + invest} color="var(--cafe)" />
-            {animAq > 0 && <MonthPilhaBar label="Animal Aquisição (invest. em custeio)" value={animAq} total={custeio + invest} color="var(--neg)" flag />}
+            {animAq > 0 && <MonthPilhaBar label="Animal Aquisição (invest. em custeio)" value={animAq} total={custeio + invest} color="var(--prejuizo)" flag />}
             <MonthPilhaBar label="Investimento" value={invest - animAq} total={custeio + invest} color="var(--outros)" dashed />
           </div>
         </div>
@@ -2045,7 +2089,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
     return (
       <LoadingShell>
         Não foi possível carregar o dashboard.
-        <div style={{ fontSize: 13, marginTop: 12, fontStyle: "normal", color: "var(--neg)" }}>
+        <div style={{ fontSize: 13, marginTop: 12, fontStyle: "normal", color: "var(--prejuizo)" }}>
           {error.message}
         </div>
       </LoadingShell>
@@ -2088,6 +2132,14 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
+      <ContextStrip
+        items={[
+          { label: "Período", value: formatRangeLabel(range) },
+          { label: "Atividade", value: "Todas (leite, café, outros)" },
+          { label: "Categoria", value: "Todas" },
+          { label: "Fonte", value: "Neon · planilha BPO" },
+        ]}
+      />
       <ResumoExecutivo R={data} onNav={onNav} />
       <RupturaCaixa R={data} onNav={onNav} />
       <KpiCockpit R={data} range={range} setRange={setRange} />

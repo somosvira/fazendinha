@@ -35,14 +35,19 @@ export function ScoreBadge({ score }: { score: ScoreDTO }) {
 
 // ── 2. Rentabilidade (KPI grande no topo) ──────────────────────────────────
 export function RentabilidadeKpi({ f }: { f: FinanceiroDTO }) {
-  const cor = f.tom === "pos" ? "var(--pos)" : f.tom === "neg" ? "var(--neg)" : "var(--warn)";
+  const cor = f.tom === "pos" ? "var(--lucro)" : f.tom === "neg" ? "var(--prejuizo)" : "var(--atencao)";
+  const interpretacao = f.tom === "pos"
+    ? "Esta vaca paga seus custos."
+    : f.tom === "neg"
+    ? "Esta vaca não paga seus custos."
+    : "Margem apertada — atenção.";
   return (
     <div className="rb-k rb-rentab" style={{ borderLeft: `3px solid ${cor}` }}>
       <div className="lab">Rentabilidade {f.fontePreco === "fallback" && <small>(estimativa)</small>}</div>
       <div className="rb-rentab-grid">
         <div>
           <div className="rb-rentab-num" style={{ color: cor }}>{fmtBRL(f.lucro)}</div>
-          <div className="rb-rentab-sub">Lucro estimado</div>
+          <div className="rb-rentab-sub">{interpretacao}</div>
         </div>
         <div className="rb-rentab-side">
           <div className="rb-rentab-row"><span>Receita</span><b>{fmtBRL(f.receitaLactacao)}</b></div>
@@ -149,7 +154,7 @@ export function EficienciaGauge({ e }: { e: EficienciaDTO }) {
   const x = cx + r * Math.cos(angRad);
   const y = cy + r * Math.sin(angRad);
   const largeArc = pct > 50 ? 1 : 0;
-  const tom = pct >= 90 ? "var(--pos)" : pct >= 60 ? "var(--warn)" : "var(--neg)";
+  const tom = pct >= 90 ? "var(--lucro)" : pct >= 60 ? "var(--atencao)" : "var(--prejuizo)";
   return (
     <div className="rb-card-mini">
       <h4>Eficiência</h4>
@@ -171,7 +176,7 @@ export function Projecoes({ p, fontePreco }: { p: ProjecoesDTO; fontePreco: Fina
   const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
   return (
     <div className="rb-box">
-      <h4>Projeções <small style={{ fontWeight: 400, color: "var(--ink-3)" }}>(estimativa{fontePreco === "fallback" ? " · preço de fallback" : ""})</small></h4>
+      <h4>Projeções <small style={{ fontWeight: 500, color: "var(--ink-2)" }}>(estimativa{fontePreco === "fallback" ? " · preço de fallback" : ""})</small></h4>
       <div className="rb-kv"><span>Produção da lactação</span><b>{p.producaoLactacao != null ? `${fmtNum(p.producaoLactacao)} L` : "—"}</b></div>
       <div className="rb-kv"><span>Receita esperada</span><b>{p.receitaLactacao != null ? fmtBRL(p.receitaLactacao) : "—"}</b></div>
       <div className="rb-kv"><span>Lucro esperado</span><b>{p.lucroLactacao != null ? fmtBRL(p.lucroLactacao) : "—"}</b></div>

@@ -52,16 +52,22 @@ export function AnomaliasStrip({
             </div>
             <div className="anom-title">{a.titulo}</div>
             <div className="anom-resumo">{a.resumo}</div>
+            {typeof a.valor === "number" && a.valor > 0 && (
+              <div className={"anom-impacto mono-nums " + (a.delta > 0 ? "is-neg" : "is-pos")}>
+                {a.delta > 0 ? "Custo extra " : "Economia "}
+                R$ {Math.abs(a.valor).toLocaleString("pt-BR")}
+              </div>
+            )}
             <div className="anom-pergunta">"{a.pergunta}"</div>
             <div className="anom-actions">
               {onDrill && a.catId && (
                 <button className="anom-cta" onClick={() => onDrill(a.catId)}>
-                  ver lançamentos →
+                  Ver lançamentos →
                 </button>
               )}
               {onNav && (
                 <button className="anom-cta ghost" onClick={() => onNav("ia")}>
-                  perguntar à IA
+                  Explicar com IA
                 </button>
               )}
             </div>
@@ -133,10 +139,10 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
         </div>
         <div className="pa-spark">
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-            <line x1={padL} x2={W - padR} y1={yS(a.mediaMercado)} y2={yS(a.mediaMercado)} stroke="var(--ink-3)" strokeWidth="1" strokeDasharray="3 2" />
-            <polyline points={pts} fill="none" stroke={a.alerta ? "var(--neg)" : "var(--pos)"} strokeWidth="1.6" />
+            <line x1={padL} x2={W - padR} y1={yS(a.mediaMercado)} y2={yS(a.mediaMercado)} stroke="var(--ink-2)" strokeWidth="1" strokeDasharray="3 2" />
+            <polyline points={pts} fill="none" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="2" />
             {precos.map((v, i) => (
-              <circle key={i} cx={xS(i)} cy={yS(v)} r="2.2" fill="var(--bg-card)" stroke={a.alerta ? "var(--neg)" : "var(--pos)"} strokeWidth="1.2" />
+              <circle key={i} cx={xS(i)} cy={yS(v)} r="2.5" fill="var(--bg-card)" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="1.5" />
             ))}
           </svg>
           <span className="pa-spark-cap">5 últimas compras · linha = média mercado</span>

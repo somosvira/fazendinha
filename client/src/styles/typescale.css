@@ -1,133 +1,138 @@
-/* Rio Novo — escala tipográfica ampliada (legibilidade 60+)
-   Carregado por último: sobrescreve tamanhos pequenos por equivalência de seletor. */
+/* Rio Novo — escala tipográfica unificada
+   Carregado por último: garante piso de 14px e pesos 500/600 em rótulos.
+   Regra: nada abaixo de 14px nesta camada. */
 
 /* base */
-body { font-size: 17.5px; }
-.body { font-size: 17px; }
-.body-l { font-size: 19px; }
-.body-s { font-size: 15px; }
-.caption { font-size: 13px; }
-.eyebrow { font-size: 12px; }
+body            { font-size: 17px; }
+.body           { font-size: 17px; }
+.body-l         { font-size: 19px; }
+.body-s         { font-size: 15px; }
+.caption        { font-size: 14px; }
+.eyebrow        { font-size: 14px; font-weight: 600; letter-spacing: 0.12em; }
 
 /* masthead / nav */
-.nav-tab { font-size: 14px; }
-.brand-name { font-size: 19px; }
-.user-chip { font-size: 14px; }
+.nav-tab        { font-size: 14px; font-weight: 600; }
+.brand-name     { font-size: 19px; }
+.user-chip      { font-size: 14px; font-weight: 600; }
 
 /* report header */
-.report-header .h1, .h1 { font-size: 38px; }
+.report-header .h1, .h1 { font-size: 40px; font-weight: 500; }
 
 /* ===== KPI cockpit ===== */
-.kpi-cockpit-title { font-size: 42px; }
-.kpi-cock .lbl { font-size: 12px; }
-.kpi-cock .val { font-size: 34px; }
-.kpi-cock .sub { font-size: 13px; }
+.kpi-cockpit-title { font-size: 42px; font-weight: 500; }
+.kpi-cock .lbl     { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.kpi-cock .val     { font-size: 36px; font-weight: 500; }
+.kpi-cock .sub     { font-size: 15px; }
 
 /* ===== section heads ===== */
-.dash-sec-title { font-size: 28px; }
+.dash-sec-title { font-size: 30px; font-weight: 500; }
 
 /* ===== donut legend (gasto por categoria) ===== */
-.donut-legend-head { font-size: 11px; }
-.legend-name { font-size: 15px; }
-.legend-val { font-size: 16px; }
-.legend-pct { font-size: 13px; }
-.legend-only { font-size: 11px; }
+.donut-legend-head { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.legend-name       { font-size: 16px; font-weight: 600; }
+.legend-val        { font-size: 17px; font-weight: 500; }
+.legend-pct        { font-size: 14px; font-weight: 600; }
+.legend-only       { font-size: 14px; font-weight: 600; }
 
 /* ===== explorar categoria ===== */
-.ex-cell .l { font-size: 12px; }
-.ex-cell .v { font-size: 26px; }
-.cat-dd-trigger { font-size: 15px; }
-.cat-dd-opt-nm { font-size: 15px; }
-.cat-dd-opt-val { font-size: 15px; }
-.forn-mini-top .nm { font-size: 15px; }
-.forn-mini-top .vl { font-size: 17px; }
+.ex-cell .l       { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.ex-cell .v       { font-size: 28px; font-weight: 500; }
+.cat-dd-trigger   { font-size: 16px; font-weight: 500; }
+.cat-dd-opt-nm    { font-size: 16px; font-weight: 500; }
+.cat-dd-opt-val   { font-size: 16px; font-weight: 500; }
+.forn-mini-top .nm { font-size: 15px; font-weight: 500; }
+.forn-mini-top .vl { font-size: 17px; font-weight: 500; }
 
 /* ===== atividade split ===== */
-.atv-split-h .nm { font-size: 24px; }
-.atv-bar-row .lbl { font-size: 12px; }
-.atv-bar-row .amt { font-size: 15px; }
-.atv-margem .l { font-size: 12px; }
-.atv-margem .v { font-size: 24px; }
+.atv-split-h .nm   { font-size: 24px; font-weight: 500; }
+.atv-bar-row .lbl  { font-size: 14px; font-weight: 600; }
+.atv-bar-row .amt  { font-size: 16px; font-weight: 500; }
+.atv-margem .l     { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.atv-margem .v     { font-size: 26px; font-weight: 500; }
 
 /* ===== subcategorias (tipos de X) ===== */
-.drill-subhint { font-size: 17px; }
-.subcat-th { font-size: 11px; }
-.sc-nm-txt { font-size: 15px; }
-.sc-nm-txt small { font-size: 12px; }
-.sc-lanc { font-size: 15px; }
-.sc-val { font-size: 17px; }
-.sc-pct { font-size: 13px; }
+.drill-subhint     { font-size: 17px; font-weight: 500; }
+.subcat-th         { font-size: 14px; font-weight: 600; }
+.sc-nm-txt         { font-size: 16px; font-weight: 500; }
+.sc-nm-txt small   { font-size: 14px; font-weight: 500; }
+.sc-lanc           { font-size: 15px; font-weight: 500; }
+.sc-val            { font-size: 17px; font-weight: 500; }
+.sc-pct            { font-size: 14px; font-weight: 600; }
 
 /* ===== lançamentos + nota ===== */
-.lanc-panel-title { font-size: 24px; }
-.lanc-table thead th { font-size: 11px; }
-.lanc-table tbody td { font-size: 14.5px; }
-.ld-val { font-size: 15px; }
-.ld-nf, .nf-link { font-size: 13px; }
-.drawer-meta-grid .mcell .ml { font-size: 12px; }
-.drawer-meta-grid .mcell .mv { font-size: 16px; }
+.lanc-panel-title          { font-size: 24px; font-weight: 500; }
+.lanc-table thead th       { font-size: 14px; font-weight: 600; }
+.lanc-table tbody td       { font-size: 15px; }
+.ld-val                    { font-size: 16px; font-weight: 500; }
+.ld-nf, .nf-link           { font-size: 14px; font-weight: 600; }
+.drawer-meta-grid .mcell .ml { font-size: 14px; font-weight: 600; }
+.drawer-meta-grid .mcell .mv { font-size: 16px; font-weight: 500; }
 
 /* ===== drill head / stats ===== */
-.drill-head .cat-name { font-size: 46px; }
-.drill-stats .cell .l { font-size: 12px; }
-.drill-stats .cell .v { font-size: 24px; }
-.breadcrumb { font-size: 14px; }
-.breadcrumb .crumb-btn { font-size: 14px; }
+.drill-head .cat-name    { font-size: 46px; font-weight: 500; }
+.drill-stats .cell .l    { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.drill-stats .cell .v    { font-size: 26px; font-weight: 500; }
+.breadcrumb              { font-size: 15px; font-weight: 500; }
+.breadcrumb .crumb-btn   { font-size: 15px; font-weight: 600; }
 
 /* ===== DRE ===== */
-.dre-table thead th { font-size: 12px; }
-.dre-row td { font-size: 15px; }
-.dre-row.bold td { font-size: 16px; }
-.dre-row.bold .dre-num { font-size: 19px; }
+.dre-table thead th    { font-size: 14px; font-weight: 600; }
+.dre-row td            { font-size: 16px; }
+.dre-row.bold td       { font-size: 17px; font-weight: 600; }
+.dre-row.bold .dre-num { font-size: 20px; font-weight: 500; }
 
 /* ===== inconsistências ===== */
-.inc-title { font-size: 18px; }
-.inc-valor { font-size: 23px; }
-.inc-impacto .lbl { font-size: 11px; }
-.inc-impacto .txt { font-size: 13px; }
+.inc-title         { font-size: 19px; font-weight: 500; }
+.inc-valor         { font-size: 24px; font-weight: 500; }
+.inc-impacto .lbl  { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.inc-impacto .txt  { font-size: 15px; }
 
 /* ===== timeline / chart legends ===== */
-.legend { font-size: 13px; }
-.chart-tick-text { font-size: 12px; }
+.legend           { font-size: 14px; font-weight: 500; }
+.chart-tick-text  { font-size: 14px; font-weight: 600; }
+.chart-label      { font-size: 14px; font-weight: 600; }
+.chart-value-text { font-size: 15px; font-weight: 500; }
 
 /* ===== gastos table ===== */
-.expense-table thead th { font-size: 12px; }
-.expense-table tbody td { font-size: 15px; }
-.expense-table tbody td.amount { font-size: 17px; }
-.gastos-summary .sum .label { font-size: 12px; }
-.gastos-summary .sum .val { font-size: 27px; }
-.filter-chip { font-size: 14px; }
+.expense-table thead th       { font-size: 14px; font-weight: 600; }
+.expense-table tbody td       { font-size: 15px; }
+.expense-table tbody td.amount { font-size: 17px; font-weight: 500; }
+.gastos-summary .sum .label   { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.gastos-summary .sum .val     { font-size: 30px; font-weight: 500; }
+.filter-chip                  { font-size: 14px; font-weight: 600; }
 
 /* ===== forms (lançar) ===== */
-.field-label { font-size: 14px; }
-.field-input, .field-textarea { font-size: 16px; }
-.form-section-title { font-size: 12px; }
-.cat-chip { font-size: 14px; }
-.chip-group .chip { font-size: 14px; }
+.field-label         { font-size: 14px; font-weight: 600; }
+.field-input,
+.field-textarea      { font-size: 16px; }
+.form-section-title  { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
+.cat-chip            { font-size: 14px; font-weight: 600; }
+.chip-group .chip    { font-size: 14px; font-weight: 600; }
 
 /* ===== plano de contas ===== */
-.tree-cat-head .cnm { font-size: 16px; }
-.tree-sub .snm { font-size: 14px; }
-.ia-suggestion-card .ttl { font-size: 17px; }
-.ia-suggestion-card .det { font-size: 13px; }
+.tree-cat-head .cnm  { font-size: 16px; font-weight: 600; }
+.tree-sub .snm       { font-size: 15px; }
+.ia-suggestion-card .ttl { font-size: 17px; font-weight: 500; }
+.ia-suggestion-card .det { font-size: 14px; }
 
 /* ===== IA chat ===== */
-.ia-prompt { font-size: 16px; }
+.ia-prompt           { font-size: 16px; }
 .msg.ai .ai-narrative { font-size: 19px; }
-.msg.ai p { font-size: 17px; }
-.msg.user .bubble { font-size: 17px; }
-.ia-input { font-size: 17px; }
-.ai-mini-table th, .ai-mini-table td { font-size: 15px; }
+.msg.ai p            { font-size: 17px; }
+.msg.user .bubble    { font-size: 17px; }
+.ia-input            { font-size: 17px; }
+.ai-mini-table th,
+.ai-mini-table td    { font-size: 15px; }
 
 /* ===== date picker ===== */
-.drp-trigger { font-size: 14px; }
-.drp-preset { font-size: 14px; }
-.cal-day { font-size: 15px; }
-.drp-readout-cell .v { font-size: 19px; }
+.drp-trigger        { font-size: 14px; font-weight: 600; }
+.drp-preset         { font-size: 14px; font-weight: 500; }
+.cal-day            { font-size: 15px; }
+.drp-readout-cell .v { font-size: 19px; font-weight: 500; }
 
 /* ===== relatório editorial ===== */
-.section-title { font-size: 30px; }
-.section-lede { font-size: 19px; }
-.kpi-value { font-size: 46px; }
-.verdict-line { font-size: 23px; }
-.verdict-detail { font-size: 15px; }
+.section-title    { font-size: 30px; font-weight: 500; }
+.section-lede     { font-size: 19px; font-weight: 500; }
+.kpi-value        { font-size: 46px; font-weight: 500; }
+.verdict-line     { font-size: 23px; font-weight: 500; }
+.verdict-detail   { font-size: 16px; font-weight: 500; }
