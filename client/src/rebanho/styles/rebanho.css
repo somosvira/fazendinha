@@ -121,6 +121,20 @@
 .rb-ev h5 { margin: 4px 0 2px; font-size: 15px; font-weight: 600; } .rb-ev p { margin: 0; color: var(--ink-3); font-size: 14px; }
 .rb-ev .flag { color: var(--prejuizo); font-weight: 600; }
 .rb-tl-marker { font-family: var(--serif); color: var(--ink-2); font-size: 14px; margin: 2px 0 12px; font-style: italic; }
+/* destaque visual ao chegar na ficha após registrar evento via Reprodução/Sanidade */
+.rb-tl-card { border-radius: 10px; padding: 4px; margin: -4px; }
+.rb-tl-card-flash { animation: rb-tl-card-flash 1.6s ease-out; }
+@keyframes rb-tl-card-flash {
+  0% { background: color-mix(in srgb, var(--leite) 22%, transparent); box-shadow: 0 0 0 2px var(--leite), 0 0 0 6px color-mix(in srgb, var(--leite) 30%, transparent); }
+  60% { background: color-mix(in srgb, var(--leite) 10%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--leite) 60%, transparent), 0 0 0 6px transparent; }
+  100% { background: transparent; box-shadow: 0 0 0 2px transparent, 0 0 0 6px transparent; }
+}
+.rb-ev-flash { border-radius: 8px; padding: 6px 10px; margin: -6px -10px 14px; animation: rb-ev-flash 3.2s ease-out; }
+@keyframes rb-ev-flash {
+  0%   { background: color-mix(in srgb, var(--leite) 30%, transparent); box-shadow: inset 3px 0 0 var(--leite); }
+  70%  { background: color-mix(in srgb, var(--leite) 12%, transparent); box-shadow: inset 3px 0 0 var(--leite); }
+  100% { background: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
 .rb-box { background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 10px; padding: 15px 16px; margin-bottom: 16px; }
 .rb-box h4 { margin: 0 0 11px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .rb-box .rb-box-section + .rb-box-section { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--rule-soft); }

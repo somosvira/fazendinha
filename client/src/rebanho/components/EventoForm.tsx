@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { registrarEvento, registrarEventoSanidade, listarRacas, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
-import { ESPECIE_POR_CATEGORIA, type Animal } from "../types";
+import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
@@ -40,8 +40,8 @@ const QUARTOS_UBERE = ["AD", "AE", "PD", "PE"]; // anterior/posterior · direito
 
 const SEVERIDADES_MASTITE = ["Subclínica", "Clínica leve", "Clínica moderada", "Clínica grave"];
 
-export function EventoForm({ animalId, animal, onFechar, onSalvo }: { animalId: string; animal?: Animal; onFechar: () => void; onSalvo: () => void }) {
-  const [dominio, setDominio] = useState<"reproducao" | "sanidade">("reproducao");
+export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }: { animalId: string; animal?: Animal; dominioFixo?: "reproducao" | "sanidade"; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
+  const [dominio, setDominio] = useState<"reproducao" | "sanidade">(dominioFixo ?? "reproducao");
   const [tipo, setTipo] = useState<EventoPayload["tipo"]>("INSEMINACAO");
   const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>("EXAME");
   const [racas, setRacas] = useState<RacaDTO[]>([]);
@@ -85,6 +85,7 @@ export function EventoForm({ animalId, animal, onFechar, onSalvo }: { animalId: 
   async function salvar() {
     setSalvando(true); setErro(null);
     try {
+      let criado: EventoTimeline | undefined;
       if (dominio === "reproducao") {
         const p: EventoPayload = { tipo, data: f.data, observacao: f.observacao || undefined };
         if (tipo === "CIO") {
@@ -101,7 +102,7 @@ export function EventoForm({ animalId, animal, onFechar, onSalvo }: { animalId: 
         if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
         if (tipo === "PARTO") { p.numCrias = Number(f.numCrias); p.sexoCria = f.sexoCria; p.tipoParto = f.tipoParto; }
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
-        await registrarEvento(animalId, p);
+        criado = await registrarEvento(animalId, p);
       } else {
         const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
         if (tipoSan === "EXAME") { p.ccs = num(f.ccs); p.gordura = num(f.gordura); p.proteina = num(f.proteina); }
@@ -109,9 +110,9 @@ export function EventoForm({ animalId, animal, onFechar, onSalvo }: { animalId: 
         if (tipoSan === "OCORRENCIA") { p.doenca = f.doenca; p.diasTratamento = num(f.diasTratamento); }
         if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
         if (tipoSan === "VACINA") p.produto = f.produto;
-        await registrarEventoSanidade(animalId, p);
+        criado = await registrarEventoSanidade(animalId, p);
       }
-      onSalvo();
+      onSalvo(criado);
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
   }
 
@@ -119,8 +120,8 @@ export function EventoForm({ animalId, animal, onFechar, onSalvo }: { animalId: 
     <>
       <div className="rb-drawer-bg" onClick={onFechar} />
       <aside className="rb-drawer">
-        <h3>Registrar evento</h3>
-        <label className="rb-fld">Domínio<select value={dominio} onChange={(e) => setDominio(e.target.value as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></select></label>
+        <h3>Registrar evento{dominioFixo ? ` · ${dominioFixo === "reproducao" ? "Reprodução" : "Sanidade"}` : ""}</h3>
+        {!dominioFixo && <label className="rb-fld">Domínio<select value={dominio} onChange={(e) => setDominio(e.target.value as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></select></label>}
         {dominio === "reproducao"
           ? <label className="rb-fld">Tipo<select value={tipo} onChange={(e) => setTipo(e.target.value as any)}>{TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>
           : <label className="rb-fld">Tipo<select value={tipoSan} onChange={(e) => setTipoSan(e.target.value as any)}>{TIPOS_SAN.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>}

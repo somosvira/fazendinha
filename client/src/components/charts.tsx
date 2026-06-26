@@ -343,8 +343,8 @@ export function MiniBarChart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
-  const max = Math.max(...data.map((d) => d.y)) * 1.1;
-  const yScale = (v: number) => padT + innerH - (v / max) * innerH;
+  const max = Math.max(...data.map((d) => d.y), 0) * 1.1 || 1;
+  const yScale = (v: number) => padT + innerH - (Math.max(0, v) / max) * innerH;
   const xBand = innerW / data.length;
   const barW = xBand * 0.55;
 
@@ -353,9 +353,10 @@ export function MiniBarChart({
       <line x1={padL} x2={W - padR} y1={yScale(0)} y2={yScale(0)} className="chart-axis" />
       {data.map((d, i) => {
         const x = padL + i * xBand + (xBand - barW) / 2;
+        const h = Math.max(0, yScale(0) - yScale(d.y));
         return (
           <g key={i}>
-            <rect x={x} y={yScale(d.y)} width={barW} height={yScale(0) - yScale(d.y)} fill={color} />
+            <rect x={x} y={yScale(d.y)} width={barW} height={h} fill={color} />
             <text x={x + barW / 2} y={yScale(d.y) - 6} textAnchor="middle" className="chart-value-text">
               {d.y}
             </text>
@@ -388,8 +389,8 @@ export function MonthlyTrendChart({
     padB = 32;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
-  const max = Math.max(...current, ...prior) * 1.1 || 1;
-  const yScale = (v: number) => padT + innerH - (v / max) * innerH;
+  const max = Math.max(...current, ...prior, 0) * 1.1 || 1;
+  const yScale = (v: number) => padT + innerH - (Math.max(0, v) / max) * innerH;
   const xBand = innerW / labels.length;
   const barW = xBand * 0.5;
 
@@ -398,13 +399,15 @@ export function MonthlyTrendChart({
       <line x1={padL} x2={W - padR} y1={yScale(0)} y2={yScale(0)} className="chart-axis" />
       {labels.map((lbl, i) => {
         const x = padL + i * xBand + (xBand - barW) / 2;
+        const cur = current[i] ?? 0;
+        const h = Math.max(0, yScale(0) - yScale(cur));
         return (
           <g key={i}>
             <rect
               x={x}
-              y={yScale(current[i] ?? 0)}
+              y={yScale(cur)}
               width={barW}
-              height={yScale(0) - yScale(current[i] ?? 0)}
+              height={h}
               fill={color}
             />
             <text x={x + barW / 2} y={H - padB + 16} textAnchor="middle" className="chart-tick-text">
