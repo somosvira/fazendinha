@@ -10,23 +10,42 @@ const MODOS: { id: ModoProducao; titulo: string; desc: string }[] = [
 export function ConfiguracoesView() {
   const { data, loading, erro, recarregar } = useConfig();
   const [salvando, setSalvando] = useState<ModoProducao | null>(null);
+  const [salvandoPreco, setSalvandoPreco] = useState(false);
+  const [precoLeite, setPrecoLeite] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
   if (loading) return <main className="rb-main"><div className="rb-eyebrow">Configurações</div><div className="rb-head"><h1>Configurações</h1></div><p className="rb-sub">Carregando…</p></main>;
   if (erro || !data) return <main className="rb-main"><div className="rb-head"><h1>Configurações</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
 
+  // Sincroniza estado local do input com o valor do banco quando ele muda
+  if (data.precoLeite != null && precoLeite === "") setPrecoLeite(String(data.precoLeite));
+
   const escolher = async (modo: ModoProducao) => {
     if (modo === data.producaoModo || salvando) return;
     setSalvando(modo); setErroSalvar(null); setFeedback(null);
     try {
-      await salvarConfig(modo);
+      await salvarConfig({ producaoModo: modo });
       recarregar();
       setFeedback("Modo de produção atualizado. O rebanho foi recalculado.");
     } catch (e: any) {
       setErroSalvar(e.message);
     } finally {
       setSalvando(null);
+    }
+  };
+
+  const salvarPreco = async () => {
+    setSalvandoPreco(true); setErroSalvar(null); setFeedback(null);
+    try {
+      const valor = precoLeite.trim() === "" ? null : Number(precoLeite.replace(",", "."));
+      await salvarConfig({ precoLeite: valor });
+      recarregar();
+      setFeedback("Preço do leite atualizado.");
+    } catch (e: any) {
+      setErroSalvar(e.message);
+    } finally {
+      setSalvandoPreco(false);
     }
   };
 
@@ -56,6 +75,22 @@ export function ConfiguracoesView() {
             </button>
           );
         })}
+      </div>
+
+      <h2 className="rb-sec-title" style={{ marginTop: 36 }}>Preço do leite</h2>
+      <p className="rb-sec-sub">Valor recebido por litro. Alimenta os cálculos de receita e rentabilidade na ficha do animal. Vazio = sistema usa R$ 2,40/L como fallback.</p>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", maxWidth: 360 }}>
+        <input
+          type="number"
+          step="0.01"
+          min={0}
+          className="rb-fld"
+          value={precoLeite}
+          onChange={(e) => setPrecoLeite(e.target.value)}
+          placeholder="ex.: 2.40"
+          style={{ flex: 1 }}
+        />
+        <button className="rb-btn pri" disabled={salvandoPreco} onClick={salvarPreco}>{salvandoPreco ? "Salvando…" : "Salvar"}</button>
       </div>
 
       {feedback && <p className="rb-sub" style={{ marginTop: 14, color: "var(--pos)" }}>{feedback}</p>}
