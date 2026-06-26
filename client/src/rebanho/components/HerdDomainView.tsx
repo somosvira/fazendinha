@@ -7,7 +7,7 @@ import { IaInsightBand } from "./IaInsight";
 export const RB_TOOLBAR: React.CSSProperties = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" };
 
 export function HerdDomainView({
-  config, resumos, insight, onAbrirAnimal, nomes, controles,
+  config, resumos, insight, onAbrirAnimal, nomes, controles, dicaLinha,
 }: {
   config: DomainConfig;
   resumos: ResumoAnimal[];
@@ -15,6 +15,7 @@ export function HerdDomainView({
   onAbrirAnimal: (id: string) => void;
   nomes?: Record<string, { nome: string; numero: string }>;
   controles?: React.ReactNode;
+  dicaLinha?: string;
 }) {
   const [wlId, setWlId] = useState(config.worklists[0]?.id);
   const wl = config.worklists.find((w) => w.id === wlId);
@@ -58,7 +59,7 @@ export function HerdDomainView({
 
           <div className="rb-listhead">
             <h3>{wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}</h3>
-            <span className="hint">clique numa linha pra abrir a ficha</span>
+            <span className="hint">{dicaLinha ?? "clique numa linha pra abrir a ficha"}</span>
           </div>
           <div className="rb-tbl-wrap"><table className="rb-tbl">
             <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>

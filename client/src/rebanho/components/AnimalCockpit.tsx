@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAnimal, useTimeline, useConfig, useAnimalInsights } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
@@ -40,12 +40,14 @@ function ccsClassificacao(ccs: number | null | undefined): { texto: string; tom:
   return { texto: "Alarme — investigar", tom: "prejuizo" };
 }
 
-export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onBaixa }: {
+export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onBaixa, flashEventoId, flashKey }: {
   animalId: string;
   onVoltar: () => void;
   onAbrirAnimal: (id: string) => void;
   onEditar: (a: Animal) => void;
   onBaixa: (a: Animal) => void;
+  flashEventoId?: string | null;
+  flashKey?: number;
 }) {
   const { data: a, loading, erro, recarregar } = useAnimal(animalId);
   const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
@@ -53,10 +55,28 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
   const [registrando, setRegistrando] = useState(false);
   const [registrandoControle, setRegistrandoControle] = useState(false);
+  // Destaque visual da Linha do tempo: id do evento recém-criado + token que reinicia
+  // a animação a cada novo registro (incrementa quando salva pela ficha; sincroniza com
+  // o prop externo quando o registro vem da lista de Reprodução/Sanidade).
+  const [flashLocalId, setFlashLocalId] = useState<string | null>(null);
+  const [flashTick, setFlashTick] = useState(0);
   const modo = cfg?.producaoModo ?? "ORDENHA";
   const tanque = modo === "TANQUE_LOTE";
 
   const recarregarTudo = () => { recarregar(); recarregarEventos(); recarregarInsights(); };
+
+  // Quando chega flash de fora (registro vindo da aba Reprodução/Sanidade), espelha local
+  // e dispara nova rodada da animação trocando o key do wrapper da timeline.
+  useEffect(() => {
+    if (flashEventoId) { setFlashLocalId(flashEventoId); setFlashTick((n) => n + 1); }
+  }, [flashEventoId, flashKey]);
+
+  // Flash some sozinho após 4s para não poluir a visualização contínua.
+  useEffect(() => {
+    if (!flashLocalId) return;
+    const t = window.setTimeout(() => setFlashLocalId(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [flashLocalId, flashTick]);
 
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--prejuizo)" }}>Erro: {erro}</p></main>;
@@ -165,11 +185,13 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
       {/* III — Grid 2 colunas: timeline + tendências à esquerda; cards de decisão à direita */}
       <div className="rb-grid">
         <div>
-          <h3 className="rb-sec-title">Linha do tempo</h3>
-          <p className="rb-sec-sub">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
-          {eventos.length === 0
-            ? <div className="rb-empty">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
-            : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} />}
+          <div key={flashTick} className={"rb-tl-card" + (flashLocalId ? " rb-tl-card-flash" : "")}>
+            <h3 className="rb-sec-title">Linha do tempo</h3>
+            <p className="rb-sec-sub">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
+            {eventos.length === 0
+              ? <div className="rb-empty">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
+              : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} flashEventoId={flashLocalId} />}
+          </div>
 
           {insights && <Tendencias tendencias={insights.tendencias} />}
         </div>
@@ -192,7 +214,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         </div>
       </div>
 
-      {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarTudo(); }} />}
+      {registrando && <EventoForm animalId={animalId} animal={a} onFechar={() => setRegistrando(false)} onSalvo={(evento) => { setRegistrando(false); recarregarTudo(); if (evento?.id) { setFlashLocalId(evento.id); setFlashTick((n) => n + 1); } }} />}
       {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarTudo(); }} />}
     </main>
   );
