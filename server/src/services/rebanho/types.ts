@@ -4,7 +4,7 @@
 export interface AnimalDTO {
   id: string; numero: string; nome: string;
   sexo: "F" | "M";
-  categoria: "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO";
+  categoria: "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO" | "CABRITA" | "CABRA" | "CABRITO" | "BODE";
   raca: string | null; grauSangue: string | null;
   dataNascimento: string | null; dataEntrada: string;   // ISO "YYYY-MM-DD"
   brincoEletronico: string | null; sisbov: string | null;
@@ -24,5 +24,5 @@ export interface ResumoDTO {
   iepProjetado: number | null; diasGestacao: number | null; previsaoSecagem: string | null;
 }
 
-export interface RacaDTO { id: number; nome: string }
+export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }

@@ -64,6 +64,21 @@
 .rb-ia-band button.cta { margin-left: auto; flex: none; }
 .rb-btn { font-family: var(--sans); font-size: 12.5px; font-weight: 600; border-radius: 8px; padding: 7px 13px; cursor: pointer; border: 1px solid var(--rule); background: transparent; color: var(--ink-2); }
 .rb-btn.pri { background: var(--mast-bg); color: var(--mast-ink); border: 0; }
+.rb-btn[aria-pressed="true"] { background: var(--bg-card-2); border-color: var(--ink-mute); color: var(--ink); }
+
+/* dropdown de filtro inline (toolbar) — pareado com .rb-btn em altura e raio */
+.rb-select {
+  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
+  color: var(--ink-2); background: transparent;
+  border: 1px solid var(--rule); border-radius: 8px;
+  padding: 7px 32px 7px 13px; cursor: pointer;
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2374705e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
+  background-repeat: no-repeat; background-position: right 11px center;
+  line-height: 1.2;
+}
+.rb-select:hover { border-color: var(--ink-mute); color: var(--ink); }
+.rb-select:focus { outline: 0; border-color: var(--cafe); }
 
 /* tasks + table */
 .rb-sec-title { font-family: var(--serif); font-size: 20px; font-weight: 500; margin: 0 0 12px; }
@@ -208,6 +223,16 @@
 /* quando .rb-fld é aplicado direto em um input (caso da busca), preserva o look de input */
 input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-style: normal; font-size: 13.5px; text-transform: none; letter-spacing: 0; color: var(--ink); background: var(--bg-card); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; }
 .rb-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* grau de sangue — bloco com 1 ou 2 linhas (raça principal + secundária com complemento auto) */
+.rb-fieldset { border: 1px solid var(--rule-soft); border-radius: 10px; padding: 12px 14px 4px; margin: 0 0 14px; background: var(--bg-card); }
+.rb-fieldset > legend { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-3); padding: 0 6px; }
+.rb-sangue-row { display: grid; grid-template-columns: 1fr 130px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--rule-soft); }
+.rb-sangue-row:last-child { border-bottom: 0; }
+.rb-sangue-raca { font-family: var(--sans); font-size: 14px; color: var(--ink); font-weight: 500; }
+.rb-sangue-frac, .rb-sangue-raca-sec { font-family: var(--sans); font-size: 13.5px; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--rule); padding: 6px 2px; transition: border-color .15s ease; }
+.rb-sangue-frac:focus, .rb-sangue-raca-sec:focus { outline: 0; border-bottom-color: var(--cafe); }
+.rb-sangue-frac-comp { font-family: var(--sans); font-size: 13.5px; color: var(--ink-3); font-style: italic; }
 
 /* ============================================================
    Mobile / Tablet — topbar + sidebar off-canvas + reflows

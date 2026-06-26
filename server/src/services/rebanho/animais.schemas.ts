@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const sexo = z.enum(["F", "M"]);
-const categoria = z.enum(["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "TOURO"]);
+const categoria = z.enum(["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "TOURO", "CABRITA", "CABRA", "CABRITO", "BODE"]);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 
 export const criarAnimalSchema = z.object({

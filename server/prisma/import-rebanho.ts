@@ -124,26 +124,50 @@ async function main() {
   await prisma.producaoLote.deleteMany({});
   await prisma.animal.deleteMany({}); // cascade → controleLeiteiro/eventos/lactacao/resumo
 
-  // --- Raça / Grupo (upsert por nome; mantém ids existentes → FKs do Estoque) ---
-  const racaNomes = new Set<string>();
-  const grupoNomes = new Set<string>();
-  for (const a of dados.animais) {
-    if (a.raca) racaNomes.add(a.raca);
-    if (a.grupo) grupoNomes.add(a.grupo);
+  // --- Raça / Grupo (Grupo upsert; Raça mapeia a string crua pra raça pura existente) ---
+  // A string crua do rebanho_real.json mistura raça + grau de sangue ("5/8 GL, HO").
+  // Aqui resolvemos isso: cada string aponta pra raça pura primária via codigo + entra no grauSangue do animal.
+  const racasPuras = await prisma.raca.findMany({ select: { id: true, nome: true, codigo: true } });
+  const idPorCodigo = new Map(racasPuras.filter((r) => r.codigo).map((r) => [r.codigo!, r.id]));
+  const idPorNome = new Map(racasPuras.map((r) => [r.nome, r.id]));
+
+  function resolverRacaCrua(raw: string): number | null {
+    if (idPorNome.has(raw)) return idPorNome.get(raw)!;
+    const m = raw.match(/^\d+\/\d+\s+([A-Z]{2})/);
+    if (m && idPorCodigo.has(m[1])) return idPorCodigo.get(m[1])!;
+    // Fallback por prefixo de nome (ex.: "Girolando 5/8", "Holandês")
+    const baixo = raw.toLowerCase();
+    if (baixo.startsWith("girolando")) return idPorCodigo.get("GL") ?? null;
+    if (baixo.startsWith("holandês") || baixo.startsWith("holandes")) return idPorCodigo.get("HO") ?? null;
+    if (baixo.startsWith("gir leiteiro") || baixo.startsWith("gir ")) return idPorCodigo.get("GO") ?? null;
+    if (baixo.startsWith("nelore")) return idPorCodigo.get("NE") ?? null;
+    if (baixo.startsWith("jersey")) return idPorCodigo.get("JE") ?? null;
+    return null;
   }
+
   const racaId = new Map<string, number>();
-  for (const nome of racaNomes) racaId.set(nome, (await prisma.raca.upsert({ where: { nome }, update: {}, create: { nome } })).id);
+  for (const a of dados.animais) {
+    if (a.raca && !racaId.has(a.raca)) {
+      const id = resolverRacaCrua(a.raca);
+      if (id != null) racaId.set(a.raca, id);
+    }
+  }
+  const grupoNomes = new Set<string>();
+  for (const a of dados.animais) if (a.grupo) grupoNomes.add(a.grupo);
   const grupoId = new Map<string, number>();
   for (const nome of grupoNomes) grupoId.set(nome, (await prisma.grupo.upsert({ where: { nome }, update: {}, create: { nome } })).id);
-  console.log(`Cadastros: ${racaId.size} raças, ${grupoId.size} grupos (upsert por nome).`);
+  console.log(`Cadastros: ${racaId.size} raças resolvidas, ${grupoId.size} grupos (upsert por nome).`);
 
   // --- Animais (createMany) -------------------------------------------------
+  // Se a string crua não bate exato com o nome de uma raça pura, ela é um grau de sangue ("5/8 GL, HO")
+  // e vai pro campo grauSangue. Caso contrário (ex.: "Holandês"), grauSangue fica null.
   const animaisRows = dados.animais.map((a) => ({
     numero: a.numero,
     nome: a.nome ?? null,
     sexo: a.sexo,
     categoria: a.categoria,
-    racaId: a.raca ? racaId.get(a.raca)! : null,
+    racaId: a.raca ? racaId.get(a.raca) ?? null : null,
+    grauSangue: a.raca && !idPorNome.has(a.raca) ? a.raca : null,
     grupoId: a.grupo ? grupoId.get(a.grupo)! : null,
     setor: a.setor ?? null,
     dataNascimento: d(a.dataNascimento),

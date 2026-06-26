@@ -55,7 +55,7 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
     return (
       <main className="rb-main">
         <div className="rb-eyebrow">{DOMAINS.animal.eyebrow}</div>
-        <div className="rb-head"><h1>Animal</h1><div className="period">📅 Junho 2026 ▾</div></div>
+        <div className="rb-head"><h1>Animal</h1></div>
         <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>
         {loading
           ? <p className="rb-sub">Carregando…</p>

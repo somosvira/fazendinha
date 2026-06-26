@@ -1,5 +1,11 @@
 export type Sexo = "F" | "M";
-export type CategoriaAnimal = "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO";
+export type CategoriaAnimal = "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO" | "CABRITA" | "CABRA" | "CABRITO" | "BODE";
+export type EspecieAnimal = "BOVINO" | "CAPRINO";
+
+export const ESPECIE_POR_CATEGORIA: Record<CategoriaAnimal, EspecieAnimal> = {
+  BEZERRA: "BOVINO", NOVILHA: "BOVINO", VACA: "BOVINO", BEZERRO: "BOVINO", TOURO: "BOVINO",
+  CABRITA: "CAPRINO", CABRA: "CAPRINO", CABRITO: "CAPRINO", BODE: "CAPRINO",
+};
 export type StatusReprodutivo = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
 export type Dominio = "reproducao" | "sanidade" | "nutricao" | "producao";
 

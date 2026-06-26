@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Animal, ResumoAnimal, EventoTimeline } from "./types";
 
-export interface RacaDTO { id: number; nome: string }
+export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
 export interface AnimalForm {
   numero: string; nome?: string; sexo: "F" | "M"; categoria: Animal["categoria"];
