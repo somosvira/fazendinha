@@ -26,7 +26,6 @@ export function HerdDomainView({
       <div className="rb-eyebrow">{config.eyebrow}</div>
       <div className="rb-head">
         <h1>{config.titulo}</h1>
-        <div className="period">📅 Junho 2026 ▾</div>
       </div>
 
       {controles && <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>}

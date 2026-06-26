@@ -12,7 +12,7 @@ export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
   return (
     <main className="rb-main">
       <div className="rb-eyebrow">Sítio São Francisco · {k.rebanhoAtivo} animais</div>
-      <div className="rb-head"><h1>Dashboard</h1><div className="period">📅 Junho 2026 ▾</div></div>
+      <div className="rb-head"><h1>Dashboard</h1></div>
       <div className="rb-kstrip" style={{ ["--cols" as any]: 6 }}>
         <div className="rb-k"><div className="lab">Rebanho ativo</div><div className="val">{k.rebanhoAtivo}</div><div className="d">total</div></div>
         <div className="rb-k"><div className="lab">Em lactação</div><div className="val">{k.emLactacao}</div><div className="d">vacas</div></div>

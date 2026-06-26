@@ -247,6 +247,10 @@ enum CategoriaAnimal {
   VACA
   BEZERRO
   TOURO
+  CABRITA
+  CABRA
+  CABRITO
+  BODE
 }
 
 enum StatusAnimal {
@@ -261,9 +265,17 @@ enum StatusReprodutivo {
   PRENHE
 }
 
+enum EspecieAnimal {
+  BOVINO
+  CAPRINO
+}
+
 model Raca {
-  id      Int      @id @default(autoincrement())
-  nome    String   @unique
+  id      Int           @id @default(autoincrement())
+  nome    String        @unique
+  // Código curto usado na string de grau de sangue (ex.: HO = Holandês, GL = Girolando).
+  codigo  String?       @unique
+  especie EspecieAnimal @default(BOVINO)
   animais Animal[]
 }
 

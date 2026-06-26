@@ -93,5 +93,5 @@ export async function listarGrupos(): Promise<GrupoDTO[]> {
   return prisma.grupo.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } });
 }
 export async function listarRacas(): Promise<RacaDTO[]> {
-  return prisma.raca.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } });
+  return prisma.raca.findMany({ orderBy: [{ especie: "asc" }, { nome: "asc" }], select: { id: true, nome: true, codigo: true, especie: true } });
 }
