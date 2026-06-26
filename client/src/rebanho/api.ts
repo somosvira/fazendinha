@@ -124,6 +124,59 @@ export function useAnimal(id: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Insights (painel executivo do animal) ─────────────────────────────────
+export type ScoreClassificacao = "ELITE" | "MUITO_BOA" | "BOA" | "ATENCAO" | "DESCARTE";
+export interface ScoreFatorDTO { nome: string; pontos: number; peso: number }
+export interface ScoreDTO { valor: number; classificacao: ScoreClassificacao; estrelas: 1 | 2 | 3 | 4 | 5; fatores: ScoreFatorDTO[] }
+export interface FinanceiroDTO {
+  precoLeite: number; fontePreco: "config" | "fallback";
+  receitaLactacao: number; custoVacaDia: number | null; custoVacaDiaTotalLactacao: number;
+  custoSanidadeAnimal: number; custosTotal: number; lucro: number; margem: number;
+  tom: "pos" | "warn" | "neg";
+}
+export interface TendenciaDTO { chave: string; label: string; direcao: "up" | "down" | "flat"; delta?: string; sentido: "pos" | "neg" | "neutro" }
+export interface InsightDTO { tipo: "warn" | "ok"; titulo: string; detalhe?: string }
+export interface PercentisDTO {
+  producao: number | null; rentabilidade: number | null; fertilidade: number | null; ccs: number | null;
+  ranking: { posicao: number; total: number } | null;
+}
+export interface ProducaoFinanceiraDTO {
+  acumuladoLitros: number; valorRecebido: number; precoMedio: number;
+  lucroPorLitro: number | null; receitaDiaria: number; receitaMensal: number;
+}
+export interface EficienciaDTO { meta: number | null; atual: number | null; percentual: number | null }
+export interface ProjecoesDTO {
+  producaoLactacao: number | null; receitaLactacao: number | null; lucroLactacao: number | null;
+  dataSecagem: string | null; dataParto: string | null;
+}
+export interface GenealogiaDTO {
+  mae: { id: string; nome: string | null; numero: string; producaoMediaDia: number | null } | null;
+  pai: string | null;
+  avoMaterna: { id: string; nome: string | null; numero: string } | null;
+  avoMaterno: string | null;
+}
+export interface AnimalInsightsDTO {
+  score: ScoreDTO; financeiro: FinanceiroDTO;
+  tendencias: TendenciaDTO[]; insights: InsightDTO[];
+  percentis: PercentisDTO; producaoFinanceira: ProducaoFinanceiraDTO;
+  eficiencia: EficienciaDTO; projecoes: ProjecoesDTO;
+  genealogia: GenealogiaDTO; timelineInterpretacao: Record<string, string>;
+}
+export const obterInsights = (id: string) => req<AnimalInsightsDTO>(`/rebanho/animais/${id}/insights`);
+
+export function useAnimalInsights(id: string | null) {
+  const [data, setData] = useState<AnimalInsightsDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!id) { setData(null); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    obterInsights(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [id]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export interface DietaDTO { id: number; nome: string; descricao: string | null; pb: number | null; edMcal: number | null; ativo: boolean; }
 export interface LoteDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; numAnimais: number; producaoMedia: number | null; }
 export interface DietaInput { nome: string; descricao?: string; pb?: number; edMcal?: number; }
@@ -155,11 +208,13 @@ export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, 
 
 // ── Configuração + Produção (Fatia 7) ──────────────────────────────────────
 export type ModoProducao = "ORDENHA" | "TOTAL_DIARIO" | "TANQUE_LOTE";
-export const obterConfig = () => req<{ producaoModo: ModoProducao }>(`/rebanho/config`);
-export const salvarConfig = (producaoModo: ModoProducao) => req<{ producaoModo: ModoProducao }>(`/rebanho/config`, { method: "PATCH", body: JSON.stringify({ producaoModo }) });
+export interface ConfigDTO { producaoModo: ModoProducao; precoLeite: number | null }
+export const obterConfig = () => req<ConfigDTO>(`/rebanho/config`);
+export const salvarConfig = (input: { producaoModo?: ModoProducao; precoLeite?: number | null }) =>
+  req<ConfigDTO>(`/rebanho/config`, { method: "PATCH", body: JSON.stringify(input) });
 
 export function useConfig() {
-  const [data, setData] = useState<{ producaoModo: ModoProducao } | null>(null);
+  const [data, setData] = useState<ConfigDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => { setLoading(true); setErro(null); obterConfig().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);

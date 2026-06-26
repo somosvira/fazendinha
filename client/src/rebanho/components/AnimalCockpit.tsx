@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { useAnimal, useTimeline, useConfig } from "../api";
+import { useAnimal, useTimeline, useConfig, useAnimalInsights } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { EventoForm } from "./EventoForm";
 import { ControleForm } from "./ControleForm";
+import {
+  ScoreBadge, RentabilidadeKpi, Tendencias, Insights, Percentis,
+  ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
+} from "./animal-cockpit/InsightsPanel";
 import type { Animal } from "../types";
 
 function fmtPrevSecagem(iso?: string | null) {
@@ -24,10 +28,14 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: a, loading, erro, recarregar } = useAnimal(animalId);
   const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
   const { data: cfg } = useConfig();
+  const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
   const [registrando, setRegistrando] = useState(false);
   const [registrandoControle, setRegistrandoControle] = useState(false);
   const modo = cfg?.producaoModo ?? "ORDENHA";
   const tanque = modo === "TANQUE_LOTE";
+
+  const recarregarTudo = () => { recarregar(); recarregarEventos(); recarregarInsights(); };
+
   if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
   if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
@@ -42,7 +50,10 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 
       <div className="rb-head">
         <div>
-          <h1>{a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}</h1>
+          <h1>
+            {a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}
+            {insights?.score && <ScoreBadge score={insights.score} />}
+          </h1>
           <div className="rb-sub">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
         </div>
         <div className="rb-chips">
@@ -59,24 +70,31 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
         </div>
       </div>
 
-      {r && (
-        <div className="rb-stats">
-          <div className="rb-stat"><div className="k">DEL</div><div className="v">{r.del ?? "—"}<u>d</u></div><div className="t">pico passou</div></div>
-          <div className="rb-stat"><div className="k">Produção</div><div className="v">{r.producaoMediaDia ?? "—"}<u>L/d</u></div><div className={"t" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tanque ? "rateio do lote" : r.producaoTendencia === "subindo" ? "↗ subindo" : r.producaoTendencia === "descendo" ? "↘ descendo" : "estável"}</div></div>
-          <div className="rb-stat"><div className="k">Reprodução</div><div className="v" style={{ fontSize: 18, paddingTop: 5 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div><div className="t">DG+ {r.ultimoDgData ? new Date(r.ultimoDgData).toLocaleDateString("pt-BR") : "—"}</div></div>
-          <div className="rb-stat"><div className="k">IEP previsto</div><div className="v">{r.iepProjetado ?? "—"}<u>d</u></div><div className="t rb-ok">meta ≤ 400</div></div>
-          <div className="rb-stat"><div className="k">Prev. secagem</div><div className="v" style={{ fontSize: 18, paddingTop: 5 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div><div className="t">programada</div></div>
-          <div className="rb-stat"><div className="k">CCS</div><div className="v">{r.ccs ?? "—"}<u>mil</u></div><div className={"t" + (r.ccsTendencia === "subindo" ? " rb-up" : "")}>{r.ccsTendencia === "subindo" ? "↑ subindo" : "estável"}</div></div>
+      {/* I — KPI strip: rentabilidade primeiro, depois operacionais */}
+      {(insights || r) && (
+        <div className="rb-kstrip" style={{ ["--cols" as any]: insights ? 5 : 6 }}>
+          {insights && <RentabilidadeKpi f={insights.financeiro} />}
+          {r && <div className="rb-k"><div className="lab">DEL</div><div className="val">{r.del ?? "—"}<u>d</u></div><div className="d">pico passou</div></div>}
+          {r && <div className="rb-k"><div className="lab">Produção</div><div className="val">{r.producaoMediaDia ?? "—"}<u>L/d</u></div><div className={"d" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tanque ? "rateio do lote" : r.producaoTendencia === "subindo" ? "↗ subindo" : r.producaoTendencia === "descendo" ? "↘ descendo" : "estável"}</div></div>}
+          {r && <div className="rb-k"><div className="lab">CCS</div><div className="val">{r.ccs ?? "—"}<u>mil</u></div><div className={"d" + (r.ccsTendencia === "subindo" ? " rb-up" : "")}>{r.ccsTendencia === "subindo" ? "↑ subindo" : "estável"}</div></div>}
+          {r && <div className="rb-k"><div className="lab">Reprodução</div><div className="val" style={{ fontSize: 18, paddingTop: 5 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div><div className="d">DG+ {r.ultimoDgData ? new Date(r.ultimoDgData).toLocaleDateString("pt-BR") : "—"}</div></div>}
+          {r && <div className="rb-k"><div className="lab">Prev. secagem</div><div className="val" style={{ fontSize: 18, paddingTop: 5 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div><div className="d">programada</div></div>}
         </div>
       )}
 
+      {/* II — Insights horizontais quando houver alertas críticos */}
+      {insights && insights.insights.length > 0 && <Insights insights={insights.insights} />}
+
+      {/* III — Grid 2 colunas: timeline + tendências à esquerda; cards de decisão à direita */}
       <div className="rb-grid">
         <div>
           <h3 className="rb-sec-title">Linha do tempo</h3>
-          <p className="rb-sec-sub">Todos os domínios costurados — reprodução, sanidade, nutrição e produção em uma história só.</p>
+          <p className="rb-sec-sub">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
           {eventos.length === 0
             ? <div className="rb-empty">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
-            : <Timeline eventos={eventos} />}
+            : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} />}
+
+          {insights && <Tendencias tendencias={insights.tendencias} />}
         </div>
         <div>
           <div className="rb-box">
@@ -88,26 +106,17 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
               <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
               {tanque && <p className="rb-sec-sub" style={{ margin: "8px 0 0" }}>Produção estimada por rateio do lote.</p>}
             </div>
-            <div className="rb-box-section">
-              <h4>Genealogia</h4>
-              <div className="rb-ped">
-                {a.maeId ? <div>Mãe <button onClick={() => onAbrirAnimal(a.maeId!)}>{a.maeNome ?? "—"} #{a.maeNumero ?? "—"}</button></div> : <div>Mãe <span style={{ color: "var(--ink-mute)" }}>—</span></div>}
-                <div>Pai <span style={{ color: "var(--ink-mute)" }}>{a.paiNome ?? "—"}</span></div>
-              </div>
-            </div>
           </div>
-          {r && (
-            <div className="rb-box">
-              <h4>Produção · {r.ordemLactacao}ª lactação</h4>
-              <div className="rb-kv"><span>Média atual</span><b>{r.producaoMediaDia} L/dia</b></div>
-              <div className="rb-kv"><span>Proj. 305d</span><b>{r.producao305?.toLocaleString("pt-BR")} L</b></div>
-            </div>
-          )}
+          {insights && <Percentis p={insights.percentis} />}
+          {insights && <ProducaoFinanceira pf={insights.producaoFinanceira} />}
+          {insights && <EficienciaGauge e={insights.eficiencia} />}
+          {insights && <Projecoes p={insights.projecoes} fontePreco={insights.financeiro.fontePreco} />}
+          {insights && <Genealogia g={insights.genealogia} onAbrirAnimal={onAbrirAnimal} />}
         </div>
       </div>
 
-      {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarEventos(); recarregar(); }} />}
-      {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarEventos(); recarregar(); }} />}
+      {registrando && <EventoForm animalId={animalId} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregarTudo(); }} />}
+      {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarTudo(); }} />}
     </main>
   );
 }

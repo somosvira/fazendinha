@@ -235,6 +235,93 @@ input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-sty
 .rb-sangue-frac-comp { font-family: var(--sans); font-size: 13.5px; color: var(--ink-3); font-style: italic; }
 
 /* ============================================================
+   Painel executivo do animal (AnimalCockpit)
+   ============================================================ */
+
+/* Selo de score ao lado do nome (h1 small) */
+.rb-score { display: inline-flex; align-items: center; gap: 8px; margin-left: 14px; vertical-align: 6px; font-family: var(--sans); }
+.rb-score-stars { font-size: 14px; letter-spacing: 1px; line-height: 1; color: var(--ink-mute); }
+.rb-score-stars .on { color: var(--leite); }
+.rb-score-stars .off { color: var(--rule); }
+.rb-score-lab { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--ink-3); padding: 3px 9px; border: 1px solid var(--rule); border-radius: 11px; }
+.rb-score.ok .rb-score-lab { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 30%, var(--rule)); }
+.rb-score.warn .rb-score-lab { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 30%, var(--rule)); }
+
+/* KPI Rentabilidade — variante do .rb-k com sub-grid interno */
+.rb-rentab { padding-left: 18px !important; }
+.rb-rentab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 6px; align-items: end; }
+.rb-rentab-num { font-family: var(--serif); font-size: 26px; font-weight: 500; line-height: 1; }
+.rb-rentab-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+.rb-rentab-side { display: flex; flex-direction: column; gap: 4px; }
+.rb-rentab-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+.rb-rentab-row b { font-weight: 600; color: var(--ink-2); }
+
+/* Cards mini transparentes (estilo pull-quote editorial) */
+.rb-card-mini { margin: 22px 0 0; }
+.rb-card-mini > h4 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 15px; color: var(--ink); margin: 0 0 10px; }
+
+/* Tendências */
+.rb-trend-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.rb-trend-li { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--rule-soft); font-size: 13.5px; }
+.rb-trend-li:last-child { border-bottom: 0; }
+.rb-trend-arrow { font-size: 16px; line-height: 1; color: var(--ink-3); text-align: center; }
+.rb-trend-arrow.rb-ok { color: var(--pos); }
+.rb-trend-arrow.rb-up { color: var(--neg); }
+.rb-trend-lab { color: var(--ink-2); }
+.rb-trend-delta { color: var(--ink-3); font-size: 12.5px; font-style: italic; }
+
+/* Insights (alertas + ok) — pull-quote com border-left de cor */
+.rb-insights-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.rb-pull { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: flex-start; padding: 10px 14px; background: transparent; border: 0; border-left: 2px solid var(--rule); }
+.rb-pull.warn { border-left-color: var(--neg); }
+.rb-pull.ok { border-left-color: var(--pos); }
+.rb-pull-mark { font-size: 14px; line-height: 1.6; color: var(--ink-3); }
+.rb-pull.warn .rb-pull-mark { color: var(--neg); }
+.rb-pull.ok .rb-pull-mark { color: var(--pos); }
+.rb-pull-tit { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
+.rb-pull-det { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+/* Percentis — barras horizontais sutis */
+.rb-perc-grid { display: flex; flex-direction: column; gap: 10px; }
+.rb-perc-row { display: grid; grid-template-columns: 110px 1fr 90px; gap: 12px; align-items: center; font-size: 13px; }
+.rb-perc-lab { color: var(--ink-2); }
+.rb-bar { height: 6px; background: var(--rule-soft); border-radius: 3px; overflow: hidden; }
+.rb-bar-fill { height: 100%; background: var(--leite); border-radius: 3px; transition: width .25s ease; }
+.rb-perc-val { color: var(--ink-3); font-size: 12px; text-align: right; }
+.rb-perc-rank { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-2); margin: 10px 0 0; }
+
+/* Gauge (eficiência) — semicírculo SVG mínimo */
+.rb-gauge { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 0 0 12px; }
+.rb-gauge-num { font-family: var(--serif); font-weight: 500; font-size: 22px; margin-top: -10px; }
+
+/* Genealogia — árvore em colunas */
+.rb-ped-tree { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+.rb-ped-col { display: flex; flex-direction: column; gap: 6px; }
+.rb-ped-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--rule-soft); }
+.rb-ped-line > span:first-child { color: var(--ink-3); font-size: 12px; }
+.rb-ped-line button { background: none; border: 0; padding: 0; cursor: pointer; color: var(--cafe); font-weight: 600; font-family: var(--sans); font-size: 13px; text-align: right; }
+.rb-ped-line button:hover { text-decoration: underline; }
+.rb-ped-text { color: var(--ink-2); font-size: 13px; text-align: right; }
+.rb-ped-empty { color: var(--ink-mute); font-size: 12px; font-style: italic; text-align: right; }
+.rb-ped-mini { font-size: 11.5px; color: var(--ink-3); font-style: italic; text-align: right; margin: -4px 0 2px; }
+
+/* Interpretação na linha do tempo — pequena nota italic abaixo do detalhe */
+.rb-tl-int { margin: 6px 0 0 !important; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-3); }
+.rb-tl-int > span { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--ink-mute); margin-right: 7px; font-family: var(--sans); font-style: normal; }
+
+/* Coluna lateral do cockpit: KVs precisam respirar */
+.rb-grid > div:last-child .rb-card-mini + .rb-card-mini { margin-top: 26px; }
+
+@media (max-width: 1100px) {
+  .rb-rentab-grid { grid-template-columns: 1fr; gap: 10px; }
+  .rb-perc-row { grid-template-columns: 90px 1fr 80px; }
+}
+@media (max-width: 600px) {
+  .rb-ped-tree { grid-template-columns: 1fr; }
+  .rb-score { display: flex; margin: 8px 0 0; }
+}
+
+/* ============================================================
    Mobile / Tablet — topbar + sidebar off-canvas + reflows
    Breakpoints:
      ≤ 1100px  — cockpit grid e tabelas começam a apertar

@@ -21,5 +21,8 @@ export const producaoLoteSchema = z.object({
 });
 export type ProducaoLoteInput = z.infer<typeof producaoLoteSchema>;
 
-export const configSchema = z.object({ producaoModo: z.enum(["ORDENHA", "TOTAL_DIARIO", "TANQUE_LOTE"]) });
+export const configSchema = z.object({
+  producaoModo: z.enum(["ORDENHA", "TOTAL_DIARIO", "TANQUE_LOTE"]).optional(),
+  precoLeite: z.number().nonnegative().nullable().optional(),
+});
 export type ConfigInput = z.infer<typeof configSchema>;

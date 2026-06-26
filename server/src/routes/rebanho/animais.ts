@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema } from "../../services/rebanho/animais.schemas.js";
 import * as svc from "../../services/rebanho/animais.js";
+import { obterInsights } from "../../services/rebanho/insights.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.AnimalError) {
@@ -18,6 +19,10 @@ export const animaisRouter = new Hono()
   .get("/rebanho/animais", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarAnimais(c.req.valid("query"))))
   .get("/rebanho/animais/:id", async (c) => {
     const dto = await svc.obterAnimal(Number(c.req.param("id")));
+    return dto ? c.json(dto) : c.json({ error: "animal não encontrado" }, 404);
+  })
+  .get("/rebanho/animais/:id/insights", async (c) => {
+    const dto = await obterInsights(Number(c.req.param("id")));
     return dto ? c.json(dto) : c.json({ error: "animal não encontrado" }, 404);
   })
   .post("/rebanho/animais", zValidator("json", criarAnimalSchema), async (c) => {

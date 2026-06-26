@@ -201,6 +201,9 @@ enum ModoProducao {
 model Configuracao {
   id           Int          @id @default(1)
   producaoModo ModoProducao @default(ORDENHA)
+  // Preço médio do litro de leite recebido. Usado pra estimar receita por animal.
+  // Quando NULL, o cálculo cai em fallback fixo no service (R$ 2,40/L).
+  precoLeite   Decimal?     @db.Decimal(10, 4)
   atualizadoEm DateTime     @updatedAt
 }
 
