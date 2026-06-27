@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PAPEIS, type User } from "../data/acessos";
 import type { Tab } from "./Shell";
 
@@ -24,23 +24,81 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
 };
 
-const REBANHO_ITENS: { id: Tab; label: string }[] = [
-  { id: "reb-dashboard", label: "Painel" },
-  { id: "reb-animal", label: "Animal" },
-  { id: "reb-reproducao", label: "Reprodução" },
-  { id: "reb-sanidade", label: "Sanidade" },
-  { id: "reb-nutricao", label: "Nutrição" },
-  { id: "reb-producao", label: "Produção" },
-  { id: "reb-estoque", label: "Estoque" },
-  { id: "reb-custo", label: "Custo" },
-  { id: "reb-ia", label: "IA do rebanho" },
+type ModuloId = string;
+type SubItem = { id: Tab; label: string };
+type Modulo = { id: ModuloId; label: string; icon: JSX.Element; subs: SubItem[]; disabled?: boolean };
+
+// Registrar um novo módulo operacional (Plantio, Gado de corte, Olericultura, etc.)
+// é só adicionar uma entrada aqui. O acordeão e o estado persistido funcionam
+// automaticamente para qualquer item da lista.
+const MODULOS: Modulo[] = [
+  {
+    id: "rebanho",
+    label: "Rebanho leiteiro",
+    icon: <><circle cx="12" cy="10" r="5"/><path d="M7 8c-1-2-3-2-3 0M17 8c1-2 3-2 3 0"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
+    subs: [
+      { id: "reb-dashboard", label: "Painel" },
+      { id: "reb-animal", label: "Animal" },
+      { id: "reb-reproducao", label: "Reprodução" },
+      { id: "reb-sanidade", label: "Sanidade" },
+      { id: "reb-nutricao", label: "Nutrição" },
+      { id: "reb-producao", label: "Produção" },
+      { id: "reb-estoque", label: "Estoque" },
+      { id: "reb-custo", label: "Custo" },
+      { id: "reb-ia", label: "IA do rebanho" },
+    ],
+  },
+  {
+    id: "plantio",
+    label: "Plantio",
+    icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
+    subs: [],
+    disabled: true,
+  },
+  {
+    id: "corte",
+    label: "Gado de corte",
+    icon: <><circle cx="12" cy="11" r="5"/><path d="M6 7L3 4M18 7l3-3"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
+    subs: [],
+    disabled: true,
+  },
 ];
 
-function Item({ id, label, current, onNav }: { id: Tab; label: string; current: Tab; onNav: (t: Tab) => void }) {
+const STORAGE_KEY = "rionovo:sidebar:openModulo";
+
+function moduloOfTab(t: Tab): ModuloId | null {
+  for (const m of MODULOS) {
+    if (m.subs.some((s) => s.id === t)) return m.id;
+  }
+  return null;
+}
+
+function Item({ id, label, current, onNav, nested }: { id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean }) {
   return (
-    <button className={"navi" + (current === id ? " on" : "")} onClick={() => onNav(id)}>
+    <button className={"navi" + (current === id ? " on" : "") + (nested ? " is-nested" : "")} onClick={() => onNav(id)}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{ICON[id]}</svg>
       {label}
+    </button>
+  );
+}
+
+function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: boolean; isActive: boolean; onToggle: () => void }) {
+  return (
+    <button
+      className={"modulo-h" + (isActive ? " is-active" : "") + (m.disabled ? " is-disabled" : "")}
+      onClick={m.disabled ? undefined : onToggle}
+      aria-expanded={isOpen}
+      disabled={m.disabled}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
+      <span className="modulo-label">{m.label}</span>
+      {m.disabled ? (
+        <span className="modulo-badge">em breve</span>
+      ) : (
+        <svg className={"modulo-chev" + (isOpen ? " is-open" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 6l6 6-6 6"/>
+        </svg>
+      )}
     </button>
   );
 }
@@ -51,11 +109,35 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
 }) {
   const [menu, setMenu] = useState(false);
+
+  const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && MODULOS.some((m) => m.id === stored && !m.disabled)) return stored;
+    } catch { /* ignora SSR / storage indisponível */ }
+    return moduloOfTab(current) ?? MODULOS.find((m) => !m.disabled)?.id ?? null;
+  });
+
+  // Abre automaticamente o módulo da aba atual quando o usuário navega via outro caminho
+  // (ex.: link do Dashboard que pula direto pro reb-animal).
+  useEffect(() => {
+    const m = moduloOfTab(current);
+    if (m && m !== openModulo) setOpenModulo(m);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
+  }, [openModulo]);
+
   const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
   // relabel financeiro: "IA" -> "IA financeira"
   const fin = financeiro.map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
+
+  const toggleModulo = (id: ModuloId) => setOpenModulo((cur) => (cur === id ? null : id));
+
   return (
     <>
       <div className="rb-topbar">
@@ -76,14 +158,28 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers
           <div className="farm"><span>🌾 Sítio São Francisco</span><span>▾</span></div>
         </div>
 
-        <div className="grp">Financeiro</div>
+        <div className="grp">Visão &amp; gestão</div>
         {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
 
-        <div className="grp">Rebanho</div>
-        {REBANHO_ITENS.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
+        <div className="grp">Operações</div>
+        {MODULOS.map((m) => {
+          const isOpen = openModulo === m.id && !m.disabled;
+          const isActive = m.subs.some((s) => s.id === current);
+          return (
+            <div key={m.id} className={"modulo" + (isOpen ? " is-open" : "")}>
+              <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
+              {isOpen && (
+                <div className="modulo-subs">
+                  {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         <div className="spacer" />
 
+        <div className="grp">Administração</div>
         <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
         <Item id="config" label="Configurações" current={current} onNav={nav} />
         {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}

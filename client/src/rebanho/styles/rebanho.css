@@ -19,6 +19,27 @@
 .rb-side button.navi:hover { color: var(--mast-ink); background: #161b17; }
 .rb-side button.navi.on { color: var(--mast-ink); border-left-color: var(--leite); background: #171d18; font-weight: 600; }
 .rb-side button.navi.on svg { opacity: 1; color: var(--leite); }
+
+/* Acordeão de módulos operacionais (Rebanho, Plantio, Gado de corte…) */
+.rb-side .modulo { display: flex; flex-direction: column; }
+.rb-side .modulo-h { width: 100%; text-align: left; display: flex; align-items: center; gap: 11px; padding: 9px 20px; color: var(--mast-ink-2); background: none; border: 0; border-left: 3px solid transparent; cursor: pointer; font-family: var(--sans); font-size: 14px; }
+.rb-side .modulo-h svg { width: 17px; height: 17px; flex: none; opacity: .85; }
+.rb-side .modulo-h:hover:not(.is-disabled) { color: var(--mast-ink); background: #161b17; }
+.rb-side .modulo-h.is-active { color: var(--mast-ink); font-weight: 600; }
+.rb-side .modulo-h.is-active svg { opacity: 1; color: var(--leite); }
+.rb-side .modulo-h.is-disabled { color: #6b6b5e; cursor: not-allowed; opacity: .65; }
+.rb-side .modulo-h.is-disabled svg { opacity: .6; }
+.rb-side .modulo-label { flex: 1; }
+.rb-side .modulo-chev { width: 11px !important; height: 11px !important; opacity: .55 !important; transition: transform .15s ease; }
+.rb-side .modulo-chev.is-open { transform: rotate(90deg); }
+.rb-side .modulo-badge { font-size: 11px; color: #8a8470; background: #1c211d; border: 1px solid #2a3025; border-radius: 4px; padding: 1px 7px; font-family: var(--serif); font-style: italic; }
+.rb-side .modulo-subs { padding: 2px 0 6px; border-left: 1px solid #23291f; margin-left: 28px; }
+.rb-side .modulo-subs button.navi { padding: 7px 20px 7px 14px; font-size: 13px; }
+.rb-side .modulo-subs button.navi svg { width: 15px; height: 15px; }
+.rb-side .modulo-subs button.navi.on { background: transparent; border-left-color: transparent; }
+.rb-side .modulo-subs button.navi.on::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--leite); border-radius: 0 2px 2px 0; }
+.rb-side .modulo-subs button.navi { position: relative; }
+
 .rb-side .ia-btn { margin: 8px 16px 0; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--leite); color: var(--mast-bg); font-weight: 700; border: 0; border-radius: 9px; padding: 10px; font-size: 14px; cursor: pointer; font-family: var(--sans); }
 .rb-side .spacer { flex: 1; }
 .rb-side .user { margin: 0 16px; padding-top: 14px; border-top: 1px solid #23291f; display: flex; align-items: center; gap: 10px; }
