@@ -198,6 +198,18 @@
 .field-input:focus, .field-textarea:focus {
   border-color: var(--ink);
 }
+.field-input.is-error, .field-textarea.is-error {
+  border-color: var(--prejuizo);
+  background: linear-gradient(0deg, rgba(198, 40, 40, 0.04), rgba(198, 40, 40, 0.04)), var(--bg-card);
+}
+.field-input.is-error:focus, .field-textarea.is-error:focus { border-color: var(--prejuizo); }
+.field-error {
+  font-size: 12.5px;
+  color: var(--prejuizo);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-top: 2px;
+}
 .field-textarea { min-height: 70px; resize: vertical; }
 
 .field-row {

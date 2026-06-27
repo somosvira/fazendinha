@@ -52,6 +52,23 @@
 .anom-delta { font-size: 14px; font-variant-numeric: tabular-nums; }
 .anom-delta.up { color: var(--prejuizo); }
 .anom-delta.down { color: var(--lucro); }
+.anom-delta.flat { color: var(--ink-3); }
+
+/* todas dispensadas — strip permanece com botão de restaurar */
+.anom-strip.is-empty { padding-bottom: 12px; }
+.anom-restore {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--rule);
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  cursor: pointer;
+}
+.anom-restore:hover { background: var(--bg-card-2); }
 .anom-title {
   font-family: var(--serif); font-size: 18px; line-height: 1.25;
   letter-spacing: -0.005em; color: var(--ink);

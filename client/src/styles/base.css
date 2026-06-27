@@ -1487,3 +1487,215 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
 /* drawer-friendly: trava o scroll do body quando o drawer está aberto */
 body.no-scroll { overflow: hidden; }
+
+/* ============================================================
+   SKIP LINK — acessibilidade de teclado
+   ============================================================ */
+.skip-link {
+  position: absolute;
+  top: 8px; left: 8px;
+  z-index: 1000;
+  background: var(--mast-bg);
+  color: var(--mast-ink);
+  padding: 10px 14px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  border: 1px solid var(--mast-ink);
+  transform: translateY(-200%);
+  transition: transform 120ms;
+}
+.skip-link:focus { transform: translateY(0); outline: none; }
+
+/* ============================================================
+   TOASTS — feedback global
+   ============================================================ */
+.toast-viewport {
+  position: fixed;
+  z-index: 1100;
+  right: 22px; bottom: 22px;
+  display: flex; flex-direction: column-reverse; gap: 10px;
+  pointer-events: none;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  pointer-events: auto;
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  gap: 12px;
+  align-items: start;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-left-width: 4px;
+  box-shadow: 0 12px 32px rgba(20, 25, 26, 0.16);
+  padding: 12px 14px 14px;
+  font-family: var(--sans);
+  overflow: hidden;
+  animation: toast-in 200ms ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.toast-success { border-left-color: var(--lucro); }
+.toast-info    { border-left-color: var(--info); }
+.toast-warn    { border-left-color: var(--atencao); }
+.toast-error   { border-left-color: var(--prejuizo); }
+
+.toast-icon {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 1px;
+  line-height: 1;
+}
+.toast-icon-success { background: var(--lucro); color: var(--mast-ink); }
+.toast-icon-info    { background: var(--info);  color: var(--mast-ink); }
+.toast-icon-warn    { background: var(--atencao); color: var(--mast-bg); }
+.toast-icon-error   { background: var(--prejuizo); color: var(--mast-ink); }
+
+.toast-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.toast-title { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.toast-detail { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+
+.toast-action {
+  border: 0; background: none;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline; text-underline-offset: 3px;
+  padding: 2px 6px; margin-top: 1px;
+  cursor: pointer;
+}
+.toast-action:hover { color: var(--mast-bg); }
+
+.toast-close {
+  border: 0; background: none;
+  color: var(--ink-3); font-size: 18px; line-height: 1;
+  padding: 0 2px; margin-top: -2px;
+  cursor: pointer;
+}
+.toast-close:hover { color: var(--ink); }
+
+.toast-progress {
+  position: absolute; left: 0; bottom: 0;
+  height: 2px; width: 100%;
+  transform-origin: left center;
+  background: currentColor;
+  opacity: 0.55;
+}
+.toast-progress-success { color: var(--lucro); }
+.toast-progress-info    { color: var(--info); }
+.toast-progress-warn    { color: var(--atencao); }
+.toast-progress-error   { color: var(--prejuizo); }
+
+@media (max-width: 600px) {
+  .toast-viewport { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}
+
+/* ============================================================
+   CONFIRM DIALOG — diálogo modal simples (acessível)
+   ============================================================ */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 25, 26, 0.45);
+  z-index: 1080;
+  display: grid; place-items: center;
+  padding: 24px;
+  animation: confirm-fade 140ms ease-out;
+}
+@keyframes confirm-fade { from { opacity: 0; } to { opacity: 1; } }
+.confirm-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  width: 100%; max-width: 460px;
+  box-shadow: 0 24px 56px rgba(20, 25, 26, 0.28);
+  display: flex; flex-direction: column;
+}
+.confirm-head {
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--serif);
+  font-size: 20px;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.confirm-body {
+  padding: 16px 22px;
+  font-size: 15px; line-height: 1.5;
+  color: var(--ink-2);
+}
+.confirm-foot {
+  padding: 14px 22px 18px;
+  display: flex; justify-content: flex-end; gap: 10px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+/* ============================================================
+   ESTADOS VAZIOS — quando filtros zeram resultados
+   ============================================================ */
+.empty-state {
+  padding: 56px 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  align-items: center; text-align: center;
+  color: var(--ink-2);
+}
+.empty-state .icon {
+  width: 44px; height: 44px;
+  border: 1px dashed var(--rule);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--ink-3);
+  font-family: var(--serif); font-size: 22px;
+  margin-bottom: 6px;
+}
+.empty-state .title {
+  font-family: var(--serif); font-size: 20px;
+  color: var(--ink); font-weight: 500;
+}
+.empty-state .detail {
+  font-size: 14px; color: var(--ink-2);
+  max-width: 42ch;
+}
+.empty-state .actions {
+  display: flex; gap: 10px; margin-top: 10px;
+}
+
+/* gated-msg e viewas-banner moram em acessos.css */
+
+/* ============================================================
+   ACESSIBILIDADE — reduced motion + print
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  /* esconde shell — só conteúdo importa */
+  .app-header, .rb-side, .toast-viewport,
+  .ah-burger, .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
+  .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
+  .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
+  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay, .confirm-overlay {
+    display: none !important;
+  }
+  .app, .app-main, .shell, .shell-wide {
+    margin: 0 !important; padding: 0 !important; max-width: none !important;
+    background: white !important; color: black !important;
+  }
+  body, html { background: white !important; }
+  /* contraste alto em impressão */
+  .h1, .h2, .h3, h1, h2, h3 { color: black !important; }
+  .kpi-value, .kpi-prim-val, .cat-val, .activity-stat .stat-val { color: black !important; }
+  /* evita quebra dentro de cards */
+  .kpi, .activity-card, .alert-card, .unit-card, .dash-card, .anom-card {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .report-header, .dash-sec-head, .section-head { break-after: avoid; }
+}

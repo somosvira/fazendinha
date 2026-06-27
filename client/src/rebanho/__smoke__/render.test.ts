@@ -22,8 +22,11 @@ describe("render smoke", () => {
       isAdmin: true,
       mobileOpen: false, onMobileToggle: () => {},
     }));
-    expect(html).toContain("Financeiro");
-    expect(html).toContain("Rebanho");
+    // grupos atuais (renomeados em "Sidebar enxuta")
+    expect(html).toContain("Visão");          // "Visão & gestão"
+    expect(html).toContain("Operações");
+    expect(html).toContain("Administração");
+    expect(html).toContain("Rebanho leiteiro");
     expect(html).toContain("Painel");
     expect(html).toContain("IA financeira");
     expect(html).toContain("Acessos");
@@ -41,10 +44,11 @@ describe("render smoke", () => {
 
   it("App renders the unified sidebar (no top bar)", () => {
     const html = renderToString(h(App));
-    expect(html).toContain("Financeiro");   // grupo
-    expect(html).toContain("Rebanho");       // grupo
-    expect(html).toContain("Painel");        // item rebanho
-    expect(html).not.toContain("nav-tabs");  // top bar removida
+    expect(html).toContain("Visão");           // grupo "Visão & gestão"
+    expect(html).toContain("Operações");        // grupo
+    expect(html).toContain("Rebanho leiteiro"); // módulo operacional
+    expect(html).toContain("Painel");           // sub-item rebanho
+    expect(html).not.toContain("nav-tabs");     // top bar removida
   });
 
   it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {

@@ -1,9 +1,39 @@
 /* Rio Novo — Lançar gasto */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import type { Tab } from "./Shell";
+import { useToast } from "./Toast";
+
+const RASCUNHO_KEY = "rionovo:lancar:rascunho";
+
+type RascunhoSaida = {
+  fornecedor: string;
+  valor: string;
+  data: string;
+  conta: string;
+  pago: boolean;
+  atividade: string | null;
+  investimento: boolean;
+  cat: { grupoId: string | null; categoriaId: string | null; subcategoria: string | null };
+  obs: string;
+  ts: number;
+};
+
+function loadRascunho(): RascunhoSaida | null {
+  try {
+    const raw = localStorage.getItem(RASCUNHO_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as RascunhoSaida;
+  } catch { return null; }
+}
+function saveRascunho(r: RascunhoSaida) {
+  try { localStorage.setItem(RASCUNHO_KEY, JSON.stringify(r)); } catch { /* storage cheio */ }
+}
+function clearRascunho() {
+  try { localStorage.removeItem(RASCUNHO_KEY); } catch { /* noop */ }
+}
 
 type CatValue = { grupoId: string | null; categoriaId: string | null; subcategoria: string | null };
 
@@ -241,20 +271,62 @@ function WhatsappMock() {
 }
 
 function LancarForm({ onSuccess }: { onSuccess: () => void }) {
+  const toast = useToast();
   const [photo, setPhoto] = useState<{ name: string; size: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [iaUsed, setIaUsed] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
-  const [fornecedor, setFornecedor] = useState("");
-  const [valor, setValor] = useState("");
-  const [data, setData] = useState("28/05/2026");
-  const [conta, setConta] = useState("bb-1234-5");
-  const [pago, setPago] = useState(true);
-  const [atividade, setAtividade] = useState<string | null>(null);
-  const [investimento, setInvestimento] = useState(false);
-  const [cat, setCat] = useState<CatValue>({ grupoId: null, categoriaId: null, subcategoria: null });
-  const [obs, setObs] = useState("");
+  const rascunho = useMemo(loadRascunho, []);
+  const [fornecedor, setFornecedor] = useState(rascunho?.fornecedor ?? "");
+  const [valor, setValor] = useState(rascunho?.valor ?? "");
+  const [data, setData] = useState(rascunho?.data ?? "28/05/2026");
+  const [conta, setConta] = useState(rascunho?.conta ?? "bb-1234-5");
+  const [pago, setPago] = useState(rascunho?.pago ?? true);
+  const [atividade, setAtividade] = useState<string | null>(rascunho?.atividade ?? null);
+  const [investimento, setInvestimento] = useState(rascunho?.investimento ?? false);
+  const [cat, setCat] = useState<CatValue>(rascunho?.cat ?? { grupoId: null, categoriaId: null, subcategoria: null });
+  const [obs, setObs] = useState(rascunho?.obs ?? "");
+  const [restored, setRestored] = useState(!!rascunho);
+
+  useEffect(() => {
+    if (!restored) return;
+    toast.info(
+      "Rascunho restaurado",
+      "Continuamos de onde você parou. Salve ou descarte quando quiser.",
+      {
+        action: {
+          label: "Descartar",
+          onClick: () => {
+            clearRascunho();
+            setFornecedor(""); setValor(""); setObs(""); setCat({ grupoId: null, categoriaId: null, subcategoria: null });
+            setAtividade(null); setInvestimento(false); setPago(true);
+          },
+        },
+      },
+    );
+    setRestored(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSalvarRascunho = () => {
+    const algumPreenchido = fornecedor || valor || cat.categoriaId || atividade || obs;
+    if (!algumPreenchido) {
+      toast.warn("Nada para salvar", "Preencha pelo menos um campo antes de salvar o rascunho.");
+      return;
+    }
+    saveRascunho({
+      fornecedor, valor, data, conta, pago, atividade, investimento, cat, obs,
+      ts: Date.now(),
+    });
+    toast.success("Rascunho salvo", "Você pode voltar depois para concluir o lançamento.");
+  };
+
+  const handleSubmit = () => {
+    clearRascunho();
+    toast.success("Gasto registrado", `${fornecedor || "Lançamento"} salvo. Aparece no Dashboard em segundos.`);
+    onSuccess();
+  };
 
   const onPickFile = (file?: File | null) => {
     if (file) setPhoto({ name: file.name || "nota-fiscal.jpg", size: file.size || 248123 });
@@ -529,8 +601,8 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
                 : "Tudo pronto. O lançamento aparecerá no dashboard imediatamente."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-ghost">Salvar rascunho</button>
-            <button className="btn-primary" disabled={!canSubmit} onClick={onSuccess}>
+            <button className="btn-ghost" onClick={handleSalvarRascunho}>Salvar rascunho</button>
+            <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
               Registrar gasto →
             </button>
           </div>
@@ -674,6 +746,7 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
 type EntradaPayload = { valor: string; tipo: string; comprador: string; qtd: string | null };
 
 function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: EntradaPayload) => void }) {
+  const toast = useToast();
   const [tipoId, setTipoId] = useState("leite");
   const tipo = TIPOS_RECEITA.find((t) => t.id === tipoId) as TipoReceita;
 
@@ -893,18 +966,30 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
               : "Tudo pronto. A entrada aparecerá no Dashboard e melhora o fluxo do mês."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-ghost">Salvar rascunho</button>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                if (!comprador && !valor && !obs) {
+                  toast.warn("Nada para salvar", "Preencha pelo menos um campo antes de salvar o rascunho.");
+                  return;
+                }
+                toast.success("Rascunho salvo", "Você pode retomar este lançamento mais tarde.");
+              }}
+            >
+              Salvar rascunho
+            </button>
             <button
               className="btn-primary entrada-btn"
               disabled={!canSubmit}
-              onClick={() =>
+              onClick={() => {
+                toast.success("Entrada registrada", `${comprador} · R$ ${valor || "0,00"}`);
                 onSuccess({
                   valor: "R$ " + (valor || "0,00"),
                   tipo: tipo.nome,
                   comprador,
                   qtd: qtd && tipo.unidade !== "—" ? `${qtd} ${tipo.unidade}` : null,
-                })
-              }
+                });
+              }}
             >
               Registrar entrada →
             </button>
@@ -942,8 +1027,15 @@ function EntradaSucesso({ onNew, onNav, valor, tipo, comprador, qtd }: EntradaPa
   );
 }
 
+const TIPO_KEY = "rionovo:lancar:tipo";
+
 export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
-  const [tipo, setTipo] = useState<"saida" | "entrada">("saida");
+  const [tipo, setTipo] = useState<"saida" | "entrada">(() => {
+    try {
+      const s = localStorage.getItem(TIPO_KEY);
+      return s === "entrada" ? "entrada" : "saida";
+    } catch { return "saida"; }
+  });
   const [view, setView] = useState<"form" | "sucesso">("form");
   const [entryMode, setEntryMode] = useState<"web" | "wa">("web");
   const [lastLanc, setLastLanc] = useState<{ valor: string; categoria: string; fornecedor: string } | null>(null);
@@ -952,6 +1044,7 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
   const switchTipo = (t: "saida" | "entrada") => {
     setTipo(t);
     setView("form");
+    try { localStorage.setItem(TIPO_KEY, t); } catch { /* storage cheio */ }
   };
 
   return (

@@ -19,6 +19,10 @@ function KpiHero({
     { ...kpis.investimento, k: "investimento" },
     { ...kpis.fluxo, k: "fluxo" },
   ];
+  /* derivado em vez de hardcoded: fração do fluxo absoluto que é investimento */
+  const fluxoAbs = Math.abs(kpis.fluxo.value);
+  const investAbs = Math.abs(kpis.investimento.value);
+  const pctInvest = fluxoAbs > 0 ? Math.round((investAbs / fluxoAbs) * 100) : 0;
   return (
     <div className="kpi-row">
       {cells.map((c) => {
@@ -33,7 +37,7 @@ function KpiHero({
 
         const note =
           c.k === "fluxo"
-            ? "89% é investimento (R$ 3,56 mi)"
+            ? `${pctInvest}% é investimento (${fmtMoney(investAbs, { compact: true })})`
             : c.k === "investimento"
               ? "gado, plantio, maquinário"
               : c.k === "custeio"
@@ -44,7 +48,10 @@ function KpiHero({
           <div className="kpi" key={c.k}>
             <span className="eyebrow">{c.label}</span>
             <div className={"kpi-value mono-nums " + (isNeg ? "neg" : "")}>{fmtMoney(c.value)}</div>
-            <div className={"kpi-delta " + (good ? "up" : "down")}>
+            <div
+              className={"kpi-delta " + (good ? "up" : "down")}
+              title={`Comparação contra o mesmo período do ano anterior (${c.prev > 0 ? fmtMoney(c.prev, { compact: true }) : "—"}).`}
+            >
               <span className="arrow">{up ? "▲" : "▼"}</span>
               <span>
                 {fmtMoney(Math.abs(delta), { compact: true })} ({Math.abs(deltaPct).toFixed(0)}%) vs mesmo período de 2025
@@ -544,16 +551,24 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
       </section>
 
       <section className="report-section">
-        <SectionHead
-          num="II"
-          title="Quanto do negativo é prejuízo, quanto é investimento?"
-          lede="Dos R$ 4,00 mi negativos no ano, 89% é compra de gado, máquinas e plantio — capital novo entrando, não dinheiro perdido."
-          right={
-            <div className="legend">
-              <span style={{ color: "var(--prejuizo)" }}>89% investimento</span>
-            </div>
-          }
-        />
+        {(() => {
+          const fluxoAbs = Math.abs(R.kpisYTD.fluxo.value);
+          const investAbs = Math.abs(R.kpisYTD.investimento.value);
+          const pct = fluxoAbs > 0 ? Math.round((investAbs / fluxoAbs) * 100) : 0;
+          const ledeFluxo = (fluxoAbs / 1000).toFixed(2).replace(".", ",");
+          return (
+            <SectionHead
+              num="II"
+              title="Quanto do negativo é prejuízo, quanto é investimento?"
+              lede={`Dos R$ ${ledeFluxo} mi negativos no ano, ${pct}% é compra de gado, máquinas e plantio — capital novo entrando, não dinheiro perdido.`}
+              right={
+                <div className="legend">
+                  <span style={{ color: "var(--prejuizo)" }}>{pct}% investimento</span>
+                </div>
+              }
+            />
+          );
+        })()}
         <CusteioVsInvestimento />
       </section>
 
@@ -607,7 +622,15 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         <UnitCost />
       </section>
 
-      <div style={{ padding: "40px 0 60px", textAlign: "center" }}>
+      <div style={{ padding: "40px 0 60px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
+        <button
+          className="btn-ghost"
+          onClick={() => window.print()}
+          style={{ alignSelf: "center" }}
+          title="Imprime ou salva como PDF — a versão impressa esconde menu e botões."
+        >
+          ⎙ Imprimir / salvar PDF
+        </button>
         <div className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
           Fim do relatório · Próxima atualização 04/jun/2026
         </div>

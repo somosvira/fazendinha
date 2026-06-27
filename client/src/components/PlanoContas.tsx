@@ -5,29 +5,50 @@ import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { fmtMoney } from "./charts";
 import type { Tab } from "./Shell";
+import { useToast } from "./Toast";
 
-function NewCategoryModal({ onClose }: { onClose: () => void }) {
+function NewCategoryModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (v: { nome: string; grupoId: string; pilha: "Custeio" | "Investimento"; descricao: string }) => void;
+}) {
   const [nome, setNome] = useState("");
   const [grupoId, setGrupoId] = useState("insumos-animais");
   const [pilha, setPilha] = useState<"Custeio" | "Investimento">("Custeio");
+  const [descricao, setDescricao] = useState("");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nomesExistentes: string[] = R.gruposPlano.flatMap((g: any) => g.categorias.map((c: any) => c.nome.toLowerCase()));
+  const jaExiste = nomesExistentes.includes(nome.trim().toLowerCase());
+
+  const submit = () => {
+    if (!nome.trim() || jaExiste) return;
+    onCreate({ nome: nome.trim(), grupoId, pilha, descricao: descricao.trim() });
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="newcat-ttl">
         <div className="modal-head">
-          <span className="ttl">Nova categoria</span>
-          <button className="close" onClick={onClose}>
+          <span className="ttl" id="newcat-ttl">Nova categoria</span>
+          <button className="close" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </div>
         <div className="modal-body">
           <div className="field">
-            <label className="field-label">Nome da categoria</label>
+            <label className="field-label" htmlFor="cat-nome">Nome da categoria</label>
             <input
-              className="field-input"
+              id="cat-nome"
+              className={"field-input" + (nome.trim() && jaExiste ? " is-error" : "")}
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex.: Ração de cavalo"
+              aria-invalid={nome.trim() && jaExiste ? true : undefined}
             />
+            {nome.trim() && jaExiste && <span className="field-error">Já existe uma categoria com esse nome.</span>}
           </div>
           <div className="field">
             <label className="field-label">Grupo</label>
@@ -62,15 +83,21 @@ function NewCategoryModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div className="field">
-            <label className="field-label">Descrição (opcional)</label>
-            <textarea className="field-textarea" placeholder="Ajuda a IA a categorizar lançamentos futuros."></textarea>
+            <label className="field-label" htmlFor="cat-desc">Descrição (opcional)</label>
+            <textarea
+              id="cat-desc"
+              className="field-textarea"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Ajuda a IA a categorizar lançamentos futuros."
+            ></textarea>
           </div>
         </div>
         <div className="modal-foot">
           <button className="btn-ghost" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn-primary" onClick={onClose} disabled={!nome}>
+          <button className="btn-primary" onClick={submit} disabled={!nome.trim() || jaExiste}>
             Criar categoria →
           </button>
         </div>
@@ -94,11 +121,13 @@ function TreeCat({
   cat,
   expanded,
   onToggle,
+  onAddSub,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cat: any;
   expanded: boolean;
   onToggle: () => void;
+  onAddSub: (catNome: string) => void;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let subs: any[] = cat.subcategorias || [];
@@ -122,20 +151,20 @@ function TreeCat({
 
   return (
     <div>
-      <button className="tree-cat-head" onClick={onToggle}>
+      <button className="tree-cat-head" onClick={onToggle} aria-expanded={expanded}>
         <span className="cnm">{cat.nome}</span>
         <span className="ctot mono-nums">{fmtMoney(total)}</span>
         <span className="ccnt">
-          {lancamentos} lançam. · {subs.length} subcategorias
+          {lancamentos} lançam. · {subs.length} {subs.length === 1 ? "subcategoria" : "subcategorias"}
         </span>
-        <span className="chev">{expanded ? "▾" : "›"}</span>
+        <span className="chev" aria-hidden>{expanded ? "▾" : "›"}</span>
       </button>
       {expanded && (
         <div className="tree-subs">
           {subs.map((s, i) => (
             <TreeSub key={i} sub={s} />
           ))}
-          <button className="tree-sub-add" type="button">
+          <button className="tree-sub-add" type="button" onClick={() => onAddSub(cat.nome)}>
             <span className="bullet">+</span>
             <span>adicionar subcategoria</span>
           </button>
@@ -149,11 +178,13 @@ function TreeGroup({
   grupo,
   search,
   defaultOpen,
+  onAddSub,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   grupo: any;
   search: string;
   defaultOpen: boolean;
+  onAddSub: (catNome: string) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
@@ -202,6 +233,7 @@ function TreeGroup({
               cat={c}
               expanded={!!openCats[c.id]}
               onToggle={() => setOpenCats((s) => ({ ...s, [c.id]: !s[c.id] }))}
+              onAddSub={onAddSub}
             />
           ))}
         </div>
@@ -210,9 +242,41 @@ function TreeGroup({
   );
 }
 
+function exportarCSV() {
+  const linhas: string[] = ["Grupo;Pilha;Categoria;Subcategoria;Total YTD"];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  R.gruposPlano.forEach((g: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    g.categorias.forEach((c: any) => {
+      const detalhe = c.ref ? R.categoriasDetalhe[c.ref] : null;
+      const subs = detalhe?.subcategorias || c.subcategorias || [];
+      if (subs.length === 0) {
+        linhas.push([g.nome, g.pilha, c.nome, "", String(c.total || detalhe?.total || 0)].join(";"));
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        subs.forEach((s: any) => {
+          linhas.push([g.nome, g.pilha, c.nome, s.nome, String(s.total)].join(";"));
+        });
+      }
+    });
+  });
+  const blob = new Blob([linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `plano-contas-rio-novo-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return linhas.length - 1; // sem o header
+}
+
 export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
+  const toast = useToast();
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [ignored, setIgnored] = useState<Record<number, boolean>>({});
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalCat: number = R.gruposPlano.reduce((s: number, g: any) => s + g.categorias.length, 0);
@@ -225,13 +289,31 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
     }, 0);
   }, 0);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sugestoesVisiveis = (R.sugestoesPlano as any[]).filter((_, i) => !ignored[i]);
+
+  const semResultados = !!search.trim() && // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    R.gruposPlano.every((g: any) => g.categorias.every((c: any) => !c.nome.toLowerCase().includes(search.toLowerCase())));
+
+  const handleExport = () => {
+    const n = exportarCSV();
+    toast.success("CSV exportado", `${n} linhas geradas. Procure o arquivo em sua pasta de downloads.`);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCreate = (v: { nome: string; grupoId: string; pilha: string; descricao: string }) => {
+    setShowNew(false);
+    const g = R.gruposPlano.find((x: { id: string }) => x.id === v.grupoId);
+    toast.success("Categoria criada", `“${v.nome}” foi adicionada ao grupo ${g?.nome || v.grupoId}.`);
+  };
+
   return (
     <div className="shell-wide">
       <ReportHeader subtitle="Plano de Contas" updatedAt={R.UPDATED_AT} />
 
       <div className="plano-toolbar">
         <div className="search-box" style={{ marginLeft: 0, width: 320 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="16" y1="16" x2="21" y2="21"></line>
           </svg>
@@ -239,10 +321,26 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
             placeholder="Buscar categoria ou subcategoria…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Buscar categoria"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Limpar busca"
+              style={{
+                background: "none", border: 0, cursor: "pointer",
+                color: "var(--ink-3)", padding: 0, fontSize: 16, lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <button className="btn-ghost">Exportar CSV</button>
+          <button className="btn-ghost" onClick={handleExport} title="Baixa um arquivo CSV com todo o plano de contas">
+            Exportar CSV
+          </button>
           <button className="btn-primary" onClick={() => setShowNew(true)}>
             + Nova categoria
           </button>
@@ -254,10 +352,35 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
           <div className="caption" style={{ marginBottom: 14, fontStyle: "italic" }}>
             Toque um grupo para abrir suas categorias. Toque uma categoria para ver as subcategorias.
           </div>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {R.gruposPlano.map((g: any, i: number) => (
-            <TreeGroup key={g.id} grupo={g} search={search} defaultOpen={i < 2} />
-          ))}
+          {semResultados ? (
+            <div className="empty-state">
+              <div className="icon">⌕</div>
+              <div className="title">Nada encontrado para "{search}"</div>
+              <div className="detail">
+                Verifique a ortografia ou abra "+ Nova categoria" se for o caso de cadastrar algo novo.
+              </div>
+              <div className="actions">
+                <button className="btn-ghost" onClick={() => setSearch("")}>Limpar busca</button>
+                <button className="btn-primary" onClick={() => setShowNew(true)}>+ Nova categoria</button>
+              </div>
+            </div>
+          ) : (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            R.gruposPlano.map((g: any, i: number) => (
+              <TreeGroup
+                key={g.id}
+                grupo={g}
+                search={search}
+                defaultOpen={i < 2}
+                onAddSub={(catNome) => {
+                  const sub = window.prompt(`Nome da nova subcategoria em "${catNome}":`);
+                  if (sub && sub.trim()) {
+                    toast.success("Subcategoria adicionada", `“${sub.trim()}” entrou em ${catNome}.`);
+                  }
+                }}
+              />
+            ))
+          )}
         </div>
 
         <div className="plano-side-section">
@@ -287,24 +410,50 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
           </div>
 
           <h4 style={{ marginTop: 22 }}>Sugestões da IA</h4>
-          <div className="ia-suggestions">
-            {R.sugestoesPlano.map(
-              (s: { titulo: string; detalhe: string; acao: string }, i: number) => (
-                <div key={i} className="ia-suggestion-card">
-                  <div className="head">
-                    <span className="dot"></span>
-                    <span className="lbl">Sugestão</span>
-                  </div>
-                  <div className="ttl">{s.titulo}</div>
-                  <div className="det">{s.detalhe}</div>
-                  <div className="row">
-                    <button className="btn-mini">{s.acao}</button>
-                    <button className="btn-mini ghost">Ignorar</button>
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
+          {sugestoesVisiveis.length === 0 ? (
+            <div className="caption" style={{ fontStyle: "italic", padding: "8px 0" }}>
+              Nenhuma sugestão pendente. A IA volta a sugerir quando notar novos padrões.
+            </div>
+          ) : (
+            <div className="ia-suggestions">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {(R.sugestoesPlano as any[]).map(
+                (s: { titulo: string; detalhe: string; acao: string }, i: number) => {
+                  if (ignored[i]) return null;
+                  return (
+                    <div key={i} className="ia-suggestion-card">
+                      <div className="head">
+                        <span className="dot"></span>
+                        <span className="lbl">Sugestão</span>
+                      </div>
+                      <div className="ttl">{s.titulo}</div>
+                      <div className="det">{s.detalhe}</div>
+                      <div className="row">
+                        <button
+                          className="btn-mini"
+                          onClick={() => {
+                            setIgnored((cur) => ({ ...cur, [i]: true }));
+                            toast.success("Sugestão aplicada", s.titulo);
+                          }}
+                        >
+                          {s.acao}
+                        </button>
+                        <button
+                          className="btn-mini ghost"
+                          onClick={() => {
+                            setIgnored((cur) => ({ ...cur, [i]: true }));
+                            toast.info("Sugestão dispensada", "Você pode revisar mais tarde se a IA reabri-la.");
+                          }}
+                        >
+                          Ignorar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          )}
 
           <div
             style={{
@@ -325,7 +474,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
         </div>
       </div>
 
-      {showNew && <NewCategoryModal onClose={() => setShowNew(false)} />}
+      {showNew && <NewCategoryModal onClose={() => setShowNew(false)} onCreate={handleCreate} />}
     </div>
   );
 }

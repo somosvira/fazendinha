@@ -2,12 +2,25 @@
  * Port de src/components/Vigilancia.jsx. Recebe o payload (R).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Tab } from "./Shell";
 import type { AnalisePreco } from "../data/anomalias";
+import { useToast } from "./Toast";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
+
+const DISMISSED_KEY = "rionovo:anomalias:dismissed";
+
+function loadDismissed(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
 
 /* ===== Faixa de anomalias (vigilância proativa) ===== */
 export function AnomaliasStrip({
@@ -21,11 +34,56 @@ export function AnomaliasStrip({
   onNav?: (t: Tab) => void;
   max?: number;
 }) {
-  const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
+  const toast = useToast();
+  const [dismissed, setDismissed] = useState<Record<string, boolean>>(() => loadDismissed());
+
+  useEffect(() => {
+    try { localStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed)); } catch { /* storage cheio */ }
+  }, [dismissed]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anomalias = R.anomalias as any[];
   const lista = anomalias.filter((a) => !dismissed[a.id]).slice(0, max);
-  if (lista.length === 0) return null;
+  const totalNaoDispensadas = anomalias.filter((a) => !dismissed[a.id]).length;
+
+  if (anomalias.length === 0) return null;
+
+  if (lista.length === 0) {
+    // Todas dispensadas — não escondemos a strip, oferecemos restaurar
+    return (
+      <div className="anom-strip is-empty">
+        <div className="anom-strip-head">
+          <span className="anom-badge">
+            <span className="dot"></span>IA · Vigilância de gastos
+          </span>
+          <span className="anom-sub">
+            Todos os {anomalias.length} desvios foram dispensados.
+          </span>
+          <button
+            className="anom-restore"
+            onClick={() => {
+              setDismissed({});
+              toast.info("Avisos restaurados", "Você verá novamente os desvios detectados pela IA.");
+            }}
+          >
+            Restaurar avisos
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const dispensar = (id: string, titulo: string) => {
+    setDismissed((d) => ({ ...d, [id]: true }));
+    toast.info("Aviso dispensado", titulo, {
+      action: {
+        label: "Desfazer",
+        onClick: () => setDismissed((d) => {
+          const next = { ...d }; delete next[id]; return next;
+        }),
+      },
+    });
+  };
 
   return (
     <div className="anom-strip">
@@ -33,46 +91,58 @@ export function AnomaliasStrip({
         <span className="anom-badge">
           <span className="dot"></span>IA · Vigilância de gastos
         </span>
-        <span className="anom-sub">{anomalias.length} desvios detectados no período</span>
+        <span className="anom-sub">
+          {totalNaoDispensadas} {totalNaoDispensadas === 1 ? "desvio detectado" : "desvios detectados"} no período
+          {anomalias.length !== totalNaoDispensadas && ` · ${anomalias.length - totalNaoDispensadas} dispensados`}
+        </span>
       </div>
       <div className="anom-cards">
-        {lista.map((a) => (
-          <div key={a.id} className={"anom-card sev-" + a.severidade}>
-            <button className="anom-dismiss" onClick={() => setDismissed((d) => ({ ...d, [a.id]: true }))} title="Dispensar">
-              ×
-            </button>
-            <div className="anom-card-head">
-              <span className={"anom-sev sev-" + a.severidade}>
-                {a.severidade === "alta" ? "Alta" : a.severidade === "media" ? "Média" : "Baixa"}
-              </span>
-              <span className={"anom-delta " + (a.delta > 0 ? "up" : "down")}>
-                {a.delta > 0 ? "▲ +" : "▼ "}
-                {Math.abs(a.delta)}%
-              </span>
-            </div>
-            <div className="anom-title">{a.titulo}</div>
-            <div className="anom-resumo">{a.resumo}</div>
-            {typeof a.valor === "number" && a.valor > 0 && (
-              <div className={"anom-impacto mono-nums " + (a.delta > 0 ? "is-neg" : "is-pos")}>
-                {a.delta > 0 ? "Custo extra " : "Economia "}
-                R$ {Math.abs(a.valor).toLocaleString("pt-BR")}
+        {lista.map((a) => {
+          const isUp = a.delta > 0;
+          const isFlat = a.delta === 0;
+          return (
+            <div key={a.id} className={"anom-card sev-" + a.severidade}>
+              <button
+                className="anom-dismiss"
+                onClick={() => dispensar(a.id, a.titulo)}
+                title="Dispensar"
+                aria-label={`Dispensar aviso: ${a.titulo}`}
+              >
+                ×
+              </button>
+              <div className="anom-card-head">
+                <span className={"anom-sev sev-" + a.severidade}>
+                  {a.severidade === "alta" ? "Alta" : a.severidade === "media" ? "Média" : "Baixa"}
+                </span>
+                <span className={"anom-delta " + (isFlat ? "flat" : isUp ? "up" : "down")}>
+                  {isFlat ? "—" : isUp ? "▲ +" : "▼ "}
+                  {!isFlat && `${Math.abs(a.delta)}%`}
+                </span>
               </div>
-            )}
-            <div className="anom-pergunta">"{a.pergunta}"</div>
-            <div className="anom-actions">
-              {onDrill && a.catId && (
-                <button className="anom-cta" onClick={() => onDrill(a.catId)}>
-                  Ver lançamentos →
-                </button>
+              <div className="anom-title">{a.titulo}</div>
+              <div className="anom-resumo">{a.resumo}</div>
+              {typeof a.valor === "number" && a.valor > 0 && (
+                <div className={"anom-impacto mono-nums " + (isUp ? "is-neg" : "is-pos")}>
+                  {isUp ? "Custo extra " : "Economia "}
+                  R$ {Math.abs(a.valor).toLocaleString("pt-BR")}
+                </div>
               )}
-              {onNav && (
-                <button className="anom-cta ghost" onClick={() => onNav("ia")}>
-                  Explicar com IA
-                </button>
-              )}
+              <div className="anom-pergunta">"{a.pergunta}"</div>
+              <div className="anom-actions">
+                {onDrill && a.catId && (
+                  <button className="anom-cta" onClick={() => onDrill(a.catId)}>
+                    Ver lançamentos →
+                  </button>
+                )}
+                {onNav && (
+                  <button className="anom-cta ghost" onClick={() => onNav("ia")}>
+                    Explicar com IA
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -149,13 +219,23 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
         </div>
       </div>
 
-      {a.alerta && (
-        <div className="preco-alerta-foot">
-          Você pagou <strong>{Math.abs(a.deltaUlt).toFixed(0)}% a mais</strong> que na última compra. Vale cotar outro fornecedor ou
-          renegociar.
-          <button className="pa-cta">Cotar alternativas →</button>
-        </div>
-      )}
+      {a.alerta && <PrecoAlertaFoot delta={Math.abs(a.deltaUlt)} marca={marca} />}
+    </div>
+  );
+}
+
+function PrecoAlertaFoot({ delta, marca }: { delta: number; marca: string }) {
+  const toast = useToast();
+  return (
+    <div className="preco-alerta-foot">
+      Você pagou <strong>{delta.toFixed(0)}% a mais</strong> que na última compra. Vale cotar outro fornecedor ou
+      renegociar.
+      <button
+        className="pa-cta"
+        onClick={() => toast.info("Cotação solicitada", `Vamos buscar 3 fornecedores alternativos para “${marca}”. Você recebe o resultado no WhatsApp em até 24h.`)}
+      >
+        Cotar alternativas →
+      </button>
     </div>
   );
 }

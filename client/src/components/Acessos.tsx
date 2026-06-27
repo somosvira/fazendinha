@@ -5,6 +5,11 @@
 import { useState } from "react";
 import { ReportHeader } from "./Shell";
 import { ABAS, FLAGS, PAPEIS, UPDATED_AT, type User } from "../data/acessos";
+import { useToast } from "./Toast";
+import { ConfirmDialog } from "./ConfirmDialog";
+
+/* validação simples de email (suficiente p/ feedback antes do envio real) */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function StatusBadge({ status }: { status: User["status"] }) {
   const map: Record<string, { label: string; cls: string }> = {
@@ -19,31 +24,61 @@ function StatusBadge({ status }: { status: User["status"] }) {
 function InviteModal({
   onClose,
   onInvite,
+  existingEmails,
 }: {
   onClose: () => void;
   onInvite: (v: { nome: string; email: string; papel: string }) => void;
+  existingEmails: string[];
 }) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState("gestor");
+  const [touched, setTouched] = useState(false);
+
+  const emailNorm = email.trim().toLowerCase();
+  const emailJaExiste = !!emailNorm && existingEmails.includes(emailNorm);
+  const emailInvalido = !!emailNorm && !EMAIL_RE.test(emailNorm);
+  const emailErr = touched
+    ? emailInvalido
+      ? "E-mail inválido."
+      : emailJaExiste
+        ? "Já existe um acesso com esse e-mail."
+        : null
+    : null;
+  const podeEnviar = !!nome.trim() && !!emailNorm && !emailInvalido && !emailJaExiste;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="invite-ttl">
         <div className="modal-head">
-          <span className="ttl">Convidar pessoa</span>
-          <button className="close" onClick={onClose}>
+          <span className="ttl" id="invite-ttl">Convidar pessoa</span>
+          <button className="close" onClick={onClose} aria-label="Fechar">
             ×
           </button>
         </div>
         <div className="modal-body">
           <div className="field">
-            <label className="field-label">Nome</label>
-            <input className="field-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Sandra Oliveira" />
+            <label className="field-label" htmlFor="inv-nome">Nome</label>
+            <input
+              id="inv-nome" className="field-input" value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex.: Sandra Oliveira"
+            />
           </div>
           <div className="field">
-            <label className="field-label">E-mail</label>
-            <input className="field-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@email.com" />
+            <label className="field-label" htmlFor="inv-email">E-mail</label>
+            <input
+              id="inv-email"
+              className={"field-input" + (emailErr ? " is-error" : "")}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched(true)}
+              placeholder="pessoa@email.com"
+              aria-invalid={!!emailErr}
+              aria-describedby={emailErr ? "inv-email-err" : undefined}
+            />
+            {emailErr && <span id="inv-email-err" className="field-error">{emailErr}</span>}
           </div>
           <div className="field">
             <label className="field-label">Papel inicial</label>
@@ -69,7 +104,11 @@ function InviteModal({
           <button className="btn-ghost" onClick={onClose}>
             Cancelar
           </button>
-          <button className="btn-primary" disabled={!nome || !email} onClick={() => onInvite({ nome, email, papel })}>
+          <button
+            className="btn-primary"
+            disabled={!podeEnviar}
+            onClick={() => { setTouched(true); if (podeEnviar) onInvite({ nome: nome.trim(), email: emailNorm, papel }); }}
+          >
             Enviar convite →
           </button>
         </div>
@@ -82,10 +121,14 @@ function PermissionEditor({
   user,
   onChange,
   onViewAs,
+  onResendInvite,
+  onRevoke,
 }: {
   user: User;
   onChange: (u: User) => void;
   onViewAs: (id: string) => void;
+  onResendInvite: (u: User) => void;
+  onRevoke: (u: User) => void;
 }) {
   const applyPreset = (papelId: string) => {
     const preset = PAPEIS[papelId];
@@ -199,8 +242,14 @@ function PermissionEditor({
               Ver o sistema como {user.nome.split(" ")[0]} →
             </button>
             <div className="perm-actions-r">
-              {user.status === "pendente" && <button className="btn-ghost">Reenviar convite</button>}
-              <button className="btn-ghost danger">Revogar acesso</button>
+              {user.status === "pendente" && (
+                <button className="btn-ghost" onClick={() => onResendInvite(user)}>
+                  Reenviar convite
+                </button>
+              )}
+              <button className="btn-ghost danger" onClick={() => onRevoke(user)}>
+                Revogar acesso
+              </button>
             </div>
           </div>
         </>
@@ -218,8 +267,10 @@ export function Acessos({
   setUsers: (u: User[]) => void;
   onViewAs: (id: string) => void;
 }) {
+  const toast = useToast();
   const [selId, setSelId] = useState(users[0].id);
   const [showInvite, setShowInvite] = useState(false);
+  const [revoking, setRevoking] = useState<User | null>(null);
 
   const sel = users.find((u) => u.id === selId) || users[0];
   const ativos = users.filter((u) => u.status === "ativo").length;
@@ -243,7 +294,38 @@ export function Acessos({
     setUsers([...users, novo]);
     setSelId(id);
     setShowInvite(false);
+    toast.success("Convite enviado", `${nome.split(" ")[0]} recebeu o link em ${email}.`);
   };
+
+  const resendInvite = (u: User) => {
+    setUsers(users.map((x) => (x.id === u.id ? { ...x, ultimoAcesso: "convite reenviado agora" } : x)));
+    toast.info("Convite reenviado", `Novo link foi enviado para ${u.email}.`);
+  };
+
+  const confirmRevoke = (u: User) => {
+    if (u.dono) {
+      toast.error("Não é possível revogar", "O acesso do proprietário é irrevogável.");
+      return;
+    }
+    setRevoking(u);
+  };
+
+  const doRevoke = () => {
+    if (!revoking) return;
+    const u = revoking;
+    const sobra = users.filter((x) => x.id !== u.id);
+    setUsers(sobra);
+    if (selId === u.id) setSelId(sobra[0]?.id || "");
+    setRevoking(null);
+    toast.success("Acesso revogado", `${u.nome.split(" ")[0]} não tem mais acesso à fazenda.`, {
+      action: {
+        label: "Desfazer",
+        onClick: () => setUsers([...sobra, u]),
+      },
+    });
+  };
+
+  const existingEmails = users.map((u) => u.email.trim().toLowerCase()).filter(Boolean);
 
   return (
     <div className="shell-wide">
@@ -292,10 +374,39 @@ export function Acessos({
           ))}
         </div>
 
-        <PermissionEditor user={sel} onChange={updateUser} onViewAs={onViewAs} />
+        <PermissionEditor
+          user={sel}
+          onChange={updateUser}
+          onViewAs={onViewAs}
+          onResendInvite={resendInvite}
+          onRevoke={confirmRevoke}
+        />
       </div>
 
-      {showInvite && <InviteModal onClose={() => setShowInvite(false)} onInvite={invite} />}
+      {showInvite && (
+        <InviteModal
+          onClose={() => setShowInvite(false)}
+          onInvite={invite}
+          existingEmails={existingEmails}
+        />
+      )}
+      <ConfirmDialog
+        open={!!revoking}
+        title="Revogar acesso?"
+        message={
+          revoking ? (
+            <>
+              <strong>{revoking.nome}</strong> perderá imediatamente o acesso à fazenda.
+              Você pode convidar a pessoa novamente a qualquer momento.
+            </>
+          ) : null
+        }
+        confirmLabel="Revogar acesso"
+        cancelLabel="Cancelar"
+        tone="danger"
+        onConfirm={doRevoke}
+        onCancel={() => setRevoking(null)}
+      />
     </div>
   );
 }

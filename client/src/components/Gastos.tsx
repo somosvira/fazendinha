@@ -1,6 +1,6 @@
 /* Rio Novo — Gastos (expense exploration) */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { ContextStrip } from "./ContextStrip";
@@ -42,6 +42,13 @@ type Gasto = {
 };
 
 function ExpenseDrawer({ gasto, onClose }: { gasto: Gasto | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!gasto) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [gasto, onClose]);
+
   if (!gasto) return null;
   const splits = gasto.mix
     ? [
@@ -51,7 +58,7 @@ function ExpenseDrawer({ gasto, onClose }: { gasto: Gasto | null; onClose: () =>
     : null;
 
   return (
-    <div className="drawer-overlay" onClick={onClose}>
+    <div className="drawer-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Detalhes do lançamento ${gasto.fornecedor}`}>
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
@@ -268,7 +275,7 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
           </div>
         ))}
         <div className="search-box">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="16" y1="16" x2="21" y2="21"></line>
           </svg>
@@ -276,7 +283,21 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
             placeholder="Buscar fornecedor, categoria…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Buscar nos lançamentos"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Limpar busca"
+              style={{
+                background: "none", border: 0, cursor: "pointer",
+                color: "var(--ink-3)", padding: 0, fontSize: 16, lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
@@ -319,7 +340,15 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
           </thead>
           <tbody>
             {filtered.map((g) => (
-              <tr key={g.id} className={selected?.id === g.id ? "active" : ""} onClick={() => setSelected(g)}>
+              <tr
+                key={g.id}
+                className={selected?.id === g.id ? "active" : ""}
+                onClick={() => setSelected(g)}
+                tabIndex={0}
+                role="button"
+                aria-label={`Ver detalhes do lançamento ${g.fornecedor}, ${fmtMoneyExact(g.valor)}`}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(g); } }}
+              >
                 <td className="date">{g.data}</td>
                 <td>
                   <span className="supplier">{g.fornecedor}</span>
@@ -337,15 +366,36 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
         </table>
 
         {filtered.length === 0 && (
-          <div className="tab-empty">Nenhum lançamento corresponde ao filtro.</div>
+          <div className="empty-state">
+            <div className="icon">⌕</div>
+            <div className="title">Nenhum lançamento bate com esses filtros</div>
+            <div className="detail">
+              Tente outra combinação de período, atividade ou pilha — ou limpe a busca para ver tudo.
+            </div>
+            <div className="actions">
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setFilterAct("Tudo");
+                  setFilterInvest("Tudo");
+                  setSearch("");
+                }}
+              >
+                Limpar filtros
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      <div style={{ padding: "40px 0 60px" }}>
-        <div className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Mostrando 15 de 8.412 lançamentos · <a href="#">carregar mais →</a>
+      {filtered.length > 0 && (
+        <div style={{ padding: "28px 0 60px" }}>
+          <div className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
+            Mostrando {filtered.length} de {gastos.length} lançamentos.
+            {gastos.length > filtered.length && " Refine o filtro para ver mais."}
+          </div>
         </div>
-      </div>
+      )}
 
       <ExpenseDrawer gasto={selected} onClose={() => setSelected(null)} />
     </div>

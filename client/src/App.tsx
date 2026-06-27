@@ -122,6 +122,7 @@ export function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header
         user={effectiveUser}
         allUsers={viewAsId ? null : users}
@@ -137,7 +138,7 @@ export function App() {
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
       />
-      <main className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
+      <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         {viewAsId && (
           <div className="viewas-banner">
             <span className="eye">👁</span>
