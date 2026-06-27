@@ -1,16 +1,13 @@
 /* Módulo Rebanho — escopo .rb (não vaza pro financeiro) */
 .rb { background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
 
-/* sidebar */
-.rb-side { position: fixed; top: 0; left: 0; bottom: 0; width: var(--side-w); background: var(--mast-bg); color: var(--mast-ink); display: flex; flex-direction: column; padding: 18px 0; z-index: 5; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #2a3025 transparent; }
+/* sidebar (gruda no teto no desktop; vira drawer abaixo do header no mobile) */
+.rb-side { position: fixed; top: 0; left: 0; bottom: 0; width: var(--side-w); background: var(--mast-bg); color: var(--mast-ink); display: flex; flex-direction: column; padding: 18px 0; z-index: 11; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #2a3025 transparent; }
 .rb-side::-webkit-scrollbar { width: 6px; }
 .rb-side::-webkit-scrollbar-track { background: transparent; }
 .rb-side::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; transition: background .15s ease; }
 .rb-side:hover::-webkit-scrollbar-thumb { background: #2a3025; }
 .rb-side::-webkit-scrollbar-thumb:hover { background: #3a4035; }
-.rb-side .brand { padding: 0 20px 16px; border-bottom: 1px solid #23291f; margin-bottom: 6px; }
-.rb-side .brand .lg { font-family: var(--serif); font-size: 20px; font-weight: 600; line-height: 1; }
-.rb-side .brand .farm { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; background: var(--mast-bg-2); border: 1px solid #2a3025; border-radius: 8px; padding: 7px 10px; font-size: 14px; color: var(--mast-ink-2); cursor: pointer; }
 .rb-side .grp { padding: 18px 20px 8px; font-family: var(--serif); font-style: italic; font-size: 14px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #8a8470; display: flex; align-items: center; gap: 10px; }
 .rb-side .grp::after { content: ""; flex: 1; height: 1px; background: linear-gradient(to right, #23291f, transparent); }
 .rb-side .grp + button.navi { margin-top: 2px; }
@@ -42,9 +39,6 @@
 
 .rb-side .ia-btn { margin: 8px 16px 0; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--leite); color: var(--mast-bg); font-weight: 700; border: 0; border-radius: 9px; padding: 10px; font-size: 14px; cursor: pointer; font-family: var(--sans); }
 .rb-side .spacer { flex: 1; }
-.rb-side .user { margin: 0 16px; padding-top: 14px; border-top: 1px solid #23291f; display: flex; align-items: center; gap: 10px; }
-.rb-side .user .av { width: 30px; height: 30px; border-radius: 50%; background: var(--leite); color: var(--mast-bg); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-weight: 600; font-size: 14px; }
-.rb-side .user .nm { font-size: 14px; color: var(--mast-ink); } .rb-side .user .rl { font-size: 14px; color: var(--mast-ink-2); }
 
 /* content shell */
 .rb-main { max-width: 1520px; margin: 0 auto; padding: 28px clamp(24px, 4vw, 56px) 80px; }
@@ -382,14 +376,10 @@ input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-sty
      ≤  600px  — KPI strip empilha, padding mínimo
    ============================================================ */
 
-/* topbar mobile (escondida no desktop) */
-.rb-topbar { display: none; position: sticky; top: 0; z-index: 6; background: var(--mast-bg); color: var(--mast-ink); padding: 12px 16px; align-items: center; gap: 12px; border-bottom: 1px solid #0b0f0d; }
-.rb-topbar .burger { background: transparent; border: 1px solid #2a3025; color: var(--mast-ink); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
-.rb-topbar .burger svg { width: 18px; height: 18px; }
-.rb-topbar .tb-brand { font-family: var(--serif); font-size: 17px; font-weight: 500; }
-.rb-topbar .tb-farm { margin-left: auto; font-size: 14px; color: var(--mast-ink-2); }
+/* topbar mobile legada — desativada (burger agora vive no .app-header) */
+.rb-topbar { display: none !important; }
 
-.rb-side-backdrop { display: none; position: fixed; inset: 0; background: rgba(14,19,17,.45); z-index: 8; }
+.rb-side-backdrop { display: none; position: fixed; top: var(--header-h); right: 0; bottom: 0; left: 0; background: rgba(14,19,17,.45); z-index: 8; }
 
 @media (max-width: 1100px) {
   .rb-grid { grid-template-columns: 1fr; }
@@ -404,10 +394,8 @@ input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-sty
 @media (max-width: 900px) {
   :root { --gutter: 18px; }
 
-  .rb-topbar { display: flex; }
-
-  /* sidebar vira drawer off-canvas */
-  .rb-side { transform: translateX(-100%); transition: transform .22s ease; width: min(280px, 86vw); box-shadow: 8px 0 30px rgba(0,0,0,.18); z-index: 9; }
+  /* sidebar vira drawer off-canvas, abaixo do header full-width */
+  .rb-side { top: var(--header-h); transform: translateX(-100%); transition: transform .22s ease; width: min(280px, 86vw); box-shadow: 8px 0 30px rgba(0,0,0,.18); z-index: 9; }
   .rb-side.is-open { transform: translateX(0); }
   .rb-side-backdrop.is-open { display: block; }
 

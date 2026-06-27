@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { AppSidebar } from "./components/AppSidebar";
+import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
@@ -121,14 +122,18 @@ export function App() {
 
   return (
     <div className="app">
+      <Header
+        user={effectiveUser}
+        allUsers={viewAsId ? null : users}
+        onSwitchUser={enterViewAs}
+        mobileOpen={mobileOpen}
+        onMobileToggle={setMobileOpen}
+      />
       <AppSidebar
         current={tab}
         onNav={setTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
-        user={effectiveUser}
-        allUsers={viewAsId ? null : users}
-        onSwitchUser={enterViewAs}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
       />
