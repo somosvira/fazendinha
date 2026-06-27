@@ -9,7 +9,9 @@ function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: s
     const map = { NAO_ENCONTRADO: 404, NUMERO_DUPLICADO: 409, REF_INVALIDA: 400 } as const;
     return { status: map[err.code], body: { error: err.message } };
   }
-  return { status: 500, body: { error: err instanceof Error ? err.message : "erro" } };
+  // erro inesperado (Prisma, runtime, etc.): loga internamente e devolve msg amigável
+  console.error("[animais]", err);
+  return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }
 
 export const animaisRouter = new Hono()
