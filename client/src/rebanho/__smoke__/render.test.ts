@@ -14,13 +14,12 @@ import { ProducaoTab } from "../components/ProducaoTab";
 import { EstoqueTab } from "../components/EstoqueTab";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { AnimalTab } from "../components/AnimalTab";
-import { usuarios } from "../../data/acessos";
 
 describe("render smoke", () => {
-  it("AppSidebar renders both groups and the user chip", () => {
+  it("AppSidebar renders both groups", () => {
     const html = renderToString(h(AppSidebar, {
       current: "dashboard", onNav: () => {}, financeiro: [{ id: "dashboard", label: "Dashboard" }, { id: "ia", label: "IA" }],
-      isAdmin: true, user: usuarios[0], allUsers: usuarios, onSwitchUser: () => {},
+      isAdmin: true,
       mobileOpen: false, onMobileToggle: () => {},
     }));
     expect(html).toContain("Financeiro");

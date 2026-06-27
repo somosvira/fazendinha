@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { PAPEIS, type User } from "../data/acessos";
 import type { Tab } from "./Shell";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
@@ -103,13 +102,11 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
   );
 }
 
-export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers, onSwitchUser, mobileOpen, onMobileToggle }: {
+export function AppSidebar({ current, onNav, financeiro, isAdmin, mobileOpen, onMobileToggle }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
-  isAdmin: boolean; user: User; allUsers: User[] | null; onSwitchUser: (id: string) => void;
+  isAdmin: boolean;
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
 }) {
-  const [menu, setMenu] = useState(false);
-
   const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -130,7 +127,6 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers
     try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
   }, [openModulo]);
 
-  const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
   // relabel financeiro: "IA" -> "IA financeira"
   const fin = financeiro.map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
@@ -140,24 +136,8 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers
 
   return (
     <>
-      <div className="rb-topbar">
-        <button className="burger" aria-label="Abrir menu" onClick={() => onMobileToggle(!mobileOpen)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-            {mobileOpen
-              ? <><path d="M6 6l12 12"/><path d="M18 6L6 18"/></>
-              : <><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></>}
-          </svg>
-        </button>
-        <div className="tb-brand">Rio Novo</div>
-        <div className="tb-farm">🌾 Sítio São Francisco</div>
-      </div>
       <div className={"rb-side-backdrop" + (mobileOpen ? " is-open" : "")} onClick={() => onMobileToggle(false)} />
       <aside className={"rb-side" + (mobileOpen ? " is-open" : "")}>
-        <div className="brand">
-          <div className="lg">Rio Novo</div>
-          <div className="farm"><span>🌾 Sítio São Francisco</span><span>▾</span></div>
-        </div>
-
         <div className="grp">Visão &amp; gestão</div>
         {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
 
@@ -183,23 +163,6 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, user, allUsers
         <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
         <Item id="config" label="Configurações" current={current} onNav={nav} />
         {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}
-
-        <div className="user" style={{ position: "relative", cursor: allUsers ? "pointer" : "default" }} onClick={() => allUsers && setMenu((o) => !o)}>
-          <div className="av">{user.inicial}</div>
-          <div><div className="nm">{user.nome.split(" ")[0]}</div><div className="rl">{papelNome(user)}</div></div>
-          {allUsers && <span style={{ marginLeft: "auto", color: "var(--mast-ink-2)" }}>▾</span>}
-          {menu && allUsers && (
-            <div className="user-menu" onClick={(e) => e.stopPropagation()}>
-              <div className="user-menu-head">Entrar como (demonstração)</div>
-              {allUsers.map((u) => (
-                <button key={u.id} className="user-menu-opt" onClick={() => { onSwitchUser(u.id); setMenu(false); }}>
-                  <span className="umo-av">{u.inicial}</span>
-                  <span className="umo-info"><div className="umo-nome">{u.nome}</div><div className="umo-papel">{papelNome(u)}</div></span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </aside>
     </>
   );
