@@ -1,7 +1,12 @@
 import { prisma } from "../../db.js";
 import { z } from "zod";
 
-export const dietaSchema = z.object({ nome: z.string().min(1).max(60), descricao: z.string().max(200).optional(), pb: z.number().optional(), edMcal: z.number().optional() });
+export const dietaSchema = z.object({
+  nome: z.string().min(1).max(60),
+  descricao: z.string().max(200).optional(),
+  pb: z.number().min(0, "% PB deve ser ≥ 0").max(999.9, "% PB deve ser menor que 1000").optional(),
+  edMcal: z.number().min(0, "Energia deve ser ≥ 0").max(99.99, "Energia (Mcal/kg) deve ser menor que 100 — valores típicos de ração ficam entre 2 e 4").optional(),
+});
 export type DietaInput = z.infer<typeof dietaSchema>;
 
 export const loteSchema = z.object({
