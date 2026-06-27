@@ -7,15 +7,18 @@ export class CadastroError extends Error {
   }
 }
 
+// Limites compatíveis com Produto.custoUnitario / minimoEstoque (Decimal(12,2))
+const MAX_PRODUTO_VALOR = 9_999_999_999.99;
+
 export const produtoSchema = z.object({
   nome: z.string().min(1).max(80),
   tipo: z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]),
   unidade: z.string().min(1).max(12).default("un"),
-  custoUnitario: z.number().nonnegative().optional(),
-  carencia: z.number().int().nonnegative().optional(),
+  custoUnitario: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "custo muito alto").optional(),
+  carencia: z.number().int().nonnegative().max(9999, "carência muito alta").optional(),
   percentualMS: z.number().min(0).max(100).optional(),
   estocavel: z.boolean().optional(),
-  minimoEstoque: z.number().nonnegative().optional(),
+  minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").optional(),
   ativo: z.boolean().optional(),
   // Mapeamento contábil (ponte com o financeiro). Nullable para permitir desvincular.
   categoriaId: z.number().int().nullable().optional(),
