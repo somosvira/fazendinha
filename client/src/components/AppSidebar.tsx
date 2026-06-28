@@ -21,6 +21,16 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   "reb-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "reb-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
+  // — Plantio — ícones simbólicos para cada sub-aba.
+  "pla-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+  "pla-talhao": <><path d="M3 12h18M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></>,
+  "pla-fenologia": <><circle cx="12" cy="12" r="9"/><path d="M12 3v9l5 3"/></>,
+  "pla-fitossanidade": <><path d="M12 2c2 4 5 7 5 11a5 5 0 0 1-10 0c0-4 3-7 5-11z"/><path d="M9 11c0-2 1.5-3 3-3"/></>,
+  "pla-nutricao": <><path d="M4 19l4-4 3 3 5-5 4 4"/><path d="M4 4h16v16H4z" fill="none"/></>,
+  "pla-colheita": <><path d="M4 14l8-10 8 10"/><path d="M6 14h12l-2 7H8z"/></>,
+  "pla-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
+  "pla-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
+  "pla-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
   // — Corte (gado de corte) — ícones simbólicos.
   "cor-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "cor-lote": <><circle cx="8" cy="11" r="3"/><circle cx="16" cy="11" r="3"/><path d="M4 20c0-2 2-4 4-4M16 16c2 0 4 2 4 4"/></>,
@@ -61,7 +71,19 @@ const MODULOS: Modulo[] = [
     id: "plantio",
     label: "Plantio · café",
     icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
-    subs: [],
+    // Subs preservadas para reativar quando o módulo for liberado;
+    // a flag `disabled` bloqueia a expansão e a navegação na sidebar.
+    subs: [
+      { id: "pla-dashboard", label: "Painel" },
+      { id: "pla-talhao", label: "Talhão" },
+      { id: "pla-fenologia", label: "Fenologia" },
+      { id: "pla-fitossanidade", label: "Fitossanidade" },
+      { id: "pla-nutricao", label: "Nutrição & solo" },
+      { id: "pla-colheita", label: "Colheita" },
+      { id: "pla-estoque", label: "Estoque" },
+      { id: "pla-custo", label: "Custo" },
+      { id: "pla-ia", label: "IA da lavoura" },
+    ],
     disabled: true,
   },
   {

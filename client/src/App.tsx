@@ -16,6 +16,7 @@ import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
+import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
@@ -46,6 +47,18 @@ const REB: Record<string, RebSub> = {
   "reb-estoque": "estoque",
   "reb-custo": "custo",
   "reb-ia": "ia",
+};
+
+const PLA: Record<string, PlaSub> = {
+  "pla-dashboard": "dashboard",
+  "pla-talhao": "talhao",
+  "pla-fenologia": "fenologia",
+  "pla-fitossanidade": "fitossanidade",
+  "pla-nutricao": "nutricao",
+  "pla-colheita": "colheita",
+  "pla-estoque": "estoque",
+  "pla-custo": "custo",
+  "pla-ia": "ia",
 };
 
 const COR: Record<string, CorSub> = {
@@ -95,11 +108,12 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / cor-* sempre ok)
+  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok)
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
+    const isPla = String(tab).startsWith("pla-");
     const isCor = String(tab).startsWith("cor-");
-    if (isReb || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    if (isReb || isPla || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,6 +128,8 @@ export function App() {
 
   const conteudo = String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)} />
+    : String(tab).startsWith("pla-")
+    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)} />
     : String(tab).startsWith("cor-")
     ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)} />
     : (
