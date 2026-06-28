@@ -74,9 +74,14 @@ function moduloOfTab(t: Tab): ModuloId | null {
 
 function Item({ id, label, current, onNav, nested }: { id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean }) {
   return (
-    <button className={"navi" + (current === id ? " on" : "") + (nested ? " is-nested" : "")} onClick={() => onNav(id)}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{ICON[id]}</svg>
-      {label}
+    <button
+      className={"navi" + (current === id ? " on" : "") + (nested ? " is-nested" : "")}
+      onClick={() => onNav(id)}
+      title={label}
+      aria-label={label}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>{ICON[id]}</svg>
+      <span className="navi-label">{label}</span>
     </button>
   );
 }
@@ -88,6 +93,7 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
       onClick={m.disabled ? undefined : onToggle}
       aria-expanded={isOpen}
       disabled={m.disabled}
+      title={m.label}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
       <span className="modulo-label">{m.label}</span>
