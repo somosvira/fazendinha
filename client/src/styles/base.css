@@ -204,12 +204,29 @@
 
 @media (max-width: 900px) {
   /* sem sidebar fixa pra "desviar": header volta a ser full-width */
-  .app-header { left: 0; }
-  .ah-burger { display: flex; }
-  .ah-farm-eyebrow { display: none; }
-  .ah-farm-name { font-size: 13px; }
-  .ah-user-txt { display: none; }
+  :root { --header-h: 48px; }
+  .app-header { left: 0; gap: 10px; padding: 0 12px; }
+  .ah-burger { display: flex; width: 34px; height: 34px; }
+  .ah-burger svg { width: 16px; height: 16px; }
+  .ah-brand-mark { width: 26px; height: 26px; font-size: 12px; }
   .ah-brand-name { display: none; }
+  .ah-farm-btn { padding: 4px 8px 4px 6px; gap: 8px; }
+  .ah-farm-eyebrow { display: none; }
+  .ah-farm-mark { font-size: 14px; }
+  .ah-farm-name { font-size: 13px; max-width: 26vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ah-user-txt { display: none; }
+  .ah-user-av { width: 28px; height: 28px; font-size: 13px; }
+}
+
+/* viewport realmente pequeno: farm picker fica icon-only */
+@media (max-width: 560px) {
+  :root { --header-h: 44px; }
+  .app-header { gap: 8px; padding: 0 10px; }
+  .ah-brand { gap: 6px; }
+  .ah-farm-btn { padding: 4px 6px; }
+  .ah-farm-txt { display: none; }
+  .ah-farm-mark { font-size: 16px; }
+  .ah-user-btn { padding: 2px; }
 }
 
 * { box-sizing: border-box; }
@@ -1458,31 +1475,88 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 }
 
 @media (max-width: 900px) {
-  :root { --gutter: 18px; }
+  :root { --gutter: 14px; }
 
   /* sidebar vira drawer; main perde offset (burger vive no .app-header) */
   .app-main { margin-left: 0; }
 
-  .shell, .shell-wide { padding: 0 16px; }
+  .shell, .shell-wide { padding: 0 14px; }
 
   /* masthead financeiro (caso volte a ter um) */
   .masthead-inner { grid-template-columns: 1fr; padding: 14px 16px; gap: 12px; }
 
   /* títulos um tom menor */
-  .h1, h1.h1 { font-size: 28px; line-height: 1.15; }
-  .report-header { padding: 22px 0 18px; }
+  .h1, h1.h1 { font-size: 26px; line-height: 1.15; }
+  .report-header { padding: 16px 0 14px; gap: 12px; }
+  .section-head { gap: 14px; margin-bottom: 14px; }
+  .section-title { font-size: 24px; }
+  .section-lede { font-size: 16px; margin-top: 6px; }
 
   /* tudo em coluna única abaixo desse limite */
   .brutal-cards, .inc-grid, .three-up, .context-cards-row { grid-template-columns: 1fr !important; }
   .timeline-slices { flex-wrap: wrap; }
+
+  /* KPI hero em 2 col (era 4) — aproveita largura */
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi { padding: 14px 14px 12px; }
+  .kpi-value { font-size: 28px; }
+  .kpi:nth-child(2n) { border-right: none; }
+  .kpi:nth-child(-n+2) { border-bottom: 1px solid var(--rule-soft); }
+
+  /* gastos summary em 2 col */
+  .gastos-summary { grid-template-columns: repeat(2, 1fr); }
+  .gastos-summary .sum { padding: 12px 14px; }
+  .gastos-summary .sum .val { font-size: 22px; }
+  .gastos-summary .sum:nth-child(2n) { border-right: none; }
+
+  /* activity grid empilha */
+  .activity-grid { grid-template-columns: 1fr; }
+  .activity-card { padding: 16px 14px 18px; gap: 10px; }
+  .unit-grid { grid-template-columns: 1fr; }
+  .unit-card { padding: 18px 14px; gap: 16px; }
+
+  /* IA layout vira coluna (sidebars escondem) */
+  .ia-layout { grid-template-columns: 1fr; }
+  .ia-sidebar, .ia-context { display: none; }
+  .ia-thread { padding: 20px 14px; }
+  .ia-composer { padding: 12px 14px 18px; }
+
+  /* drawer ocupa quase a tela */
+  .drawer { width: min(540px, 100vw); }
+  .drawer-head { padding: 16px 18px; }
+  .drawer-body { padding: 18px; gap: 20px; }
+  .drawer-amount { font-size: 36px; }
+  .drawer-meta-grid { grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+
+  /* tabela de gastos com scroll horizontal e menos padding */
+  .gastos-toolbar { padding: 12px 0; gap: 8px; }
+  .search-box { width: 100%; margin-left: 0; }
+  .expense-table thead th { padding: 12px 8px; }
+  .expense-table tbody td { padding: 12px 8px; }
 
   /* viewas banner (admin) */
   .viewas-banner { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; }
 }
 
 @media (max-width: 600px) {
-  .h1, h1.h1 { font-size: 24px; }
-  .shell, .shell-wide { padding: 0 12px; }
+  :root { --gutter: 10px; }
+  .h1, h1.h1 { font-size: 22px; }
+  .shell, .shell-wide { padding: 0 10px; }
+  .section-title { font-size: 21px; }
+  .section-lede { font-size: 15px; }
+
+  /* KPI hero empilha — no telefone fica mais legível em 1 col */
+  .kpi-row { grid-template-columns: 1fr; }
+  .kpi { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+  .kpi:last-child { border-bottom: none; }
+  .kpi:nth-child(-n+2) { border-bottom: 1px solid var(--rule-soft); }
+
+  /* gastos summary empilha em 2 col (mantém compacto) */
+  .gastos-summary { grid-template-columns: repeat(2, 1fr); }
+
+  /* alert card vira coluna */
+  .alert-card { grid-template-columns: 4px 1fr; }
+  .alert-card .alert-cta { grid-column: 2; align-self: start; padding-top: 4px; }
 }
 
 /* drawer-friendly: trava o scroll do body quando o drawer está aberto */
