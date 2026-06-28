@@ -915,3 +915,244 @@ model WhatsAppConfirmacaoPendente {
   @@index([status, expiraEm])
   @@index([mensagemId])
 }
+
+// =============================================================================
+// MÓDULO CORTE — Gado de corte (cria-recria-terminação)
+// =============================================================================
+// A unidade primária é o LOTE (não a cabeça individual): manejo de gado de
+// corte acontece por grupo. Cabeças individuais só são modeladas quando
+// têm valor reprodutivo (matrizes/touros) — para os demais, o lote agrega
+// peso médio + GMD + sanidade.
+//
+// Referencial: Embrapa Gado de Corte (Campo Grande/MS), Manual de Boas
+// Práticas de Vacinação, cronograma 11 (calendário sanitário Sul de Minas),
+// Cepea/B3 (preço da arroba). Decimais financeiros @db.Decimal(14,2); peso
+// em kg @db.Decimal(7,2); percentuais @db.Decimal(5,2).
+//
+// Mesma regra de FechamentoMensal aplica: operações comerciais (venda) cuja
+// data caia num mês fechado não podem ser editadas/excluídas.
+
+enum CategoriaLote {
+  VACA_MATRIZ
+  TOURO
+  BEZERRO_MAMA
+  BEZERRA_MAMA
+  BEZERRO_DESMAMA
+  BEZERRA_DESMAMA
+  GAROTE
+  NOVILHA
+  NOVILHO
+  BOI_GORDO
+  VACA_DESCARTE
+}
+
+enum FaseCiclo {
+  CRIA
+  RECRIA
+  TERMINACAO
+  REPRODUCAO
+}
+
+enum EstadoLote {
+  ATIVO
+  VENDIDO
+  EXTINTO
+}
+
+enum EstadoPiquete {
+  DISPONIVEL
+  OCUPADO
+  DESCANSO
+  REFORMA
+}
+
+enum TipoSanitario {
+  VACINA_AFTOSA
+  VACINA_BRUCELOSE_B19
+  VACINA_CLOSTRIDIOSE
+  VACINA_RAIVA
+  VACINA_CARBUNCULO
+  VACINA_LEPTOSPIROSE
+  VACINA_IBR_BVD
+  VERMIFUGACAO_5811
+  VERMIFUGACAO_ESTRATEGICA
+  CONTROLE_CARRAPATO
+  CONTROLE_MOSCA
+  CONTROLE_BERNE
+  MARCACAO
+  DESCORNA
+  CASTRACAO
+  BRINCO_ELETRONICO
+}
+
+enum TipoSuplemento {
+  MINERAL
+  PROTEICO_SECA
+  ENERGETICO_AGUAS
+  RACAO_CONFINAMENTO
+  SAL_BRANCO
+}
+
+enum TipoComercial {
+  VENDA_ABATE
+  VENDA_REPRODUCAO
+  DESCARTE
+  COMPRA
+  TRANSFERENCIA_ATIVIDADE
+}
+
+enum MetodoPesagem {
+  BALANCA_INDIVIDUAL
+  BALANCA_LOTE
+  FITA_TORACICA
+  VISUAL_ESTIMADO
+}
+
+// Lote — unidade primária do gado de corte.
+model LoteCorte {
+  id                  Int                 @id @default(autoincrement())
+  codigo              String              @unique
+  nome                String
+  categoria           CategoriaLote
+  fase                FaseCiclo
+  raca                String
+  numCabecas          Int
+  numCabecasEntrada   Int // mortalidade = (entrada - atual) / entrada
+  dataFormacao        DateTime            @db.Date
+  origem              String?
+  piquete             Piquete?            @relation(fields: [piqueteId], references: [id])
+  piqueteId           Int?
+  estado              EstadoLote          @default(ATIVO)
+  observacao          String?
+  resumo              ResumoLote?
+  pesagens            PesagemLote[]
+  manejosSanitarios   ManejoSanitario[]
+  suplementacoes      Suplementacao[]
+  operacoesComerciais OperacaoComercial[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([estado])
+  @@index([categoria, fase])
+}
+
+// Read-model pré-computado por lote.
+model ResumoLote {
+  lote                 LoteCorte @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId               Int       @id
+  pesoMedio            Decimal?  @db.Decimal(7, 2)
+  pesoMedioEntrada     Decimal?  @db.Decimal(7, 2)
+  gmd                  Decimal?  @db.Decimal(5, 3)
+  gmdAcumulado         Decimal?  @db.Decimal(5, 3)
+  ultimaPesagem        DateTime? @db.Date
+  diasSemPesar         Int?
+  ua                   Decimal?  @db.Decimal(8, 2)
+  proximaVacina        String?
+  proximoVermifugo     String?
+  ultimoManejo         String?
+  pesoAlvoVenda        Decimal?  @db.Decimal(7, 2)
+  diasParaAlvo         Int?
+  arrobasEstimadas     Decimal?  @db.Decimal(7, 2)
+  mortalidadeAcumulada Decimal?  @db.Decimal(5, 2)
+  proximaAcao          String?
+  proximaAcaoEm        DateTime? @db.Date
+  atualizadoEm         DateTime  @updatedAt
+}
+
+// Piquete = divisão física do pasto. Um lote ocupa um piquete por vez.
+model Piquete {
+  id            Int           @id @default(autoincrement())
+  codigo        String        @unique
+  nome          String
+  capim         String // espécie + cultivar — armazenado como texto
+  areaHa        Decimal       @db.Decimal(7, 2)
+  lotacaoMaxUA  Decimal       @db.Decimal(6, 2)
+  cercaTipo     String?
+  ultimaReforma DateTime?     @db.Date
+  estado        EstadoPiquete @default(DISPONIVEL)
+  diasDescanso  Int?
+  observacao    String?
+  lotes         LoteCorte[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// Pesagem do lote — KPI central do corte.
+model PesagemLote {
+  id             Int           @id @default(autoincrement())
+  lote           LoteCorte     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId         Int
+  data           DateTime      @db.Date
+  pesoMedio      Decimal       @db.Decimal(7, 2)
+  numCabecas     Int
+  pesoTotal      Decimal       @db.Decimal(10, 2)
+  metodo         MetodoPesagem
+  responsavel    String?
+  observacao     String?
+  gmdDesdeUltima Decimal?      @db.Decimal(5, 3)
+  createdAt      DateTime      @default(now())
+
+  @@index([loteId, data])
+}
+
+// Manejo sanitário aplicado ao lote inteiro (ou parcial).
+model ManejoSanitario {
+  id           Int           @id @default(autoincrement())
+  lote         LoteCorte     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId       Int
+  data         DateTime      @db.Date
+  tipo         TipoSanitario
+  produto      String?
+  doseMl       Decimal?      @db.Decimal(7, 2)
+  numCabecas   Int
+  responsavel  String?
+  carenciaDias Int?
+  proximaDose  DateTime?     @db.Date
+  observacao   String?
+  // Ponte financeira opcional — compra do produto pode gerar Lancamento.
+  lancamentoId Int?          @unique
+  createdAt    DateTime      @default(now())
+
+  @@index([loteId, data])
+  @@index([tipo, data])
+}
+
+// Suplementação por período. Pode coexistir mais de uma simultânea
+// (ex.: mineral + proteico) — dataFim null = ainda ativa.
+model Suplementacao {
+  id                Int            @id @default(autoincrement())
+  lote              LoteCorte      @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId            Int
+  dataInicio        DateTime       @db.Date
+  dataFim           DateTime?      @db.Date
+  tipo              TipoSuplemento
+  produto           String
+  consumoCabecaDiaG Decimal        @db.Decimal(8, 2)
+  custoKg           Decimal?       @db.Decimal(7, 2)
+  observacao        String?
+  createdAt         DateTime       @default(now())
+
+  @@index([loteId, dataInicio])
+}
+
+// Operação comercial — venda, descarte, compra, transferência.
+model OperacaoComercial {
+  id           Int           @id @default(autoincrement())
+  lote         LoteCorte?    @relation(fields: [loteId], references: [id])
+  loteId       Int?
+  data         DateTime      @db.Date
+  tipo         TipoComercial
+  numCabecas   Int
+  pesoMedio    Decimal       @db.Decimal(7, 2)
+  pesoTotal    Decimal       @db.Decimal(10, 2)
+  arrobas      Decimal?      @db.Decimal(8, 2)
+  precoArroba  Decimal?      @db.Decimal(8, 2)
+  receitaTotal Decimal?      @db.Decimal(14, 2)
+  comprador    String?
+  observacao   String?
+  lancamentoId Int?          @unique
+  createdAt    DateTime      @default(now())
+
+  @@index([loteId, data])
+  @@index([tipo, data])
+}

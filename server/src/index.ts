@@ -24,6 +24,10 @@ import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
 import { plantioCadastrosRouter } from "./routes/plantio/cadastros.js";
 import { plantioEventosRouter } from "./routes/plantio/eventos.js";
 import { plantioIaRouter } from "./routes/plantio/ia.js";
+import { corteLotesRouter } from "./routes/corte/lotes.js";
+import { corteDashboardRouter } from "./routes/corte/dashboard.js";
+import { corteEventosRouter } from "./routes/corte/eventos.js";
+import { corteIaRouter } from "./routes/corte/ia.js";
 
 const app = new Hono();
 
@@ -58,6 +62,10 @@ app.route("/api", plantioDashboardRouter);
 app.route("/api", plantioCadastrosRouter);
 app.route("/api", plantioEventosRouter);
 app.route("/api", plantioIaRouter);
+app.route("/api", corteLotesRouter);
+app.route("/api", corteDashboardRouter);
+app.route("/api", corteEventosRouter);
+app.route("/api", corteIaRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
