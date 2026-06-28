@@ -21,6 +21,16 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   "reb-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "reb-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
+  // — Corte (gado de corte) — ícones simbólicos.
+  "cor-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+  "cor-lote": <><circle cx="8" cy="11" r="3"/><circle cx="16" cy="11" r="3"/><path d="M4 20c0-2 2-4 4-4M16 16c2 0 4 2 4 4"/></>,
+  "cor-pesagem": <><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 10v4M12 9v5M16 11v3"/></>,
+  "cor-pasto": <><path d="M3 19c2-1 4-1 6 0M9 19c2-1 4-1 6 0M15 19c2-1 4-1 6 0"/><path d="M5 14v5M9 12v7M13 14v5M17 12v7"/></>,
+  "cor-sanidade": <path d="M12 6v12M6 12h12"/>,
+  "cor-nutricao": <path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12c2-2 4-3 6-4"/>,
+  "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
+  "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
+  "cor-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
 };
 
 type ModuloId = string;
@@ -49,7 +59,7 @@ const MODULOS: Modulo[] = [
   },
   {
     id: "plantio",
-    label: "Plantio",
+    label: "Plantio · café",
     icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
     subs: [],
     disabled: true,
@@ -58,7 +68,19 @@ const MODULOS: Modulo[] = [
     id: "corte",
     label: "Gado de corte",
     icon: <><circle cx="12" cy="11" r="5"/><path d="M6 7L3 4M18 7l3-3"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
-    subs: [],
+    // Subs preservadas para reativar quando o módulo for liberado;
+    // a flag `disabled` bloqueia a expansão e a navegação na sidebar.
+    subs: [
+      { id: "cor-dashboard", label: "Painel" },
+      { id: "cor-lote", label: "Lote" },
+      { id: "cor-pesagem", label: "Pesagem" },
+      { id: "cor-pasto", label: "Pasto" },
+      { id: "cor-sanidade", label: "Sanidade" },
+      { id: "cor-nutricao", label: "Nutrição" },
+      { id: "cor-comercial", label: "Comercial" },
+      { id: "cor-custo", label: "Custo" },
+      { id: "cor-ia", label: "IA do plantel" },
+    ],
     disabled: true,
   },
 ];
@@ -92,13 +114,20 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
       className={"modulo-h" + (isActive ? " is-active" : "") + (m.disabled ? " is-disabled" : "")}
       onClick={m.disabled ? undefined : onToggle}
       aria-expanded={isOpen}
+      aria-disabled={m.disabled || undefined}
       disabled={m.disabled}
-      title={m.label}
+      title={m.disabled ? `${m.label} — em breve` : m.label}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
       <span className="modulo-label">{m.label}</span>
       {m.disabled ? (
-        <span className="modulo-badge">em breve</span>
+        <span className="modulo-lock" aria-label="em breve">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="5" y="11" width="14" height="9" rx="2"/>
+            <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+          </svg>
+          <span className="modulo-lock-txt">em breve</span>
+        </span>
       ) : (
         <svg className={"modulo-chev" + (isOpen ? " is-open" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 6l6 6-6 6"/>
