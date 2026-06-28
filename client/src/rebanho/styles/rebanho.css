@@ -30,6 +30,9 @@
 .rb-side .modulo-chev { width: 11px !important; height: 11px !important; opacity: .55 !important; transition: transform .15s ease; }
 .rb-side .modulo-chev.is-open { transform: rotate(90deg); }
 .rb-side .modulo-badge { font-size: 11px; color: #8a8470; background: #1c211d; border: 1px solid #2a3025; border-radius: 4px; padding: 1px 7px; font-family: var(--serif); font-style: italic; }
+.rb-side .modulo-lock { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #8a8470; background: #1c211d; border: 1px solid #2a3025; border-radius: 4px; padding: 2px 7px; font-family: var(--serif); font-style: italic; }
+.rb-side .modulo-lock svg { width: 12px !important; height: 12px !important; opacity: .85 !important; flex: none; }
+.rb-side .modulo-lock-txt { line-height: 1; }
 .rb-side .modulo-subs { padding: 2px 0 6px; border-left: 1px solid #23291f; margin-left: 28px; }
 .rb-side .modulo-subs button.navi { padding: 7px 20px 7px 14px; font-size: 13px; }
 .rb-side .modulo-subs button.navi svg { width: 15px; height: 15px; }
@@ -433,6 +436,7 @@ input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-sty
   .rb-side:not(:hover):not(:focus-within):not(.is-open) .modulo-label,
   .rb-side:not(:hover):not(:focus-within):not(.is-open) .modulo-chev,
   .rb-side:not(:hover):not(:focus-within):not(.is-open) .modulo-badge,
+  .rb-side:not(:hover):not(:focus-within):not(.is-open) .modulo-lock,
   .rb-side:not(:hover):not(:focus-within):not(.is-open) .modulo-subs {
     display: none;
   }

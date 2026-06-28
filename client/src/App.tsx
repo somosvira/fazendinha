@@ -16,6 +16,7 @@ import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
+import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
@@ -45,6 +46,18 @@ const REB: Record<string, RebSub> = {
   "reb-estoque": "estoque",
   "reb-custo": "custo",
   "reb-ia": "ia",
+};
+
+const COR: Record<string, CorSub> = {
+  "cor-dashboard": "dashboard",
+  "cor-lote": "lote",
+  "cor-pesagem": "pesagem",
+  "cor-pasto": "pasto",
+  "cor-sanidade": "sanidade",
+  "cor-nutricao": "nutricao",
+  "cor-comercial": "comercial",
+  "cor-custo": "custo",
+  "cor-ia": "ia",
 };
 
 export function App() {
@@ -82,10 +95,11 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* sempre ok)
+  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / cor-* sempre ok)
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
-    if (isReb || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    const isCor = String(tab).startsWith("cor-");
+    if (isReb || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,6 +114,8 @@ export function App() {
 
   const conteudo = String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)} />
+    : String(tab).startsWith("cor-")
+    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)} />
     : (
       <>
         {tab === "dashboard" &&
