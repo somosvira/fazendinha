@@ -19,6 +19,11 @@ import { estoqueRouter } from "./routes/rebanho/estoque.js";
 import { custoProducaoRouter } from "./routes/rebanho/custo-producao.js";
 import { custoSanidadeRouter } from "./routes/rebanho/custo-sanidade.js";
 import { financeiroRefRouter } from "./routes/rebanho/financeiro-ref.js";
+import { plantioTalhoesRouter } from "./routes/plantio/talhoes.js";
+import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
+import { plantioCadastrosRouter } from "./routes/plantio/cadastros.js";
+import { plantioEventosRouter } from "./routes/plantio/eventos.js";
+import { plantioIaRouter } from "./routes/plantio/ia.js";
 
 const app = new Hono();
 
@@ -48,6 +53,11 @@ app.route("/api", estoqueRouter);
 app.route("/api", custoProducaoRouter);
 app.route("/api", custoSanidadeRouter);
 app.route("/api", financeiroRefRouter);
+app.route("/api", plantioTalhoesRouter);
+app.route("/api", plantioDashboardRouter);
+app.route("/api", plantioCadastrosRouter);
+app.route("/api", plantioEventosRouter);
+app.route("/api", plantioIaRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);

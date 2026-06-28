@@ -7,8 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -47,12 +47,12 @@ enum StatusConfirmacaoWA {
 
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
 model CentroCusto {
-  id            Int          @id @default(autoincrement())
-  nome          String       @unique
-  ehInvestimento Boolean     @default(false)
-  ordem         Int          @default(0)
-  lancamentos   Lancamento[]
-  produtos      Produto[]
+  id             Int          @id @default(autoincrement())
+  nome           String       @unique
+  ehInvestimento Boolean      @default(false)
+  ordem          Int          @default(0)
+  lancamentos    Lancamento[]
+  produtos       Produto[]
 }
 
 // Plano de contas gerencial: Grupo -> Categoria.
@@ -105,38 +105,38 @@ enum TipoPessoa {
 }
 
 model Produto {
-  id            Int         @id @default(autoincrement())
-  nome          String      @unique
-  tipo          TipoProduto @default(INSUMO)
-  unidade       String      @default("un")
-  custoUnitario Decimal?    @db.Decimal(12, 2)
+  id            Int                @id @default(autoincrement())
+  nome          String             @unique
+  tipo          TipoProduto        @default(INSUMO)
+  unidade       String             @default("un")
+  custoUnitario Decimal?           @db.Decimal(12, 2)
   carencia      Int?
-  percentualMS  Decimal?    @db.Decimal(5, 2)
-  estocavel     Boolean     @default(true)
-  minimoEstoque Decimal?    @db.Decimal(12, 2)
-  ativo         Boolean     @default(true)
+  percentualMS  Decimal?           @db.Decimal(5, 2)
+  estocavel     Boolean            @default(true)
+  minimoEstoque Decimal?           @db.Decimal(12, 2)
+  ativo         Boolean            @default(true)
   // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
   // que a compra (ENTRADA) deste produto deve lançar.
-  categoria     Categoria?   @relation(fields: [categoriaId], references: [id])
+  categoria     Categoria?         @relation(fields: [categoriaId], references: [id])
   categoriaId   Int?
-  centroCusto   CentroCusto? @relation(fields: [centroCustoId], references: [id])
+  centroCusto   CentroCusto?       @relation(fields: [centroCustoId], references: [id])
   centroCustoId Int?
   movimentos    MovimentoEstoque[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@index([tipo])
 }
 
 model ClienteFornecedor {
-  id          Int          @id @default(autoincrement())
-  nome        String       @unique
-  documento   String?
-  tipo        TipoPessoa   @default(FORNECEDOR)
-  telefone    String?
-  email       String?
-  ativo       Boolean      @default(true)
-  lancamentos Lancamento[]
+  id                Int                @id @default(autoincrement())
+  nome              String             @unique
+  documento         String?
+  tipo              TipoPessoa         @default(FORNECEDOR)
+  telefone          String?
+  email             String?
+  ativo             Boolean            @default(true)
+  lancamentos       Lancamento[]
   movimentosEstoque MovimentoEstoque[]
 }
 
@@ -283,12 +283,12 @@ model Raca {
 }
 
 model Grupo {
-  id      Int      @id @default(autoincrement())
-  nome    String   @unique
-  animais Animal[]
-  dieta    Dieta? @relation(fields: [dietaId], references: [id])
-  dietaId  Int?
-  producoesLote ProducaoLote[]
+  id                Int                @id @default(autoincrement())
+  nome              String             @unique
+  animais           Animal[]
+  dieta             Dieta?             @relation(fields: [dietaId], references: [id])
+  dietaId           Int?
+  producoesLote     ProducaoLote[]
   movimentosEstoque MovimentoEstoque[]
 }
 
@@ -296,8 +296,8 @@ model Dieta {
   id        Int      @id @default(autoincrement())
   nome      String   @unique
   descricao String?
-  pb        Decimal? @db.Decimal(4, 1)   // % proteína bruta
-  edMcal    Decimal? @db.Decimal(4, 2)   // energia (Mcal/kg)
+  pb        Decimal? @db.Decimal(4, 1) // % proteína bruta
+  edMcal    Decimal? @db.Decimal(4, 2) // energia (Mcal/kg)
   ativo     Boolean  @default(true)
   grupos    Grupo[]
   createdAt DateTime @default(now())
@@ -305,40 +305,40 @@ model Dieta {
 }
 
 model Animal {
-  id               Int             @id @default(autoincrement())
-  numero           String          @unique
-  nome             String?
-  sexo             SexoAnimal
-  categoria        CategoriaAnimal
-  raca             Raca?           @relation(fields: [racaId], references: [id])
-  racaId           Int?
-  grauSangue       String?
-  dataNascimento   DateTime?       @db.Date
-  dataEntrada      DateTime        @db.Date
-  brincoEletronico String?
-  sisbov           String?
-  mae              Animal?         @relation("Maternidade", fields: [maeId], references: [id])
-  maeId            Int?
-  pai              Animal?         @relation("Paternidade", fields: [paiId], references: [id])
-  paiId            Int?
-  paiNome          String?
-  filhosMae        Animal[]        @relation("Maternidade")
-  filhosPai        Animal[]        @relation("Paternidade")
-  grupo            Grupo?          @relation(fields: [grupoId], references: [id])
-  grupoId          Int?
-  setor            String?
-  status           StatusAnimal    @default(ATIVO)
-  dataBaixa        DateTime?       @db.Date
-  motivoBaixa      String?
-  resumo           ResumoAnimal?
+  id                  Int                 @id @default(autoincrement())
+  numero              String              @unique
+  nome                String?
+  sexo                SexoAnimal
+  categoria           CategoriaAnimal
+  raca                Raca?               @relation(fields: [racaId], references: [id])
+  racaId              Int?
+  grauSangue          String?
+  dataNascimento      DateTime?           @db.Date
+  dataEntrada         DateTime            @db.Date
+  brincoEletronico    String?
+  sisbov              String?
+  mae                 Animal?             @relation("Maternidade", fields: [maeId], references: [id])
+  maeId               Int?
+  pai                 Animal?             @relation("Paternidade", fields: [paiId], references: [id])
+  paiId               Int?
+  paiNome             String?
+  filhosMae           Animal[]            @relation("Maternidade")
+  filhosPai           Animal[]            @relation("Paternidade")
+  grupo               Grupo?              @relation(fields: [grupoId], references: [id])
+  grupoId             Int?
+  setor               String?
+  status              StatusAnimal        @default(ATIVO)
+  dataBaixa           DateTime?           @db.Date
+  motivoBaixa         String?
+  resumo              ResumoAnimal?
   numPartosEntrada    Int                 @default(0)
   eventosReprodutivos EventoReprodutivo[]
   eventosSanitarios   EventoSanitario[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@index([status])
   @@index([grupoId])
@@ -424,27 +424,28 @@ enum TipoEventoSanitario {
 }
 
 model EventoSanitario {
-  id            Int                 @id @default(autoincrement())
-  animal        Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId      Int
-  tipo          TipoEventoSanitario
-  data          DateTime            @db.Date
-  observacao    String?
-  doenca        String?
-  dtFim         DateTime?           @db.Date
-  diasTratamento Int?
-  produto       String?
-  dose          String?
-  carencia      Int?
-  loteProduto   String?
-  ccs           Int?
-  gordura       Decimal?            @db.Decimal(4, 2)
-  proteina      Decimal?            @db.Decimal(4, 2)
-  quarto        String?
-  severidade    String?
+  id               Int                 @id @default(autoincrement())
+  animal           Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId         Int
+  tipo             TipoEventoSanitario
+  data             DateTime            @db.Date
+  observacao       String?
+  doenca           String?
+  dtFim            DateTime?           @db.Date
+  diasTratamento   Int?
+  produto          String?
+  dose             String?
+  carencia         Int?
+  loteProduto      String?
+  ccs              Int?
+  gordura          Decimal?            @db.Decimal(4, 2)
+  proteina         Decimal?            @db.Decimal(4, 2)
+  quarto           String?
+  severidade       String?
   resultadoCultivo String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
   @@index([animalId, data])
 }
 
@@ -455,24 +456,24 @@ enum TipoMovimento {
 }
 
 model MovimentoEstoque {
-  id            Int           @id @default(autoincrement())
-  produto       Produto       @relation(fields: [produtoId], references: [id])
+  id            Int                @id @default(autoincrement())
+  produto       Produto            @relation(fields: [produtoId], references: [id])
   produtoId     Int
   tipo          TipoMovimento
-  data          DateTime      @db.Date
-  quantidade    Decimal       @db.Decimal(12, 2)
-  custoUnitario Decimal       @db.Decimal(12, 2)
-  valorTotal    Decimal       @db.Decimal(14, 2)
+  data          DateTime           @db.Date
+  quantidade    Decimal            @db.Decimal(12, 2)
+  custoUnitario Decimal            @db.Decimal(12, 2)
+  valorTotal    Decimal            @db.Decimal(14, 2)
   grupo         Grupo?             @relation(fields: [grupoId], references: [id])
   grupoId       Int?
   fornecedor    ClienteFornecedor? @relation(fields: [fornecedorId], references: [id])
   fornecedorId  Int?
   // Lançamento financeiro gerado pela ENTRADA (compra), se houver (ponte compra→financeiro).
-  lancamento    Lancamento? @relation(fields: [lancamentoId], references: [id])
-  lancamentoId  Int?        @unique
+  lancamento    Lancamento?        @relation(fields: [lancamentoId], references: [id])
+  lancamentoId  Int?               @unique
   observacao    String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@index([produtoId, data])
   @@index([tipo, data])
@@ -525,6 +526,364 @@ model NotaFiscalUploadPendente {
   @@index([status, expiraEm])
 }
 
+// =============================================================================
+// MÓDULO PLANTIO — Café arábica (Sul de Minas)
+// =============================================================================
+// Espelha 1-para-1 a arquitetura do Rebanho: Talhão é a "unidade individual"
+// (como Animal), Lavoura é o agregador (como Grupo), PlanoAdubacao é a receita
+// (como Dieta) e EventoCultural é o evento da timeline (como EventoSanitario).
+//
+// Referencial técnico: Embrapa Café (sistemas de produção arábica), Manual do
+// Café (Emater-MG), Coleção SENAR 189/191, Conab (custos) e Cepea (preços).
+// Decimais financeiros usam Decimal(14,2); percentuais fitossanitários e
+// químicos usam Decimal(5,2). Mesmas regras do Lancamento já aplicam:
+// movimentos cuja data caia num mês fechado em FechamentoMensal não podem
+// ser criados/editados/excluídos.
+
+enum EstadoTalhao {
+  ATIVO
+  RECEPADO
+  FORMACAO
+  BAIXADO
+}
+
+enum FaseFenologica {
+  REPOUSO
+  INDUCAO_FLORAL
+  FLORADA
+  CHUMBINHO
+  EXPANSAO
+  GRANACAO
+  MATURACAO_VERDE
+  MATURACAO_CEREJA
+  COLHEITA
+  POS_COLHEITA
+}
+
+enum DominioCultural {
+  FENOLOGIA
+  FITOSSANIDADE
+  NUTRICAO
+  COLHEITA
+}
+
+enum TipoOperacao {
+  ADUBACAO_SOLO
+  ADUBACAO_FOLIAR
+  CALAGEM
+  GESSAGEM
+  APLICACAO_FUNGICIDA
+  APLICACAO_INSETICIDA
+  APLICACAO_HERBICIDA
+  ROCAGEM_MECANICA
+  CAPINA_MANUAL
+  PODA_RECEPA
+  PODA_DECOTE
+  PODA_ESQUELETAMENTO
+  PODA_DESPONTE
+  DESBROTA
+  IRRIGACAO
+  REPLANTIO
+  AMOSTRAGEM_SOLO
+  AMOSTRAGEM_FOLIAR
+  MONITORAMENTO_MIP
+}
+
+enum PragaDoenca {
+  FERRUGEM
+  CERCOSPORIOSE
+  BICHO_MINEIRO
+  BROCA_DO_CAFE
+  ACARO_VERMELHO
+  NEMATOIDES
+  ANTRACNOSE
+  MANCHA_AUREOLADA
+  FUMAGINA
+  ROSELINIA
+  COCHONILHAS
+  OUTRA
+}
+
+enum MetodoColheita {
+  DERRICA_PANO
+  DERRICA_MECANIZADA
+  SELETIVA
+  VARRICAO
+}
+
+enum Bienalidade {
+  POSITIVA
+  NEGATIVA
+}
+
+// Variedade/cultivar do cafeeiro (Catuaí, Mundo Novo, Topázio, Acauã, etc).
+model VariedadeCafe {
+  id                 Int      @id @default(autoincrement())
+  nome               String   @unique
+  // Resistência genética a ferrugem (Hemileia vastatrix). Define se o talhão
+  // entra ou não nas worklists de aplicação preventiva.
+  resistenteFerrugem Boolean  @default(false)
+  porte              String? // ex.: "baixo", "médio", "alto"
+  cicloDias          Int? // dias da florada até maturação cereja
+  observacao         String?
+  talhoes            Talhao[]
+}
+
+// Lavoura = agrupador de talhões (espelha Grupo do rebanho).
+model Lavoura {
+  id              Int            @id @default(autoincrement())
+  nome            String         @unique
+  observacao      String?
+  planoAdubacao   PlanoAdubacao? @relation(fields: [planoAdubacaoId], references: [id])
+  planoAdubacaoId Int?
+  talhoes         Talhao[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+// Plano de adubação — receita NPK por safra (espelha Dieta do rebanho).
+model PlanoAdubacao {
+  id        Int       @id @default(autoincrement())
+  nome      String    @unique
+  descricao String?
+  // Doses recomendadas em kg do nutriente por hectare por safra.
+  nKgHa     Decimal?  @db.Decimal(7, 2)
+  p2o5KgHa  Decimal?  @db.Decimal(7, 2)
+  k2oKgHa   Decimal?  @db.Decimal(7, 2)
+  // Número de parcelas no parcelamento; o calendário das datas é regional.
+  parcelas  Int?
+  ativo     Boolean   @default(true)
+  lavouras  Lavoura[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Talhão — unidade individual da lavoura. Espelha Animal do rebanho.
+model Talhao {
+  id               Int                @id @default(autoincrement())
+  codigo           String             @unique
+  nome             String?
+  variedade        VariedadeCafe      @relation(fields: [variedadeId], references: [id])
+  variedadeId      Int
+  lavoura          Lavoura?           @relation(fields: [lavouraId], references: [id])
+  lavouraId        Int?
+  // Espaçamento como string ("3,80 × 0,60 m") preserva a forma usada pelo
+  // produtor; plantasHa é derivado mas guardado pra agilidade nos queries.
+  espacamento      String?
+  plantasHa        Int
+  areaHa           Decimal            @db.Decimal(7, 2)
+  anoPlantio       Int
+  altitude         Int?
+  exposicao        String?
+  declive          Decimal?           @db.Decimal(4, 1)
+  irrigado         Boolean            @default(false)
+  estado           EstadoTalhao       @default(ATIVO)
+  dataPlantio      DateTime           @db.Date
+  ultimaRecepa     DateTime?          @db.Date
+  dataBaixa        DateTime?          @db.Date
+  motivoBaixa      String?
+  observacao       String?
+  resumo           ResumoTalhao?
+  operacoes        OperacaoAgricola[]
+  inspecoes        InspecaoMIP[]
+  amostrasSolo     AmostraSolo[]
+  amostrasFoliar   AmostraFoliar[]
+  passadasColheita PassadaColheita[]
+  safras           SafraTalhao[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([estado])
+  @@index([lavouraId])
+}
+
+// Read-model pré-computado por talhão — espelha ResumoAnimal.
+// Cada campo é recalculado quando uma operação/inspeção é registrada.
+model ResumoTalhao {
+  talhao                Talhao         @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId              Int            @id
+  fase                  FaseFenologica @default(REPOUSO)
+  diasNaFase            Int?
+  proximaOperacao       String?
+  proximaOperacaoEm     DateTime?      @db.Date
+  produtividadeEsperada Decimal?       @db.Decimal(6, 2) // sc/ha safra corrente
+  produtividadeUltima   Decimal?       @db.Decimal(6, 2) // sc/ha safra anterior
+  bienalidade           Bienalidade?
+  maturacaoCereja       Decimal?       @db.Decimal(5, 2)
+  maturacaoVerde        Decimal?       @db.Decimal(5, 2)
+  maturacaoBoia         Decimal?       @db.Decimal(5, 2)
+  ferrugem              Decimal?       @db.Decimal(5, 2)
+  bichoMineiro          Decimal?       @db.Decimal(5, 2)
+  broca                 Decimal?       @db.Decimal(5, 2)
+  cercosporiose         Decimal?       @db.Decimal(5, 2)
+  tendFerrugem          String?
+  ultimaInspecaoData    DateTime?      @db.Date
+  ultimaAnaliseSolo     DateTime?      @db.Date
+  pH                    Decimal?       @db.Decimal(3, 1)
+  v                     Decimal?       @db.Decimal(4, 1) // saturação por bases (%)
+  mo                    Decimal?       @db.Decimal(4, 1) // matéria orgânica (g/dm³)
+  fosforo               Decimal?       @db.Decimal(6, 2)
+  potassio              Decimal?       @db.Decimal(6, 2)
+  ultimaAnaliseFoliar   DateTime?      @db.Date
+  nFoliar               Decimal?       @db.Decimal(4, 2)
+  kFoliar               Decimal?       @db.Decimal(4, 2)
+  atualizadoEm          DateTime       @updatedAt
+}
+
+// Safra do talhão — espelho de Lactacao (ciclo anual produtivo).
+model SafraTalhao {
+  id          Int               @id @default(autoincrement())
+  talhao      Talhao            @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId    Int
+  ano         Int // ex.: 2026 (safra concluída em jun-set/2026)
+  sacasTotal  Decimal?          @db.Decimal(9, 2) // benefício consolidado
+  sacasPorHa  Decimal?          @db.Decimal(6, 2)
+  pctCereja   Decimal?          @db.Decimal(5, 2) // % cereja na média das passadas
+  pctBoia     Decimal?          @db.Decimal(5, 2)
+  bienalidade Bienalidade?
+  fechada     Boolean           @default(false)
+  observacao  String?
+  passadas    PassadaColheita[]
+
+  @@unique([talhaoId, ano])
+  @@index([ano])
+}
+
+// Operação agrícola — adubação, calagem, poda, aplicação fito/herbicida,
+// monitoramento. Espelho de EventoSanitario do rebanho.
+model OperacaoAgricola {
+  id             Int             @id @default(autoincrement())
+  talhao         Talhao          @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId       Int
+  dominio        DominioCultural
+  tipo           TipoOperacao
+  data           DateTime        @db.Date
+  responsavel    String?
+  observacao     String?
+  // Aplicações/adubações: produto, dose, calda.
+  produto        String?
+  doseValor      Decimal?        @db.Decimal(10, 3)
+  doseUnidade    String? // "L/ha", "kg/ha", "g/ha", "t/ha"
+  volumeCaldaLha Decimal?        @db.Decimal(7, 2)
+  // Adubação: NPK efetivamente entregue ao solo/folha.
+  nKgHa          Decimal?        @db.Decimal(7, 2)
+  p2o5KgHa       Decimal?        @db.Decimal(7, 2)
+  k2oKgHa        Decimal?        @db.Decimal(7, 2)
+  // Aplicação fito: praga/doença alvo.
+  pragaAlvo      PragaDoenca?
+  carenciaDias   Int?
+  // Ponte com o financeiro (espelha Lancamento.movimentoEstoque).
+  lancamentoId   Int?            @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([talhaoId, data])
+  @@index([dominio, data])
+}
+
+// Inspeção MIP — amostragem de 25 plantas, 200 folhas por talhão
+// (protocolo Embrapa). Guardar separado de OperacaoAgricola permite
+// rastrear evolução das incidências sem misturar com aplicações.
+model InspecaoMIP {
+  id               Int      @id @default(autoincrement())
+  talhao           Talhao   @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId         Int
+  data             DateTime @db.Date
+  responsavel      String?
+  // Incidências em % (folhas ou frutos).
+  ferrugem         Decimal? @db.Decimal(5, 2)
+  bichoMineiro     Decimal? @db.Decimal(5, 2)
+  broca            Decimal? @db.Decimal(5, 2)
+  cercosporiose    Decimal? @db.Decimal(5, 2)
+  acaroVermelho    Decimal? @db.Decimal(5, 2)
+  antracnose       Decimal? @db.Decimal(5, 2)
+  // Amostragem (n folhas/frutos avaliados).
+  nFolhasAvaliadas Int?
+  nFrutosAvaliados Int?
+  observacao       String?
+  createdAt        DateTime @default(now())
+
+  @@index([talhaoId, data])
+}
+
+// Amostra de solo — resultado completo da análise.
+model AmostraSolo {
+  id           Int      @id @default(autoincrement())
+  talhao       Talhao   @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId     Int
+  data         DateTime @db.Date
+  laboratorio  String?
+  profundidade String? // "0-20 cm", "20-40 cm"
+  pH           Decimal? @db.Decimal(3, 1)
+  v            Decimal? @db.Decimal(4, 1)
+  mo           Decimal? @db.Decimal(4, 1)
+  fosforo      Decimal? @db.Decimal(6, 2)
+  potassio     Decimal? @db.Decimal(6, 2)
+  calcio       Decimal? @db.Decimal(5, 2)
+  magnesio     Decimal? @db.Decimal(5, 2)
+  aluminio     Decimal? @db.Decimal(5, 2)
+  ctc          Decimal? @db.Decimal(5, 2)
+  zinco        Decimal? @db.Decimal(5, 2)
+  boro         Decimal? @db.Decimal(5, 2)
+  observacao   String?
+  arquivoUrl   String?
+  createdAt    DateTime @default(now())
+
+  @@index([talhaoId, data])
+}
+
+// Amostra foliar — coleta do 3º/4º par de folhas.
+model AmostraFoliar {
+  id          Int      @id @default(autoincrement())
+  talhao      Talhao   @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId    Int
+  data        DateTime @db.Date
+  laboratorio String?
+  // Concentrações em % do peso seco.
+  nFoliar     Decimal? @db.Decimal(4, 2)
+  pFoliar     Decimal? @db.Decimal(4, 2)
+  kFoliar     Decimal? @db.Decimal(4, 2)
+  caFoliar    Decimal? @db.Decimal(4, 2)
+  mgFoliar    Decimal? @db.Decimal(4, 2)
+  sFoliar     Decimal? @db.Decimal(4, 2)
+  bFoliar     Decimal? @db.Decimal(5, 1) // ppm
+  znFoliar    Decimal? @db.Decimal(5, 1)
+  feFoliar    Decimal? @db.Decimal(5, 1)
+  mnFoliar    Decimal? @db.Decimal(5, 1)
+  cuFoliar    Decimal? @db.Decimal(5, 1)
+  observacao  String?
+  arquivoUrl  String?
+  createdAt   DateTime @default(now())
+
+  @@index([talhaoId, data])
+}
+
+// Passada de colheita — uma derriça por talhão por dia. Espelho de
+// ControleLeiteiro do rebanho.
+model PassadaColheita {
+  id                Int            @id @default(autoincrement())
+  talhao            Talhao         @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId          Int
+  safra             SafraTalhao?   @relation(fields: [safraId], references: [id])
+  safraId           Int?
+  numero            Int // 1ª, 2ª passada
+  data              DateTime       @db.Date
+  metodo            MetodoColheita
+  litrosCereja      Decimal        @db.Decimal(10, 2)
+  rendimentoLPorSc  Decimal        @db.Decimal(6, 2)
+  sacasBeneficiadas Decimal        @db.Decimal(8, 2)
+  perdaPiso         Decimal?       @db.Decimal(7, 2)
+  pctCereja         Decimal?       @db.Decimal(5, 2)
+  pctVerde          Decimal?       @db.Decimal(5, 2)
+  pctBoiaPassa      Decimal?       @db.Decimal(5, 2)
+  responsavel       String?
+  observacao        String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([talhaoId, data])
+}
+
 model WhatsAppConfirmacaoPendente {
   id Int @id @default(autoincrement())
 
@@ -535,7 +894,7 @@ model WhatsAppConfirmacaoPendente {
   storageDriver String
   bucket        String?
   storageKey    String
-  sha256        String @unique
+  sha256        String  @unique
   mimeType      String
   tamanhoBytes  Int
 
