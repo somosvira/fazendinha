@@ -8,7 +8,7 @@
 //   pnpm --filter rionovo-server run seed:plantio
 
 import { PrismaClient } from "@prisma/client";
-import { talhoes, resumos, lavouras, planosAdubacao } from "../src/services/plantio/mock.js";
+import { talhoes, resumos, lavouras, planosAdubacao, eventos } from "../src/services/plantio/mock.js";
 
 const prisma = new PrismaClient();
 
@@ -102,7 +102,198 @@ async function main() {
     await prisma.resumoTalhao.upsert({ where: { talhaoId }, update: data, create: { talhaoId, ...data } });
   }
 
+  // 6) Eventos estruturados (Fatia P2) — converte o mock editorial `eventos` nas
+  //    5 tabelas de fato. Idempotente: limpa os fatos dos talhões semeados antes
+  //    de recriar. Mapeamento por melhor-encaixe (ver regras P2).
+  const talhaoIds = Object.values(talhaoIdByMockId);
+  await prisma.passadaColheita.deleteMany({ where: { talhaoId: { in: talhaoIds } } });
+  await prisma.operacaoAgricola.deleteMany({ where: { talhaoId: { in: talhaoIds } } });
+  await prisma.inspecaoMIP.deleteMany({ where: { talhaoId: { in: talhaoIds } } });
+  await prisma.amostraSolo.deleteMany({ where: { talhaoId: { in: talhaoIds } } });
+  await prisma.amostraFoliar.deleteMany({ where: { talhaoId: { in: talhaoIds } } });
+
+  const contagem = { operacoes: 0, inspecoes: 0, solo: 0, foliar: 0, passadas: 0 };
+
+  // Extrai "≈ 38 sc" do impacto, "18.420 L" / "14.200 L" do detalhe e
+  // "480 L/sc" do detalhe. Defaults sensatos quando ausente (litros é NOT NULL).
+  const parseSacas = (s?: string) => {
+    const m = s?.match(/≈?\s*(\d+(?:[.,]\d+)?)\s*sc/i);
+    return m ? Number(m[1].replace(/\./g, "").replace(",", ".")) : 0;
+  };
+  const parseLitros = (s?: string) => {
+    const m = s?.match(/([\d.]+)\s*L\b(?!\/)/i);
+    return m ? Number(m[1].replace(/\./g, "")) : 0;
+  };
+  const parseRendimento = (s?: string) => {
+    const m = s?.match(/(\d+(?:[.,]\d+)?)\s*L\/sc/i);
+    return m ? Number(m[1].replace(",", ".")) : 480;
+  };
+  const parseNumeroPassada = (titulo: string) => {
+    const m = titulo.match(/(\d+)ª\s*passada/i);
+    return m ? Number(m[1]) : 1;
+  };
+
+  for (const ev of eventos) {
+    const talhaoId = talhaoIdByMockId[ev.talhaoId];
+    if (talhaoId == null) continue;
+    const data = new Date(ev.data);
+    const responsavel = ev.responsavel ?? null;
+    const observacao = ev.detalhe ?? null;
+    const t = ev.titulo;
+
+    if (ev.dominio === "nutricao") {
+      if (/análise foliar|foliar/i.test(t)) {
+        await prisma.amostraFoliar.create({ data: { talhaoId, data, observacao } });
+        contagem.foliar++;
+      } else if (/análise solo|solo/i.test(t)) {
+        await prisma.amostraSolo.create({ data: { talhaoId, data, observacao } });
+        contagem.solo++;
+      } else if (/aduba/i.test(t)) {
+        const tipo = /foliar/i.test(t) ? "ADUBACAO_FOLIAR" : "ADUBACAO_SOLO";
+        await prisma.operacaoAgricola.create({
+          data: { talhaoId, dominio: "NUTRICAO", tipo, data, responsavel, produto: ev.detalhe ?? null, observacao },
+        });
+        contagem.operacoes++;
+      }
+    } else if (ev.dominio === "fitossanidade") {
+      if (/monitora|inspe|mip/i.test(t)) {
+        await prisma.inspecaoMIP.create({ data: { talhaoId, data, responsavel, observacao } });
+        contagem.inspecoes++;
+      } else if (/aplica|fungicida|inseticida|herbicida/i.test(t)) {
+        const tipo = /herbicida/i.test(t)
+          ? "APLICACAO_HERBICIDA"
+          : /inseticida/i.test(t)
+            ? "APLICACAO_INSETICIDA"
+            : "APLICACAO_FUNGICIDA";
+        await prisma.operacaoAgricola.create({
+          data: { talhaoId, dominio: "FITOSSANIDADE", tipo, data, responsavel, produto: ev.detalhe ?? null, observacao },
+        });
+        contagem.operacoes++;
+      }
+    } else if (ev.dominio === "colheita") {
+      if (/passada|derriça|derrica|colheita/i.test(t)) {
+        const numero = parseNumeroPassada(t);
+        const metodo = /mecaniz/i.test(t)
+          ? "DERRICA_MECANIZADA"
+          : /seletiv/i.test(t)
+            ? "SELETIVA"
+            : "DERRICA_PANO";
+        const litrosCereja = parseLitros(ev.detalhe);
+        const rendimentoLPorSc = parseRendimento(ev.detalhe);
+        const sacasBeneficiadas = parseSacas(ev.impacto);
+        await prisma.passadaColheita.create({
+          data: { talhaoId, numero, data, metodo, litrosCereja, rendimentoLPorSc, sacasBeneficiadas, responsavel, observacao },
+        });
+        contagem.passadas++;
+      }
+    } else if (ev.dominio === "fenologia") {
+      if (/recepa|desbrota|poda/i.test(t)) {
+        const tipo = /recepa/i.test(t) ? "PODA_RECEPA" : /desbrota/i.test(t) ? "DESBROTA" : "PODA_DESPONTE";
+        await prisma.operacaoAgricola.create({
+          data: { talhaoId, dominio: "FENOLOGIA", tipo, data, responsavel, observacao },
+        });
+        contagem.operacoes++;
+      }
+      // florada/maturação sem poda/recepa/desbrota → fase fenológica, sem fato estruturado (skip).
+    }
+  }
+
   console.log(`Seed plantio ok: ${planosAdubacao.length} planos, ${variedadeNomes.length} variedades, ${lavouras.length} lavouras, ${talhoes.length} talhões, ${resumos.length} resumos.`);
+  console.log(`Eventos estruturados: ${contagem.operacoes} operações, ${contagem.inspecoes} inspeções MIP, ${contagem.solo} análises solo, ${contagem.foliar} análises foliar, ${contagem.passadas} passadas colheita.`);
+
+  // 7) Camada operacional Ideagri (Fatia P3) — Safra + Tarefas (planejado×realizado)
+  //    + Apontamentos hora-máquina/hora-homem. Idempotente: upsert da Safra por nome,
+  //    e deleteMany das tarefas/apontamentos dessa safra antes de recriar.
+  const centroCustoCafe = await prisma.centroCusto.findFirst({ where: { nome: "Plantio Café" }, select: { id: true } });
+  const safra = await prisma.safra.upsert({
+    where: { nome: "Safra 2026" },
+    update: { dataInicio: new Date("2025-07-01"), dataFim: new Date("2026-06-30"), centroCustoId: centroCustoCafe?.id ?? null },
+    create: { nome: "Safra 2026", dataInicio: new Date("2025-07-01"), dataFim: new Date("2026-06-30"), centroCustoId: centroCustoCafe?.id ?? null },
+  });
+
+  // Limpa fatos da safra antes de recriar (idempotência).
+  await prisma.tarefaAgricola.deleteMany({ where: { safraId: safra.id } });
+  await prisma.apontamentoMaquina.deleteMany({ where: { safraId: safra.id } });
+
+  // Resolve talhões reais por código (CAF-01 / TIJ-01) — algumas tarefas são por talhão.
+  const idCAF01 = (await prisma.talhao.findUnique({ where: { codigo: "CAF-01" }, select: { id: true } }))?.id ?? null;
+  const idTIJ01 = (await prisma.talhao.findUnique({ where: { codigo: "TIJ-01" }, select: { id: true } }))?.id ?? null;
+
+  // Calendário cafeeiro realista: calagem → 3 parcelas de adubação de cobertura →
+  // 2 aplicações de fungicida (ferrugem) → colheita. Algumas já realizadas (CONCLUIDA).
+  const tarefasSeed = [
+    { tipo: "CALAGEM" as const, descricao: "Calagem de correção (calcário dolomítico)", responsavel: "Equipe de campo", produto: "Calcário dolomítico", unidade: "t/ha",
+      qtdHaPrev: 2.0, qtdTotalPrev: 30, dataPrevista: "2025-07-15", custoPrev: 4500,
+      talhaoId: null, real: { qtdHaReal: 2.1, qtdTotalReal: 31.5, dataRealizada: "2025-07-18", custoReal: 4720, status: "CONCLUIDA" as const } },
+    { tipo: "ADUBACAO_SOLO" as const, descricao: "Adubação de cobertura — 1ª parcela", responsavel: "Equipe de campo", produto: "20-00-20", unidade: "kg/ha",
+      qtdHaPrev: 350, qtdTotalPrev: 5250, dataPrevista: "2025-09-20", custoPrev: 12600,
+      talhaoId: null, real: { qtdHaReal: 350, qtdTotalReal: 5250, dataRealizada: "2025-09-22", custoReal: 12900, status: "CONCLUIDA" as const } },
+    { tipo: "ADUBACAO_SOLO" as const, descricao: "Adubação de cobertura — 2ª parcela", responsavel: "Equipe de campo", produto: "20-00-20", unidade: "kg/ha",
+      qtdHaPrev: 350, qtdTotalPrev: 5250, dataPrevista: "2025-12-10", custoPrev: 12600,
+      talhaoId: null, real: { qtdHaReal: 340, qtdTotalReal: 5100, dataRealizada: "2025-12-14", custoReal: 12400, status: "CONCLUIDA" as const } },
+    { tipo: "ADUBACAO_SOLO" as const, descricao: "Adubação de cobertura — 3ª parcela", responsavel: "Equipe de campo", produto: "20-05-20", unidade: "kg/ha",
+      qtdHaPrev: 300, qtdTotalPrev: 4500, dataPrevista: "2026-02-15", custoPrev: 11200,
+      talhaoId: null, real: null },
+    { tipo: "APLICACAO_FUNGICIDA" as const, descricao: "Aplicação fungicida ferrugem — 1ª", responsavel: "Operador de pulverizador", produto: "Triazol + Estrobilurina", unidade: "L/ha",
+      qtdHaPrev: 1.5, qtdTotalPrev: 6.3, dataPrevista: "2025-11-05", custoPrev: 3200,
+      talhaoId: idCAF01, real: { qtdHaReal: 1.5, qtdTotalReal: 6.3, dataRealizada: "2025-11-06", custoReal: 3350, status: "CONCLUIDA" as const } },
+    { tipo: "APLICACAO_FUNGICIDA" as const, descricao: "Aplicação fungicida ferrugem — 2ª", responsavel: "Operador de pulverizador", produto: "Triazol + Estrobilurina", unidade: "L/ha",
+      qtdHaPrev: 1.5, qtdTotalPrev: 7.65, dataPrevista: "2026-01-20", custoPrev: 3900,
+      talhaoId: idTIJ01, real: null },
+    { tipo: "PODA_DESPONTE" as const, descricao: "Colheita Safra 2026 (derriça)", responsavel: "Equipe de colheita", produto: null, unidade: "sc",
+      qtdHaPrev: 38, qtdTotalPrev: 1900, dataPrevista: "2026-06-01", custoPrev: 38000,
+      talhaoId: null, real: null },
+  ];
+
+  for (const t of tarefasSeed) {
+    await prisma.tarefaAgricola.create({
+      data: {
+        safraId: safra.id,
+        talhaoId: t.talhaoId,
+        tipo: t.tipo,
+        descricao: t.descricao,
+        responsavel: t.responsavel,
+        produto: t.produto,
+        unidade: t.unidade,
+        qtdHaPrev: t.qtdHaPrev,
+        qtdTotalPrev: t.qtdTotalPrev,
+        dataPrevista: new Date(t.dataPrevista),
+        custoPrev: t.custoPrev,
+        qtdHaReal: t.real?.qtdHaReal ?? null,
+        qtdTotalReal: t.real?.qtdTotalReal ?? null,
+        dataRealizada: t.real?.dataRealizada ? new Date(t.real.dataRealizada) : null,
+        custoReal: t.real?.custoReal ?? null,
+        status: t.real?.status ?? "PLANEJADA",
+      },
+    });
+  }
+
+  // 4 apontamentos: 2 hora-máquina (trator + pulverizador) + 2 hora-homem (equipe).
+  const apontamentosSeed = [
+    { tipo: "MAQUINA" as const, recurso: "Trator Massey 275", operador: "José", implemento: "Distribuidor de calcário", data: "2025-07-18", horas: 12, valorHora: 95, talhaoId: null },
+    { tipo: "MAQUINA" as const, recurso: "Pulverizador", operador: "Pedro", implemento: "Pulverizador tratorizado", data: "2025-11-06", horas: 5.5, valorHora: 110, talhaoId: idCAF01 },
+    { tipo: "HOMEM" as const, recurso: "Equipe de campo", operador: null, implemento: null, data: "2025-09-22", horas: 48, valorHora: 18, talhaoId: null },
+    { tipo: "HOMEM" as const, recurso: "Equipe de campo", operador: null, implemento: null, data: "2025-12-14", horas: 40, valorHora: 18, talhaoId: null },
+  ];
+
+  for (const a of apontamentosSeed) {
+    await prisma.apontamentoMaquina.create({
+      data: {
+        safraId: safra.id,
+        talhaoId: a.talhaoId,
+        data: new Date(a.data),
+        tipo: a.tipo,
+        recurso: a.recurso,
+        operador: a.operador,
+        implemento: a.implemento,
+        horas: a.horas,
+        valorHora: a.valorHora,
+        valorTotal: a.horas * a.valorHora,
+      },
+    });
+  }
+
+  console.log(`Camada operacional Ideagri: 1 safra ("${safra.nome}"), ${tarefasSeed.length} tarefas, ${apontamentosSeed.length} apontamentos.`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });

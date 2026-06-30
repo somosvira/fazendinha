@@ -1,6 +1,19 @@
 import { useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
+import { registrarOperacao, type OperacaoInput } from "../api";
 import { HOJE } from "../HOJE";
+
+// Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
+// decimal pt-BR) e campos vazios. Retorna {} quando não há número parseável.
+function parseDose(s: string): { doseValor?: number; doseUnidade?: string } {
+  const txt = s.trim();
+  if (!txt) return {};
+  const m = txt.match(/^(-?\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if (!m) return { doseUnidade: txt };
+  const valor = Number(m[1].replace(",", "."));
+  const unidade = m[2].trim();
+  return { doseValor: Number.isFinite(valor) ? valor : undefined, doseUnidade: unidade || undefined };
+}
 
 const DOMINIOS: { v: "fenologia" | "fitossanidade" | "nutricao" | "colheita"; label: string }[] = [
   { v: "fitossanidade", label: "Fitossanidade" },
@@ -90,18 +103,35 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   async function salvar() {
     setSalvando(true); setErro(null);
     try {
-      // Camada de mock: só fecha o modal. Quando o backend for plugado, este
-      // método chama POST /api/plantio/talhoes/:id/operacoes com o payload abaixo.
-      const payload = {
-        talhaoId, dominio, tipo, data,
-        praga, produto, dose, volumeCalda: Number(volumeCalda) || undefined,
-        incidencia: Number(incidencia) || undefined,
-        nKg: Number(nKg) || undefined, pKg: Number(pKg) || undefined, kKg: Number(kKg) || undefined,
-        litrosCereja: Number(litrosCereja) || undefined, rendimentoLsc: Number(rendimentoLsc) || undefined, metodoColheita,
-        responsavel, observacao,
-      };
-      await new Promise((r) => setTimeout(r, 250));
-      console.log("[plantio] payload de operação:", payload);
+      // Detalhes específicos do domínio que não cabem no body canônico do backend
+      // (NPK, calda, incidência, colheita) viram notas no campo observação, pra não
+      // se perder até existir endpoint dedicado.
+      const extras: string[] = [];
+      if (dominio === "fitossanidade") {
+        if (volumeCalda) extras.push(`Calda ${volumeCalda} L/ha`);
+        if (incidencia) extras.push(`Incidência ${incidencia}%`);
+      }
+      if (dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR")) {
+        const npk = [nKg && `N ${nKg}`, pKg && `P₂O₅ ${pKg}`, kKg && `K₂O ${kKg}`].filter(Boolean);
+        if (npk.length) extras.push(`${npk.join(" · ")} (kg/ha)`);
+      }
+      if (dominio === "colheita") {
+        if (litrosCereja) extras.push(`${litrosCereja} L de cereja (${metodoColheita.replace("_", " ").toLowerCase()})`);
+        if (litrosCereja && rendimentoLsc) extras.push(`≈ ${(Number(litrosCereja) / Number(rendimentoLsc)).toFixed(1)} sc · rend. ${rendimentoLsc} L/sc`);
+      }
+      const obs = [observacao.trim(), ...extras].filter(Boolean).join(" — ") || undefined;
+
+      const { doseValor, doseUnidade } = parseDose(dose);
+      await registrarOperacao(talhaoId, {
+        // backend espera o enum em maiúsculas (FENOLOGIA/FITOSSANIDADE/NUTRICAO/COLHEITA)
+        dominio: dominio.toUpperCase() as OperacaoInput["dominio"], tipo, data,
+        responsavel: responsavel.trim() || undefined,
+        produto: produto.trim() || undefined,
+        observacao: obs,
+        doseValor,
+        doseUnidade,
+        pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
+      });
       onSalvo();
     } catch (e: any) {
       setErro(e?.message ?? "Erro ao salvar.");

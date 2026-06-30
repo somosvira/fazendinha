@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TalhaoCockpit } from "./components/TalhaoCockpit";
 import { TalhaoTab } from "./components/TalhaoTab";
 import { FenologiaTab } from "./components/FenologiaTab";
 import { FitossanidadeTab } from "./components/FitossanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ColheitaTab } from "./components/ColheitaTab";
+import { PlanejamentoTab } from "./components/PlanejamentoTab";
 import { EstoqueTab } from "./components/EstoqueTab";
 import { CustoTab } from "./components/CustoTab";
 import { IaView } from "./components/IaView";
@@ -13,7 +14,7 @@ import { TalhaoForm } from "./components/TalhaoForm";
 import { OperacaoForm } from "./components/OperacaoForm";
 import type { Talhao } from "./types";
 
-export type PlaSub = "dashboard" | "talhao" | "fenologia" | "fitossanidade" | "nutricao" | "colheita" | "estoque" | "custo" | "ia";
+export type PlaSub = "dashboard" | "talhao" | "fenologia" | "fitossanidade" | "nutricao" | "colheita" | "planejamento" | "estoque" | "custo" | "ia";
 
 /* Espelho do RebanhoContent: roteia entre as sub-abas do módulo Plantio
  * e gerencia os modais (novo talhão, operação inline). Quando o usuário
@@ -25,6 +26,9 @@ export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
+
+  // Trocar de sub-aba fecha qualquer cockpit de talhão aberto (espelha RebanhoContent).
+  useEffect(() => { setTalhaoId(null); }, [aba]);
 
   return (
     <div className="rb">
@@ -40,13 +44,15 @@ export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba
                 ? <NutricaoTab onRegistrarOperacao={(talhao) => setRegistroInline({ talhao, dominio: "nutricao" })} />
                 : aba === "colheita"
                   ? <ColheitaTab onAbrirTalhao={setTalhaoId} />
-                  : aba === "estoque"
-                    ? <EstoqueTab />
-                    : aba === "custo"
-                      ? <CustoTab />
-                      : aba === "dashboard"
-                        ? <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />
-                        : <IaView />}
+                  : aba === "planejamento"
+                    ? <PlanejamentoTab />
+                    : aba === "estoque"
+                      ? <EstoqueTab />
+                      : aba === "custo"
+                        ? <CustoTab />
+                        : aba === "dashboard"
+                          ? <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />
+                          : <IaView />}
       {form && <TalhaoForm modo={form.modo} talhao={form.talhao} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
         <OperacaoForm

@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica } from "./types";
+import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento } from "./types";
 import { HOJE } from "./HOJE";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,6 +38,20 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
 
 export interface VariedadeDTO { id: number; nome: string; resistenteFerrugem: boolean }
 
+// Payload de registro de operação cultural — espelha o body aceito pelo backend
+// em POST /plantio/talhoes/:id/operacoes. Retorna o evento criado (timeline).
+export interface OperacaoInput {
+  dominio: "fenologia" | "fitossanidade" | "nutricao" | "colheita";
+  tipo: string;                 // TipoOperacao (ex.: "APLICACAO_FUNGICIDA")
+  data: string;                 // YYYY-MM-DD
+  responsavel?: string;
+  produto?: string;
+  observacao?: string;
+  doseValor?: number;
+  doseUnidade?: string;         // ex.: "mL/ha", "kg/ha", "t/ha"
+  pragaAlvo?: string;           // PragaDoenca (só fitossanidade)
+}
+
 export interface TalhaoInput {
   codigo: string;
   nome?: string;
@@ -60,12 +74,16 @@ export interface TalhaoInput {
 // LISTAGENS / CRUD --------------------------------------------------------
 
 export const listarTalhoes = (f?: { estado?: string; lavoura?: string; q?: string }) =>
-  req<Talhao[]>(`/plantio/talhoes${qs(f && f.estado === "TODOS" ? { ...f, estado: undefined } : f)}`);
+  // estado é repassado como veio (inclusive "TODOS"): o backend aceita "TODOS" no
+  // listFiltrosSchema e o service trata `estado === "TODOS"` como "sem filtro de estado".
+  req<Talhao[]>(`/plantio/talhoes${qs(f)}`);
 export const obterTalhao = (id: string) => req<Talhao>(`/plantio/talhoes/${id}`);
 // O detalhe do talhão já vem com `.resumo` embutido — derivamos o resumo dele.
 export const obterResumo = (id: string) => obterTalhao(id).then((t) => t.resumo ?? null);
-// Timeline é a próxima fatia; por ora não há eventos persistidos.
-export const listarEventos = (_talhaoId: string): Promise<EventoTimeline[]> => Promise.resolve([]);
+// Timeline real (P2): operações, inspeções MIP, amostras solo/foliar e passadas
+// de colheita tecidas pelo backend e ordenadas desc.
+export const listarEventos = (talhaoId: string) =>
+  req<EventoTimeline[]>(`/plantio/talhoes/${talhaoId}/eventos`);
 export const listarLavouras = () => req<Lavoura[]>(`/plantio/lavouras`);
 export const listarPlanos = () => req<PlanoAdubacao[]>(`/plantio/planos-adubacao`);
 export const listarVariedades = () => req<VariedadeDTO[]>(`/plantio/variedades`);
@@ -76,6 +94,8 @@ export const editarTalhao = (id: string, input: Partial<TalhaoInput>) =>
   req<Talhao>(`/plantio/talhoes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const darBaixa = (id: string, input: { motivo: string; data?: string }) =>
   req<Talhao>(`/plantio/talhoes/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
+export const registrarOperacao = (talhaoId: string, input: OperacaoInput) =>
+  req<EventoTimeline>(`/plantio/talhoes/${talhaoId}/operacoes`, { method: "POST", body: JSON.stringify(input) });
 
 // HOOKS -------------------------------------------------------------------
 
@@ -136,6 +156,113 @@ export function usePlanosAdubacao() {
   const recarregar = useCallback(() => { listarPlanos().then(setData).catch(() => {}); }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, recarregar };
+}
+
+// PLANEJAMENTO DA SAFRA (Fatia P3 — camada operacional Ideagri) -----------
+
+// Payloads de escrita — espelham o body aceito pelos endpoints /plantio/{safras,tarefas,apontamentos}.
+export interface SafraInput {
+  nome: string;
+  dataInicio: string;       // YYYY-MM-DD
+  dataFim: string;          // YYYY-MM-DD
+  centroCustoId?: number | null;
+}
+
+export interface TarefaInput {
+  safraId: number;
+  descricao: string;
+  tipo: string;             // TipoOperacao
+  talhaoId?: number | null;
+  lavouraId?: number | null;
+  responsavel?: string | null;
+  produto?: string | null;
+  unidade?: string | null;
+  qtdHaPrev?: number | null;
+  qtdTotalPrev?: number | null;
+  dataPrevista?: string | null;
+  custoPrev?: number | null;
+  // Campos de realizado — só no fluxo "Realizar" (PATCH).
+  qtdHaReal?: number | null;
+  qtdTotalReal?: number | null;
+  dataRealizada?: string | null;
+  custoReal?: number | null;
+  status?: string;          // PLANEJADA | EM_ANDAMENTO | CONCLUIDA | CANCELADA
+}
+
+export interface ApontamentoInput {
+  safraId?: number | null;
+  talhaoId?: number | null;
+  data: string;             // YYYY-MM-DD
+  tipo: "MAQUINA" | "HOMEM";
+  recurso: string;
+  operador?: string | null;
+  implemento?: string | null;
+  horas: number;
+  valorHora?: number | null;
+  observacao?: string | null;
+}
+
+// Safras
+export const listarSafras = () => req<SafraDTO[]>(`/plantio/safras`);
+export const criarSafra = (input: SafraInput) =>
+  req<SafraDTO>(`/plantio/safras`, { method: "POST", body: JSON.stringify(input) });
+export const editarSafra = (id: number, input: Partial<SafraInput> & { fechada?: boolean }) =>
+  req<SafraDTO>(`/plantio/safras/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+// Tarefas (planejado × realizado)
+export const listarTarefas = (safraId: number) =>
+  req<TarefaPlanejada[]>(`/plantio/tarefas${qs({ safraId })}`);
+export const criarTarefa = (input: TarefaInput) =>
+  req<TarefaPlanejada>(`/plantio/tarefas`, { method: "POST", body: JSON.stringify(input) });
+export const editarTarefa = (id: number, input: Partial<TarefaInput>) =>
+  req<TarefaPlanejada>(`/plantio/tarefas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const excluirTarefa = (id: number) =>
+  req<{ ok: true }>(`/plantio/tarefas/${id}`, { method: "DELETE" });
+
+// Apontamentos (hora-máquina / hora-homem)
+export const listarApontamentos = (safraId: number) =>
+  req<Apontamento[]>(`/plantio/apontamentos${qs({ safraId })}`);
+export const criarApontamento = (input: ApontamentoInput) =>
+  req<Apontamento>(`/plantio/apontamentos`, { method: "POST", body: JSON.stringify(input) });
+export const excluirApontamento = (id: number) =>
+  req<{ ok: true }>(`/plantio/apontamentos/${id}`, { method: "DELETE" });
+
+export function useSafras() {
+  const [data, setData] = useState<SafraDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarSafras().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useTarefas(safraId: number | null) {
+  const [data, setData] = useState<TarefaPlanejada[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (safraId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarTarefas(safraId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [safraId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useApontamentos(safraId: number | null) {
+  const [data, setData] = useState<Apontamento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (safraId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarApontamentos(safraId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [safraId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
 }
 
 // DASHBOARD ---------------------------------------------------------------
@@ -238,7 +365,7 @@ export function useDashboard() {
   return { data, loading };
 }
 
-// Tela Custo Produção (mock — vira real numa fatia posterior) --------------
+// Tela Custo Produção (P2 real — ponte financeira da Atividade Café) --------
 
 const DELAY = 80; // simula latência de rede pequena para evitar flicker
 
@@ -247,49 +374,33 @@ function fake<T>(v: T): Promise<T> {
 }
 
 export interface CustoPlantioData {
-  custoSaca: number;
-  custoHa: number;
+  custoSaca: number | null;   // null em fase de formação (sem benefício no período)
+  custoHa: number | null;     // null se não há área de produção computável
   custeioTotal: number;
   sacasPeriodo: number;
   periodoMeses: number;
   breakdown: { categoria: string; valor: number; pct: number }[];
   nota: string;
+  // campos extras que o backend pode anexar (formação) — opcionais
+  investimentoTotal?: number;
+  areaProducao?: number;
 }
 
-export function useCustoPlantio() {
+export const obterCustoPlantio = (meses = 12) =>
+  req<CustoPlantioData>(`/plantio/custo${qs({ meses })}`);
+
+export function useCustoPlantio(meses = 12) {
   const [data, setData] = useState<CustoPlantioData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   useEffect(() => {
-    setTimeout(() => {
-      // valores realistas para fazenda Sul de Minas — Conab/Cepea, safra 2025/26.
-      // Custo total aproximado: R$ 22-26 mil/ha em produção média.
-      const custeio = 1_640_000; // total 12 meses fazenda toda (≈ 60 ha)
-      const sacas = 2_100;
-      const areaProd = 56.3;
-      const breakdown = [
-        { categoria: "Mão de obra (colheita + tratos)", valor: 540_000 },
-        { categoria: "Fertilizantes",                    valor: 410_000 },
-        { categoria: "Defensivos (fungicida + insetic.)", valor: 165_000 },
-        { categoria: "Combustível e mecanização",        valor: 132_000 },
-        { categoria: "Calcário, gesso e corretivos",     valor:  72_000 },
-        { categoria: "Pós-colheita (terreiro/benefício)", valor: 154_000 },
-        { categoria: "Manutenção (equipamentos)",        valor:  86_000 },
-        { categoria: "Energia e irrigação",              valor:  41_000 },
-        { categoria: "Outros (frete, embalagem, ARTs)",  valor:  40_000 },
-      ].map((l) => ({ ...l, pct: (l.valor / custeio) * 100 }));
-      setData({
-        custoSaca: custeio / sacas,
-        custoHa: custeio / areaProd,
-        custeioTotal: custeio,
-        sacasPeriodo: sacas,
-        periodoMeses: 12,
-        breakdown,
-        nota: "Estimativa baseada nos lançamentos da Atividade Café nos últimos 12 meses, com benefício projetado em 30 sc/ha sobre os talhões em produção. Quando a colheita 2026 fechar, esses valores são recalculados sobre o realizado.",
-      });
-      setLoading(false);
-    }, DELAY);
-  }, []);
-  return { data, loading };
+    setLoading(true); setErro(null);
+    obterCustoPlantio(meses)
+      .then(setData)
+      .catch((e) => { setErro(e.message); setData(null); })
+      .finally(() => setLoading(false));
+  }, [meses]);
+  return { data, loading, erro };
 }
 
 // IA (mock — vira real numa fatia posterior) ------------------------------

@@ -56,6 +56,7 @@ const PLA: Record<string, PlaSub> = {
   "pla-fitossanidade": "fitossanidade",
   "pla-nutricao": "nutricao",
   "pla-colheita": "colheita",
+  "pla-planejamento": "planejamento",
   "pla-estoque": "estoque",
   "pla-custo": "custo",
   "pla-ia": "ia",
