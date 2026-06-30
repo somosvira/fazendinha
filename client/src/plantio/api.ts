@@ -1,42 +1,81 @@
-/* Camada de leitura do módulo Plantio.
+/* Camada de leitura/escrita do módulo Plantio.
  *
- * Em produção, cada `useXxx()` baterá em `/api/plantio/*` — exatamente como
- * o módulo Rebanho faz hoje. Durante o protótipo, a camada serve direto dos
- * mocks (`./mock/*`) usando Promise.resolve, preservando o pattern dos hooks
- * (estado loading/erro, recarregar). Para conectar ao backend basta trocar a
- * implementação de cada `listar*` por um fetch — os hooks não mudam.
+ * Espelha o pattern do módulo Rebanho: cada `useXxx()` bate em `/api/plantio/*`
+ * via o helper `req<T>`, que prefixa `/api`, injeta `content-type` quando há
+ * corpo e extrai a mensagem de erro de `{error}` (service) ou `{error:{issues}}`
+ * (ZodError do zValidator). Os hooks mantêm o contrato `{data, loading, erro,
+ * recarregar}` — a forma dos DTOs (./types) não muda.
+ *
+ * Custo de produção e IA ainda são mock (viram reais em fatia posterior).
  */
 
 import { useEffect, useState, useCallback } from "react";
 import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica } from "./types";
-import { talhoes as mockTalhoes, resumos as mockResumos, eventos as mockEventos, lavouras as mockLavouras, planosAdubacao as mockPlanos } from "./mock";
 import { HOJE } from "./HOJE";
 
-const DELAY = 80; // simula latência de rede pequena para evitar flicker
-
-function fake<T>(v: T): Promise<T> {
-  return new Promise((res) => setTimeout(() => res(v), DELAY));
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  if (!res.ok) {
+    const b: any = await res.json().catch(() => null);
+    let msg = `HTTP ${res.status}`;
+    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: código duplicado)
+    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
+    throw new Error(msg);
+  }
+  return res.json();
 }
 
-// LISTAGENS ---------------------------------------------------------------
+// monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
+function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
+  if (!f) return "";
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(f)) if (v != null && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+}
 
-export const listarTalhoes = (f?: { estado?: string; lavoura?: string; q?: string }) => {
-  let arr = mockTalhoes;
-  if (f?.estado && f.estado !== "TODOS") arr = arr.filter((t) => t.estado === f.estado);
-  if (f?.lavoura) arr = arr.filter((t) => t.lavoura === f.lavoura);
-  if (f?.q) {
-    const q = f.q.toLowerCase();
-    arr = arr.filter((t) => t.codigo.toLowerCase().includes(q) || t.nome.toLowerCase().includes(q));
-  }
-  return fake(arr);
-};
+// DTOs de entrada/escrita -------------------------------------------------
 
-export const obterTalhao = (id: string) => fake(mockTalhoes.find((t) => t.id === id) ?? null);
-export const obterResumo = (id: string) => fake(mockResumos.find((r) => r.talhaoId === id) ?? null);
-export const listarEventos = (talhaoId: string) =>
-  fake(mockEventos.filter((e) => e.talhaoId === talhaoId).sort((a, b) => b.data.localeCompare(a.data)));
-export const listarLavouras = () => fake(mockLavouras);
-export const listarPlanos = () => fake(mockPlanos);
+export interface VariedadeDTO { id: number; nome: string; resistenteFerrugem: boolean }
+
+export interface TalhaoInput {
+  codigo: string;
+  nome?: string;
+  variedadeId: number;
+  lavouraId?: number;
+  espacamento?: string;
+  plantasHa: number;
+  areaHa: number;
+  anoPlantio: number;
+  altitude?: number;
+  exposicao?: string | null;
+  declive?: number | null;
+  irrigado?: boolean;
+  estado?: string;
+  dataPlantio: string;          // YYYY-MM-DD
+  ultimaRecepa?: string | null;
+  observacao?: string | null;
+}
+
+// LISTAGENS / CRUD --------------------------------------------------------
+
+export const listarTalhoes = (f?: { estado?: string; lavoura?: string; q?: string }) =>
+  req<Talhao[]>(`/plantio/talhoes${qs(f && f.estado === "TODOS" ? { ...f, estado: undefined } : f)}`);
+export const obterTalhao = (id: string) => req<Talhao>(`/plantio/talhoes/${id}`);
+// O detalhe do talhão já vem com `.resumo` embutido — derivamos o resumo dele.
+export const obterResumo = (id: string) => obterTalhao(id).then((t) => t.resumo ?? null);
+// Timeline é a próxima fatia; por ora não há eventos persistidos.
+export const listarEventos = (_talhaoId: string): Promise<EventoTimeline[]> => Promise.resolve([]);
+export const listarLavouras = () => req<Lavoura[]>(`/plantio/lavouras`);
+export const listarPlanos = () => req<PlanoAdubacao[]>(`/plantio/planos-adubacao`);
+export const listarVariedades = () => req<VariedadeDTO[]>(`/plantio/variedades`);
+
+export const criarTalhao = (input: TalhaoInput) =>
+  req<Talhao>(`/plantio/talhoes`, { method: "POST", body: JSON.stringify(input) });
+export const editarTalhao = (id: string, input: Partial<TalhaoInput>) =>
+  req<Talhao>(`/plantio/talhoes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const darBaixa = (id: string, input: { motivo: string; data?: string }) =>
+  req<Talhao>(`/plantio/talhoes/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
 
 // HOOKS -------------------------------------------------------------------
 
@@ -47,7 +86,7 @@ export function useTalhoes(f?: { estado?: string; lavoura?: string; q?: string }
   const key = JSON.stringify(f ?? {});
   const recarregar = useCallback(() => {
     setLoading(true); setErro(null);
-    listarTalhoes(f).then(setData).catch((e) => setErro(String(e))).finally(() => setLoading(false));
+    listarTalhoes(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => { recarregar(); }, [recarregar]);
@@ -61,7 +100,10 @@ export function useTalhao(id: string | null) {
   useEffect(() => {
     if (!id) { setData(null); setResumo(null); return; }
     setLoading(true);
-    Promise.all([obterTalhao(id), obterResumo(id)]).then(([t, r]) => { setData(t); setResumo(r); }).finally(() => setLoading(false));
+    obterTalhao(id)
+      .then((t) => { setData(t); setResumo(t?.resumo ?? null); })
+      .catch(() => { setData(null); setResumo(null); })
+      .finally(() => setLoading(false));
   }, [id]);
   return { data, resumo, loading };
 }
@@ -83,7 +125,7 @@ export function useLavouras() {
   const [loading, setLoading] = useState(true);
   const recarregar = useCallback(() => {
     setLoading(true);
-    listarLavouras().then(setData).finally(() => setLoading(false));
+    listarLavouras().then(setData).catch(() => {}).finally(() => setLoading(false));
   }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, recarregar };
@@ -91,7 +133,7 @@ export function useLavouras() {
 
 export function usePlanosAdubacao() {
   const [data, setData] = useState<PlanoAdubacao[]>([]);
-  const recarregar = useCallback(() => { listarPlanos().then(setData); }, []);
+  const recarregar = useCallback(() => { listarPlanos().then(setData).catch(() => {}); }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, recarregar };
 }
@@ -118,24 +160,25 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
-    Promise.all([listarTalhoes(), Promise.resolve(mockResumos)]).then(([ts, rs]) => {
+    listarTalhoes().then((ts) => {
+      // O backend entrega cada talhão com `.resumo` embutido — derivamos o
+      // painel a partir desses read-models reais.
+      const rs = ts.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
       const ativos = ts.filter((t) => t.estado === "ATIVO");
       const areaTotal = ts.reduce((a, t) => a + t.areaHa, 0);
       const sacasEsperadas = ts.reduce((a, t) => {
-        const r = rs.find((x) => x.talhaoId === t.id);
+        const r = t.resumo;
         return a + (r?.produtividadeEsperada ?? 0) * t.areaHa;
       }, 0);
-      const jaColhidas = mockEventos
-        .filter((e) => e.dominio === "colheita" && e.data >= "2026-05-01")
-        .reduce((a, e) => a + estimarSacasEvento(e), 0);
-      const emProducao = ativos.filter((t) => (rs.find((x) => x.talhaoId === t.id)?.produtividadeEsperada ?? 0) > 0);
+      const jaColhidas = 0; // colheita/eventos são a próxima fatia
+      const emProducao = ativos.filter((t) => (t.resumo?.produtividadeEsperada ?? 0) > 0);
       const prodMedia = emProducao.length
-        ? emProducao.reduce((a, t) => a + (rs.find((x) => x.talhaoId === t.id)?.produtividadeEsperada ?? 0), 0) / emProducao.length
+        ? emProducao.reduce((a, t) => a + (t.resumo?.produtividadeEsperada ?? 0), 0) / emProducao.length
         : 0;
       const variedades = new Set(ts.map((t) => t.variedade)).size;
       const alertaFito = rs.filter((r) => (r.ferrugem ?? 0) >= 5 || (r.broca ?? 0) >= 3).length;
       const fases = rs.map((r) => r.fase);
-      const fase = moda(fases) as FaseFenologica;
+      const fase = (fases.length ? moda(fases) : "REPOUSO") as FaseFenologica;
 
       const fitAlerta = rs.filter((r) => (r.ferrugem ?? 0) >= 5).length;
       const colherJa = rs.filter((r) => (r.maturacaoCereja ?? 0) >= 60 && r.fase !== "COLHEITA").length;
@@ -190,12 +233,18 @@ export function useDashboard() {
           { label: "Análise solo vencida", n: semSolo, tom: "bad", tab: "pla-nutricao" },
         ],
       });
-    }).finally(() => setLoading(false));
+    }).catch(() => setData(null)).finally(() => setLoading(false));
   }, []);
   return { data, loading };
 }
 
-// Tela Custo Produção -----------------------------------------------------
+// Tela Custo Produção (mock — vira real numa fatia posterior) --------------
+
+const DELAY = 80; // simula latência de rede pequena para evitar flicker
+
+function fake<T>(v: T): Promise<T> {
+  return new Promise((res) => setTimeout(() => res(v), DELAY));
+}
 
 export interface CustoPlantioData {
   custoSaca: number;
@@ -243,7 +292,7 @@ export function useCustoPlantio() {
   return { data, loading };
 }
 
-// IA ----------------------------------------------------------------------
+// IA (mock — vira real numa fatia posterior) ------------------------------
 
 export interface RespostaIa { resposta: string; lista?: string[]; rodape?: string; modo?: "ia" | "demo"; }
 
@@ -300,9 +349,4 @@ function diasDesde(iso?: string | null) {
 }
 function maxData(arr: (string | undefined)[]): string | undefined {
   return arr.filter(Boolean).sort().pop() as string | undefined;
-}
-function estimarSacasEvento(e: EventoTimeline): number {
-  // o impacto vem como "≈ 38 sc beneficiadas"
-  const m = e.impacto?.match(/(\d+(?:[\.,]\d+)?)\s*sc/);
-  return m ? Number(m[1].replace(",", ".")) : 0;
 }

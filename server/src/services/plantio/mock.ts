@@ -1,5 +1,10 @@
 /* Mocks server-side do módulo Plantio.
  *
+ * NOTA (Fatia P1): o backend de talhões/lavouras/planos/variedades já é
+ * Prisma-backed. Este arquivo segue sendo o DATASET DE DEMONSTRAÇÃO — exportado
+ * e consumido por prisma/seed-plantio.ts para popular o banco. Os mocks de
+ * dashboard/eventos/ia ainda são servidos diretamente daqui (Fatia P2).
+ *
  * Por enquanto, o backend serve os mesmos dados que o frontend mantém em
  * client/src/plantio/mock/. Quando o Prisma for plugado, essas funções viram
  * `prisma.talhao.findMany(...)` — a forma do JSON retornado ao cliente não muda.

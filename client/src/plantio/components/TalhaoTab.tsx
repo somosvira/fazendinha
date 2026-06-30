@@ -3,7 +3,6 @@ import { useTalhoes } from "../api";
 import { LavouraDomainView, PLA_TOOLBAR } from "./LavouraDomainView";
 import { DOMAINS } from "../domains";
 import type { ResumoTalhao } from "../types";
-import { resumos as mockResumos } from "../mock";
 
 type EstadoFiltro = "ATIVO" | "FORMACAO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: EstadoFiltro; lab: string }[] = [
@@ -18,12 +17,10 @@ export function TalhaoTab({ onAbrirTalhao, onNovo }: { onAbrirTalhao: (id: strin
   const [lavoura, setLavoura] = useState<string>("");
   const { data, loading, erro } = useTalhoes({ estado, lavoura: lavoura || undefined });
 
-  // Cada talhão "carrega" seu resumo do mock — em produção, o backend
-  // entrega o resumo embutido em /api/plantio/talhoes.
-  const resumos: ResumoTalhao[] = data.map((t) => {
-    const r = mockResumos.find((x) => x.talhaoId === t.id);
-    return r ?? { talhaoId: t.id, fase: "REPOUSO" } as ResumoTalhao;
-  });
+  // O backend entrega o resumo embutido em cada talhão (/api/plantio/talhoes).
+  const resumos: ResumoTalhao[] = data.map(
+    (t) => t.resumo ?? ({ talhaoId: t.id, fase: "REPOUSO" } as ResumoTalhao),
+  );
   const nomes = Object.fromEntries(data.map((t) => [
     t.id,
     {

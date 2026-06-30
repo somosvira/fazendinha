@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { lavouras, planosAdubacao } from "../../services/plantio/mock.js";
+import * as svc from "../../services/plantio/cadastros.js";
 
-/* Cadastros estáticos do Plantio — lavouras (agrupadores) e planos de adubação.
- * Espelha /api/rebanho/{lotes,dietas}. */
+/* Cadastros do Plantio — lavouras (agrupadores), planos de adubação e
+ * variedades. Espelha /api/rebanho/{lotes,dietas,racas}. Persistência via Prisma. */
 export const plantioCadastrosRouter = new Hono()
-  .get("/plantio/lavouras", (c) => c.json(lavouras))
-  .get("/plantio/planos-adubacao", (c) => c.json(planosAdubacao));
+  .get("/plantio/lavouras", async (c) => c.json(await svc.listarLavouras()))
+  .get("/plantio/planos-adubacao", async (c) => c.json(await svc.listarPlanos()))
+  .get("/plantio/variedades", async (c) => c.json(await svc.listarVariedades()));

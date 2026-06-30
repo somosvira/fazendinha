@@ -23,13 +23,15 @@ export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba
   const [talhaoId, setTalhaoId] = useState<string | null>(null);
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; talhao?: Talhao } | null>(null);
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
+  // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
+  const [recarga, setRecarga] = useState(0);
 
   return (
     <div className="rb">
       {talhaoId
-        ? <TalhaoCockpit talhaoId={talhaoId} onVoltar={() => setTalhaoId(null)} />
+        ? <TalhaoCockpit key={recarga} talhaoId={talhaoId} onVoltar={() => setTalhaoId(null)} />
         : aba === "talhao"
-          ? <TalhaoTab onAbrirTalhao={setTalhaoId} onNovo={() => setForm({ modo: "novo" })} />
+          ? <TalhaoTab key={recarga} onAbrirTalhao={setTalhaoId} onNovo={() => setForm({ modo: "novo" })} />
           : aba === "fenologia"
             ? <FenologiaTab onAbrirTalhao={setTalhaoId} />
             : aba === "fitossanidade"
@@ -45,7 +47,7 @@ export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba
                       : aba === "dashboard"
                         ? <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />
                         : <IaView />}
-      {form && <TalhaoForm modo={form.modo} talhao={form.talhao} onFechar={() => setForm(null)} onSalvo={() => setForm(null)} />}
+      {form && <TalhaoForm modo={form.modo} talhao={form.talhao} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
         <OperacaoForm
           talhaoId={registroInline.talhao.id}
