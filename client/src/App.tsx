@@ -20,6 +20,7 @@ import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
+import { CommandPalette } from "./components/CommandPalette";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
@@ -80,6 +81,19 @@ export function App() {
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
+
+  // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setBuscaAberta((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // body lock + tecla esc fecham o drawer mobile
   useEffect(() => {
@@ -162,6 +176,7 @@ export function App() {
         onSwitchUser={enterViewAs}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        onAbrirBusca={() => setBuscaAberta(true)}
       />
       <AppSidebar
         current={tab}
@@ -191,6 +206,18 @@ export function App() {
         )}
         {conteudo}
       </main>
+      <CommandPalette
+        aberto={buscaAberta}
+        onFechar={() => setBuscaAberta(false)}
+        onNav={setTab}
+        podeVer={(t) => {
+          const s = String(t);
+          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
+          if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
+          if (t === "acessos") return isAdmin;
+          return canSee(t);
+        }}
+      />
     </div>
   );
 }
