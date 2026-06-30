@@ -36,7 +36,36 @@ export const listFiltrosSchema = z.object({
   q: z.string().max(40).optional(),
 });
 
+// Registro de operação agrícola pela OperacaoForm do cliente.
+const dominioCultural = z.enum(["FENOLOGIA", "FITOSSANIDADE", "NUTRICAO", "COLHEITA"]);
+const tipoOperacao = z.enum([
+  "ADUBACAO_SOLO", "ADUBACAO_FOLIAR", "CALAGEM", "GESSAGEM",
+  "APLICACAO_FUNGICIDA", "APLICACAO_INSETICIDA", "APLICACAO_HERBICIDA",
+  "ROCAGEM_MECANICA", "CAPINA_MANUAL",
+  "PODA_RECEPA", "PODA_DECOTE", "PODA_ESQUELETAMENTO", "PODA_DESPONTE",
+  "DESBROTA", "IRRIGACAO", "REPLANTIO",
+  "AMOSTRAGEM_SOLO", "AMOSTRAGEM_FOLIAR", "MONITORAMENTO_MIP",
+]);
+const pragaDoenca = z.enum([
+  "FERRUGEM", "CERCOSPORIOSE", "BICHO_MINEIRO", "BROCA_DO_CAFE",
+  "ACARO_VERMELHO", "NEMATOIDES", "ANTRACNOSE", "MANCHA_AUREOLADA",
+  "FUMAGINA", "ROSELINIA", "COCHONILHAS", "OUTRA",
+]);
+
+export const criarOperacaoSchema = z.object({
+  dominio: dominioCultural,
+  tipo: tipoOperacao,
+  data: isoDate,
+  responsavel: z.string().max(80).optional(),
+  produto: z.string().max(200).optional(),
+  observacao: z.string().max(400).optional(),
+  doseValor: z.number().nonnegative().optional(),
+  doseUnidade: z.string().max(20).optional(),
+  pragaAlvo: pragaDoenca.optional(),
+});
+
 export type CriarTalhaoInput = z.infer<typeof criarTalhaoSchema>;
 export type EditarTalhaoInput = z.infer<typeof editarTalhaoSchema>;
 export type BaixaInput = z.infer<typeof baixaSchema>;
 export type ListFiltros = z.infer<typeof listFiltrosSchema>;
+export type CriarOperacaoInput = z.infer<typeof criarOperacaoSchema>;
