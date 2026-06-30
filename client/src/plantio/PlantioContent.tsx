@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TalhaoCockpit } from "./components/TalhaoCockpit";
 import { TalhaoTab } from "./components/TalhaoTab";
 import { FenologiaTab } from "./components/FenologiaTab";
@@ -26,6 +26,9 @@ export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
+
+  // Trocar de sub-aba fecha qualquer cockpit de talhão aberto (espelha RebanhoContent).
+  useEffect(() => { setTalhaoId(null); }, [aba]);
 
   return (
     <div className="rb">

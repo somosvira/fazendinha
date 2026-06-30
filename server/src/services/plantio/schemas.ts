@@ -56,12 +56,12 @@ export const criarOperacaoSchema = z.object({
   dominio: dominioCultural,
   tipo: tipoOperacao,
   data: isoDate,
-  responsavel: z.string().max(80).optional(),
-  produto: z.string().max(200).optional(),
-  observacao: z.string().max(400).optional(),
-  doseValor: z.number().nonnegative().optional(),
-  doseUnidade: z.string().max(20).optional(),
-  pragaAlvo: pragaDoenca.optional(),
+  responsavel: z.string().max(80).nullish(),
+  produto: z.string().max(200).nullish(),
+  observacao: z.string().max(400).nullish(),
+  doseValor: z.number().nonnegative().nullish(),
+  doseUnidade: z.string().max(20).nullish(),
+  pragaAlvo: pragaDoenca.nullish(),
 });
 
 export type CriarTalhaoInput = z.infer<typeof criarTalhaoSchema>;

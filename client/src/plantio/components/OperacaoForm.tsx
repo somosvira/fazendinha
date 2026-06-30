@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
-import { registrarOperacao } from "../api";
+import { registrarOperacao, type OperacaoInput } from "../api";
 import { HOJE } from "../HOJE";
 
 // Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
@@ -123,7 +123,8 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
 
       const { doseValor, doseUnidade } = parseDose(dose);
       await registrarOperacao(talhaoId, {
-        dominio, tipo, data,
+        // backend espera o enum em maiúsculas (FENOLOGIA/FITOSSANIDADE/NUTRICAO/COLHEITA)
+        dominio: dominio.toUpperCase() as OperacaoInput["dominio"], tipo, data,
         responsavel: responsavel.trim() || undefined,
         produto: produto.trim() || undefined,
         observacao: obs,

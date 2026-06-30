@@ -28,7 +28,7 @@ const apontamentoInclude = {
   talhao: { select: { codigo: true } },
 } as const;
 
-const d = (s?: string) => (s ? new Date(s) : undefined);
+const d = (s?: string | null) => (s ? new Date(s) : undefined);
 
 // ── Safras ────────────────────────────────────────────────────────────────
 export async function listarSafras() {
@@ -84,7 +84,7 @@ export async function listarTarefas(safraId?: number) {
   return rows.map(toTarefaDTO);
 }
 
-async function assertTarefaRefs(input: { safraId?: number; talhaoId?: number; lavouraId?: number }) {
+async function assertTarefaRefs(input: { safraId?: number | null; talhaoId?: number | null; lavouraId?: number | null }) {
   if (input.safraId != null && !(await prisma.safra.findUnique({ where: { id: input.safraId } })))
     throw new PlanejamentoError("REF_INVALIDA", "safra inexistente");
   if (input.talhaoId && !(await prisma.talhao.findUnique({ where: { id: input.talhaoId } })))
@@ -109,7 +109,8 @@ export async function criarTarefa(input: CriarTarefaInput) {
       qtdTotalPrev: input.qtdTotalPrev,
       dataPrevista: d(input.dataPrevista),
       custoPrev: input.custoPrev,
-      status: input.status,
+      // status não é nullable no banco (default PLANEJADA) — null vira undefined.
+      status: input.status ?? undefined,
     },
     include: tarefaInclude,
   });
@@ -139,7 +140,8 @@ export async function editarTarefa(id: number, input: EditarTarefaInput) {
       qtdTotalReal: input.qtdTotalReal,
       dataRealizada: d(input.dataRealizada),
       custoReal: input.custoReal,
-      status: input.status,
+      // status não é nullable no banco (default PLANEJADA) — null vira undefined.
+      status: input.status ?? undefined,
       observacao: input.observacao,
     },
     include: tarefaInclude,
@@ -160,7 +162,7 @@ export async function listarApontamentos(safraId?: number) {
   return rows.map(toApontamentoDTO);
 }
 
-async function assertApontamentoRefs(input: { safraId?: number; talhaoId?: number }) {
+async function assertApontamentoRefs(input: { safraId?: number | null; talhaoId?: number | null }) {
   if (input.safraId && !(await prisma.safra.findUnique({ where: { id: input.safraId } })))
     throw new PlanejamentoError("REF_INVALIDA", "safra inexistente");
   if (input.talhaoId && !(await prisma.talhao.findUnique({ where: { id: input.talhaoId } })))

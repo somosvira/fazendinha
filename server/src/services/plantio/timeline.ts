@@ -151,7 +151,9 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput)
   const o = await prisma.operacaoAgricola.create({
     data: {
       talhaoId,
-      dominio: input.dominio,
+      // Domínio é derivado do tipo (server-authoritative): nunca diverge do que a
+      // timeline reconstrói na leitura. O input.dominio do cliente é ignorado aqui.
+      dominio: dominioDaOperacao(input.tipo).toUpperCase() as CriarOperacaoInput["dominio"],
       tipo: input.tipo,
       data,
       responsavel: input.responsavel ?? null,

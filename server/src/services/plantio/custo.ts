@@ -20,15 +20,24 @@ export async function agregarCustoPlantio(meses = 12) {
   const desde = new Date();
   desde.setMonth(desde.getMonth() - meses);
 
-  // 1) Lançamentos reais de café (mesmos filtros do dashboard financeiro:
-  //    LIQUIDADO, estornado=false, DEBITO, dataLiquidacao recente).
+  // 1a) Resolve os centros de custo do café por nome, case-insensitive — o seed
+  //     grava "Plantio Café - Investimento" (I maiúsculo) enquanto CENTROS_CAFE
+  //     lista a variante minúscula; um `in` exato deixaria o investimento de fora.
+  const centrosCafe = await prisma.centroCusto.findMany({
+    where: { OR: CENTROS_CAFE.map((nome) => ({ nome: { equals: nome, mode: "insensitive" as const } })) },
+    select: { id: true },
+  });
+  const centroCafeIds = centrosCafe.map((c) => c.id);
+
+  // 1b) Lançamentos reais de café (mesmos filtros do dashboard financeiro:
+  //     LIQUIDADO, estornado=false, DEBITO, dataLiquidacao recente).
   const lancs = await prisma.lancamento.findMany({
     where: {
       situacao: "LIQUIDADO",
       estornado: false,
       natureza: "DEBITO",
       dataLiquidacao: { not: null, gte: desde },
-      centroCusto: { nome: { in: [...CENTROS_CAFE] } },
+      centroCustoId: { in: centroCafeIds },
     },
     select: {
       valor: true,

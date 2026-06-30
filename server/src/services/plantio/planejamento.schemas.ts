@@ -30,42 +30,42 @@ export const editarSafraSchema = criarSafraSchema.partial().extend({
 // ── Tarefa ────────────────────────────────────────────────────────────────
 export const criarTarefaSchema = z.object({
   safraId: z.number().int().positive(),
-  talhaoId: z.number().int().positive().optional(),
-  lavouraId: z.number().int().positive().optional(),
+  talhaoId: z.number().int().positive().nullish(),
+  lavouraId: z.number().int().positive().nullish(),
   tipo: tipoOperacao,
   descricao: z.string().min(1, "descrição é obrigatória").max(200),
-  responsavel: z.string().max(80).optional(),
-  produto: z.string().max(200).optional(),
-  unidade: z.string().max(20).optional(),
-  qtdHaPrev: z.number().nonnegative().optional(),
-  qtdTotalPrev: z.number().nonnegative().optional(),
-  dataPrevista: isoDate.optional(),
-  custoPrev: z.number().nonnegative().optional(),
-  status: statusTarefa.optional(),
+  responsavel: z.string().max(80).nullish(),
+  produto: z.string().max(200).nullish(),
+  unidade: z.string().max(20).nullish(),
+  qtdHaPrev: z.number().nonnegative().nullish(),
+  qtdTotalPrev: z.number().nonnegative().nullish(),
+  dataPrevista: isoDate.nullish(),
+  custoPrev: z.number().nonnegative().nullish(),
+  status: statusTarefa.nullish(),
 });
 
 // PATCH — também é como "marcar realizado" funciona (qtdReal/dataReal/custoReal/status).
 export const editarTarefaSchema = criarTarefaSchema.partial().extend({
-  qtdHaReal: z.number().nonnegative().optional(),
-  qtdTotalReal: z.number().nonnegative().optional(),
-  dataRealizada: isoDate.optional(),
-  custoReal: z.number().nonnegative().optional(),
-  observacao: z.string().max(400).optional(),
+  qtdHaReal: z.number().nonnegative().nullish(),
+  qtdTotalReal: z.number().nonnegative().nullish(),
+  dataRealizada: isoDate.nullish(),
+  custoReal: z.number().nonnegative().nullish(),
+  observacao: z.string().max(400).nullish(),
 });
 
 // ── Apontamento (hora-máquina / hora-homem) ─────────────────────────────────
 export const criarApontamentoSchema = z.object({
-  safraId: z.number().int().positive().optional(),
-  talhaoId: z.number().int().positive().optional(),
+  safraId: z.number().int().positive().nullish(),
+  talhaoId: z.number().int().positive().nullish(),
   data: isoDate,
   tipo: tipoApontamento,
   recurso: z.string().min(1, "recurso é obrigatório").max(120),
-  operador: z.string().max(80).optional(),
-  implemento: z.string().max(120).optional(),
+  operador: z.string().max(80).nullish(),
+  implemento: z.string().max(120).nullish(),
   horas: z.number().nonnegative(),
-  valorHora: z.number().nonnegative().optional(),
-  valorTotal: z.number().nonnegative().optional(),
-  observacao: z.string().max(400).optional(),
+  valorHora: z.number().nonnegative().nullish(),
+  valorTotal: z.number().nonnegative().nullish(),
+  observacao: z.string().max(400).nullish(),
 });
 
 export type CriarSafraInput = z.infer<typeof criarSafraSchema>;

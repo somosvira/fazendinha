@@ -74,7 +74,9 @@ export interface TalhaoInput {
 // LISTAGENS / CRUD --------------------------------------------------------
 
 export const listarTalhoes = (f?: { estado?: string; lavoura?: string; q?: string }) =>
-  req<Talhao[]>(`/plantio/talhoes${qs(f && f.estado === "TODOS" ? { ...f, estado: undefined } : f)}`);
+  // estado é repassado como veio (inclusive "TODOS"): o backend aceita "TODOS" no
+  // listFiltrosSchema e o service trata `estado === "TODOS"` como "sem filtro de estado".
+  req<Talhao[]>(`/plantio/talhoes${qs(f)}`);
 export const obterTalhao = (id: string) => req<Talhao>(`/plantio/talhoes/${id}`);
 // O detalhe do talhão já vem com `.resumo` embutido — derivamos o resumo dele.
 export const obterResumo = (id: string) => obterTalhao(id).then((t) => t.resumo ?? null);
