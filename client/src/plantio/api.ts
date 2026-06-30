@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica } from "./types";
+import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento } from "./types";
 import { HOJE } from "./HOJE";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -154,6 +154,113 @@ export function usePlanosAdubacao() {
   const recarregar = useCallback(() => { listarPlanos().then(setData).catch(() => {}); }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, recarregar };
+}
+
+// PLANEJAMENTO DA SAFRA (Fatia P3 — camada operacional Ideagri) -----------
+
+// Payloads de escrita — espelham o body aceito pelos endpoints /plantio/{safras,tarefas,apontamentos}.
+export interface SafraInput {
+  nome: string;
+  dataInicio: string;       // YYYY-MM-DD
+  dataFim: string;          // YYYY-MM-DD
+  centroCustoId?: number | null;
+}
+
+export interface TarefaInput {
+  safraId: number;
+  descricao: string;
+  tipo: string;             // TipoOperacao
+  talhaoId?: number | null;
+  lavouraId?: number | null;
+  responsavel?: string | null;
+  produto?: string | null;
+  unidade?: string | null;
+  qtdHaPrev?: number | null;
+  qtdTotalPrev?: number | null;
+  dataPrevista?: string | null;
+  custoPrev?: number | null;
+  // Campos de realizado — só no fluxo "Realizar" (PATCH).
+  qtdHaReal?: number | null;
+  qtdTotalReal?: number | null;
+  dataRealizada?: string | null;
+  custoReal?: number | null;
+  status?: string;          // PLANEJADA | EM_ANDAMENTO | CONCLUIDA | CANCELADA
+}
+
+export interface ApontamentoInput {
+  safraId?: number | null;
+  talhaoId?: number | null;
+  data: string;             // YYYY-MM-DD
+  tipo: "MAQUINA" | "HOMEM";
+  recurso: string;
+  operador?: string | null;
+  implemento?: string | null;
+  horas: number;
+  valorHora?: number | null;
+  observacao?: string | null;
+}
+
+// Safras
+export const listarSafras = () => req<SafraDTO[]>(`/plantio/safras`);
+export const criarSafra = (input: SafraInput) =>
+  req<SafraDTO>(`/plantio/safras`, { method: "POST", body: JSON.stringify(input) });
+export const editarSafra = (id: number, input: Partial<SafraInput> & { fechada?: boolean }) =>
+  req<SafraDTO>(`/plantio/safras/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+// Tarefas (planejado × realizado)
+export const listarTarefas = (safraId: number) =>
+  req<TarefaPlanejada[]>(`/plantio/tarefas${qs({ safraId })}`);
+export const criarTarefa = (input: TarefaInput) =>
+  req<TarefaPlanejada>(`/plantio/tarefas`, { method: "POST", body: JSON.stringify(input) });
+export const editarTarefa = (id: number, input: Partial<TarefaInput>) =>
+  req<TarefaPlanejada>(`/plantio/tarefas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const excluirTarefa = (id: number) =>
+  req<{ ok: true }>(`/plantio/tarefas/${id}`, { method: "DELETE" });
+
+// Apontamentos (hora-máquina / hora-homem)
+export const listarApontamentos = (safraId: number) =>
+  req<Apontamento[]>(`/plantio/apontamentos${qs({ safraId })}`);
+export const criarApontamento = (input: ApontamentoInput) =>
+  req<Apontamento>(`/plantio/apontamentos`, { method: "POST", body: JSON.stringify(input) });
+export const excluirApontamento = (id: number) =>
+  req<{ ok: true }>(`/plantio/apontamentos/${id}`, { method: "DELETE" });
+
+export function useSafras() {
+  const [data, setData] = useState<SafraDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarSafras().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useTarefas(safraId: number | null) {
+  const [data, setData] = useState<TarefaPlanejada[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (safraId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarTarefas(safraId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [safraId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useApontamentos(safraId: number | null) {
+  const [data, setData] = useState<Apontamento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (safraId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarApontamentos(safraId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [safraId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
 }
 
 // DASHBOARD ---------------------------------------------------------------

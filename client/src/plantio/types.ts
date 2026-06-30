@@ -174,6 +174,72 @@ export type TipoOperacao =
   | "REPLANTIO"
   | "AMOSTRAGEM_SOLO" | "AMOSTRAGEM_FOLIAR" | "MONITORAMENTO_MIP";
 
+// ── Planejamento da safra (Fatia P3 — camada operacional Ideagri) ──────────
+// Resumo pré-computado da safra (read-model do backend) — alimenta a KPI-strip.
+export interface ResumoSafra {
+  tarefasTotal: number;
+  tarefasConcluidas: number;
+  custoPrevTotal: number;
+  custoRealTotal: number;
+  horasMaquina: number;
+  horasHomem: number;
+  custoOperacional: number;
+}
+
+// Safra = janela de operação (espelho de uma "campanha"); agrupa tarefas e
+// apontamentos. `centroCustoNome` liga ao financeiro (Atividade Café).
+export interface SafraDTO {
+  id: number;
+  nome: string;             // ex.: "Safra 2025/26"
+  dataInicio: string;       // YYYY-MM-DD
+  dataFim: string;          // YYYY-MM-DD
+  fechada: boolean;
+  centroCustoNome: string | null;
+  resumo: ResumoSafra;
+}
+
+// Tarefa planejada × realizada — o coração da tela. Campos `*Prev` são o
+// planejado; `*Real` ficam null até o produtor dar "Realizar".
+export interface TarefaPlanejada {
+  id: number;
+  safraId: number;
+  talhaoId: number | null;
+  talhaoCodigo: string | null;
+  lavouraId: number | null;
+  lavouraNome: string | null;
+  tipo: string;             // TipoOperacao
+  descricao: string;
+  responsavel: string | null;
+  produto: string | null;
+  unidade: string | null;
+  qtdHaPrev: number | null;
+  qtdTotalPrev: number | null;
+  dataPrevista: string | null;   // YYYY-MM-DD
+  custoPrev: number | null;
+  qtdHaReal: number | null;
+  qtdTotalReal: number | null;
+  dataRealizada: string | null;  // YYYY-MM-DD
+  custoReal: number | null;
+  status: string;           // PLANEJADA | EM_ANDAMENTO | CONCLUIDA | CANCELADA
+}
+
+// Apontamento de hora-máquina / hora-homem (medição de uso de recurso).
+export interface Apontamento {
+  id: number;
+  safraId: number | null;
+  talhaoId: number | null;
+  talhaoCodigo: string | null;
+  data: string;             // YYYY-MM-DD
+  tipo: "MAQUINA" | "HOMEM";
+  recurso: string;          // ex.: "Trator MF 4275" ou "Diarista"
+  operador: string | null;
+  implemento: string | null;
+  horas: number;
+  valorHora: number | null;
+  valorTotal: number | null;
+  observacao: string | null;
+}
+
 // Pragas e doenças (Embrapa Café — diagnose e manejo).
 export type PragaDoenca =
   | "FERRUGEM"             // Hemileia vastatrix
