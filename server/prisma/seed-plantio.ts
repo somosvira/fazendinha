@@ -348,8 +348,13 @@ async function main() {
     insumoIds.push(row.id);
   }
 
-  // Recria os movimentos só dos produtos do Plantio (idempotência sem mexer no rebanho).
-  await prisma.movimentoEstoque.deleteMany({ where: { produtoId: { in: insumoIds } } });
+  // Recria APENAS os movimentos de seed (observacao = "Saldo inicial (seed Plantio)").
+  // Preserva entradas/saídas/ajustes manuais registrados depois pela UI — re-rodar
+  // a seed não deve destruir histórico operacional. Idempotente.
+  const OBS_SEED = "Saldo inicial (seed Plantio)";
+  await prisma.movimentoEstoque.deleteMany({
+    where: { produtoId: { in: insumoIds }, observacao: OBS_SEED },
+  });
 
   let entradasCriadas = 0;
   for (const ins of INSUMOS_PLANTIO) {
@@ -365,7 +370,7 @@ async function main() {
         quantidade: ins.saldoInicial,
         custoUnitario: ins.custo,
         valorTotal,
-        observacao: "Saldo inicial (seed Plantio)",
+        observacao: OBS_SEED,
       },
     });
     entradasCriadas++;
