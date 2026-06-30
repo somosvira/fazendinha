@@ -1,10 +1,10 @@
 import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import { responderIA } from "../../services/plantio/ia.js";
 
-export const plantioIaRouter = new Hono()
-  .post("/plantio/ia", async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    const pergunta = String(body?.pergunta ?? "").trim();
-    if (!pergunta) return c.json({ resposta: "Faça uma pergunta sobre a lavoura.", modo: "demo" });
-    return c.json(responderIA(pergunta));
-  });
+const schema = z.object({ pergunta: z.string().min(1).max(2000) });
+
+export const plantioIaRouter = new Hono().post("/plantio/ia", zValidator("json", schema), async (c) =>
+  c.json(await responderIA(c.req.valid("json").pergunta)),
+);
