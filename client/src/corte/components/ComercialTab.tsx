@@ -17,12 +17,13 @@ const CURVA_B3 = [
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
-export function ComercialTab({ onAbrirLote }: { onAbrirLote: (id: string) => void }) {
+export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => void }) {
   const [aba, setAba] = useState<"painel" | "simulador">("painel");
   const { data, loading } = useLotes({ estado: "ATIVO" });
 
   if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Comercial</h1></div><p className="rb-sub">Carregando…</p></main>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
+  const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrar(l); };
 
   if (aba === "simulador") return <Simulador lotes={data} onVoltar={() => setAba("painel")} />;
 
@@ -32,7 +33,8 @@ export function ComercialTab({ onAbrirLote }: { onAbrirLote: (id: string) => voi
       resumos={resumos}
       lotes={data}
       insight={insightDaFazenda("comercial")}
-      onAbrirLote={onAbrirLote}
+      onAbrirLote={abrir}
+      dicaLinha="clique num lote pra registrar venda / operação"
       controles={
         <>
           <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
