@@ -120,12 +120,13 @@ function UserPicker({ user, allUsers, onSwitchUser }: {
   );
 }
 
-export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle }: {
+export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca }: {
   user: User;
   allUsers: User[] | null;
   onSwitchUser: (id: string) => void;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  onAbrirBusca?: () => void;
 }) {
   const atual = fazendas.find((f) => f.id === fazendaAtualId) || fazendas[0];
 
@@ -149,6 +150,17 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
       </div>
 
       <FarmPicker atual={atual} />
+
+      {onAbrirBusca && (
+        <button className="ah-search" onClick={onAbrirBusca} aria-label="Pesquisar páginas e recursos">
+          <svg className="ah-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <span className="ah-search-txt">Pesquisar páginas e recursos…</span>
+          <span className="ah-search-kbd" aria-hidden>⌘K</span>
+        </button>
+      )}
 
       <div className="ah-spacer" />
 

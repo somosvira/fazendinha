@@ -1,0 +1,256 @@
+/* Rio Novo — command palette (⌘K). Escopo .cmdk-*.
+ * Painel claro arredondado, sombra suave, backdrop escuro com blur.
+ * Usa as variáveis de paleta e as fontes do app (DM Sans / Newsreader). */
+
+/* ---- gatilho visível no header (masthead escuro) ---- */
+.ah-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 340px;
+  flex: 0 1 340px;
+  background: var(--mast-bg-2);
+  color: var(--mast-ink-2);
+  border: 1px solid #2a3025;
+  border-radius: 9px;
+  padding: 6px 8px 6px 10px;
+  cursor: text;
+  font-family: var(--sans);
+  text-align: left;
+  margin-left: 6px;
+}
+.ah-search:hover { background: #1f2521; border-color: #343b30; }
+.ah-search-ic { width: 16px; height: 16px; flex: 0 0 auto; opacity: 0.85; }
+.ah-search-txt {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-search-kbd {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--mast-ink-2);
+  border: 1px solid #343b30;
+  border-radius: 6px;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+/* Em telas estreitas o campo vira só a lupa (rótulo + atalho somem). */
+@media (max-width: 760px) {
+  .ah-search { flex: 0 0 auto; max-width: none; padding: 6px; }
+  .ah-search-txt, .ah-search-kbd { display: none; }
+}
+
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: rgba(14, 19, 17, 0.46);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: cmdk-fade 0.12s ease-out;
+}
+
+@keyframes cmdk-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cmdk-panel {
+  width: 100%;
+  max-width: 640px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 64px rgba(14, 19, 17, 0.32),
+    0 4px 12px rgba(14, 19, 17, 0.14);
+  font-family: var(--sans);
+  overflow: hidden;
+  animation: cmdk-pop 0.13s ease-out;
+}
+
+@keyframes cmdk-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- barra de busca ---- */
+.cmdk-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.cmdk-search-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-3);
+  flex: 0 0 auto;
+}
+.cmdk-search-icon svg { width: 18px; height: 18px; }
+
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.3;
+  padding: 2px 0;
+}
+.cmdk-input::placeholder { color: var(--ink-mute); }
+
+.cmdk-esc {
+  flex: 0 0 auto;
+  border: 1px solid var(--rule);
+  background: var(--bg-card-2);
+  color: var(--ink-3);
+  border-radius: 7px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.cmdk-esc:hover { background: var(--rule-soft); }
+
+/* ---- lista de resultados ---- */
+.cmdk-list {
+  overflow-y: auto;
+  padding: 8px 8px 10px;
+  flex: 1;
+}
+
+.cmdk-dicas {
+  padding: 6px 12px 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cmdk-dicas em { font-style: normal; font-weight: 600; color: var(--ink-2); }
+
+.cmdk-group { margin-bottom: 4px; }
+.cmdk-group-head {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.cmdk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.cmdk-row.is-active {
+  background: var(--leite-soft);
+}
+.cmdk-row.is-active .cmdk-row-crumb { color: var(--ink-3); }
+
+.cmdk-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--bg-card-2);
+}
+
+.cmdk-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.cmdk-row-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmdk-row-desc {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmdk-row-crumb {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.02em;
+}
+
+.cmdk-empty {
+  padding: 22px 12px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+/* ---- rodapé com dicas de teclado ---- */
+.cmdk-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--rule-soft);
+  background: var(--bg-card-2);
+}
+.cmdk-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.cmdk-hint kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--bg-card);
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 600px) {
+  .cmdk-backdrop { padding: 8vh 10px 10px; }
+  .cmdk-panel { max-height: 80vh; }
+  .cmdk-input { font-size: 16px; }
+  .cmdk-row-crumb { display: none; }
+}
