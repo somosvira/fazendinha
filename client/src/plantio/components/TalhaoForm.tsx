@@ -1,30 +1,50 @@
-import { useState } from "react";
-import type { Talhao, VariedadeCafe } from "../types";
-
-const VARIEDADES: VariedadeCafe[] = [
-  "Catuaí Vermelho IAC 144", "Catuaí Amarelo IAC 144", "Catuaí Amarelo IAC 62",
-  "Catuaí Vermelho IAC 99", "Catuaí Vermelho IAC 81",
-  "Mundo Novo IAC 379-19", "Mundo Novo IAC 502-9",
-  "Topázio MG-1190", "Acauã", "Acauã Novo",
-  "Bourbon Amarelo", "Icatu", "Arara", "Asa Branca", "Paraíso MG H 419-1",
-];
+import { useEffect, useState } from "react";
+import type { Talhao } from "../types";
+import { criarTalhao, editarTalhao, darBaixa, listarVariedades, useLavouras, type VariedadeDTO, type TalhaoInput } from "../api";
+import { HOJE } from "../HOJE";
 
 export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" | "editar" | "baixa"; talhao?: Talhao; onFechar: () => void; onSalvo: () => void }) {
   const t = talhao;
+  const { data: lavouras } = useLavouras();
+  const [variedades, setVariedades] = useState<VariedadeDTO[]>([]);
+
   const [codigo, setCodigo] = useState(t?.codigo ?? "");
   const [nome, setNome] = useState(t?.nome ?? "");
-  const [variedade, setVariedade] = useState<VariedadeCafe>(t?.variedade ?? "Catuaí Vermelho IAC 144");
-  const [lavoura, setLavoura] = useState(t?.lavoura ?? "");
+  const [variedadeId, setVariedadeId] = useState<string>("");
+  const [lavouraId, setLavouraId] = useState<string>("");
   const [areaHa, setAreaHa] = useState<string>(String(t?.areaHa ?? ""));
   const [espRua, setEspRua] = useState<string>(t?.espacamento?.split("×")[0]?.trim().replace(",", ".").replace(" m", "") ?? "3.80");
   const [espPe, setEspPe] = useState<string>(t?.espacamento?.split("×")[1]?.trim().replace(",", ".").replace(" m", "") ?? "0.60");
   const [anoPlantio, setAnoPlantio] = useState<string>(String(t?.anoPlantio ?? new Date().getFullYear()));
   const [altitude, setAltitude] = useState<string>(String(t?.altitude ?? "1000"));
   const [exposicao, setExposicao] = useState<string>(t?.exposicao ?? "");
-  const [declive, setDeclive] = useState<string>(String(t?.declive ?? ""));
+  const [declive, setDeclive] = useState<string>(t?.declive != null ? String(t.declive) : "");
   const [irrigado, setIrrigado] = useState<boolean>(!!t?.irrigado);
+  const [dataPlantio, setDataPlantio] = useState<string>(t?.dataPlantio ?? "");
   const [motivoBaixa, setMotivoBaixa] = useState<string>("");
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    listarVariedades().then((vs) => {
+      setVariedades(vs);
+      // Ao editar, casa o nome da variedade do talhão de volta no id correspondente.
+      if (t?.variedade) {
+        const m = vs.find((v) => v.nome === t.variedade);
+        if (m) setVariedadeId(String(m.id));
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ao editar, casa o nome da lavoura do talhão de volta no id correspondente.
+  useEffect(() => {
+    if (t?.lavoura && lavouras.length && !lavouraId) {
+      const m = lavouras.find((l) => l.nome === t.lavoura);
+      if (m) setLavouraId(String(m.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lavouras]);
 
   const plantasHa = (() => {
     const r = parseFloat(espRua); const p = parseFloat(espPe);
@@ -35,16 +55,35 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
   const titulo = modo === "novo" ? "Novo talhão" : modo === "editar" ? `Editar ${t?.codigo}` : `Baixar ${t?.codigo}`;
 
   async function salvar() {
-    setSalvando(true);
-    const payload = {
-      codigo, nome, variedade, lavoura, areaHa: Number(areaHa), espacamento: `${espRua.replace(".", ",")} × ${espPe.replace(".", ",")} m`,
-      plantasHa, anoPlantio: Number(anoPlantio), altitude: Number(altitude),
-      exposicao: exposicao || null, declive: declive ? Number(declive) : null, irrigado,
-      motivoBaixa: modo === "baixa" ? motivoBaixa : undefined,
-    };
-    await new Promise((r) => setTimeout(r, 250));
-    console.log("[plantio] payload talhão:", payload);
-    onSalvo();
+    setSalvando(true); setErro(null);
+    try {
+      if (modo === "baixa" && t) {
+        await darBaixa(t.id, { motivo: motivoBaixa });
+      } else {
+        const payload: TalhaoInput = {
+          codigo,
+          nome: nome || undefined,
+          variedadeId: Number(variedadeId),
+          lavouraId: lavouraId ? Number(lavouraId) : undefined,
+          espacamento: `${espRua.replace(".", ",")} × ${espPe.replace(".", ",")} m`,
+          plantasHa,
+          areaHa: Number(areaHa),
+          anoPlantio: Number(anoPlantio),
+          altitude: altitude ? Number(altitude) : undefined,
+          exposicao: exposicao || null,
+          declive: declive ? Number(declive) : null,
+          irrigado,
+          dataPlantio: dataPlantio || `${anoPlantio}-01-01`,
+        };
+        if (modo === "novo") await criarTalhao(payload);
+        else if (t) await editarTalhao(t.id, payload);
+      }
+      onSalvo();
+    } catch (e: any) {
+      setErro(e.message);
+    } finally {
+      setSalvando(false);
+    }
   }
 
   if (modo === "baixa") {
@@ -70,6 +109,7 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
                 <option>Outro</option>
               </select>
             </div>
+            {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
           </div>
           <div className="rb-drawer-actions">
             <button className="rb-btn" onClick={onFechar}>Cancelar</button>
@@ -102,14 +142,18 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
 
           <div className="rb-fld">
             <label>Variedade*</label>
-            <select value={variedade} onChange={(e) => setVariedade(e.target.value as VariedadeCafe)}>
-              {VARIEDADES.map((v) => <option key={v} value={v}>{v}</option>)}
+            <select value={variedadeId} onChange={(e) => setVariedadeId(e.target.value)}>
+              <option value="">Selecione…</option>
+              {variedades.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
             </select>
           </div>
 
           <div className="rb-fld">
             <label>Lavoura (agrupador)</label>
-            <input value={lavoura} onChange={(e) => setLavoura(e.target.value)} placeholder="Ex.: Cafundó" />
+            <select value={lavouraId} onChange={(e) => setLavouraId(e.target.value)}>
+              <option value="">—</option>
+              {lavouras.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+            </select>
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -125,6 +169,11 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
               <label>Altitude (m)</label>
               <input type="number" value={altitude} onChange={(e) => setAltitude(e.target.value)} />
             </div>
+          </div>
+
+          <div className="rb-fld">
+            <label>Data de plantio*</label>
+            <input type="date" value={dataPlantio} onChange={(e) => setDataPlantio(e.target.value)} max={HOJE} />
           </div>
 
           <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: 12, margin: "10px 0" }}>
@@ -166,11 +215,12 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
               </label>
             </div>
           </div>
+          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
         </div>
 
         <div className="rb-drawer-actions">
           <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !codigo || !areaHa} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
+          <button className="rb-btn pri" disabled={salvando || !codigo || !areaHa || !variedadeId} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
         </div>
       </aside>
     </>

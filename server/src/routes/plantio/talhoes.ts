@@ -1,24 +1,33 @@
 import { Hono } from "hono";
-import { talhoes, resumos, anexarResumo } from "../../services/plantio/mock.js";
+import { zValidator } from "@hono/zod-validator";
+import { criarTalhaoSchema, editarTalhaoSchema, baixaSchema, listFiltrosSchema } from "../../services/plantio/schemas.js";
+import * as svc from "../../services/plantio/talhoes.js";
 
-/* Rotas de Talhão — espelham /api/rebanho/animais. Por ora servem o mock
- * estático em memória; quando o Prisma for plugado, basta trocar pelo
- * cliente Prisma mantendo a mesma forma de retorno. */
+function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
+  if (err instanceof svc.TalhaoError) {
+    const map = { NAO_ENCONTRADO: 404, CODIGO_DUPLICADO: 409, REF_INVALIDA: 400 } as const;
+    return { status: map[err.code], body: { error: err.message } };
+  }
+  console.error("[plantio/talhoes]", err);
+  return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
+}
+
+/* Rotas de Talhão — espelham /api/rebanho/animais. Persistência via Prisma. */
 export const plantioTalhoesRouter = new Hono()
-  .get("/plantio/talhoes", (c) => {
-    const url = new URL(c.req.url);
-    const estado = url.searchParams.get("estado");
-    const lavoura = url.searchParams.get("lavoura");
-    const q = url.searchParams.get("q")?.toLowerCase();
-    let arr = talhoes;
-    if (estado && estado !== "TODOS") arr = arr.filter((t) => t.estado === estado);
-    if (lavoura) arr = arr.filter((t) => t.lavoura === lavoura);
-    if (q) arr = arr.filter((t) => t.nome.toLowerCase().includes(q) || t.codigo.toLowerCase().includes(q));
-    return c.json(arr.map((t) => anexarResumo(t, resumos)));
+  .get("/plantio/talhoes", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarTalhoes(c.req.valid("query"))))
+  .get("/plantio/talhoes/:id", async (c) => {
+    const dto = await svc.obterTalhao(Number(c.req.param("id")));
+    return dto ? c.json(dto) : c.json({ error: "talhão não encontrado" }, 404);
   })
-  .get("/plantio/talhoes/:id", (c) => {
-    const id = c.req.param("id");
-    const t = talhoes.find((x) => x.id === id);
-    if (!t) return c.json({ error: "talhão não encontrado" }, 404);
-    return c.json(anexarResumo(t, resumos));
+  .post("/plantio/talhoes", zValidator("json", criarTalhaoSchema), async (c) => {
+    try { return c.json(await svc.criarTalhao(c.req.valid("json")), 201); }
+    catch (e) { const { status, body } = handle(e); return c.json(body, status); }
+  })
+  .patch("/plantio/talhoes/:id", zValidator("json", editarTalhaoSchema), async (c) => {
+    try { return c.json(await svc.editarTalhao(Number(c.req.param("id")), c.req.valid("json"))); }
+    catch (e) { const { status, body } = handle(e); return c.json(body, status); }
+  })
+  .post("/plantio/talhoes/:id/baixa", zValidator("json", baixaSchema), async (c) => {
+    try { return c.json(await svc.darBaixa(Number(c.req.param("id")), c.req.valid("json"))); }
+    catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   });

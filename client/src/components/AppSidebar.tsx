@@ -71,8 +71,6 @@ const MODULOS: Modulo[] = [
     id: "plantio",
     label: "Plantio · café",
     icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
-    // Subs preservadas para reativar quando o módulo for liberado;
-    // a flag `disabled` bloqueia a expansão e a navegação na sidebar.
     subs: [
       { id: "pla-dashboard", label: "Painel" },
       { id: "pla-talhao", label: "Talhão" },
@@ -84,7 +82,6 @@ const MODULOS: Modulo[] = [
       { id: "pla-custo", label: "Custo" },
       { id: "pla-ia", label: "IA da lavoura" },
     ],
-    disabled: true,
   },
   {
     id: "corte",
