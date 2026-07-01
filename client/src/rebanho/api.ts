@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Animal, ResumoAnimal, EventoTimeline } from "./types";
+import type { Animal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
@@ -220,6 +220,19 @@ export function useDashboard() {
 
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
 export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
+
+// Insights proativos da IA ("insights da semana") — cards reais do rebanho.
+export const listarInsights = () => req<IaInsight[]>(`/rebanho/ia/insights`);
+export function useInsights() {
+  const [data, setData] = useState<IaInsight[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let vivo = true;
+    listarInsights().then((d) => vivo && setData(d)).catch(() => vivo && setData([])).finally(() => vivo && setLoading(false));
+    return () => { vivo = false; };
+  }, []);
+  return { data, loading };
+}
 
 // ── Configuração + Produção (Fatia 7) ──────────────────────────────────────
 export type ModoProducao = "ORDENHA" | "TOTAL_DIARIO" | "TANQUE_LOTE";

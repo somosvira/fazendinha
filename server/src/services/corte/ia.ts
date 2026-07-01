@@ -5,10 +5,11 @@
 
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
-import { montarContextoCorte, contextoCorteParaTexto, type LoteCorteCtx, type OperacaoCtx, type EconomiaCtx } from "./ia.context.js";
+import { montarContextoCorte, contextoCorteParaTexto, type LoteCorteCtx, type OperacaoCtx, type EconomiaCtx, type ContextoCorte } from "./ia.context.js";
 import { responderDemo, type RespostaCorteIA } from "./ia.responder.js";
 import { responderComLLM } from "./ia.llm.js";
 import { agregarCustoCorte } from "./custo.js";
+import { gerarInsightsCorte, type IaInsightDTO } from "./ia.insights.js";
 
 const num = (x: any) => (x != null ? Number(x) : null);
 const isoOrNull = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
@@ -50,7 +51,9 @@ async function carregarOperacoes(): Promise<OperacaoCtx[]> {
   }));
 }
 
-export async function responderIA(pergunta: string): Promise<RespostaCorteIA> {
+// Monta o contexto real do corte (mesma fonte do chat) — reusado pelos insights.
+// A economia usa agregarCustoCorte (custo/@ real), com fallback null se falhar.
+async function montarContextoReal(): Promise<ContextoCorte> {
   const [lotes, operacoes, custo] = await Promise.all([
     carregarLotes(),
     carregarOperacoes(),
@@ -69,7 +72,16 @@ export async function responderIA(pergunta: string): Promise<RespostaCorteIA> {
       }
     : null;
 
-  const ctx = montarContextoCorte(lotes, operacoes, economia);
+  return montarContextoCorte(lotes, operacoes, economia);
+}
+
+// Cards proativos ("insights da semana") do corte, a partir do contexto real.
+export async function listarInsightsCorte(): Promise<IaInsightDTO[]> {
+  return gerarInsightsCorte(await montarContextoReal());
+}
+
+export async function responderIA(pergunta: string): Promise<RespostaCorteIA> {
+  const ctx = await montarContextoReal();
 
   if (env.ANTHROPIC_API_KEY) {
     try {

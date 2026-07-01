@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { insights } from "../mock";
 import { Enfase } from "./IaInsight";
-import { perguntarIA } from "../api";
+import { perguntarIA, useInsights } from "../api";
 
 const SUGESTOES = [
   "Quais lotes estão prontos pra venda?",
@@ -19,6 +18,7 @@ export function IaView() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const { data: insights, loading: carregandoInsights } = useInsights();
 
   async function enviar(p: string) {
     const pergunta = p.trim();
@@ -83,9 +83,11 @@ export function IaView() {
 
         <aside className="rb-ia-side">
           <h4>Insights da semana</h4>
-          {insights.map((ins) => (
-            <div key={ins.id} className="rb-ins"><div className="dot">✦</div><p style={{ margin: 0 }}><Enfase texto={ins.texto} /></p></div>
-          ))}
+          {carregandoInsights
+            ? <div className="rb-ins"><div className="dot">✦</div><p style={{ margin: 0, opacity: 0.6 }}>Lendo o contexto dos lotes…</p></div>
+            : insights.map((ins) => (
+                <div key={ins.id} className="rb-ins"><div className="dot">✦</div><p style={{ margin: 0 }}><Enfase texto={ins.texto} /></p></div>
+              ))}
         </aside>
       </div>
     </main>
