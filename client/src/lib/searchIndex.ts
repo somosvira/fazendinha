@@ -28,6 +28,18 @@ export interface Comando {
   descricao?: string;
 }
 
+// Resultado de entidade real vinda do backend (GET /api/busca?q=). Espelha o
+// contrato do servidor: cada item aponta para uma aba de módulo (`tab`) e traz
+// o `entidadeId` que o cockpit daquele módulo abre (talhão/animal/lote id).
+export interface ResultadoBusca {
+  tipo: "talhao" | "animal" | "lote" | "categoria" | "fornecedor";
+  entidadeId: string;
+  label: string;
+  sublabel: string;
+  tab: string;
+  grupo: string;
+}
+
 // ── O índice estático ───────────────────────────────────────────────────────
 // Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "ia"→"IA financeira"
 // e "plano"→"Categorias"; replicamos aqui para o usuário achar pelos dois nomes.

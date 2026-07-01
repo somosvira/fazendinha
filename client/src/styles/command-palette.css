@@ -218,6 +218,14 @@
   color: var(--ink-3);
 }
 
+/* dica sutil enquanto a busca de entidades reais está em voo */
+.cmdk-buscando {
+  padding: 8px 14px 10px;
+  font-size: 12px;
+  color: var(--ink-mute);
+  letter-spacing: 0.02em;
+}
+
 /* ---- rodapé com dicas de teclado ---- */
 .cmdk-footer {
   display: flex;

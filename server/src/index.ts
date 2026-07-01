@@ -34,6 +34,7 @@ import { corteDashboardRouter } from "./routes/corte/dashboard.js";
 import { corteEventosRouter } from "./routes/corte/eventos.js";
 import { corteCustoRouter } from "./routes/corte/custo.js";
 import { corteIaRouter } from "./routes/corte/ia.js";
+import { buscaRouter } from "./routes/busca.js";
 
 const app = new Hono();
 
@@ -78,6 +79,7 @@ app.route("/api", corteDashboardRouter);
 app.route("/api", corteEventosRouter);
 app.route("/api", corteCustoRouter);
 app.route("/api", corteIaRouter);
+app.route("/api", buscaRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
