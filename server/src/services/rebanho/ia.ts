@@ -4,9 +4,10 @@
 
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
-import { montarContexto, contextoParaTexto, type AnimalCtx, type LoteCtx } from "./ia.context.js";
+import { montarContexto, contextoParaTexto, type AnimalCtx, type LoteCtx, type ContextoRebanho } from "./ia.context.js";
 import { responderDemo, type RespostaIA } from "./ia.responder.js";
 import { responderComLLM } from "./ia.llm.js";
+import { gerarInsightsRebanho, type IaInsightDTO } from "./ia.insights.js";
 
 const isoOrNull = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
 
@@ -45,10 +46,20 @@ async function carregarLotes(): Promise<LoteCtx[]> {
   });
 }
 
-export async function responderPergunta(pergunta: string): Promise<RespostaIA> {
+// Monta o contexto real do rebanho (mesma fonte do chat) — reusado pelos insights.
+async function montarContextoReal(): Promise<ContextoRebanho> {
   const [animais, lotes] = await Promise.all([carregarAnimais(), carregarLotes()]);
   const hoje = new Date().toISOString().slice(0, 10);
-  const ctx = montarContexto(animais, lotes, hoje);
+  return montarContexto(animais, lotes, hoje);
+}
+
+// Cards proativos ("insights da semana") do rebanho, a partir do contexto real.
+export async function listarInsightsRebanho(): Promise<IaInsightDTO[]> {
+  return gerarInsightsRebanho(await montarContextoReal());
+}
+
+export async function responderPergunta(pergunta: string): Promise<RespostaIA> {
+  const ctx = await montarContextoReal();
 
   if (env.ANTHROPIC_API_KEY) {
     try {

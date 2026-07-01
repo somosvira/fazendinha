@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Lote, ResumoLote, EventoTimeline, Piquete, Pesagem, ManejoSanitario, Suplementacao, OperacaoComercial } from "./types";
+import type { Lote, ResumoLote, EventoTimeline, Piquete, Pesagem, ManejoSanitario, Suplementacao, OperacaoComercial, IaInsight } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
@@ -275,3 +275,16 @@ export interface RespostaIa { resposta: string; lista?: string[]; rodape?: strin
 // dados reais. O `<b>…</b>` é renderizado com segurança pelo parser `Enfase`.
 export const perguntarIA = (pergunta: string) =>
   req<RespostaIa>(`/corte/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
+
+// Insights proativos da IA ("insights da semana") — cards reais do corte.
+export const listarInsights = () => req<IaInsight[]>(`/corte/ia/insights`);
+export function useInsights() {
+  const [data, setData] = useState<IaInsight[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let vivo = true;
+    listarInsights().then((d) => vivo && setData(d)).catch(() => vivo && setData([])).finally(() => vivo && setLoading(false));
+    return () => { vivo = false; };
+  }, []);
+  return { data, loading };
+}
