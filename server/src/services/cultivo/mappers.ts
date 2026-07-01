@@ -100,13 +100,17 @@ export function toMovimentoSiloDTO(m: any) {
 }
 
 // Read-model ResumoSafraCultivo. `nota` não é persistida no banco (deriva de
-// producaoGraoSc/producaoSilagemTon + existência de áreas) — recomputada aqui
-// pra manter a UI consistente com calcularResumoSafra sem duplicar no schema.
+// producaoGraoSc/producaoSilagemTon + custoSaca/custoTonelada nulos) —
+// recomputada aqui pra manter a UI consistente com calcularResumoSafra sem
+// duplicar no schema. O gatilho é o mesmo em ambos os ramos de
+// calcularResumoSafra que zeram os dois custos por unidade numa safra mista
+// (nível-safra sem áreas, ou com áreas mas saída mista/custeio compartilhado)
+// — por isso a mensagem aqui é genérica, sem assumir qual dos dois ocorreu.
 export function toResumoSafraCultivoDTO(r: any) {
   if (!r) return null;
   const temGrao = Number(r.producaoGraoSc) > 0;
   const temSilagem = Number(r.producaoSilagemTon) > 0;
-  const notaMistaSemAreas = r.custoSaca == null && r.custoTonelada == null && temGrao && temSilagem;
+  const notaSafraMista = r.custoSaca == null && r.custoTonelada == null && temGrao && temSilagem;
   return {
     safraCultivoId: r.safraCultivoId,
     custeioTotal: num(r.custeioTotal)!,
@@ -118,7 +122,9 @@ export function toResumoSafraCultivoDTO(r: any) {
     custoSaca: num(r.custoSaca),
     custoTonelada: num(r.custoTonelada),
     horasMaquinaTotal: num(r.horasMaquinaTotal)!,
-    nota: notaMistaSemAreas ? "Safra mista (grão + silagem) sem áreas — cadastre áreas para custo por unidade." : null,
+    nota: notaSafraMista
+      ? "Safra mista (grão + silagem) — custo por unidade requer áreas com saída única e sem custeio compartilhado."
+      : null,
     atualizadoEm: r.atualizadoEm ? new Date(r.atualizadoEm).toISOString() : null,
   };
 }

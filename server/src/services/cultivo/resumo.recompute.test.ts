@@ -82,4 +82,53 @@ describe("calcularResumoSafra", () => {
     expect(r.custoTonelada).toBeNull();
     expect(Number.isNaN(r.custoHa as number)).toBe(false);
   });
+
+  it("com áreas: área de saída mista (grão+silagem) → custoSaca/ton null + nota (não duplica custeio)", () => {
+    const r = calcularResumoSafra({
+      areaHaTotal: 0,
+      areas: [{ id: 1, areaHa: 50 }],
+      custos: [{ classe: "CUSTEIO", valor: 1000, areaCultivoId: 1 }],
+      producoes: [
+        { tipo: "GRAO", quantidade: 100, areaCultivoId: 1 },
+        { tipo: "SILAGEM", quantidade: 50, areaCultivoId: 1 },
+      ],
+    });
+    expect(r.custoSaca).toBeNull();
+    expect(r.custoTonelada).toBeNull();
+    expect(r.nota).toMatch(/atribua os custos/i);
+  });
+
+  it("com áreas + custeio compartilhado (sem área) e saída mista → null + nota (não descarta o compartilhado)", () => {
+    const r = calcularResumoSafra({
+      areaHaTotal: 0,
+      areas: [{ id: 1, areaHa: 60 }, { id: 2, areaHa: 40 }],
+      custos: [
+        { classe: "CUSTEIO", valor: 6000, areaCultivoId: 1 },
+        { classe: "CUSTEIO", valor: 4000, areaCultivoId: 2 },
+        { classe: "CUSTEIO", valor: 300, areaCultivoId: null },
+      ],
+      producoes: [
+        { tipo: "GRAO", quantidade: 300, areaCultivoId: 1 },
+        { tipo: "SILAGEM", quantidade: 100, areaCultivoId: 2 },
+      ],
+    });
+    expect(r.custoSaca).toBeNull();
+    expect(r.custoTonelada).toBeNull();
+    expect(r.nota).toMatch(/compartilhado/i);
+  });
+
+  it("com áreas + custeio compartilhado, saída única grão → custeio total (incl. compartilhado) / sacas", () => {
+    const r = calcularResumoSafra({
+      areaHaTotal: 0,
+      areas: [{ id: 1, areaHa: 50 }],
+      custos: [
+        { classe: "CUSTEIO", valor: 1000, areaCultivoId: 1 },
+        { classe: "CUSTEIO", valor: 300, areaCultivoId: null },
+      ],
+      producoes: [{ tipo: "GRAO", quantidade: 100, areaCultivoId: 1 }],
+    });
+    expect(r.custoSaca).toBe(13);
+    expect(r.custoTonelada).toBeNull();
+    expect(r.nota).toBeNull();
+  });
 });

@@ -28,13 +28,36 @@ export function calcularResumoSafra(input: ResumoInput): ResumoCalc {
   let nota: string | null = null;
 
   if (areas.length > 0) {
-    // Áreas que produzem cada saída (uma área pode aparecer só num bucket).
-    const areasGrao = new Set(producoes.filter((p) => p.tipo === "GRAO").map((p) => p.areaCultivoId));
-    const areasSilagem = new Set(producoes.filter((p) => p.tipo === "SILAGEM").map((p) => p.areaCultivoId));
-    const custeioAreas = (set: Set<number | null | undefined>) =>
-      soma(custos.filter((c) => c.classe === "CUSTEIO" && set.has(c.areaCultivoId)).map((c) => c.valor));
-    custoSaca = div(custeioAreas(areasGrao), producaoGraoSc);
-    custoTonelada = div(custeioAreas(areasSilagem), producaoSilagemTon);
+    const temGrao = producaoGraoSc > 0;
+    const temSilagem = producaoSilagemTon > 0;
+    if (temGrao && temSilagem) {
+      const areasGrao = new Set(producoes.filter((p) => p.tipo === "GRAO").map((p) => p.areaCultivoId));
+      const areasSilagem = new Set(producoes.filter((p) => p.tipo === "SILAGEM").map((p) => p.areaCultivoId));
+      const areaMista = [...areasGrao].some((id) => id != null && areasSilagem.has(id));
+      const custeioSemArea = soma(
+        custos.filter((c) => c.classe === "CUSTEIO" && c.areaCultivoId == null).map((c) => c.valor),
+      );
+      if (areaMista || custeioSemArea > 0) {
+        // Custo por unidade exigiria atribuir cada custeio a um único balde de saída.
+        // Área de saída mista ou custeio compartilhado (sem área) não podem ser rateados
+        // sem alocação (fora do escopo) → null + nota, em vez de valores errados.
+        nota =
+          "Custos compartilhados ou de áreas com saída mista impedem o custo por unidade — atribua os custos a áreas de saída única (grão OU silagem).";
+      } else {
+        const custeioDe = (set: Set<number | null | undefined>) =>
+          soma(
+            custos
+              .filter((c) => c.classe === "CUSTEIO" && c.areaCultivoId != null && set.has(c.areaCultivoId))
+              .map((c) => c.valor),
+          );
+        custoSaca = div(custeioDe(areasGrao), producaoGraoSc);
+        custoTonelada = div(custeioDe(areasSilagem), producaoSilagemTon);
+      }
+    } else if (temGrao) {
+      custoSaca = div(custeioTotal, producaoGraoSc);
+    } else if (temSilagem) {
+      custoTonelada = div(custeioTotal, producaoSilagemTon);
+    }
   } else {
     const temGrao = producaoGraoSc > 0;
     const temSilagem = producaoSilagemTon > 0;

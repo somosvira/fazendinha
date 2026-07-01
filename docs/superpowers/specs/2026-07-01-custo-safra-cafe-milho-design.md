@@ -131,6 +131,7 @@ Uma safra pode produzir **as duas** saídas. Atribuir o custeio total às duas d
 - **Se a safra tem `AreaCultivo`s** (cada área normalmente destina-se a uma saída):
   - `custoSaca = Σ(custeio das áreas cuja produção é GRAO) / Σ(sacas)`
   - `custoTonelada = Σ(custeio das áreas cuja produção é SILAGEM) / Σ(toneladas)`
+  - Exceção: se a safra produz **as duas** saídas e (a) alguma área tem saída mista (grão **e** silagem na mesma área) **ou** (b) existe custeio compartilhado (`LancamentoCusto` com `areaCultivoId = null`), então não há como ratear sem alocação — `custoSaca` e `custoTonelada` = `null`, com **nota** (rateio fora de escopo; `custoHa` continua válido). Isso evita tanto contar o custeio de uma área de saída mista duas vezes (uma em cada balde) quanto descartar silenciosamente o custeio compartilhado do numerador.
 - **Se a safra é nível-safra (sem áreas):**
   - Saída única → `custoSaca` **ou** `custoTonelada` = `custeio / produção`.
   - Saídas mistas → `custoSaca` e `custoTonelada` = `null`, com **nota**: "safra mista sem áreas — cadastre áreas para custo por unidade". (`custoHa` continua válido.)
