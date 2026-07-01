@@ -1357,3 +1357,183 @@ model LancamentoRascunho {
 
   @@index([telefone, status])
 }
+
+// =============================================================================
+// MÓDULO CULTIVO — culturas anuais (milho primeiro). Custo de safra operacional
+// com duas saídas (grão/silagem) e silos. Crop-agnostic via `cultura`.
+// =============================================================================
+
+enum Cultura {
+  MILHO
+}
+
+enum TipoCustoCultivo {
+  ADUBACAO
+  PREPARO_SOLO
+  PLANTIO
+  TRATOS
+  COLHEITA
+  TRANSPORTE
+  MAO_DE_OBRA
+  MAQUINA
+  OUTRO
+}
+
+enum TipoProducao {
+  GRAO
+  SILAGEM
+}
+
+enum UnidadeProducao {
+  SC
+  TON
+}
+
+enum DestinoProducao {
+  VENDA
+  SILO
+}
+
+enum TipoSilo {
+  GRAO
+  SILAGEM
+}
+
+enum TipoMovimentoSilo {
+  ENTRADA
+  SAIDA
+}
+
+enum OrigemMovimentoSilo {
+  COLHEITA
+  NUTRICAO
+  VENDA
+  AJUSTE
+}
+
+model SafraCultivo {
+  id          Int                 @id @default(autoincrement())
+  cultura     Cultura
+  nome        String
+  ano         Int
+  dataInicio  DateTime            @db.Date
+  dataFim     DateTime?           @db.Date
+  areaHaTotal Decimal?            @db.Decimal(10, 2) // usado quando não há AreaCultivo
+  fechada     Boolean             @default(false)
+  observacao  String?
+  areas       AreaCultivo[]
+  custos      LancamentoCusto[]
+  producoes   ProducaoCultivo[]
+  resumo      ResumoSafraCultivo?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([cultura, ano])
+}
+
+model AreaCultivo {
+  id             Int               @id @default(autoincrement())
+  safraCultivo   SafraCultivo      @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
+  safraCultivoId Int
+  codigo         String
+  nome           String?
+  areaHa         Decimal           @db.Decimal(10, 2)
+  custos         LancamentoCusto[]
+  producoes      ProducaoCultivo[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([safraCultivoId, codigo])
+}
+
+model LancamentoCusto {
+  id             Int                    @id @default(autoincrement())
+  safraCultivo   SafraCultivo           @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
+  safraCultivoId Int
+  area           AreaCultivo?           @relation(fields: [areaCultivoId], references: [id])
+  areaCultivoId  Int?
+  tipo           TipoCustoCultivo
+  classe         ClassificacaoCategoria @default(CUSTEIO)
+  data           DateTime               @db.Date
+  descricao      String
+  valor          Decimal                @db.Decimal(14, 2)
+  qtd            Decimal?               @db.Decimal(12, 3)
+  unidade        String?
+  horasMaquina   Decimal?               @db.Decimal(8, 2)
+  numMaquinas    Int?
+  numCaminhoes   Int?
+  lancamentoId   Int?                   @unique // ponte financeira opcional (soft ref)
+  observacao     String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([safraCultivoId, data])
+  @@index([classe])
+}
+
+model ProducaoCultivo {
+  id             Int             @id @default(autoincrement())
+  safraCultivo   SafraCultivo    @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
+  safraCultivoId Int
+  area           AreaCultivo?    @relation(fields: [areaCultivoId], references: [id])
+  areaCultivoId  Int?
+  data           DateTime        @db.Date
+  tipo           TipoProducao
+  quantidade     Decimal         @db.Decimal(12, 3)
+  unidade        UnidadeProducao
+  destino        DestinoProducao?
+  silo           Silo?           @relation(fields: [siloId], references: [id])
+  siloId         Int?
+  observacao     String?
+  movimentos     MovimentoSilo[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([safraCultivoId, data])
+}
+
+model Silo {
+  id         Int               @id @default(autoincrement())
+  nome       String
+  tipo       TipoSilo
+  capacidade Decimal?          @db.Decimal(12, 3)
+  unidade    String
+  saldoAtual Decimal           @default(0) @db.Decimal(12, 3)
+  ativo      Boolean           @default(true)
+  movimentos MovimentoSilo[]
+  producoes  ProducaoCultivo[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model MovimentoSilo {
+  id                Int                 @id @default(autoincrement())
+  silo              Silo                @relation(fields: [siloId], references: [id], onDelete: Cascade)
+  siloId            Int
+  data              DateTime            @db.Date
+  tipo              TipoMovimentoSilo
+  quantidade        Decimal             @db.Decimal(12, 3)
+  origem            OrigemMovimentoSilo
+  producaoCultivo   ProducaoCultivo?    @relation(fields: [producaoCultivoId], references: [id])
+  producaoCultivoId Int?
+  observacao        String?
+  createdAt         DateTime            @default(now())
+
+  @@index([siloId, data])
+}
+
+model ResumoSafraCultivo {
+  id                 Int          @id @default(autoincrement())
+  safraCultivo       SafraCultivo @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
+  safraCultivoId     Int          @unique
+  custeioTotal       Decimal      @default(0) @db.Decimal(14, 2)
+  investimentoTotal  Decimal      @default(0) @db.Decimal(14, 2)
+  areaHa             Decimal      @default(0) @db.Decimal(10, 2)
+  producaoGraoSc     Decimal      @default(0) @db.Decimal(12, 3)
+  producaoSilagemTon Decimal      @default(0) @db.Decimal(12, 3)
+  custoHa            Decimal?     @db.Decimal(14, 2)
+  custoSaca          Decimal?     @db.Decimal(14, 2)
+  custoTonelada      Decimal?     @db.Decimal(14, 2)
+  horasMaquinaTotal  Decimal      @default(0) @db.Decimal(10, 2)
+  atualizadoEm       DateTime     @updatedAt
+}
