@@ -15,7 +15,16 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      # URL direct (não-pooled) — usada pelo `db push` da partida (schema tem directUrl).
+      - key: DIRECT_URL
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: CORS_ORIGIN
+        sync: false
+      # OpenAI (chat/bot + IA dos módulos). Sem ela: chat 503 e IA em modo demo.
+      - key: OPENAI_API_KEY
+        sync: false
+      # Opcional: role somente-leitura p/ o escape-hatch de SQL do bot.
+      - key: DATABASE_URL_READONLY
         sync: false

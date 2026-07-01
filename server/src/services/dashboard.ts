@@ -11,6 +11,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
+import { env } from "../env.js";
 
 // Janela: Jul/2024 (idx 0) → Mai/2026 (idx 22)
 const WINDOW_START_YEAR = 2024;
@@ -58,7 +59,81 @@ const toNum = (d: Prisma.Decimal | number) =>
 
 export type DashboardPayload = Awaited<ReturnType<typeof buildDashboard>>;
 
-export async function buildDashboard() {
+// Caixa real "na data": saldo inicial de cada conta + fluxo líquido liquidado
+// (CRÉDITO − DÉBITO) até `asOf`. Inclui TODOS os lançamentos (até "(Sem centro de
+// custo)", que são transferências/aportes e afetam o caixa de verdade).
+// ⚠ saldoInicial das contas está 0 no banco — então hoje isto é, na prática, o
+// fluxo de caixa acumulado. Quando os saldos de abertura forem importados, vira
+// o saldo bancário verdadeiro sem mudar o código.
+async function buildCaixa(asOf: Date) {
+  const contas = await prisma.contaBancaria.findMany({
+    select: { id: true, nome: true, saldoInicial: true },
+    orderBy: { id: "asc" },
+  });
+  const flows = await prisma.lancamento.groupBy({
+    by: ["contaBancariaId", "natureza"],
+    where: { situacao: "LIQUIDADO", estornado: false, dataLiquidacao: { lte: asOf } },
+    _sum: { valor: true },
+  });
+  const saldo = new Map<number, number>();
+  for (const c of contas) saldo.set(c.id, toNum(c.saldoInicial ?? 0));
+  for (const f of flows) {
+    if (f.contaBancariaId == null) continue;
+    const v = toNum(f._sum.valor ?? 0);
+    saldo.set(f.contaBancariaId, (saldo.get(f.contaBancariaId) ?? 0) + (f.natureza === "CREDITO" ? v : -v));
+  }
+  const contasOut = contas.map((c) => ({ nome: c.nome, saldo: Math.round(saldo.get(c.id) ?? 0) }));
+  return {
+    total: contasOut.reduce((s, c) => s + c.saldo, 0),
+    asOf: asOf.toISOString().slice(0, 10),
+    contas: contasOut,
+  };
+}
+
+// Lista REAL de lançamentos de uma categoria (opcionalmente de um fornecedor),
+// para o drill do dashboard. Regime de caixa: LIQUIDADO, não estornado, débitos,
+// fora do balde "(Sem centro de custo)".
+export async function buildLancamentos(opts: {
+  categoriaId: number;
+  fornecedor?: string;
+  from?: Date;
+  to?: Date;
+}) {
+  const { categoriaId, fornecedor, from, to } = opts;
+  const dataFilter: Prisma.DateTimeNullableFilter = { not: null };
+  if (from) dataFilter.gte = from;
+  if (to) dataFilter.lte = to;
+  const rows = await prisma.lancamento.findMany({
+    where: {
+      situacao: "LIQUIDADO",
+      estornado: false,
+      natureza: "DEBITO",
+      categoriaId,
+      centroCusto: { nome: { not: "(Sem centro de custo)" } },
+      dataLiquidacao: dataFilter,
+      ...(fornecedor ? { clienteFornecedor: { nome: fornecedor } } : {}),
+    },
+    select: {
+      dataLiquidacao: true,
+      valor: true,
+      numeroDocumento: true,
+      descricao: true,
+      clienteFornecedor: { select: { nome: true } },
+    },
+    orderBy: { dataLiquidacao: "desc" },
+    take: 300,
+  });
+  return rows.map((r) => ({
+    data: r.dataLiquidacao ? r.dataLiquidacao.toISOString().slice(0, 10) : null,
+    valor: Math.round(toNum(r.valor)),
+    doc: r.numeroDocumento,
+    descricao: r.descricao,
+    fornecedor: r.clienteFornecedor?.nome ?? "(sem fornecedor)",
+  }));
+}
+
+export async function buildDashboard(opts: { from?: Date; to?: Date } = {}) {
+  const { from, to } = opts;
   const lancamentos = await prisma.lancamento.findMany({
     where: {
       situacao: "LIQUIDADO",
@@ -75,6 +150,7 @@ export async function buildDashboard() {
       dataLiquidacao: true,
       categoria: { select: { id: true, nome: true, classificacao: true, grupoCategoria: { select: { nome: true } } } },
       centroCusto: { select: { nome: true, ehInvestimento: true } },
+      clienteFornecedor: { select: { nome: true } },
     },
   });
 
@@ -101,6 +177,7 @@ export async function buildDashboard() {
     monthly: number[];
     atividade: Atividade;
     flag?: "investimento-misclassificado";
+    fornecedores: Map<string, { valor: number; n: number }>; // nome → gasto + nº lançamentos
   };
   const catMap = new Map<number, CatAcc>();
 
@@ -164,10 +241,16 @@ export async function buildDashboard() {
           atividade: atv,
           // ⚠ só enquanto pendente; some quando Animal Aquisição é decidida (confirma/reverte).
           flag: misclass && !(isAnimAq && cls != null) ? "investimento-misclassificado" : undefined,
+          fornecedores: new Map(),
         };
         catMap.set(l.categoria.id, acc);
       }
       acc.monthly[idx] += v;
+      const fnome = l.clienteFornecedor?.nome ?? "(sem fornecedor)";
+      const fcur = acc.fornecedores.get(fnome) ?? { valor: 0, n: 0 };
+      fcur.valor += v;
+      fcur.n += 1;
+      acc.fornecedores.set(fnome, fcur);
     }
   }
 
@@ -226,6 +309,9 @@ export async function buildDashboard() {
           : ytd2026 > 0
             ? 100
             : 0;
+      const fornsArr = [...c.fornecedores.entries()]
+        .map(([nome, x]) => ({ nome, valor: Math.round(x.valor), n: x.n }))
+        .sort((a, b) => b.valor - a.valor);
       return {
         id: c.id,
         nome: c.nome,
@@ -235,44 +321,140 @@ export async function buildDashboard() {
         ytd2026: Math.round(ytd2026),
         delta,
         flag: c.flag,
+        // top 8 fornecedores reais (gasto + nº lançamentos) na janela 23m, e o
+        // total distinto pra montar o balde "Outros" das subcategorias.
+        fornecedores: fornsArr.slice(0, 8),
+        nFornecedores: fornsArr.length,
       };
     })
     .filter((c) => c.total23m > 0)
     .sort((a, b) => b.total23m - a.total23m)
     .slice(0, 12);
 
-  // ----- caixa hoje (placeholder até termos saldo real) --------------------
-  const caixaHoje = {
-    total: 184_420,
-    contas: [
-      { nome: "Sicoob PJ — ag. 9012", saldo: 142_380 },
-      { nome: "Banco do Brasil — ag. 1234-5", saldo: 38_420 },
-      { nome: "Caixa da fazenda", saldo: 3_620 },
-    ],
-  };
+  // ----- caixa real "na data" (saldo das contas) ---------------------------
+  // asOf = fim do período filtrado; sem filtro, agora.
+  const caixaHoje = await buildCaixa(to ?? new Date());
 
-  // ----- inconsistências (curadas — derivar automaticamente fica para outro PR)
+  // inconsistências: construídas mais abaixo, após o bloco de período (usam os
+  // totais DO PERÍODO e escondem cards zerados).
+
+  // ----- período selecionado (filtro de data do dashboard) -----------------
+  // Agregado por DATA EXATA de liquidação em [from, to], com a MESMA classificação
+  // dos KPIs do cockpit (assim, com o range cheio, `periodo` == totais 23m):
+  //   receita      = créditos
+  //   investimento = débitos ehInvestimento + "Animal Aquisição" (se não revertida)
+  //   custeio      = demais débitos
+  //   fluxo        = créditos − todos os débitos
+  // "RN - Caminhão e Trator" (misclass) fica fora de custeio e investimento, igual
+  // ao cockpit. Sem from/to → periodo = null (frontend cai nos totais 23m).
+  let periodo:
+    | { from: string; to: string; receita: number; custeio: number; investimento: number; fluxo: number }
+    | null = null;
+  // Com filtro, categorias e atividade (totals23m) também passam a refletir o
+  // PERÍODO — mesma classificação dos KPIs. Substituem os 23m no retorno, para a
+  // dashboard inteira ficar coerente com o mês selecionado (e casar com o chat).
+  let periodTotals: typeof totals23m | null = null;
+  let periodCategorias: typeof categoriasReais | null = null;
+  if (from && to) {
+    const pt = {
+      receitaLeite: 0, receitaCafe: 0, custeioLeitePuro: 0, custeioCafe: 0, sedeOutros: 0,
+      investLeite: 0, investCafe: 0, animalAquisicao: 0, rnCaminhao: 0, totalGeral: 0,
+    };
+    const pcat = new Map<number, {
+      id: number; nome: string; grupo: string; atividade: Atividade; total: number;
+      fornecedores: Map<string, { valor: number; n: number }>; flag?: "investimento-misclassificado";
+    }>();
+    for (const l of lancamentos) {
+      if (!l.dataLiquidacao) continue;
+      if (l.dataLiquidacao < from || l.dataLiquidacao > to) continue;
+      const v = toNum(l.valor);
+      const atv = atividadeDe(l.centroCusto.nome);
+      const catNome = l.categoria.nome;
+      const cls = l.categoria.classificacao;
+      const isAnimAq = catNome === "Animal Aquisição";
+      const animAqRevertido = isAnimAq && cls === "CUSTEIO";
+      const misclass = CATEGORIAS_MISCLASSIFICADAS.has(catNome) && !animAqRevertido;
+      const ehInv = l.centroCusto.ehInvestimento || /investimento/i.test(l.centroCusto.nome);
+      if (l.natureza === "CREDITO") {
+        if (atv === "leite") pt.receitaLeite += v; else if (atv === "cafe") pt.receitaCafe += v;
+        pt.totalGeral += v;
+        continue;
+      }
+      pt.totalGeral -= v;
+      if (misclass) {
+        if (isAnimAq) pt.animalAquisicao += v; else pt.rnCaminhao += v;
+      } else if (ehInv) {
+        if (atv === "leite") pt.investLeite += v; else if (atv === "cafe") pt.investCafe += v;
+      } else {
+        if (atv === "leite") pt.custeioLeitePuro += v; else if (atv === "cafe") pt.custeioCafe += v; else pt.sedeOutros += v;
+      }
+      // acumula por categoria (débitos) — mesma lógica do 23m, mas do período
+      let acc = pcat.get(l.categoria.id);
+      if (!acc) {
+        acc = {
+          id: l.categoria.id, nome: catNome, grupo: l.categoria.grupoCategoria.nome, atividade: atv,
+          total: 0, fornecedores: new Map(),
+          flag: misclass && !(isAnimAq && cls != null) ? "investimento-misclassificado" : undefined,
+        };
+        pcat.set(l.categoria.id, acc);
+      }
+      acc.total += v;
+      const fnome = l.clienteFornecedor?.nome ?? "(sem fornecedor)";
+      const fcur = acc.fornecedores.get(fnome) ?? { valor: 0, n: 0 };
+      fcur.valor += v; fcur.n += 1; acc.fornecedores.set(fnome, fcur);
+    }
+    periodo = {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+      receita: Math.round(pt.receitaLeite + pt.receitaCafe),
+      custeio: Math.round(pt.custeioLeitePuro + pt.custeioCafe + pt.sedeOutros),
+      investimento: Math.round(pt.investLeite + pt.investCafe + pt.animalAquisicao),
+      fluxo: Math.round(pt.totalGeral),
+    };
+    periodTotals = {
+      receitaLeite: Math.round(pt.receitaLeite), receitaCafe: Math.round(pt.receitaCafe),
+      custeioLeiteBPO: Math.round(pt.custeioLeitePuro + pt.animalAquisicao + pt.rnCaminhao),
+      custeioLeitePuro: Math.round(pt.custeioLeitePuro), animalAquisicao: Math.round(pt.animalAquisicao),
+      rnCaminhao: Math.round(pt.rnCaminhao), investLeite: Math.round(pt.investLeite),
+      custeioCafe: Math.round(pt.custeioCafe), investCafe: Math.round(pt.investCafe),
+      sedeOutros: Math.round(pt.sedeOutros), totalGeral: Math.round(pt.totalGeral),
+    };
+    periodCategorias = [...pcat.values()].map((c) => {
+      const fornsArr = [...c.fornecedores.entries()]
+        .map(([nome, x]) => ({ nome, valor: Math.round(x.valor), n: x.n }))
+        .sort((a, b) => b.valor - a.valor);
+      return {
+        id: c.id, nome: c.nome, grupo: c.grupo, atividade: c.atividade,
+        total23m: Math.round(c.total), ytd2026: Math.round(c.total), delta: 0, flag: c.flag,
+        fornecedores: fornsArr.slice(0, 8), nFornecedores: fornsArr.length,
+      };
+    }).filter((c) => c.total23m > 0).sort((a, b) => b.total23m - a.total23m).slice(0, 12);
+  }
+
+  // ----- inconsistências (curadas; valores DO PERÍODO; cards zerados escondidos) ---
+  const tInc = periodTotals ?? totals23m;
   const inconsistencias = [
-    // Animal Aquisição: card só enquanto pendente (Fatia 22). Carrega categoriaId
-    // para os botões reais (confirmar reclassificação / reverter para custeio BPO).
+    // Animal Aquisição: card só enquanto pendente. Carrega categoriaId p/ os botões
+    // reais (confirmar reclassificação / reverter para custeio BPO). A ação vale p/
+    // a categoria inteira; o valor mostrado é o do período filtrado.
     ...(animAqCls == null
       ? [{
           id: "animal-aq",
           severidade: "alta",
           categoriaId: animAqCatId,
           titulo: "“Animal Aquisição” reclassificada para investimento",
-          valor: Math.round(totals23m.animalAquisicao),
+          valor: Math.round(tInc.animalAquisicao),
           detalhe:
             "A IA reclassificou as compras de matrizes (Animal Aquisição) de Custeio para Investimento — é compra de animal vivo, não custeio do leite. Confirme para manter, ou reverta para a classificação do BPO (custeio).",
           acao: "Confirmar reclassificação",
-          impacto: "Mantém o operacional do leite 2025 em −R$ 703k (real). Reverter volta para o aparente +R$ 102k do BPO.",
+          impacto: "Tira a compra de gado do custeio operacional do leite.",
         }]
       : []),
     {
       id: "rn-caminhao",
       severidade: "media",
       titulo: "“RN — Caminhão e Trator” em Curral",
-      valor: Math.round(totals23m.rnCaminhao),
+      valor: Math.round(tInc.rnCaminhao),
       detalhe:
         "Lançamentos repetidos com natureza de caminhão/trator entram em Curral. Parece custeio estrutural ou financiamento — não pertence ao custeio operacional do rebanho.",
       acao: "Mover para Estrutural — Financiamentos",
@@ -282,7 +464,7 @@ export async function buildDashboard() {
       id: "atv-plantio",
       severidade: "media",
       titulo: "“Atividade Plantio” × “Plantio Café”",
-      valor: Math.round(totals23m.receitaCafe),
+      valor: Math.round(tInc.receitaCafe),
       detalhe:
         "Receita de café lançada em CCusto “Atividade Plantio”. Custeio e investimento de café em CCusto “Plantio Café”. São o mesmo negócio — unificar dá leitura limpa por safra.",
       acao: "Unificar CCustos",
@@ -292,16 +474,69 @@ export async function buildDashboard() {
       id: "vazio-sede",
       severidade: "baixa",
       titulo: "Lançamentos sem CCusto",
-      valor: Math.round(totals23m.sedeOutros),
+      valor: Math.round(tInc.sedeOutros),
       detalhe:
         "Pequenos itens (luz, água, manutenção da casa-grande) ficam em “(sem CCusto)”. Atribuir a “Outros / Estrutural” para sair da leitura de Criação Animal.",
       acao: "Alocar em Estrutural",
       impacto: "Limpa o operacional do leite",
     },
-  ];
+  ].filter((i) => i.valor > 0); // esconde cards zerados (mortos nos dados reais)
+
+  // ----- projeção de caixa: fôlego / ruptura (Plano #2) --------------------
+  // Determinístico (não é IA). Queima mensal = média das saídas líquidas dos
+  // últimos N meses COMPLETOS (exclui o último mês parcial). N = env.DASHBOARD_MESES_QUEIMA.
+  //   queimaTotal[i]       = saída líquida do mês  = −totalGeral[i]
+  //   queimaOperacional[i] = déficit do leite      = custeio − receita
+  // Fôlego = caixa ÷ queima. Ruptura = projeta o caixa caindo pela queima até < 0.
+  const N = env.DASHBOARD_MESES_QUEIMA;
+  const ultimoCompleto = WINDOW_LEN - (PARTIAL_LAST ? 2 : 1);
+  const baseIdxs: number[] = [];
+  for (let i = Math.max(0, ultimoCompleto - N + 1); i <= ultimoCompleto; i++) baseIdxs.push(i);
+  const media = (a: number[]) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+  const queimaMensal = Math.round(media(baseIdxs.map((i) => -totalGeral[i])));
+  const queimaCusteioMensal = Math.round(
+    media(baseIdxs.map((i) => custeioLeitePuro[i] + custeioCafe[i] + sedeOutros[i] - receitaLeite[i] - receitaCafe[i])),
+  );
+  const caixaAtual = caixaHoje.total;
+  const folegoMeses = queimaMensal > 0 ? Math.round((caixaAtual / queimaMensal) * 10) / 10 : null;
+  // projeção do saldo pra frente (H meses), caindo pela queima total
+  const H = 6;
+  const baseDate = to ?? new Date();
+  const fluxoProj: { mes: string; caixaFim: number }[] = [];
+  let saldo = caixaAtual;
+  for (let t = 1; t <= H; t++) {
+    saldo -= queimaMensal;
+    const d = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + t, 1));
+    fluxoProj.push({
+      mes: `${PT_MONTHS_SHORT[d.getUTCMonth()]}/${String(d.getUTCFullYear()).slice(-2)}`,
+      caixaFim: Math.round(saldo),
+    });
+  }
+  const mesesAteRuptura = queimaMensal > 0 && caixaAtual > 0 ? caixaAtual / queimaMensal : 0;
+  const dRup = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + Math.ceil(mesesAteRuptura), 1));
+  const projecao = {
+    baseMeses: N,
+    caixa: caixaAtual,
+    queimaMensal, // R$/mês (positivo = saindo)
+    queimaCusteioMensal, // déficit operacional R$/mês
+    queimaInvestimentoMensal: queimaMensal - queimaCusteioMensal,
+    folegoMeses,
+    folegoDias: folegoMeses != null ? Math.round(folegoMeses * 30) : null,
+    fluxoProj,
+    ruptura: queimaMensal > 0
+      ? {
+          rompe: caixaAtual > 0,
+          mesesAteRuptura: Math.round(mesesAteRuptura * 10) / 10,
+          dataRuptura: `${PT_MONTHS_SHORT[dRup.getUTCMonth()]}/${String(dRup.getUTCFullYear()).slice(-2)}`,
+          aporteMensalSugerido: queimaMensal,
+        }
+      : { rompe: false },
+  };
 
   return {
     UPDATED_AT: "04/mai/2026, recebido do BPO",
+    periodo,
+    projecao,
     OWNER: "Marco Antônio",
     REPORT_DATE_LABEL: "Relatório 04/05/2026",
 
@@ -319,7 +554,8 @@ export async function buildDashboard() {
     sedeOutros,
     totalGeral,
 
-    totals23m,
+    // Com filtro, viram os totais/categorias DO PERÍODO (dashboard mensal coerente).
+    totals23m: periodTotals ?? totals23m,
 
     idx2024H2,
     idx2025,
@@ -327,7 +563,7 @@ export async function buildDashboard() {
     k2025,
     k2026YTD,
 
-    categoriasReais,
+    categoriasReais: periodCategorias ?? categoriasReais,
     caixaHoje,
     inconsistencias,
   };

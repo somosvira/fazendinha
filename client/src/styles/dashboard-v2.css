@@ -437,3 +437,40 @@
 .inc-impacto .lbl { font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
 .inc-impacto .txt { font-size: 14px; color: var(--ink); font-family: var(--serif); font-style: italic; line-height: 1.4; }
 .inc-actions { display: flex; gap: 8px; }
+
+/* Filtro de período no topo do Dashboard (dirige os KPIs por data de liquidação) */
+.dash-filtro-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 16px;
+  flex-wrap: wrap;
+}
+.dash-filtro-lbl {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.dash-filtro-hint {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+/* MonthRangePicker — filtro mensal (dois selects de mês/ano) */
+.mrp { display: inline-flex; align-items: center; gap: 8px; }
+.mrp-sel {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #d9d6cf);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.mrp-sel:hover { border-color: var(--ink-3); }
+.mrp-sel:focus-visible { outline: 2px solid var(--leite); outline-offset: 1px; }
+.mrp-sep { color: var(--ink-3); font-size: 13px; }

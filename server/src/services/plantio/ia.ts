@@ -1,5 +1,5 @@
 // Orquestrador da IA da lavoura: busca dados reais → monta contexto → responde.
-// Espelha rebanho/ia.ts. Com ANTHROPIC_API_KEY chama Claude (modo IA); sem ela
+// Espelha rebanho/ia.ts. Com OPENAI_API_KEY chama a OpenAI (modo IA); sem ela
 // (ou em falha) responde por regras (modo demonstração). Nunca lança por rede.
 
 import { prisma } from "../../db.js";
@@ -12,10 +12,12 @@ import {
   type CustoCtx,
   type ColheitaCtx,
   type EstoqueBaixoCtx,
+  type ContextoPlantio,
 } from "./ia.context.js";
 import { responderDemo, type RespostaIA } from "./ia.responder.js";
 import { responderComLLM } from "./ia.llm.js";
 import { listarEstoquePlantio } from "./estoque.js";
+import { gerarInsightsPlantio, type IaInsightDTO } from "./ia.insights.js";
 
 // "Hoje" da lavoura — ancorado no mock (28/05/2026), igual ao dashboard real.
 const HOJE = "2026-05-28";
@@ -66,7 +68,8 @@ async function carregarEstoqueBaixo(): Promise<EstoqueBaixoCtx[]> {
     .map((s) => ({ nome: s.nome, saldo: s.saldo, unidade: s.unidade, minimoEstoque: s.minimoEstoque }));
 }
 
-export async function responderIA(pergunta: string): Promise<RespostaIA> {
+// Monta o contexto real da lavoura (mesma fonte do chat) — reusado pelos insights.
+async function montarContextoReal(): Promise<ContextoPlantio> {
   const [talhoes, custoRaw, colheita, estoqueBaixo] = await Promise.all([
     carregarTalhoes(),
     agregarCustoPlantio(12),
@@ -84,11 +87,20 @@ export async function responderIA(pergunta: string): Promise<RespostaIA> {
     breakdown: custoRaw.breakdown,
   };
 
-  const ctx = montarContextoPlantio(talhoes, custo, colheita, estoqueBaixo, HOJE);
+  return montarContextoPlantio(talhoes, custo, colheita, estoqueBaixo, HOJE);
+}
 
-  if (env.ANTHROPIC_API_KEY) {
+// Cards proativos ("insights da semana") da lavoura, a partir do contexto real.
+export async function listarInsightsPlantio(): Promise<IaInsightDTO[]> {
+  return gerarInsightsPlantio(await montarContextoReal());
+}
+
+export async function responderIA(pergunta: string): Promise<RespostaIA> {
+  const ctx = await montarContextoReal();
+
+  if (env.OPENAI_API_KEY) {
     try {
-      const resposta = await responderComLLM(pergunta, contextoPlantioParaTexto(ctx), env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
+      const resposta = await responderComLLM(pergunta, contextoPlantioParaTexto(ctx), env.OPENAI_API_KEY, env.OPENAI_MODEL);
       return { resposta, modo: "ia" };
     } catch {
       // cai pro demo (nunca quebra por causa de rede/credencial)

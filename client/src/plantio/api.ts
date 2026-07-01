@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, TipoInsumoPlantio } from "./types";
+import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, TipoInsumoPlantio, IaInsight } from "./types";
 import { HOJE } from "./HOJE";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -463,6 +463,19 @@ export interface RespostaIa { resposta: string; lista?: string[]; rodape?: strin
 
 export function perguntarIA(pergunta: string): Promise<RespostaIa> {
   return req<RespostaIa>(`/plantio/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
+}
+
+// Insights proativos da IA ("insights da semana") — cards reais da lavoura.
+export const listarInsights = () => req<IaInsight[]>(`/plantio/ia/insights`);
+export function useInsights() {
+  const [data, setData] = useState<IaInsight[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let vivo = true;
+    listarInsights().then((d) => vivo && setData(d)).catch(() => vivo && setData([])).finally(() => vivo && setLoading(false));
+    return () => { vivo = false; };
+  }, []);
+  return { data, loading };
 }
 
 // HELPERS -----------------------------------------------------------------

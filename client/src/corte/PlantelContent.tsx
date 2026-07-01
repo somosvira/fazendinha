@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoteCockpit } from "./components/LoteCockpit";
 import { LoteTab } from "./components/LoteTab";
 import { PesagemTab } from "./components/PesagemTab";
@@ -19,10 +19,10 @@ import type { Lote } from "./types";
 export type CorSub = "dashboard" | "lote" | "pesagem" | "pasto" | "sanidade" | "nutricao" | "comercial" | "custo" | "ia";
 
 /* Espelho do PlantioContent: roteia entre as 9 sub-abas do módulo Corte e
- * gerencia os modais (novo lote, editar/baixa, registro de pesagem inline).
- * Núcleo (lote/pesagem/pasto/dashboard) já lê/escreve no backend real
- * (/api/corte/*); Sanidade/Nutrição/Comercial/Custo/IA seguem mock por ora. */
-export function PlantelContent({ aba, onNavCor }: { aba: CorSub; onNavCor?: (aba: CorSub) => void }) {
+ * gerencia os modais (novo lote, editar/baixa, pesagem, manejo/suplementação/
+ * operação comercial). Lê/escreve no backend real (/api/corte/*). O deep-link
+ * do ⌘K abre o cockpit de um lote por id. */
+export function PlantelContent({ aba, onNavCor, abrirId, onAbriuEntidade }: { aba: CorSub; onNavCor?: (aba: CorSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [loteId, setLoteId] = useState<string | null>(null);
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; lote?: Lote } | null>(null);
   const [pesagemDe, setPesagemDe] = useState<Lote | null>(null);
@@ -31,8 +31,31 @@ export function PlantelContent({ aba, onNavCor }: { aba: CorSub; onNavCor?: (aba
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
 
-  // Trocar de sub-aba fecha qualquer cockpit/drawer de lote aberto (espelha PlantioContent).
-  useEffect(() => { setLoteId(null); setEventoDe(null); setPesagemDe(null); }, [aba]);
+  // Guarda o lote a abrir após troca de aba (deep-link ⌘K), pro efeito [aba]
+  // não limpar o cockpit recém-aberto. Espelha o proximoAnimalRef.
+  const proximoLoteRef = useRef<string | null>(null);
+
+  // Trocar de sub-aba fecha cockpit/drawers — exceto quando há um lote marcado
+  // para abrir (deep-link), aí abrimos ele.
+  useEffect(() => {
+    if (proximoLoteRef.current) {
+      setLoteId(proximoLoteRef.current);
+      proximoLoteRef.current = null;
+    } else {
+      setLoteId(null);
+    }
+    setEventoDe(null);
+    setPesagemDe(null);
+  }, [aba]);
+
+  // Deep-link do ⌘K: abre o cockpit do lote por id usando a ref.
+  useEffect(() => {
+    if (!abrirId) return;
+    proximoLoteRef.current = abrirId;
+    setLoteId(abrirId);
+    onAbriuEntidade?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirId]);
 
   // Fechar drawer de evento e refetch (a timeline do cockpit e a tab re-buscam).
   const aoSalvarEvento = () => { setEventoDe(null); setRecarga((n) => n + 1); };

@@ -4,8 +4,9 @@
  * são mascarados quando o perfil não tem a flag verValores.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
+import { tabToPath, pathToTab, DEFAULT_TAB } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
@@ -22,6 +23,7 @@ import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
+import { ChatWidget } from "./components/ChatWidget";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
@@ -83,12 +85,16 @@ const EQP: Record<string, EqpSub> = {
 };
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("dashboard");
+  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não casar.
+  const [tab, setTab] = useState<Tab>(() => pathToTab(window.location.pathname) ?? DEFAULT_TAB);
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
+  // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
+  const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
 
   // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
   useEffect(() => {
@@ -113,6 +119,26 @@ export function App() {
       window.removeEventListener("keydown", onKey);
     };
   }, [mobileOpen]);
+
+  // Reflete a aba ativa na URL. Primeiro render usa replaceState (não empilha
+  // histórico ao normalizar "/" → "/dashboard); trocas seguintes usam pushState
+  // para o botão "voltar" do navegador funcionar.
+  const firstSync = useRef(true);
+  useEffect(() => {
+    const path = tabToPath(tab);
+    if (window.location.pathname !== path) {
+      if (firstSync.current) window.history.replaceState(null, "", path);
+      else window.history.pushState(null, "", path);
+    }
+    firstSync.current = false;
+  }, [tab]);
+
+  // Botões voltar/avançar do navegador → atualiza a aba a partir da URL.
+  useEffect(() => {
+    const onPop = () => setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const effectiveUser = useMemo(() => {
     const id = viewAsId || realUserId;
@@ -150,11 +176,17 @@ export function App() {
   };
 
   const conteudo = String(tab).startsWith("reb-")
-    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)} />
+    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("reb-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("pla-")
-    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)} />
+    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("cor-")
-    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)} />
+    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("eqp-")
     ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
     : (
@@ -219,7 +251,14 @@ export function App() {
       <CommandPalette
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
-        onNav={setTab}
+        onNav={(t, entidadeId) => {
+          setTab(t);
+          // Só entidades de cockpit (reb-*/pla-*/cor-*) precisam de deep-link;
+          // categoria/fornecedor apenas navegam para a aba.
+          const s = String(t);
+          const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+          setDeepLink(entidadeId && temCockpit ? { tab: t, id: entidadeId } : null);
+        }}
         podeVer={(t) => {
           const s = String(t);
           if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("eqp-")) return true;
@@ -228,6 +267,7 @@ export function App() {
           return canSee(t);
         }}
       />
+      <ChatWidget />
     </div>
   );
 }

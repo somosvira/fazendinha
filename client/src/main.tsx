@@ -13,6 +13,7 @@ import "./styles/simulador.css";
 import "./styles/vigilancia.css";
 import "./rebanho/styles/rebanho.css";
 import "./styles/command-palette.css";
+import "./styles/chat.css";
 import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

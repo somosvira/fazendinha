@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TalhaoCockpit } from "./components/TalhaoCockpit";
 import { TalhaoTab } from "./components/TalhaoTab";
 import { FenologiaTab } from "./components/FenologiaTab";
@@ -20,15 +20,37 @@ export type PlaSub = "dashboard" | "talhao" | "fenologia" | "fitossanidade" | "n
  * e gerencia os modais (novo talhão, operação inline). Quando o usuário
  * clica numa linha em Fito/Nutrição, abrimos a modal de operação com o
  * domínio travado; no Talhão e Fenologia, abrimos o cockpit. */
-export function PlantioContent({ aba, onNavPla }: { aba: PlaSub; onNavPla?: (aba: PlaSub) => void }) {
+export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { aba: PlaSub; onNavPla?: (aba: PlaSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [talhaoId, setTalhaoId] = useState<string | null>(null);
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; talhao?: Talhao } | null>(null);
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
 
-  // Trocar de sub-aba fecha qualquer cockpit de talhão aberto (espelha RebanhoContent).
-  useEffect(() => { setTalhaoId(null); }, [aba]);
+  // Guarda o talhão a abrir após uma troca de aba (deep-link ⌘K), para o efeito
+  // [aba] abaixo não limpar o cockpit recém-aberto. Espelha o proximoAnimalRef.
+  const proximoTalhaoRef = useRef<string | null>(null);
+
+  // Trocar de sub-aba fecha qualquer cockpit de talhão aberto — exceto quando há
+  // um talhão marcado para abrir (deep-link), aí abrimos ele.
+  useEffect(() => {
+    if (proximoTalhaoRef.current) {
+      setTalhaoId(proximoTalhaoRef.current);
+      proximoTalhaoRef.current = null;
+    } else {
+      setTalhaoId(null);
+    }
+  }, [aba]);
+
+  // Deep-link do ⌘K: abre o cockpit do talhão por id usando a ref (o efeito
+  // [aba] pode disparar junto quando a aba também muda; a ref preserva o id).
+  useEffect(() => {
+    if (!abrirId) return;
+    proximoTalhaoRef.current = abrirId;
+    setTalhaoId(abrirId);
+    onAbriuEntidade?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirId]);
 
   return (
     <div className="rb">

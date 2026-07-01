@@ -1,7 +1,7 @@
 /* Rio Novo — Dashboard v3 — cockpit interativo (números + gráficos)
  *
  * Porta do protótipo de design (handoff index.html) para o codebase real.
- * Estado: lê de GET /api/dashboard (server agrega o Neon real). Subcategorias,
+ * Estado: lê de GET /api/dashboard (server agrega os lançamentos). Subcategorias,
  * fornecedores e volume de leite vêm como suplementos estáticos casados por nome
  * de categoria (ver api.ts + data/cockpitSupplements.ts) — o backend ainda não
  * modela esses níveis de drill.
@@ -11,13 +11,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchDashboard, reclassificarCategoria } from "../api";
-import { DateRangePicker, formatRangeLabel, type DateRange } from "./DateRangePicker";
+import { fetchDashboard, reclassificarCategoria, fetchLancamentos, type LancamentoDrill } from "../api";
+import { formatRangeLabel, type DateRange } from "./DateRangePicker";
+import { MonthRangePicker } from "./MonthRangePicker";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
 import { RupturaCaixa } from "./RupturaCaixa";
-import { PrecoAlerta } from "./Vigilancia";
 import { ContextStrip } from "./ContextStrip";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,8 +39,23 @@ const SLUG_TO_NOME: Record<string, string> = {
   animalAq: "Animal Aquisição",
 };
 
-const DASH_TODAY = new Date(2026, 4, 4);
-const DEFAULT_RANGE: DateRange = { start: new Date(2024, 6, 1), end: DASH_TODAY };
+// Seções que dependem de dado ainda inexistente (rebanho, orçamento, ruptura
+// diária, resumo da IA). false = escondidas; vira true quando o dado entrar.
+const SECOES_SEM_DADO = false;
+
+// Seções multi-período (Fluxo mês a mês, DRE anual) não cabem numa dashboard de
+// mês único — vão para a futura dashboard de períodos longos.
+const MOSTRAR_MULTI_PERIODO = false;
+
+// Filtro mensal. Padrão = UM mês (o corrente, mai/26) — dashboard focada em mês
+// fechado, mais fácil de casar 100% com o chat. Períodos longos ficam p/ outra tela.
+const FILTRO_MIN = new Date(2024, 6, 1);   // jul/2024
+const FILTRO_MAX = new Date(2026, 4, 1);   // mai/2026 (mês corrente do mock)
+const DEFAULT_RANGE: DateRange = { start: new Date(2026, 4, 1), end: new Date(2026, 5, 0) }; // mai/26 (mês único)
+
+// Date → "YYYY-MM-DD" (data local, sem deslocar fuso) para o filtro do servidor.
+const ymd = (d: Date | null): string | undefined =>
+  d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : undefined;
 
 /* ========== FORMAT ========== */
 
@@ -465,23 +480,15 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cat = items.find((c: any) => c.id === catId) ?? items[0];
 
-  const monthly = useMemo(() => categoryMonthly(cat), [cat]);
-  const total = cat.total23m;
-  const media = Math.round(total / 23);
-  const maxIdx = monthly.indexOf(Math.max(...monthly));
+  const total = cat.total23m; // já é o total DO PERÍODO (servidor manda categorias do filtro)
   const corAtv = cat.atividade === "leite" ? "var(--leite)" : cat.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
 
-  // synthesized fornecedores split
-  const forns = useMemo(() => {
-    const parts = seededMonthly(cat.total23m, cat.id + "·forn", 4).sort((a, b) => b - a);
-    const names: string[] = (R.fornecedores ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((f: any) => f.categoriaUsual.toLowerCase().includes(cat.nome.split(" ")[0].toLowerCase()))
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((f: any) => f.nome);
-    const pool = names.length ? names : ["Fornecedor principal", "Segundo fornecedor", "Terceiro", "Demais"];
-    return parts.map((v, i) => ({ nome: pool[i] || ["Demais fornecedores", "Outros", "Diversos", "—"][i] || "Outros", value: v }));
-  }, [R, cat]);
+  // top fornecedores reais da categoria (vêm do servidor: GET /api/dashboard)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const forns: { nome: string; value: number }[] = ((cat as any).fornecedores ?? [])
+    .slice(0, 4)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((f: any) => ({ nome: f.nome, value: f.valor }));
 
   return (
     <section className="cockpit-section">
@@ -498,51 +505,30 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
 
       <div className="explorar-stats">
         <div className="ex-cell">
-          <span className="l">Total 23 meses</span>
+          <span className="l">Total no período</span>
           <span className="v mono-nums">{fmtBRL(total)}</span>
         </div>
         <div className="ex-cell">
-          <span className="l">2026 YTD</span>
-          <span className="v mono-nums">{fmtBRL(cat.ytd2026)}</span>
-        </div>
-        <div className="ex-cell">
-          <span className="l">Média mensal</span>
-          <span className="v mono-nums">{fmtBRL(media)}</span>
-        </div>
-        <div className="ex-cell">
-          <span className="l">Mês de pico</span>
-          <span className="v mono-nums">{R.MESES_23M[maxIdx].replace("*", "")}</span>
-        </div>
-        <div className="ex-cell">
-          <span className="l">vs 2025</span>
-          <span className="v mono-nums" style={{ color: cat.delta > 0 ? "var(--prejuizo)" : "var(--lucro)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}%</span>
+          <span className="l">Grupo</span>
+          <span className="v" style={{ fontSize: 16 }}>{cat.grupo}</span>
         </div>
       </div>
 
-      <div className="explorar-grid">
-        <div className="explorar-chart">
-          <div className="panel-title" style={{ marginBottom: 10 }}>
-            <h3>{cat.nome} — mês a mês (jul/24 → mai/26)</h3>
-            <span className="meta">{cat.grupo} · {cat.subgrupo}</span>
-          </div>
-          <BarSeries data={monthly} labels={R.MESES_23M} color={corAtv} height={220} />
-        </div>
-        <div className="explorar-side">
-          <div className="panel-title"><h3 style={{ fontSize: 16 }}>Principais fornecedores</h3></div>
-          <div className="forn-mini-list">
-            {forns.map((f, i) => {
-              const max = Math.max(...forns.map((x) => x.value), 1);
-              return (
-                <div key={i} className="forn-mini">
-                  <div className="forn-mini-top">
-                    <span className="nm">{f.nome}</span>
-                    <span className="vl mono-nums">{fmtBRL(f.value)}</span>
-                  </div>
-                  <div className="forn-mini-bar"><div style={{ width: `${(f.value / max) * 100}%`, background: corAtv }}></div></div>
+      <div className="explorar-side" style={{ marginTop: 8 }}>
+        <div className="panel-title"><h3 style={{ fontSize: 16 }}>Principais fornecedores</h3></div>
+        <div className="forn-mini-list">
+          {forns.map((f, i) => {
+            const max = Math.max(...forns.map((x) => x.value), 1);
+            return (
+              <div key={i} className="forn-mini">
+                <div className="forn-mini-top">
+                  <span className="nm">{f.nome}</span>
+                  <span className="vl mono-nums">{fmtBRL(f.value)}</span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="forn-mini-bar"><div style={{ width: `${(f.value / max) * 100}%`, background: corAtv }}></div></div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -570,7 +556,7 @@ function AtividadeSplit({ R }: { R: R }) {
     <section className="cockpit-section">
       <div className="dash-sec-head">
         <div className="dash-sec-titles">
-          <span className="eyebrow">Comparativo · 23 meses</span>
+          <span className="eyebrow">Comparativo · período</span>
           <h2 className="dash-sec-title">Leite × Café × Outros</h2>
         </div>
       </div>
@@ -616,7 +602,7 @@ function AtividadeSplit({ R }: { R: R }) {
 
 /* ========== KPI COCKPIT ========== */
 
-function KpiCockpit({ R, range, setRange }: { R: R; range: DateRange; setRange: (r: DateRange) => void }) {
+function KpiCockpit({ R }: { R: R }) {
   const t = R.totals23m;
   const receita23 = t.receitaLeite + t.receitaCafe;
   const custeio23 = t.custeioLeitePuro + t.custeioCafe + t.sedeOutros;
@@ -626,66 +612,59 @@ function KpiCockpit({ R, range, setRange }: { R: R; range: DateRange; setRange: 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .reduce((s: number, i: any) => s + i.total23m, 0);
   const invest23 = t.investLeite + t.investCafe + t.animalAquisicao + investOutros;
-  const custoLitro = R.volumeLeite?.custoPorLitro2025 ?? 0;
-  const margemUnit = 3.20 - custoLitro;
-  const margemNeg = margemUnit < 0;
+  // Período selecionado (filtro de data). Sem filtro, cai nos totais 23m.
+  const p = R.periodo;
+  const receita = p ? p.receita : receita23;
+  const custeio = p ? p.custeio : custeio23;
+  const invest = p ? p.investimento : invest23;
+  const fluxo = p ? p.fluxo : t.totalGeral;
 
   const kpis: { lbl: string; val: string; sub: string; tone: string; int?: string; imp?: string }[] = [
     {
-      lbl: "Caixa hoje",
+      lbl: "Caixa",
       val: fmtBRL(R.caixaHoje.total, { compact: false }),
-      sub: "3 contas",
-      tone: "",
-      int: "Saldo positivo",
-      imp: "Cobre 1,7 mês de custeio",
+      sub: `${R.caixaHoje.contas?.length ?? 0} contas · saldo inicial + fluxo`,
+      tone: R.caixaHoje.total < 0 ? "neg" : "",
+      int: R.caixaHoje.total < 0 ? "Saldo negativo" : "Saldo positivo",
     },
     {
-      lbl: "Receita 23m",
-      val: fmtBRL(receita23),
+      lbl: "Receita",
+      val: fmtBRL(receita),
       sub: "leite + café",
       tone: "",
       int: "Entrada do ciclo de caixa",
     },
     {
-      lbl: "Custeio 23m",
-      val: fmtBRL(custeio23),
+      lbl: "Custeio",
+      val: fmtBRL(custeio),
       sub: "operacional puro",
       tone: "",
       int: "Saída sem investimento",
     },
     {
-      lbl: "Investimento 23m",
-      val: fmtBRL(invest23),
+      lbl: "Investimento",
+      val: fmtBRL(invest),
       sub: "gado, máquina, café",
       tone: "",
       int: "Não entra na conta operacional",
     },
     {
-      lbl: "Fluxo líquido 23m",
-      val: fmtBRL(t.totalGeral),
-      sub: "89% investimento",
-      tone: "neg",
-      int: "No vermelho por causa do investimento",
-      imp: "Operação cobre o operacional",
+      lbl: "Fluxo líquido",
+      val: fmtBRL(fluxo),
+      sub: "receita − saídas",
+      tone: fluxo < 0 ? "neg" : "",
+      int: fluxo < 0 ? "No vermelho (puxado por investimento)" : "Positivo no período",
     },
-    {
-      lbl: "Custo / litro 2025",
-      val: "R$ " + custoLitro.toFixed(2).replace(".", ","),
-      sub: "vs R$ 3,20 venda",
-      tone: margemNeg ? "neg" : "",
-      int: margemNeg ? "Acima do preço de venda" : "Dentro da margem",
-      imp: `Margem ${margemNeg ? "−" : "+"}R$ ${Math.abs(margemUnit).toFixed(2).replace(".", ",")} / litro`,
-    },
+    // Custo/litro escondido: depende de litros produzidos (dado de rebanho inexistente).
   ];
 
   return (
     <div className="kpi-cockpit-band">
       <div className="kpi-cockpit-head">
         <div>
-          <span className="eyebrow">Visão operacional — planilha BPO 04/mai/2026</span>
+          <span className="eyebrow">Visão operacional</span>
           <h1 className="kpi-cockpit-title">Dashboard</h1>
         </div>
-        <DateRangePicker value={range} onChange={setRange} anchor="right" />
       </div>
       <div className="kpi-cockpit-grid">
         {kpis.map((k, i) => (
@@ -768,6 +747,7 @@ function DRESection({ R }: { R: R }) {
 /* ========== INCONSISTÊNCIAS (kept, compact strip) ========== */
 
 function InconsistenciasSection({ R, onReclassificar }: { R: R; onReclassificar: () => void }) {
+  if (!R.inconsistencias?.length) return null; // sem inconsistência no período → some
   return (
     <section className="cockpit-section" style={{ borderBottom: "none" }}>
       <div className="dash-sec-head">
@@ -795,7 +775,7 @@ function InconsistenciasSection({ R, onReclassificar }: { R: R; onReclassificar:
                   <button className="btn-primary" style={{ padding: "7px 13px", fontSize: 12 }}
                     onClick={() => reclassificarCategoria(it.categoriaId, "INVESTIMENTO").then(onReclassificar)}>{it.acao}</button>
                   <button className="btn-ghost" style={{ padding: "7px 11px", fontSize: 12 }}
-                    onClick={() => reclassificarCategoria(it.categoriaId, "CUSTEIO").then(onReclassificar)}>Reverter para custeio (BPO)</button>
+                    onClick={() => reclassificarCategoria(it.categoriaId, "CUSTEIO").then(onReclassificar)}>Reverter para custeio</button>
                 </>
               ) : (
                 <>
@@ -850,127 +830,39 @@ function TimelineSection({ R, onMonthClick }: { R: R; onMonthClick?: (idx: numbe
 
 /* ========== CATEGORY DRILL (com subcategorias + pizza + lançamentos) ========== */
 
-const SUB_MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-function rngFrom(seedStr: string): () => number {
-  let s = 7;
-  for (const ch of seedStr) s = (s * 31 + ch.charCodeAt(0)) % 233280;
-  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-}
-function brandsFor(nome: string): string[] | null {
-  const n = nome.toLowerCase();
-  if (n.includes("concentrada")) return ["Cargill Nutron Leite 21%", "Purina Gado de Leite TOP", "Socil Leiteiro 24", "Guabi Lactomax", "Presence Leite Forte"];
-  if (n.includes("silagem") || n.includes("volumoso")) return ["Silagem de milho (própria)", "Silagem de sorgo", "Pré-secado de capim", "Feno de tifton"];
-  if (n.includes("sal mineral")) return ["Tortuga Fosbovi 40", "Matsuda Supr Mil", "Fri-Ribe Leite +"];
-  if (n.includes("bezerro")) return ["Purina Bezerro Ini", "Cargill Aleitamento", "Socil Bezerra Plus"];
-  if (n.includes("núcleo") || n.includes("proteico")) return ["Nutrivet Núcleo 30", "Presence Proteico"];
-  if (n.includes("cavalo")) return ["Guabi Equitage", "Presence Haras"];
-  if (n.includes("cachorro")) return ["Pedigree 15 kg", "Golden Fórmula 15 kg", "Premier"];
-  if (n.includes("antibiótico")) return ["Florfenicol 250 ml", "Oxitetraciclina LA 500 ml", "Tilosina"];
-  if (n.includes("vermífugo") || n.includes("antiparasit")) return ["Ivermectina 500 ml", "Ricobendazol", "Closantel"];
-  if (n.includes("vacina")) return ["Vacina Brucelose B19", "Raiva Bovina", "IBR/BVD"];
-  if (n.includes("soro") || n.includes("hidrat")) return ["Soro fisiológico 500 ml", "Eletrólito oral"];
-  if (n.includes("vitamínico")) return ["ADE injetável", "Complexo B injetável"];
-  if (n.includes("diesel")) return ["Diesel S-10 (1.000 L)", "Diesel S-10 (500 L)", "Diesel S-10 (300 L)"];
-  if (n.includes("gasolina")) return ["Gasolina comum", "Gasolina aditivada"];
-  if (n.includes("lubrific")) return ["Óleo 15W40 (balde)", "Graxa de lítio", "Fluido hidráulico"];
-  if (n.includes("ordenha")) return ["Conjunto teteira DeLaval", "Bomba de vácuo Siloking", "Revisão ordenhadeira"];
-  if (n.includes("energia")) return ["Fatura Energisa — curral", "Fatura Energisa — galpão"];
-  if (n.includes("madeira") || n.includes("cerca")) return ["Mourão tratado", "Arame liso 500 m", "Tábua de pinus"];
-  if (n.includes("higiene")) return ["Detergente alcalino", "Iodo pós-dipping", "Pré-dipping"];
-  if (n.includes("manejo")) return ["Luva descartável cx", "Soga / corda", "Brinco de identificação"];
-  if (n.includes("imunóg")) return ["Vacina clostridiose", "Carrapaticida"];
-  if (n.includes("matriz")) return ["Lote 4 matrizes Girolando", "Lote 6 matrizes Girolando"];
-  if (n.includes("bezerra")) return ["Lote bezerras 8m", "Lote bezerras desmama"];
-  if (n.includes("touro")) return ["Touro Girolando PO"];
-  if (n.includes("máquina") || n.includes("trator") || n.includes("colheit")) return ["Peça hidráulica", "Pneu agrícola", "Revisão motor"];
-  if (n.includes("benfeitor") || n.includes("telhado") || n.includes("reforma")) return ["Telha fibrocimento", "Cimento + areia", "Mão de obra pedreiro"];
-  if (n.includes("veículo")) return ["Revisão picape", "Pneu utilitário", "Bateria"];
-  if (n.includes("ordenhador") || n.includes("tratador") || n.includes("capataz") || n.includes("diarista") || n.includes("caseiro") || n.includes("13") || n.includes("férias") || n.includes("rescis")) return ["Folha mensal", "Adiantamento", "Encargos"];
-  return null;
-}
-function unitFor(nome: string): { label: string; price: number } | null {
-  const n = nome.toLowerCase();
-  if (n.includes("concentrada") || n.includes("silagem") || n.includes("volumoso")) return { label: "ton", price: 2150 };
-  if (n.includes("sal mineral") || n.includes("bezerro") || n.includes("núcleo") || n.includes("cavalo")) return { label: "sc 40kg", price: 145 };
-  if (n.includes("cachorro")) return { label: "sc 15kg", price: 180 };
-  if (n.includes("diesel") || n.includes("gasolina")) return { label: "L", price: 6.1 };
-  return null;
-}
-
-type LancRow = { data: Date; dataLabel: string; marca: string; valor: number; qtd: string | null; nf: string };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function genLancamentos(cat: any, subNome: string, subIdx: number, totalValue: number, count: number): LancRow[] {
-  const r = rngFrom(cat.id + "·" + subIdx + "·lanc");
-  const n = Math.min(count, 16);
-  const pool = brandsFor(subNome) || [subNome];
-  const unit = unitFor(subNome);
-  const parts = seededMonthly(totalValue, cat.id + subIdx + "·v", n);
-  const rows: LancRow[] = [];
-  for (let i = 0; i < n; i++) {
-    const monthOff = Math.floor(r() * 23);
-    const day = 1 + Math.floor(r() * 27);
-    const d = new Date(2024, 6 + monthOff, day);
-    const valor = parts[i];
-    const marca = pool[Math.floor(r() * pool.length)];
-    let qtd: string | null = null;
-    if (unit) {
-      const q = valor / unit.price;
-      qtd = (unit.label === "L" ? Math.round(q) : q >= 10 ? q.toFixed(1) : q.toFixed(2)) + " " + unit.label;
-    }
-    rows.push({
-      data: d,
-      dataLabel: `${String(d.getDate()).padStart(2, "0")}/${SUB_MES[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`,
-      marca, valor, qtd,
-      nf: "NF " + (10000 + Math.floor(r() * 89999)),
-    });
-  }
-  rows.sort((a, b) => b.data.getTime() - a.data.getTime());
-  return rows;
+// Data "YYYY-MM-DD" → "DD/MM/AA"
+function fmtData(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function NotaDrawer({ R, cat, sub, row, onClose }: { R: R; cat: any; sub: any; row: LancRow; onClose: () => void }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fornObj = (R.fornecedores ?? []).find((f: any) => f.nome === sub.fornecedor);
-  const cnpj = fornObj ? fornObj.cnpj : "—";
+function NotaDrawer({ cat, row, onClose }: { cat: any; row: LancamentoDrill; onClose: () => void }) {
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="eyebrow">{row.nf}</div>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 22, marginTop: 4 }}>{sub.fornecedor}</div>
+            <div className="eyebrow">{row.doc || "Lançamento"}</div>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 22, marginTop: 4 }}>{row.fornecedor}</div>
           </div>
           <button className="drawer-close" onClick={onClose} aria-label="Fechar">×</button>
         </div>
 
         <div className="drawer-body">
           <div>
-            <div className="eyebrow">Valor da nota</div>
-            <div className="drawer-amount mono-nums">{fmtBRL(row.valor, { compact: false })}</div>
-          </div>
-
-          <div>
-            <div className="eyebrow" style={{ marginBottom: 10 }}>Nota fiscal anexa</div>
-            <div className="nota-frame">
-              <div className="nota-img">{row.nf} — {sub.fornecedor.toUpperCase()}<br />{row.marca} · {row.dataLabel}</div>
-              <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--ink-3)" }}>
-                <span>Capturada via WhatsApp · Sandra (admin)</span>
-                <span>{row.dataLabel}</span>
-              </div>
-            </div>
+            <div className="eyebrow">Valor</div>
+            <div className="drawer-amount mono-nums">{fmtBRL(row.valor)}</div>
           </div>
 
           <div className="drawer-meta-grid">
-            <div className="mcell"><span className="ml">Data</span><span className="mv">{row.dataLabel}</span></div>
-            <div className="mcell"><span className="ml">Documento</span><span className="mv">{row.nf}</span></div>
-            <div className="mcell"><span className="ml">Fornecedor</span><span className="mv">{sub.fornecedor}</span></div>
-            <div className="mcell"><span className="ml">CNPJ</span><span className="mv mono-nums">{cnpj}</span></div>
-            <div className="mcell"><span className="ml">Produto / marca</span><span className="mv">{row.marca}</span></div>
-            <div className="mcell"><span className="ml">Quantidade</span><span className="mv">{row.qtd || "—"}</span></div>
-            <div className="mcell"><span className="ml">Conta bancária</span><span className="mv">Sicoob PJ ag. 9012</span></div>
-            <div className="mcell"><span className="ml">Lançado por</span><span className="mv">Sandra (WhatsApp)</span></div>
+            <div className="mcell"><span className="ml">Data de liquidação</span><span className="mv">{fmtData(row.data)}</span></div>
+            <div className="mcell"><span className="ml">Documento</span><span className="mv">{row.doc || "—"}</span></div>
+            <div className="mcell"><span className="ml">Fornecedor</span><span className="mv">{row.fornecedor}</span></div>
+            <div className="mcell"><span className="ml">Categoria</span><span className="mv">{cat.grupo} → {cat.nome}</span></div>
           </div>
 
           <div>
@@ -981,7 +873,6 @@ function NotaDrawer({ R, cat, sub, row, onClose }: { R: R; cat: any; sub: any; r
                   <span className="dot"></span>{cat.atividade === "leite" ? "Leite" : cat.atividade === "cafe" ? "Café" : "Outros"}
                 </span>
                 <span style={{ fontSize: 14 }}>{cat.grupo} → {cat.nome}</span>
-                <span className="mono-nums" style={{ fontFamily: "var(--serif)", fontSize: 15 }}>{sub.nome}</span>
               </div>
             </div>
             {cat.flag && (
@@ -995,11 +886,9 @@ function NotaDrawer({ R, cat, sub, row, onClose }: { R: R; cat: any; sub: any; r
           <div>
             <div className="eyebrow" style={{ marginBottom: 8 }}>Descrição</div>
             <div style={{ fontSize: 15, color: "var(--ink-2)", lineHeight: 1.55 }}>
-              {row.marca} — {sub.nome.toLowerCase()}. Compra de {row.dataLabel} junto a {sub.fornecedor}, paga via PIX. Categorizado automaticamente pela IA a partir da leitura da nota.
+              {row.descricao || "—"}
             </div>
           </div>
-
-          {R.analisePreco && R.analisePreco(row.marca) && <PrecoAlerta R={R} marca={row.marca} />}
         </div>
       </div>
     </div>
@@ -1007,46 +896,69 @@ function NotaDrawer({ R, cat, sub, row, onClose }: { R: R; cat: any; sub: any; r
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function LancamentosPanel({ R, cat, sub, subIdx, onClose }: { R: R; cat: any; sub: any; subIdx: number; onClose: () => void }) {
-  const rows = useMemo(() => genLancamentos(cat, sub.nome, subIdx, sub.value, sub.lanc), [cat, sub.nome, subIdx, sub.value, sub.lanc]);
+function LancamentosPanel({ cat, sub, from, to, onClose }: { cat: any; sub: any; from?: string; to?: string; onClose: () => void }) {
+  const [rows, setRows] = useState<LancamentoDrill[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<number | null>(null);
-  const shown = rows.length;
+
+  useEffect(() => {
+    setRows(null);
+    setErro(null);
+    // "Outros fornecedores" é balde agregado → sem fornecedor específico (lista toda a categoria).
+    const forn = sub.nome && sub.nome !== "Outros fornecedores" ? sub.nome : undefined;
+    fetchLancamentos(cat.id, forn, from, to)
+      .then(setRows)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch((e: any) => setErro(e?.message || "erro ao carregar"));
+  }, [cat.id, sub.nome, from, to]);
+
+  const total = (rows ?? []).reduce((s, r) => s + r.valor, 0);
+
   return (
     <div className="lanc-panel">
       <div className="lanc-panel-head">
         <div>
           <span className="eyebrow">Lançamentos individuais</span>
           <div className="lanc-panel-title">{sub.nome}</div>
-          <span className="caption">{sub.fornecedor} · mostrando {shown} de {sub.lanc} lançamentos · total {fmtBRL(sub.value)}</span>
+          <span className="caption">
+            {rows == null
+              ? "carregando…"
+              : `${rows.length} lançamento${rows.length === 1 ? "" : "s"} · total ${fmtBRL(total)}`}
+          </span>
         </div>
         <button className="drawer-close" onClick={onClose} aria-label="Fechar">×</button>
       </div>
+      {erro ? (
+        <div className="caption" style={{ padding: 14, color: "var(--prejuizo)" }}>Erro ao carregar: {erro}</div>
+      ) : (
       <table className="lanc-table">
         <thead>
           <tr>
             <th style={{ width: 90 }}>Data</th>
-            <th>Marca / descrição</th>
+            <th>Descrição</th>
             <th>Fornecedor</th>
-            <th className="r" style={{ width: 110 }}>Qtd</th>
+            <th style={{ width: 130 }}>Documento</th>
             <th className="r" style={{ width: 130 }}>Valor</th>
-            <th style={{ width: 110 }}>Nota</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {(rows ?? []).map((row, i) => (
             <tr key={i} onClick={() => setOpenRow(i)} className="lanc-row-click">
-              <td className="ld-date mono-nums">{row.dataLabel}</td>
-              <td className="ld-marca">{row.marca}</td>
-              <td className="ld-forn">{sub.fornecedor}</td>
-              <td className="r mono-nums">{row.qtd || "—"}</td>
-              <td className="r ld-val mono-nums">{fmtBRL(row.valor, { compact: false })}</td>
-              <td className="ld-nf"><span className="nf-link">ver nota ›</span></td>
+              <td className="ld-date mono-nums">{fmtData(row.data)}</td>
+              <td className="ld-marca">{row.descricao || "—"}</td>
+              <td className="ld-forn">{row.fornecedor}</td>
+              <td className="mono-nums">{row.doc || "—"}</td>
+              <td className="r ld-val mono-nums">{fmtBRL(row.valor)}</td>
             </tr>
           ))}
+          {rows != null && rows.length === 0 && (
+            <tr><td colSpan={5} className="caption" style={{ padding: 12 }}>Nenhum lançamento no período.</td></tr>
+          )}
         </tbody>
       </table>
-      {openRow != null && (
-        <NotaDrawer R={R} cat={cat} sub={sub} row={rows[openRow]} onClose={() => setOpenRow(null)} />
+      )}
+      {openRow != null && rows && rows[openRow] && (
+        <NotaDrawer cat={cat} row={rows[openRow]} onClose={() => setOpenRow(null)} />
       )}
     </div>
   );
@@ -1102,8 +1014,8 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {subs.map((s: any) => {
             const isOff = !!off[s.id];
-            const pct = total > 0 && !isOff ? (s.value / total) * 100 : 0;
             const isSel = selected === s.idx;
+            const pct = total > 0 && !isOff ? Math.round((s.value / total) * 100) : 0;
             return (
               <div
                 key={s.id}
@@ -1127,9 +1039,9 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
                     <small>{s.fornecedor}</small>
                   </span>
                 </span>
-                <span className="sc-lanc mono-nums">{s.lanc}</span>
+                <span className="sc-lanc mono-nums">{s.lanc || "—"}</span>
                 <span className="sc-val mono-nums">{fmtBRL(s.value)}</span>
-                <span className="sc-pct mono-nums">{isOff ? "—" : pct.toFixed(1) + "%"}</span>
+                <span className="sc-pct mono-nums">{isOff ? "—" : `${pct}%`}</span>
                 <span className="sc-open">{isSel ? "▾" : "›"}</span>
               </div>
             );
@@ -1138,7 +1050,7 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
       </div>
 
       {selectedSub && (
-        <LancamentosPanel R={R} cat={cat} sub={selectedSub} subIdx={selectedSub.idx} onClose={() => setSelected(null)} />
+        <LancamentosPanel cat={cat} sub={selectedSub} from={R.periodo?.from} to={R.periodo?.to} onClose={() => setSelected(null)} />
       )}
     </div>
   );
@@ -1222,7 +1134,7 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
             </div>
           </div>
           <p className="drill-subhint">
-            Na planilha do BPO tudo isso entra como uma linha só: <strong>"{cat.nome}"</strong>. Aqui está aberto no que realmente foi comprado.
+            Tudo isso costuma entrar como uma linha só: <strong>"{cat.nome}"</strong>. Aqui está aberto no que realmente foi comprado.
           </p>
           <SubcatBreakdown R={R} cat={cat} period={period} />
         </section>
@@ -1257,9 +1169,9 @@ function ResumoExecutivo({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
       icon: "→",
       texto: (
         <>
-          Entrou o relatório de <strong>04/mai</strong>. O <strong>Curral</strong> disparou — R$ 786 mil no ano,{" "}
-          <strong className="rx-neg">+142%</strong> sobre 2025, puxado por Energisa, Siloking e madeira (parece reforma). Café fechou a
-          safra única em <strong>R$ 304 mil</strong>.
+          Entrou o relatório de <strong>04/mai</strong>. O <strong>Curral</strong> disparou — R$ XXX no ano,{" "}
+          <strong className="rx-neg">+XXX</strong> sobre 2025, puxado por Energisa, Siloking e madeira (parece reforma). Café fechou a
+          safra única em <strong>R$ XXX</strong>.
         </>
       ),
       cta: { label: "ver Curral", act: () => onNav("gastos") },
@@ -1270,10 +1182,10 @@ function ResumoExecutivo({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
       icon: "!",
       texto: (
         <>
-          Caixa operacional de <strong>{fmtBRL(R.caixaHoje.total, { compact: false })}</strong> cobre só ~<strong>6 dias</strong> da
-          queima de ~<strong className="rx-neg">{fmtBRL(Math.abs(R.folego.queimaMensal))}</strong>/mês — o negócio roda por{" "}
+          Caixa operacional de <strong>{fmtBRL(R.caixaHoje.total, { compact: false })}</strong> cobre só ~<strong>XXX dias</strong> da
+          queima de ~<strong className="rx-neg">XXX</strong>/mês — o negócio roda por{" "}
           <strong>aporte do proprietário</strong>. O leite ainda não se paga: déficit operacional de{" "}
-          <strong className="rx-neg">R$ 700 mil</strong> em 2025.
+          <strong className="rx-neg">R$ XXX</strong> em 2025.
         </>
       ),
       cta: { label: "ver caixa & aporte", act: null },
@@ -1284,9 +1196,9 @@ function ResumoExecutivo({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
       icon: "?",
       texto: (
         <>
-          R$ <strong>1,31 mi</strong> de "Animal Aquisição" seguem em custeio — <strong>reclassificar como investimento</strong> limpa a
+          R$ <strong>XXX</strong> de "Animal Aquisição" seguem em custeio — <strong>reclassificar como investimento</strong> limpa a
           leitura. E vale decidir o ritmo de compra de gado: pausar corta o aporte mensal quase pela metade, de{" "}
-          <strong className="rx-neg">~R$ 988 mil</strong> para <strong className="rx-pos">~R$ 502 mil</strong>/mês.
+          <strong className="rx-neg">~R$ XXX</strong> para <strong className="rx-pos">~R$ XXX</strong>/mês.
         </>
       ),
       cta: { label: "simular cenários", act: () => onNav("ia") },
@@ -1300,7 +1212,7 @@ function ResumoExecutivo({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
           <span className="rx-badge">
             <span className="dot"></span>IA · Resumo executivo
           </span>
-          <span className="rx-sub">Gerado quando o BPO entregou a planilha · {R.UPDATED_AT}</span>
+          <span className="rx-sub">Resumo gerado automaticamente</span>
         </div>
         <button className="rx-toggle" onClick={() => setOpen((o) => !o)}>
           {open ? "ocultar" : "mostrar"}
@@ -1345,8 +1257,6 @@ function FolegoCaixa({ R }: { R: R }) {
   const burnOp = Math.abs(f.queimaCusteioMensal);
   const pctOp = (burnOp / burnTotal) * 100;
   const pctInv = 100 - pctOp;
-  const diasCaixa = f.caixa / (burnTotal / 30);
-  const reducao = ((burnTotal - burnOp) / burnTotal) * 100;
 
   const fluxo = pf.fluxoProj as { mes: string; caixaFim: number }[];
   const W = 360, H = 96, padL = 6, padR = 6, padT = 10, padB = 18;
@@ -1358,7 +1268,11 @@ function FolegoCaixa({ R }: { R: R }) {
   const yC = (v: number) => padT + innerH - ((v - minC) / range) * innerH;
   const xC = (i: number) => padL + (i / (caixas.length - 1)) * innerW;
   const linePts = caixas.map((v, i) => `${xC(i)},${yC(v)}`).join(" ");
-  const aporteAcum = Math.abs(Math.min(...fluxo.map((x) => x.caixaFim)) - f.caixa);
+  const burnInv = burnTotal - burnOp;
+  const dias = f.folegoDias ?? Math.round((f.caixa / (burnTotal || 1)) * 30);
+  const capitalConsumido = burnTotal * (fluxo.length || 6);
+  const caixaFimPeriodo = fluxo.length ? fluxo[fluxo.length - 1].caixaFim : f.caixa;
+  const baseMeses = f.baseMeses ?? 6;
 
   return (
     <section className="folego-section">
@@ -1374,12 +1288,12 @@ function FolegoCaixa({ R }: { R: R }) {
         <div className="folego-main sev-warn">
           <span className="fm-eyebrow">Aporte mensal para manter o ritmo atual</span>
           <div className="fm-big mono-nums">
-            {fmtBRL(burnTotal, { compact: false })}
+            {fmtBRL(burnTotal)}
             <span className="fm-unit"> /mês</span>
           </div>
           <div className="fm-sub">
-            O caixa operacional de <strong className="mono-nums">{fmtBRL(f.caixa, { compact: false })}</strong> cobre só{" "}
-            <strong>~{Math.round(diasCaixa)} dias</strong> da queima. O negócio roda por <strong>aporte do proprietário</strong>, não por
+            O caixa de <strong className="mono-nums">{fmtBRL(f.caixa)}</strong> cobre só{" "}
+            <strong>~{dias} dias</strong> da queima. O negócio roda por <strong>aporte do proprietário</strong>, não por
             geração própria.
           </div>
           <div className="fm-gauge">
@@ -1389,10 +1303,10 @@ function FolegoCaixa({ R }: { R: R }) {
             </div>
             <div className="fa-split-legend" style={{ marginTop: 8 }}>
               <span>
-                <span className="legend-dot" style={{ background: "var(--cafe)" }}></span>Déficit operacional {pctOp.toFixed(0)}%
+                <span className="legend-dot" style={{ background: "var(--cafe)" }}></span>Déficit operacional {fmtBRL(burnOp)}
               </span>
               <span>
-                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Investimento {pctInv.toFixed(0)}%
+                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Investimento {fmtBRL(burnInv)}
               </span>
             </div>
           </div>
@@ -1401,11 +1315,11 @@ function FolegoCaixa({ R }: { R: R }) {
         <div className="folego-alt">
           <span className="fa-eyebrow">Se pausar o investimento em rebanho</span>
           <div className="fa-big mono-nums">
-            {fmtBRL(burnOp, { compact: false })}
+            {fmtBRL(burnOp)}
             <span className="fa-unit"> /mês</span>
           </div>
           <div className="fa-sub">
-            O aporte cai <strong className="mono-nums">~{reducao.toFixed(0)}%</strong> — de {fmtBRL(burnTotal)} para {fmtBRL(burnOp)}/mês.
+            O aporte cai <strong className="mono-nums">~{fmtBRL(burnInv)}</strong> — de {fmtBRL(burnTotal)} para {fmtBRL(burnOp)}/mês.
             Mas o <strong>déficit operacional não some</strong>: o leite ainda consome mais do que entrega. Pausar investir ajuda, não
             resolve sozinho.
           </div>
@@ -1431,8 +1345,8 @@ function FolegoCaixa({ R }: { R: R }) {
 
         <div className="folego-proj">
           <div className="fp-head">
-            <span className="fp-eyebrow">Capital consumido · 6 meses</span>
-            <span className="fp-warn">~{fmtBRL(aporteAcum)} de aporte</span>
+            <span className="fp-eyebrow">Capital consumido · {fluxo.length} meses</span>
+            <span className="fp-warn">~{fmtBRL(capitalConsumido)} de aporte</span>
           </div>
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
             <line x1={padL} x2={W - padR} y1={yC(0)} y2={yC(0)} stroke="var(--prejuizo)" strokeWidth="1" strokeDasharray="3 3" />
@@ -1453,7 +1367,7 @@ function FolegoCaixa({ R }: { R: R }) {
             )}
           </svg>
           <div className="fp-foot">
-            Sem aporte, o caixa fecha o período em <strong className="mono-nums">{fmtBRL(fluxo[fluxo.length - 1].caixaFim)}</strong> — ou
+            Sem aporte, o caixa fecha o período em <strong className="mono-nums">{fmtBRL(caixaFimPeriodo)}</strong> — ou
             seja, é o capital que o proprietário precisa injetar conforme o investimento desacelera.
           </div>
         </div>
@@ -1462,8 +1376,8 @@ function FolegoCaixa({ R }: { R: R }) {
       <div className="footnote" style={{ marginTop: 16 }}>
         <span className="dagger">†</span>
         <span>
-          Queima média dos 4 meses fechados de 2026 (Jan–Abr): {fmtBRL(burnTotal)}/mês, sendo {pctOp.toFixed(0)}% déficit operacional e{" "}
-          {pctInv.toFixed(0)}% investimento. Para o caixa parar de cair sem aporte, seria preciso zerar o déficit do leite <em>e</em> a
+          Queima média dos últimos {baseMeses} meses: {fmtBRL(burnTotal)}/mês, sendo {fmtBRL(burnOp)} déficit operacional e{" "}
+          {fmtBRL(burnInv)} investimento. Para o caixa parar de cair sem aporte, seria preciso zerar o déficit do leite <em>e</em> a
           compra de gado — ou injetar ~{fmtBRL(burnTotal)}/mês.
         </span>
       </div>
@@ -1511,24 +1425,24 @@ function BreakEvenLeite({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
       <div className="be-kpis">
         <div className="be-kpi">
           <span className="l">Custo / litro hoje</span>
-          <span className="v mono-nums neg">R$ {pl.custoLitroHoje.toFixed(2).replace(".", ",")}</span>
-          <span className="s">contra R$ {pl.precoLitro.toFixed(2).replace(".", ",")} de venda</span>
+          <span className="v mono-nums neg">R$ XXX</span>
+          <span className="s">contra R$ XXX de venda</span>
         </div>
         <div className="be-kpi">
           <span className="l">Volume hoje</span>
           <span className="v mono-nums">
-            {(pl.volMesHoje / 1000).toFixed(0)} mil L<span style={{ fontSize: 14 }}>/mês</span>
+            XXX mil L<span style={{ fontSize: 14 }}>/mês</span>
           </span>
-          <span className="s">~{Math.round(pl.volMesHoje / 30).toLocaleString("pt-BR")} L/dia</span>
+          <span className="s">~XXX L/dia</span>
         </div>
         <div className="be-kpi hl">
           <span className="l">Break-even projetado</span>
-          <span className="v mono-nums">{pl.breakEvenMes || "—"}</span>
-          <span className="s">{beIdx >= 0 ? `em ${beIdx + 1} meses` : "fora do horizonte de 12m"}</span>
+          <span className="v mono-nums">XXX</span>
+          <span className="s">{beIdx >= 0 ? "em XXX meses" : "fora do horizonte de 12m"}</span>
         </div>
         <div className="be-kpi">
           <span className="l">Custo / litro no break-even</span>
-          <span className="v mono-nums pos">{beIdx >= 0 ? "R$ " + proj[beIdx].custoLitro.toFixed(2).replace(".", ",") : "—"}</span>
+          <span className="v mono-nums pos">{beIdx >= 0 ? "R$ XXX" : "—"}</span>
           <span className="s">cai com diluição do volume</span>
         </div>
       </div>
@@ -1576,13 +1490,13 @@ function BreakEvenLeite({ R, onNav }: { R: R; onNav: (t: Tab) => void }) {
 
       <div className="be-foot">
         <div className="be-foot-txt">
-          <strong>Leitura:</strong> o custo por litro hoje está em <span className="neg-txt">R$ {pl.custoLitroHoje.toFixed(2).replace(".", ",")}</span>{" "}
-          porque o volume caiu enquanto o rebanho passa por reposição. Conforme as matrizes compradas (R$ 2,2 mi) entram em produção, o
+          <strong>Leitura:</strong> o custo por litro hoje está em <span className="neg-txt">R$ XXX</span>{" "}
+          porque o volume caiu enquanto o rebanho passa por reposição. Conforme as matrizes compradas (R$ XXX) entram em produção, o
           volume diluí o custo fixo e a curva cruza o preço de venda
           {beIdx >= 0 ? (
             <>
               {" "}
-              por volta de <strong>{pl.breakEvenMes}</strong>.
+              por volta de <strong>XXX</strong>.
             </>
           ) : (
             <> — mas ainda não dentro de 12 meses no cenário base.</>
@@ -1607,8 +1521,6 @@ function OrcadoRealizado({ R, onDrill }: { R: R; onDrill: (id: string) => void }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalReal = itens.reduce((s: number, i: any) => s + i.realizado, 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const estourou = itens.filter((i: any) => i.realizado > i.orcado).length;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const maxVal = Math.max(...itens.map((i: any) => Math.max(i.orcado, i.realizado)));
   return (
     <section className="cockpit-section">
@@ -1618,25 +1530,25 @@ function OrcadoRealizado({ R, onDrill }: { R: R; onDrill: (id: string) => void }
           <h2 className="dash-sec-title">Orçado × Realizado</h2>
         </div>
         <span className={"orc-flag " + (totalReal > totalOrc ? "over" : "ok")}>
-          {totalReal > totalOrc ? `${estourou} categorias acima do teto` : "dentro do orçamento"}
+          {totalReal > totalOrc ? "XXX categorias acima do teto" : "dentro do orçamento"}
         </span>
       </div>
       <div className="orc-summary">
         <div className="orc-sum-cell">
           <span className="l">Orçado total</span>
-          <span className="v mono-nums">{fmtBRL(totalOrc)}</span>
+          <span className="v mono-nums">XXX</span>
         </div>
         <div className="orc-sum-cell">
           <span className="l">Realizado</span>
           <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--prejuizo)" : "var(--lucro)" }}>
-            {fmtBRL(totalReal)}
+            XXX
           </span>
         </div>
         <div className="orc-sum-cell">
           <span className="l">Desvio</span>
           <span className="v mono-nums" style={{ color: totalReal > totalOrc ? "var(--prejuizo)" : "var(--lucro)" }}>
             {totalReal > totalOrc ? "▲ +" : "▼ "}
-            {fmtBRL(Math.abs(totalReal - totalOrc))}
+            XXX
           </span>
         </div>
       </div>
@@ -1662,12 +1574,12 @@ function OrcadoRealizado({ R, onDrill }: { R: R; onDrill: (id: string) => void }
                   <span className={"orc-bar-real " + (over ? "over" : "under")} style={{ width: `${wReal}%` }}></span>
                 </span>
               </span>
-              <span className="orc-real mono-nums">{fmtBRL(it.realizado)}</span>
+              <span className="orc-real mono-nums">XXX</span>
               <span className={"orc-delta mono-nums " + (over ? "over" : "under")}>
                 {over ? "+" : "−"}
-                {fmtBRL(Math.abs(it.delta))}
+                XXX
               </span>
-              <span className={"orc-pct mono-nums " + (over ? "over" : "under")}>{it.pct.toFixed(0)}%</span>
+              <span className={"orc-pct mono-nums " + (over ? "over" : "under")}>XXX</span>
             </button>
           );
         })}
@@ -1696,7 +1608,6 @@ function ProdutividadeRebanho({ R }: { R: R }) {
   const p = R.produtividade;
   const atual = p.litrosVacaAtual;
   const meta = p.metaLitrosVaca;
-  const gap = meta - atual;
   const pctMeta = (atual / meta) * 100;
   const W = 760, H = 220, padL = 44, padR = 70, padT = 18, padB = 34;
   const innerW = W - padL - padR, innerH = H - padT - padB;
@@ -1707,8 +1618,6 @@ function ProdutividadeRebanho({ R }: { R: R }) {
   const xS = (i: number) => padL + (i / (vals.length - 1)) * innerW;
   const linePts = vals.map((v, i) => `${xS(i)},${yS(v)}`).join(" ");
   const vacas = p.vacasLactacao[p.vacasLactacao.length - 1];
-  const litrosExtraDia = Math.round(gap * vacas);
-  const receitaExtraMes = Math.round(litrosExtraDia * 30 * 3.5);
   return (
     <section className="cockpit-section">
       <div className="dash-sec-head">
@@ -1725,7 +1634,7 @@ function ProdutividadeRebanho({ R }: { R: R }) {
           <div className="prod-kpi big">
             <span className="l">Hoje</span>
             <span className="v mono-nums">
-              {atual}
+              XXX
               <small> L/vaca/dia</small>
             </span>
             <div className="prod-meta-bar">
@@ -1733,19 +1642,19 @@ function ProdutividadeRebanho({ R }: { R: R }) {
                 <div className="pmb-fill" style={{ width: `${Math.min(100, pctMeta)}%` }}></div>
               </div>
               <span className="pmb-cap">
-                {pctMeta.toFixed(0)}% da meta de {meta} L
+                XXX da meta de XXX L
               </span>
             </div>
           </div>
           <div className="prod-kpi">
             <span className="l">Média 12m</span>
-            <span className="v mono-nums">{p.litrosVacaMedia} L</span>
+            <span className="v mono-nums">XXX L</span>
           </div>
           <div className="prod-kpi">
             <span className="l">Vacas em lactação</span>
             <span className="v mono-nums">
-              {vacas}
-              <small> de {p.totalRebanho}</small>
+              XXX
+              <small> de XXX</small>
             </span>
           </div>
           <div className="prod-rebanho">
@@ -1758,16 +1667,16 @@ function ProdutividadeRebanho({ R }: { R: R }) {
             </div>
             <div className="pr-legend">
               <span>
-                <span className="legend-dot" style={{ background: "var(--leite)" }}></span>Lactação {vacas}
+                <span className="legend-dot" style={{ background: "var(--leite)" }}></span>Lactação XXX
               </span>
               <span>
-                <span className="legend-dot" style={{ background: "var(--cafe-2)" }}></span>Secas {p.vacasSecas}
+                <span className="legend-dot" style={{ background: "var(--cafe-2)" }}></span>Secas XXX
               </span>
               <span>
-                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Novilhas {p.novilhas}
+                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Novilhas XXX
               </span>
               <span>
-                <span className="legend-dot" style={{ background: "var(--outros-2)" }}></span>Bezerros {p.bezerros}
+                <span className="legend-dot" style={{ background: "var(--outros-2)" }}></span>Bezerros XXX
               </span>
             </div>
           </div>
@@ -1784,7 +1693,7 @@ function ProdutividadeRebanho({ R }: { R: R }) {
             ))}
             <line x1={padL} x2={W - padR} y1={yS(meta)} y2={yS(meta)} stroke="var(--lucro)" strokeWidth="1.2" strokeDasharray="4 3" />
             <text x={W - padR + 6} y={yS(meta) + 4} className="be-line-label" style={{ fill: "var(--lucro)" }}>
-              meta {meta}L
+              meta XXX
             </text>
             <polyline points={linePts} fill="none" stroke="var(--leite)" strokeWidth="2" />
             {vals.map((v, i) => (
@@ -1800,9 +1709,9 @@ function ProdutividadeRebanho({ R }: { R: R }) {
           </svg>
           <div className="prod-insight">
             <span className="pi-tag">Análise da IA</span>
-            Cada vaca entrega <strong>{atual} L/dia</strong> contra a meta de <strong>{meta} L</strong>. Fechar esse gap de{" "}
-            {gap.toFixed(1)} L significaria <strong className="pos-txt"> +{litrosExtraDia.toLocaleString("pt-BR")} L/dia</strong> — cerca
-            de <strong className="pos-txt">{fmtBRL(receitaExtraMes)}/mês</strong> a mais de receita, com o mesmo rebanho. É a alavanca
+            Cada vaca entrega <strong>XXX L/dia</strong> contra a meta de <strong>XXX L</strong>. Fechar esse gap de{" "}
+            XXX L significaria <strong className="pos-txt"> +XXX L/dia</strong> — cerca
+            de <strong className="pos-txt">XXX/mês</strong> a mais de receita, com o mesmo rebanho. É a alavanca
             que mais aproxima o break-even, antes de comprar mais matrizes.
           </div>
         </div>
@@ -2082,7 +1991,11 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  const recarregar = useCallback(() => { fetchDashboard().then(setData).catch(setError); }, []);
+  // Refaz a busca sempre que o range muda → o servidor devolve o bloco `periodo`
+  // (KPIs do intervalo). Mantém `data` anterior durante o fetch (sem flash).
+  const recarregar = useCallback(() => {
+    fetchDashboard({ from: ymd(range.start), to: ymd(range.end) }).then(setData).catch(setError);
+  }, [range]);
   useEffect(() => { recarregar(); }, [recarregar]);
 
   if (error) {
@@ -2096,7 +2009,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
     );
   }
   if (!data) {
-    return <LoadingShell>Carregando dados do Neon…</LoadingShell>;
+    return <LoadingShell>Carregando dados…</LoadingShell>;
   }
 
   const maskVals = !!user && !user.flags.includes("verValores");
@@ -2132,30 +2045,49 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
+      <div className="dash-filtro-topo">
+        <span className="dash-filtro-lbl">Período</span>
+        <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
+        <span className="dash-filtro-hint">mensal · filtra os KPIs por data de liquidação</span>
+      </div>
       <ContextStrip
         items={[
           { label: "Período", value: formatRangeLabel(range) },
           { label: "Atividade", value: "Todas (leite, café, outros)" },
           { label: "Categoria", value: "Todas" },
-          { label: "Fonte", value: "Neon · planilha BPO" },
+          { label: "Fonte", value: "—" },
         ]}
       />
-      <ResumoExecutivo R={data} onNav={onNav} />
-      <RupturaCaixa R={data} onNav={onNav} />
-      <KpiCockpit R={data} range={range} setRange={setRange} />
+      {/* Seções escondidas até existir o dado-fonte (não estão no schema/DB).
+          Reative trocando SECOES_SEM_DADO para true (ou por seção) quando entrar:
+          - ResumoExecutivo: narrativa da IA (virá pelo Plano IA, por mês fechado)
+          - RupturaCaixa: projeção diária + compromissos a vencer
+          - BreakEvenLeite / ProdutividadeRebanho: litros e plantel (rebanho vazio)
+          - OrcadoRealizado: não existe tabela de orçamento */}
+      {SECOES_SEM_DADO && (
+        <>
+          <ResumoExecutivo R={data} onNav={onNav} />
+          <RupturaCaixa R={data} onNav={onNav} />
+          <BreakEvenLeite R={data} onNav={onNav} />
+          <OrcadoRealizado R={data} onDrill={setDrillCat} />
+          <ProdutividadeRebanho R={data} />
+        </>
+      )}
+      <KpiCockpit R={data} />
       <FolegoCaixa R={data} />
-      <BreakEvenLeite R={data} onNav={onNav} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
       <ExplorarCategoria R={data} onDrill={setDrillCat} />
       <AtividadeSplit R={data} />
-      <OrcadoRealizado R={data} onDrill={setDrillCat} />
-      <ProdutividadeRebanho R={data} />
-      <TimelineSection R={data} onMonthClick={setMonthIdx} />
-      <DRESection R={data} />
+      {MOSTRAR_MULTI_PERIODO && (
+        <>
+          <TimelineSection R={data} onMonthClick={setMonthIdx} />
+          <DRESection R={data} />
+        </>
+      )}
       <InconsistenciasSection R={data} onReclassificar={recarregar} />
       <div style={{ padding: "28px 0 60px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Fonte: Neon (via /api/dashboard) · agregado em runtime
+          Agregado em runtime (via /api/dashboard)
         </span>
         <button className="crumb-btn" onClick={() => onNav("relatorio")}>ver Relatório editorial →</button>
       </div>
