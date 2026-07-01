@@ -25,8 +25,12 @@ Os arquivos de config já estão no repo:
 | Env             | Valor                                                                                                                   |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`  | URL **pooled** do Neon (`?sslmode=require`). Mesma que em `server/.env`.                                                |
+| `DIRECT_URL`    | URL **direct** (não-pooled: mesma sem `-pooler`). **Necessária** — o `db push` da partida usa ela (o schema tem `directUrl`). |
 | `JWT_SECRET`    | String aleatória forte (`openssl rand -hex 32`). **Não** reusar o de dev.                                               |
 | `CORS_ORIGIN`   | Deixe vazio agora (preenchemos depois quando soubermos a URL da CF Pages). Sem ela o CORS fica liberado pra qualquer origem. |
+| `OPENAI_API_KEY` | Chave da OpenAI. Sem ela: chat/bot desligado (503) e a IA (rebanho/plantio/corte) roda em modo demo. |
+| `DATABASE_URL_READONLY` | (opcional) Role somente-leitura do Neon p/ o escape-hatch de SQL do bot. Sem ela, o SQL livre fica off (ferramentas curadas seguem ok). |
+| `DASHBOARD_MESES_QUEIMA` | (opcional) Nº de meses na média da queima do fôlego. Default 6. |
 
 ### 1.3. Apply
 
@@ -42,9 +46,16 @@ pnpm --filter rionovo-server run build
 E na partida:
 
 ```
-prisma migrate deploy   # aplica migrations no Neon
-node dist/index.js      # bind em $PORT injetado pelo Render
+prisma db push --skip-generate   # sincroniza o schema no banco (cria tabelas que faltam)
+node dist/index.js               # bind em $PORT injetado pelo Render
 ```
+
+> **Por que `db push` e não `migrate deploy`?** O schema vem sendo gerenciado por
+> `db push` (o banco atual tem drift: só 2 de N migrations registradas). `db push`
+> sincroniza o schema direto — robusto pra staging, independe do histórico. As
+> migrations existem no repo (inclusive a consolidada `20260701_...`, que cobre 100%
+> do schema — `migrate diff` dá "No difference"), então dá pra migrar pra
+> `migrate deploy` num banco limpo depois se quiser.
 
 Health check: `GET /api/health`. Tempo médio de build inicial: 3-5 min.
 

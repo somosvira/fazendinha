@@ -1,5 +1,5 @@
 // Respondedor demo por regras — função PURA (sem Prisma, sem rede).
-// Usado quando não há ANTHROPIC_API_KEY: responde perguntas comuns a partir do
+// Usado quando não há OPENAI_API_KEY: responde perguntas comuns a partir do
 // contexto real do rebanho. Roteamento por palavra-chave (normalizada).
 
 import type { ContextoRebanho } from "./ia.context.js";

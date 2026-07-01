@@ -1,5 +1,5 @@
 // Respondedor demo por regras — função PURA (sem Prisma, sem rede).
-// Espelha rebanho/ia.responder.ts. Usado quando não há ANTHROPIC_API_KEY:
+// Espelha rebanho/ia.responder.ts. Usado quando não há OPENAI_API_KEY:
 // responde perguntas comuns da lavoura a partir do contexto REAL (números dos
 // resumos, custo e estoque). Roteamento por palavra-chave (normalizada).
 

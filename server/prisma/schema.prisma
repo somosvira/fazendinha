@@ -1270,3 +1270,90 @@ model OperacaoComercial {
   @@index([loteId, data])
   @@index([tipo, data])
 }
+
+// ============================================================================
+// Bot de WhatsApp — identidade (allowlist), histórico de conversa e rascunhos.
+// Single-tenant por enquanto: quem está na allowlist (ativo) acessa toda a
+// fazenda. Multi-fazenda real fica para uma fase futura.
+// ============================================================================
+
+enum DirecaoMensagem {
+  IN // recebida do usuário
+  OUT // enviada pelo bot
+}
+
+enum StatusRascunho {
+  PENDENTE // aguardando confirmação do usuário
+  CONFIRMADO // virou Lancamento
+  CANCELADO
+}
+
+// Allowlist de telefones autorizados a usar o bot.
+model UsuarioWhatsapp {
+  id        Int                @id @default(autoincrement())
+  // E.164 sem "+" (formato que a Meta entrega), ex.: "5531999999999"
+  telefone  String             @unique
+  nome      String
+  ativo     Boolean            @default(true)
+  conversas ConversaWhatsapp[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+// Uma conversa por telefone; guarda o histórico para contexto multi-turno.
+model ConversaWhatsapp {
+  id           Int                 @id @default(autoincrement())
+  usuario      UsuarioWhatsapp?    @relation(fields: [usuarioId], references: [id])
+  usuarioId    Int?
+  telefone     String              @unique
+  mensagens    MensagemWhatsapp[]
+  ultimaAtividade DateTime         @default(now())
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model MensagemWhatsapp {
+  id          Int              @id @default(autoincrement())
+  conversa    ConversaWhatsapp @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  conversaId  Int
+  // ID da mensagem na Meta (wamid...) — UNIQUE garante dedupe de reentregas.
+  waMessageId String?          @unique
+  direcao     DirecaoMensagem
+  tipo        String           @default("text") // text | image | interactive | ...
+  texto       String?
+  createdAt   DateTime         @default(now())
+
+  @@index([conversaId, createdAt])
+}
+
+// Rascunho de lançamento (pré-preenchido por formulário/OCR) até o usuário
+// confirmar. Campos nullable: OCR pode preencher parcialmente.
+model LancamentoRascunho {
+  id                  Int            @id @default(autoincrement())
+  telefone            String
+  status              StatusRascunho @default(PENDENTE)
+
+  natureza            Natureza?
+  valor               Decimal?       @db.Decimal(14, 2)
+  dataCompetencia     DateTime?      @db.Date
+  dataVencimento      DateTime?      @db.Date
+  dataLiquidacao      DateTime?      @db.Date
+  situacao            Situacao?
+  numeroDocumento     String?
+  descricao           String?
+
+  categoriaId         Int?
+  centroCustoId       Int?
+  contaBancariaId     Int?
+  clienteFornecedorId Int?
+
+  // Extração crua do OCR/vision (auditoria + reprocessar se preciso).
+  rawOcr              Json?
+  // Lançamento criado quando confirmado.
+  lancamentoId        Int?
+
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([telefone, status])
+}

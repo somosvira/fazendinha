@@ -2,8 +2,8 @@
  * Backend está em outra porta; Vite faz proxy de /api → 41873 (vite.config.ts).
  */
 
-import { buildSubcategorias, buildVolumeLeite, fornecedores } from "./data/cockpitSupplements";
-import { buildFolego, buildProjecaoLeite, buildProjecaoFluxo } from "./data/projecao";
+import { buildVolumeLeite } from "./data/cockpitSupplements";
+import { buildFolego, buildProjecaoLeite } from "./data/projecao";
 import { orcamento, buildProdutividade } from "./data/gestao";
 import { buildCompromissos, buildRuptura } from "./data/ruptura";
 import { anomalias, historicoPreco, analisePreco } from "./data/anomalias";
@@ -25,9 +25,13 @@ async function getJson<T>(path: string): Promise<T> {
  * O backend devolve `grupo = GrupoCategoria`. Reescreve aqui para casar.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fetchDashboard(): Promise<any> {
+export async function fetchDashboard(opts?: { from?: string; to?: string }): Promise<any> {
+  const qs = new URLSearchParams();
+  if (opts?.from) qs.set("from", opts.from);
+  if (opts?.to) qs.set("to", opts.to);
+  const q = qs.toString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const d: any = await getJson("/dashboard");
+  const d: any = await getJson(`/dashboard${q ? `?${q}` : ""}`);
 
   const atvLabel: Record<string, string> = {
     leite: "Atv. Leiteira",
@@ -42,21 +46,50 @@ export async function fetchDashboard(): Promise<any> {
     grupo: atvLabel[c.atividade] ?? c.grupo ?? "—",
   }));
 
-  // Suplementos que o backend ainda não modela (subcategorias, fornecedores,
-  // volume de leite). Casados por nome de categoria — ver cockpitSupplements.ts.
-  d.subcategorias = buildSubcategorias(d.categoriasReais);
-  d.fornecedores = fornecedores;
+  // Subcategorias REAIS = quebra por fornecedor dentro de cada categoria (única
+  // dimensão disponível; o schema não tem nível de subcategoria). Os fornecedores
+  // por categoria vêm do servidor em categoriasReais[].fornecedores ({nome,valor,n}).
+  d.subcategorias = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const c of d.categoriasReais as any[]) {
+    const total = c.total23m || 1;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tops = (c.fornecedores ?? []) as any[];
+    const subs = tops.map((f) => ({ nome: f.nome, fornecedor: "", lanc: f.n, share: f.valor / total }));
+    const somaShare = subs.reduce((s, x) => s + x.share, 0);
+    const restoN = (c.nFornecedores ?? tops.length) - tops.length;
+    if (restoN > 0 && somaShare < 0.999) {
+      subs.push({ nome: "Outros fornecedores", fornecedor: `${restoN} fornecedores`, lanc: 0, share: Math.max(0, 1 - somaShare) });
+    }
+    d.subcategorias[c.id] = subs;
+  }
+
+  // Suplementos que o backend ainda não modela (volume de leite — sem dado de rebanho).
   if (d.k2025 && d.k2026YTD) {
     d.volumeLeite = buildVolumeLeite(d.k2025, d.k2026YTD);
   }
 
-  // Derivados do cockpit v3 (fôlego, break-even, fluxo, ruptura). Calculados a
-  // partir das séries do payload — ver data/projecao.ts e data/ruptura.ts.
-  d.folego = buildFolego(d);
+  // Fôlego + projeção de fluxo: dados REAIS do servidor (d.projecao — Plano #2).
+  // A queima é sólida; o fôlego em si depende do caixa (subestimado enquanto o
+  // saldoInicial das contas for 0).
+  const proj = d.projecao ?? {};
+  d.folego = {
+    caixa: proj.caixa ?? 0,
+    queimaMensal: proj.queimaMensal ?? 0,
+    queimaCusteioMensal: proj.queimaCusteioMensal ?? 0,
+    queimaInvestimentoMensal: proj.queimaInvestimentoMensal ?? 0,
+    folegoDias: proj.folegoDias ?? null,
+    folegoMeses: proj.folegoMeses ?? null,
+    baseMeses: proj.baseMeses ?? 6,
+  };
+  d.projecaoFluxo = { fluxoProj: proj.fluxoProj ?? [] };
+
+  // Ainda mock (bloqueados): break-even do leite (sem litros) e ruptura DIÁRIA +
+  // compromissos (precisa de projeção diária e de contas a vencer). buildRuptura
+  // recebe um folego mock só pra não acoplar à forma real.
   d.projecaoLeite = buildProjecaoLeite(d);
-  d.projecaoFluxo = buildProjecaoFluxo(d, d.projecaoLeite);
   d.compromissos = buildCompromissos();
-  d.rupturaCaixa = buildRuptura(d, d.folego);
+  d.rupturaCaixa = buildRuptura(d, buildFolego(d));
 
   // Gestão (orçado×realizado, produtividade do rebanho) — definidos fora do BPO.
   d.orcamento = orcamento;
@@ -68,6 +101,48 @@ export async function fetchDashboard(): Promise<any> {
   d.analisePreco = analisePreco;
 
   return d;
+}
+
+export interface LancamentoDrill {
+  data: string | null;
+  valor: number;
+  doc: string | null;
+  descricao: string | null;
+  fornecedor: string;
+}
+
+/** GET /api/dashboard/lancamentos — lançamentos reais de uma categoria (opc. de um fornecedor). */
+export async function fetchLancamentos(categoriaId: number, fornecedor?: string, from?: string, to?: string): Promise<LancamentoDrill[]> {
+  const qs = new URLSearchParams({ categoriaId: String(categoriaId) });
+  if (fornecedor) qs.set("fornecedor", fornecedor);
+  if (from) qs.set("from", from);
+  if (to) qs.set("to", to);
+  const res = await fetch(`/api/dashboard/lancamentos?${qs.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const d = await res.json();
+  return (d.lancamentos ?? []) as LancamentoDrill[];
+}
+
+export interface BotReply {
+  resposta: string;
+  toolsUsadas?: string[];
+  sessao?: string | null;
+}
+
+/** POST /api/bot/ask — pergunta ao assistente. `sessao` mantém o contexto entre chamadas. */
+export async function askBot(pergunta: string, sessao: string): Promise<BotReply> {
+  const res = await fetch("/api/bot/ask", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pergunta, sessao }),
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 503) throw new Error(data?.erro || "Bot desligado (configure OPENAI_API_KEY no servidor).");
+    throw new Error(data?.erro || `Erro ${res.status}`);
+  }
+  return data as BotReply;
 }
 
 export async function reclassificarCategoria(id: number, classificacao: "INVESTIMENTO" | "CUSTEIO"): Promise<void> {

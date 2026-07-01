@@ -1,5 +1,5 @@
 // Respondedor demo por regras — função PURA (sem Prisma, sem rede).
-// Usado quando não há ANTHROPIC_API_KEY: responde perguntas comuns sobre o
+// Usado quando não há OPENAI_API_KEY: responde perguntas comuns sobre o
 // plantel de corte a partir do contexto REAL. Roteamento por palavra-chave
 // (normalizada: minúsculas + sem acento). Mirror de rebanho/ia.responder.ts.
 
