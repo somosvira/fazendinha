@@ -1,5 +1,5 @@
 // Orquestrador da IA da lavoura: busca dados reais → monta contexto → responde.
-// Espelha rebanho/ia.ts. Com ANTHROPIC_API_KEY chama Claude (modo IA); sem ela
+// Espelha rebanho/ia.ts. Com OPENAI_API_KEY chama a OpenAI (modo IA); sem ela
 // (ou em falha) responde por regras (modo demonstração). Nunca lança por rede.
 
 import { prisma } from "../../db.js";
@@ -98,9 +98,9 @@ export async function listarInsightsPlantio(): Promise<IaInsightDTO[]> {
 export async function responderIA(pergunta: string): Promise<RespostaIA> {
   const ctx = await montarContextoReal();
 
-  if (env.ANTHROPIC_API_KEY) {
+  if (env.OPENAI_API_KEY) {
     try {
-      const resposta = await responderComLLM(pergunta, contextoPlantioParaTexto(ctx), env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
+      const resposta = await responderComLLM(pergunta, contextoPlantioParaTexto(ctx), env.OPENAI_API_KEY, env.OPENAI_MODEL);
       return { resposta, modo: "ia" };
     } catch {
       // cai pro demo (nunca quebra por causa de rede/credencial)

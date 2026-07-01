@@ -37,7 +37,7 @@ export function IaView() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Assistente · Rúmi</div>
+      <div className="rb-eyebrow">Assistente</div>
       <div className="rb-head"><h1>IA</h1></div>
 
       <div className="rb-ia-grid">

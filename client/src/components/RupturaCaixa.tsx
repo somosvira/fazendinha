@@ -59,7 +59,7 @@ export function RupturaCaixa({ R, onNav }: { R: R; onNav?: (t: Tab) => void }) {
           <h2 className="dash-sec-title">Aviso de ruptura de caixa</h2>
         </div>
         {temRuptura ? (
-          <span className="ruptura-flag crit">Ruptura em {rc.rupturaData}</span>
+          <span className="ruptura-flag crit">Ruptura em XXX</span>
         ) : (
           <span className="ruptura-flag ok">Sem ruptura no período</span>
         )}
@@ -71,12 +71,12 @@ export function RupturaCaixa({ R, onNav }: { R: R; onNav?: (t: Tab) => void }) {
           {temRuptura ? (
             <>
               <div className="ra-title">
-                O caixa fica negativo em <strong>{rc.rupturaData}</strong> — daqui a {rc.rupturaDia} dias.
+                O caixa fica negativo em <strong>XXX</strong> — daqui a XXX dias.
               </div>
               <div className="ra-text">
-                O menor saldo projetado é <strong className="neg-txt">{fmtBRLrup(rc.menorSaldo)}</strong> em {rc.menorSaldoData},
-                puxado pela folha e pela compra de matrizes. Para manter um colchão de {fmtBRLrup(rc.colchao)}, o ideal é um aporte
-                de <strong>{fmtBRLrup(rc.aporteSugerido)}</strong> até <strong>{rc.rupturaData}</strong>.
+                O menor saldo projetado é <strong className="neg-txt">XXX</strong> em XXX,
+                puxado pela folha e pela compra de matrizes. Para manter um colchão de XXX, o ideal é um aporte
+                de <strong>XXX</strong> até <strong>XXX</strong>.
               </div>
             </>
           ) : (
@@ -86,7 +86,7 @@ export function RupturaCaixa({ R, onNav }: { R: R; onNav?: (t: Tab) => void }) {
         {temRuptura && (
           <div className="ra-aporte">
             <span className="ra-aporte-l">Aporte sugerido</span>
-            <span className="ra-aporte-v mono-nums">{fmtBRLrup(rc.aporteSugerido)}</span>
+            <span className="ra-aporte-v mono-nums">XXX</span>
             <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 13 }} onClick={() => onNav && onNav("lancar")}>
               Registrar aporte →
             </button>
@@ -168,14 +168,14 @@ export function RupturaCaixa({ R, onNav }: { R: R; onNav?: (t: Tab) => void }) {
           <div className="rl-body">
             {compromissos.map((c, i) => (
               <div key={i} className={"rl-row " + c.tipo}>
-                <span className="rl-data mono-nums">{c.data}</span>
+                <span className="rl-data mono-nums">XXX</span>
                 <div className="rl-info">
                   <span className="rl-label">{c.label}</span>
                   <span className="rl-cat">{c.categoria}</span>
                 </div>
                 <span className={"rl-valor mono-nums " + c.tipo}>
                   {c.tipo === "entrada" ? "+" : "−"}
-                  {fmtBRLrup(c.valor)}
+                  XXX
                 </span>
               </div>
             ))}
