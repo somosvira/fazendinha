@@ -49,3 +49,52 @@ export function calcularResumoSafra(input: ResumoInput): ResumoCalc {
 
   return { custeioTotal, investimentoTotal, areaHa, producaoGraoSc, producaoSilagemTon, custoHa, custoSaca, custoTonelada, horasMaquinaTotal, nota };
 }
+
+import { prisma } from "../../db.js";
+import { Prisma } from "@prisma/client";
+
+const n = (d: Prisma.Decimal | null | undefined): number => (d == null ? 0 : Number(d));
+const dec = (x: number | null): Prisma.Decimal | null => (x == null ? null : new Prisma.Decimal(x.toFixed(2)));
+const dec3 = (x: number): Prisma.Decimal => new Prisma.Decimal(x.toFixed(3));
+
+export async function recomputarResumoSafra(safraCultivoId: number): Promise<void> {
+  const safra = await prisma.safraCultivo.findUnique({
+    where: { id: safraCultivoId },
+    include: { areas: true, custos: true, producoes: true },
+  });
+  if (!safra) return;
+
+  const calc = calcularResumoSafra({
+    areaHaTotal: n(safra.areaHaTotal),
+    areas: safra.areas.map((a) => ({ id: a.id, areaHa: n(a.areaHa) })),
+    custos: safra.custos.map((c) => ({
+      classe: c.classe as "CUSTEIO" | "INVESTIMENTO",
+      valor: n(c.valor),
+      horasMaquina: n(c.horasMaquina),
+      areaCultivoId: c.areaCultivoId,
+    })),
+    producoes: safra.producoes.map((p) => ({
+      tipo: p.tipo as "GRAO" | "SILAGEM",
+      quantidade: n(p.quantidade),
+      areaCultivoId: p.areaCultivoId,
+    })),
+  });
+
+  const dados = {
+    custeioTotal: new Prisma.Decimal(calc.custeioTotal.toFixed(2)),
+    investimentoTotal: new Prisma.Decimal(calc.investimentoTotal.toFixed(2)),
+    areaHa: new Prisma.Decimal(calc.areaHa.toFixed(2)),
+    producaoGraoSc: dec3(calc.producaoGraoSc),
+    producaoSilagemTon: dec3(calc.producaoSilagemTon),
+    custoHa: dec(calc.custoHa),
+    custoSaca: dec(calc.custoSaca),
+    custoTonelada: dec(calc.custoTonelada),
+    horasMaquinaTotal: new Prisma.Decimal(calc.horasMaquinaTotal.toFixed(2)),
+  };
+
+  await prisma.resumoSafraCultivo.upsert({
+    where: { safraCultivoId },
+    create: { safraCultivoId, ...dados },
+    update: dados,
+  });
+}
