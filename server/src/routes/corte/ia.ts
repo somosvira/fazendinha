@@ -1,10 +1,12 @@
 import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import { responderIA } from "../../services/corte/ia.js";
 
-export const corteIaRouter = new Hono()
-  .post("/corte/ia", async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    const pergunta = String(body?.pergunta ?? "").trim();
-    if (!pergunta) return c.json({ resposta: "Faça uma pergunta sobre o plantel.", modo: "demo" });
-    return c.json(responderIA(pergunta));
-  });
+// IA do plantel de corte — espelha /api/rebanho/ia e /api/plantio/ia.
+// pergunta vazia → 400 (ZodError do zValidator).
+const schema = z.object({ pergunta: z.string().min(1).max(2000) });
+
+export const corteIaRouter = new Hono().post("/corte/ia", zValidator("json", schema), async (c) =>
+  c.json(await responderIA(c.req.valid("json").pergunta)),
+);

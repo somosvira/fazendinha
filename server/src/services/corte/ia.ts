@@ -1,33 +1,83 @@
-interface Resposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
+// Orquestrador da IA do plantel de corte: busca dados reais → monta contexto →
+// responde. Com ANTHROPIC_API_KEY chama Claude (modo IA); sem ela (ou em falha)
+// responde por regras (modo demonstração). Nunca lança por causa de rede.
+// Mirror de rebanho/ia.ts e plantio.
 
-export function responderIA(pergunta: string): Resposta {
-  const p = pergunta.toLowerCase();
-  if (p.includes("prontos") || p.includes("vender") || p.includes("abate")) {
-    return {
-      resposta: "Há <b>2 lotes prontos para venda</b>: TER-02 (14 bois, 502 kg) e DES-01 (6 vacas descarte, 458 kg).",
-      lista: [
-        "TER-02 — 14 cabeças · 17,4 @ · ≈ R$ 81.600 (spot)",
-        "DES-01 — 6 vacas · 15,3 @ · vaca gorda · ≈ R$ 27.600",
-        "TER-01 (F1 Angus×Nelore) — chega em ~45 dias",
-      ],
-      rodape: "B3 contango sugere atrasar TER-02 para setembro.",
-      modo: "demo",
-    };
+import { prisma } from "../../db.js";
+import { env } from "../../env.js";
+import { montarContextoCorte, contextoCorteParaTexto, type LoteCorteCtx, type OperacaoCtx, type EconomiaCtx } from "./ia.context.js";
+import { responderDemo, type RespostaCorteIA } from "./ia.responder.js";
+import { responderComLLM } from "./ia.llm.js";
+import { agregarCustoCorte } from "./custo.js";
+
+const num = (x: any) => (x != null ? Number(x) : null);
+const isoOrNull = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+
+async function carregarLotes(): Promise<LoteCorteCtx[]> {
+  const lotes = await prisma.loteCorte.findMany({
+    where: { estado: "ATIVO" },
+    orderBy: { codigo: "asc" },
+    include: { resumo: true },
+  });
+  return lotes.map((l) => ({
+    codigo: l.codigo,
+    nome: l.nome,
+    categoria: l.categoria,
+    fase: l.fase,
+    raca: l.raca,
+    numCabecas: l.numCabecas,
+    pesoMedio: num(l.resumo?.pesoMedio),
+    gmd: num(l.resumo?.gmd),
+    ua: num(l.resumo?.ua),
+    arrobasEstimadas: num(l.resumo?.arrobasEstimadas),
+    mortalidade: num(l.resumo?.mortalidadeAcumulada),
+    diasSemPesar: l.resumo?.diasSemPesar ?? null,
+    proximaVacina: l.resumo?.proximaVacina ?? null,
+    proximoVermifugo: l.resumo?.proximoVermifugo ?? null,
+    pesoAlvoVenda: num(l.resumo?.pesoAlvoVenda),
+    diasParaAlvo: l.resumo?.diasParaAlvo ?? null,
+  }));
+}
+
+async function carregarOperacoes(): Promise<OperacaoCtx[]> {
+  const ops = await prisma.operacaoComercial.findMany({ orderBy: { data: "desc" }, take: 8 });
+  return ops.map((o) => ({
+    data: isoOrNull(o.data) ?? "",
+    tipo: o.tipo,
+    numCabecas: o.numCabecas,
+    arrobas: num(o.arrobas),
+    receitaTotal: num(o.receitaTotal),
+  }));
+}
+
+export async function responderIA(pergunta: string): Promise<RespostaCorteIA> {
+  const [lotes, operacoes, custo] = await Promise.all([
+    carregarLotes(),
+    carregarOperacoes(),
+    agregarCustoCorte().catch(() => null),
+  ]);
+
+  const economia: EconomiaCtx | null = custo
+    ? {
+        receita: custo.receita,
+        custeioTotal: custo.custeioTotal,
+        custoArroba: custo.custoArroba,
+        custoPorCabeca: custo.custoPorCabeca,
+        arrobasProduzidas: custo.arrobasProduzidas,
+        valorBiologicoEstoque: custo.valorBiologicoEstoque,
+        precoArrobaSpot: custo.precoArrobaSpot,
+      }
+    : null;
+
+  const ctx = montarContextoCorte(lotes, operacoes, economia);
+
+  if (env.ANTHROPIC_API_KEY) {
+    try {
+      const resposta = await responderComLLM(pergunta, contextoCorteParaTexto(ctx), env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
+      return { resposta, modo: "ia" };
+    } catch {
+      // cai pro demo (nunca quebra por causa de rede/credencial)
+    }
   }
-  if (p.includes("gmd")) {
-    return {
-      resposta: "GMD médio dos lotes ativos hoje é <b>0,55 kg/dia</b>. RDM-01 (recria) está em 0,38 — abaixo da meta Embrapa (0,45).",
-      modo: "demo",
-    };
-  }
-  if (p.includes("vacin")) {
-    return {
-      resposta: "Próxima ação obrigatória: <b>aftosa etapa 2 em novembro/2026</b>. Antes disso, janela B19 das bezerras fechando em julho.",
-      modo: "demo",
-    };
-  }
-  return {
-    resposta: "Posso responder sobre <b>pesagem, sanidade, pasto, comercial, custo</b>.",
-    modo: "demo",
-  };
+  return responderDemo(pergunta, ctx);
 }
