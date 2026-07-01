@@ -1,52 +1,98 @@
-/* IA conversacional do Plantio — versão demo (regras keyword-matching).
- * Quando o backend conectar a um LLM, esta função vira o adaptador que
- * monta o contexto da lavoura e chama Claude/OpenAI. */
+// Orquestrador da IA da lavoura: busca dados reais → monta contexto → responde.
+// Espelha rebanho/ia.ts. Com ANTHROPIC_API_KEY chama Claude (modo IA); sem ela
+// (ou em falha) responde por regras (modo demonstração). Nunca lança por rede.
 
-interface Resposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
+import { prisma } from "../../db.js";
+import { env } from "../../env.js";
+import { agregarCustoPlantio } from "./custo.js";
+import {
+  montarContextoPlantio,
+  contextoPlantioParaTexto,
+  type TalhaoCtx,
+  type CustoCtx,
+  type ColheitaCtx,
+  type EstoqueBaixoCtx,
+} from "./ia.context.js";
+import { responderDemo, type RespostaIA } from "./ia.responder.js";
+import { responderComLLM } from "./ia.llm.js";
+import { listarEstoquePlantio } from "./estoque.js";
 
-export function responderIA(pergunta: string): Resposta {
-  const p = pergunta.toLowerCase();
-  if (p.includes("ferrugem")) {
-    return {
-      resposta: "Hoje há <b>4 talhões com ferrugem ≥ 5%</b> — todos de Catuaí. A tendência nos últimos 30 dias é de subida.",
-      lista: [
-        "Cafundó alto · setor 2 (CAF-02) — 11%, subindo",
-        "Cafundó alto · setor 3 (CAF-03) — 13%, subindo",
-        "Mata da Capela alto (CAP-01) — 14%, subindo",
-        "Mata da Capela meio (CAP-02) — 16%, subindo",
-      ],
-      rodape: "Os Acauã/Arara/Icatu seguem abaixo de 3% pela resistência genética.",
-      modo: "demo",
-    };
-  }
-  if (p.includes("colheita") || p.includes("colher")) {
-    return {
-      resposta: "Você tem <b>6 talhões prontos pra entrar</b> agora (cereja ≥ 60%) e 3 em derriça ativa.",
-      lista: [
-        "CAF-01 — 71% cereja · iniciar 02/jun",
-        "CAF-02 — 68% cereja · iniciar 04/jun",
-        "SEC-01 (Acauã) — 76% cereja · pronto",
-        "CAP-01 (Bourbon) — 64% cereja",
-      ],
-      rodape: "Sugestão: mecanizada no Tijuco primeiro, libera o pano pra Mata da Capela.",
-      modo: "demo",
-    };
-  }
-  if (p.includes("custo")) {
-    return {
-      resposta: "O custo médio acumulado nos últimos 12 meses está em ~<b>R$ 780/saca</b>, abaixo do Cepea (~R$ 1.880/saca).",
-      rodape: "Maior peso: mão de obra (33%) e fertilizantes (25%).",
-      modo: "demo",
-    };
-  }
-  if (p.includes("adub")) {
-    return {
-      resposta: "Hoje há <b>5 talhões com análise foliar vencida</b> (>120 dias). 3 mostram K abaixo do ideal no histórico.",
-      modo: "demo",
-    };
-  }
-  return {
-    resposta: "Posso responder sobre <b>fenologia, fitossanidade, nutrição, colheita e custo da lavoura</b>. Tente uma das sugestões acima.",
-    modo: "demo",
+// "Hoje" da lavoura — ancorado no mock (28/05/2026), igual ao dashboard real.
+const HOJE = "2026-05-28";
+
+const isoOrNull = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+const numOrNull = (v: any) => (v == null ? null : Number(v));
+
+async function carregarTalhoes(): Promise<TalhaoCtx[]> {
+  const rows = await prisma.talhao.findMany({
+    where: { estado: "ATIVO" },
+    include: { variedade: true, resumo: true },
+    orderBy: { codigo: "asc" },
+  });
+  return rows.map((t) => ({
+    codigo: t.codigo,
+    nome: t.nome ?? null,
+    variedade: t.variedade?.nome ?? null,
+    areaHa: Number(t.areaHa),
+    fase: t.resumo?.fase ?? "REPOUSO",
+    maturacaoCereja: numOrNull(t.resumo?.maturacaoCereja),
+    produtividadeEsperada: numOrNull(t.resumo?.produtividadeEsperada),
+    ferrugem: numOrNull(t.resumo?.ferrugem),
+    broca: numOrNull(t.resumo?.broca),
+    tendFerrugem: t.resumo?.tendFerrugem ?? null,
+    pH: numOrNull(t.resumo?.pH),
+    v: numOrNull(t.resumo?.v),
+    potassio: numOrNull(t.resumo?.potassio),
+    ultimaInspecao: isoOrNull(t.resumo?.ultimaInspecaoData),
+    ultimaAnaliseFoliar: isoOrNull(t.resumo?.ultimaAnaliseFoliar),
+    ultimaAnaliseSolo: isoOrNull(t.resumo?.ultimaAnaliseSolo),
+  }));
+}
+
+async function carregarColheita(): Promise<ColheitaCtx> {
+  const ano = Number(HOJE.slice(0, 4));
+  const passadas = await prisma.passadaColheita.findMany({
+    where: { data: { gte: new Date(Date.UTC(ano, 0, 1)), lt: new Date(Date.UTC(ano + 1, 0, 1)) } },
+    select: { sacasBeneficiadas: true },
+  });
+  const sacas = passadas.reduce((s, p) => s + (p.sacasBeneficiadas != null ? Number(p.sacasBeneficiadas) : 0), 0);
+  return { passadas: passadas.length, sacasBeneficiadas: Math.round(sacas * 100) / 100 };
+}
+
+async function carregarEstoqueBaixo(): Promise<EstoqueBaixoCtx[]> {
+  const saldos = await listarEstoquePlantio();
+  return saldos
+    .filter((s) => s.abaixoMinimo)
+    .map((s) => ({ nome: s.nome, saldo: s.saldo, unidade: s.unidade, minimoEstoque: s.minimoEstoque }));
+}
+
+export async function responderIA(pergunta: string): Promise<RespostaIA> {
+  const [talhoes, custoRaw, colheita, estoqueBaixo] = await Promise.all([
+    carregarTalhoes(),
+    agregarCustoPlantio(12),
+    carregarColheita(),
+    carregarEstoqueBaixo(),
+  ]);
+
+  const custo: CustoCtx = {
+    custoSaca: custoRaw.custoSaca,
+    custoHa: custoRaw.custoHa,
+    custeioTotal: custoRaw.custeioTotal,
+    investimentoTotal: custoRaw.investimentoTotal,
+    sacasPeriodo: custoRaw.sacasPeriodo,
+    periodoMeses: custoRaw.periodoMeses,
+    breakdown: custoRaw.breakdown,
   };
+
+  const ctx = montarContextoPlantio(talhoes, custo, colheita, estoqueBaixo, HOJE);
+
+  if (env.ANTHROPIC_API_KEY) {
+    try {
+      const resposta = await responderComLLM(pergunta, contextoPlantioParaTexto(ctx), env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
+      return { resposta, modo: "ia" };
+    } catch {
+      // cai pro demo (nunca quebra por causa de rede/credencial)
+    }
+  }
+  return responderDemo(pergunta, ctx);
 }

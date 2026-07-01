@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento } from "./types";
+import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, TipoInsumoPlantio } from "./types";
 import { HOJE } from "./HOJE";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -37,6 +37,23 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
 // DTOs de entrada/escrita -------------------------------------------------
 
 export interface VariedadeDTO { id: number; nome: string; resistenteFerrugem: boolean }
+
+// Passada de colheita real (PassadaColheita) — forma do DTO devolvido por
+// GET /plantio/passadas. Decimals já vêm como number, datas como YYYY-MM-DD.
+export interface PassadaDTO {
+  id: number;
+  talhaoId: string;
+  talhaoCodigo: string;
+  talhaoNome: string | null;
+  data: string;             // YYYY-MM-DD
+  numero: number;
+  metodo: string;
+  litrosCereja: number;
+  rendimentoLPorSc: number;
+  sacasBeneficiadas: number;
+  pctCereja: number | null;
+  responsavel: string | null;
+}
 
 // Payload de registro de operação cultural — espelha o body aceito pelo backend
 // em POST /plantio/talhoes/:id/operacoes. Retorna o evento criado (timeline).
@@ -84,6 +101,8 @@ export const obterResumo = (id: string) => obterTalhao(id).then((t) => t.resumo 
 // de colheita tecidas pelo backend e ordenadas desc.
 export const listarEventos = (talhaoId: string) =>
   req<EventoTimeline[]>(`/plantio/talhoes/${talhaoId}/eventos`);
+export const listarPassadas = (ano?: number) =>
+  req<PassadaDTO[]>(`/plantio/passadas${qs({ ano })}`);
 export const listarLavouras = () => req<Lavoura[]>(`/plantio/lavouras`);
 export const listarPlanos = () => req<PlanoAdubacao[]>(`/plantio/planos-adubacao`);
 export const listarVariedades = () => req<VariedadeDTO[]>(`/plantio/variedades`);
@@ -138,6 +157,18 @@ export function useEventos(id: string | null) {
   }, [id]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, recarregar };
+}
+
+export function usePassadas(ano?: number) {
+  const [data, setData] = useState<PassadaDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarPassadas(ano).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [ano]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
 }
 
 export function useLavouras() {
@@ -367,12 +398,6 @@ export function useDashboard() {
 
 // Tela Custo Produção (P2 real — ponte financeira da Atividade Café) --------
 
-const DELAY = 80; // simula latência de rede pequena para evitar flicker
-
-function fake<T>(v: T): Promise<T> {
-  return new Promise((res) => setTimeout(() => res(v), DELAY));
-}
-
 export interface CustoPlantioData {
   custoSaca: number | null;   // null em fase de formação (sem benefício no período)
   custoHa: number | null;     // null se não há área de produção computável
@@ -403,45 +428,41 @@ export function useCustoPlantio(meses = 12) {
   return { data, loading, erro };
 }
 
-// IA (mock — vira real numa fatia posterior) ------------------------------
+// ESTOQUE de insumos da lavoura (P real — Produto.subtipoPlantio) ----------
+
+// Espelha o DTO SaldoPlantio do backend (server/.../plantio/estoque.ts). `tipo`
+// é o subtipoPlantio (FERTILIZANTE/DEFENSIVO/…); minimoEstoque pode ser null.
+export interface Saldo {
+  produtoId: number;
+  nome: string;
+  tipo: TipoInsumoPlantio;
+  saldo: number;
+  unidade: string;
+  valor: number;            // R$
+  minimoEstoque: number | null;
+  abaixoMinimo: boolean;
+}
+
+export const listarEstoquePlantio = () => req<Saldo[]>(`/plantio/estoque`);
+
+export function useEstoquePlantio() {
+  const [data, setData] = useState<Saldo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarEstoquePlantio().then(setData).catch((e) => { setErro(e.message); setData([]); }).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+// IA (real — POST /plantio/ia; modo demo sem ANTHROPIC_API_KEY, modo IA com ela)
 
 export interface RespostaIa { resposta: string; lista?: string[]; rodape?: string; modo?: "ia" | "demo"; }
 
 export function perguntarIA(pergunta: string): Promise<RespostaIa> {
-  const p = pergunta.toLowerCase();
-  if (p.includes("ferrugem")) {
-    return fake({
-      resposta: "Hoje há <b>4 talhões com ferrugem ≥ 5%</b> — todos de Catuaí. A tendência nos últimos 30 dias é de subida.",
-      lista: ["Cafundó alto · setor 2 (CAF-02) — 11%, subindo", "Cafundó alto · setor 3 (CAF-03) — 13%, subindo", "Mata da Capela alto (CAP-01) — 14%, subindo", "Mata da Capela meio (CAP-02) — 16%, subindo"],
-      rodape: "Os Acauã/Arara/Icatu seguem abaixo de 3% pela resistência genética.",
-      modo: "demo",
-    });
-  }
-  if (p.includes("colheita") || p.includes("colher")) {
-    return fake({
-      resposta: "Você tem <b>6 talhões prontos pra entrar</b> agora (cereja ≥ 60%) e 3 em derriça ativa.",
-      lista: ["CAF-01 — 71% cereja · iniciar 02/jun", "CAF-02 — 68% cereja · iniciar 04/jun", "SEC-01 (Acauã) — 76% cereja · pronto", "CAP-01 (Bourbon) — 64% cereja"],
-      rodape: "Sugestão: mecanizada no Tijuco primeiro, libera o pano pra Mata da Capela.",
-      modo: "demo",
-    });
-  }
-  if (p.includes("custo")) {
-    return fake({
-      resposta: "O custo médio acumulado nos últimos 12 meses está em ~<b>R$ 780/saca</b> — abaixo do break-even atual (~R$ 1.300/saca no Cepea).",
-      rodape: "Maior peso: mão de obra (33%) e fertilizantes (25%).",
-      modo: "demo",
-    });
-  }
-  if (p.includes("adub")) {
-    return fake({
-      resposta: "Hoje há <b>5 talhões com análise foliar vencida</b> (>120 dias). 3 deles mostram K abaixo do ideal no histórico — recomendo nova coleta antes da próxima parcela.",
-      modo: "demo",
-    });
-  }
-  return fake({
-    resposta: "Posso responder sobre <b>fenologia, fitossanidade, nutrição, colheita e custo da lavoura</b>. Tente uma das sugestões acima ou pergunte sobre um talhão específico.",
-    modo: "demo",
-  });
+  return req<RespostaIa>(`/plantio/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
 }
 
 // HELPERS -----------------------------------------------------------------

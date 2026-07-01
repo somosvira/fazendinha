@@ -89,8 +89,7 @@ const MODULOS: Modulo[] = [
     id: "corte",
     label: "Gado de corte",
     icon: <><circle cx="12" cy="11" r="5"/><path d="M6 7L3 4M18 7l3-3"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
-    // Subs preservadas para reativar quando o módulo for liberado;
-    // a flag `disabled` bloqueia a expansão e a navegação na sidebar.
+    // Módulo liberado (Onda 1 — núcleo lê/escreve em /api/corte/*).
     subs: [
       { id: "cor-dashboard", label: "Painel" },
       { id: "cor-lote", label: "Lote" },
@@ -102,7 +101,6 @@ const MODULOS: Modulo[] = [
       { id: "cor-custo", label: "Custo" },
       { id: "cor-ia", label: "IA do plantel" },
     ],
-    disabled: true,
   },
 ];
 

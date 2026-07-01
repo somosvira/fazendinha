@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { useTalhoes } from "../api";
+import { useTalhoes, usePassadas, type PassadaDTO } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
 import { DOMAINS, type DomainConfig } from "../domains";
-import { resumos as mockResumos } from "../mock";
 import { prontosParaColher, emColheita } from "../lib/worklists";
 import { FASES_LABEL } from "../lib/fenologia";
-import type { ResumoTalhao, Talhao } from "../types";
-import { eventos as mockEventos } from "../mock";
+import type { ResumoTalhao } from "../types";
+
+const METODO_LABEL: Record<string, string> = {
+  DERRICA_PANO: "derriça no pano",
+  DERRICA_MECANIZADA: "derriça mecanizada",
+  SELETIVA: "colheita seletiva",
+  VARRICAO: "varrição",
+};
+const ORDINAL = ["", "1ª", "2ª", "3ª", "4ª", "5ª", "6ª"];
 
 /* Domínio "Colheita" — fica num arquivo separado porque os critérios de
  * worklist são específicos (cereja > 60% é o gatilho de derriça). */
@@ -44,10 +50,11 @@ export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => 
   const [aba, setAba] = useState<"painel" | "passadas">("painel");
   if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Colheita</h1></div><p className="rb-sub">Carregando…</p></main>;
 
-  const resumos: ResumoTalhao[] = data.map((t) => mockResumos.find((x) => x.talhaoId === t.id) ?? ({ talhaoId: t.id, fase: "REPOUSO" } as ResumoTalhao));
+  // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
+  const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
   const nomes = Object.fromEntries(data.map((t) => [t.id, { nome: t.nome, codigo: t.codigo }]));
 
-  if (aba === "passadas") return <PassadasView talhoes={data} onVoltarPainel={() => setAba("painel")} />;
+  if (aba === "passadas") return <PassadasView onVoltarPainel={() => setAba("painel")} />;
 
   return (
     <>
@@ -70,13 +77,11 @@ export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => 
   );
 }
 
-function PassadasView({ talhoes, onVoltarPainel }: { talhoes: Talhao[]; onVoltarPainel: () => void }) {
-  // Reaproveita os eventos do mock para mostrar histórico real.
-  const passadas = mockEventos.filter((e) => e.dominio === "colheita").sort((a, b) => b.data.localeCompare(a.data));
-  const totalSc = passadas.reduce((a, e) => {
-    const m = e.impacto?.match(/(\d+(?:[\.,]\d+)?)\s*sc/);
-    return a + (m ? Number(m[1].replace(",", ".")) : 0);
-  }, 0);
+function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
+  // Histórico real de derriças (PassadaColheita) via GET /plantio/passadas.
+  const { data: passadas, loading, erro } = usePassadas();
+  const totalSc = passadas.reduce((a, p) => a + (p.sacasBeneficiadas ?? 0), 0);
+  const totalLitros = passadas.reduce((a, p) => a + (p.litrosCereja ?? 0), 0);
   return (
     <main className="rb-main">
       <div className="rb-eyebrow">Lavoura · colheita 2026</div>
@@ -84,33 +89,46 @@ function PassadasView({ talhoes, onVoltarPainel }: { talhoes: Talhao[]; onVoltar
         <h1>Passadas registradas</h1>
         <button className="rb-btn" onClick={onVoltarPainel}>← Painel</button>
       </div>
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
-        <div className="rb-k"><div className="lab">Passadas</div><div className="val">{passadas.length}</div></div>
-        <div className="rb-k"><div className="lab">Talhões colhidos</div><div className="val">{new Set(passadas.map((p) => p.talhaoId)).size}</div></div>
-        <div className="rb-k"><div className="lab">Sc beneficiadas</div><div className="val">{Math.round(totalSc)}<u>sc</u></div></div>
-      </div>
-      <h2 className="rb-sec-title">Histórico</h2>
-      {passadas.length === 0 ? (
-        <div className="rb-empty">Nenhuma passada registrada ainda. Abra um talhão e use <b>+ Registrar operação</b> → Colheita.</div>
+      {loading ? (
+        <p className="rb-sub">Carregando…</p>
+      ) : erro ? (
+        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
-          <thead><tr><th>Data</th><th>Talhão</th><th>Operação</th><th>Detalhe</th><th>Saída</th></tr></thead>
-          <tbody>
-            {passadas.map((p) => {
-              const t = talhoes.find((x) => x.id === p.talhaoId);
-              return (
-                <tr key={p.id}>
-                  <td>{new Date(p.data).toLocaleDateString("pt-BR")}</td>
-                  <td className="rb-anm">{t ? `${t.nome} · ${t.codigo}` : p.talhaoId}</td>
-                  <td>{p.titulo}</td>
-                  <td>{p.detalhe ?? "—"}</td>
-                  <td>{p.impacto ?? "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table></div>
+        <>
+          <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
+            <div className="rb-k"><div className="lab">Passadas</div><div className="val">{passadas.length}</div></div>
+            <div className="rb-k"><div className="lab">Talhões colhidos</div><div className="val">{new Set(passadas.map((p) => p.talhaoId)).size}</div></div>
+            <div className="rb-k"><div className="lab">Litros cereja</div><div className="val">{Math.round(totalLitros).toLocaleString("pt-BR")}<u>L</u></div></div>
+            <div className="rb-k"><div className="lab">Sc beneficiadas</div><div className="val">{Math.round(totalSc)}<u>sc</u></div></div>
+          </div>
+          <h2 className="rb-sec-title">Histórico</h2>
+          {passadas.length === 0 ? (
+            <div className="rb-empty">Nenhuma passada registrada ainda. Abra um talhão e use <b>+ Registrar operação</b> → Colheita.</div>
+          ) : (
+            <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <thead><tr><th>Data</th><th>Talhão</th><th>Passada</th><th>Litros cereja</th><th>Rend. (L/sc)</th><th>Sc beneficiadas</th></tr></thead>
+              <tbody>
+                {passadas.map((p) => (
+                  <tr key={p.id}>
+                    <td>{new Date(p.data).toLocaleDateString("pt-BR")}</td>
+                    <td className="rb-anm">{p.talhaoNome ? `${p.talhaoNome} · ${p.talhaoCodigo}` : p.talhaoCodigo || p.talhaoId}</td>
+                    <td>{rotuloPassada(p)}</td>
+                    <td>{p.litrosCereja.toLocaleString("pt-BR")} L</td>
+                    <td>{p.rendimentoLPorSc ? p.rendimentoLPorSc.toLocaleString("pt-BR") : "—"}</td>
+                    <td>{Math.round(p.sacasBeneficiadas)} sc</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          )}
+        </>
       )}
     </main>
   );
+}
+
+function rotuloPassada(p: PassadaDTO): string {
+  const ord = ORDINAL[p.numero] ?? `${p.numero}ª`;
+  const metodo = METODO_LABEL[p.metodo] ?? "passada";
+  return `${ord} · ${metodo}`;
 }

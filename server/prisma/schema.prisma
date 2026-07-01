@@ -99,6 +99,20 @@ enum TipoProduto {
   OUTRO
 }
 
+// Subtipo agrícola de um Produto usado no Plantio (café). Só preenchido nos
+// insumos da lavoura; null nos produtos do rebanho. A aba Estoque do Plantio
+// filtra Produto por este campo (não polui o estoque do rebanho).
+enum TipoInsumoPlantio {
+  FERTILIZANTE
+  DEFENSIVO
+  HERBICIDA
+  CORRETIVO
+  BIOLOGICO
+  FOLIAR
+  MUDA
+  OUTRO
+}
+
 enum TipoPessoa {
   CLIENTE
   FORNECEDOR
@@ -109,6 +123,8 @@ model Produto {
   id            Int                @id @default(autoincrement())
   nome          String             @unique
   tipo          TipoProduto        @default(INSUMO)
+  // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
+  subtipoPlantio TipoInsumoPlantio?
   unidade       String             @default("un")
   custoUnitario Decimal?           @db.Decimal(12, 2)
   carencia      Int?
