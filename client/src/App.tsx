@@ -82,6 +82,9 @@ export function App() {
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
+  // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
+  const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
 
   // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
   useEffect(() => {
@@ -142,11 +145,17 @@ export function App() {
   };
 
   const conteudo = String(tab).startsWith("reb-")
-    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)} />
+    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("reb-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("pla-")
-    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)} />
+    ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("cor-")
-    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)} />
+    ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
+        abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
+        onAbriuEntidade={() => setDeepLink(null)} />
     : (
       <>
         {tab === "dashboard" &&
@@ -209,7 +218,14 @@ export function App() {
       <CommandPalette
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
-        onNav={setTab}
+        onNav={(t, entidadeId) => {
+          setTab(t);
+          // Só entidades de cockpit (reb-*/pla-*/cor-*) precisam de deep-link;
+          // categoria/fornecedor apenas navegam para a aba.
+          const s = String(t);
+          const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+          setDeepLink(entidadeId && temCockpit ? { tab: t, id: entidadeId } : null);
+        }}
         podeVer={(t) => {
           const s = String(t);
           if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoteCockpit } from "./components/LoteCockpit";
 import { LoteTab } from "./components/LoteTab";
 import { PesagemTab } from "./components/PesagemTab";
@@ -15,8 +15,32 @@ export type CorSub = "dashboard" | "lote" | "pesagem" | "pasto" | "sanidade" | "
 /* Espelho do RebanhoContent/PlantioContent. Roteia entre as 9 sub-abas
  * do módulo Corte. Modais de novo lote / registro de manejo ficam como
  * stubs (alert) por enquanto — protótipo. */
-export function PlantelContent({ aba, onNavCor }: { aba: CorSub; onNavCor?: (aba: CorSub) => void }) {
+export function PlantelContent({ aba, onNavCor, abrirId, onAbriuEntidade }: { aba: CorSub; onNavCor?: (aba: CorSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [loteId, setLoteId] = useState<string | null>(null);
+
+  // Guarda o lote a abrir após uma troca de aba (deep-link ⌘K), para o efeito
+  // [aba] abaixo não limpar o cockpit recém-aberto. Espelha o proximoAnimalRef.
+  const proximoLoteRef = useRef<string | null>(null);
+
+  // Trocar de sub-aba fecha qualquer cockpit de lote aberto — exceto quando há
+  // um lote marcado para abrir (deep-link), aí abrimos ele.
+  useEffect(() => {
+    if (proximoLoteRef.current) {
+      setLoteId(proximoLoteRef.current);
+      proximoLoteRef.current = null;
+    } else {
+      setLoteId(null);
+    }
+  }, [aba]);
+
+  // Deep-link do ⌘K: abre o cockpit do lote por id usando a ref.
+  useEffect(() => {
+    if (!abrirId) return;
+    proximoLoteRef.current = abrirId;
+    setLoteId(abrirId);
+    onAbriuEntidade?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirId]);
 
   // Modais de criação não estão implementados; usamos alerta para sinalizar
   // claramente que o botão "Salvar" não persiste. Quando o backend for

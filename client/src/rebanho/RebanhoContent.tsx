@@ -15,7 +15,7 @@ import type { Animal } from "./types";
 
 export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "ia";
 
-export function RebanhoContent({ aba, onNavReb }: { aba: RebSub; onNavReb?: (aba: RebSub) => void }) {
+export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; animal?: Animal } | null>(null);
   const [registroInline, setRegistroInline] = useState<{ animal: Animal; dominio: "reproducao" | "sanidade" } | null>(null);
@@ -39,6 +39,16 @@ export function RebanhoContent({ aba, onNavReb }: { aba: RebSub; onNavReb?: (aba
       setFlashEventoId(null);
     }
   }, [aba]);
+
+  // Deep-link do ⌘K: quando `abrirId` muda, abrimos a ficha desse animal usando
+  // a mesma ref, para o efeito [aba] acima não limpar o cockpit recém-aberto.
+  useEffect(() => {
+    if (!abrirId) return;
+    proximoAnimalRef.current = abrirId;
+    setAnimalId(abrirId);
+    onAbriuEntidade?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirId]);
 
   return (
     <div className="rb">
