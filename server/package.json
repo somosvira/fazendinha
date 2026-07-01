@@ -18,6 +18,7 @@
     "seed:rebanho": "tsx --env-file=.env prisma/seed-rebanho.ts",
     "seed:plantio": "tsx --env-file=.env prisma/seed-plantio.ts",
     "seed:corte": "tsx --env-file=.env prisma/seed-corte.ts",
+    "seed:ponto": "tsx --env-file=.env prisma/seed-ponto.ts",
     "import": "tsx --env-file=.env prisma/import.ts",
     "import:rebanho": "tsx --env-file=.env prisma/import-rebanho.ts"
   },

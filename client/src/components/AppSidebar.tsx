@@ -42,6 +42,10 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
   "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "cor-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
+  // — Equipe & Ponto — ícones simbólicos.
+  "eqp-funcionarios": <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
+  "eqp-ponto": <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  "eqp-folha": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
 };
 
 type ModuloId = string;
@@ -100,6 +104,17 @@ const MODULOS: Modulo[] = [
       { id: "cor-comercial", label: "Comercial" },
       { id: "cor-custo", label: "Custo" },
       { id: "cor-ia", label: "IA do plantel" },
+    ],
+  },
+  {
+    id: "equipe",
+    label: "Equipe & Ponto",
+    icon: <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
+    // Módulo de RH leve (admin gerencia) — funcionários, ponto e folha.
+    subs: [
+      { id: "eqp-funcionarios", label: "Funcionários" },
+      { id: "eqp-ponto", label: "Ponto" },
+      { id: "eqp-folha", label: "Folha" },
     ],
   },
 ];

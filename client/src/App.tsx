@@ -18,6 +18,7 @@ import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
+import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
@@ -75,6 +76,12 @@ const COR: Record<string, CorSub> = {
   "cor-ia": "ia",
 };
 
+const EQP: Record<string, EqpSub> = {
+  "eqp-funcionarios": "funcionarios",
+  "eqp-ponto": "ponto",
+  "eqp-folha": "folha",
+};
+
 export function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [users, setUsers] = useState<User[]>(usuarios);
@@ -128,7 +135,8 @@ export function App() {
     const isReb = String(tab).startsWith("reb-");
     const isPla = String(tab).startsWith("pla-");
     const isCor = String(tab).startsWith("cor-");
-    if (isReb || isPla || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    const isEqp = String(tab).startsWith("eqp-");
+    if (isReb || isPla || isCor || isEqp || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +155,8 @@ export function App() {
     ? <PlantioContent aba={PLA[tab]} onNavPla={(s) => setTab(("pla-" + s) as Tab)} />
     : String(tab).startsWith("cor-")
     ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)} />
+    : String(tab).startsWith("eqp-")
+    ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
     : (
       <>
         {tab === "dashboard" &&
@@ -212,7 +222,7 @@ export function App() {
         onNav={setTab}
         podeVer={(t) => {
           const s = String(t);
-          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
+          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("eqp-")) return true;
           if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
           if (t === "acessos") return isAdmin;
           return canSee(t);

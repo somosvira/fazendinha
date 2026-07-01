@@ -1270,3 +1270,54 @@ model OperacaoComercial {
   @@index([loteId, data])
   @@index([tipo, data])
 }
+
+// =============================================================================
+// MÓDULO EQUIPE & PONTO — funcionários, jornada e apuração de hora extra
+// =============================================================================
+// Admin-gerenciado: a pessoa do administrativo lança a jornada de cada
+// funcionário. A folha cruza horas trabalhadas × salário para apurar extras.
+
+enum TipoDiaPonto {
+  UTIL
+  DOMINGO
+  FERIADO
+  FOLGA
+  FALTA
+}
+
+model Funcionario {
+  id                 Int             @id @default(autoincrement())
+  nome               String
+  cargo              String?
+  salarioMensal      Decimal         @db.Decimal(12, 2)
+  cargaMensalHoras   Decimal         @default(220) @db.Decimal(6, 2) // carga contratada/mês
+  jornadaDiariaHoras Decimal         @default(8) @db.Decimal(5, 2) // jornada normal/dia
+  dataAdmissao       DateTime?       @db.Date
+  cpf                String?
+  chavePix           String?
+  ativo              Boolean         @default(true)
+  registros          RegistroPonto[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([ativo])
+}
+
+// Registro de jornada de um dia. entrada/saida em "HH:MM"; horas do dia =
+// (saida - entrada) - intervaloMin. tipoDia define a regra de hora extra.
+model RegistroPonto {
+  id            Int          @id @default(autoincrement())
+  funcionario   Funcionario  @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  funcionarioId Int
+  data          DateTime     @db.Date
+  entrada       String? // "HH:MM"
+  saida         String? // "HH:MM"
+  intervaloMin  Int          @default(60) // almoço, em minutos
+  tipoDia       TipoDiaPonto @default(UTIL)
+  observacao    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([funcionarioId, data])
+  @@index([funcionarioId, data])
+}
