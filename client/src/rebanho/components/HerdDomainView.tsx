@@ -67,7 +67,7 @@ export function HerdDomainView({
               {linhas.map((r) => {
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
-                  <tr className="row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
+                  <tr className="rb-row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
                     <td className="rb-anm">{a?.nome} <small>#{a?.numero}</small></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>

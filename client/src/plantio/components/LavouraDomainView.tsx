@@ -64,13 +64,13 @@ export function LavouraDomainView({
             <h3>{wl?.label} — {linhas.length} {linhas.length === 1 ? "talhão" : "talhões"}</h3>
             <span className="hint">{dicaLinha ?? "clique numa linha pra abrir o talhão"}</span>
           </div>
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <div className="rb-tbl-wrap"><table className="rb-tbl rb-tbl-lavoura">
             <thead><tr><th>Talhão</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
               {linhas.map((r) => {
                 const t = nomes?.[r.talhaoId] ?? getTalhao(r.talhaoId);
                 return (
-                  <tr className="row" key={r.talhaoId} onClick={() => onAbrirTalhao(r.talhaoId)}>
+                  <tr className="rb-row" key={r.talhaoId} onClick={() => onAbrirTalhao(r.talhaoId)}>
                     <td className="rb-anm">{t?.nome} <small>· {(t as any)?.codigo ?? ""}</small></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>

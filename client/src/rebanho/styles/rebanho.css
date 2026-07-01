@@ -113,7 +113,16 @@
 .rb-tbl th { font-family: var(--serif); font-style: italic; font-size: 14px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-3); text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--rule); font-weight: 500; }
 .rb-tbl td { padding: 12px 14px; border-bottom: 1px solid var(--rule-soft); font-size: 14px; color: var(--ink-2); }
 .rb-tbl tr:last-child td { border: 0; }
-.rb-tbl tr.row { cursor: pointer; } .rb-tbl tr.row:hover td { background: var(--bg-card-2); }
+
+/* Tabelas das abas de lavoura (Fenologia/Fitossanidade/Nutrição): primeira
+   coluna "Talhão" ocupa ~30% e demais colunas distribuem o resto igualmente,
+   com números/datas alinhados à direita (convenção financeira/data-table). */
+.rb-tbl-lavoura { table-layout: fixed; }
+.rb-tbl-lavoura thead th:first-child,
+.rb-tbl-lavoura tbody td:first-child { width: 30%; }
+.rb-tbl-lavoura thead th:not(:first-child) { text-align: right; }
+.rb-tbl-lavoura tbody td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.rb-tbl tr.rb-row { cursor: pointer; } .rb-tbl tr.rb-row:hover td { background: var(--bg-card-2); }
 .rb-anm { font-weight: 600; color: var(--ink); } .rb-anm small { color: var(--ink-2); font-weight: 500; }
 .rb-pill { font-size: 14px; font-weight: 600; padding: 2px 9px; border-radius: 11px; background: var(--outros-soft); color: #42523a; }
 .rb-pill.warn { background: var(--leite-soft); color: #6e5a26; } .rb-pill.bad { background: #EEDAD3; color: var(--prejuizo); }

@@ -10,7 +10,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().optional(),
   // IA do rebanho: com a chave roda em "modo IA" (chama Claude); sem ela, "modo demonstração".
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-opus-4-8"),
+  ANTHROPIC_MODEL: z.string().default("claude-opus-4-7"),
 });
 
 const parsed = envSchema.safeParse(process.env);

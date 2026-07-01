@@ -68,7 +68,7 @@ export function LoteDomainView({
               {linhas.map((r) => {
                 const l = loteById[r.loteId];
                 return (
-                  <tr className="row" key={r.loteId} onClick={() => onAbrirLote(r.loteId)}>
+                  <tr className="rb-row" key={r.loteId} onClick={() => onAbrirLote(r.loteId)}>
                     <td className="rb-anm">{l?.nome ?? r.loteId} <small>· {l?.codigo ?? ""}</small></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r, l)}</td>)}
                   </tr>
