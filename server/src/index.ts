@@ -35,9 +35,21 @@ import { corteDashboardRouter } from "./routes/corte/dashboard.js";
 import { corteEventosRouter } from "./routes/corte/eventos.js";
 import { corteCustoRouter } from "./routes/corte/custo.js";
 import { corteIaRouter } from "./routes/corte/ia.js";
+import { cultivoSafrasRouter } from "./routes/cultivo/safras.js";
+import { cultivoAreasRouter } from "./routes/cultivo/areas.js";
+import { cultivoCustosRouter } from "./routes/cultivo/custos.js";
+import { cultivoProducaoRouter } from "./routes/cultivo/producao.js";
+import { cultivoSilosRouter } from "./routes/cultivo/silos.js";
+import { pontoRouter } from "./routes/ponto/index.js";
+import { caixinhaRouter } from "./routes/caixinha.js";
 import { buscaRouter } from "./routes/busca.js";
 import { botRouter } from "./routes/bot.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
+import { lancamentosRouter } from "./routes/lancamentos.js";
+// `cadastrosRouter` já existe (rebanho) — o do financeiro entra com alias.
+import { cadastrosRouter as cadastrosFinanceiroRouter } from "./routes/cadastros.js";
+import { notaFiscalRouter } from "./routes/notaFiscal.js";
+import { iniciarCleanupPendentes } from "./services/notaFiscal/cleanupPendentes.js";
 
 const app = new Hono();
 
@@ -83,10 +95,22 @@ app.route("/api", corteDashboardRouter);
 app.route("/api", corteEventosRouter);
 app.route("/api", corteCustoRouter);
 app.route("/api", corteIaRouter);
+app.route("/api", cultivoSafrasRouter);
+app.route("/api", cultivoAreasRouter);
+app.route("/api", cultivoCustosRouter);
+app.route("/api", cultivoProducaoRouter);
+app.route("/api", cultivoSilosRouter);
+app.route("/api", pontoRouter);
+app.route("/api", caixinhaRouter);
 app.route("/api", buscaRouter);
 app.route("/api", botRouter);
 app.route("/api", whatsappRouter);
+app.route("/api", cadastrosFinanceiroRouter);
+app.route("/api", lancamentosRouter);
+app.route("/api", notaFiscalRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
 });
+
+iniciarCleanupPendentes();

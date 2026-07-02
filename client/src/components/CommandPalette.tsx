@@ -30,6 +30,7 @@ const ORDEM_GRUPO: GrupoComando[] = [
   "Rebanho",
   "Plantio",
   "Gado de corte",
+  "Milho",
   "Administração",
 ];
 
@@ -39,6 +40,7 @@ const COR_GRUPO: Record<GrupoComando, string> = {
   Rebanho: "var(--leite)",
   Plantio: "var(--outros)",
   "Gado de corte": "var(--cafe-2)",
+  Milho: "var(--outros)",
   Administração: "var(--ink-3)",
   Ações: "var(--leite-2)",
 };

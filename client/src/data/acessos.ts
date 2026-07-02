@@ -26,6 +26,7 @@ export const ABAS: Aba[] = [
   { id: "dashboard", label: "Dashboard", desc: "Visão executiva, gráficos e números" },
   { id: "gastos", label: "Gastos", desc: "Tabela de lançamentos e notas fiscais" },
   { id: "lancar", label: "Lançar", desc: "Registrar entrada (receita) ou saída (gasto)" },
+  { id: "caixinha", label: "Caixinha", desc: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   { id: "plano", label: "Categorias", desc: "Plano de contas e categorização" },
   { id: "ia", label: "IA", desc: "Pergunte sobre os números" },
   { id: "relatorio", label: "Relatório", desc: "Relatório gerencial editorial" },
@@ -46,13 +47,13 @@ export const PAPEIS: Record<string, Papel> = {
   proprietario: {
     nome: "Proprietário",
     desc: "Acesso total. Gerencia quem entra e o que cada um vê.",
-    abas: ["dashboard", "gastos", "lancar", "plano", "ia", "relatorio"],
+    abas: ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"],
     flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
   },
   secretaria: {
     nome: "Secretária / Administrativo",
     desc: "Opera o dia a dia: lança gastos e organiza categorias.",
-    abas: ["gastos", "lancar", "plano", "ia"],
+    abas: ["gastos", "lancar", "caixinha", "plano", "ia"],
     flags: ["verValores", "verSalarios", "lancar"],
   },
   contador: {
@@ -84,7 +85,7 @@ export const usuarios: User[] = [
     papel: "proprietario",
     status: "ativo",
     ultimoAcesso: "agora",
-    abas: ["dashboard", "gastos", "lancar", "plano", "ia", "relatorio"],
+    abas: ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"],
     flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
     dono: true,
   },
@@ -96,7 +97,7 @@ export const usuarios: User[] = [
     papel: "secretaria",
     status: "ativo",
     ultimoAcesso: "há 12 min",
-    abas: ["gastos", "lancar", "plano", "ia"],
+    abas: ["gastos", "lancar", "caixinha", "plano", "ia"],
     flags: ["verValores", "verSalarios", "lancar"],
   },
   {

@@ -398,33 +398,69 @@ export function useDashboard() {
 
 // Tela Custo Produção (P2 real — ponte financeira da Atividade Café) --------
 
+// Toggle Custeio/Investimento/Tudo (contrato §6.4) — `classe` só seleciona o
+// headline `custoTotal`; custoSaca/custoHa são SEMPRE sobre custeio.
+export type ClasseCusto = "custeio" | "investimento" | "tudo";
+
 export interface CustoPlantioData {
+  classe: ClasseCusto;
+  custoTotal: number;         // headline conforme a `classe` pedida
   custoSaca: number | null;   // null em fase de formação (sem benefício no período)
   custoHa: number | null;     // null se não há área de produção computável
   custeioTotal: number;
+  investimentoTotal: number;
   sacasPeriodo: number;
   periodoMeses: number;
   breakdown: { categoria: string; valor: number; pct: number }[];
   nota: string;
-  // campos extras que o backend pode anexar (formação) — opcionais
-  investimentoTotal?: number;
   areaProducao?: number;
 }
 
-export const obterCustoPlantio = (meses = 12) =>
-  req<CustoPlantioData>(`/plantio/custo${qs({ meses })}`);
+export const obterCustoPlantio = (meses = 12, classe: ClasseCusto = "custeio") =>
+  req<CustoPlantioData>(`/plantio/custo${qs({ meses, classe })}`);
 
-export function useCustoPlantio(meses = 12) {
+export function useCustoPlantio(meses = 12, classe: ClasseCusto = "custeio") {
   const [data, setData] = useState<CustoPlantioData | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   useEffect(() => {
     setLoading(true); setErro(null);
-    obterCustoPlantio(meses)
+    obterCustoPlantio(meses, classe)
       .then(setData)
       .catch((e) => { setErro(e.message); setData(null); })
       .finally(() => setLoading(false));
-  }, [meses]);
+  }, [meses, classe]);
+  return { data, loading, erro };
+}
+
+// Custo OPERACIONAL do café (aditivo ao financeiro acima) — derivado das
+// operações reais da safra (Σ TarefaAgricola.custoReal + Σ ApontamentoMaquina.
+// valorTotal). Espelha o DTO de services/plantio/custo-operacional.ts.
+export interface CustoOperacionalCafe {
+  safraId: number;
+  custeioTotal: number;
+  custoSaca: number | null;   // null sem sacas na janela da safra (nunca NaN)
+  custoHa: number | null;     // null sem talhão ATIVO
+  sacas: number;
+  areaHa: number;
+  nota: string;
+}
+
+export const obterCustoOperacionalCafe = (safraId: number) =>
+  req<CustoOperacionalCafe>(`/plantio/safras/${safraId}/custo-operacional`);
+
+export function useCustoOperacionalCafe(safraId: number | null) {
+  const [data, setData] = useState<CustoOperacionalCafe | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => {
+    if (safraId == null) { setData(null); setErro(null); return; }
+    setLoading(true); setErro(null);
+    obterCustoOperacionalCafe(safraId)
+      .then(setData)
+      .catch((e) => { setErro(e.message); setData(null); })
+      .finally(() => setLoading(false));
+  }, [safraId]);
   return { data, loading, erro };
 }
 

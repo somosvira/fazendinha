@@ -15,6 +15,7 @@ export type GrupoComando =
   | "Rebanho"
   | "Plantio"
   | "Gado de corte"
+  | "Milho"
   | "Administração"
   | "Ações";
 
@@ -48,6 +49,7 @@ export const COMANDOS: Comando[] = [
   { id: "fin-dashboard", tab: "dashboard", label: "Dashboard", grupo: "Financeiro", sinonimos: ["painel", "visão geral", "início", "home", "executivo"], descricao: "Visão executiva, gráficos e números" },
   { id: "fin-gastos", tab: "gastos", label: "Gastos", grupo: "Financeiro", sinonimos: ["despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Tabela de lançamentos e notas fiscais" },
   { id: "fin-lancar", tab: "lancar", label: "Lançar", grupo: "Financeiro", sinonimos: ["lançamento", "registrar", "entrada", "receita", "saída", "nova nota"], descricao: "Registrar entrada (receita) ou saída (gasto)" },
+  { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   { id: "fin-plano", tab: "plano", label: "Categorias", grupo: "Financeiro", sinonimos: ["plano de contas", "plano", "categoria", "categorização", "contas", "grupos"], descricao: "Plano de contas e categorização" },
   { id: "fin-ia", tab: "ia", label: "IA financeira", grupo: "Financeiro", sinonimos: ["ia", "inteligência artificial", "assistente", "perguntar", "chat", "números"], descricao: "Pergunte sobre os números" },
   { id: "fin-relatorio", tab: "relatorio", label: "Relatório", grupo: "Financeiro", sinonimos: ["relatório gerencial", "editorial", "executivo", "dre", "fluxo de caixa", "leite paga o leite"], descricao: "Relatório gerencial editorial" },
@@ -86,10 +88,20 @@ export const COMANDOS: Comando[] = [
   { id: "cor-custo", tab: "cor-custo", label: "Custo", grupo: "Gado de corte", sinonimos: ["custeio", "custo por arroba", "rentabilidade", "margem", "despesa"] },
   { id: "cor-ia", tab: "cor-ia", label: "IA do plantel", grupo: "Gado de corte", sinonimos: ["ia", "assistente", "inteligência artificial", "perguntar", "chat"] },
 
+  // — Milho (MODULOS[cultivo].subs) —
+  { id: "mil-safras", tab: "mil-safras", label: "Safras", grupo: "Milho", sinonimos: ["milho", "safra", "safrinha", "cultivo", "lavoura de milho", "custo de safra"], descricao: "Safras de milho — custo de safra" },
+  { id: "mil-custos", tab: "mil-custos", label: "Custos", grupo: "Milho", sinonimos: ["custeio", "adubo", "adubação", "horas de trator", "caminhão", "lançar custo", "despesa da safra"] },
+  { id: "mil-producao", tab: "mil-producao", label: "Produção", grupo: "Milho", sinonimos: ["colheita", "saca", "sacas", "silagem", "toneladas", "grão"] },
+  { id: "mil-silos", tab: "mil-silos", label: "Silos", grupo: "Milho", sinonimos: ["silo", "estoque", "silagem", "saldo", "armazenagem", "comida de vaca"] },
+  { id: "mil-custo", tab: "mil-custo", label: "Custo", grupo: "Milho", sinonimos: ["custo por saca", "custo por tonelada", "custo por hectare", "custeio", "rentabilidade", "margem"] },
+
   // — Administração (rodapé da sidebar) —
   { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "raças", "registro"] },
   { id: "adm-config", tab: "config", label: "Configurações", grupo: "Administração", sinonimos: ["config", "ajustes", "preferências", "preço do leite", "setup"] },
   { id: "adm-acessos", tab: "acessos", label: "Acessos", grupo: "Administração", sinonimos: ["permissões", "usuários", "perfis", "convidar", "permissão", "papéis"] },
+  { id: "eqp-funcionarios", tab: "eqp-funcionarios", label: "Funcionários", grupo: "Administração", sinonimos: ["equipe", "colaboradores", "peão", "empregados", "salário", "cadastro de funcionário"] },
+  { id: "eqp-ponto", tab: "eqp-ponto", label: "Ponto", grupo: "Administração", sinonimos: ["jornada", "bater ponto", "entrada", "saída", "horas", "presença", "folha de ponto"] },
+  { id: "eqp-folha", tab: "eqp-folha", label: "Folha", grupo: "Administração", sinonimos: ["folha de pagamento", "hora extra", "salário", "pagamento", "extras", "total a pagar"] },
 
   // — Ações (atalhos para a aba certa) —
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },

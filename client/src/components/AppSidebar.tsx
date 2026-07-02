@@ -6,6 +6,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   gastos: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></>,
   lancar: <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></>,
+  caixinha: <><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M4 12h16M12 12v3"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></>,
   plano: <><path d="M4 6h16M4 12h16M4 18h10"/></>,
   relatorio: <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></>,
   ia: <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
@@ -42,6 +43,16 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
   "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "cor-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
+  // — Milho (cultivo) — ícones simbólicos.
+  "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,
+  "mil-custos": <><path d="M5 3h14v18l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/></>,
+  "mil-producao": <><path d="M12 21V8"/><path d="M12 12c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 12c2 0 4-1.5 4-4-2 0-4 1.5-4 4zM12 17c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 17c2 0 4-1.5 4-4-2 0-4 1.5-4 4z"/></>,
+  "mil-silos": <><path d="M6 21V8a6 6 0 0 1 12 0v13"/><path d="M6 12h12M6 16h12"/><path d="M4 21h16"/></>,
+  "mil-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
+  // — Equipe & Ponto — ícones simbólicos.
+  "eqp-funcionarios": <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
+  "eqp-ponto": <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  "eqp-folha": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
 };
 
 type ModuloId = string;
@@ -102,6 +113,30 @@ const MODULOS: Modulo[] = [
       { id: "cor-ia", label: "IA do plantel" },
     ],
   },
+  {
+    id: "cultivo",
+    label: "Milho",
+    icon: <><path d="M12 22v-5"/><path d="M12 17c-3 0-5.5-2.8-5.5-6.5C6.5 6.5 9 3 12 2c3 1 5.5 4.5 5.5 8.5C17.5 14.2 15 17 12 17z"/><path d="M12 6v11M9 9c1 .8 2 1.2 3 1.2s2-.4 3-1.2M9 13c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/></>,
+    // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
+    subs: [
+      { id: "mil-safras", label: "Safras" },
+      { id: "mil-custos", label: "Custos" },
+      { id: "mil-producao", label: "Produção" },
+      { id: "mil-silos", label: "Silos" },
+      { id: "mil-custo", label: "Custo" },
+    ],
+  },
+  {
+    id: "equipe",
+    label: "Equipe & Ponto",
+    icon: <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
+    // Módulo de RH leve (admin gerencia) — funcionários, ponto e folha.
+    subs: [
+      { id: "eqp-funcionarios", label: "Funcionários" },
+      { id: "eqp-ponto", label: "Ponto" },
+      { id: "eqp-folha", label: "Folha" },
+    ],
+  },
 ];
 
 const STORAGE_KEY = "rionovo:sidebar:openModulo";
@@ -156,11 +191,15 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
   );
 }
 
-export function AppSidebar({ current, onNav, financeiro, isAdmin, mobileOpen, onMobileToggle }: {
+export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, mobileOpen, onMobileToggle }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
+  // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
+  podeVerFolha: boolean;
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
 }) {
+  // Módulos exibidos = MODULOS - equipe se o user não tem verSalarios.
+  const modulosVisiveis = podeVerFolha ? MODULOS : MODULOS.filter((m) => m.id !== "equipe");
   const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -196,7 +235,7 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, mobileOpen, on
         {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
 
         <div className="grp">Operações</div>
-        {MODULOS.map((m) => {
+        {modulosVisiveis.map((m) => {
           const isOpen = openModulo === m.id && !m.disabled;
           const isActive = m.subs.some((s) => s.id === current);
           return (

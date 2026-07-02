@@ -12,6 +12,7 @@ import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
+import { Caixinha } from "./financeiro/Caixinha";
 import { PlanoContas } from "./components/PlanoContas";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
@@ -19,6 +20,8 @@ import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
+import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
+import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
@@ -77,9 +80,26 @@ const COR: Record<string, CorSub> = {
   "cor-ia": "ia",
 };
 
+const EQP: Record<string, EqpSub> = {
+  "eqp-funcionarios": "funcionarios",
+  "eqp-ponto": "ponto",
+  "eqp-folha": "folha",
+};
+
+const MIL: Record<string, MilSub> = {
+  "mil-safras": "safras",
+  "mil-custos": "custos",
+  "mil-producao": "producao",
+  "mil-silos": "silos",
+  "mil-custo": "custo",
+};
+
 export function App() {
-  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não casar.
-  const [tab, setTab] = useState<Tab>(() => pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
+  // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
+  const [tab, setTab] = useState<Tab>(() =>
+    (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
+  );
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
@@ -139,6 +159,9 @@ export function App() {
   }, [users, viewAsId]);
 
   const isAdmin = effectiveUser.flags.includes("gerenciarAcessos");
+  // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
+  // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
+  const canSeeFolha = effectiveUser.flags.includes("verSalarios");
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
@@ -149,12 +172,15 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok)
+  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok;
+  // eqp-* segue o gate `verSalarios` — o próprio `EquipeContent` cai no <GatedTab> se não puder).
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
     const isPla = String(tab).startsWith("pla-");
     const isCor = String(tab).startsWith("cor-");
-    if (isReb || isPla || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    const isEqp = String(tab).startsWith("eqp-");
+    const isMil = String(tab).startsWith("mil-");
+    if (isReb || isPla || isCor || isEqp || isMil || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +205,12 @@ export function App() {
     ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
         abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
+    : String(tab).startsWith("mil-")
+    ? <CultivoContent aba={MIL[tab]} onNavMil={(s) => setTab(("mil-" + s) as Tab)} />
+    : String(tab).startsWith("eqp-")
+    ? (canSeeFolha
+        ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
+        : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : (
       <>
         {tab === "dashboard" &&
@@ -190,6 +222,8 @@ export function App() {
           (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
         {tab === "lancar" &&
           (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
+        {tab === "caixinha" &&
+          (canSee("caixinha") ? <Caixinha /> : <GatedTab user={effectiveUser} abaLabel="Caixinha" />)}
         {tab === "plano" &&
           (canSee("plano") ? <PlanoContas onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Categorias" />)}
         {tab === "acessos" &&
@@ -215,6 +249,7 @@ export function App() {
         onNav={setTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
+        podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
       />
@@ -251,7 +286,8 @@ export function App() {
         }}
         podeVer={(t) => {
           const s = String(t);
-          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
+          if (s.startsWith("eqp-")) return canSeeFolha; // gate por verSalarios (PII: salário/CPF/Pix)
+          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("mil-")) return true;
           if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
           if (t === "acessos") return isAdmin;
           return canSee(t);

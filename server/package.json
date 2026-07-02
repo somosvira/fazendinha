@@ -18,6 +18,7 @@
     "seed:rebanho": "tsx --env-file=.env prisma/seed-rebanho.ts",
     "seed:plantio": "tsx --env-file=.env prisma/seed-plantio.ts",
     "seed:corte": "tsx --env-file=.env prisma/seed-corte.ts",
+    "seed:ponto": "tsx --env-file=.env prisma/seed-ponto.ts",
     "import": "tsx --env-file=.env prisma/import.ts",
     "import:rebanho": "tsx --env-file=.env prisma/import-rebanho.ts",
     "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts"
@@ -26,11 +27,16 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1057.0",
+    "@aws-sdk/s3-request-presigner": "^3.1057.0",
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "@prisma/client": "^6.1.0",
     "hono": "^4.6.15",
     "openai": "^6.44.0",
+    "pdf-parse": "^2.4.5",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
