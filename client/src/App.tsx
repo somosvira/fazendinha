@@ -12,6 +12,7 @@ import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
+import { Caixinha } from "./financeiro/Caixinha";
 import { PlanoContas } from "./components/PlanoContas";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
@@ -221,6 +222,8 @@ export function App() {
           (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
         {tab === "lancar" &&
           (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
+        {tab === "caixinha" &&
+          (canSee("caixinha") ? <Caixinha /> : <GatedTab user={effectiveUser} abaLabel="Caixinha" />)}
         {tab === "plano" &&
           (canSee("plano") ? <PlanoContas onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Categorias" />)}
         {tab === "acessos" &&
