@@ -20,6 +20,7 @@ import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
+import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
@@ -84,9 +85,20 @@ const EQP: Record<string, EqpSub> = {
   "eqp-folha": "folha",
 };
 
+const MIL: Record<string, MilSub> = {
+  "mil-safras": "safras",
+  "mil-custos": "custos",
+  "mil-producao": "producao",
+  "mil-silos": "silos",
+  "mil-custo": "custo",
+};
+
 export function App() {
-  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não casar.
-  const [tab, setTab] = useState<Tab>(() => pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
+  // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
+  const [tab, setTab] = useState<Tab>(() =>
+    (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
+  );
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
@@ -166,7 +178,8 @@ export function App() {
     const isPla = String(tab).startsWith("pla-");
     const isCor = String(tab).startsWith("cor-");
     const isEqp = String(tab).startsWith("eqp-");
-    if (isReb || isPla || isCor || isEqp || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    const isMil = String(tab).startsWith("mil-");
+    if (isReb || isPla || isCor || isEqp || isMil || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,6 +204,8 @@ export function App() {
     ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
         abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
+    : String(tab).startsWith("mil-")
+    ? <CultivoContent aba={MIL[tab]} onNavMil={(s) => setTab(("mil-" + s) as Tab)} />
     : String(tab).startsWith("eqp-")
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
@@ -269,7 +284,7 @@ export function App() {
         podeVer={(t) => {
           const s = String(t);
           if (s.startsWith("eqp-")) return canSeeFolha; // gate por verSalarios (PII: salário/CPF/Pix)
-          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
+          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("mil-")) return true;
           if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
           if (t === "acessos") return isAdmin;
           return canSee(t);

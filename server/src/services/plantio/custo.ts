@@ -16,7 +16,14 @@ const ehInvestimento = (centro: string) => /investimento/i.test(centro);
 
 const toNum = (x: any) => (x != null ? Number(x) : 0);
 
-export async function agregarCustoPlantio(meses = 12) {
+// Toggle Custeio / Investimento / Tudo (spec §6.4) — seleciona qual total vira
+// o "headline" (`custoTotal`) da resposta. NÃO muda como o split em si é
+// calculado (heurística por nome do centro de custo, ver nota do módulo
+// acima) — apenas expõe/soma os totais que já existiam. custoSaca/custoHa
+// continuam SEMPRE sobre custeio (§2/§5.1), independente da classe pedida.
+export type ClasseCusto = "custeio" | "investimento" | "tudo";
+
+export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "custeio") {
   const desde = new Date();
   desde.setMonth(desde.getMonth() - meses);
 
@@ -66,12 +73,21 @@ export async function agregarCustoPlantio(meses = 12) {
   const talhoesAtivos = await prisma.talhao.findMany({ where: { estado: "ATIVO" }, select: { areaHa: true } });
   const areaProducao = Math.round(talhoesAtivos.reduce((s, t) => s + toNum(t.areaHa), 0) * 100) / 100;
 
-  // 6) Custo/saca e custo/ha sobre o CUSTEIO (não o investimento de formação).
+  // 6) Custo/saca e custo/ha sobre o CUSTEIO (não o investimento de formação) —
+  //    sempre, independente da `classe` pedida (§2/§5.1).
   const custoSaca = sacasPeriodo > 0 ? Math.round((custeioTotal / sacasPeriodo) * 100) / 100 : null;
   const custoHa = areaProducao > 0 ? Math.round((custeioTotal / areaProducao) * 100) / 100 : null;
 
+  // 7) Headline `custoTotal` — apenas SELECIONA entre os totais já calculados
+  //    acima conforme a `classe` pedida (default "custeio", contrato §6.4).
+  //    Não recalcula nem altera o split; "tudo" só soma os dois totais.
+  const custoTotal =
+    classe === "investimento" ? investimentoTotal : classe === "tudo" ? Math.round((custeioTotal + investimentoTotal) * 100) / 100 : custeioTotal;
+
   return {
     periodoMeses: meses,
+    classe,
+    custoTotal,
     custeioTotal,
     investimentoTotal,
     sacasPeriodo,

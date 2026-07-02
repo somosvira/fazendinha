@@ -42,6 +42,12 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
   "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   "cor-ia": <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,
+  // — Milho (cultivo) — ícones simbólicos.
+  "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,
+  "mil-custos": <><path d="M5 3h14v18l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/></>,
+  "mil-producao": <><path d="M12 21V8"/><path d="M12 12c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 12c2 0 4-1.5 4-4-2 0-4 1.5-4 4zM12 17c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 17c2 0 4-1.5 4-4-2 0-4 1.5-4 4z"/></>,
+  "mil-silos": <><path d="M6 21V8a6 6 0 0 1 12 0v13"/><path d="M6 12h12M6 16h12"/><path d="M4 21h16"/></>,
+  "mil-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   // — Equipe & Ponto — ícones simbólicos.
   "eqp-funcionarios": <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
   "eqp-ponto": <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
@@ -104,6 +110,19 @@ const MODULOS: Modulo[] = [
       { id: "cor-comercial", label: "Comercial" },
       { id: "cor-custo", label: "Custo" },
       { id: "cor-ia", label: "IA do plantel" },
+    ],
+  },
+  {
+    id: "cultivo",
+    label: "Milho",
+    icon: <><path d="M12 22v-5"/><path d="M12 17c-3 0-5.5-2.8-5.5-6.5C6.5 6.5 9 3 12 2c3 1 5.5 4.5 5.5 8.5C17.5 14.2 15 17 12 17z"/><path d="M12 6v11M9 9c1 .8 2 1.2 3 1.2s2-.4 3-1.2M9 13c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/></>,
+    // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
+    subs: [
+      { id: "mil-safras", label: "Safras" },
+      { id: "mil-custos", label: "Custos" },
+      { id: "mil-producao", label: "Produção" },
+      { id: "mil-silos", label: "Silos" },
+      { id: "mil-custo", label: "Custo" },
     ],
   },
   {
