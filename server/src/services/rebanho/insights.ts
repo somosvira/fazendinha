@@ -5,10 +5,13 @@
 import { prisma } from "../../db.js";
 import type { Animal, ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "./estoque.calc.js";
+import { getNumero, type ChaveParametro } from "./parametros.js";
 
 const FALLBACK_PRECO_LEITE = 2.4; // R$/L quando Configuracao.precoLeite é NULL
-const META_PRODUCAO_POR_CATEGORIA: Record<string, number | null> = {
-  VACA: 28, CABRA: 4,
+// Que chave de ParametroManejo carrega a meta de produção pra cada categoria.
+// Só VACA e CABRA produzem leite; as demais não têm meta.
+const CHAVE_META_PRODUCAO: Record<string, ChaveParametro | null> = {
+  VACA: "PROD_META_VACA", CABRA: "PROD_META_CABRA",
   BEZERRA: null, NOVILHA: null, BEZERRO: null, TOURO: null,
   CABRITA: null, CABRITO: null, BODE: null,
 };
@@ -16,9 +19,10 @@ const ESPECIE_POR_CATEGORIA: Record<string, "BOVINO" | "CAPRINO"> = {
   BEZERRA: "BOVINO", NOVILHA: "BOVINO", VACA: "BOVINO", BEZERRO: "BOVINO", TOURO: "BOVINO",
   CABRITA: "CAPRINO", CABRA: "CAPRINO", CABRITO: "CAPRINO", BODE: "CAPRINO",
 };
-// Janela "prime" por espécie (anos)
-const PRIME_BOVINO = { min: 3, max: 7 };
-const PRIME_CAPRINO = { min: 2, max: 5 };
+// Janela "prime" por espécie (anos). Valores default Embrapa; sobrescritos
+// via ParametroManejo (PRIME_BOVINO_MIN/MAX, PRIME_CAPRINO_MIN/MAX).
+const PRIME_BOVINO_DEFAULT = { min: 3, max: 7 };
+const PRIME_CAPRINO_DEFAULT = { min: 2, max: 5 };
 
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
@@ -141,12 +145,11 @@ function pontosFertilidade(statusReprod: string | null, iep: number | null): num
   return 40;
 }
 
-function pontosIdade(idade: number | null, especie: "BOVINO" | "CAPRINO"): number {
+function pontosIdade(idade: number | null, prime: { min: number; max: number }): number {
   if (idade == null) return 60;
-  const p = especie === "BOVINO" ? PRIME_BOVINO : PRIME_CAPRINO;
-  if (idade >= p.min && idade <= p.max) return 100;
-  if (idade < p.min) return 80;
-  if (idade <= p.max + 2) return 75;
+  if (idade >= prime.min && idade <= prime.max) return 100;
+  if (idade < prime.min) return 80;
+  if (idade <= prime.max + 2) return 75;
   return 50;
 }
 
@@ -180,7 +183,14 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   const hoje = new Date();
   const especie = ESPECIE_POR_CATEGORIA[animal.categoria] ?? "BOVINO";
   const idade = idadeAnos(animal.dataNascimento, hoje);
-  const meta = META_PRODUCAO_POR_CATEGORIA[animal.categoria] ?? null;
+  const chaveMeta = CHAVE_META_PRODUCAO[animal.categoria];
+  const [meta, primeMin, primeMax] = await Promise.all([
+    chaveMeta ? getNumero(chaveMeta) : Promise.resolve(null),
+    getNumero(especie === "BOVINO" ? "PRIME_BOVINO_MIN" : "PRIME_CAPRINO_MIN"),
+    getNumero(especie === "BOVINO" ? "PRIME_BOVINO_MAX" : "PRIME_CAPRINO_MAX"),
+  ]);
+  const primeDefault = especie === "BOVINO" ? PRIME_BOVINO_DEFAULT : PRIME_CAPRINO_DEFAULT;
+  const prime = { min: primeMin ?? primeDefault.min, max: primeMax ?? primeDefault.max };
   const resumo: ResumoAnimal | null = animal.resumo;
 
   // ── Lactação atual (acumulado de litros) ───────────────────────────────
@@ -278,7 +288,7 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
     { nome: "Produção",     pontos: pontosProducao(toNum(resumo?.producaoMediaDia), meta), peso: 30 },
     { nome: "CCS",          pontos: pontosCCS(resumo?.ccs ?? null), peso: 20 },
     { nome: "Fertilidade",  pontos: pontosFertilidade(resumo?.statusReprodutivo ?? null, resumo?.iepProjetado ?? null), peso: 20 },
-    { nome: "Idade",        pontos: pontosIdade(idade, especie), peso: 10 },
+    { nome: "Idade",        pontos: pontosIdade(idade, prime), peso: 10 },
     { nome: "Saúde",        pontos: pontosSaude(ocorrencias6m), peso: 10 },
     { nome: "Rentabilidade", pontos: pontosRentab(receitaLactacao > 0 ? margem : null), peso: 10 },
   ];
