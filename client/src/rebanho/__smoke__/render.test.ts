@@ -20,6 +20,7 @@ describe("render smoke", () => {
     const html = renderToString(h(AppSidebar, {
       current: "dashboard", onNav: () => {}, financeiro: [{ id: "dashboard", label: "Dashboard" }, { id: "ia", label: "IA" }],
       isAdmin: true,
+      podeVerFolha: true,
       mobileOpen: false, onMobileToggle: () => {},
     }));
     // grupos atuais (renomeados em "Sidebar enxuta")

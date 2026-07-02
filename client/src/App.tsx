@@ -19,6 +19,7 @@ import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
+import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
@@ -75,6 +76,12 @@ const COR: Record<string, CorSub> = {
   "cor-comercial": "comercial",
   "cor-custo": "custo",
   "cor-ia": "ia",
+};
+
+const EQP: Record<string, EqpSub> = {
+  "eqp-funcionarios": "funcionarios",
+  "eqp-ponto": "ponto",
+  "eqp-folha": "folha",
 };
 
 export function App() {
@@ -139,6 +146,9 @@ export function App() {
   }, [users, viewAsId]);
 
   const isAdmin = effectiveUser.flags.includes("gerenciarAcessos");
+  // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
+  // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
+  const canSeeFolha = effectiveUser.flags.includes("verSalarios");
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
@@ -149,12 +159,14 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok)
+  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok;
+  // eqp-* segue o gate `verSalarios` — o próprio `EquipeContent` cai no <GatedTab> se não puder).
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
     const isPla = String(tab).startsWith("pla-");
     const isCor = String(tab).startsWith("cor-");
-    if (isReb || isPla || isCor || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    const isEqp = String(tab).startsWith("eqp-");
+    if (isReb || isPla || isCor || isEqp || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
     if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +191,10 @@ export function App() {
     ? <PlantelContent aba={COR[tab]} onNavCor={(s) => setTab(("cor-" + s) as Tab)}
         abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
+    : String(tab).startsWith("eqp-")
+    ? (canSeeFolha
+        ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
+        : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : (
       <>
         {tab === "dashboard" &&
@@ -215,6 +231,7 @@ export function App() {
         onNav={setTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
+        podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
       />
@@ -251,6 +268,7 @@ export function App() {
         }}
         podeVer={(t) => {
           const s = String(t);
+          if (s.startsWith("eqp-")) return canSeeFolha; // gate por verSalarios (PII: salário/CPF/Pix)
           if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
           if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
           if (t === "acessos") return isAdmin;
