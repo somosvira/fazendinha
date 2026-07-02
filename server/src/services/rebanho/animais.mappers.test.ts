@@ -26,6 +26,13 @@ describe("toAnimalDTO", () => {
     expect(dto.resumo?.producaoMediaDia).toBe(28);
     expect(typeof dto.resumo?.producaoMediaDia).toBe("number");
   });
+  it("serializa a última pesagem como ultimoPesoKg (number) e null quando não há pesagem", () => {
+    const com = toAnimalDTO({ ...row, pesagens: [{ id: 1, data: new Date("2026-06-01"), peso: new Prisma.Decimal("512.50") }] });
+    expect(com.ultimoPesoKg).toBe(512.5);
+    expect(typeof com.ultimoPesoKg).toBe("number");
+    expect(toAnimalDTO(row).ultimoPesoKg).toBeNull();               // sem include
+    expect(toAnimalDTO({ ...row, pesagens: [] }).ultimoPesoKg).toBeNull(); // include vazio
+  });
   it("lida com relações nulas", () => {
     const dto = toAnimalDTO({ ...row, raca: null, grupo: null, mae: null, maeId: null, resumo: null, status: "BAIXADO", dataBaixa: new Date("2026-06-01"), motivoBaixa: "venda" });
     expect(dto.raca).toBeNull();

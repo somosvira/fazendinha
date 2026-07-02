@@ -250,6 +250,49 @@ export function useConfig() {
   return { data, loading, erro, recarregar };
 }
 
+// ── Parâmetros de manejo ──────────────────────────────────────────────────
+export type CategoriaParametro = "MANEJO" | "PRODUCAO" | "REPRODUCAO" | "GESTAO" | "SANITARIO";
+export type DirecaoMeta = "maior_melhor" | "menor_melhor";
+export interface ParametroDTO {
+  chave: string;
+  categoria: CategoriaParametro;
+  descricao: string;
+  unidade: string | null;
+  valorNumero: number | null;
+  valorNumeroAceitavel: number | null;
+  valorTexto: string | null;
+  modo: string | null;
+  direcao: DirecaoMeta | null;
+  referenciaNumero: number | null;
+  referenciaNumeroAceitavel: number | null;
+  ordem: number;
+  temOverride: boolean;
+}
+export interface ParametroPatch {
+  chave: string;
+  valorNumero?: number | null;
+  valorNumeroAceitavel?: number | null;
+  valorTexto?: string | null;
+  modo?: string | null;
+}
+export const listarParametros = () => req<ParametroDTO[]>(`/rebanho/parametros`);
+export const salvarParametrosApi = (parametros: ParametroPatch[]) =>
+  req<ParametroDTO[]>(`/rebanho/parametros`, { method: "PATCH", body: JSON.stringify({ parametros }) });
+export const resetarParametro = (chave: string) =>
+  req<ParametroDTO>(`/rebanho/parametros/reset`, { method: "POST", body: JSON.stringify({ chave }) });
+
+export function useParametros() {
+  const [data, setData] = useState<ParametroDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarParametros().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export interface ControlePayload { data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number }
 export const registrarControle = (animalId: string, p: ControlePayload) => req<EventoTimeline>(`/rebanho/animais/${animalId}/producao`, { method: "POST", body: JSON.stringify(p) });
 export const excluirControle = (id: string) => req<{ ok: true }>(`/rebanho/producao/${id}`, { method: "DELETE" });

@@ -33,6 +33,7 @@ export interface Animal {
   ativo: boolean;
   dataBaixa?: string | null;
   motivoBaixa?: string | null;
+  ultimoPesoKg?: number | null; // última pesagem corporal (kg) — vem do backend
   resumo?: ResumoAnimal | null;
 }
 
@@ -54,6 +55,12 @@ export interface ResumoAnimal {
   previsaoSecagem?: string;     // ISO
   ultimaInseminacao?: string;   // ISO
   protocoloAtual?: string;
+  // Enriquecimento feito pelas tabs a partir do Animal (não vem no read-model
+  // do servidor) — usado pelas work-lists que dependem de idade/peso/categoria,
+  // como "A desmamar".
+  categoria?: CategoriaAnimal | null;
+  dataNascimento?: string | null; // ISO "YYYY-MM-DD"
+  ultimoPesoKg?: number | null;   // última pesagem corporal (kg)
 }
 
 // Evento normalizado — única forma consumida pela timeline no protótipo.

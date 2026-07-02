@@ -9,7 +9,11 @@ export class AnimalError extends Error {
   }
 }
 
-const include = { raca: true, grupo: { include: { dieta: true } }, mae: true, resumo: true } as const;
+const include = {
+  raca: true, grupo: { include: { dieta: true } }, mae: true, resumo: true,
+  // última pesagem corporal — vira `ultimoPesoKg` no DTO (desmame por peso)
+  pesagens: { orderBy: { data: "desc" }, take: 1 },
+} as const;
 const d = (s?: string) => (s ? new Date(s) : undefined);
 
 export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {

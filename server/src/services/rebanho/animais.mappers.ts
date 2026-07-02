@@ -46,6 +46,8 @@ export function toAnimalDTO(a: any): AnimalDTO {
     ativo: a.status === "ATIVO",
     dataBaixa: iso(a.dataBaixa),
     motivoBaixa: a.motivoBaixa ?? null,
+    // `pesagens` vem incluída já ordenada por data desc com take 1 (ver include em animais.ts).
+    ultimoPesoKg: a.pesagens?.[0]?.peso != null ? Number(a.pesagens[0].peso) : null,
     resumo: toResumoDTO(a.resumo),
   };
 }

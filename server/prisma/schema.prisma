@@ -224,6 +224,36 @@ model Configuracao {
   atualizadoEm DateTime     @updatedAt
 }
 
+// Parâmetros de manejo do rebanho (metas Embrapa, referências de peso, produção
+// mínima por categoria, regras de desmame). Modelo key/value: cada chave é um
+// parâmetro; o serviço parametros.ts sabe interpretar cada uma.
+//
+// - valorNumero: valor efetivo aplicado (ou "ideal" nas metas com faixa dupla).
+// - valorNumeroAceitavel: 2º threshold das metas Embrapa (semáforo amarelo).
+// - referenciaNumero / referenciaNumeroAceitavel: valor original da Embrapa,
+//   imutável, exibido junto do efetivo pra comparação.
+// - modo: usado em parâmetros que suportam mais de uma regra (ex.: DESMAME_MODO
+//   = "DIAS" | "PESO"). null nos demais.
+// - direcao: só nas metas com semáforo — "maior_melhor" | "menor_melhor".
+// - categoria: agrupador na UI (PRODUCAO, REPRODUCAO, MANEJO, SANITARIO, GESTAO).
+model ParametroManejo {
+  chave                     String   @id
+  categoria                 String
+  descricao                 String
+  unidade                   String?
+  valorNumero               Decimal? @db.Decimal(14, 4)
+  valorNumeroAceitavel      Decimal? @db.Decimal(14, 4)
+  valorTexto                String?
+  modo                      String?
+  direcao                   String?
+  referenciaNumero          Decimal? @db.Decimal(14, 4)
+  referenciaNumeroAceitavel Decimal? @db.Decimal(14, 4)
+  ordem                     Int      @default(0)
+  atualizadoEm              DateTime @updatedAt
+
+  @@index([categoria, ordem])
+}
+
 // Controle leiteiro por animal (modos ORDENHA / TOTAL_DIARIO).
 model ControleLeiteiro {
   id        Int      @id @default(autoincrement())
