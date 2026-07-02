@@ -5,21 +5,38 @@ import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import type { Tab } from "./Shell";
 import { useToast } from "./Toast";
+import { fmtMoneyExact } from "./charts";
+import {
+  useCadastros,
+  uploadPendenteNF,
+  cancelarPendenteNF,
+  criarLancamento,
+} from "../financeiro/api";
+import type { Cadastros, FornecedorDTO, GrupoDTO, PendenteNF } from "../financeiro/api";
 
 const RASCUNHO_KEY = "rionovo:lancar:rascunho";
 
 type RascunhoSaida = {
   fornecedor: string;
+  fornecedorId?: number | null;
   valor: string;
   data: string;
-  conta: string;
-  pago: boolean;
-  atividade: string | null;
+  // IDs reais do backend (números). Rascunhos antigos (era mock) guardavam
+  // strings — são descartados campo a campo na restauração (asNum).
+  contaId?: number | null;
+  atividade: number | string | null;
   investimento: boolean;
-  cat: { grupoId: string | null; categoriaId: string | null; subcategoria: string | null };
+  cat: { grupoId: number | string | null; categoriaId: number | string | null };
+  pago: boolean;
   obs: string;
   ts: number;
 };
+
+// Coerção defensiva: rascunhos da era mock tinham ids string ("racao",
+// "bb-1234-5") que não existem no banco — viram null e o usuário re-seleciona.
+function asNum(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
 
 function loadRascunho(): RascunhoSaida | null {
   try {
@@ -35,36 +52,23 @@ function clearRascunho() {
   try { localStorage.removeItem(RASCUNHO_KEY); } catch { /* noop */ }
 }
 
-type CatValue = { grupoId: string | null; categoriaId: string | null; subcategoria: string | null };
+type CatValue = { grupoId: number | null; categoriaId: number | null };
 
+// O plano de contas real não tem nível de subcategoria (ver schema Prisma) —
+// o cascade agora é Grupo → Categoria, com dados de GET /api/cadastros.
 function CategoryCascade({
+  grupos,
   value,
   onChange,
-  aiSuggestion,
 }: {
+  grupos: GrupoDTO[];
   value: CatValue;
   onChange: (v: CatValue) => void;
-  aiSuggestion?: { categoriaId: string } | null;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const grupos: any[] = R.gruposPlano;
   const grupoSel = grupos.find((g) => g.id === value.grupoId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const catSel = grupoSel?.categorias.find((c: any) => c.id === value.categoriaId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let subs: any[] = [];
-  if (catSel) {
-    if (catSel.ref) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      subs = (R.categoriasDetalhe[catSel.ref]?.subcategorias || []).map((s: any) => ({ nome: s.nome }));
-    } else {
-      subs = catSel.subcategorias || [];
-    }
-  }
 
-  const setGrupo = (gid: string) => onChange({ grupoId: gid, categoriaId: null, subcategoria: null });
-  const setCategoria = (cid: string) => onChange({ ...value, categoriaId: cid, subcategoria: null });
-  const setSub = (sn: string) => onChange({ ...value, subcategoria: sn });
+  const setGrupo = (gid: number) => onChange({ grupoId: gid, categoriaId: null });
+  const setCategoria = (cid: number) => onChange({ ...value, categoriaId: cid });
 
   return (
     <div className="cat-cascade">
@@ -88,49 +92,17 @@ function CategoryCascade({
         <div className="cat-cascade-row">
           <span className="lbl">Categoria</span>
           <div className="opts">
-            {grupoSel.categorias.map(
-              (c: { id: string; nome: string }) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className="cat-chip"
-                  aria-pressed={value.categoriaId === c.id}
-                  onClick={() => setCategoria(c.id)}
-                >
-                  {c.nome}
-                </button>
-              ),
-            )}
-            {aiSuggestion?.categoriaId === catSel?.id && (
-              <span className="cat-ai-hint" title="Sugestão da IA com base na nota">
-                <span className="dot"></span>sugerido pela IA
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-      {catSel && subs.length > 0 && (
-        <div className="cat-cascade-row">
-          <span className="lbl">Subcategoria</span>
-          <div className="opts">
-            {subs.map((s) => (
+            {grupoSel.categorias.map((c) => (
               <button
-                key={s.nome}
+                key={c.id}
                 type="button"
                 className="cat-chip"
-                aria-pressed={value.subcategoria === s.nome}
-                onClick={() => setSub(s.nome)}
+                aria-pressed={value.categoriaId === c.id}
+                onClick={() => setCategoria(c.id)}
               >
-                {s.nome}
+                {c.nome}
               </button>
             ))}
-            <button
-              type="button"
-              className="cat-chip"
-              style={{ borderStyle: "dashed", color: "var(--ink-3)" }}
-            >
-              + criar subcategoria
-            </button>
           </div>
         </div>
       )}
@@ -138,25 +110,36 @@ function CategoryCascade({
   );
 }
 
-function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+type FornecedorValue = { id: number | null; nome: string };
+
+function FornecedorAuto({
+  lista,
+  value,
+  onChange,
+}: {
+  lista: FornecedorDTO[];
+  value: FornecedorValue;
+  onChange: (v: FornecedorValue) => void;
+}) {
   const [open, setOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const list: any[] = R.fornecedores;
   const filtered = useMemo(() => {
-    if (!value) return list.slice(0, 8);
-    const v = value.toLowerCase();
-    return list.filter((f) => f.nome.toLowerCase().includes(v)).slice(0, 8);
-  }, [value, list]);
-  const showCreateNew = value && !list.find((f) => f.nome.toLowerCase() === value.toLowerCase());
+    if (!value.nome) return lista.slice(0, 8);
+    const v = value.nome.toLowerCase();
+    return lista.filter((f) => f.nome.toLowerCase().includes(v)).slice(0, 8);
+  }, [value.nome, lista]);
+  const showCreateNew =
+    value.nome && !lista.find((f) => f.nome.toLowerCase() === value.nome.toLowerCase());
 
   return (
     <div className="ac-wrapper">
       <input
         className="field-input"
-        value={value}
+        value={value.nome}
         placeholder="Digite o nome do fornecedor…"
         onChange={(e) => {
-          onChange(e.target.value);
+          // digitou → perde o vínculo com o ID; se não re-selecionar, o POST
+          // manda fornecedorNome e o servidor faz upsert por nome único.
+          onChange({ id: null, nome: e.target.value });
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
@@ -166,24 +149,23 @@ function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: stri
         <div className="ac-dropdown">
           {filtered.map((f) => (
             <div
-              key={f.nome}
+              key={f.id}
               className="ac-option"
               onMouseDown={() => {
-                onChange(f.nome);
+                onChange({ id: f.id, nome: f.nome });
                 setOpen(false);
               }}
             >
               <div>
                 <div className="ac-nm">{f.nome}</div>
-                <div className="ac-sub">{f.categoriaUsual}</div>
+                {f.documento && <div className="ac-sub">{f.documento}</div>}
               </div>
-              <span className="ac-meta">{f.lancamentos} lançam.</span>
             </div>
           ))}
           {showCreateNew && (
             <div className="ac-option new" onMouseDown={() => setOpen(false)}>
               <div>
-                <div className="ac-nm">+ Cadastrar “{value}” como novo fornecedor</div>
+                <div className="ac-nm">+ Cadastrar “{value.nome}” como novo fornecedor</div>
               </div>
             </div>
           )}
@@ -191,6 +173,54 @@ function FornecedorAuto({ value, onChange }: { value: string; onChange: (v: stri
       )}
     </div>
   );
+}
+
+// ─── Atividade (centro de custo) ─────────────────────────────────────────
+
+// Cor da atividade por heurística sobre o nome — sempre via var() CSS.
+function corAtividade(nome: string): string {
+  const n = nome.toLowerCase();
+  if (n.includes("leit")) return "var(--leite)";
+  if (n.includes("caf")) return "var(--cafe)";
+  return "var(--outros)";
+}
+
+// Rótulo curto do chip: "Atividade Leiteira" → "Leite", "Plantio Café" → "Café".
+function rotuloAtividade(nome: string): string {
+  const n = nome.toLowerCase();
+  if (n.includes("leit")) return "Leite";
+  if (n.includes("caf")) return "Café";
+  return nome;
+}
+
+// Centro "de investimento": pela flag OU pelo nome — no banco real existe
+// "Plantio Café - investimento" com ehInvestimento=false (dado do BPO).
+function ehCentroInvestimento(c: { nome: string; ehInvestimento: boolean }): boolean {
+  return c.ehInvestimento || /invest/i.test(c.nome);
+}
+
+// Resolve o CentroCusto efetivo: chips mostram só os de custeio; o toggle
+// "É investimento" troca para a variante *- Investimento* do mesmo nome
+// (ex.: "Atividade Leiteira" → "Atividade Leiteira - Investimento").
+function resolveCentroCustoId(
+  cadastros: Cadastros,
+  atividadeId: number | null,
+  investimento: boolean,
+): number | null {
+  if (atividadeId == null) return null;
+  const base = cadastros.centrosCusto.find((c) => c.id === atividadeId);
+  if (!base) return null;
+  if (!investimento || ehCentroInvestimento(base)) return base.id;
+  const investimentos = cadastros.centrosCusto.filter(
+    (c) => c.id !== base.id && ehCentroInvestimento(c),
+  );
+  const variante = investimentos.find((c) =>
+    c.nome.toLowerCase().startsWith(base.nome.toLowerCase()),
+  );
+  if (variante) return variante.id;
+  // fallback: se só existe um centro de investimento, é ele
+  if (investimentos.length === 1) return investimentos[0].id;
+  return base.id;
 }
 
 function WhatsappMock() {
@@ -270,22 +300,40 @@ function WhatsappMock() {
   );
 }
 
-function LancarForm({ onSuccess }: { onSuccess: () => void }) {
+type SucessoInfo = { lancamentoId: number; valor: string; categoria: string; fornecedor: string };
+
+type UploadStatus = "idle" | "enviando" | "ok" | "erro";
+
+function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess: (info: SucessoInfo) => void }) {
   const toast = useToast();
   const [photo, setPhoto] = useState<{ name: string; size: number } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [iaUsed, setIaUsed] = useState(false);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
+  // Upload pendente de NF: o arquivo sobe na hora do anexo; o lançamento só
+  // é criado quando o usuário confirma (POST /api/lancamentos com pendenteId).
+  const [pendente, setPendente] = useState<PendenteNF | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [uploadMensagem, setUploadMensagem] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
   const rascunho = useMemo(loadRascunho, []);
-  const [fornecedor, setFornecedor] = useState(rascunho?.fornecedor ?? "");
+  const [fornecedor, setFornecedor] = useState<FornecedorValue>({
+    id: asNum(rascunho?.fornecedorId),
+    nome: rascunho?.fornecedor ?? "",
+  });
   const [valor, setValor] = useState(rascunho?.valor ?? "");
   const [data, setData] = useState(rascunho?.data ?? "28/05/2026");
-  const [conta, setConta] = useState(rascunho?.conta ?? "bb-1234-5");
+  const [contaId, setContaId] = useState<number | null>(
+    asNum(rascunho?.contaId) ?? cadastros.contas[0]?.id ?? null,
+  );
   const [pago, setPago] = useState(rascunho?.pago ?? true);
-  const [atividade, setAtividade] = useState<string | null>(rascunho?.atividade ?? null);
+  const [atividadeId, setAtividadeId] = useState<number | null>(asNum(rascunho?.atividade));
   const [investimento, setInvestimento] = useState(rascunho?.investimento ?? false);
-  const [cat, setCat] = useState<CatValue>(rascunho?.cat ?? { grupoId: null, categoriaId: null, subcategoria: null });
+  const [cat, setCat] = useState<CatValue>({
+    grupoId: asNum(rascunho?.cat?.grupoId),
+    categoriaId: asNum(rascunho?.cat?.categoriaId),
+  });
   const [obs, setObs] = useState(rascunho?.obs ?? "");
   const [restored, setRestored] = useState(!!rascunho);
 
@@ -299,8 +347,9 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
           label: "Descartar",
           onClick: () => {
             clearRascunho();
-            setFornecedor(""); setValor(""); setObs(""); setCat({ grupoId: null, categoriaId: null, subcategoria: null });
-            setAtividade(null); setInvestimento(false); setPago(true);
+            setFornecedor({ id: null, nome: "" }); setValor(""); setObs("");
+            setCat({ grupoId: null, categoriaId: null });
+            setAtividadeId(null); setInvestimento(false); setPago(true);
           },
         },
       },
@@ -310,44 +359,110 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
   }, []);
 
   const handleSalvarRascunho = () => {
-    const algumPreenchido = fornecedor || valor || cat.categoriaId || atividade || obs;
+    const algumPreenchido = fornecedor.nome || valor || cat.categoriaId || atividadeId || obs;
     if (!algumPreenchido) {
       toast.warn("Nada para salvar", "Preencha pelo menos um campo antes de salvar o rascunho.");
       return;
     }
     saveRascunho({
-      fornecedor, valor, data, conta, pago, atividade, investimento, cat, obs,
+      fornecedor: fornecedor.nome, fornecedorId: fornecedor.id,
+      valor, data, contaId, pago,
+      atividade: atividadeId, investimento, cat, obs,
       ts: Date.now(),
     });
     toast.success("Rascunho salvo", "Você pode voltar depois para concluir o lançamento.");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!pendente || !cat.categoriaId) return;
+    const centroCustoId = resolveCentroCustoId(cadastros, atividadeId, investimento);
+    if (!centroCustoId) return;
+
+    setSubmitting(true);
+    const r = await criarLancamento({
+      pendenteId: pendente.id,
+      natureza: "DEBITO",
+      valorBR: valor,
+      dataBR: data,
+      categoriaId: cat.categoriaId,
+      centroCustoId,
+      contaBancariaId: contaId,
+      fornecedorId: fornecedor.id,
+      fornecedorNome: fornecedor.id ? null : fornecedor.nome.trim() || null,
+      pago,
+      descricao: obs.trim() || null,
+    });
+    setSubmitting(false);
+
+    if (!r.ok) {
+      if (r.codigo === "MES_FECHADO") {
+        toast.error("Mês fechado", `${r.erro} Escolha uma data em mês aberto.`);
+      } else if (r.codigo === "PENDENTE_INVALIDA") {
+        toast.error("Nota fiscal expirou", `${r.erro}`);
+        // pendente morreu no servidor — força reenvio da foto
+        setPhoto(null); setPendente(null); setUploadStatus("idle"); setUploadMensagem(null);
+      } else {
+        toast.error("Não consegui registrar", r.erro);
+      }
+      return;
+    }
+
     clearRascunho();
-    toast.success("Gasto registrado", `${fornecedor || "Lançamento"} salvo. Aparece no Dashboard em segundos.`);
-    onSuccess();
+    const catNome =
+      cadastros.grupos.flatMap((g) => g.categorias).find((c) => c.id === cat.categoriaId)?.nome ??
+      "(sem categoria)";
+    const valorNum = Number(valor.replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+    toast.success(
+      "Gasto registrado",
+      `${fornecedor.nome || "Lançamento"} salvo. Aparece no Dashboard em segundos.`,
+    );
+    onSuccess({
+      lancamentoId: r.lancamentoId,
+      valor: Number.isFinite(valorNum) ? fmtMoneyExact(valorNum) : `R$ ${valor}`,
+      categoria: catNome,
+      fornecedor: fornecedor.nome || "(sem fornecedor)",
+    });
   };
 
-  const onPickFile = (file?: File | null) => {
-    if (file) setPhoto({ name: file.name || "nota-fiscal.jpg", size: file.size || 248123 });
+  const onPickFile = async (file?: File | null) => {
+    if (!file) return;
+    setPhoto({ name: file.name || "nota-fiscal.jpg", size: file.size || 0 });
+    setUploadStatus("enviando");
+    setUploadMensagem(null);
+    const r = await uploadPendenteNF(file);
+    if (!r.ok) {
+      setUploadStatus("erro");
+      if (r.codigo === "DUPLICATA_DEFINITIVA" && r.arquivoExistente) {
+        setUploadMensagem(`Esta nota já foi lançada antes (lançamento #${r.arquivoExistente.lancamentoId}).`);
+        toast.warn("Nota duplicada", `Esta foto já está no lançamento #${r.arquivoExistente.lancamentoId}.`);
+      } else {
+        setUploadMensagem(r.erro);
+        toast.error("Falha no upload da nota", r.erro);
+      }
+      return;
+    }
+    setPendente(r.pendente);
+    setUploadStatus("ok");
+    setUploadMensagem(
+      r.retomada
+        ? "Esta foto já estava aguardando — seguimos com ela."
+        : "Nota validada e aguardando confirmação.",
+    );
   };
 
-  const runIA = () => {
-    setIaUsed(true);
-    setTimeout(() => {
-      setFornecedor("Cooperativa Boa Vista");
-      setValor("38450,00");
-      setData("24/05/2026");
-      setCat({
-        grupoId: "insumos-animais",
-        categoriaId: "racao",
-        subcategoria: "Ração concentrada gado leiteiro",
-      });
-      setAtividade("leite");
-    }, 400);
+  const removerFoto = () => {
+    if (pendente) void cancelarPendenteNF(pendente.id);
+    setPhoto(null);
+    setPendente(null);
+    setUploadStatus("idle");
+    setUploadMensagem(null);
   };
 
-  const canSubmit = !!(photo && fornecedor && valor && cat.categoriaId && atividade);
+  const canSubmit = !!(
+    photo && pendente && uploadStatus === "ok" &&
+    fornecedor.nome.trim() && valor && data &&
+    cat.categoriaId && atividadeId && !submitting
+  );
 
   return (
     <div className="lancar-shell">
@@ -396,20 +511,25 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
               <div className="nf-meta">
                 <div className="nf-name">{photo.name}</div>
-                <div className="nf-info">{(photo.size / 1024).toFixed(0)} KB · enviado agora</div>
-                <div className="nf-info">Capturado às 09:18 · Marco Antônio</div>
+                <div className="nf-info">
+                  {(photo.size / 1024).toFixed(0)} KB ·{" "}
+                  {uploadStatus === "enviando"
+                    ? "enviando…"
+                    : uploadStatus === "ok"
+                      ? "recebida no servidor"
+                      : uploadStatus === "erro"
+                        ? "falha no envio"
+                        : "aguardando"}
+                </div>
+                {pendente && (
+                  <div className="nf-info">
+                    Reservada até{" "}
+                    {new Date(pendente.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}{" "}
+                    · confirme o lançamento para efetivar
+                  </div>
+                )}
                 <div className="nf-actions">
-                  <button className="btn-ia" onClick={runIA}>
-                    <span className="dot"></span>
-                    {iaUsed ? "Reler com IA" : "Ler nota com IA"}
-                  </button>
-                  <button
-                    className="btn-ghost danger"
-                    onClick={() => {
-                      setPhoto(null);
-                      setIaUsed(false);
-                    }}
-                  >
+                  <button className="btn-ghost danger" onClick={removerFoto}>
                     Remover
                   </button>
                 </div>
@@ -418,12 +538,27 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
           </div>
         )}
 
-        {iaUsed && photo && (
-          <div className="ia-fill-banner" style={{ marginTop: 14 }}>
+        {photo && uploadStatus !== "idle" && (
+          <div
+            className="ia-fill-banner"
+            style={{
+              marginTop: 14,
+              background:
+                uploadStatus === "erro"
+                  ? "color-mix(in srgb, var(--neg) 8%, transparent)"
+                  : uploadStatus === "ok"
+                    ? "color-mix(in srgb, var(--pos) 8%, transparent)"
+                    : undefined,
+            }}
+          >
             <span className="icon-dot"></span>
             <div className="body">
-              <strong>Pré-preenchi 5 campos a partir da foto.</strong> Revise valor, fornecedor, data e categoria
-              antes de salvar. Itens da nota detectados: <em>Ração concentrada 25t + Sal mineral</em>.
+              <strong>
+                {uploadStatus === "enviando" && "Enviando nota fiscal…"}
+                {uploadStatus === "ok" && "Nota fiscal recebida."}
+                {uploadStatus === "erro" && "Falha no upload."}
+              </strong>
+              {uploadMensagem ? <> {uploadMensagem}</> : null}
             </div>
           </div>
         )}
@@ -438,7 +573,7 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </div>
 
-      <div className={"form-shell " + (!photo ? "disabled" : "")}>
+      <div className={"form-shell " + (!pendente ? "disabled" : "")}>
         <div className="form-section-title">2 · Dados do lançamento</div>
 
         <div className="form-section">
@@ -447,7 +582,7 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
               <label className="field-label">
                 Fornecedor<span className="req">*</span>
               </label>
-              <FornecedorAuto value={fornecedor} onChange={setFornecedor} />
+              <FornecedorAuto lista={cadastros.fornecedores} value={fornecedor} onChange={setFornecedor} />
             </div>
             <div className="field">
               <label className="field-label">
@@ -479,13 +614,13 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="field">
             <label className="field-label">Conta bancária</label>
             <div className="chip-group">
-              {R.contasBancarias.map((c: { id: string; nome: string }) => (
+              {cadastros.contas.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   className="chip"
-                  aria-pressed={conta === c.id}
-                  onClick={() => setConta(c.id)}
+                  aria-pressed={contaId === c.id}
+                  onClick={() => setContaId(c.id)}
                 >
                   {c.nome
                     .replace("Banco do Brasil ag. ", "BB ")
@@ -513,38 +648,21 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
               Atividade (centro de custo)<span className="req">*</span>
             </label>
             <div className="chip-group">
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={atividade === "leite"}
-                onClick={() => setAtividade("leite")}
-              >
-                <span className="sw" style={{ background: "var(--leite)" }}></span>Leite
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={atividade === "cafe"}
-                onClick={() => setAtividade("cafe")}
-              >
-                <span className="sw" style={{ background: "var(--cafe)" }}></span>Café
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={atividade === "outros"}
-                onClick={() => setAtividade("outros")}
-              >
-                <span className="sw" style={{ background: "var(--outros)" }}></span>Outros
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={atividade === "mista"}
-                onClick={() => setAtividade("mista")}
-              >
-                <span className="sw" style={{ background: "var(--ink-3)" }}></span>Mista (separar)
-              </button>
+              {cadastros.centrosCusto
+                .filter((cc) => !ehCentroInvestimento(cc))
+                .map((cc) => (
+                  <button
+                    key={cc.id}
+                    type="button"
+                    className="chip"
+                    aria-pressed={atividadeId === cc.id}
+                    onClick={() => setAtividadeId(cc.id)}
+                    title={cc.nome}
+                  >
+                    <span className="sw" style={{ background: corAtividade(cc.nome) }}></span>
+                    {rotuloAtividade(cc.nome)}
+                  </button>
+                ))}
             </div>
           </div>
 
@@ -552,11 +670,7 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
             <label className="field-label">
               Categoria<span className="req">*</span>
             </label>
-            <CategoryCascade
-              value={cat}
-              onChange={setCat}
-              aiSuggestion={iaUsed ? { categoriaId: "racao" } : null}
-            />
+            <CategoryCascade grupos={cadastros.grupos} value={cat} onChange={setCat} />
           </div>
 
           <div className="toggle-row">
@@ -596,14 +710,18 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
           <span className="help">
             {!photo
               ? "Anexe a nota fiscal para liberar o lançamento."
-              : !canSubmit
-                ? "Complete os campos obrigatórios marcados com asterisco."
-                : "Tudo pronto. O lançamento aparecerá no dashboard imediatamente."}
+              : uploadStatus === "enviando"
+                ? "Aguarde o envio da nota terminar."
+                : uploadStatus === "erro"
+                  ? "Falha no upload — remova e envie outra foto."
+                  : !canSubmit
+                    ? "Complete os campos obrigatórios marcados com asterisco."
+                    : "Tudo pronto. Ao registrar, o lançamento é criado e a nota amarrada a ele."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn-ghost" onClick={handleSalvarRascunho}>Salvar rascunho</button>
             <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
-              Registrar gasto →
+              {submitting ? "Registrando…" : "Registrar gasto →"}
             </button>
           </div>
         </div>
@@ -615,21 +733,19 @@ function LancarForm({ onSuccess }: { onSuccess: () => void }) {
 function LancadoSucesso({
   onNew,
   onNav,
+  lancamentoId,
   valor,
   categoria,
   fornecedor,
-}: {
+}: SucessoInfo & {
   onNew: () => void;
   onNav: (t: Tab) => void;
-  valor: string;
-  categoria: string;
-  fornecedor: string;
 }) {
   return (
     <div className="lancar-shell" style={{ gridTemplateColumns: "1fr", maxWidth: 640, margin: "0 auto" }}>
       <div className="lancado-card">
         <div className="checkmark">✓</div>
-        <div className="h">Gasto registrado</div>
+        <div className="h">Gasto registrado · #{lancamentoId}</div>
         <div className="v mono-nums">{valor}</div>
         <div className="body-s" style={{ color: "var(--ink-3)" }}>
           {fornecedor} · {categoria}
@@ -745,7 +861,11 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
 
 type EntradaPayload = { valor: string; tipo: string; comprador: string; qtd: string | null };
 
-function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: EntradaPayload) => void }) {
+// Contas do form de entrada: reais quando os cadastros carregam; mock como
+// fallback (o submit da entrada ainda é mock — ver débito no PR).
+type ContaChip = { id: number | string; nome: string };
+
+function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Tab) => void; onSuccess: (p: EntradaPayload) => void }) {
   const toast = useToast();
   const [tipoId, setTipoId] = useState("leite");
   const tipo = TIPOS_RECEITA.find((t) => t.id === tipoId) as TipoReceita;
@@ -754,7 +874,7 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
   const [valor, setValor] = useState("");
   const [qtd, setQtd] = useState("");
   const [data, setData] = useState("31/05/2026");
-  const [conta, setConta] = useState("sicred-9012");
+  const [conta, setConta] = useState<number | string | null>(contas[0]?.id ?? null);
   const [recebido, setRecebido] = useState(true);
   const [doc, setDoc] = useState<{ name: string; size: number } | null>(null);
   const [obs, setObs] = useState("");
@@ -928,8 +1048,7 @@ function EntradaForm({ onSuccess }: { onNav: (t: Tab) => void; onSuccess: (p: En
           <div className="field">
             <label className="field-label">Conta de recebimento</label>
             <div className="chip-group">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {R.contasBancarias.map((c: any) => (
+              {contas.map((c) => (
                 <button key={c.id} type="button" className="chip" aria-pressed={conta === c.id} onClick={() => setConta(c.id)}>
                   {c.nome
                     .replace("Banco do Brasil ag. ", "BB ")
@@ -1038,8 +1157,11 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
   });
   const [view, setView] = useState<"form" | "sucesso">("form");
   const [entryMode, setEntryMode] = useState<"web" | "wa">("web");
-  const [lastLanc, setLastLanc] = useState<{ valor: string; categoria: string; fornecedor: string } | null>(null);
+  const [lastLanc, setLastLanc] = useState<SucessoInfo | null>(null);
   const [lastEntrada, setLastEntrada] = useState<EntradaPayload | null>(null);
+
+  // Dimensões reais (contas, centros de custo, grupos→categorias, fornecedores)
+  const { data: cadastros, loading: cadastrosLoading, erro: cadastrosErro, recarregar } = useCadastros();
 
   const switchTipo = (t: "saida" | "entrada") => {
     setTipo(t);
@@ -1080,14 +1202,24 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
             </button>
           </div>
 
-          {view === "form" && (
+          {cadastrosErro && (
+            <div className="ia-fill-banner" style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
+              <span className="icon-dot"></span>
+              <div className="body">
+                <strong>Não consegui carregar os cadastros.</strong> {cadastrosErro}{" "}
+                <button className="btn-ghost" onClick={recarregar}>Tentar de novo</button>
+              </div>
+            </div>
+          )}
+          {cadastrosLoading && !cadastros && (
+            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+          )}
+
+          {view === "form" && cadastros && (
             <LancarForm
-              onSuccess={() => {
-                setLastLanc({
-                  valor: "R$ 38.450,00",
-                  categoria: "Ração concentrada gado leiteiro",
-                  fornecedor: "Cooperativa Boa Vista",
-                });
+              cadastros={cadastros}
+              onSuccess={(info) => {
+                setLastLanc(info);
                 setView("sucesso");
               }}
             />
@@ -1099,7 +1231,13 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
 
       {tipo === "entrada" && (
         <>
-          {view === "form" && <EntradaForm onNav={onNav} onSuccess={(payload) => { setLastEntrada(payload); setView("sucesso"); }} />}
+          {view === "form" && (
+            <EntradaForm
+              contas={cadastros?.contas ?? (R.contasBancarias as ContaChip[])}
+              onNav={onNav}
+              onSuccess={(payload) => { setLastEntrada(payload); setView("sucesso"); }}
+            />
+          )}
           {view === "sucesso" && lastEntrada && <EntradaSucesso {...lastEntrada} onNew={() => setView("form")} onNav={onNav} />}
         </>
       )}
