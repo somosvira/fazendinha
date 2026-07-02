@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { registrarEvento, registrarEventoSanidade, listarRacas, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
+import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
@@ -62,6 +63,14 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
   });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [baixaCtx, setBaixaCtx] = useState<{
+    criado?: EventoTimeline;
+    produto: string;
+    dose?: string;
+    loteProduto?: string;
+    data: string;
+    tipo: "APLICACAO" | "VACINA";
+  } | null>(null);
   const set = (k: string, v: string) => setF((s: any) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
 
@@ -111,9 +120,36 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
         if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
         if (tipoSan === "VACINA") p.produto = f.produto;
         criado = await registrarEventoSanidade(animalId, p);
+        if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {
+          setBaixaCtx({
+            criado,
+            produto: f.produto,
+            dose: f.dose || undefined,
+            loteProduto: f.loteProduto || undefined,
+            data: f.data,
+            tipo: tipoSan,
+          });
+          return;
+        }
       }
       onSalvo(criado);
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
+  }
+
+  if (baixaCtx) {
+    return (
+      <BaixaEstoqueCard
+        animalId={animalId}
+        animal={animal}
+        produtoDigitado={baixaCtx.produto}
+        dose={baixaCtx.dose}
+        loteProduto={baixaCtx.loteProduto}
+        data={baixaCtx.data}
+        tipo={baixaCtx.tipo}
+        onFechar={() => onSalvo(baixaCtx.criado)}
+        onBaixaFeita={() => {}}
+      />
+    );
   }
 
   return (

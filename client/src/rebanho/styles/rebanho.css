@@ -277,6 +277,14 @@
 input.rb-fld, select.rb-fld { display: block; font-family: var(--sans); font-style: normal; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); background: var(--bg-card); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; }
 .rb-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
+/* card de baixa no estoque (aparece após salvar VACINA/APLICACAO no EventoForm) */
+.rb-baixa-resumo { display: grid; grid-template-columns: 1fr; gap: 6px; background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
+.rb-baixa-resumo > div { display: grid; grid-template-columns: 88px 1fr; gap: 12px; align-items: baseline; font-family: var(--sans); font-size: 14px; }
+.rb-baixa-resumo dt { font-family: var(--serif); font-style: italic; color: var(--ink-3); margin: 0; }
+.rb-baixa-resumo dd { margin: 0; color: var(--ink); }
+.rb-baixa-status { margin: -6px 0 12px; min-height: 26px; display: flex; align-items: center; }
+.rb-baixa-saldo { font-family: var(--sans); font-size: 13.5px; color: var(--ink-3); font-style: italic; }
+
 /* grau de sangue — bloco com 1 ou 2 linhas (raça principal + secundária com complemento auto) */
 .rb-fieldset { border: 1px solid var(--rule-soft); border-radius: 10px; padding: 12px 14px 4px; margin: 0 0 14px; background: var(--bg-card); }
 .rb-fieldset > legend { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-3); padding: 0 6px; }
