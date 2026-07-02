@@ -90,6 +90,9 @@ export const COMANDOS: Comando[] = [
   { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "raças", "registro"] },
   { id: "adm-config", tab: "config", label: "Configurações", grupo: "Administração", sinonimos: ["config", "ajustes", "preferências", "preço do leite", "setup"] },
   { id: "adm-acessos", tab: "acessos", label: "Acessos", grupo: "Administração", sinonimos: ["permissões", "usuários", "perfis", "convidar", "permissão", "papéis"] },
+  { id: "eqp-funcionarios", tab: "eqp-funcionarios", label: "Funcionários", grupo: "Administração", sinonimos: ["equipe", "colaboradores", "peão", "empregados", "salário", "cadastro de funcionário"] },
+  { id: "eqp-ponto", tab: "eqp-ponto", label: "Ponto", grupo: "Administração", sinonimos: ["jornada", "bater ponto", "entrada", "saída", "horas", "presença", "folha de ponto"] },
+  { id: "eqp-folha", tab: "eqp-folha", label: "Folha", grupo: "Administração", sinonimos: ["folha de pagamento", "hora extra", "salário", "pagamento", "extras", "total a pagar"] },
 
   // — Ações (atalhos para a aba certa) —
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
