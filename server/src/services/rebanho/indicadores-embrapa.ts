@@ -451,12 +451,21 @@ export function taxaLotacao(uaTotal: number, areaPastagemHa: number): number | n
 }
 
 // Converte um animal em UA conforme categoria + peso estimado.
-const PESO_REF_KG: Record<CategoriaAnimal, number> = {
+// Defaults Embrapa; podem ser sobrescritos via ParametroManejo (PESO_REF_*,
+// PESO_UA_REF_KG) — o agregador passa os overrides quando disponíveis.
+export const PESO_REF_KG: Record<CategoriaAnimal, number> = {
   BEZERRA: 120, BEZERRO: 120, NOVILHA: 280, VACA: 500, TOURO: 800,
   CABRITA: 25, CABRITO: 25, CABRA: 55, BODE: 75,
 };
-export function calcularUA(animais: AnimalIn[]): number {
-  return round2(animais.reduce((s, a) => s + (PESO_REF_KG[a.categoria] ?? 0) / 450, 0));
+export const UA_REF_KG_DEFAULT = 450;
+
+export function calcularUA(
+  animais: AnimalIn[],
+  pesosOverride?: Partial<Record<CategoriaAnimal, number>>,
+  uaRefKg: number = UA_REF_KG_DEFAULT
+): number {
+  const pesos = pesosOverride ? { ...PESO_REF_KG, ...pesosOverride } : PESO_REF_KG;
+  return round2(animais.reduce((s, a) => s + (pesos[a.categoria] ?? 0) / uaRefKg, 0));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
