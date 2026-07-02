@@ -6,6 +6,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   gastos: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></>,
   lancar: <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></>,
+  caixinha: <><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M4 12h16M12 12v3"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></>,
   plano: <><path d="M4 6h16M4 12h16M4 18h10"/></>,
   relatorio: <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></>,
   ia: <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>,

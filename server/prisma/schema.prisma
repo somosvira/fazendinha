@@ -1588,3 +1588,44 @@ model ResumoSafraCultivo {
   horasMaquinaTotal  Decimal      @default(0) @db.Decimal(10, 2)
   atualizadoEm       DateTime     @updatedAt
 }
+
+// =============================================================================
+// MÓDULO CAIXINHA — fundo fixo em dinheiro (pequeno caixa do financeiro)
+// =============================================================================
+// A pessoa do financeiro mantém um fundo fixo em espécie: toda entrada/saída é
+// lançada e o saldo corrente fica pré-computado em `saldoAtual` (razão + saldo,
+// mesmo shape de Silo/MovimentoSilo). Suporta N caixinhas (multi-fazenda);
+// a Rio Novo usa 1. Mesma regra de FechamentoMensal do Lancamento: movimento
+// cuja `data` caia num mês fechado não pode ser criado/excluído.
+
+enum TipoMovimentoCaixinha {
+  ENTRADA
+  SAIDA
+}
+
+model Caixinha {
+  id          Int                 @id @default(autoincrement())
+  nome        String
+  responsavel String?
+  saldoAtual  Decimal             @default(0) @db.Decimal(14, 2)
+  ativo       Boolean             @default(true)
+  movimentos  MovimentoCaixinha[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model MovimentoCaixinha {
+  id         Int                   @id @default(autoincrement())
+  caixinha   Caixinha              @relation(fields: [caixinhaId], references: [id], onDelete: Cascade)
+  caixinhaId Int
+  data       DateTime              @db.Date
+  tipo       TipoMovimentoCaixinha
+  // valor sempre positivo — o sinal vem do tipo (convenção do Lancamento)
+  valor      Decimal               @db.Decimal(14, 2)
+  descricao  String
+  observacao String?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([caixinhaId, data])
+}

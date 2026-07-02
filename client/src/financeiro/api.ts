@@ -113,6 +113,98 @@ export type ResultadoCriarLancamento =
   | { ok: true; lancamentoId: number; arquivoId: number }
   | { ok: false; status: number; erro: string; codigo?: "PENDENTE_INVALIDA" | "MES_FECHADO" | string };
 
+// ─── Caixinha (fundo fixo em dinheiro) ───────────────────────────────────
+// Espelha o pattern de cultivo/api.ts: helper `req<T>` + hooks
+// {data, loading, erro, recarregar}. DTOs espelham
+// server/src/services/caixinha/caixinhas.ts — não inventar campos.
+
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  if (!res.ok) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const b: any = await res.json().catch(() => null);
+    let msg = `HTTP ${res.status}`;
+    if (typeof b?.error === "string") msg = b.error; // erro do service (ex.: 409 mês fechado)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
+    throw new Error(msg);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+export type TipoMovimentoCaixinha = "ENTRADA" | "SAIDA";
+
+export interface CaixinhaDTO {
+  id: number;
+  nome: string;
+  responsavel: string | null;
+  saldoAtual: number;
+  ativo: boolean;
+}
+
+export interface MovimentoCaixinhaDTO {
+  id: number;
+  caixinhaId: number;
+  data: string; // YYYY-MM-DD
+  tipo: TipoMovimentoCaixinha;
+  valor: number; // sempre positivo — sinal vem do tipo
+  descricao: string;
+  observacao: string | null;
+}
+
+export interface CaixinhaInput {
+  nome: string;
+  responsavel?: string | null;
+}
+
+export interface MovimentoCaixinhaInput {
+  data: string; // YYYY-MM-DD
+  tipo: TipoMovimentoCaixinha;
+  valor: number;
+  descricao: string;
+  observacao?: string | null;
+}
+
+export const listarCaixinhas = () => req<CaixinhaDTO[]>(`/caixinhas`);
+export const criarCaixinha = (input: CaixinhaInput) =>
+  req<CaixinhaDTO>(`/caixinhas`, { method: "POST", body: JSON.stringify(input) });
+export const editarCaixinha = (id: number, input: Partial<CaixinhaInput> & { ativo?: boolean }) =>
+  req<CaixinhaDTO>(`/caixinhas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const listarMovimentosCaixinha = (caixinhaId: number, mes?: string) =>
+  req<MovimentoCaixinhaDTO[]>(`/caixinhas/${caixinhaId}/movimentos${mes ? `?mes=${mes}` : ""}`);
+export const criarMovimentoCaixinha = (caixinhaId: number, input: MovimentoCaixinhaInput) =>
+  req<MovimentoCaixinhaDTO>(`/caixinhas/${caixinhaId}/movimentos`, { method: "POST", body: JSON.stringify(input) });
+export const excluirMovimentoCaixinha = (caixinhaId: number, movimentoId: number) =>
+  req<void>(`/caixinhas/${caixinhaId}/movimentos/${movimentoId}`, { method: "DELETE" });
+
+export function useCaixinhas() {
+  const [data, setData] = useState<CaixinhaDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarCaixinhas().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useMovimentosCaixinha(caixinhaId: number | null, mes?: string) {
+  const [data, setData] = useState<MovimentoCaixinhaDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (caixinhaId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarMovimentosCaixinha(caixinhaId, mes).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [caixinhaId, mes]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+// ─── Criação de lançamento (POST /api/lancamentos) ───────────────────────
+
 export async function criarLancamento(input: NovoLancamentoInput): Promise<ResultadoCriarLancamento> {
   try {
     const res = await fetch("/api/lancamentos", {

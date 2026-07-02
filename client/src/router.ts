@@ -18,6 +18,7 @@ const PATH_BY_TAB: Partial<Record<Tab, string>> = {
   dashboard: "/dashboard",
   gastos: "/gastos",
   lancar: "/lancar",
+  caixinha: "/caixinha",
   plano: "/categorias",
   ia: "/ia",
   relatorio: "/relatorio",
