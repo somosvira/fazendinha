@@ -146,6 +146,9 @@ export function App() {
   }, [users, viewAsId]);
 
   const isAdmin = effectiveUser.flags.includes("gerenciarAcessos");
+  // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
+  // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
+  const canSeeFolha = effectiveUser.flags.includes("verSalarios");
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
@@ -156,7 +159,8 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok)
+  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok;
+  // eqp-* segue o gate `verSalarios` — o próprio `EquipeContent` cai no <GatedTab> se não puder).
   useEffect(() => {
     const isReb = String(tab).startsWith("reb-");
     const isPla = String(tab).startsWith("pla-");
@@ -188,7 +192,9 @@ export function App() {
         abrirId={deepLink && deepLink.tab.startsWith("cor-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("eqp-")
-    ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
+    ? (canSeeFolha
+        ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
+        : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : (
       <>
         {tab === "dashboard" &&
@@ -225,6 +231,7 @@ export function App() {
         onNav={setTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
+        podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
       />
@@ -261,7 +268,8 @@ export function App() {
         }}
         podeVer={(t) => {
           const s = String(t);
-          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("eqp-")) return true;
+          if (s.startsWith("eqp-")) return canSeeFolha; // gate por verSalarios (PII: salário/CPF/Pix)
+          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-")) return true;
           if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
           if (t === "acessos") return isAdmin;
           return canSee(t);

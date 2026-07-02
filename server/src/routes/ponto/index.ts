@@ -100,6 +100,11 @@ export const pontoRouter = new Hono()
     }
   })
   // ── Folha ─────────────────────────────────────────────────────────────────
-  .get("/ponto/folha", zValidator("query", folhaMesSchema), async (c) =>
-    c.json(await apurarFolha(c.req.valid("query").mes))
-  );
+  .get("/ponto/folha", zValidator("query", folhaMesSchema), async (c) => {
+    try {
+      return c.json(await apurarFolha(c.req.valid("query").mes));
+    } catch (e) {
+      const { status, body } = handle(e);
+      return c.json(body, status);
+    }
+  });

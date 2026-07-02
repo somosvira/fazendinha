@@ -88,6 +88,10 @@ export const obterFolha = (mes: string) => req<FolhaDTO>(`/ponto/folha${qs({ mes
 
 // HOOKS -------------------------------------------------------------------
 
+// Os hooks abaixo usam uma flag `cancelado` no cleanup do useEffect — diferente
+// do padrão de rebanho/plantio (sem abort). Motivo: aqui o usuário troca mês/
+// funcionário com frequência e uma resposta antiga chegar depois da nova
+// sobrescreve a folha na tela. `recarregar` continua manual (não cancela).
 export function useFuncionarios(ativo?: boolean) {
   const [data, setData] = useState<FuncionarioDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +100,15 @@ export function useFuncionarios(ativo?: boolean) {
     setLoading(true); setErro(null);
     listarFuncionarios(ativo).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, [ativo]);
-  useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => {
+    let cancelado = false;
+    setLoading(true); setErro(null);
+    listarFuncionarios(ativo)
+      .then((d) => { if (!cancelado) setData(d); })
+      .catch((e) => { if (!cancelado) setErro(e.message); })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, [ativo]);
   return { data, loading, erro, recarregar };
 }
 
@@ -109,7 +121,16 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
     setLoading(true); setErro(null);
     listarRegistros(funcionarioId, mes).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, [funcionarioId, mes]);
-  useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => {
+    if (!funcionarioId) { setData([]); setLoading(false); return; }
+    let cancelado = false;
+    setLoading(true); setErro(null);
+    listarRegistros(funcionarioId, mes)
+      .then((d) => { if (!cancelado) setData(d); })
+      .catch((e) => { if (!cancelado) setErro(e.message); })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, [funcionarioId, mes]);
   return { data, loading, erro, recarregar };
 }
 
@@ -121,7 +142,15 @@ export function useFolha(mes: string) {
     setLoading(true); setErro(null);
     obterFolha(mes).then(setData).catch((e) => { setErro(e.message); setData(null); }).finally(() => setLoading(false));
   }, [mes]);
-  useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => {
+    let cancelado = false;
+    setLoading(true); setErro(null);
+    obterFolha(mes)
+      .then((d) => { if (!cancelado) setData(d); })
+      .catch((e) => { if (!cancelado) { setErro(e.message); setData(null); } })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, [mes]);
   return { data, loading, erro, recarregar };
 }
 

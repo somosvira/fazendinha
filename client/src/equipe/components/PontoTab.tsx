@@ -11,7 +11,8 @@ const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
 ];
 
 // Estado editável de uma linha (um dia do mês). `dirty` marca o que mudou desde
-// o fetch — só linhas sujas habilitam "Salvar".
+// o fetch — só linhas sujas habilitam "Salvar". Volta a false após recarregar
+// (o useEffect recria as linhas a partir dos registros persistidos).
 interface Linha {
   data: string;             // YYYY-MM-DD
   tipoDia: string;
@@ -21,6 +22,7 @@ interface Linha {
   observacao: string;
   reg: RegistroDTO | null;  // registro persistido (para exibir horas/extra computados)
   salvando: boolean;
+  dirty: boolean;
 }
 
 // Monta a linha inicial de um dia: usa o registro existente, senão o padrão
@@ -35,6 +37,7 @@ function linhaInicial(data: string, reg: RegistroDTO | null): Linha {
     observacao: reg?.observacao ?? "",
     reg,
     salvando: false,
+    dirty: false,
   };
 }
 
@@ -68,8 +71,13 @@ export function PontoTab() {
     { horas: 0, extra50: 0, extra100: 0 },
   ), [registros]);
 
+  // Setter: patch de campo do usuário marca dirty; toggles internos ({salvando})
+  // não sujam a linha (senão o Salvar volta pra habilitado depois do submit).
   function set(i: number, patch: Partial<Linha>) {
-    setLinhas((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch } : l)));
+    const chaves = Object.keys(patch) as (keyof Linha)[];
+    const soInterno = chaves.every((k) => k === "salvando" || k === "reg" || k === "dirty");
+    const proximoDirty = soInterno ? undefined : { dirty: true };
+    setLinhas((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch, ...proximoDirty } : l)));
   }
 
   async function salvar(i: number) {
@@ -163,7 +171,7 @@ export function PontoTab() {
                   <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
                   <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
                   <td><input value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 120 }} /></td>
-                  <td><button className="rb-btn" disabled={l.salvando} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</button></td>
+                  <td><button className="rb-btn" disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</button></td>
                 </tr>
               );
             })}

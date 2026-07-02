@@ -171,11 +171,15 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
   );
 }
 
-export function AppSidebar({ current, onNav, financeiro, isAdmin, mobileOpen, onMobileToggle }: {
+export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, mobileOpen, onMobileToggle }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
+  // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
+  podeVerFolha: boolean;
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
 }) {
+  // Módulos exibidos = MODULOS - equipe se o user não tem verSalarios.
+  const modulosVisiveis = podeVerFolha ? MODULOS : MODULOS.filter((m) => m.id !== "equipe");
   const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -211,7 +215,7 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, mobileOpen, on
         {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
 
         <div className="grp">Operações</div>
-        {MODULOS.map((m) => {
+        {modulosVisiveis.map((m) => {
           const isOpen = openModulo === m.id && !m.disabled;
           const isActive = m.subs.some((s) => s.id === current);
           return (

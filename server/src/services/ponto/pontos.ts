@@ -1,3 +1,4 @@
+import { Prisma, type TipoDiaPonto } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { apurarDia, type RegistroInput } from "./folha.js";
 import { FuncionarioError } from "./funcionarios.js";
@@ -82,11 +83,12 @@ export interface UpsertRegistroInput {
 export async function upsertRegistro(input: UpsertRegistroInput): Promise<RegistroDTO> {
   const func = await assertFuncionario(input.funcionarioId);
   const data = new Date(input.data);
+  // Zod validou input.tipoDia contra os 5 valores do enum — cast tipado é seguro.
   const payload = {
     entrada: input.entrada ?? null,
     saida: input.saida ?? null,
     intervaloMin: input.intervaloMin,
-    tipoDia: input.tipoDia as any,
+    tipoDia: input.tipoDia as TipoDiaPonto,
     observacao: input.observacao ?? null,
   };
   const row = await prisma.registroPonto.upsert({
@@ -98,7 +100,13 @@ export async function upsertRegistro(input: UpsertRegistroInput): Promise<Regist
 }
 
 export async function excluirRegistro(id: number): Promise<void> {
-  if (!(await prisma.registroPonto.findUnique({ where: { id } })))
-    throw new FuncionarioError("NAO_ENCONTRADO", "registro não encontrado");
-  await prisma.registroPonto.delete({ where: { id } });
+  // Atomic: Prisma dispara P2025 se o registro não existir — evita round-trip extra.
+  try {
+    await prisma.registroPonto.delete({ where: { id } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      throw new FuncionarioError("NAO_ENCONTRADO", "registro não encontrado");
+    }
+    throw e;
+  }
 }

@@ -48,6 +48,11 @@ describe("horasDoDia", () => {
     expect(horasDoDia(reg({ entrada: "17:00", saida: "07:00" }))).toBe(0);
     expect(horasDoDia(reg({ entrada: "08:00", saida: "09:00", intervaloMin: 120 }))).toBe(0);
   });
+
+  it("regex estrita 'HH:MM' — hora com 1 dígito é rejeitada (casa com o Zod)", () => {
+    expect(horasDoDia(reg({ entrada: "7:00", saida: "17:00" }))).toBe(0);
+    expect(horasDoDia(reg({ entrada: "07:00", saida: "7:00" }))).toBe(0);
+  });
 });
 
 describe("apurarDia — UTIL", () => {
@@ -59,6 +64,11 @@ describe("apurarDia — UTIL", () => {
   it("acima da jornada: excedente vira extra 50% (9h com jornada 8 → 1h extra50)", () => {
     const d = apurarDia(reg(), 8);
     expect(d).toEqual({ horas: 9, normais: 8, extra50: 1, extra100: 0 });
+  });
+
+  it("exatamente na jornada (8h com jornada 8): sem extra", () => {
+    const d = apurarDia(reg({ saida: "16:00" }), 8); // 07:00–16:00 int 60 = 8h
+    expect(d).toEqual({ horas: 8, normais: 8, extra50: 0, extra100: 0 });
   });
 });
 
@@ -129,5 +139,14 @@ describe("apurarFuncionario", () => {
     expect(l.valorExtra).toBe(0);
     expect(l.totalPagar).toBe(2200);
     expect(Number.isNaN(l.valorExtra)).toBe(false);
+  });
+
+  it("salário fracionário 2199.99 com 1h HE bate ao centavo (sem drift de float)", () => {
+    // valorHora = 2199.99 / 220 = 9.999954… ; 1h × 1.5 = 14.999931… → 15.00 (round2).
+    // totalPagar = 2199.99 + 15.00 = 2214.99.
+    const l = apurarFuncionario(func({ salarioMensal: 2199.99 }), [reg()]);
+    expect(l.extra50).toBe(1);
+    expect(l.valorExtra).toBe(15);
+    expect(l.totalPagar).toBe(2214.99);
   });
 });

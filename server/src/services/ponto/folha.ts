@@ -16,8 +16,9 @@ import { Prisma } from "@prisma/client";
 
 const D = Prisma.Decimal;
 
-/** Arredonda para 2 casas (dinheiro/horas do DTO). */
-const round2 = (v: Prisma.Decimal | number): number => Number(new D(v).toFixed(2));
+/** Arredonda para 2 casas (dinheiro/horas do DTO). Exportado — o service reusa
+ * para manter a mesma precisão do motor puro (Decimal.toFixed em vez de float). */
+export const round2 = (v: Prisma.Decimal | number): number => Number(new D(v).toFixed(2));
 
 export interface RegistroInput {
   entrada?: string | null; // "HH:MM"
@@ -57,10 +58,11 @@ export interface FolhaLinhaDTO {
   totalPagar: number;
 }
 
-/** "HH:MM" → minutos desde 00:00, ou null se ausente/malformado. */
+/** "HH:MM" → minutos desde 00:00, ou null se ausente/malformado. Casa com o
+ * schema Zod de pontos (`/^\d{2}:\d{2}$/`) — "7:00" é rejeitado nos dois lados. */
 function paraMinutos(hhmm?: string | null): number | null {
   if (!hhmm) return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm.trim());
   if (!m) return null;
   const h = Number(m[1]);
   const min = Number(m[2]);

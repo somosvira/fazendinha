@@ -85,7 +85,9 @@ export function FolhaTab() {
             </tbody>
             <tfoot>
               <tr style={{ fontWeight: 600 }}>
-                <td colSpan={5}>Total da fazenda</td>
+                <td colSpan={2}>Total da fazenda</td>
+                <td style={{ textAlign: "right" }}>{money(data.totais.salarios)}</td>
+                <td colSpan={2}></td>
                 <td style={{ textAlign: "right" }}>{horasFmt(data.totais.totalHoras)}</td>
                 <td colSpan={2} style={{ borderLeft: "1px solid var(--rule)" }}></td>
                 <td style={{ textAlign: "right" }}>{money(data.totais.valorExtra)}</td>
