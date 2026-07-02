@@ -45,9 +45,9 @@ Não existe módulo de funcionários hoje.
 
 Hoje há indicadores Embrapa fixos (`indicadores-embrapa.ts`).
 
-- [ ] Tornar parâmetros de manejo **configuráveis** (ex.: desmame por dias **ou** por peso)
-- [ ] Guardar padrão Embrapa como referência, permitindo override por fazenda
-- [ ] Aplicar o parâmetro escolhido nos cálculos/alertas de manejo
+- [x] Tornar parâmetros de manejo **configuráveis** (ex.: desmame por dias **ou** por peso)
+- [x] Guardar padrão Embrapa como referência, permitindo override por fazenda
+- [x] Aplicar o parâmetro escolhido nos cálculos/alertas de manejo
 
 ## 5. Cadastro dos plantios reais
 

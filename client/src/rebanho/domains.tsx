@@ -1,5 +1,5 @@
 import type { ResumoAnimal } from "./types";
-import { aInseminar, dgPendente, aSecar, partosPrevistos } from "./lib/worklists";
+import { aInseminar, dgPendente, aSecar, partosPrevistos, aDesmamar, type CriterioDesmame } from "./lib/worklists";
 import { HOJE } from "./HOJE";
 
 export interface Kpi { lab: string; val: string; sufixo?: string; d?: string; tom?: "up" | "ok"; }
@@ -49,6 +49,16 @@ export const reproducao: DomainConfig = {
     { nome: "Protocolo", render: (r) => r.protocoloAtual ?? "Reservar" },
   ],
 };
+
+// Work-list "A desmamar" — o critério vem dos Parâmetros de manejo
+// (DESMAME_MODO / DESMAME_DIAS / DESMAME_PESO_KG), então ela é montada pela
+// tab via factory em vez de viver estática no DomainConfig. `semPeso` (modo
+// PESO) mostra no rótulo quantas crias ficaram de fora por falta de pesagem.
+export function worklistDesmame(criterio: CriterioDesmame, semPeso = 0): WorkList {
+  const base = criterio.modo === "PESO" ? `A desmamar (≥ ${criterio.pesoKg} kg)` : `A desmamar (≥ ${criterio.dias} dias)`;
+  const label = criterio.modo === "PESO" && semPeso > 0 ? `${base} · ${semPeso} sem pesagem` : base;
+  return { id: "desmame", label, selecionar: (rs) => aDesmamar(rs, criterio, HOJE).lista };
+}
 
 export const animal: DomainConfig = {
   titulo: "Animal", eyebrow: "Rebanho · Sítio São Francisco",

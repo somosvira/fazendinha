@@ -12,6 +12,7 @@ export interface AnimalDTO {
   paiNome: string | null;
   grupoId: number | null; grupoNome: string | null; dietaNome: string | null; setor: string | null;
   ativo: boolean; dataBaixa: string | null; motivoBaixa: string | null;
+  ultimoPesoKg: number | null; // última pesagem corporal (kg) — alimenta o desmame por peso
   resumo: ResumoDTO | null;
 }
 
