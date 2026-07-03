@@ -7,11 +7,18 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { ToastProvider } from "../../components/Toast";
 import { Caixinha } from "../Caixinha";
+import { ContasAVencer } from "../ContasAVencer";
 
 describe("financeiro render smoke", () => {
   it("Caixinha renderiza o shell da view", () => {
     const html = renderToString(h(ToastProvider, null, h(Caixinha)));
     expect(html).toContain("Caixinha");
     expect(html).toContain("Financeiro");
+  });
+
+  it("ContasAVencer renderiza o card (shell de carregando no SSR)", () => {
+    // hooks de fetch não disparam no SSR (useEffect) → renderiza o título + shell.
+    const html = renderToString(h(ContasAVencer));
+    expect(html).toContain("Contas a vencer");
   });
 });
