@@ -203,6 +203,52 @@ export function useMovimentosCaixinha(caixinhaId: number | null, mes?: string) {
   return { data, loading, erro, recarregar };
 }
 
+// ─── Contas a vencer (GET /api/vencimentos) ──────────────────────────────
+// Espelha o DTO de server/src/services/vencimentos.ts. Regime de caixa:
+// Lancamentos ABERTO/DEBITO = contas a pagar. `hoje` (opcional) permite fixar
+// a âncora do frontend (HOJE = 2026-05-28).
+
+export type BucketVencimento = "VENCIDA" | "HOJE" | "D3" | "D7" | "FUTURO";
+
+export interface ContaAVencerItem {
+  id: number;
+  descricao: string | null;
+  fornecedorNome: string | null;
+  categoriaNome: string;
+  valor: number; // sempre positivo
+  dataVencimento: string; // YYYY-MM-DD
+  diasAtraso: number; // >0 vencida, <=0 a vencer (0 = vence hoje)
+}
+
+export interface ContasAVencerDTO {
+  hoje: string; // YYYY-MM-DD
+  vencidas: ContaAVencerItem[];
+  venceHoje: ContaAVencerItem[];
+  proximos3: ContaAVencerItem[];
+  proximos7: ContaAVencerItem[];
+  totais: {
+    vencidasValor: number;
+    vencidasQtd: number;
+    aVencer7Valor: number;
+    aVencer7Qtd: number;
+  };
+}
+
+export const obterContasAVencer = (hoje?: string) =>
+  req<ContasAVencerDTO>(`/vencimentos${hoje ? `?hoje=${hoje}` : ""}`);
+
+export function useContasAVencer(hoje?: string) {
+  const [data, setData] = useState<ContasAVencerDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    obterContasAVencer(hoje).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [hoje]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 // ─── Criação de lançamento (POST /api/lancamentos) ───────────────────────
 
 export async function criarLancamento(input: NovoLancamentoInput): Promise<ResultadoCriarLancamento> {

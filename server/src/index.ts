@@ -49,6 +49,7 @@ import { lancamentosRouter } from "./routes/lancamentos.js";
 // `cadastrosRouter` já existe (rebanho) — o do financeiro entra com alias.
 import { cadastrosRouter as cadastrosFinanceiroRouter } from "./routes/cadastros.js";
 import { notaFiscalRouter } from "./routes/notaFiscal.js";
+import { vencimentosRouter } from "./routes/vencimentos.js";
 import { iniciarCleanupPendentes } from "./services/notaFiscal/cleanupPendentes.js";
 
 const app = new Hono();
@@ -108,6 +109,7 @@ app.route("/api", whatsappRouter);
 app.route("/api", cadastrosFinanceiroRouter);
 app.route("/api", lancamentosRouter);
 app.route("/api", notaFiscalRouter);
+app.route("/api", vencimentosRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);

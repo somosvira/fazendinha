@@ -11,6 +11,7 @@ import type { DateRange } from "./DateRangePicker";
 import type { User } from "../data/acessos";
 import { AnomaliasStrip } from "./Vigilancia";
 import { anomalias } from "./../data/anomalias";
+import { ContasAVencer } from "../financeiro/ContasAVencer";
 
 export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   if (mix) {
@@ -216,6 +217,8 @@ export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }
         onRangeChange={setRange}
         updatedAt={R.UPDATED_AT}
       />
+
+      <ContasAVencer />
 
       <ContextStrip
         items={[
