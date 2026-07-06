@@ -4,8 +4,10 @@
  * vencidas; tabela curta com badge por bucket. Moeda via fmtMoneyExact;
  * cores via var(). Monta no topo da aba Gastos. */
 
-import { useContasAVencer, type ContaAVencerItem } from "./api";
+import { useState } from "react";
+import { useContasAVencer, liquidarConta, type ContaAVencerItem } from "./api";
 import { fmtMoneyExact } from "../components/charts";
+import { useToast } from "../components/Toast";
 import { HOJE } from "./HOJE";
 
 // "YYYY-MM-DD" → "dd/mm" sem passar por Date (evita shift de fuso).
@@ -43,12 +45,28 @@ function Badge({ diasAtraso }: { diasAtraso: number }) {
 }
 
 export function ContasAVencer() {
-  const { data, loading, erro } = useContasAVencer(HOJE);
+  const { data, loading, erro, recarregar } = useContasAVencer(HOJE);
+  const toast = useToast();
+  const [liquidandoId, setLiquidandoId] = useState<number | null>(null);
 
   const itens: ContaAVencerItem[] = data
     ? [...data.vencidas, ...data.venceHoje, ...data.proximos3, ...data.proximos7]
     : [];
   const temVencidas = !!data && data.totais.vencidasQtd > 0;
+
+  async function marcarPago(it: ContaAVencerItem) {
+    setLiquidandoId(it.id);
+    try {
+      // Liquida na âncora do app (HOJE) — não no relógio real da máquina.
+      await liquidarConta(it.id, HOJE);
+      toast.success("Conta marcada como paga", `${it.fornecedorNome ?? it.categoriaNome} · ${fmtMoneyExact(it.valor)}`);
+      recarregar(); // some da lista (deixa de ser ABERTO)
+    } catch (e) {
+      toast.error("Não foi possível dar baixa", e instanceof Error ? e.message : String(e));
+    } finally {
+      setLiquidandoId(null);
+    }
+  }
 
   return (
     <section
@@ -131,8 +149,23 @@ export function ContasAVencer() {
                     >
                       {fmtMoneyExact(it.valor)}
                     </td>
-                    <td style={{ padding: "8px", textAlign: "right" }}>
-                      <Badge diasAtraso={it.diasAtraso} />
+                    <td style={{ padding: "8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Badge diasAtraso={it.diasAtraso} />
+                        <button
+                          onClick={() => marcarPago(it)}
+                          disabled={liquidandoId === it.id}
+                          title="Marcar como paga (registra a liquidação)"
+                          style={{
+                            fontSize: 12, fontWeight: 600, cursor: liquidandoId === it.id ? "default" : "pointer",
+                            color: "var(--pos, #1a7f4b)", background: "transparent",
+                            border: "1px solid var(--rule)", borderRadius: 999, padding: "3px 10px",
+                            opacity: liquidandoId === it.id ? 0.6 : 1, whiteSpace: "nowrap",
+                          }}
+                        >
+                          {liquidandoId === it.id ? "…" : "✓ pago"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

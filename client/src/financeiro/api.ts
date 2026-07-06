@@ -128,6 +128,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;
     if (typeof b?.error === "string") msg = b.error; // erro do service (ex.: 409 mês fechado)
+    else if (typeof b?.erro === "string") msg = b.erro; // idem, chave PT (rotas em português)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
     throw new Error(msg);
@@ -239,6 +240,15 @@ export interface ContasAVencerDTO {
 
 export const obterContasAVencer = (hoje?: string) =>
   req<ContasAVencerDTO>(`/vencimentos${hoje ? `?hoje=${hoje}` : ""}`);
+
+// Marca uma conta a vencer como paga (LIQUIDADO). `data` opcional (default no
+// server = agora); o card passa HOJE pra casar a âncora do app. Erros (404/409/
+// mês fechado 423) chegam como Error via `req` (mensagem PT).
+export const liquidarConta = (id: number, data?: string) =>
+  req<{ ok: true; id: number; dataLiquidacao: string }>(`/vencimentos/${id}/liquidar`, {
+    method: "POST",
+    body: JSON.stringify(data ? { data } : {}),
+  });
 
 export function useContasAVencer(hoje?: string) {
   const [data, setData] = useState<ContasAVencerDTO | null>(null);
