@@ -50,3 +50,19 @@ export async function resolverEscopoLeitura(c: Context): Promise<number | null> 
   const total = await prisma.propriedade.count({ where: { ativo: true } });
   return total <= 1 ? propriedadePrincipalId() : null;
 }
+
+// Garante a fundação em runtime, IDEMPOTENTE. Necessário porque prod aplica o
+// schema via `prisma db push`, que NÃO roda o SQL de seed/backfill da migration —
+// sem isto a tabela nasceria vazia e os propriedadeId ficariam NULL (a Fatia 1
+// filtraria por principal e o rebanho todo sumiria). Chamado no boot.
+// Nome neutro (não hardcoda "Rio Novo" — sistema é revendido); o dono renomeia na UI.
+export async function garantirFundacaoPropriedade(): Promise<void> {
+  const total = await prisma.propriedade.count();
+  if (total === 0) {
+    await prisma.propriedade.create({ data: { nome: "Propriedade principal", apelido: "Sede", principal: true } });
+  }
+  _principalId = null; // invalida cache; recomputa a principal (recém-criada ou existente)
+  const pid = await propriedadePrincipalId();
+  await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+}

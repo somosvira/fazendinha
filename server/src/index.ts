@@ -11,6 +11,7 @@ import { eventosRouter } from "./routes/rebanho/eventos.js";
 import { sanidadeRouter } from "./routes/rebanho/sanidade.js";
 import { nutricaoRouter } from "./routes/rebanho/nutricao.js";
 import { propriedadeRouter } from "./routes/propriedade.js";
+import { garantirFundacaoPropriedade } from "./services/propriedade.js";
 import { rebanhoDashboardRouter } from "./routes/rebanho/dashboard.js";
 import { iaRouter } from "./routes/rebanho/ia.js";
 import { configRouter } from "./routes/rebanho/config.js";
@@ -118,3 +119,7 @@ serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
 });
 
 iniciarCleanupPendentes();
+
+// Fundação multi-propriedade: cria a principal e backfilla escopos nulos.
+// Idempotente e à prova de `db push` (que não roda o seed/backfill da migration).
+garantirFundacaoPropriedade().catch((e) => console.error("[propriedade] falha ao garantir fundação:", e));
