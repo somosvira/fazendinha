@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { resolverLancamentoDaEntrada } from "./ponte.calc.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA", m: string) {
@@ -31,6 +32,7 @@ export const movimentoSchema = z
     gerarLancamento: z.boolean().optional(),
     categoriaId: z.number().int().optional(),
     centroCustoId: z.number().int().optional(),
+    propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
   })
   // ENTRADA/SAIDA exigem quantidade positiva; AJUSTE aceita negativa (correção de saldo) mas nunca zero.
   .superRefine((v, ctx) => {
@@ -42,11 +44,12 @@ export type MovimentoInput = z.infer<typeof movimentoSchema>;
 // Setor é opcional no produto; sem setor o item conta como GERAL (insumo compartilhado).
 const setorOuGeral = (s: string | null | undefined): string => s ?? "GERAL";
 
-export async function listarSaldos(f?: { setor?: string }) {
+export async function listarSaldos(f?: { setor?: string; propriedadeId?: number | null }) {
   const produtos = await prisma.produto.findMany({
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
-    include: { movimentos: true },
+    // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
+    include: { movimentos: f?.propriedadeId ? { where: { propriedadeId: f.propriedadeId } } : true },
   });
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
@@ -73,10 +76,11 @@ export async function listarSaldos(f?: { setor?: string }) {
   return f?.setor ? linhas.filter((l) => l.setor === f.setor) : linhas;
 }
 
-export async function listarMovimentos(f?: { produtoId?: number; tipo?: string }) {
+export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
   const where: any = {};
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo;
+  if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
   const ms = await prisma.movimentoEstoque.findMany({
     where,
     orderBy: { data: "desc" },
@@ -124,6 +128,7 @@ export async function registrarMovimento(input: MovimentoInput) {
       valorTotal,
       grupoId: input.grupoId ?? null,
       fornecedorId: input.fornecedorId ?? null,
+      propriedadeId: input.propriedadeId ?? (await propriedadePrincipalId()), // sítio ativo ou principal
       observacao: input.observacao,
     },
   });
@@ -183,13 +188,14 @@ export async function excluirMovimento(id: number) {
   if (mov.lancamentoId) await prisma.lancamento.delete({ where: { id: mov.lancamentoId } });
 }
 
-export async function calcularCustoVacaDia(periodoDias = 30) {
+export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: number | null) {
   const hoje = iso(new Date());
-  const vacas = await prisma.animal.count({ where: { status: "ATIVO", resumo: { del: { not: null } } } });
+  // Por sítio: vacas e saídas filtram pela propriedade quando há escopo.
+  const vacas = await prisma.animal.count({ where: { status: "ATIVO", resumo: { del: { not: null } }, ...(propriedadeId ? { propriedadeId } : {}) } });
   const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
   limite.setDate(limite.getDate() - periodoDias);
   const saidas = await prisma.movimentoEstoque.findMany({
-    where: { tipo: "SAIDA", data: { gte: limite } },
+    where: { tipo: "SAIDA", data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
     select: { valorTotal: true, data: true },
   });
   const arr = saidas.map((s) => ({ valorTotal: Number(s.valorTotal), data: iso(s.data) }));

@@ -5,6 +5,7 @@ import { saldoProduto, type MovIn } from "./estoque.calc.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { assertMesAberto, FechamentoMensalError } from "../fechamento.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -72,6 +73,7 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
   return {
     grupoId,
     grupoNome: grupo.nome,
+    propriedadeId: grupo.propriedadeId, // sítio do lote → escopo das SAIDAs geradas
     dietaId: grupo.dieta.id,
     dietaNome: grupo.dieta.nome,
     dataInicio,
@@ -96,6 +98,7 @@ export async function previsaoConsumo(grupoId: number, dataInicio: string, dataF
 export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput) {
   const prev = await resolverConsumo(grupoId, input.dataInicio, input.dataFim);
   const dataMov = new Date(input.dataFim + "T00:00:00Z");
+  const propriedadeId = prev.propriedadeId ?? (await propriedadePrincipalId()); // escopo das SAIDAs
 
   try {
     await assertMesAberto(dataMov);
@@ -134,6 +137,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput)
             custoUnitario: l.custoUnitario,
             valorTotal,
             grupoId,
+            propriedadeId,
             consumoPeriodoId: cp.id,
             observacao: `Consumo dieta ${prev.dietaNome} — ${input.dataInicio} a ${input.dataFim}`,
           },

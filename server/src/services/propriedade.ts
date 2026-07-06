@@ -66,6 +66,7 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   const pid = await propriedadePrincipalId();
   await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 }
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────

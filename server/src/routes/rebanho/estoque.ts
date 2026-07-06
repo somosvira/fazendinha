@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/estoque.js";
+import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 type Status = 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
@@ -13,13 +14,17 @@ function fail(e: unknown): { status: Status; body: { error: string } } {
 }
 
 export const estoqueRouter = new Hono()
-  .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos({ setor: c.req.query("setor") })))
+  .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos({ setor: c.req.query("setor"), propriedadeId: await resolverEscopoLeitura(c) })))
   .get("/rebanho/estoque/movimentos", async (c) => {
     const produtoId = c.req.query("produtoId");
-    return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo") }));
+    return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo"), propriedadeId: await resolverEscopoLeitura(c) }));
   })
   .post("/rebanho/estoque/movimentos", zValidator("json", svc.movimentoSchema), async (c) => {
-    try { return c.json(await svc.registrarMovimento(c.req.valid("json")), 201); }
+    try {
+      const input = c.req.valid("json");
+      const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
+      return c.json(await svc.registrarMovimento({ ...input, propriedadeId }), 201);
+    }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/estoque/movimentos/:id", async (c) => {
@@ -28,5 +33,5 @@ export const estoqueRouter = new Hono()
   })
   .get("/rebanho/estoque/custo-vaca-dia", async (c) => {
     const dias = c.req.query("dias");
-    return c.json(await svc.calcularCustoVacaDia(dias ? Number(dias) : undefined));
+    return c.json(await svc.calcularCustoVacaDia(dias ? Number(dias) : undefined, await resolverEscopoLeitura(c)));
   });
