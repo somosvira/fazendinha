@@ -7,7 +7,7 @@ import { IaInsightBand } from "./IaInsight";
 export const RB_TOOLBAR: React.CSSProperties = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" };
 
 export function HerdDomainView({
-  config, resumos, insight, onAbrirAnimal, nomes, controles, dicaLinha,
+  config, resumos, insight, onAbrirAnimal, nomes, controles, dicaLinha, topo,
 }: {
   config: DomainConfig;
   resumos: ResumoAnimal[];
@@ -16,6 +16,7 @@ export function HerdDomainView({
   nomes?: Record<string, { nome: string; numero: string }>;
   controles?: React.ReactNode;
   dicaLinha?: string;
+  topo?: React.ReactNode; // bloco extra logo abaixo do título (ex.: KPI de taxa de concepção)
 }) {
   const [wlId, setWlId] = useState(config.worklists[0]?.id);
   const wl = config.worklists.find((w) => w.id === wlId);
@@ -28,6 +29,8 @@ export function HerdDomainView({
       <div className="rb-head">
         <h1>{config.titulo}</h1>
       </div>
+
+      {topo}
 
       {controles && <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>}
 

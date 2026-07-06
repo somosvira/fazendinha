@@ -64,15 +64,28 @@ export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; 
 }
 
 export interface EventoPayload {
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO";
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo"; dtPartoPrevista?: string;
   numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
+  doadoraId?: number; // TE: animal doador da genética
 }
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
+
+// ── Taxa de concepção por método (IA × TE) — KPI de reprodução (baseline ~35%) ──
+export interface TaxaConcepcaoMetodo { metodo: "IA" | "TE"; coberturas: number; prenhes: number; taxa: number | null }
+export const obterTaxaConcepcao = () => req<TaxaConcepcaoMetodo[]>(`/rebanho/reproducao/taxa-concepcao`);
+export function useTaxaConcepcao() {
+  const [data, setData] = useState<TaxaConcepcaoMetodo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterTaxaConcepcao().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
 
 export function useEventos(id: string | null) {
   const [data, setData] = useState<EventoTimeline[]>([]);

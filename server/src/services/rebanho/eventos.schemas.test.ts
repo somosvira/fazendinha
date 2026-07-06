@@ -17,4 +17,9 @@ describe("criarEventoSchema", () => {
   it("CIO só precisa de data", () => {
     expect(criarEventoSchema.safeParse({ tipo: "CIO", data: "2026-04-01" }).success).toBe(true);
   });
+  it("TRANSFERENCIA_EMBRIAO: só data obrigatória; doadoraId/reprodutor opcionais", () => {
+    expect(criarEventoSchema.safeParse({ tipo: "TRANSFERENCIA_EMBRIAO", data: "2026-04-10" }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({ tipo: "TRANSFERENCIA_EMBRIAO", data: "2026-04-10", doadoraId: 42, reprodutor: "GEN 12" }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({ tipo: "TRANSFERENCIA_EMBRIAO", data: "2026-04-10", doadoraId: -1 }).success).toBe(false);
+  });
 });

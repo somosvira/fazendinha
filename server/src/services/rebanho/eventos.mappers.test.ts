@@ -17,4 +17,10 @@ describe("toTimeline", () => {
     const t = toTimeline({ ...base, tipo: "DIAGNOSTICO", data: new Date("2026-05-14"), resultado: "negativo" } as any);
     expect(t.alerta).toBe(true);
   });
+  it("TE mostra título de transferência, doadora e marcador de receptora", () => {
+    const t = toTimeline({ ...base, tipo: "TRANSFERENCIA_EMBRIAO", data: new Date("2026-04-10"), doadoraId: 42, reprodutor: "GEN 12" } as any);
+    expect(t.titulo).toContain("Transferência de embrião");
+    expect(t.detalhe).toContain("doadora #42");
+    expect(t.marcador).toBe("receptora");
+  });
 });

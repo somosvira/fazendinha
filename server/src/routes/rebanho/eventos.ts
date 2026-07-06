@@ -10,6 +10,7 @@ function fail(e: unknown): { status: 404 | 500; body: { error: string } } {
 }
 
 export const eventosRouter = new Hono()
+  .get("/rebanho/reproducao/taxa-concepcao", async (c) => c.json(await svc.taxaConcepcaoRebanho()))
   .get("/rebanho/animais/:id/eventos", async (c) => c.json(await svc.listarEventos(Number(c.req.param("id")))))
   .post("/rebanho/animais/:id/eventos", zValidator("json", criarEventoSchema), async (c) => {
     try { return c.json(await svc.registrarEvento(Number(c.req.param("id")), c.req.valid("json")), 201); }

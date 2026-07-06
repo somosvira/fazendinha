@@ -1,10 +1,34 @@
-import { useAnimais, useParametros } from "../api";
+import { useAnimais, useParametros, useTaxaConcepcao, type TaxaConcepcaoMetodo } from "../api";
 import { HerdDomainView } from "./HerdDomainView";
 import { DOMAINS, worklistDesmame } from "../domains";
 import { aDesmamar, criterioDesmame } from "../lib/worklists";
 import { HOJE } from "../HOJE";
 import { insightDoRebanho } from "../mock";
 import type { Animal, ResumoAnimal } from "../types";
+
+// KPI "Taxa de concepção": IA × TE. Baseline citado pela administração ~35%.
+const METODO_LABEL: Record<TaxaConcepcaoMetodo["metodo"], string> = { IA: "Inseminação (IA)", TE: "Transferência de embrião (TE)" };
+function TaxaConcepcaoStrip() {
+  const { data, loading } = useTaxaConcepcao();
+  if (loading) return null;
+  return (
+    <div className="rb-kstrip" style={{ ["--cols" as any]: 2, marginBottom: 18 }}>
+      {data.map((m) => {
+        const pct = m.taxa == null ? null : Math.round(m.taxa * 100);
+        const tom = pct == null ? "" : pct >= 35 ? " rb-ok" : pct >= 25 ? "" : " rb-up";
+        return (
+          <div className="rb-k" key={m.metodo}>
+            <div className="lab">Taxa de concepção · {METODO_LABEL[m.metodo]}</div>
+            <div className="val">{pct == null ? "—" : pct}{pct != null && <small style={{ fontSize: 13 }}>%</small>}</div>
+            <div className={"d" + tom}>
+              {m.coberturas === 0 ? "sem coberturas registradas" : `${m.prenhes}/${m.coberturas} coberturas · meta 35%`}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ReproducaoTab({ onRegistrarEvento }: { onRegistrarEvento: (animal: Animal) => void }) {
   const { data, loading, erro } = useAnimais({ status: "ATIVO" });
@@ -32,5 +56,5 @@ export function ReproducaoTab({ onRegistrarEvento }: { onRegistrarEvento: (anima
     const animal = data.find((a) => a.id === id);
     if (animal) onRegistrarEvento(animal);
   };
-  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" />;
+  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" topo={<TaxaConcepcaoStrip />} />;
 }
