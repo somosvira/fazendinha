@@ -17,10 +17,12 @@ export class LoteError extends Error {
 const include = { resumo: true, piquete: true } as const;
 const d = (s?: string | null) => (s ? new Date(s) : undefined);
 
-export async function listarLotes(f: ListFiltros): Promise<Lote[]> {
+export async function listarLotes(f: ListFiltros, propriedadeId?: number | null): Promise<Lote[]> {
   const where: any = {};
   if (f.estado !== "TODOS") where.estado = f.estado;
   if (f.categoria) where.categoria = f.categoria;
+  if (propriedadeId != null) where.propriedadeId = propriedadeId; // escopo do sítio
+
   if (f.q)
     where.OR = [
       { codigo: { contains: f.q, mode: "insensitive" } },
@@ -40,7 +42,7 @@ async function assertPiquete(piqueteId?: number | null) {
     throw new LoteError("REF_INVALIDA", "piquete inexistente");
 }
 
-export async function criarLote(input: CriarLoteInput): Promise<Lote> {
+export async function criarLote(input: CriarLoteInput, propriedadeId?: number | null): Promise<Lote> {
   if (await prisma.loteCorte.findUnique({ where: { codigo: input.codigo } }))
     throw new LoteError("CODIGO_DUPLICADO", `código ${input.codigo} já existe`);
   await assertPiquete(input.piqueteId);
@@ -56,6 +58,7 @@ export async function criarLote(input: CriarLoteInput): Promise<Lote> {
       dataFormacao: new Date(input.dataFormacao),
       origem: input.origem ?? null,
       piqueteId: input.piqueteId ?? null,
+      propriedadeId: propriedadeId ?? null, // sítio ativo (multi-propriedade)
       estado: input.estado,
       observacao: input.observacao ?? null,
       resumo: { create: {} },

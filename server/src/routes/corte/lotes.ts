@@ -5,6 +5,7 @@ import { criarPesagemSchema } from "../../services/corte/pesagens.js";
 import * as svc from "../../services/corte/lotes.js";
 import * as pesagens from "../../services/corte/pesagens.js";
 import { listarPiquetes } from "../../services/corte/piquetes.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.LoteError) {
@@ -23,8 +24,8 @@ const parseId = (raw: string): number | null => {
 
 /* Rotas de Lote (gado de corte) — espelham /api/plantio/talhoes. Prisma. */
 export const corteLotesRouter = new Hono()
-  .get("/corte/lotes", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarLotes(c.req.valid("query"))))
-  .get("/corte/piquetes", async (c) => c.json(await listarPiquetes()))
+  .get("/corte/lotes", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarLotes(c.req.valid("query"), await resolverEscopoLeitura(c))))
+  .get("/corte/piquetes", async (c) => c.json(await listarPiquetes(await resolverEscopoLeitura(c))))
   .get("/corte/lotes/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
@@ -32,7 +33,7 @@ export const corteLotesRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "lote não encontrado" }, 404);
   })
   .post("/corte/lotes", zValidator("json", criarLoteSchema), async (c) => {
-    try { return c.json(await svc.criarLote(c.req.valid("json")), 201); }
+    try { return c.json(await svc.criarLote(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/corte/lotes/:id", zValidator("json", editarLoteSchema), async (c) => {

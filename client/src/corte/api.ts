@@ -16,9 +16,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { Lote, ResumoLote, EventoTimeline, Piquete, Pesagem, ManejoSanitario, Suplementacao, OperacaoComercial, IaInsight } from "./types";
+import { comPropriedade } from "../propriedadeScope";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  const headers = comPropriedade({
+    ...((init?.headers as Record<string, string>) || {}),
+    ...(init?.body ? { "content-type": "application/json" } : {}),
+  });
+  const res = await fetch(`/api${path}`, { ...init, headers });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;
