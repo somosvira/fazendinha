@@ -6,6 +6,7 @@ import { ReportHeader } from "./Shell";
 import type { Tab } from "./Shell";
 import { useToast } from "./Toast";
 import { fmtMoneyExact } from "./charts";
+import { formatBRDate, getHoje } from "../lib/hoje";
 import {
   useCadastros,
   uploadPendenteNF,
@@ -223,83 +224,6 @@ function resolveCentroCustoId(
   return base.id;
 }
 
-function WhatsappMock() {
-  return (
-    <div className="wa-frame">
-      <div className="wa-head">
-        <div className="av">RN</div>
-        <div>
-          <div className="nm">Bot Rio Novo</div>
-          <div className="st">online · responde em ~3s</div>
-        </div>
-      </div>
-      <div className="wa-body">
-        <div className="wa-msg recv">
-          <span className="t">Bom dia, Sandra. Manda a foto da nota fiscal aí 📸</span>
-          <span className="ts">08:42</span>
-        </div>
-
-        <div className="wa-msg-photo">
-          <div className="photo">
-            FOTO — NF AGROPECUÁRIA SILVA
-            <br />
-            R$ 1.247,80 · 12/MAI
-          </div>
-          <span className="ts">08:44 ✓✓</span>
-        </div>
-
-        <div className="wa-msg recv">
-          <span className="t">Recebi. Lendo…</span>
-          <span className="ts">08:44</span>
-        </div>
-
-        <div className="wa-bot-card">
-          <div className="head">📄 NOTA LIDA — confirmar?</div>
-          <div className="kv">
-            <span className="k">Fornecedor</span>
-            <span>Agropecuária Silva</span>
-          </div>
-          <div className="kv">
-            <span className="k">Valor</span>
-            <span>R$ 1.247,80</span>
-          </div>
-          <div className="kv">
-            <span className="k">Data</span>
-            <span>12/mai/2026</span>
-          </div>
-          <div className="kv">
-            <span className="k">Itens</span>
-            <span>Ração concentrada + Antibiótico</span>
-          </div>
-          <div className="kv">
-            <span className="k">Sugestão</span>
-            <span>Ração R$ 814 + Medic. R$ 433</span>
-          </div>
-          <div className="kv">
-            <span className="k">Atividade</span>
-            <span>Leite (ambos itens)</span>
-          </div>
-          <div className="actions">
-            <button>✓ Confirmar</button>
-            <button className="alt">✎ Ajustar</button>
-          </div>
-          <span className="ts">08:44</span>
-        </div>
-
-        <div className="wa-msg sent">
-          <span className="t">Confirmar 👍</span>
-          <span className="ts">08:45 ✓✓</span>
-        </div>
-
-        <div className="wa-msg recv">
-          <span className="t">Lançado ✅ Aparece no dashboard em segundos.</span>
-          <span className="ts">08:45</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 type SucessoInfo = { lancamentoId: number; valor: string; categoria: string; fornecedor: string };
 
 type UploadStatus = "idle" | "enviando" | "ok" | "erro";
@@ -323,7 +247,7 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
     nome: rascunho?.fornecedor ?? "",
   });
   const [valor, setValor] = useState(rascunho?.valor ?? "");
-  const [data, setData] = useState(rascunho?.data ?? "28/05/2026");
+  const [data, setData] = useState(rascunho?.data ?? formatBRDate(getHoje()));
   const [contaId, setContaId] = useState<number | null>(
     asNum(rascunho?.contaId) ?? cadastros.contas[0]?.id ?? null,
   );
@@ -571,14 +495,6 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
           </div>
         )}
 
-        <div style={{ marginTop: 28 }}>
-          <div className="form-section-title">Mockup — também pode lançar pelo WhatsApp</div>
-          <div className="caption" style={{ marginTop: 6, marginBottom: 14, fontStyle: "italic" }}>
-            Sandra (admin) bate uma foto da nota no celular, manda pro bot, confere a sugestão. Lançamento entra no
-            dashboard em segundos.
-          </div>
-          <WhatsappMock />
-        </div>
       </div>
 
       <div className="form-shell">
@@ -1245,7 +1161,6 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
     } catch { return "saida"; }
   });
   const [view, setView] = useState<"form" | "sucesso">("form");
-  const [entryMode, setEntryMode] = useState<"web" | "wa">("web");
   const [lastLanc, setLastLanc] = useState<SucessoInfo | null>(null);
   const [lastEntrada, setLastEntrada] = useState<EntradaPayload | null>(null);
 
@@ -1282,15 +1197,6 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
 
       {tipo === "saida" && (
         <>
-          <div className="entry-tabs">
-            <button className="entry-tab" aria-current={entryMode === "web"} onClick={() => setEntryMode("web")}>
-              Pelo dashboard
-            </button>
-            <button className="entry-tab" aria-current={entryMode === "wa"} onClick={() => setEntryMode("wa")}>
-              Pelo WhatsApp · Sandra (admin) ←
-            </button>
-          </div>
-
           {cadastrosErro && (
             <div className="ia-fill-banner" style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
               <span className="icon-dot"></span>

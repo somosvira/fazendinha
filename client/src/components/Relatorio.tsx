@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { fmtMoney, MonthlyFlowChart, WaterfallChart } from "./charts";
+import { getHoje } from "../lib/hoje";
 import type { Tab } from "./Shell";
 import type { DateRange } from "./DateRangePicker";
 
@@ -517,7 +518,11 @@ function ContextualCards({ onNav }: { onNav: (t: Tab) => void }) {
 }
 
 export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
-  const [range, setRange] = useState<DateRange>({ start: new Date(2026, 0, 1), end: new Date(2026, 4, 28) });
+  const hoje = getHoje();
+  const [range, setRange] = useState<DateRange>({
+    start: new Date(hoje.getFullYear(), 0, 1),
+    end: hoje,
+  });
 
   return (
     <div className="shell-wide">

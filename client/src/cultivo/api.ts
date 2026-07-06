@@ -28,9 +28,12 @@ import type {
   TipoMovimentoSilo,
   OrigemMovimentoSilo,
 } from "./types";
+import { comPropriedade } from "../propriedadeScope";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
+  if (init?.body) headers["content-type"] = "application/json";
+  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;

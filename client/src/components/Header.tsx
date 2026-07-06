@@ -68,65 +68,85 @@ function FarmPicker({ atual }: { atual: Fazenda }) {
   );
 }
 
-function UserPicker({ user, allUsers, onSwitchUser }: {
+function UserPicker({ user, allUsers, onSwitchUser, onSair }: {
   user: User;
   allUsers: User[] | null;
   onSwitchUser: (id: string) => void;
+  onSair?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
+  // Menu abre se for possível trocar de perfil OU se houver ação de sair (piloto).
   const canSwitch = !!allUsers && allUsers.length > 1;
+  const abreMenu = canSwitch || !!onSair;
 
   return (
     <div className="ah-user" ref={ref}>
       <button
-        className={"ah-user-btn" + (canSwitch ? " has-menu" : "")}
-        onClick={() => canSwitch && setOpen((o) => !o)}
-        aria-expanded={canSwitch ? open : undefined}
-        aria-haspopup={canSwitch ? "menu" : undefined}
+        className={"ah-user-btn" + (abreMenu ? " has-menu" : "")}
+        onClick={() => abreMenu && setOpen((o) => !o)}
+        aria-expanded={abreMenu ? open : undefined}
+        aria-haspopup={abreMenu ? "menu" : undefined}
       >
         <span className="ah-user-av">{user.inicial}</span>
         <span className="ah-user-txt">
           <span className="ah-user-nome">{user.nome.split(" ")[0]}</span>
           <span className="ah-user-papel">{papelNome(user)}</span>
         </span>
-        {canSwitch && (
+        {abreMenu && (
           <svg className={"ah-chev" + (open ? " is-open" : "")} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 9l6 6 6-6"/>
           </svg>
         )}
       </button>
-      {open && canSwitch && allUsers && (
+      {open && abreMenu && (
         <div className="ah-menu ah-user-menu" role="menu">
-          <div className="ah-menu-head">Entrar como (demonstração)</div>
-          {allUsers.map((u) => (
+          {canSwitch && allUsers && (
+            <>
+              <div className="ah-menu-head">Entrar como (demonstração)</div>
+              {allUsers.map((u) => (
+                <button
+                  key={u.id}
+                  className={"ah-user-opt" + (u.id === user.id ? " is-current" : "")}
+                  onClick={() => { onSwitchUser(u.id); setOpen(false); }}
+                >
+                  <span className="ah-user-opt-av">{u.inicial}</span>
+                  <span className="ah-user-opt-info">
+                    <span className="ah-user-opt-nome">{u.nome}</span>
+                    <span className="ah-user-opt-papel">{papelNome(u)}</span>
+                  </span>
+                  {u.id === user.id && <span className="ah-user-opt-check" aria-label="atual">✓</span>}
+                </button>
+              ))}
+            </>
+          )}
+          {onSair && (
             <button
-              key={u.id}
-              className={"ah-user-opt" + (u.id === user.id ? " is-current" : "")}
-              onClick={() => { onSwitchUser(u.id); setOpen(false); }}
+              className="ah-user-opt"
+              onClick={() => { setOpen(false); onSair(); }}
             >
-              <span className="ah-user-opt-av">{u.inicial}</span>
+              <span className="ah-user-opt-av" aria-hidden>↩</span>
               <span className="ah-user-opt-info">
-                <span className="ah-user-opt-nome">{u.nome}</span>
-                <span className="ah-user-opt-papel">{papelNome(u)}</span>
+                <span className="ah-user-opt-nome">Sair</span>
+                <span className="ah-user-opt-papel">Encerrar a sessão neste dispositivo</span>
               </span>
-              {u.id === user.id && <span className="ah-user-opt-check" aria-label="atual">✓</span>}
             </button>
-          ))}
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca }: {
+export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca, onSair }: {
   user: User;
   allUsers: User[] | null;
   onSwitchUser: (id: string) => void;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
   onAbrirBusca?: () => void;
+  onSair?: () => void;
 }) {
   const atual = fazendas.find((f) => f.id === fazendaAtualId) || fazendas[0];
 
@@ -164,7 +184,7 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
 
       <div className="ah-spacer" />
 
-      <UserPicker user={user} allUsers={allUsers} onSwitchUser={onSwitchUser} />
+      <UserPicker user={user} allUsers={allUsers} onSwitchUser={onSwitchUser} onSair={onSair} />
     </header>
   );
 }

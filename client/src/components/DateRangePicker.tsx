@@ -1,6 +1,7 @@
 /* Rio Novo — DateRangePicker (cream agro-premium) */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getHoje } from "../lib/hoje";
 
 const PT_MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -72,7 +73,7 @@ function CalendarMonth({
     days.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
   }
 
-  const today = startOfDay(new Date(2026, 4, 28));
+  const today = startOfDay(getHoje());
 
   const rangeStart = range.start;
   const rangeEnd = range.end || hoverEnd;
@@ -165,7 +166,7 @@ export function DateRangePicker({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange>({ start: value?.start || null, end: value?.end || null });
   const [hoverEnd, setHoverEnd] = useState<Date | null>(null);
-  const today = new Date(2026, 4, 28);
+  const today = getHoje();
   const [leftView, setLeftView] = useState<Date>(
     value?.start ? startOfMonth(value.start) : addMonths(startOfMonth(today), -1),
   );

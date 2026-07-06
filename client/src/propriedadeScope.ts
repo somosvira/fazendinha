@@ -5,7 +5,12 @@
  * filtro) / fazenda de 1 sítio (o backend resolve a principal invisivelmente).
  * O seletor do shell (App) grava aqui via setPropriedadeAtiva; cada `req`/`fetch`
  * lê no momento da chamada. Módulo-global proposital: o valor precisa atravessar
- * módulos que não compartilham árvore React. */
+ * módulos que não compartilham árvore React.
+ *
+ * `comPropriedade` também compõe o header `Authorization` do lib/auth (piloto):
+ * um único helper cuida do envelope padrão de toda request pra API. */
+
+import { comAuth } from "./lib/auth";
 
 let _propriedadeAtiva: number | null = null;
 
@@ -20,7 +25,8 @@ export const getPropriedadeAtiva = (): number | null => _propriedadeAtiva;
 export function comPropriedade(
   headers: Record<string, string> = {},
 ): Record<string, string> {
+  const base = comAuth(headers);
   return _propriedadeAtiva != null
-    ? { ...headers, "X-Propriedade-Id": String(_propriedadeAtiva) }
-    : headers;
+    ? { ...base, "X-Propriedade-Id": String(_propriedadeAtiva) }
+    : base;
 }

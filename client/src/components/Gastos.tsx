@@ -5,6 +5,7 @@ import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { ContextStrip } from "./ContextStrip";
 import { formatRangeLabel } from "./DateRangePicker";
+import { getHoje } from "../lib/hoje";
 import { fmtMoneyExact } from "./charts";
 import type { Tab } from "./Shell";
 import type { DateRange } from "./DateRangePicker";
@@ -311,7 +312,11 @@ function LancamentosReais({ range, search }: { range: DateRange; search: string 
 }
 
 export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
-  const [range, setRange] = useState<DateRange>({ start: new Date(2026, 4, 1), end: new Date(2026, 4, 28) });
+  const hoje = getHoje();
+  const [range, setRange] = useState<DateRange>({
+    start: new Date(hoje.getFullYear(), hoje.getMonth(), 1),
+    end: hoje,
+  });
   const [filterAct, setFilterAct] = useState<"Tudo" | "Leite" | "Café" | "Outros">("Tudo");
   const [filterInvest, setFilterInvest] = useState<"Tudo" | "Custeio" | "Investimento">("Tudo");
   const [search, setSearch] = useState("");

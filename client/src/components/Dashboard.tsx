@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchDashboard, reclassificarCategoria, fetchLancamentos, type LancamentoDrill } from "../api";
+import { getHoje } from "../lib/hoje";
 import { formatRangeLabel, type DateRange } from "./DateRangePicker";
 import { MonthRangePicker } from "./MonthRangePicker";
 import type { Tab } from "./Shell";
@@ -47,11 +48,17 @@ const SECOES_SEM_DADO = false;
 // mês único — vão para a futura dashboard de períodos longos.
 const MOSTRAR_MULTI_PERIODO = false;
 
-// Filtro mensal. Padrão = UM mês (o corrente, mai/26) — dashboard focada em mês
+// Filtro mensal. Padrão = UM mês (o corrente) — dashboard focada em mês
 // fechado, mais fácil de casar 100% com o chat. Períodos longos ficam p/ outra tela.
-const FILTRO_MIN = new Date(2024, 6, 1);   // jul/2024
-const FILTRO_MAX = new Date(2026, 4, 1);   // mai/2026 (mês corrente do mock)
-const DEFAULT_RANGE: DateRange = { start: new Date(2026, 4, 1), end: new Date(2026, 5, 0) }; // mai/26 (mês único)
+// FILTRO_MIN é a data em que começa a haver dados históricos (jul/2024) — fixa.
+// FILTRO_MAX e DEFAULT_RANGE seguem o mês corrente (via getHoje() = lib/hoje.ts).
+const FILTRO_MIN = new Date(2024, 6, 1);   // jul/2024 — início da série histórica
+const _HOJE = getHoje();
+const FILTRO_MAX = new Date(_HOJE.getFullYear(), _HOJE.getMonth(), 1);
+const DEFAULT_RANGE: DateRange = {
+  start: new Date(_HOJE.getFullYear(), _HOJE.getMonth(), 1),
+  end: new Date(_HOJE.getFullYear(), _HOJE.getMonth() + 1, 0),
+};
 
 // Date → "YYYY-MM-DD" (data local, sem deslocar fuso) para o filtro do servidor.
 const ymd = (d: Date | null): string | undefined =>

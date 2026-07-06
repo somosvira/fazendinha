@@ -1,3 +1,5 @@
-// Espelha plantio/HOJE.ts e corte/HOJE.ts — mesma âncora dos demais módulos
-// (28/05/2026), usada como teto (`max`) em inputs de data dos formulários.
-export const HOJE = "2026-05-28";
+// "Hoje" real (data corrente). Antes ancorado em 2026-05-28 pro mock;
+// agora delega ao lib central para casar com o resto do app.
+import { getHojeISO } from "../lib/hoje";
+
+export const HOJE = getHojeISO();
