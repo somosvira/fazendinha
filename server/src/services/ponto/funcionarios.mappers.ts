@@ -5,6 +5,7 @@ export interface FuncionarioDTO {
   id: string;
   nome: string;
   cargo: string | null;
+  setor: string | null; // setor operacional; null = sem setor (exibido como "Geral")
   salarioMensal: number;
   cargaMensalHoras: number;
   jornadaDiariaHoras: number;
@@ -25,6 +26,7 @@ export function toFuncionarioDTO(f: any): FuncionarioDTO {
     id: String(f.id),
     nome: f.nome,
     cargo: f.cargo ?? null,
+    setor: f.setor ?? null,
     salarioMensal: Number(f.salarioMensal),
     cargaMensalHoras: Number(f.cargaMensalHoras),
     jornadaDiariaHoras: Number(f.jornadaDiariaHoras),

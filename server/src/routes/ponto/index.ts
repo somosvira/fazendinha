@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as func from "../../services/ponto/funcionarios.js";
 import * as pontos from "../../services/ponto/pontos.js";
+import { custoMOPorSetor } from "../../services/ponto/custoMOSetor.js";
 import { apurarFolha } from "../../services/ponto/folha.service.js";
 import { FuncionarioError } from "../../services/ponto/funcionarios.js";
 import {
@@ -37,6 +38,10 @@ export const pontoRouter = new Hono()
   .get("/ponto/funcionarios", zValidator("query", listFuncionariosSchema), async (c) =>
     c.json(await func.listarFuncionarios(c.req.valid("query")))
   )
+  // Custo de mão de obra por setor (só ativos; sem setor → "Geral"; total desc).
+  // Número disponível para a gestão — NÃO amarrado ainda ao custo dos módulos
+  // (rebanho/plantio/corte têm custo próprio). Vem antes de "/:id" p/ não colidir.
+  .get("/ponto/custo-mo-setor", async (c) => c.json(await custoMOPorSetor()))
   .get("/ponto/funcionarios/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
