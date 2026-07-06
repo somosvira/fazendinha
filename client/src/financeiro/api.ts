@@ -95,7 +95,9 @@ export async function cancelarPendenteNF(id: number): Promise<void> {
 
 // Espelha o schema Zod de server/src/routes/lancamentos.ts.
 export interface NovoLancamentoInput {
-  pendenteId: number;
+  // Opcional: presente → amarra a NF pendente; ausente → lançamento sem foto
+  // (gasto sem NF ou receita, que normalmente não tem nota).
+  pendenteId?: number | null;
   natureza?: "DEBITO" | "CREDITO";
   valorBR: string;          // "38.450,00" — o servidor parseia
   dataBR: string;           // "dd/mm/aaaa"
@@ -110,7 +112,8 @@ export interface NovoLancamentoInput {
 }
 
 export type ResultadoCriarLancamento =
-  | { ok: true; lancamentoId: number; arquivoId: number }
+  // arquivoId é null quando o lançamento foi criado sem nota fiscal.
+  | { ok: true; lancamentoId: number; arquivoId: number | null }
   | { ok: false; status: number; erro: string; codigo?: "PENDENTE_INVALIDA" | "MES_FECHADO" | string };
 
 // ─── Caixinha (fundo fixo em dinheiro) ───────────────────────────────────
@@ -253,10 +256,14 @@ export function useContasAVencer(hoje?: string) {
 
 export async function criarLancamento(input: NovoLancamentoInput): Promise<ResultadoCriarLancamento> {
   try {
+    // pendenteId é `.optional()` no server (não aceita null): só manda se houver
+    // NF anexada; caso contrário o campo simplesmente não vai no corpo.
+    const { pendenteId, ...resto } = input;
+    const payload = pendenteId != null ? { ...resto, pendenteId } : resto;
     const res = await fetch("/api/lancamentos", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify(payload),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json: any = await res.json().catch(() => ({}));

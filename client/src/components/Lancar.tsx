@@ -374,13 +374,17 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
   };
 
   const handleSubmit = async () => {
-    if (!pendente || !cat.categoriaId) return;
+    if (!cat.categoriaId) return;
+    // NF é opcional: se houve upload, aguarde o "ok" antes de deixar registrar
+    // (evita amarrar uma pendente ainda em trânsito ou com erro).
+    if (photo && uploadStatus !== "ok") return;
     const centroCustoId = resolveCentroCustoId(cadastros, atividadeId, investimento);
     if (!centroCustoId) return;
 
     setSubmitting(true);
     const r = await criarLancamento({
-      pendenteId: pendente.id,
+      // só amarra a NF quando ela subiu com sucesso; senão lança sem foto.
+      pendenteId: pendente && uploadStatus === "ok" ? pendente.id : null,
       natureza: "DEBITO",
       valorBR: valor,
       dataBR: data,
@@ -458,17 +462,19 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
     setUploadMensagem(null);
   };
 
+  // NF opcional: só bloqueia se há uma foto em trânsito/erro (não deixa
+  // registrar no meio de um upload). Sem foto, os campos de dados bastam.
+  const nfPendenteBloqueia = !!photo && uploadStatus !== "ok";
   const canSubmit = !!(
-    photo && pendente && uploadStatus === "ok" &&
     fornecedor.nome.trim() && valor && data &&
-    cat.categoriaId && atividadeId && !submitting
+    cat.categoriaId && atividadeId && !submitting && !nfPendenteBloqueia
   );
 
   return (
     <div className="lancar-shell">
       <div>
         <div className="form-section-title" style={{ marginBottom: 14 }}>
-          1 · Nota fiscal <span style={{ color: "var(--neg)" }}>(obrigatória)</span>
+          1 · Anexar nota fiscal <span style={{ color: "var(--ink-3)" }}>(opcional)</span>
         </div>
 
         <input
@@ -499,7 +505,9 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
             <div className="upload-sub">
               ou <span style={{ textDecoration: "underline" }}>selecione um arquivo</span> · JPG, PNG ou PDF
             </div>
-            <div className="req-badge">Obrigatório</div>
+            <div className="upload-sub" style={{ marginTop: 6, fontStyle: "italic" }}>
+              Opcional — dá pra lançar o gasto sem foto.
+            </div>
           </div>
         ) : (
           <div className="upload-zone has-file">
@@ -573,7 +581,7 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
         </div>
       </div>
 
-      <div className={"form-shell " + (!pendente ? "disabled" : "")}>
+      <div className="form-shell">
         <div className="form-section-title">2 · Dados do lançamento</div>
 
         <div className="form-section">
@@ -708,15 +716,15 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
 
         <div className="form-footer">
           <span className="help">
-            {!photo
-              ? "Anexe a nota fiscal para liberar o lançamento."
-              : uploadStatus === "enviando"
-                ? "Aguarde o envio da nota terminar."
-                : uploadStatus === "erro"
-                  ? "Falha no upload — remova e envie outra foto."
-                  : !canSubmit
-                    ? "Complete os campos obrigatórios marcados com asterisco."
-                    : "Tudo pronto. Ao registrar, o lançamento é criado e a nota amarrada a ele."}
+            {photo && uploadStatus === "enviando"
+              ? "Aguarde o envio da nota terminar."
+              : photo && uploadStatus === "erro"
+                ? "Falha no upload — remova a foto ou envie outra (a nota é opcional)."
+                : !canSubmit
+                  ? "Complete os campos obrigatórios marcados com asterisco. A nota fiscal é opcional."
+                  : photo && uploadStatus === "ok"
+                    ? "Tudo pronto. Ao registrar, o lançamento é criado e a nota amarrada a ele."
+                    : "Tudo pronto. O gasto será registrado sem nota fiscal (você pode anexá-la depois)."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn-ghost" onClick={handleSalvarRascunho}>Salvar rascunho</button>
@@ -861,31 +869,47 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
 
 type EntradaPayload = { valor: string; tipo: string; comprador: string; qtd: string | null };
 
-// Contas do form de entrada: reais quando os cadastros carregam; mock como
-// fallback (o submit da entrada ainda é mock — ver débito no PR).
-type ContaChip = { id: number | string; nome: string };
+// Centro de custo default por tipo de receita: casa o rótulo do tipo com o
+// nome do CentroCusto real (heurística — mesma da corAtividade/rotuloAtividade
+// do form de saída). "Outros" cai no primeiro centro de custeio disponível.
+function centroCustoDefault(cadastros: Cadastros, tipoId: string): number | null {
+  const custeio = cadastros.centrosCusto.filter((c) => !ehCentroInvestimento(c));
+  const acha = (frag: string) => custeio.find((c) => c.nome.toLowerCase().includes(frag))?.id ?? null;
+  if (tipoId === "leite" || tipoId === "animais") return acha("leit") ?? custeio[0]?.id ?? null;
+  if (tipoId === "cafe") return acha("caf") ?? custeio[0]?.id ?? null;
+  return custeio[0]?.id ?? null;
+}
 
-function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Tab) => void; onSuccess: (p: EntradaPayload) => void }) {
+function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t: Tab) => void; onSuccess: (p: EntradaPayload) => void }) {
   const toast = useToast();
+  const contas = cadastros.contas;
   const [tipoId, setTipoId] = useState("leite");
   const tipo = TIPOS_RECEITA.find((t) => t.id === tipoId) as TipoReceita;
 
-  const [comprador, setComprador] = useState("Embaré Indústria (laticínio)");
+  const [comprador, setComprador] = useState("");
   const [valor, setValor] = useState("");
   const [qtd, setQtd] = useState("");
   const [data, setData] = useState("31/05/2026");
-  const [conta, setConta] = useState<number | string | null>(contas[0]?.id ?? null);
+  const [conta, setConta] = useState<number | null>(contas[0]?.id ?? null);
   const [recebido, setRecebido] = useState(true);
   const [doc, setDoc] = useState<{ name: string; size: number } | null>(null);
   const [obs, setObs] = useState("");
   const docInput = useRef<HTMLInputElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Dimensões reais do lançamento de receita (natureza CREDITO):
+  // Categoria (cascade Grupo→Categoria) + Centro de custo. Sem toggle de
+  // investimento — receita é sempre operacional.
+  const [cat, setCat] = useState<CatValue>({ grupoId: null, categoriaId: null });
+  const [centroCustoId, setCentroCustoId] = useState<number | null>(centroCustoDefault(cadastros, "leite"));
 
   const pickTipo = (id: string) => {
     const t = TIPOS_RECEITA.find((x) => x.id === id) as TipoReceita;
     setTipoId(id);
-    setComprador(t.fontes[0]);
+    setComprador("");
     setQtd("");
     setValor("");
+    setCentroCustoId(centroCustoDefault(cadastros, id));
   };
 
   const precoUnit = useMemo(() => {
@@ -899,7 +923,46 @@ function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Ta
     if (file) setDoc({ name: file.name || "comprovante.jpg", size: file.size || 142000 });
   };
 
-  const canSubmit = comprador && valor && tipoId;
+  const canSubmit = !!(comprador.trim() && valor && data && cat.categoriaId && centroCustoId && !submitting);
+
+  const handleSubmit = async () => {
+    if (!cat.categoriaId || !centroCustoId) return;
+    setSubmitting(true);
+    // Comprador é sempre texto livre aqui → o server faz upsert por nome único.
+    // A quantidade (litros/sacas/cabeças) não tem campo no schema — vai pra
+    // descrição como contexto, junto da observação do usuário.
+    const ctx = qtd && tipo.unidade !== "—" ? `${qtd} ${tipo.unidade}` : "";
+    const descricao = [obs.trim(), ctx].filter(Boolean).join(" · ") || null;
+    const r = await criarLancamento({
+      natureza: "CREDITO",
+      valorBR: valor,
+      dataBR: data,
+      categoriaId: cat.categoriaId,
+      centroCustoId,
+      contaBancariaId: conta,
+      fornecedorNome: comprador.trim() || null,
+      pago: recebido,
+      descricao,
+    });
+    setSubmitting(false);
+
+    if (!r.ok) {
+      if (r.codigo === "MES_FECHADO") {
+        toast.error("Mês fechado", `${r.erro} Escolha uma data em mês aberto.`);
+      } else {
+        toast.error("Não consegui registrar a entrada", r.erro);
+      }
+      return;
+    }
+
+    toast.success("Entrada registrada", `${comprador} · R$ ${valor || "0,00"}`);
+    onSuccess({
+      valor: "R$ " + (valor || "0,00"),
+      tipo: tipo.nome,
+      comprador,
+      qtd: ctx || null,
+    });
+  };
 
   return (
     <div className="lancar-shell">
@@ -1071,7 +1134,41 @@ function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Ta
         </div>
 
         <div className="form-section" style={{ marginTop: 12 }}>
-          <div className="form-section-title">3 · Observações</div>
+          <div className="form-section-title">3 · Categorização</div>
+
+          <div className="field">
+            <label className="field-label">
+              Atividade (centro de custo)<span className="req">*</span>
+            </label>
+            <div className="chip-group">
+              {cadastros.centrosCusto
+                .filter((cc) => !ehCentroInvestimento(cc))
+                .map((cc) => (
+                  <button
+                    key={cc.id}
+                    type="button"
+                    className="chip"
+                    aria-pressed={centroCustoId === cc.id}
+                    onClick={() => setCentroCustoId(cc.id)}
+                    title={cc.nome}
+                  >
+                    <span className="sw" style={{ background: corAtividade(cc.nome) }}></span>
+                    {rotuloAtividade(cc.nome)}
+                  </button>
+                ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="field-label">
+              Categoria<span className="req">*</span>
+            </label>
+            <CategoryCascade grupos={cadastros.grupos} value={cat} onChange={setCat} />
+          </div>
+        </div>
+
+        <div className="form-section" style={{ marginTop: 12 }}>
+          <div className="form-section-title">4 · Observações</div>
           <div className="field">
             <label className="field-label">Descrição / observação</label>
             <textarea className="field-textarea" value={obs} onChange={(e) => setObs(e.target.value)} placeholder={tipo.obsPlaceholder} />
@@ -1081,7 +1178,7 @@ function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Ta
         <div className="form-footer">
           <span className="help">
             {!canSubmit
-              ? "Informe ao menos cliente e valor para registrar a entrada."
+              ? "Informe cliente, valor, data, atividade e categoria para registrar a entrada."
               : "Tudo pronto. A entrada aparecerá no Dashboard e melhora o fluxo do mês."}
           </span>
           <div style={{ display: "flex", gap: 10 }}>
@@ -1100,17 +1197,9 @@ function EntradaForm({ contas, onSuccess }: { contas: ContaChip[]; onNav: (t: Ta
             <button
               className="btn-primary entrada-btn"
               disabled={!canSubmit}
-              onClick={() => {
-                toast.success("Entrada registrada", `${comprador} · R$ ${valor || "0,00"}`);
-                onSuccess({
-                  valor: "R$ " + (valor || "0,00"),
-                  tipo: tipo.nome,
-                  comprador,
-                  qtd: qtd && tipo.unidade !== "—" ? `${qtd} ${tipo.unidade}` : null,
-                });
-              }}
+              onClick={handleSubmit}
             >
-              Registrar entrada →
+              {submitting ? "Registrando…" : "Registrar entrada →"}
             </button>
           </div>
         </div>
@@ -1231,9 +1320,22 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
 
       {tipo === "entrada" && (
         <>
-          {view === "form" && (
+          {cadastrosErro && (
+            <div className="ia-fill-banner" style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
+              <span className="icon-dot"></span>
+              <div className="body">
+                <strong>Não consegui carregar os cadastros.</strong> {cadastrosErro}{" "}
+                <button className="btn-ghost" onClick={recarregar}>Tentar de novo</button>
+              </div>
+            </div>
+          )}
+          {cadastrosLoading && !cadastros && (
+            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+          )}
+
+          {view === "form" && cadastros && (
             <EntradaForm
-              contas={cadastros?.contas ?? (R.contasBancarias as ContaChip[])}
+              cadastros={cadastros}
               onNav={onNav}
               onSuccess={(payload) => { setLastEntrada(payload); setView("sucesso"); }}
             />

@@ -35,6 +35,67 @@ export type ResultadoConfirmacao =
   | { ok: false; codigo: "MES_FECHADO"; ano: number; mes: number }
   | { ok: false; codigo: "ERRO_INTERNO"; mensagem: string };
 
+// Resultado da criação SEM nota fiscal (caminho direto). Mesma família de
+// erros do fluxo com NF, sem o ramo PENDENTE_INVALIDA (não há pendente).
+export type ResultadoCriacaoDireta =
+  | { ok: true; lancamento: { id: number } }
+  | { ok: false; codigo: "MES_FECHADO"; ano: number; mes: number }
+  | { ok: false; codigo: "ERRO_INTERNO"; mensagem: string };
+
+// Guard único de mês fechado, compartilhado pelos dois caminhos (com/sem NF).
+// A data efetiva de caixa é a liquidação se existir, senão a competência.
+// Retorna null se o mês está aberto, ou o par {ano,mes} do mês fechado.
+async function checarMesFechado(
+  dados: DadosLancamentoNovo,
+): Promise<{ ano: number; mes: number } | null> {
+  const dataCaixa = dados.dataLiquidacao ?? dados.dataCompetencia;
+  try {
+    await assertMesAberto(dataCaixa);
+    return null;
+  } catch (e) {
+    if (e instanceof FechamentoMensalError) return { ano: e.ano, mes: e.mes };
+    throw e;
+  }
+}
+
+// Monta o `data` do prisma.lancamento.create a partir de DadosLancamentoNovo.
+// Fonte única do shape do Lancamento — reusada pelos dois caminhos pra não
+// divergir (situacao deriva de dataLiquidacao: presente → LIQUIDADO).
+function dadosCreateLancamento(dados: DadosLancamentoNovo) {
+  return {
+    natureza: dados.natureza,
+    valor: dados.valor,
+    dataCompetencia: dados.dataCompetencia,
+    dataVencimento: dados.dataVencimento,
+    dataLiquidacao: dados.dataLiquidacao,
+    situacao: dados.dataLiquidacao ? ("LIQUIDADO" as const) : ("ABERTO" as const),
+    categoriaId: dados.categoriaId,
+    centroCustoId: dados.centroCustoId,
+    contaBancariaId: dados.contaBancariaId,
+    clienteFornecedorId: dados.clienteFornecedorId,
+    descricao: dados.descricao,
+    numeroDocumento: dados.numeroDocumento,
+  };
+}
+
+// Cria só o Lancamento (sem nota fiscal anexada). Mesmo guard de mês fechado e
+// mesmo shape de create do caminho com NF — só não há arquivo nem transação.
+export async function criarLancamentoDireto(
+  dados: DadosLancamentoNovo,
+): Promise<ResultadoCriacaoDireta> {
+  const fechado = await checarMesFechado(dados);
+  if (fechado) return { ok: false, codigo: "MES_FECHADO", ...fechado };
+
+  try {
+    const novo = await prisma.lancamento.create({ data: dadosCreateLancamento(dados) });
+    return { ok: true, lancamento: { id: novo.id } };
+  } catch (e) {
+    const mensagem = e instanceof Error ? e.message : String(e);
+    console.error("[criarLancamentoDireto] falhou:", mensagem);
+    return { ok: false, codigo: "ERRO_INTERNO", mensagem };
+  }
+}
+
 export async function confirmarPendenteECriarLancamento(args: {
   pendenteId: number;
   dados: DadosLancamentoNovo;
@@ -62,35 +123,14 @@ export async function confirmarPendenteECriarLancamento(args: {
     };
   }
 
-  // Fechamento mensal sobre a data efetiva de caixa: liquidação se existir,
-  // senão competência.
-  const dataCaixa = dados.dataLiquidacao ?? dados.dataCompetencia;
-  try {
-    await assertMesAberto(dataCaixa);
-  } catch (e) {
-    if (e instanceof FechamentoMensalError) {
-      return { ok: false, codigo: "MES_FECHADO", ano: e.ano, mes: e.mes };
-    }
-    throw e;
-  }
+  // Mesmo guard de mês fechado do caminho sem NF.
+  const fechado = await checarMesFechado(dados);
+  if (fechado) return { ok: false, codigo: "MES_FECHADO", ...fechado };
 
   try {
     const { lancamentoId, arquivoId } = await prisma.$transaction(async (tx) => {
       const novo = await tx.lancamento.create({
-        data: {
-          natureza: dados.natureza,
-          valor: dados.valor,
-          dataCompetencia: dados.dataCompetencia,
-          dataVencimento: dados.dataVencimento,
-          dataLiquidacao: dados.dataLiquidacao,
-          situacao: dados.dataLiquidacao ? "LIQUIDADO" : "ABERTO",
-          categoriaId: dados.categoriaId,
-          centroCustoId: dados.centroCustoId,
-          contaBancariaId: dados.contaBancariaId,
-          clienteFornecedorId: dados.clienteFornecedorId,
-          descricao: dados.descricao,
-          numeroDocumento: dados.numeroDocumento,
-        },
+        data: dadosCreateLancamento(dados),
       });
 
       // O arquivo já está no storage (key notas/_pendente/<sha>.<ext>); aqui

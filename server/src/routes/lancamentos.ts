@@ -6,10 +6,16 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { prisma } from "../db.js";
-import { confirmarPendenteECriarLancamento } from "../services/notaFiscal/confirmarPendente.js";
+import {
+  confirmarPendenteECriarLancamento,
+  criarLancamentoDireto,
+} from "../services/notaFiscal/confirmarPendente.js";
+import { montarDadosLancamento } from "../services/lancamentos/montar.js";
 
 const schema = z.object({
-  pendenteId: z.number().int().positive(),
+  // Opcional: presente → cria o Lancamento amarrando a NF pendente; ausente →
+  // cria só o Lancamento (gasto sem foto / receita, que normalmente não tem NF).
+  pendenteId: z.number().int().positive().optional(),
   natureza: z.enum(["DEBITO", "CREDITO"]).default("DEBITO"),
 
   // Form manda strings BR; parseamos aqui pra falhar com mensagem clara.
@@ -98,24 +104,27 @@ export const lancamentosRouter = new Hono().post(
       if (!conta) return c.json({ erro: "conta bancária inválida" }, 400);
     }
 
-    const dataLiquidacao = body.pago ? data : null;
+    const dados = montarDadosLancamento(body, { valor, data, clienteFornecedorId });
 
-    const r = await confirmarPendenteECriarLancamento({
-      pendenteId: body.pendenteId,
-      dados: {
-        natureza: body.natureza,
-        valor,
-        dataCompetencia: data,
-        dataVencimento: data,
-        dataLiquidacao,
-        categoriaId: body.categoriaId,
-        centroCustoId: body.centroCustoId,
-        contaBancariaId: body.contaBancariaId ?? null,
-        clienteFornecedorId,
-        descricao: body.descricao ?? null,
-        numeroDocumento: body.numeroDocumento ?? null,
-      },
-    });
+    const mesFechado = (ano: number, mes: number) =>
+      c.json(
+        {
+          erro: `Mês ${mes.toString().padStart(2, "0")}/${ano} está fechado contabilmente.`,
+          codigo: "MES_FECHADO",
+        },
+        423,
+      );
+
+    // Sem pendente: cria só o Lancamento (sem foto). Receita e gastos sem NF.
+    if (body.pendenteId == null) {
+      const r = await criarLancamentoDireto(dados);
+      if (r.ok) return c.json({ lancamentoId: r.lancamento.id, arquivoId: null }, 201);
+      if (r.codigo === "MES_FECHADO") return mesFechado(r.ano, r.mes);
+      return c.json({ erro: r.mensagem, codigo: r.codigo }, 500);
+    }
+
+    // Com pendente: promove o upload a Lancamento + NotaFiscalArquivo.
+    const r = await confirmarPendenteECriarLancamento({ pendenteId: body.pendenteId, dados });
 
     if (r.ok) {
       return c.json({ lancamentoId: r.lancamento.id, arquivoId: r.arquivo.id }, 201);
@@ -124,13 +133,7 @@ export const lancamentosRouter = new Hono().post(
       return c.json({ erro: r.mensagem, codigo: r.codigo }, 409);
     }
     if (r.codigo === "MES_FECHADO") {
-      return c.json(
-        {
-          erro: `Mês ${r.mes.toString().padStart(2, "0")}/${r.ano} está fechado contabilmente.`,
-          codigo: r.codigo,
-        },
-        423,
-      );
+      return mesFechado(r.ano, r.mes);
     }
     return c.json({ erro: r.mensagem, codigo: r.codigo }, 500);
   },
