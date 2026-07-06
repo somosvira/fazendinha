@@ -1335,6 +1335,11 @@ model Funcionario {
   id                 Int             @id @default(autoincrement())
   nome               String
   cargo              String?
+  // Alocação operacional do funcionário (Curral/Ordenha/Bezerreiro/Recria/Café/
+  // Milho/Geral…). String livre e opcional — espelha Animal.setor; setores de
+  // pessoal são mais granulares que os do estoque e variam por fazenda (revenda).
+  // Sem setor → "Geral" na exibição/agregação (borda). Não vira enum de propósito.
+  setor              String?
   salarioMensal      Decimal         @db.Decimal(12, 2)
   cargaMensalHoras   Decimal         @default(220) @db.Decimal(6, 2) // carga contratada/mês
   jornadaDiariaHoras Decimal         @default(8) @db.Decimal(5, 2) // jornada normal/dia

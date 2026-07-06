@@ -6,6 +6,8 @@ const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "hora deve ser HH:MM");
 const funcionarioBase = z.object({
   nome: z.string().min(1, "nome é obrigatório").max(120),
   cargo: z.string().max(80).nullish(),
+  // Setor operacional (Curral/Ordenha/…); livre e opcional. Sem setor → "Geral" na borda.
+  setor: z.string().max(80).nullish(),
   salarioMensal: z.number().positive("salário deve ser > 0"),
   cargaMensalHoras: z.number().positive("carga mensal deve ser > 0").default(220),
   jornadaDiariaHoras: z.number().positive("jornada diária deve ser > 0").default(8),
@@ -44,6 +46,11 @@ export const listFuncionariosSchema = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((v) => (v == null ? undefined : v === "true")),
+  // ?setor=Curral — filtro exato opcional; ausente/"" = todos os setores.
+  setor: z
+    .string()
+    .optional()
+    .transform((v) => (v == null || v === "" ? undefined : v)),
 });
 
 export type CriarFuncionarioInput = z.infer<typeof criarFuncionarioSchema>;

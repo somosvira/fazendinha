@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { FuncionarioDTO, RegistroDTO, FolhaDTO } from "./types";
+import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
@@ -41,6 +41,7 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
 export interface FuncionarioInput {
   nome: string;
   cargo?: string;
+  setor?: string;   // setor operacional (livre); omitido/"" = sem setor
   salarioMensal: number;
   cargaMensalHoras: number;
   jornadaDiariaHoras: number;
@@ -66,8 +67,10 @@ export interface RegistroInput {
 
 // FUNCIONÁRIOS ------------------------------------------------------------
 
-export const listarFuncionarios = (ativo?: boolean) =>
-  req<FuncionarioDTO[]>(`/ponto/funcionarios${qs({ ativo })}`);
+export const listarFuncionarios = (ativo?: boolean, setor?: string) =>
+  req<FuncionarioDTO[]>(`/ponto/funcionarios${qs({ ativo, setor })}`);
+// Custo de MO agregado por setor (só ativos; sem setor → "Geral"; total desc).
+export const obterCustoMOSetor = () => req<CustoMOSetorDTO[]>(`/ponto/custo-mo-setor`);
 export const obterFuncionario = (id: string) => req<FuncionarioDTO>(`/ponto/funcionarios/${id}`);
 export const criarFuncionario = (input: FuncionarioInput) =>
   req<FuncionarioDTO>(`/ponto/funcionarios`, { method: "POST", body: JSON.stringify(input) });
@@ -161,6 +164,28 @@ export function useFolha(mes: string) {
       .finally(() => { if (!cancelado) setLoading(false); });
     return () => { cancelado = true; };
   }, [mes]);
+  return { data, loading, erro, recarregar };
+}
+
+// Custo de MO por setor (só ativos). Recarrega manualmente após salvar/baixar
+// funcionário — o total depende do quadro ativo.
+export function useCustoMOSetor() {
+  const [data, setData] = useState<CustoMOSetorDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    obterCustoMOSetor().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    let cancelado = false;
+    setLoading(true); setErro(null);
+    obterCustoMOSetor()
+      .then((d) => { if (!cancelado) setData(d); })
+      .catch((e) => { if (!cancelado) setErro(e.message); })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, []);
   return { data, loading, erro, recarregar };
 }
 

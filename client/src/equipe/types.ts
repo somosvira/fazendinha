@@ -8,6 +8,7 @@ export interface FuncionarioDTO {
   id: string;
   nome: string;
   cargo: string | null;
+  setor: string | null;       // setor operacional; null = sem setor (exibido "Geral")
   salarioMensal: number;
   cargaMensalHoras: number;    // divisor do valor-hora (default 220)
   jornadaDiariaHoras: number;  // jornada normal por dia útil (default 8)
@@ -18,6 +19,14 @@ export interface FuncionarioDTO {
   cpf: string | null;
   chavePix: string | null;
   ativo: boolean;
+}
+
+// GET /api/ponto/custo-mo-setor — custo de MO agregado por setor (só ativos;
+// sem setor → "Geral"; ordenado por totalMensal desc).
+export interface CustoMOSetorDTO {
+  setor: string;
+  totalMensal: number; // soma dos salários mensais dos ativos do setor
+  qtd: number;         // nº de funcionários ativos no setor
 }
 
 // tipoDia ∈ UTIL | DOMINGO | FERIADO | FOLGA | FALTA

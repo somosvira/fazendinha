@@ -27,6 +27,7 @@ function comoNaoEncontrado(e: unknown): FuncionarioError {
 export async function listarFuncionarios(f: ListFuncionariosFiltros = {}): Promise<FuncionarioDTO[]> {
   const where: Prisma.FuncionarioWhereInput = {};
   if (f.ativo !== undefined) where.ativo = f.ativo;
+  if (f.setor) where.setor = f.setor; // filtro exato por setor (opcional)
   const rows = await prisma.funcionario.findMany({ where, orderBy: { nome: "asc" } });
   return rows.map(toFuncionarioDTO);
 }
@@ -41,6 +42,7 @@ export async function criarFuncionario(input: CriarFuncionarioInput): Promise<Fu
     data: {
       nome: input.nome,
       cargo: input.cargo ?? null,
+      setor: input.setor ?? null,
       salarioMensal: input.salarioMensal,
       cargaMensalHoras: input.cargaMensalHoras,
       jornadaDiariaHoras: input.jornadaDiariaHoras,
@@ -66,6 +68,7 @@ export async function editarFuncionario(
       data: {
         nome: input.nome,
         cargo: input.cargo === undefined ? undefined : input.cargo,
+        setor: input.setor === undefined ? undefined : input.setor,
         salarioMensal: input.salarioMensal,
         cargaMensalHoras: input.cargaMensalHoras,
         jornadaDiariaHoras: input.jornadaDiariaHoras,

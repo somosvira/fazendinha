@@ -19,6 +19,7 @@ export function FuncionarioForm({
   const f = funcionario;
   const [nome, setNome] = useState(f?.nome ?? "");
   const [cargo, setCargo] = useState(f?.cargo ?? "");
+  const [setor, setSetor] = useState(f?.setor ?? "");
   const [salarioMensal, setSalarioMensal] = useState<string>(f?.salarioMensal != null ? String(f.salarioMensal) : "");
   const [cargaMensalHoras, setCargaMensalHoras] = useState<string>(String(f?.cargaMensalHoras ?? 220));
   const [jornadaDiariaHoras, setJornadaDiariaHoras] = useState<string>(String(f?.jornadaDiariaHoras ?? 8));
@@ -42,6 +43,7 @@ export function FuncionarioForm({
         const payload: FuncionarioInput = {
           nome: nome.trim(),
           cargo: cargo.trim() || undefined,
+          setor: setor.trim() || undefined,
           salarioMensal: Number(salarioMensal),
           cargaMensalHoras: Number(cargaMensalHoras),
           jornadaDiariaHoras: Number(jornadaDiariaHoras),
@@ -103,6 +105,26 @@ export function FuncionarioForm({
               <label>Cargo</label>
               <input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Tratorista" />
             </div>
+          </div>
+
+          <div className="rb-fld">
+            <label>Setor</label>
+            {/* datalist: sugere setores comuns mas deixa digitar livre (varia por fazenda). */}
+            <input
+              list="setores-sugeridos"
+              value={setor}
+              onChange={(e) => setSetor(e.target.value)}
+              placeholder="Ex.: Curral (opcional — vazio = Geral)"
+            />
+            <datalist id="setores-sugeridos">
+              <option value="Curral" />
+              <option value="Ordenha" />
+              <option value="Bezerreiro" />
+              <option value="Recria" />
+              <option value="Café" />
+              <option value="Milho" />
+              <option value="Geral" />
+            </datalist>
           </div>
 
           <div className="rb-fld">
