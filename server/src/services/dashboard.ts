@@ -65,14 +65,19 @@ export type DashboardPayload = Awaited<ReturnType<typeof buildDashboard>>;
 // ⚠ saldoInicial das contas está 0 no banco — então hoje isto é, na prática, o
 // fluxo de caixa acumulado. Quando os saldos de abertura forem importados, vira
 // o saldo bancário verdadeiro sem mudar o código.
-async function buildCaixa(asOf: Date) {
+async function buildCaixa(asOf: Date, propriedadeId?: number | null) {
   const contas = await prisma.contaBancaria.findMany({
     select: { id: true, nome: true, saldoInicial: true },
     orderBy: { id: "asc" },
   });
   const flows = await prisma.lancamento.groupBy({
     by: ["contaBancariaId", "natureza"],
-    where: { situacao: "LIQUIDADO", estornado: false, dataLiquidacao: { lte: asOf } },
+    where: {
+      situacao: "LIQUIDADO",
+      estornado: false,
+      dataLiquidacao: { lte: asOf },
+      ...(propriedadeId != null ? { propriedadeId } : {}),
+    },
     _sum: { valor: true },
   });
   const saldo = new Map<number, number>();
@@ -98,8 +103,9 @@ export async function buildLancamentos(opts: {
   fornecedor?: string;
   from?: Date;
   to?: Date;
+  propriedadeId?: number | null;
 }) {
-  const { categoriaId, fornecedor, from, to } = opts;
+  const { categoriaId, fornecedor, from, to, propriedadeId } = opts;
   const dataFilter: Prisma.DateTimeNullableFilter = { not: null };
   if (from) dataFilter.gte = from;
   if (to) dataFilter.lte = to;
@@ -112,6 +118,7 @@ export async function buildLancamentos(opts: {
       centroCusto: { nome: { not: "(Sem centro de custo)" } },
       dataLiquidacao: dataFilter,
       ...(fornecedor ? { clienteFornecedor: { nome: fornecedor } } : {}),
+      ...(propriedadeId != null ? { propriedadeId } : {}),
     },
     select: {
       dataLiquidacao: true,
@@ -132,8 +139,8 @@ export async function buildLancamentos(opts: {
   }));
 }
 
-export async function buildDashboard(opts: { from?: Date; to?: Date } = {}) {
-  const { from, to } = opts;
+export async function buildDashboard(opts: { from?: Date; to?: Date; propriedadeId?: number | null } = {}) {
+  const { from, to, propriedadeId } = opts;
   const lancamentos = await prisma.lancamento.findMany({
     where: {
       situacao: "LIQUIDADO",
@@ -143,6 +150,8 @@ export async function buildDashboard(opts: { from?: Date; to?: Date } = {}) {
       // transferências entre contas e ajustes. Não representa fluxo
       // operacional e infla o total em ~R$ 7 mi.
       centroCusto: { nome: { not: "(Sem centro de custo)" } },
+      // Escopo do sítio (multi-propriedade). null = consolidado (visão default).
+      ...(propriedadeId != null ? { propriedadeId } : {}),
     },
     select: {
       natureza: true,
@@ -333,7 +342,7 @@ export async function buildDashboard(opts: { from?: Date; to?: Date } = {}) {
 
   // ----- caixa real "na data" (saldo das contas) ---------------------------
   // asOf = fim do período filtrado; sem filtro, agora.
-  const caixaHoje = await buildCaixa(to ?? new Date());
+  const caixaHoje = await buildCaixa(to ?? new Date(), propriedadeId);
 
   // inconsistências: construídas mais abaixo, após o bloco de período (usam os
   // totais DO PERÍODO e escondem cards zerados).

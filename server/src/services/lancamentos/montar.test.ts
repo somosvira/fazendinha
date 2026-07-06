@@ -70,6 +70,22 @@ describe("montarDadosLancamento (núcleo puro)", () => {
     expect(d.numeroDocumento).toBeNull();
   });
 
+  it("propaga propriedadeId (escopo do sítio) quando presente", () => {
+    const d = montarDadosLancamento(
+      { natureza: "DEBITO", categoriaId: 3, centroCustoId: 5, pago: true },
+      { valor: "10.00", data, clienteFornecedorId: null, propriedadeId: 2 },
+    );
+    expect(d.propriedadeId).toBe(2);
+  });
+
+  it("propriedadeId ausente → null (consolidado / fazenda de 1 sítio)", () => {
+    const d = montarDadosLancamento(
+      { natureza: "DEBITO", categoriaId: 3, centroCustoId: 5, pago: true },
+      { valor: "10.00", data, clienteFornecedorId: null },
+    );
+    expect(d.propriedadeId).toBeNull();
+  });
+
   it("propaga contaBancariaId, descricao e numeroDocumento quando presentes", () => {
     const d = montarDadosLancamento(
       {

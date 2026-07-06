@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { comPropriedade } from "../propriedadeScope";
 
 // ─── Cadastros (GET /api/cadastros) ──────────────────────────────────────
 
@@ -122,7 +123,11 @@ export type ResultadoCriarLancamento =
 // server/src/services/caixinha/caixinhas.ts — não inventar campos.
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  const headers = comPropriedade({
+    ...((init?.headers as Record<string, string>) || {}),
+    ...(init?.body ? { "content-type": "application/json" } : {}),
+  });
+  const res = await fetch(`/api${path}`, { ...init, headers });
   if (!res.ok) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const b: any = await res.json().catch(() => null);
@@ -272,7 +277,7 @@ export async function criarLancamento(input: NovoLancamentoInput): Promise<Resul
     const payload = pendenteId != null ? { ...resto, pendenteId } : resto;
     const res = await fetch("/api/lancamentos", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: comPropriedade({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

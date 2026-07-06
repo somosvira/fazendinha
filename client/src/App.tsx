@@ -18,6 +18,8 @@ import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
+import { PropriedadeSelector } from "./rebanho/components/PropriedadeSelector";
+import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
@@ -105,6 +107,12 @@ export function App() {
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  // Sítio ativo (multi-propriedade) — governa TODO o app (rebanho, financeiro,
+  // dashboard). Trocar grava no escopo compartilhado (header X-Propriedade-Id) e
+  // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
+  // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
+  const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
+  const trocarPropriedade = (id: number | null) => { setPropriedadeAtiva(id); setPropAtiva(id); };
   // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
@@ -271,7 +279,10 @@ export function App() {
             </button>
           </div>
         )}
-        {conteudo}
+        <PropriedadeSelector value={propAtiva} onChange={trocarPropriedade} />
+        <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
+          {conteudo}
+        </div>
       </main>
       <CommandPalette
         aberto={buscaAberta}

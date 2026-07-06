@@ -11,8 +11,6 @@ import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
 import { IaView } from "./components/IaView";
-import { PropriedadeSelector } from "./components/PropriedadeSelector";
-import { setPropriedadeAtiva } from "./api";
 import type { Animal } from "./types";
 
 export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "ia";
@@ -24,10 +22,8 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
   const [flashEventoId, setFlashEventoId] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
-  // Sítio ativo (multi-propriedade). Trocar seta o header da API e remonta o
-  // conteúdo (key abaixo), forçando refetch no escopo novo.
-  const [propAtiva, setPropAtiva] = useState<number | null>(null);
-  const trocarPropriedade = (id: number | null) => { setPropriedadeAtiva(id); setPropAtiva(id); };
+  // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
+  // remonta este conteúdo inteiro via `key`, então aqui não há estado de escopo.
 
   // Quando ReproducaoTab/SanidadeTab salva e a gente quer pousar na ficha do Animal,
   // a navegação chega via onNavReb("animal"), o que dispara o efeito abaixo. A ref guarda
@@ -58,8 +54,6 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
 
   return (
     <div className="rb">
-      <PropriedadeSelector value={propAtiva} onChange={trocarPropriedade} />
-      <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
       {animalId
         ? <AnimalCockpit key={recarga} animalId={animalId} onVoltar={() => setAnimalId(null)} onAbrirAnimal={setAnimalId} onEditar={(a) => setForm({ modo: "editar", animal: a })} onBaixa={(a) => setForm({ modo: "baixa", animal: a })} flashEventoId={flashEventoId} flashKey={flashKey} />
         : aba === "animal"
@@ -96,7 +90,6 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
           }}
         />
       )}
-      </div>
     </div>
   );
 }

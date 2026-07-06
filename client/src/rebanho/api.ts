@@ -9,17 +9,16 @@ export interface AnimalForm {
   brincoEletronico?: string; sisbov?: string; maeId?: number; paiNome?: string; grupoId?: number; setor?: string;
 }
 
-// Sítio ativo (multi-propriedade). Vai como X-Propriedade-Id em toda request do
-// rebanho; null = consolidado (sem filtro). Setado pelo seletor de propriedade.
-let _propriedadeAtiva: number | null = null;
-export const setPropriedadeAtiva = (id: number | null) => { _propriedadeAtiva = id; };
-export const getPropriedadeAtiva = () => _propriedadeAtiva;
+// Sítio ativo (multi-propriedade) mora no módulo compartilhado propriedadeScope
+// (mesma fonte usada pelo financeiro/dashboard). Reexporta set/get p/ compat com
+// quem importava daqui (RebanhoContent, App).
+import { comPropriedade, setPropriedadeAtiva, getPropriedadeAtiva } from "../propriedadeScope";
+export { setPropriedadeAtiva, getPropriedadeAtiva };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
   if (init?.body) headers["content-type"] = "application/json";
-  if (_propriedadeAtiva != null) headers["X-Propriedade-Id"] = String(_propriedadeAtiva);
-  const res = await fetch(`/api${path}`, { ...init, headers });
+  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;

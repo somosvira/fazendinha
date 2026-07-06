@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { buildDashboard, buildLancamentos } from "../services/dashboard.js";
+import { resolverEscopoLeitura } from "../services/propriedade.js";
 
 // Aceita ?from=YYYY-MM-DD&to=YYYY-MM-DD (data de liquidação). Datas inválidas são
 // ignoradas → cai no comportamento padrão (janela 23m, sem bloco `periodo`).
@@ -12,7 +13,11 @@ function parseDia(s?: string): Date | undefined {
 export const dashboardRouter = new Hono()
   .get("/dashboard", async (c) => {
     const { from, to } = c.req.query();
-    const payload = await buildDashboard({ from: parseDia(from), to: parseDia(to) });
+    const payload = await buildDashboard({
+      from: parseDia(from),
+      to: parseDia(to),
+      propriedadeId: await resolverEscopoLeitura(c),
+    });
     return c.json(payload);
   })
   // Drill: lançamentos reais de uma categoria (?categoriaId=, opcional &fornecedor=, &from=&to=)
@@ -25,6 +30,7 @@ export const dashboardRouter = new Hono()
       fornecedor: q.fornecedor || undefined,
       from: parseDia(q.from),
       to: parseDia(q.to),
+      propriedadeId: await resolverEscopoLeitura(c),
     });
     return c.json({ lancamentos });
   });

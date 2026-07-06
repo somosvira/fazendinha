@@ -7,9 +7,10 @@ import { buildFolego, buildProjecaoLeite } from "./data/projecao";
 import { orcamento, buildProdutividade } from "./data/gestao";
 import { buildCompromissos, buildRuptura } from "./data/ruptura";
 import { anomalias, historicoPreco, analisePreco } from "./data/anomalias";
+import { comPropriedade } from "./propriedadeScope";
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`/api${path}`);
+  const res = await fetch(`/api${path}`, { headers: comPropriedade() });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status} em ${path}: ${body || res.statusText}`);
@@ -117,7 +118,7 @@ export async function fetchLancamentos(categoriaId: number, fornecedor?: string,
   if (fornecedor) qs.set("fornecedor", fornecedor);
   if (from) qs.set("from", from);
   if (to) qs.set("to", to);
-  const res = await fetch(`/api/dashboard/lancamentos?${qs.toString()}`);
+  const res = await fetch(`/api/dashboard/lancamentos?${qs.toString()}`, { headers: comPropriedade() });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const d = await res.json();
   return (d.lancamentos ?? []) as LancamentoDrill[];

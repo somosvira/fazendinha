@@ -210,6 +210,11 @@ model Lancamento {
   contaBancariaId     Int?
   clienteFornecedor   ClienteFornecedor? @relation(fields: [clienteFornecedorId], references: [id])
   clienteFornecedorId Int?
+  // Escopo de propriedade (Fatia 3). Nullable + default principal. O plano de
+  // contas segue compartilhado (tenant) — o consolidado sai de graça; a partição
+  // por sítio permite custo/relatório por propriedade sem duplicar categorias.
+  propriedade         Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedadeId       Int?
   // Movimento de estoque que gerou este lançamento (ponte compra→financeiro), se houver.
   movimentoEstoque    MovimentoEstoque?
 
@@ -375,6 +380,7 @@ model Propriedade {
   animais   Animal[]
   grupos    Grupo[]
   movimentosEstoque MovimentoEstoque[]
+  lancamentos Lancamento[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
