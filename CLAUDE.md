@@ -120,6 +120,12 @@ Decimal usa `@db.Decimal(14, 2)` — sempre converter via Prisma Decimal, nunca 
 
 Migrations em `server/prisma/migrations/` foram aplicadas no Neon via `migrate deploy`. A `seed.ts` e `import.ts` ainda usam imports antigos — **podem precisar de ajuste** se forem reativadas.
 
+### Multi-propriedade (escopo de sítio) — IMPLEMENTADO
+
+Feature transversal (toca quase todos os módulos): cada fato ganha `propriedadeId Int?` nullable e as leituras filtram por sítio; fazenda de 1 sítio não percebe a camada (a principal é resolvida invisivelmente). **Design + estado final + decisões em [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md) (seções 8 e 9)** — ler antes de escopar um fato novo. Padrão resumido: `propriedadeId Int?` + `@@index` + inverse em `Propriedade` → migration aditiva (`ADD COLUMN`+`UPDATE SET=1`+index+FK) → **backfill no boot** (`garantirFundacaoPropriedade` em `server/src/services/propriedade.ts`) → rota resolve `resolverEscopoLeitura/Escrita(c)` → front usa `comPropriedade()` (`client/src/propriedadeScope.ts`). Cadastros de referência (Produto, Raca, CentroCusto, etc.) e `FechamentoMensal` são **compartilhados** de propósito.
+
+**Pegadinha de deploy:** o sync real é `prisma db push` (roda no `start:prod`), que **não executa** o SQL de backfill das migrations — por isso o backfill vive no boot. `Caixinha`/`MovimentoCaixinha` **não têm migration de `CREATE TABLE`** (só nascem via `db push`), então `migrate deploy` do zero quebra no `ALTER TABLE "Caixinha"` (`P3018`); recuperar com `migrate resolve --rolled-back <migration> && db push`. Detalhes na seção 9 do doc.
+
 ## Convenções
 
 - ESM em tudo (`"type": "module"`). No **server**, imports relativos de `.ts` precisam terminar em `.js` (ex.: `import { env } from "./env.js"`) — Node ESM exige. No **client** (Vite + bundler resolution), imports relativos **não** levam extensão.
