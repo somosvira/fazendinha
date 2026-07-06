@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLotes, useDietas, type DietaDTO, type LoteDTO } from "../api";
 import { DietaForm } from "./DietaForm";
 import { LoteForm } from "./LoteForm";
+import { ConsumoLoteDrawer } from "./ConsumoLoteDrawer";
 
 const POR_PAGINA = 8;
 
@@ -25,6 +26,7 @@ export function NutricaoTab() {
 function SecaoLotes({ lotes, loading, erro, recarregar }: { lotes: LoteDTO[]; loading: boolean; erro: string | null; recarregar: () => void }) {
   const [novo, setNovo] = useState(false);
   const [editando, setEditando] = useState<LoteDTO | null>(null);
+  const [consumindo, setConsumindo] = useState<LoteDTO | null>(null);
   const [pagina, setPagina] = useState(1);
 
   const totalPaginas = Math.max(1, Math.ceil(lotes.length / POR_PAGINA));
@@ -54,6 +56,8 @@ function SecaoLotes({ lotes, loading, erro, recarregar }: { lotes: LoteDTO[]; lo
                   <td>{l.producaoMedia != null ? `${l.producaoMedia} L/d` : "—"}</td>
                   <td>{l.dietaNome ?? <span style={{ color: "var(--ink-3)" }}>—</span>}</td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <button className="rb-btn" onClick={() => setConsumindo(l)} disabled={!l.dietaId} title={l.dietaId ? "Fechar consumo do período" : "Atribua uma dieta ao lote primeiro"}>Consumo</button>
+                    {" "}
                     <button className="rb-btn" onClick={() => setEditando(l)}>Editar</button>
                   </td>
                 </tr>
@@ -65,6 +69,7 @@ function SecaoLotes({ lotes, loading, erro, recarregar }: { lotes: LoteDTO[]; lo
           </>
         )}
 
+      {consumindo && <ConsumoLoteDrawer lote={consumindo} onFechar={() => setConsumindo(null)} onMudou={recarregar} />}
       {novo && <LoteForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}
       {editando && (
         <LoteForm

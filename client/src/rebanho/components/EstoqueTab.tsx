@@ -231,11 +231,11 @@ export function EstoqueTab() {
               <tr key={m.id}>
                 <td>{m.data}</td>
                 <td className="rb-anm">{m.produto}</td>
-                <td><span className={"rb-pill" + (m.tipo === "SAIDA" ? " warn" : "")}>{TIPO_MOV[m.tipo]}</span></td>
+                <td><span className={"rb-pill" + (m.tipo === "SAIDA" ? " warn" : "")}>{TIPO_MOV[m.tipo]}</span>{m.origem === "NUTRICAO" && <span className="rb-pill" style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</span>}</td>
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => setExcluindo(m)}>Excluir</button></td>
+                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</button></td>
               </tr>
             ))}</tbody>
           </table></div>

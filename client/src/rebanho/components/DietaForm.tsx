@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { criarDieta, editarDieta, excluirDieta, type DietaDTO } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta, useProdutos, type DietaDTO, type DietaItemInput } from "../api";
+
+const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 type Props = {
   dieta?: DietaDTO | null;
@@ -80,6 +82,7 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
         <label className="rb-fld">% Proteína bruta<input type="number" step="0.1" min={0} max={999.9} value={f.pb} onChange={(e) => set("pb", e.target.value)} placeholder="ex.: 18" /></label>
         <label className="rb-fld">Energia (Mcal/kg)<input type="number" step="0.01" min={0} max={99.99} value={f.edMcal} onChange={(e) => set("edMcal", e.target.value)} placeholder="ex.: 2.8 (típico: 2–4)" /></label>
         {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        {editando && <ComposicaoDieta dietaId={dieta!.id} />}
         <div className="rb-drawer-actions" style={{ justifyContent: "space-between" }}>
           {editando ? (
             <button className="rb-btn rb-btn-danger" onClick={() => setConfirmandoExcluir(true)} disabled={salvando}>Excluir</button>
@@ -91,5 +94,99 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
         </div>
       </aside>
     </>
+  );
+}
+
+// Composição da dieta: produtos × qtd/cabeça/dia. Só aparece ao editar uma dieta
+// já criada (o PUT precisa do id). Salva independente do nome/macros da dieta.
+function ComposicaoDieta({ dietaId }: { dietaId: number }) {
+  const { data: itens, loading, recarregar } = useItensDieta(dietaId);
+  const { data: produtos } = useProdutos({ ativo: true });
+  const estocaveis = useMemo(() => produtos.filter((p) => p.estocavel), [produtos]);
+  const prodPorId = useMemo(() => new Map(estocaveis.map((p) => [p.id, p])), [estocaveis]);
+
+  const [linhas, setLinhas] = useState<{ produtoId: number; qtd: string }[]>([]);
+  const [novoProduto, setNovoProduto] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [msg, setMsg] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
+
+  // Sincroniza a lista de trabalho com o que veio do servidor (carga inicial e
+  // após salvar). A key só muda quando os itens salvos mudam — não atrapalha a digitação.
+  const itensKey = itens.map((i) => `${i.produtoId}:${i.qtdPorCabecaDia}`).join("|");
+  useEffect(() => {
+    setLinhas(itens.map((i) => ({ produtoId: i.produtoId, qtd: String(i.qtdPorCabecaDia) })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itensKey]);
+
+  const disponiveis = estocaveis.filter((p) => !linhas.some((l) => l.produtoId === p.id));
+  const totalCusto = linhas.reduce((acc, l) => {
+    const p = prodPorId.get(l.produtoId);
+    const q = Number(l.qtd);
+    return p?.custoUnitario && Number.isFinite(q) ? acc + q * p.custoUnitario : acc;
+  }, 0);
+
+  function adicionar() {
+    const id = Number(novoProduto);
+    if (!id || linhas.some((l) => l.produtoId === id)) return;
+    setLinhas((s) => [...s, { produtoId: id, qtd: "" }]);
+    setNovoProduto("");
+  }
+  const setQtd = (produtoId: number, v: string) => setLinhas((s) => s.map((l) => (l.produtoId === produtoId ? { ...l, qtd: v } : l)));
+  const remover = (produtoId: number) => setLinhas((s) => s.filter((l) => l.produtoId !== produtoId));
+
+  async function salvar() {
+    const payload: DietaItemInput[] = linhas.map((l) => ({ produtoId: l.produtoId, qtdPorCabecaDia: Number(l.qtd) }));
+    if (payload.some((p) => !(p.qtdPorCabecaDia > 0))) { setMsg({ tom: "erro", texto: "Informe uma quantidade maior que zero em cada produto." }); return; }
+    setSalvando(true); setMsg(null);
+    try {
+      await salvarItensDieta(dietaId, payload);
+      setMsg({ tom: "ok", texto: "Composição salva." });
+      recarregar();
+    } catch (e: any) { setMsg({ tom: "erro", texto: e.message }); } finally { setSalvando(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+      <h4 style={{ margin: "0 0 4px" }}>Composição</h4>
+      <p className="rb-sub" style={{ margin: "0 0 10px", fontSize: 12.5 }}>Quanto de cada produto cada cabeça consome por dia. Alimenta a baixa de estoque e o custo por vaca/dia.</p>
+
+      {loading ? <p className="rb-sub">Carregando…</p> : (
+        <>
+          {linhas.length === 0 ? <p className="rb-sub" style={{ fontStyle: "italic" }}>Nenhum produto na composição ainda.</p> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {linhas.map((l) => {
+                const p = prodPorId.get(l.produtoId);
+                return (
+                  <div key={l.produtoId} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 13.5 }}>{p?.nome ?? `#${l.produtoId}`}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <input type="number" step="0.0001" min={0} value={l.qtd} onChange={(e) => setQtd(l.produtoId, e.target.value)} style={{ width: 66 }} placeholder="qtd" />
+                      <span style={{ fontSize: 12, color: "var(--ink-3)", minWidth: 22 }}>{p?.unidade}</span>
+                    </span>
+                    <button className="rb-btn" type="button" onClick={() => remover(l.produtoId)} title="Remover">✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {disponiveis.length > 0 && (
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <select value={novoProduto} onChange={(e) => setNovoProduto(e.target.value)} style={{ flex: 1 }}>
+                <option value="">+ Adicionar produto…</option>
+                {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
+              </select>
+              <button className="rb-btn" type="button" disabled={!novoProduto} onClick={adicionar}>Adicionar</button>
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 13 }}>Custo estimado: <b>{money(totalCusto)}</b>/cab/dia</span>
+            <button className="rb-btn pri" type="button" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar composição"}</button>
+          </div>
+          {msg && <p style={{ fontSize: 13, marginTop: 8, color: msg.tom === "ok" ? "var(--pos)" : "var(--neg)" }}>{msg.texto}</p>}
+        </>
+      )}
+    </div>
   );
 }

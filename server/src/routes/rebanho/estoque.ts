@@ -5,7 +5,7 @@ import * as svc from "../../services/rebanho/estoque.js";
 type Status = 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
   if (e instanceof svc.EstoqueError) {
-    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409 } as const;
+    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409 } as const;
     return { status: map[e.code], body: { error: e.message } };
   }
   console.error("[estoque]", e);
