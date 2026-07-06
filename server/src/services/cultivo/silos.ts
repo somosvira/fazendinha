@@ -9,10 +9,11 @@ export class SiloError extends Error {
   }
 }
 
-export async function listarSilos(f: ListSiloFiltros) {
+export async function listarSilos(f: ListSiloFiltros, propriedadeId?: number | null) {
   const where: any = {};
   if (f.tipo) where.tipo = f.tipo;
   if (f.ativo !== undefined) where.ativo = f.ativo;
+  if (propriedadeId != null) where.propriedadeId = propriedadeId; // escopo do sítio
   const rows = await prisma.silo.findMany({ where, orderBy: { nome: "asc" } });
   return rows.map(toSiloDTO);
 }
@@ -28,9 +29,10 @@ async function assertExiste(id: number) {
   return existing;
 }
 
-export async function criarSilo(input: CriarSiloInput) {
+export async function criarSilo(input: CriarSiloInput, propriedadeId?: number | null) {
   const row = await prisma.silo.create({
     data: {
+      propriedadeId: propriedadeId ?? null, // sítio ativo (multi-propriedade)
       nome: input.nome,
       tipo: input.tipo,
       capacidade: input.capacidade ?? undefined,

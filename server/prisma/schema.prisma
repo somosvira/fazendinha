@@ -383,6 +383,12 @@ model Propriedade {
   lancamentos Lancamento[]
   lotesCorte LoteCorte[]
   piquetes   Piquete[]
+  talhoes   Talhao[]
+  lavouras  Lavoura[]
+  funcionarios Funcionario[]
+  safrasCultivo SafraCultivo[]
+  silos     Silo[]
+  caixinhas Caixinha[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -808,8 +814,13 @@ model Lavoura {
   planoAdubacaoId Int?
   talhoes         Talhao[]
   tarefas         TarefaAgricola[]
+  // Escopo de propriedade (Fatia 4B). Nullable + default principal.
+  propriedade     Propriedade?   @relation(fields: [propriedadeId], references: [id])
+  propriedadeId   Int?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  @@index([propriedadeId])
 }
 
 // Plano de adubação — receita NPK por safra (espelha Dieta do rebanho).
@@ -863,11 +874,15 @@ model Talhao {
   safras           SafraTalhao[]
   tarefasAgricolas TarefaAgricola[]
   apontamentos     ApontamentoMaquina[]
+  // Escopo de propriedade (Fatia 4B). Nullable + default principal.
+  propriedade      Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   @@index([estado])
   @@index([lavouraId])
+  @@index([propriedadeId])
 }
 
 // Read-model pré-computado por talhão — espelha ResumoAnimal.
@@ -1469,10 +1484,14 @@ model Funcionario {
   chavePix           String?
   ativo              Boolean         @default(true)
   registros          RegistroPonto[]
+  // Escopo de propriedade (Fatia 4C). Nullable + default principal.
+  propriedade        Propriedade?    @relation(fields: [propriedadeId], references: [id])
+  propriedadeId      Int?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
   @@index([ativo])
+  @@index([propriedadeId])
 }
 
 // Registro de jornada de um dia. entrada/saida em "HH:MM"; horas do dia =
@@ -1648,10 +1667,14 @@ model SafraCultivo {
   custos      LancamentoCusto[]
   producoes   ProducaoCultivo[]
   resumo      ResumoSafraCultivo?
+  // Escopo de propriedade (Fatia 4C). Nullable + default principal.
+  propriedade   Propriedade?      @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
   @@index([cultura, ano])
+  @@index([propriedadeId])
 }
 
 model AreaCultivo {
@@ -1725,8 +1748,13 @@ model Silo {
   ativo      Boolean           @default(true)
   movimentos MovimentoSilo[]
   producoes  ProducaoCultivo[]
+  // Escopo de propriedade (Fatia 4C). Nullable + default principal.
+  propriedade   Propriedade?   @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
+
+  @@index([propriedadeId])
 }
 
 model MovimentoSilo {
@@ -1782,8 +1810,13 @@ model Caixinha {
   saldoAtual  Decimal             @default(0) @db.Decimal(14, 2)
   ativo       Boolean             @default(true)
   movimentos  MovimentoCaixinha[]
+  // Escopo de propriedade (Fatia 4C). Nullable + default principal.
+  propriedade   Propriedade?      @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  @@index([propriedadeId])
 }
 
 model MovimentoCaixinha {

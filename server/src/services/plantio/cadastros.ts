@@ -56,8 +56,9 @@ export function agregarLavoura(l: LavouraRow): Lavoura {
   };
 }
 
-export async function listarLavouras(): Promise<Lavoura[]> {
+export async function listarLavouras(propriedadeId?: number | null): Promise<Lavoura[]> {
   const rows = await prisma.lavoura.findMany({
+    where: propriedadeId != null ? { propriedadeId } : undefined, // escopo do sítio
     orderBy: { nome: "asc" },
     include: {
       planoAdubacao: { select: { nome: true } },

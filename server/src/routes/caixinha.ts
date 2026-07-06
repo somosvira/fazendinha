@@ -12,6 +12,7 @@ import {
 } from "../services/caixinha/schemas.js";
 import * as svc from "../services/caixinha/caixinhas.js";
 import { FechamentoMensalError } from "../services/fechamento.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 500; body: { error: string } } {
   if (err instanceof svc.CaixinhaError) {
@@ -30,9 +31,9 @@ const parseId = (raw: string): number | null => {
 };
 
 export const caixinhaRouter = new Hono()
-  .get("/caixinhas", async (c) => c.json(await svc.listarCaixinhas()))
+  .get("/caixinhas", async (c) => c.json(await svc.listarCaixinhas(await resolverEscopoLeitura(c))))
   .post("/caixinhas", zValidator("json", criarCaixinhaSchema), async (c) => {
-    try { return c.json(await svc.criarCaixinha(c.req.valid("json")), 201); }
+    try { return c.json(await svc.criarCaixinha(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/caixinhas/:id", zValidator("json", editarCaixinhaSchema), async (c) => {
