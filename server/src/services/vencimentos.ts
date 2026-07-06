@@ -7,6 +7,7 @@
 // (listarContasAVencer) carrega do Prisma. Decimal→number só na borda do DTO.
 
 import { prisma } from "../db.js";
+import { assertMesAberto, FechamentoMensalError } from "./fechamento.js";
 
 const MS_DIA = 86_400_000;
 
@@ -127,4 +128,31 @@ export async function listarContasAVencer(hoje: Date): Promise<ContasAVencerDTO>
   dto.totais.aVencer7Valor = round2(aVencer.reduce((s, i) => s + i.valor, 0));
 
   return dto;
+}
+
+// Marcar uma conta a vencer como PAGA direto do card — vira LIQUIDADO com
+// dataLiquidacao. Respeita FechamentoMensal sobre a data de liquidação (mesma
+// regra da criação em confirmarPendente). Não mexe em lançamento estornado nem
+// re-liquida o que já está pago.
+export type ResultadoLiquidacao =
+  | { ok: true; id: number; dataLiquidacao: string }
+  | { ok: false; codigo: "NAO_ENCONTRADA" }
+  | { ok: false; codigo: "JA_LIQUIDADA" }
+  | { ok: false; codigo: "MES_FECHADO"; ano: number; mes: number };
+
+export async function liquidarConta(id: number, dataLiq: Date): Promise<ResultadoLiquidacao> {
+  const lanc = await prisma.lancamento.findUnique({ where: { id } });
+  if (!lanc || lanc.estornado) return { ok: false, codigo: "NAO_ENCONTRADA" };
+  if (lanc.situacao === "LIQUIDADO") return { ok: false, codigo: "JA_LIQUIDADA" };
+  try {
+    await assertMesAberto(dataLiq);
+  } catch (e) {
+    if (e instanceof FechamentoMensalError) return { ok: false, codigo: "MES_FECHADO", ano: e.ano, mes: e.mes };
+    throw e;
+  }
+  await prisma.lancamento.update({
+    where: { id },
+    data: { situacao: "LIQUIDADO", dataLiquidacao: dataLiq },
+  });
+  return { ok: true, id, dataLiquidacao: dataLiq.toISOString().slice(0, 10) };
 }
