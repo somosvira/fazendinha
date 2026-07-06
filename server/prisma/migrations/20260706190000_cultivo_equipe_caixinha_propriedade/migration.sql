@@ -22,8 +22,19 @@ CREATE INDEX "Silo_propriedadeId_idx" ON "Silo"("propriedadeId");
 ALTER TABLE "Silo" ADD CONSTRAINT "Silo_propriedadeId_fkey"
     FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE "Caixinha" ADD COLUMN "propriedadeId" INTEGER;
-UPDATE "Caixinha" SET "propriedadeId" = 1;
-CREATE INDEX "Caixinha_propriedadeId_idx" ON "Caixinha"("propriedadeId");
-ALTER TABLE "Caixinha" ADD CONSTRAINT "Caixinha_propriedadeId_fkey"
-    FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Caixinha NÃO tem migration de criação (a tabela nasce só via `db push` a
+-- partir do schema). Guardamos o bloco: onde a tabela existir (Neon, já
+-- db-push'ado), aplica normal; onde ainda não existir, vira no-op e o `db push`
+-- posterior cria a tabela já com a coluna propriedadeId do schema. IF NOT EXISTS
+-- torna o bloco idempotente (re-run após um db push não quebra).
+DO $$ BEGIN
+  IF to_regclass('"Caixinha"') IS NOT NULL THEN
+    ALTER TABLE "Caixinha" ADD COLUMN IF NOT EXISTS "propriedadeId" INTEGER;
+    UPDATE "Caixinha" SET "propriedadeId" = 1 WHERE "propriedadeId" IS NULL;
+    CREATE INDEX IF NOT EXISTS "Caixinha_propriedadeId_idx" ON "Caixinha"("propriedadeId");
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Caixinha_propriedadeId_fkey') THEN
+      ALTER TABLE "Caixinha" ADD CONSTRAINT "Caixinha_propriedadeId_fkey"
+        FOREIGN KEY ("propriedadeId") REFERENCES "Propriedade"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+  END IF;
+END $$;
