@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import type { Context } from "hono";
+import { z } from "zod";
 
 // Multi-propriedade — resolução de escopo num só lugar (Fatia 0 = fundação).
 // Fazenda de 1 sítio: a principal é resolvida por default e a camada fica invisível.
@@ -65,4 +66,61 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   const pid = await propriedadePrincipalId();
   await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+}
+
+// ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────
+export class PropriedadeError extends Error {
+  constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO", m: string) {
+    super(m);
+  }
+}
+
+export const propriedadeSchema = z.object({
+  nome: z.string().min(1, "nome é obrigatório").max(80),
+  apelido: z.string().max(40).optional(),
+  cidade: z.string().max(80).optional(),
+  uf: z.string().length(2, "UF deve ter 2 letras").optional(),
+  principal: z.boolean().optional(),
+  ativo: z.boolean().optional(),
+  ordem: z.number().int().optional(),
+});
+export type PropriedadeInput = z.infer<typeof propriedadeSchema>;
+
+// Só uma principal por vez; ao marcar uma, desmarca as demais.
+async function fixarPrincipalUnica(id: number) {
+  await prisma.propriedade.updateMany({ where: { id: { not: id }, principal: true }, data: { principal: false } });
+  _principalId = id;
+}
+
+export async function criarPropriedade(input: PropriedadeInput): Promise<PropriedadeDTO> {
+  if (await prisma.propriedade.findUnique({ where: { nome: input.nome } })) throw new PropriedadeError("NOME_DUPLICADO", `propriedade ${input.nome} já existe`);
+  const p = await prisma.propriedade.create({
+    data: { nome: input.nome, apelido: input.apelido, cidade: input.cidade, uf: input.uf?.toUpperCase(), principal: input.principal ?? false, ativo: input.ativo ?? true, ordem: input.ordem ?? 0 },
+  });
+  if (input.principal) await fixarPrincipalUnica(p.id);
+  return dto(p);
+}
+
+export async function editarPropriedade(id: number, input: PropriedadeInput): Promise<PropriedadeDTO> {
+  if (!(await prisma.propriedade.findUnique({ where: { id } }))) throw new PropriedadeError("NAO_ENCONTRADO", "propriedade não encontrada");
+  const homonima = await prisma.propriedade.findUnique({ where: { nome: input.nome } });
+  if (homonima && homonima.id !== id) throw new PropriedadeError("NOME_DUPLICADO", `propriedade ${input.nome} já existe`);
+  const p = await prisma.propriedade.update({
+    where: { id },
+    data: { nome: input.nome, apelido: input.apelido, cidade: input.cidade, uf: input.uf?.toUpperCase(), principal: input.principal, ativo: input.ativo, ordem: input.ordem },
+  });
+  if (input.principal) await fixarPrincipalUnica(id);
+  else _principalId = null; // a principal pode ter mudado noutro campo; recomputa on demand
+  return dto(p);
+}
+
+// Escopo de ESCRITA: id explícito no payload → header/query (site ativo) → principal.
+export async function resolverEscopoEscrita(c: Context, explicitoId?: number | null): Promise<number> {
+  if (explicitoId != null) return explicitoId;
+  const raw = c.req.header("X-Propriedade-Id") ?? c.req.query("propriedadeId");
+  if (raw != null && raw !== "") {
+    const id = Number(raw);
+    if (Number.isInteger(id)) return id;
+  }
+  return propriedadePrincipalId();
 }
