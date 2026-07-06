@@ -195,15 +195,15 @@ export function PontoTab() {
                       {TIPOS.map((t) => <option key={t.k} value={t.k}>{t.lab}</option>)}
                     </select>
                   </td>
-                  <td><input type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 96 }} /></td>
-                  <td><input type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 96 }} /></td>
+                  <td><input className="rb-inp" type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 108 }} /></td>
+                  <td><input className="rb-inp" type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 108 }} /></td>
                   <td style={{ textAlign: "right" }}>
-                    <input type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 70, textAlign: "right" }} />
+                    <input className="rb-inp" type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 78, textAlign: "right" }} />
                   </td>
                   <td style={{ textAlign: "right" }}>{l.reg ? horasFmt(l.reg.horas) : "—"}</td>
                   <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
                   <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
-                  <td><input value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 120 }} /></td>
+                  <td><input className="rb-inp" value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
                   <td><button className="rb-btn" disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</button></td>
                 </tr>
               );
