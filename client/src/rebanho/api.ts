@@ -9,8 +9,17 @@ export interface AnimalForm {
   brincoEletronico?: string; sisbov?: string; maeId?: number; paiNome?: string; grupoId?: number; setor?: string;
 }
 
+// Sítio ativo (multi-propriedade). Vai como X-Propriedade-Id em toda request do
+// rebanho; null = consolidado (sem filtro). Setado pelo seletor de propriedade.
+let _propriedadeAtiva: number | null = null;
+export const setPropriedadeAtiva = (id: number | null) => { _propriedadeAtiva = id; };
+export const getPropriedadeAtiva = () => _propriedadeAtiva;
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init?.body ? { ...init, headers: { "content-type": "application/json", ...(init.headers || {}) } } : init);
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
+  if (init?.body) headers["content-type"] = "application/json";
+  if (_propriedadeAtiva != null) headers["X-Propriedade-Id"] = String(_propriedadeAtiva);
+  const res = await fetch(`/api${path}`, { ...init, headers });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;
@@ -499,6 +508,20 @@ export function useCustoProducao(meses = 12) {
   const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoProducao(meses).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [meses]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
+}
+
+// ── Multi-propriedade (Fatia 1): sítios ────────────────────────────────────
+export interface PropriedadeDTO { id: number; nome: string; apelido: string | null; cidade: string | null; uf: string | null; principal: boolean; ativo: boolean; ordem: number; }
+export interface PropriedadeInput { nome: string; apelido?: string; cidade?: string; uf?: string; principal?: boolean; ativo?: boolean; ordem?: number; }
+export const listarPropriedades = () => req<PropriedadeDTO[]>(`/propriedades`);
+export const criarPropriedade = (p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades`, { method: "POST", body: JSON.stringify(p) });
+export const editarPropriedade = (id: number, p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export function usePropriedades() {
+  const [data, setData] = useState<PropriedadeDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarPropriedades().then(setData).catch(() => setData([])).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
 }
 
 export type { ResumoAnimal };
