@@ -22,6 +22,9 @@ export function FuncionarioForm({
   const [salarioMensal, setSalarioMensal] = useState<string>(f?.salarioMensal != null ? String(f.salarioMensal) : "");
   const [cargaMensalHoras, setCargaMensalHoras] = useState<string>(String(f?.cargaMensalHoras ?? 220));
   const [jornadaDiariaHoras, setJornadaDiariaHoras] = useState<string>(String(f?.jornadaDiariaHoras ?? 8));
+  const [horaEntradaPadrao, setHoraEntradaPadrao] = useState<string>(f?.horaEntradaPadrao ?? "");
+  const [horaSaidaPadrao, setHoraSaidaPadrao] = useState<string>(f?.horaSaidaPadrao ?? "");
+  const [intervaloPadraoMin, setIntervaloPadraoMin] = useState<string>(f?.intervaloPadraoMin != null ? String(f.intervaloPadraoMin) : "");
   const [dataAdmissao, setDataAdmissao] = useState<string>(f?.dataAdmissao ?? "");
   const [cpf, setCpf] = useState(f?.cpf ?? "");
   const [chavePix, setChavePix] = useState(f?.chavePix ?? "");
@@ -42,6 +45,9 @@ export function FuncionarioForm({
           salarioMensal: Number(salarioMensal),
           cargaMensalHoras: Number(cargaMensalHoras),
           jornadaDiariaHoras: Number(jornadaDiariaHoras),
+          horaEntradaPadrao: horaEntradaPadrao || undefined,
+          horaSaidaPadrao: horaSaidaPadrao || undefined,
+          intervaloPadraoMin: intervaloPadraoMin !== "" ? Number(intervaloPadraoMin) : undefined,
           dataAdmissao: dataAdmissao || undefined,
           cpf: cpf.trim() || undefined,
           chavePix: chavePix.trim() || undefined,
@@ -118,6 +124,24 @@ export function FuncionarioForm({
               <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
             </div>
           </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <div className="rb-fld" style={{ flex: 1 }}>
+              <label>Entrada padrão</label>
+              <input type="time" value={horaEntradaPadrao} onChange={(e) => setHoraEntradaPadrao(e.target.value)} />
+            </div>
+            <div className="rb-fld" style={{ flex: 1 }}>
+              <label>Saída padrão</label>
+              <input type="time" value={horaSaidaPadrao} onChange={(e) => setHoraSaidaPadrao(e.target.value)} />
+            </div>
+            <div className="rb-fld" style={{ flex: 1 }}>
+              <label>Intervalo padrão (min)</label>
+              <input type="number" step="5" min="0" value={intervaloPadraoMin} placeholder="60" onChange={(e) => setIntervaloPadraoMin(e.target.value)} />
+            </div>
+          </div>
+          <p className="rb-sub" style={{ margin: "2px 0 0", fontSize: 12 }}>
+            Opcional. Preenchido, agiliza a grade do mês: use "Preencher grade" no Ponto para lançar os dias úteis automaticamente.
+          </p>
 
           <div style={{ display: "flex", gap: 10 }}>
             <div className="rb-fld" style={{ flex: 1 }}>

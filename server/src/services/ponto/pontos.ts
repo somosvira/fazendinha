@@ -27,6 +27,69 @@ function janelaMes(mes: string): { inicio: Date; fim: Date } {
   return { inicio, fim };
 }
 
+// ── Pré-preenchimento da grade (horário padrão) ─────────────────────────────
+
+/** Subconjunto do Funcionario com o horário padrão (o que a grade padrão usa). */
+export interface HorarioPadraoFuncionario {
+  horaEntradaPadrao: string | null;
+  horaSaidaPadrao: string | null;
+  intervaloPadraoMin: number | null;
+}
+
+/** Registro que a grade padrão pretende criar num dia útil ainda vazio. */
+export interface RegistroPadraoGerado {
+  data: string; // YYYY-MM-DD
+  entrada: string; // "HH:MM"
+  saida: string; // "HH:MM"
+  intervaloMin: number;
+  tipoDia: "UTIL";
+}
+
+const INTERVALO_PADRAO_FALLBACK = 60;
+
+/**
+ * Classificação default do dia pelo dia-da-semana, usada no pré-preenchimento.
+ * Espelha o `tipoDiaPadrao` do client (domingo → DOMINGO) e estende o sábado
+ * como FOLGA, para que o fim de semana INTEIRO fique fora da grade padrão
+ * (07:00–17:00 é jornada de dia útil; sábado/domingo o admin lança à mão).
+ * Só o retorno "UTIL" gera registro — os demais são apenas sinal de "pular".
+ */
+export function tipoDiaPorDataPadrao(dataISO: string): TipoDiaPonto {
+  const [y, m, dd] = dataISO.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, dd)).getUTCDay(); // 0=dom … 6=sáb
+  if (dow === 0) return "DOMINGO";
+  if (dow === 6) return "FOLGA";
+  return "UTIL";
+}
+
+/**
+ * PURA (sem DB). Gera os RegistroPonto que faltam num mês aplicando o horário
+ * padrão do funcionário SÓ nos dias úteis (onde `tipoDiaPorData` devolve "UTIL").
+ * Idempotente: pula os dias em `datasExistentes` (não sobrescreve). Funcionário
+ * sem padrão (entrada ou saída null) → devolve `[]` (grade vazia). `mes` é 1-12.
+ */
+export function montarGradePadrao(
+  funcionario: HorarioPadraoFuncionario,
+  ano: number,
+  mes: number,
+  tipoDiaPorData: (dataISO: string) => TipoDiaPonto,
+  datasExistentes: Iterable<string> = []
+): RegistroPadraoGerado[] {
+  const { horaEntradaPadrao, horaSaidaPadrao } = funcionario;
+  if (!horaEntradaPadrao || !horaSaidaPadrao) return []; // sem padrão → nada
+  const intervaloMin = funcionario.intervaloPadraoMin ?? INTERVALO_PADRAO_FALLBACK;
+  const existentes = new Set(datasExistentes);
+  const totalDias = new Date(Date.UTC(ano, mes, 0)).getUTCDate(); // último dia do mês
+  const out: RegistroPadraoGerado[] = [];
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const data = `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+    if (existentes.has(data)) continue; // já existe → não duplica
+    if (tipoDiaPorData(data) !== "UTIL") continue; // fim de semana/feriado → pula
+    out.push({ data, entrada: horaEntradaPadrao, saida: horaSaidaPadrao, intervaloMin, tipoDia: "UTIL" });
+  }
+  return out;
+}
+
 /** Registro Prisma → DTO com horas/extra computados pelo motor puro. */
 function toRegistroDTO(r: any, jornadaDiaria: number): RegistroDTO {
   const input: RegistroInput = {
@@ -97,6 +160,52 @@ export async function upsertRegistro(input: UpsertRegistroInput): Promise<Regist
     create: { funcionarioId: input.funcionarioId, data, ...payload },
   });
   return toRegistroDTO(row, Number(func.jornadaDiariaHoras));
+}
+
+export interface PreencherGradeResult {
+  criados: number;
+  registros: RegistroDTO[];
+}
+
+/**
+ * Aplica o horário padrão do funcionário na grade de um mês (ano, mes 1-12).
+ * Idempotente: só cria os dias úteis que ainda não têm registro. Funcionário
+ * sem padrão → não cria nada (criados: 0). Devolve a grade do mês recalculada.
+ */
+export async function preencherGradePadrao(
+  funcionarioId: number,
+  ano: number,
+  mes: number
+): Promise<PreencherGradeResult> {
+  const func = await assertFuncionario(funcionarioId);
+  const mesStr = `${ano}-${String(mes).padStart(2, "0")}`;
+  const { inicio, fim } = janelaMes(mesStr);
+
+  const existentes = await prisma.registroPonto.findMany({
+    where: { funcionarioId, data: { gte: inicio, lt: fim } },
+    select: { data: true },
+  });
+  const datasExistentes = existentes.map((r) => iso(r.data));
+
+  const novos = montarGradePadrao(func, ano, mes, tipoDiaPorDataPadrao, datasExistentes);
+  if (novos.length > 0) {
+    // skipDuplicates: cinto-e-suspensório contra corrida — a unique
+    // (funcionarioId, data) já garante que não haja duplicata.
+    await prisma.registroPonto.createMany({
+      data: novos.map((n) => ({
+        funcionarioId,
+        data: new Date(n.data),
+        entrada: n.entrada,
+        saida: n.saida,
+        intervaloMin: n.intervaloMin,
+        tipoDia: n.tipoDia,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const registros = await listarRegistros(funcionarioId, mesStr);
+  return { criados: novos.length, registros };
 }
 
 export async function excluirRegistro(id: number): Promise<void> {

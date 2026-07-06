@@ -11,6 +11,9 @@ export interface FuncionarioDTO {
   salarioMensal: number;
   cargaMensalHoras: number;    // divisor do valor-hora (default 220)
   jornadaDiariaHoras: number;  // jornada normal por dia útil (default 8)
+  horaEntradaPadrao: string | null;  // "HH:MM" — pré-preenche a grade (dias úteis)
+  horaSaidaPadrao: string | null;    // "HH:MM"
+  intervaloPadraoMin: number | null; // almoço padrão, minutos
   dataAdmissao: string | null; // YYYY-MM-DD
   cpf: string | null;
   chavePix: string | null;

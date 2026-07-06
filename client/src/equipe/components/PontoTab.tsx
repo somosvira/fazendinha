@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useFuncionarios, useRegistros, upsertRegistro, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
+import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
@@ -71,6 +71,28 @@ export function PontoTab() {
     { horas: 0, extra50: 0, extra100: 0 },
   ), [registros]);
 
+  // Funcionário selecionado + se tem horário padrão (habilita "Preencher grade").
+  const funcSel = useMemo(() => funcionarios.find((f) => f.id === funcionarioId) ?? null, [funcionarios, funcionarioId]);
+  const temPadrao = !!(funcSel?.horaEntradaPadrao && funcSel?.horaSaidaPadrao);
+  const [preenchendo, setPreenchendo] = useState(false);
+
+  // Pré-preenche os dias úteis do mês com o horário padrão do funcionário.
+  // Idempotente no backend — só cria os dias faltantes; depois recarrega a grade.
+  async function preencherComPadrao() {
+    if (!funcionarioId || !temPadrao) return;
+    const [ano, m] = mes.split("-").map(Number);
+    setPreenchendo(true);
+    try {
+      const { criados } = await preencherGrade(funcionarioId, ano, m);
+      recarregar();
+      if (criados === 0) alert("Nada a preencher: os dias úteis deste mês já têm registro.");
+    } catch (e: any) {
+      alert(e?.message ?? "Erro ao preencher a grade.");
+    } finally {
+      setPreenchendo(false);
+    }
+  }
+
   // Setter: patch de campo do usuário marca dirty; toggles internos ({salvando})
   // não sujam a linha (senão o Salvar volta pra habilitado depois do submit).
   function set(i: number, patch: Partial<Linha>) {
@@ -120,6 +142,17 @@ export function PontoTab() {
           {meses.map((m) => <option key={m} value={m}>{mesBR(m)}</option>)}
         </select>
 
+        <button
+          className="rb-btn"
+          disabled={!funcionarioId || !temPadrao || preenchendo || loading}
+          title={temPadrao
+            ? "Cria os dias úteis do mês com o horário padrão do funcionário (não sobrescreve dias já lançados)"
+            : "Defina o horário padrão do funcionário (Entrada/Saída padrão no cadastro) para usar isto"}
+          onClick={preencherComPadrao}
+        >
+          {preenchendo ? "Preenchendo…" : "Preencher grade com horário padrão"}
+        </button>
+
         <div className="rb-sub" style={{ margin: 0, marginLeft: "auto", display: "flex", gap: 16 }}>
           <span>Horas: <b>{horasFmt(totais.horas)}</b></span>
           <span>Extra 50%: <b>{num(totais.extra50, 1)} h</b></span>
@@ -165,7 +198,7 @@ export function PontoTab() {
                   <td><input type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 96 }} /></td>
                   <td><input type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 96 }} /></td>
                   <td style={{ textAlign: "right" }}>
-                    <input type="number" step="5" value={l.intervaloMin} placeholder="60" onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 70, textAlign: "right" }} />
+                    <input type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 70, textAlign: "right" }} />
                   </td>
                   <td style={{ textAlign: "right" }}>{l.reg ? horasFmt(l.reg.horas) : "—"}</td>
                   <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
