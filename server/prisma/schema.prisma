@@ -352,9 +352,30 @@ model Grupo {
   animais           Animal[]
   dieta             Dieta?             @relation(fields: [dietaId], references: [id])
   dietaId           Int?
+  propriedade       Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedadeId     Int?
   producoesLote     ProducaoLote[]
   movimentosEstoque MovimentoEstoque[]
   consumosPeriodo   ConsumoPeriodo[]
+
+  @@index([propriedadeId])
+}
+
+// Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
+// linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
+model Propriedade {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  apelido   String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  cidade    String?
+  uf        String?
+  principal Boolean  @default(false) // a default quando não há filtro
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  animais   Animal[]
+  grupos    Grupo[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Dieta {
@@ -412,6 +433,10 @@ model Animal {
   filhosPai           Animal[]            @relation("Paternidade")
   grupo               Grupo?              @relation(fields: [grupoId], references: [id])
   grupoId             Int?
+  // Escopo de propriedade (multi-propriedade). Nullable + default=principal na
+  // aplicação; fazenda de 1 sítio nunca percebe a camada.
+  propriedade         Propriedade?        @relation(fields: [propriedadeId], references: [id])
+  propriedadeId       Int?
   setor               String?
   status              StatusAnimal        @default(ATIVO)
   dataBaixa           DateTime?           @db.Date
@@ -433,6 +458,7 @@ model Animal {
 
   @@index([status])
   @@index([grupoId])
+  @@index([propriedadeId])
 }
 
 model ResumoAnimal {

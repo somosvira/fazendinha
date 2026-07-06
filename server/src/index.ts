@@ -10,6 +10,7 @@ import { animaisRouter } from "./routes/rebanho/animais.js";
 import { eventosRouter } from "./routes/rebanho/eventos.js";
 import { sanidadeRouter } from "./routes/rebanho/sanidade.js";
 import { nutricaoRouter } from "./routes/rebanho/nutricao.js";
+import { propriedadeRouter } from "./routes/propriedade.js";
 import { rebanhoDashboardRouter } from "./routes/rebanho/dashboard.js";
 import { iaRouter } from "./routes/rebanho/ia.js";
 import { configRouter } from "./routes/rebanho/config.js";
@@ -65,6 +66,7 @@ app.use(
 );
 
 app.route("/api", healthRouter);
+app.route("/api", propriedadeRouter);
 app.route("/api", dashboardRouter);
 app.route("/api", categoriasRouter);
 app.route("/api", animaisRouter);
