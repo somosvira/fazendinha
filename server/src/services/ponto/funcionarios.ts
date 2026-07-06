@@ -24,10 +24,11 @@ function comoNaoEncontrado(e: unknown): FuncionarioError {
   throw e;
 }
 
-export async function listarFuncionarios(f: ListFuncionariosFiltros = {}): Promise<FuncionarioDTO[]> {
+export async function listarFuncionarios(f: ListFuncionariosFiltros = {}, propriedadeId?: number | null): Promise<FuncionarioDTO[]> {
   const where: Prisma.FuncionarioWhereInput = {};
   if (f.ativo !== undefined) where.ativo = f.ativo;
   if (f.setor) where.setor = f.setor; // filtro exato por setor (opcional)
+  if (propriedadeId != null) where.propriedadeId = propriedadeId; // escopo do sítio
   const rows = await prisma.funcionario.findMany({ where, orderBy: { nome: "asc" } });
   return rows.map(toFuncionarioDTO);
 }
@@ -37,9 +38,10 @@ export async function obterFuncionario(id: number): Promise<FuncionarioDTO | nul
   return row ? toFuncionarioDTO(row) : null;
 }
 
-export async function criarFuncionario(input: CriarFuncionarioInput): Promise<FuncionarioDTO> {
+export async function criarFuncionario(input: CriarFuncionarioInput, propriedadeId?: number | null): Promise<FuncionarioDTO> {
   const row = await prisma.funcionario.create({
     data: {
+      propriedadeId: propriedadeId ?? null, // sítio ativo (multi-propriedade)
       nome: input.nome,
       cargo: input.cargo ?? null,
       setor: input.setor ?? null,

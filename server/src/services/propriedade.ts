@@ -70,6 +70,10 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   await prisma.lancamento.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.talhao.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.lavoura.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.funcionario.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  await prisma.caixinha.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 }
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────

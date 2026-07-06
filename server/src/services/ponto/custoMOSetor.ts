@@ -42,9 +42,9 @@ export function agregarCustoMOPorSetor(funcionarios: FuncionarioCustoMO[]): Cust
 }
 
 /** Carrega os funcionários ativos e devolve o custo de MO agregado por setor. */
-export async function custoMOPorSetor(): Promise<CustoMOSetor[]> {
+export async function custoMOPorSetor(propriedadeId?: number | null): Promise<CustoMOSetor[]> {
   const rows = await prisma.funcionario.findMany({
-    where: { ativo: true },
+    where: { ativo: true, ...(propriedadeId != null ? { propriedadeId } : {}) }, // escopo do sítio
     select: { setor: true, salarioMensal: true, ativo: true },
   });
   return agregarCustoMOPorSetor(

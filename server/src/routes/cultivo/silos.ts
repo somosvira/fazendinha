@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { criarSiloSchema, editarSiloSchema, listSiloFiltrosSchema, criarMovimentoSiloSchema } from "../../services/cultivo/schemas.js";
 import * as svc from "../../services/cultivo/silos.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.SiloError) {
@@ -20,7 +21,7 @@ const parseId = (raw: string): number | null => {
 // Rotas de Silo + MovimentoSilo (razão). Movimentos manuais cobrem
 // SAIDA: NUTRICAO/VENDA/AJUSTE — ENTRADA/COLHEITA só é criada pela produção.
 export const cultivoSilosRouter = new Hono()
-  .get("/cultivo/silos", zValidator("query", listSiloFiltrosSchema), async (c) => c.json(await svc.listarSilos(c.req.valid("query"))))
+  .get("/cultivo/silos", zValidator("query", listSiloFiltrosSchema), async (c) => c.json(await svc.listarSilos(c.req.valid("query"), await resolverEscopoLeitura(c))))
   .get("/cultivo/silos/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
@@ -28,7 +29,7 @@ export const cultivoSilosRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "silo não encontrado" }, 404);
   })
   .post("/cultivo/silos", zValidator("json", criarSiloSchema), async (c) => {
-    try { return c.json(await svc.criarSilo(c.req.valid("json")), 201); }
+    try { return c.json(await svc.criarSilo(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/cultivo/silos/:id", zValidator("json", editarSiloSchema), async (c) => {

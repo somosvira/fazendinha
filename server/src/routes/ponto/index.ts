@@ -5,6 +5,7 @@ import * as pontos from "../../services/ponto/pontos.js";
 import { custoMOPorSetor } from "../../services/ponto/custoMOSetor.js";
 import { apurarFolha } from "../../services/ponto/folha.service.js";
 import { FuncionarioError } from "../../services/ponto/funcionarios.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 import {
   criarFuncionarioSchema,
   editarFuncionarioSchema,
@@ -36,12 +37,12 @@ const parseId = (raw: string): number | null => {
 export const pontoRouter = new Hono()
   // ── Funcionários ──────────────────────────────────────────────────────────
   .get("/ponto/funcionarios", zValidator("query", listFuncionariosSchema), async (c) =>
-    c.json(await func.listarFuncionarios(c.req.valid("query")))
+    c.json(await func.listarFuncionarios(c.req.valid("query"), await resolverEscopoLeitura(c)))
   )
   // Custo de mão de obra por setor (só ativos; sem setor → "Geral"; total desc).
   // Número disponível para a gestão — NÃO amarrado ainda ao custo dos módulos
   // (rebanho/plantio/corte têm custo próprio). Vem antes de "/:id" p/ não colidir.
-  .get("/ponto/custo-mo-setor", async (c) => c.json(await custoMOPorSetor()))
+  .get("/ponto/custo-mo-setor", async (c) => c.json(await custoMOPorSetor(await resolverEscopoLeitura(c))))
   .get("/ponto/funcionarios/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
@@ -50,7 +51,7 @@ export const pontoRouter = new Hono()
   })
   .post("/ponto/funcionarios", zValidator("json", criarFuncionarioSchema), async (c) => {
     try {
-      return c.json(await func.criarFuncionario(c.req.valid("json")), 201);
+      return c.json(await func.criarFuncionario(c.req.valid("json"), await resolverEscopoEscrita(c)), 201);
     } catch (e) {
       const { status, body } = handle(e);
       return c.json(body, status);
@@ -125,7 +126,7 @@ export const pontoRouter = new Hono()
   // ── Folha ─────────────────────────────────────────────────────────────────
   .get("/ponto/folha", zValidator("query", folhaMesSchema), async (c) => {
     try {
-      return c.json(await apurarFolha(c.req.valid("query").mes));
+      return c.json(await apurarFolha(c.req.valid("query").mes, await resolverEscopoLeitura(c)));
     } catch (e) {
       const { status, body } = handle(e);
       return c.json(body, status);
