@@ -8,6 +8,8 @@ export function toTimeline(e: any): EventoTimelineDTO {
       return { ...base, titulo: "Cio detectado", detalhe: e.observacao ?? undefined };
     case "INSEMINACAO":
       return { ...base, titulo: "Inseminação artificial", detalhe: [e.reprodutor && `reprodutor ${e.reprodutor}`, e.protocolo].filter(Boolean).join(" · ") || undefined };
+    case "TRANSFERENCIA_EMBRIAO":
+      return { ...base, titulo: "Transferência de embrião", detalhe: [e.doadoraId != null && `doadora #${e.doadoraId}`, e.reprodutor && `sêmen ${e.reprodutor}`, e.protocolo].filter(Boolean).join(" · ") || undefined, marcador: "receptora" };
     case "DIAGNOSTICO":
       return { ...base, titulo: `Diagnóstico de gestação — ${String(e.resultado).toUpperCase()}`, detalhe: e.dtPartoPrevista ? `parto previsto ${iso(e.dtPartoPrevista)}` : undefined, alerta: e.resultado === "negativo" };
     case "PARTO":

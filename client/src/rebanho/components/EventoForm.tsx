@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, listarRacas, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
+import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
-  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
+  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
 ];
 
 const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
@@ -46,12 +46,15 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
   const [tipo, setTipo] = useState<EventoPayload["tipo"]>("INSEMINACAO");
   const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>("EXAME");
   const [racas, setRacas] = useState<RacaDTO[]>([]);
+  const [animais, setAnimais] = useState<Animal[]>([]); // catálogo p/ escolher a doadora na TE
   const [f, setF] = useState<any>({
     data: "",
     // Reprodutor estruturado (raça + grau de sangue).
     racaReprodutorId: "", fracaoReprodutor: "8/8", racaSecReprodutorId: "",
     protocolo: PROTOCOLOS[0], protocoloOutro: "",
     deteccaoCio: DETECCAO_CIO[0],
+    // Transferência de embrião (TE): doadora da genética + touro/sêmen do embrião.
+    doadoraId: "", semenTE: "",
     resultado: "positivo", dtPartoPrevista: "",
     numCrias: "1", sexoCria: "F", tipoParto: "normal",
     motivoSecagem: MOTIVOS_SECAGEM[0],
@@ -75,6 +78,8 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
+  // Só carrega o catálogo de animais quando a TE for selecionada (evita fetch à toa).
+  useEffect(() => { if (tipo === "TRANSFERENCIA_EMBRIAO" && animais.length === 0) listarAnimais({ status: "ATIVO" }).then(setAnimais).catch(() => {}); }, [tipo, animais.length]);
 
   // Espécie da fêmea — filtra raças do reprodutor pra mesma espécie.
   const especie = animal ? ESPECIE_POR_CATEGORIA[animal.categoria] : null;
@@ -105,6 +110,12 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
           const rep = montarRacaDisplay(f.fracaoReprodutor, racaReprodutor, racaSecReprodutor);
           if (!rep) throw new Error("Selecione a raça do reprodutor.");
           p.reprodutor = rep;
+          const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
+          p.protocolo = proto || undefined;
+        }
+        if (tipo === "TRANSFERENCIA_EMBRIAO") {
+          if (f.doadoraId) p.doadoraId = Number(f.doadoraId);
+          if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
           const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
           p.protocolo = proto || undefined;
         }
@@ -205,6 +216,29 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
             </label>
             {f.protocolo === "Outro" && (
               <label className="rb-fld">Descrever protocolo<input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: P36 / FertilizAID" /></label>
+            )}
+          </>}
+          {tipo === "TRANSFERENCIA_EMBRIAO" && <>
+            <p className="rb-hint" style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
+              A receptora (este animal) carrega o embrião; a genética do bezerro vem da <b>doadora</b>.
+            </p>
+            <label className="rb-fld">Doadora (genética)
+              <select value={f.doadoraId} onChange={(e) => set("doadoraId", e.target.value)}>
+                <option value="">— selecionar —</option>
+                {animais.filter((a) => a.id !== animalId).map((a) => (
+                  <option key={a.id} value={a.id}>{a.nome ? `${a.nome} · #${a.numero}` : `#${a.numero}`}</option>
+                ))}
+              </select>
+            </label>
+            <label className="rb-fld">Touro / sêmen do embrião<input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></label>
+            <label className="rb-fld">Protocolo
+              <select value={f.protocolo} onChange={(e) => set("protocolo", e.target.value)}>
+                {PROTOCOLOS.map((p) => <option key={p} value={p}>{p}</option>)}
+                <option value="Outro">Outro…</option>
+              </select>
+            </label>
+            {f.protocolo === "Outro" && (
+              <label className="rb-fld">Descrever protocolo<input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: sincronização de receptoras" /></label>
             )}
           </>}
           {tipo === "DIAGNOSTICO" && <>

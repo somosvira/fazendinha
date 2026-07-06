@@ -2,6 +2,7 @@ import { prisma } from "../../db.js";
 import { toTimeline, type EventoTimelineDTO } from "./eventos.mappers.js";
 import type { CriarEventoInput } from "./eventos.schemas.js";
 import { reconstruirLactacoes, recomputarResumoReproducao, type EvtRepro } from "./reproducao.recompute.js";
+import { calcularTaxaConcepcao, type TaxaConcepcaoMetodo } from "./reproducao.concepcao.js";
 
 export class EventoError extends Error {
   constructor(public code: "NAO_ENCONTRADO", message: string) { super(message); }
@@ -25,6 +26,16 @@ export async function recomputarAnimal(animalId: number): Promise<void> {
   });
 }
 
+// KPI de reprodução: taxa de concepção por método (IA × TE) em todo o rebanho.
+// Lê os eventos e delega ao cálculo puro (que pareia diagnóstico → cobertura).
+export async function taxaConcepcaoRebanho(): Promise<TaxaConcepcaoMetodo[]> {
+  const evs = await prisma.eventoReprodutivo.findMany({
+    where: { tipo: { in: ["INSEMINACAO", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO"] } },
+    select: { animalId: true, tipo: true, data: true, resultado: true },
+  });
+  return calcularTaxaConcepcao(evs.map((e) => ({ animalId: e.animalId, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado })));
+}
+
 export async function listarEventos(animalId: number): Promise<EventoTimelineDTO[]> {
   const evs = await prisma.eventoReprodutivo.findMany({ where: { animalId }, orderBy: { data: "desc" } });
   return evs.map(toTimeline);
@@ -32,15 +43,20 @@ export async function listarEventos(animalId: number): Promise<EventoTimelineDTO
 
 export async function registrarEvento(animalId: number, input: CriarEventoInput): Promise<EventoTimelineDTO> {
   if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
+  const doadoraId = (input as any).doadoraId as number | undefined;
+  if (doadoraId != null && !(await prisma.animal.findUnique({ where: { id: doadoraId } }))) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
   const e = await prisma.eventoReprodutivo.create({
     data: {
       animalId, tipo: input.tipo, data: new Date(input.data), observacao: (input as any).observacao,
       reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo,
       resultado: (input as any).resultado, dtPartoPrevista: d((input as any).dtPartoPrevista),
       tipoParto: (input as any).tipoParto, numCrias: (input as any).numCrias, sexoCria: (input as any).sexoCria,
-      motivoSecagem: (input as any).motivoSecagem,
+      motivoSecagem: (input as any).motivoSecagem, doadoraId,
     },
   });
+  // Uma transferência de embrião marca o papel de receptora do animal que recebe
+  // (barriga de aluguel). Flag sticky: fica marcada mesmo que o evento seja excluído.
+  if (input.tipo === "TRANSFERENCIA_EMBRIAO") await prisma.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
   await recomputarAnimal(animalId);
   return toTimeline(e);
 }

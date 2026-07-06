@@ -1,5 +1,7 @@
-export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO";
 export interface EvtRepro { tipo: TipoEvt; data: string; resultado?: string | null; dtPartoPrevista?: string | null; reprodutor?: string | null; }
+// IA e TE são ambas "coberturas": geram gestação e definem o status INSEMINADA/PRENHE.
+const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "TRANSFERENCIA_EMBRIAO";
 export interface Lact { numero: number; dtInicio: string; dtFim: string | null; }
 export interface ResumoRepro {
   statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
@@ -32,18 +34,19 @@ export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[
   const del = lactAberta ? diff(lactAberta.dtInicio, hoje) : null;
 
   const ultimoDg = ultimo("DIAGNOSTICO");
-  const ultimaIa = ultimo("INSEMINACAO");
+  const ultimaIa = ultimo("INSEMINACAO"); // usado só no campo ultimaInseminacao do read-model
+  const ultimaCobertura = [...evs].reverse().find((e) => ehCobertura(e.tipo)) ?? null; // IA ou TE
   const partoAposDg = !!(ultimoDg && ultimoParto && Date.parse(ultimoParto.data) > Date.parse(ultimoDg.data));
 
   let status: ResumoRepro["statusReprodutivo"];
   if (ultimoDg && ultimoDg.resultado === "positivo" && !partoAposDg) status = "PRENHE";
-  else if (ultimaIa && (!ultimoDg || Date.parse(ultimaIa.data) > Date.parse(ultimoDg.data))) status = "INSEMINADA";
+  else if (ultimaCobertura && (!ultimoDg || Date.parse(ultimaCobertura.data) > Date.parse(ultimoDg.data))) status = "INSEMINADA";
   else if (del !== null && del < PEV_DIAS) status = "PEV";
   else status = "VAZIA";
 
   let diasGestacao: number | null = null, previsaoSecagem: string | null = null, iepProjetado: number | null = null;
   if (status === "PRENHE") {
-    const iaConcep = [...evs].reverse().find((e) => e.tipo === "INSEMINACAO" && Date.parse(e.data) <= Date.parse(ultimoDg!.data));
+    const iaConcep = [...evs].reverse().find((e) => ehCobertura(e.tipo) && Date.parse(e.data) <= Date.parse(ultimoDg!.data));
     const dtConcepcao = iaConcep?.data ?? addDias(ultimoDg!.data, -30);
     diasGestacao = diff(dtConcepcao, hoje);
     const dtPartoPrev = ultimoDg!.dtPartoPrevista ?? addDias(dtConcepcao, GESTACAO_DIAS);

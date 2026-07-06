@@ -393,9 +393,14 @@ model Animal {
   status              StatusAnimal        @default(ATIVO)
   dataBaixa           DateTime?           @db.Date
   motivoBaixa         String?
+  // Papel de receptora (barriga de aluguel na TE). Marcado quando recebe um evento
+  // TRANSFERENCIA_EMBRIAO; a genética das crias que ela carrega vem da doadora.
+  ehReceptora         Boolean             @default(false)
   resumo              ResumoAnimal?
   numPartosEntrada    Int                 @default(0)
   eventosReprodutivos EventoReprodutivo[]
+  // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
+  embrioesDoados      EventoReprodutivo[] @relation("Doadora")
   eventosSanitarios   EventoSanitario[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
@@ -432,6 +437,7 @@ enum TipoEventoReprodutivo {
   DIAGNOSTICO
   PARTO
   SECAGEM
+  TRANSFERENCIA_EMBRIAO // TE: embrião implantado numa receptora; genética vem da doadora
 }
 
 model EventoReprodutivo {
@@ -441,7 +447,7 @@ model EventoReprodutivo {
   tipo            TipoEventoReprodutivo
   data            DateTime              @db.Date
   observacao      String?
-  reprodutor      String?
+  reprodutor      String? // IA: touro/sêmen. TE: touro/sêmen do embrião.
   protocolo       String?
   resultado       String?
   dtPartoPrevista DateTime?             @db.Date
@@ -449,6 +455,9 @@ model EventoReprodutivo {
   numCrias        Int?
   sexoCria        String?
   motivoSecagem   String?
+  // TE: doadora do embrião — a genética do bezerro vem dela, não da barriga (animal).
+  doadora         Animal?               @relation("Doadora", fields: [doadoraId], references: [id])
+  doadoraId       Int?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
