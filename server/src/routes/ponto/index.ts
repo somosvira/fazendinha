@@ -13,6 +13,7 @@ import {
   listRegistrosSchema,
   upsertRegistroSchema,
   folhaMesSchema,
+  preencherGradeSchema,
 } from "../../services/ponto/pontos.schemas.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
@@ -70,6 +71,23 @@ export const pontoRouter = new Hono()
       return c.json(body, status);
     }
   })
+  // Pré-preenche a grade do mês com o horário padrão do funcionário (dias úteis
+  // ainda vazios). Idempotente — reenviar não duplica. Sem padrão → criados: 0.
+  .post(
+    "/ponto/funcionarios/:id/preencher-grade",
+    zValidator("json", preencherGradeSchema),
+    async (c) => {
+      const id = parseId(c.req.param("id"));
+      if (id == null) return c.json({ error: "id inválido" }, 404);
+      try {
+        const { ano, mes } = c.req.valid("json");
+        return c.json(await pontos.preencherGradePadrao(id, ano, mes));
+      } catch (e) {
+        const { status, body } = handle(e);
+        return c.json(body, status);
+      }
+    }
+  )
   // ── Registros de ponto ────────────────────────────────────────────────────
   .get("/ponto/registros", zValidator("query", listRegistrosSchema), async (c) => {
     const { funcionarioId, mes } = c.req.valid("query");

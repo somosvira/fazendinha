@@ -1322,6 +1322,11 @@ model Funcionario {
   salarioMensal      Decimal         @db.Decimal(12, 2)
   cargaMensalHoras   Decimal         @default(220) @db.Decimal(6, 2) // carga contratada/mês
   jornadaDiariaHoras Decimal         @default(8) @db.Decimal(5, 2) // jornada normal/dia
+  // Horário padrão (opcional): pré-preenche a grade do mês nos dias úteis.
+  // Todos null = sem padrão → grade vazia (comportamento atual, admin lança à mão).
+  horaEntradaPadrao  String?         // "HH:MM"
+  horaSaidaPadrao    String?         // "HH:MM"
+  intervaloPadraoMin Int?            // almoço padrão, em minutos
   dataAdmissao       DateTime?       @db.Date
   cpf                String?
   chavePix           String?

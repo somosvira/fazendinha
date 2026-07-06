@@ -44,6 +44,9 @@ export interface FuncionarioInput {
   salarioMensal: number;
   cargaMensalHoras: number;
   jornadaDiariaHoras: number;
+  horaEntradaPadrao?: string;   // HH:MM
+  horaSaidaPadrao?: string;     // HH:MM
+  intervaloPadraoMin?: number;
   dataAdmissao?: string;   // YYYY-MM-DD
   cpf?: string;
   chavePix?: string;
@@ -72,6 +75,13 @@ export const editarFuncionario = (id: string, input: Partial<FuncionarioInput>) 
   req<FuncionarioDTO>(`/ponto/funcionarios/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const baixarFuncionario = (id: string) =>
   req<FuncionarioDTO>(`/ponto/funcionarios/${id}/baixa`, { method: "POST" });
+// Pré-preenche a grade do mês (ano + mes 1-12) com o horário padrão do
+// funcionário. Idempotente. Devolve quantos dias criou + a grade recalculada.
+export const preencherGrade = (funcionarioId: string, ano: number, mes: number) =>
+  req<{ criados: number; registros: RegistroDTO[] }>(
+    `/ponto/funcionarios/${funcionarioId}/preencher-grade`,
+    { method: "POST", body: JSON.stringify({ ano, mes }) }
+  );
 
 // REGISTROS DE PONTO ------------------------------------------------------
 

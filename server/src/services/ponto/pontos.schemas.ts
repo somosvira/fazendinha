@@ -22,5 +22,12 @@ export const upsertRegistroSchema = z.object({
 
 export const folhaMesSchema = z.object({ mes });
 
+// Body de POST /ponto/funcionarios/:id/preencher-grade — mês (ano + 1..12).
+export const preencherGradeSchema = z.object({
+  ano: z.number().int().min(2000).max(2100),
+  mes: z.number().int().min(1, "mês deve ser 1-12").max(12, "mês deve ser 1-12"),
+});
+
 export type ListRegistrosFiltros = z.infer<typeof listRegistrosSchema>;
 export type UpsertRegistroSchemaInput = z.infer<typeof upsertRegistroSchema>;
+export type PreencherGradeInput = z.infer<typeof preencherGradeSchema>;

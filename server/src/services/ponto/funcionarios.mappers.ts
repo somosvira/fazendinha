@@ -8,6 +8,9 @@ export interface FuncionarioDTO {
   salarioMensal: number;
   cargaMensalHoras: number;
   jornadaDiariaHoras: number;
+  horaEntradaPadrao: string | null; // "HH:MM"
+  horaSaidaPadrao: string | null; // "HH:MM"
+  intervaloPadraoMin: number | null;
   dataAdmissao: string | null;
   cpf: string | null;
   chavePix: string | null;
@@ -25,6 +28,9 @@ export function toFuncionarioDTO(f: any): FuncionarioDTO {
     salarioMensal: Number(f.salarioMensal),
     cargaMensalHoras: Number(f.cargaMensalHoras),
     jornadaDiariaHoras: Number(f.jornadaDiariaHoras),
+    horaEntradaPadrao: f.horaEntradaPadrao ?? null,
+    horaSaidaPadrao: f.horaSaidaPadrao ?? null,
+    intervaloPadraoMin: f.intervaloPadraoMin ?? null,
     dataAdmissao: iso(f.dataAdmissao),
     cpf: f.cpf ?? null,
     chavePix: f.chavePix ?? null,
