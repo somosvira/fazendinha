@@ -6,8 +6,9 @@ import { prisma } from "../../db.js";
 import { toPiqueteDTO } from "./lotes.mappers.js";
 import type { Piquete } from "./mock.js";
 
-export async function listarPiquetes(): Promise<Piquete[]> {
+export async function listarPiquetes(propriedadeId?: number | null): Promise<Piquete[]> {
   const rows = await prisma.piquete.findMany({
+    where: propriedadeId != null ? { propriedadeId } : undefined, // escopo do sítio
     orderBy: { codigo: "asc" },
     include: { lotes: { where: { estado: "ATIVO" }, select: { id: true }, take: 1 } },
   });

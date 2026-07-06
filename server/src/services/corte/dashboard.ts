@@ -17,10 +17,11 @@ const GMD_BAIXO = 0.35;
 const DIAS_SEM_PESAR_MAX = 60;
 const MORTALIDADE_ALTA = 8;
 
-export async function buildCorteDashboard() {
+export async function buildCorteDashboard(propriedadeId?: number | null) {
+  const escopo = propriedadeId != null ? { propriedadeId } : {}; // escopo do sítio
   const [ativos, piquetes] = await Promise.all([
-    prisma.loteCorte.findMany({ where: { estado: "ATIVO" }, include: { resumo: true } }),
-    prisma.piquete.findMany({ select: { estado: true } }),
+    prisma.loteCorte.findMany({ where: { estado: "ATIVO", ...escopo }, include: { resumo: true } }),
+    prisma.piquete.findMany({ where: escopo, select: { estado: true } }),
   ]);
 
   const pesoMedioDe = (l: any) => (l.resumo?.pesoMedio != null ? Number(l.resumo.pesoMedio) : 0);
