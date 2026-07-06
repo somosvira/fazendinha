@@ -374,6 +374,7 @@ model Propriedade {
   ordem     Int      @default(0)
   animais   Animal[]
   grupos    Grupo[]
+  movimentosEstoque MovimentoEstoque[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -599,6 +600,9 @@ model MovimentoEstoque {
   grupoId       Int?
   fornecedor    ClienteFornecedor?     @relation(fields: [fornecedorId], references: [id])
   fornecedorId  Int?
+  // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
+  propriedade   Propriedade?           @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
   // Lançamento financeiro gerado pela ENTRADA (compra), se houver (ponte compra→financeiro).
   lancamento    Lancamento?            @relation(fields: [lancamentoId], references: [id])
   lancamentoId  Int?                   @unique
@@ -612,6 +616,7 @@ model MovimentoEstoque {
   @@index([produtoId, data])
   @@index([tipo, data])
   @@index([consumoPeriodoId])
+  @@index([propriedadeId])
 }
 
 // Um fechamento de consumo de dieta por lote por período. Agrupa as N SAIDAs
