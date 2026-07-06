@@ -14,6 +14,8 @@ import { ProducaoTab } from "../components/ProducaoTab";
 import { EstoqueTab } from "../components/EstoqueTab";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { AnimalTab } from "../components/AnimalTab";
+import { NutricaoTab } from "../components/NutricaoTab";
+import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
 
 describe("render smoke", () => {
   it("AppSidebar renders both groups", () => {
@@ -101,6 +103,24 @@ describe("render smoke", () => {
     // A thread começa vazia (sem conteúdo enlatado) — só aparece após perguntar.
     expect(html).not.toContain("Jurema #1234");
     expect(html).not.toContain("dangerouslySetInnerHTML");
+  });
+
+  it("NutricaoTab renders Lotes e Dietas (fetches live)", () => {
+    const html = renderToString(h(NutricaoTab));
+    expect(html).toContain("Nutrição");
+    expect(html).toContain("Lotes");
+    expect(html).toContain("Dietas");
+  });
+
+  it("ConsumoLoteDrawer renders the header and date range without throwing", () => {
+    const html = renderToString(h(ConsumoLoteDrawer, {
+      lote: { id: 1, nome: "Lote Teste", dietaId: 2, dietaNome: "Dieta X", numAnimais: 10, producaoMedia: null },
+      onFechar: () => {},
+    }));
+    expect(html).toContain("Consumo"); // título do drawer (nome do lote vem em nó separado no SSR)
+    expect(html).toContain("Lote Teste");
+    expect(html).toContain("Início");
+    expect(html).toContain("Fim");
   });
 
   it("AnimalTab renders the status filter (Ativos/Baixados/Todos), visible while loading", () => {

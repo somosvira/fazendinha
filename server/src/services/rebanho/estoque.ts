@@ -5,7 +5,7 @@ import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { resolverLancamentoDaEntrada } from "./ponte.calc.js";
 
 export class EstoqueError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA", m: string) {
     super(m);
   }
 }
@@ -89,6 +89,7 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string }
     produto: m.produto.nome,
     setor: setorOuGeral(m.produto.setor), // setor operacional herdado do produto
     tipo: m.tipo,
+    origem: m.origem, // MANUAL | NUTRICAO | PERDA | AJUSTE_INVENTARIO
     data: iso(m.data),
     quantidade: Number(m.quantidade),
     custoUnitario: Number(m.custoUnitario),
@@ -165,6 +166,10 @@ export async function excluirMovimento(id: number) {
     include: { lancamento: true },
   });
   if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
+
+  // Baixa de consumo de dieta é gerida pelo fechamento (ConsumoPeriodo): excluí-la
+  // avulsa deixaria o custo do período inconsistente. Estorne o período inteiro.
+  if (mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
 
   // Se há um Lancamento vinculado num mês fechado, não exclui nada.
   if (mov.lancamento) {

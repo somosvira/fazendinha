@@ -223,6 +223,35 @@ export function useAnimaisDisponiveis() {
   useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, recarregar };
 }
 
+// ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
+export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; setor: SetorEstoque | null; ordem: number; }
+export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
+export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
+export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
+
+export function useItensDieta(dietaId: number | null) {
+  const [data, setData] = useState<DietaItemDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (dietaId == null) { setData([]); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarItensDieta(dietaId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [dietaId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+// ── Consumo de dieta → baixa de estoque (Fatia 2) ───────────────────────────
+export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: string; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
+export interface PrevisaoConsumoDTO { grupoId: number; grupoNome: string; dietaId: number; dietaNome: string; dataInicio: string; dataFim: string; dias: number; numCabecas: number; linhas: PrevisaoLinhaDTO[]; custoTotal: number; temInsuficiencia: boolean; }
+export interface ConsumoPeriodoDTO { id: number; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
+export interface FecharConsumoResult { id: number; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }
+export const previsaoConsumo = (grupoId: number, dataInicio: string, dataFim: string) => req<PrevisaoConsumoDTO>(`/rebanho/lotes/${grupoId}/consumo/previsao${qs({ dataInicio, dataFim })}`);
+export const fecharConsumo = (grupoId: number, body: { dataInicio: string; dataFim: string; observacao?: string }) => req<FecharConsumoResult>(`/rebanho/lotes/${grupoId}/consumo/fechar`, { method: "POST", body: JSON.stringify(body) });
+export const listarConsumos = (grupoId: number) => req<ConsumoPeriodoDTO[]>(`/rebanho/lotes/${grupoId}/consumo`);
+export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consumo/${id}`, { method: "DELETE" });
+
 export interface DashboardData { kpis: { rebanhoAtivo: number; emLactacao: number; secas: number; producaoMedia: number | null; gestantes: number; prenhez: number }; dominios: { tab: string; titulo: string; linhas: string[] }[]; alertas: { label: string; n: number; tab: string; tom: "bad" | "ok" }[]; }
 export const obterDashboard = () => req<DashboardData>(`/rebanho/dashboard`);
 export function useDashboard() {
@@ -390,7 +419,8 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
 export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "PERDA" | "AJUSTE_INVENTARIO";
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
 export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; gerarLancamento?: boolean; categoriaId?: number; centroCustoId?: number; }
 export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
 export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
