@@ -12,6 +12,7 @@ import {
 } from "../services/notaFiscal/confirmarPendente.js";
 import { montarDadosLancamento } from "../services/lancamentos/montar.js";
 import { listarLancamentos } from "../services/lancamentos-list.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../services/propriedade.js";
 
 const schema = z.object({
   // Opcional: presente → cria o Lancamento amarrando a NF pendente; ausente →
@@ -123,7 +124,9 @@ export const lancamentosRouter = new Hono().post(
       if (!conta) return c.json({ erro: "conta bancária inválida" }, 400);
     }
 
-    const dados = montarDadosLancamento(body, { valor, data, clienteFornecedorId });
+    // Escopo do sítio: header/query (site ativo) → principal. Fatia de escrita.
+    const propriedadeId = await resolverEscopoEscrita(c);
+    const dados = montarDadosLancamento(body, { valor, data, clienteFornecedorId, propriedadeId });
 
     const mesFechado = (ano: number, mes: number) =>
       c.json(
@@ -167,6 +170,8 @@ export const lancamentosRouter = new Hono().post(
     q: q.q,
     limit: q.limit,
     offset: q.offset,
+    // Escopo do sítio: explícito → aquele; 1 sítio → principal; N sítios → null (consolidado).
+    propriedadeId: await resolverEscopoLeitura(c),
   });
   return c.json(lista);
 });

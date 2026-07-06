@@ -24,6 +24,9 @@ export type ValoresResolvidos = {
   valor: string; // sempre positivo, "38450.00"
   data: Date; // competência = vencimento = data informada
   clienteFornecedorId: number | null;
+  // Sítio resolvido pelo escopo do request (multi-propriedade). Ausente → null
+  // (consolidado / fazenda de 1 sítio, onde a rota já resolve a principal).
+  propriedadeId?: number | null;
 };
 
 export function montarDadosLancamento(
@@ -42,6 +45,7 @@ export function montarDadosLancamento(
     centroCustoId: payload.centroCustoId,
     contaBancariaId: payload.contaBancariaId ?? null,
     clienteFornecedorId: resolvidos.clienteFornecedorId,
+    propriedadeId: resolvidos.propriedadeId ?? null,
     descricao: payload.descricao ?? null,
     numeroDocumento: payload.numeroDocumento ?? null,
   };

@@ -75,6 +75,17 @@ describe("montarWhereLancamentos", () => {
     expect(montarWhereLancamentos({ q: "" }).AND).toBeUndefined();
   });
 
+  it("propriedadeId → filtro direto (escopo do sítio)", () => {
+    const w = montarWhereLancamentos({ propriedadeId: 2 });
+    expect(w.propriedadeId).toBe(2);
+    expect(w.estornado).toBe(false);
+  });
+
+  it("propriedadeId null/ausente → sem filtro de sítio (consolidado)", () => {
+    expect(montarWhereLancamentos({ propriedadeId: null }).propriedadeId).toBeUndefined();
+    expect(montarWhereLancamentos({}).propriedadeId).toBeUndefined();
+  });
+
   it("from+to + natureza + q combinam: natureza direto, AND com 2 grupos OR (data, depois busca)", () => {
     const w = montarWhereLancamentos({ from: FROM, to: TO, natureza: "CREDITO", q: "cocamar" });
     expect(w.natureza).toBe("CREDITO");

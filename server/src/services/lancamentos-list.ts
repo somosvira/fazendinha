@@ -31,6 +31,8 @@ export interface FiltrosLancamentos {
   natureza?: NaturezaLancamento;
   situacao?: SituacaoLancamento;
   categoriaId?: number;
+  /** Escopo do sítio (multi-propriedade). null/ausente = consolidado (sem filtro). */
+  propriedadeId?: number | null;
   /** Texto livre: casa em descricao OU nome do fornecedor (case-insensitive). */
   q?: string;
   /** default 50, máx 200. */
@@ -81,6 +83,7 @@ export function montarWhereLancamentos(f: FiltrosLancamentos): Prisma.Lancamento
   if (f.natureza) where.natureza = f.natureza;
   if (f.situacao) where.situacao = f.situacao;
   if (f.categoriaId != null) where.categoriaId = f.categoriaId;
+  if (f.propriedadeId != null) where.propriedadeId = f.propriedadeId;
 
   const and: Prisma.LancamentoWhereInput[] = [];
 

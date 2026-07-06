@@ -118,6 +118,7 @@ export async function registrarMovimento(input: MovimentoInput) {
   // Decimal exato (não float) — este valor alimenta o livro financeiro real (Lancamento.valor).
   const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
   const data = new Date(input.data);
+  const propriedadeId = input.propriedadeId ?? (await propriedadePrincipalId()); // sítio ativo ou principal
   const m = await prisma.movimentoEstoque.create({
     data: {
       produtoId: input.produtoId,
@@ -128,7 +129,7 @@ export async function registrarMovimento(input: MovimentoInput) {
       valorTotal,
       grupoId: input.grupoId ?? null,
       fornecedorId: input.fornecedorId ?? null,
-      propriedadeId: input.propriedadeId ?? (await propriedadePrincipalId()), // sítio ativo ou principal
+      propriedadeId,
       observacao: input.observacao,
     },
   });
@@ -158,6 +159,7 @@ export async function registrarMovimento(input: MovimentoInput) {
       categoriaId: resol.categoriaId!,
       centroCustoId: resol.centroCustoId!,
       clienteFornecedorId: input.fornecedorId ?? null,
+      propriedadeId, // o lançamento da compra herda o sítio do movimento (Fatia 3)
       descricao: `Compra: ${produto.nome} (${input.quantidade} ${produto.unidade})`,
     },
   });

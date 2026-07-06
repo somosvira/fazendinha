@@ -21,6 +21,7 @@ export type DadosLancamentoNovo = {
   centroCustoId: number;
   contaBancariaId: number | null;
   clienteFornecedorId: number | null;
+  propriedadeId?: number | null; // escopo do sítio (multi-propriedade); null = consolidado
   descricao: string | null;
   numeroDocumento: string | null;
 };
@@ -73,6 +74,7 @@ function dadosCreateLancamento(dados: DadosLancamentoNovo) {
     centroCustoId: dados.centroCustoId,
     contaBancariaId: dados.contaBancariaId,
     clienteFornecedorId: dados.clienteFornecedorId,
+    propriedadeId: dados.propriedadeId ?? null,
     descricao: dados.descricao,
     numeroDocumento: dados.numeroDocumento,
   };
