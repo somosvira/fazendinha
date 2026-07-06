@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema } from "../../services/rebanho/animais.schemas.js";
 import * as svc from "../../services/rebanho/animais.js";
 import { obterInsights } from "../../services/rebanho/insights.js";
+import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.AnimalError) {
@@ -18,7 +19,11 @@ export const animaisRouter = new Hono()
   .get("/rebanho/grupos", async (c) => c.json(await svc.listarGrupos()))
   .get("/rebanho/racas", async (c) => c.json(await svc.listarRacas()))
   .get("/rebanho/setores", async (c) => c.json(await svc.listarSetores()))
-  .get("/rebanho/animais", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarAnimais(c.req.valid("query"))))
+  .get("/rebanho/animais", zValidator("query", listFiltrosSchema), async (c) => {
+    // Escopo de leitura: 1 sítio → principal (invisível); N sem filtro → consolidado.
+    const escopo = await resolverEscopoLeitura(c);
+    return c.json(await svc.listarAnimais({ ...c.req.valid("query"), propriedadeId: escopo ?? undefined }));
+  })
   .get("/rebanho/animais/:id", async (c) => {
     const dto = await svc.obterAnimal(Number(c.req.param("id")));
     return dto ? c.json(dto) : c.json({ error: "animal não encontrado" }, 404);
@@ -28,7 +33,12 @@ export const animaisRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "animal não encontrado" }, 404);
   })
   .post("/rebanho/animais", zValidator("json", criarAnimalSchema), async (c) => {
-    try { return c.json(await svc.criarAnimal(c.req.valid("json")), 201); }
+    try {
+      const input = c.req.valid("json");
+      // Cria no sítio explícito do payload → sítio ativo (header/query) → principal.
+      const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
+      return c.json(await svc.criarAnimal({ ...input, propriedadeId }), 201);
+    }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/rebanho/animais/:id", zValidator("json", editarAnimalSchema), async (c) => {

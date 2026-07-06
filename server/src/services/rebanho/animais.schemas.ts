@@ -19,6 +19,7 @@ export const criarAnimalSchema = z.object({
   paiNome: z.string().max(60).optional(),
   grupoId: z.number().int().positive().optional(),
   setor: z.string().max(40).optional(),
+  propriedadeId: z.number().int().positive().optional(), // sítio (multi-propriedade)
 });
 
 export const editarAnimalSchema = criarAnimalSchema.partial();
@@ -33,6 +34,7 @@ export const listFiltrosSchema = z.object({
   grupoId: z.coerce.number().int().positive().optional(),
   q: z.string().max(40).optional(),
   setor: z.string().max(40).optional(),
+  propriedadeId: z.coerce.number().int().positive().optional(), // filtro por sítio
 });
 
 export type CriarAnimalInput = z.infer<typeof criarAnimalSchema>;
