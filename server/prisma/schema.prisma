@@ -381,6 +381,8 @@ model Propriedade {
   grupos    Grupo[]
   movimentosEstoque MovimentoEstoque[]
   lancamentos Lancamento[]
+  talhoes   Talhao[]
+  lavouras  Lavoura[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -806,8 +808,13 @@ model Lavoura {
   planoAdubacaoId Int?
   talhoes         Talhao[]
   tarefas         TarefaAgricola[]
+  // Escopo de propriedade (Fatia 4B). Nullable + default principal.
+  propriedade     Propriedade?   @relation(fields: [propriedadeId], references: [id])
+  propriedadeId   Int?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  @@index([propriedadeId])
 }
 
 // Plano de adubação — receita NPK por safra (espelha Dieta do rebanho).
@@ -861,11 +868,15 @@ model Talhao {
   safras           SafraTalhao[]
   tarefasAgricolas TarefaAgricola[]
   apontamentos     ApontamentoMaquina[]
+  // Escopo de propriedade (Fatia 4B). Nullable + default principal.
+  propriedade      Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   @@index([estado])
   @@index([lavouraId])
+  @@index([propriedadeId])
 }
 
 // Read-model pré-computado por talhão — espelha ResumoAnimal.

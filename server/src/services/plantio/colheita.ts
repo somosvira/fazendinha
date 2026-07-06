@@ -40,12 +40,14 @@ function toPassadaDTO(p: any): PassadaDTO {
   };
 }
 
-export async function listarPassadas(filtro?: { ano?: number }): Promise<PassadaDTO[]> {
+export async function listarPassadas(filtro?: { ano?: number }, propriedadeId?: number | null): Promise<PassadaDTO[]> {
   const where: any = {};
   if (filtro?.ano != null) {
     // Janela do ano-calendário [ano-01-01, ano+1-01-01).
     where.data = { gte: new Date(Date.UTC(filtro.ano, 0, 1)), lt: new Date(Date.UTC(filtro.ano + 1, 0, 1)) };
   }
+  // Escopo do sítio: passada herda o sítio do seu talhão (não tem coluna própria).
+  if (propriedadeId != null) where.talhao = { propriedadeId };
   const rows = await prisma.passadaColheita.findMany({
     where,
     include: { talhao: { select: { codigo: true, nome: true } } },

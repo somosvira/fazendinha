@@ -12,10 +12,11 @@ export class TalhaoError extends Error {
 const include = { variedade: true, lavoura: true, resumo: true } as const;
 const d = (s?: string) => (s ? new Date(s) : undefined);
 
-export async function listarTalhoes(f: ListFiltros): Promise<Talhao[]> {
+export async function listarTalhoes(f: ListFiltros, propriedadeId?: number | null): Promise<Talhao[]> {
   const where: any = {};
   if (f.estado !== "TODOS") where.estado = f.estado;
   if (f.lavoura) where.lavoura = { nome: f.lavoura };
+  if (propriedadeId != null) where.propriedadeId = propriedadeId; // escopo do sítio
   if (f.q) where.OR = [{ codigo: { contains: f.q, mode: "insensitive" } }, { nome: { contains: f.q, mode: "insensitive" } }];
   const rows = await prisma.talhao.findMany({ where, include, orderBy: { codigo: "asc" } });
   return rows.map(toTalhaoDTO);
@@ -31,7 +32,7 @@ async function assertRefs(input: { variedadeId?: number; lavouraId?: number }) {
   if (input.lavouraId && !(await prisma.lavoura.findUnique({ where: { id: input.lavouraId } }))) throw new TalhaoError("REF_INVALIDA", "lavoura inexistente");
 }
 
-export async function criarTalhao(input: CriarTalhaoInput): Promise<Talhao> {
+export async function criarTalhao(input: CriarTalhaoInput, propriedadeId?: number | null): Promise<Talhao> {
   if (await prisma.talhao.findUnique({ where: { codigo: input.codigo } })) throw new TalhaoError("CODIGO_DUPLICADO", `código ${input.codigo} já existe`);
   await assertRefs(input);
   const row = await prisma.talhao.create({
@@ -40,6 +41,7 @@ export async function criarTalhao(input: CriarTalhaoInput): Promise<Talhao> {
       espacamento: input.espacamento, plantasHa: input.plantasHa, areaHa: input.areaHa, anoPlantio: input.anoPlantio,
       altitude: input.altitude, exposicao: input.exposicao, declive: input.declive, irrigado: input.irrigado, estado: input.estado,
       dataPlantio: new Date(input.dataPlantio), ultimaRecepa: d(input.ultimaRecepa), observacao: input.observacao,
+      propriedadeId: propriedadeId ?? null, // sítio ativo (multi-propriedade)
       resumo: { create: { fase: "REPOUSO" } },
     },
     include,
