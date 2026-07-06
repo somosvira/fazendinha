@@ -21,7 +21,13 @@ export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {
   if (f.status !== "TODOS") where.status = f.status;
   if (f.grupoId) where.grupoId = f.grupoId;
   if (f.setor) where.setor = f.setor;
-  if (f.q) where.OR = [{ numero: { contains: f.q, mode: "insensitive" } }, { nome: { contains: f.q, mode: "insensitive" } }];
+  // Busca por número, nome OU brinco eletrônico (A6 Fase 1 — o bastão RFID
+  // digita o número da etiqueta no campo de busca).
+  if (f.q) where.OR = [
+    { numero: { contains: f.q, mode: "insensitive" } },
+    { nome: { contains: f.q, mode: "insensitive" } },
+    { brincoEletronico: { contains: f.q, mode: "insensitive" } },
+  ];
   const rows = await prisma.animal.findMany({ where, include, orderBy: { numero: "asc" } });
   return rows.map(toAnimalDTO);
 }

@@ -56,6 +56,10 @@ describe("mapearAnimal", () => {
     expect(r.label).toBe("200");
     expect(r.sublabel).toBe("NOVILHA");
   });
+  it("brinco eletrônico entra no sublabel quando presente (A6)", () => {
+    const r = mapearAnimal({ id: 3, numero: "CA-7", nome: null, categoria: "VACA", raca: { nome: "Holandês" }, brincoEletronico: "982000123456789" });
+    expect(r.sublabel).toBe("VACA · Holandês · brinco 982000123456789");
+  });
 });
 
 describe("mapearLote", () => {
