@@ -99,17 +99,19 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Auth mínima do piloto: senha compartilhada gravada no localStorage
-  // (lib/auth.ts). Se o server não tiver SHARED_ACCESS_TOKEN setado (dev local),
-  // qualquer token vale e o login vira formalidade. Guard aqui em cima —
-  // toda a lógica de estado do app está em <AutenticadoApp> pra evitar
-  // violar a ordem dos hooks entre renders com/sem sessão.
-  const [autenticado, setAutenticado] = useState<boolean>(() => !!getToken());
-  if (!autenticado) return <Login />;
-  return <AutenticadoApp onSair={() => { clearToken(); setAutenticado(false); }} />;
-}
+  // Auth mínima está ENGATILHADA mas NÃO trava o app:
+  //   - lib/auth.ts e Login.tsx continuam no repo prontos pra ser religados
+  //     quando o piloto for pro dono (basta trocar `false` abaixo por
+  //     `!getToken()` e o gate volta a valer)
+  //   - o middleware do server só bloqueia se SHARED_ACCESS_TOKEN estiver setado
+  //     — em dev/homolog, sem env, a API fica aberta
+  //   - o botão Sair no Header só aparece se houver token gravado, então quem
+  //     testar com token continua conseguindo sair.
+  // Motivo do downgrade: durante a fase interna atual não deve travar a entrada
+  // — o dono ainda não está usando; sempre entra como Marco Antônio.
+  const tokenSalvo = getToken();
+  const onSair = tokenSalvo ? () => { clearToken(); window.location.reload(); } : undefined;
 
-function AutenticadoApp({ onSair }: { onSair: () => void }) {
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
