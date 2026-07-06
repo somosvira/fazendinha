@@ -13,7 +13,7 @@ function fail(e: unknown): { status: Status; body: { error: string } } {
 }
 
 export const estoqueRouter = new Hono()
-  .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos()))
+  .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos({ setor: c.req.query("setor") })))
   .get("/rebanho/estoque/movimentos", async (c) => {
     const produtoId = c.req.query("produtoId");
     return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo") }));

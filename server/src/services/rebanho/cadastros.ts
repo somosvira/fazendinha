@@ -10,6 +10,9 @@ export class CadastroError extends Error {
 // Limites compatíveis com Produto.custoUnitario / minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 
+// Setor operacional do produto (dimensão separada da categoria contábil).
+export const SETORES_ESTOQUE = ["LEITE", "CAFE", "CORTE", "MILHO", "GERAL"] as const;
+
 export const produtoSchema = z.object({
   nome: z.string().min(1).max(80),
   tipo: z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]),
@@ -20,6 +23,8 @@ export const produtoSchema = z.object({
   estocavel: z.boolean().optional(),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").optional(),
   ativo: z.boolean().optional(),
+  // Setor operacional (atividade). Nullable/opcional — sem setor = GERAL na exibição.
+  setor: z.enum(SETORES_ESTOQUE).nullable().optional(),
   // Mapeamento contábil (ponte com o financeiro). Nullable para permitir desvincular.
   categoriaId: z.number().int().nullable().optional(),
   centroCustoId: z.number().int().nullable().optional(),
@@ -37,6 +42,7 @@ const produtoDTO = (p: any) => ({
   estocavel: p.estocavel,
   minimoEstoque: p.minimoEstoque != null ? Number(p.minimoEstoque) : null,
   ativo: p.ativo,
+  setor: p.setor ?? null,
   categoriaId: p.categoriaId ?? null,
   centroCustoId: p.centroCustoId ?? null,
   categoriaNome: p.categoria?.nome ?? null,

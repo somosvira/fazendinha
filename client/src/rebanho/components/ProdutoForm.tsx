@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { criarProduto, editarProduto, listarCategorias, listarCentrosCusto, type ProdutoDTO, type RefDTO, type TipoProduto } from "../api";
+import { criarProduto, editarProduto, listarCategorias, listarCentrosCusto, SETORES_ESTOQUE, type ProdutoDTO, type RefDTO, type SetorEstoque, type TipoProduto } from "../api";
 
 const TIPOS: { id: TipoProduto; label: string }[] = [
   { id: "MEDICAMENTO", label: "Medicamento" },
@@ -17,6 +17,7 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
     custoUnitario: produto?.custoUnitario != null ? String(produto.custoUnitario) : "",
     estocavel: produto?.estocavel ?? true,
     minimoEstoque: produto?.minimoEstoque != null ? String(produto.minimoEstoque) : "",
+    setor: (produto?.setor ?? "") as SetorEstoque | "",
     categoriaId: produto?.categoriaId != null ? String(produto.categoriaId) : "",
     centroCustoId: produto?.centroCustoId != null ? String(produto.centroCustoId) : "",
   });
@@ -41,6 +42,7 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         custoUnitario: f.custoUnitario ? Number(f.custoUnitario) : undefined,
         estocavel: f.estocavel,
         minimoEstoque: f.minimoEstoque ? Number(f.minimoEstoque) : undefined,
+        setor: f.setor ? (f.setor as SetorEstoque) : null,
         categoriaId: f.categoriaId ? Number(f.categoriaId) : null,
         centroCustoId: f.centroCustoId ? Number(f.centroCustoId) : null,
       };
@@ -57,6 +59,13 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></label>
         <label className="rb-fld">Tipo<select value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
         <label className="rb-fld">Unidade<input value={f.unidade} onChange={(e) => set("unidade", e.target.value)} placeholder="un, kg, dose…" /></label>
+        <label className="rb-fld">Setor
+          <select value={f.setor} onChange={(e) => set("setor", e.target.value)}>
+            <option value="">— (Geral)</option>
+            {SETORES_ESTOQUE.filter((s) => s.id !== "GERAL").map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            <option value="GERAL">Geral (explícito)</option>
+          </select>
+        </label>
         <label className="rb-fld">Custo unitário (R$)<input type="number" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} /></label>
         <label className="rb-fld">Categoria contábil
           <select value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
