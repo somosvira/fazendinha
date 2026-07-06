@@ -11,6 +11,7 @@ import {
   criarLancamentoDireto,
 } from "../services/notaFiscal/confirmarPendente.js";
 import { montarDadosLancamento } from "../services/lancamentos/montar.js";
+import { listarLancamentos } from "../services/lancamentos-list.js";
 
 const schema = z.object({
   // Opcional: presente → cria o Lancamento amarrando a NF pendente; ausente →
@@ -35,6 +36,24 @@ const schema = z.object({
   descricao: z.string().trim().max(1000).nullable().optional(),
   numeroDocumento: z.string().trim().max(50).nullable().optional(),
 });
+
+// GET /lancamentos — listagem geral paginada (leitura). Query validada.
+const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const listQuerySchema = z.object({
+  from: z.string().regex(DIA_RE, "from inválido (use YYYY-MM-DD)").optional(),
+  to: z.string().regex(DIA_RE, "to inválido (use YYYY-MM-DD)").optional(),
+  natureza: z.enum(["DEBITO", "CREDITO"]).optional(),
+  situacao: z.enum(["ABERTO", "LIQUIDADO", "LIQUIDADO_PARCIAL"]).optional(),
+  categoriaId: z.coerce.number().int().positive().optional(),
+  q: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+// "2026-05-31" -> Date(UTC meia-noite). Datas @db.Date são meia-noite UTC, então
+// `to` inclusivo funciona com lte (mesma convenção do drill do dashboard).
+const parseDiaUTC = (s?: string): Date | undefined =>
+  s ? new Date(`${s}T00:00:00.000Z`) : undefined;
 
 // "38.450,00" / "230,00" / "230" -> "38450.00"
 function parseValorBR(raw: string): string | null {
@@ -137,4 +156,17 @@ export const lancamentosRouter = new Hono().post(
     }
     return c.json({ erro: r.mensagem, codigo: r.codigo }, 500);
   },
-);
+).get("/lancamentos", zValidator("query", listQuerySchema), async (c) => {
+  const q = c.req.valid("query");
+  const lista = await listarLancamentos({
+    from: parseDiaUTC(q.from),
+    to: parseDiaUTC(q.to),
+    natureza: q.natureza,
+    situacao: q.situacao,
+    categoriaId: q.categoriaId,
+    q: q.q,
+    limit: q.limit,
+    offset: q.offset,
+  });
+  return c.json(lista);
+});

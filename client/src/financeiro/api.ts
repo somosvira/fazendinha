@@ -291,3 +291,75 @@ export async function criarLancamento(input: NovoLancamentoInput): Promise<Resul
     return { ok: false, status: 0, erro: e instanceof Error ? e.message : "Falha de rede" };
   }
 }
+
+// ─── Listagem de lançamentos (GET /api/lancamentos) ──────────────────────
+// Espelha server/src/services/lancamentos-list.ts — não inventar campos.
+// Data de caixa = dataLiquidacao ?? dataCompetencia (regime de caixa).
+
+export type NaturezaLancamento = "DEBITO" | "CREDITO";
+export type SituacaoLancamento = "ABERTO" | "LIQUIDADO" | "LIQUIDADO_PARCIAL";
+
+export interface LancamentoLinhaDTO {
+  id: number;
+  data: string; // YYYY-MM-DD (data de caixa)
+  dataVencimento: string; // YYYY-MM-DD
+  natureza: NaturezaLancamento;
+  valor: number; // sempre positivo — sinal vem da natureza
+  situacao: SituacaoLancamento;
+  categoriaNome: string;
+  grupoNome?: string;
+  fornecedorNome: string | null;
+  descricao: string | null;
+  temNota: boolean;
+}
+
+export interface ListaLancamentos {
+  itens: LancamentoLinhaDTO[];
+  total: number;
+  temMais: boolean;
+}
+
+export interface FiltrosLancamentos {
+  from?: string; // YYYY-MM-DD (data de caixa)
+  to?: string; // YYYY-MM-DD
+  natureza?: NaturezaLancamento;
+  situacao?: SituacaoLancamento;
+  categoriaId?: number;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listarLancamentos(f: FiltrosLancamentos = {}): Promise<ListaLancamentos> {
+  const p = new URLSearchParams();
+  if (f.from) p.set("from", f.from);
+  if (f.to) p.set("to", f.to);
+  if (f.natureza) p.set("natureza", f.natureza);
+  if (f.situacao) p.set("situacao", f.situacao);
+  if (f.categoriaId != null) p.set("categoriaId", String(f.categoriaId));
+  if (f.q && f.q.trim()) p.set("q", f.q.trim());
+  if (f.limit != null) p.set("limit", String(f.limit));
+  if (f.offset != null) p.set("offset", String(f.offset));
+  const qs = p.toString();
+  return req<ListaLancamentos>(`/lancamentos${qs ? `?${qs}` : ""}`);
+}
+
+export function useLancamentos(f: FiltrosLancamentos) {
+  const [data, setData] = useState<ListaLancamentos | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  // Desestrutura para dependências estáveis (evita refetch por identidade do objeto).
+  const { from, to, natureza, situacao, categoriaId, q, limit, offset } = f;
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    setErro(null);
+    listarLancamentos({ from, to, natureza, situacao, categoriaId, q, limit, offset })
+      .then(setData)
+      .catch((e: unknown) => setErro(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }, [from, to, natureza, situacao, categoriaId, q, limit, offset]);
+  useEffect(() => {
+    recarregar();
+  }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
