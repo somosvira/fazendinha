@@ -42,12 +42,18 @@ export function mapearAnimal(row: {
   nome: string | null;
   categoria: string;
   raca?: { nome: string } | null;
+  brincoEletronico?: string | null;
 }): ResultadoBusca {
   return {
     tipo: "animal",
     entidadeId: String(row.id),
     label: row.numero + (row.nome ? " · " + row.nome : ""),
-    sublabel: row.categoria + (row.raca?.nome ? " · " + row.raca.nome : ""),
+    // Mostra o brinco eletrônico no sublabel quando houver — confirma pro
+    // usuário que o número lido pelo bastão casou com este animal.
+    sublabel:
+      row.categoria +
+      (row.raca?.nome ? " · " + row.raca.nome : "") +
+      (row.brincoEletronico ? " · brinco " + row.brincoEletronico : ""),
     tab: "reb-animal",
     grupo: "Animais",
   };
@@ -129,6 +135,10 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
         OR: [
           { numero: { contains: termo, mode: "insensitive" } },
           { nome: { contains: termo, mode: "insensitive" } },
+          // Brinco eletrônico (RFID): o bastão de leitura atua como teclado e
+          // digita o número da etiqueta no campo de busca — casar aqui é a
+          // Fase 1 do A6 (sem hardware dedicado).
+          { brincoEletronico: { contains: termo, mode: "insensitive" } },
         ],
       },
       include: { raca: { select: { nome: true } } },
