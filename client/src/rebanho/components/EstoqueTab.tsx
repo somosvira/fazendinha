@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, type MovimentoDTO, type ProdutoDTO } from "../api";
+import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
+// Cor do setor via variáveis CSS já existentes (não hardcodar hex): Leite/Café têm var própria;
+// Corte/Milho reusam --outros (demais atividades); Geral fica neutro.
+const setorCor = (s: string) => (s === "LEITE" ? "var(--leite)" : s === "CAFE" ? "var(--cafe)" : s === "GERAL" ? "var(--ink-mute)" : "var(--outros)");
+function SetorChip({ setor }: { setor: string }) {
+  return (
+    <span className="rb-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: setorCor(setor), flex: "0 0 auto" }} />
+      {setorLabel(setor)}
+    </span>
+  );
+}
 
 function useMovimentos() {
   const [data, setData] = useState<MovimentoDTO[]>([]);
@@ -21,7 +32,9 @@ type SortDir = "asc" | "desc";
 
 export function EstoqueTab() {
   const custo = useCustoVacaDia();
-  const saldos = useSaldos();
+  const [setorFiltro, setSetorFiltro] = useState("");
+  const [agrupar, setAgrupar] = useState(false);
+  const saldos = useSaldos(setorFiltro ? { setor: setorFiltro } : undefined);
   const movimentos = useMovimentos();
   const [form, setForm] = useState(false);
   const [busca, setBusca] = useState("");
@@ -63,12 +76,40 @@ export function EstoqueTab() {
 
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
 
+  // Agrupamento por setor operacional (Leite/Café/Corte/Milho/Geral) para a visão "Agrupar".
+  const gruposPorSetor = useMemo(() => {
+    const map = new Map<string, { linhas: SaldoDTO[]; valorTotal: number }>();
+    for (const s of saldosVisiveis) {
+      const g = map.get(s.setor) ?? { linhas: [], valorTotal: 0 };
+      g.linhas.push(s);
+      g.valorTotal += s.valor;
+      map.set(s.setor, g);
+    }
+    return [...map.entries()]
+      .map(([setor, g]) => ({ setor, ...g }))
+      .sort((a, b) => setorLabel(a.setor).localeCompare(setorLabel(b.setor), "pt-BR"));
+  }, [saldosVisiveis]);
+
   function abrirEdicao(produtoId: number) {
     const p = produtos.find((x) => x.id === produtoId);
     if (p) setEditando(p);
   }
 
   const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); carregarProdutos(); };
+
+  const renderRow = (s: SaldoDTO) => (
+    <tr key={s.produtoId}>
+      <td className="rb-anm">{s.nome} {s.abaixoMinimo && <span className="rb-pill bad">⚠ abaixo do mínimo</span>}</td>
+      <td>{s.tipo}</td>
+      <td><SetorChip setor={s.setor} /></td>
+      <td>{qtd(s.saldo)} {s.unidade}</td>
+      <td>{money(s.valor)}</td>
+      <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
+      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+        <button className="rb-btn" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</button>
+      </td>
+    </tr>
+  );
 
   // exclusão real acontece dentro do modal de confirmação
 
@@ -101,7 +142,7 @@ export function EstoqueTab() {
         <h2 className="rb-sec-title" style={{ margin: 0 }}>Saldos de estoque</h2>
         <span className="hint">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
       </div>
-      {saldos.data.length > 0 && (
+      {(saldos.data.length > 0 || setorFiltro) && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
           <input
             type="search"
@@ -111,6 +152,24 @@ export function EstoqueTab() {
             onChange={(e) => setBusca(e.target.value)}
             style={{ flex: "1 1 240px", maxWidth: 360 }}
           />
+          <select
+            className="rb-fld"
+            value={setorFiltro}
+            onChange={(e) => setSetorFiltro(e.target.value)}
+            style={{ flex: "0 1 180px" }}
+            aria-label="Filtrar por setor"
+          >
+            <option value="">Todos os setores</option>
+            {SETORES_ESTOQUE.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+          <button
+            type="button"
+            className={"rb-chip-q" + (agrupar ? " on" : "")}
+            onClick={() => setAgrupar((v) => !v)}
+            style={agrupar ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}
+          >
+            Agrupar por setor
+          </button>
           {nAbaixoMin > 0 && (
             <button
               type="button"
@@ -132,23 +191,28 @@ export function EstoqueTab() {
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
               <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
+              <th>Setor</th>
               <th>Saldo</th>
               <th><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
               <th>Mínimo</th>
               <th></th>
             </tr></thead>
-            <tbody>{saldosVisiveis.map((s) => (
-              <tr key={s.produtoId}>
-                <td className="rb-anm">{s.nome} {s.abaixoMinimo && <span className="rb-pill bad">⚠ abaixo do mínimo</span>}</td>
-                <td>{s.tipo}</td>
-                <td>{qtd(s.saldo)} {s.unidade}</td>
-                <td>{money(s.valor)}</td>
-                <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
-                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                  <button className="rb-btn" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</button>
-                </td>
-              </tr>
-            ))}</tbody>
+            {agrupar
+              ? gruposPorSetor.map((g) => (
+                  <tbody key={g.setor}>
+                    <tr className="rb-tbl-group">
+                      <td colSpan={7} style={{ background: "var(--surface-2, #f4f1ea)", fontWeight: 600 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: setorCor(g.setor), flex: "0 0 auto" }} />
+                          {setorLabel(g.setor)}
+                          <span className="hint" style={{ fontWeight: 400 }}>· {g.linhas.length} {g.linhas.length === 1 ? "produto" : "produtos"} · {money(g.valorTotal)}</span>
+                        </span>
+                      </td>
+                    </tr>
+                    {g.linhas.map(renderRow)}
+                  </tbody>
+                ))
+              : <tbody>{saldosVisiveis.map(renderRow)}</tbody>}
           </table></div>
         )}
 

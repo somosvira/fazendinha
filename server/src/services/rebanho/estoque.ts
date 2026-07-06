@@ -39,13 +39,16 @@ export const movimentoSchema = z
   });
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
-export async function listarSaldos() {
+// Setor é opcional no produto; sem setor o item conta como GERAL (insumo compartilhado).
+const setorOuGeral = (s: string | null | undefined): string => s ?? "GERAL";
+
+export async function listarSaldos(f?: { setor?: string }) {
   const produtos = await prisma.produto.findMany({
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
     include: { movimentos: true },
   });
-  return produtos.map((p) => {
+  const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
       tipo: m.tipo,
       quantidade: Number(m.quantidade),
@@ -59,12 +62,15 @@ export async function listarSaldos() {
       nome: p.nome,
       tipo: p.tipo,
       unidade: p.unidade,
+      setor: setorOuGeral(p.setor), // null normalizado para GERAL na borda
       saldo,
       valor,
       minimoEstoque: minimo,
       abaixoMinimo: minimo != null && saldo < minimo,
     };
   });
+  // Filtro por setor: GERAL casa tanto produtos GERAL quanto os sem setor (null → GERAL acima).
+  return f?.setor ? linhas.filter((l) => l.setor === f.setor) : linhas;
 }
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string }) {
@@ -81,6 +87,7 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string }
     id: m.id,
     produtoId: m.produtoId,
     produto: m.produto.nome,
+    setor: setorOuGeral(m.produto.setor), // setor operacional herdado do produto
     tipo: m.tipo,
     data: iso(m.data),
     quantidade: Number(m.quantidade),

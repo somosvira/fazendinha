@@ -20,6 +20,22 @@ describe("produtoSchema", () => {
   it("rejeita percentualMS fora de 0..100", () => {
     expect(produtoSchema.safeParse({ nome: "Ração", tipo: "RACAO", percentualMS: 120 }).success).toBe(false);
   });
+  it("aceita setor operacional válido", () => {
+    const r = produtoSchema.safeParse({ nome: "Ração leiteiras", tipo: "RACAO", setor: "LEITE" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.setor).toBe("LEITE");
+  });
+  it("setor é opcional (produto sem setor = GERAL na exibição)", () => {
+    const r = produtoSchema.safeParse({ nome: "Sal comum", tipo: "MINERAL" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.setor).toBeUndefined();
+  });
+  it("aceita setor null (desvincular)", () => {
+    expect(produtoSchema.safeParse({ nome: "Arame", tipo: "OUTRO", setor: null }).success).toBe(true);
+  });
+  it("rejeita setor inválido", () => {
+    expect(produtoSchema.safeParse({ nome: "Adubo", tipo: "INSUMO", setor: "SOJA" }).success).toBe(false);
+  });
 });
 
 describe("fornecedorSchema", () => {
