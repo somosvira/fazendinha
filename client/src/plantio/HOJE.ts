@@ -1,4 +1,5 @@
-// Ancorado em 28/05/2026 (mesma referência do mock do rebanho).
-// Café arábica no Sul de Minas: fim de maio = início de colheita das lavouras
-// mais baixas (≤ 900 m) e final de maturação cereja nas mais altas.
-export const HOJE = "2026-05-28";
+// "Hoje" real (data corrente). Antes ancorado em 2026-05-28 pro mock;
+// agora delega ao lib central para casar com o resto do app.
+import { getHojeISO } from "../lib/hoje";
+
+export const HOJE = getHojeISO();

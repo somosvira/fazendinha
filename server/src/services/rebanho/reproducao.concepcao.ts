@@ -49,6 +49,13 @@ export function calcularTaxaConcepcao(eventos: EvtConcepcao[]): TaxaConcepcaoMet
     (porAnimal.get(k) ?? porAnimal.set(k, []).get(k)!).push(e);
   }
 
+  // Nota semântica (TE): o EventoReprodutivo de TRANSFERENCIA_EMBRIAO é gravado no
+  // animal receptora (é ela que dá o diagnóstico). Portanto "taxa TE = prenhes / TEs"
+  // aqui significa "das N transferências feitas em receptoras, quantas emprenharam",
+  // que é o KPI operacional (calibra sucesso do vet/laboratório). Se o veterinário
+  // pedir o outro corte — taxa por doadora (por qualidade da genética/lote) —
+  // teríamos que agregar via EventoReprodutivo.doadoraId (nullable no schema).
+  // TODO: confirmar com o vet qual dos dois cortes eles usam no dia-a-dia.
   for (const evs of porAnimal.values()) {
     const ordenados = evs.slice().sort((a, b) => Date.parse(a.data) - Date.parse(b.data));
     let pendente: MetodoCobertura | null = null; // cobertura ainda não diagnosticada

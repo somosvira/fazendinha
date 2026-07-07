@@ -28,6 +28,8 @@ import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
+import { Login } from "./components/Login";
+import { getToken, clearToken } from "./lib/auth";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
@@ -97,6 +99,19 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
+  // Auth mínima está ENGATILHADA mas NÃO trava o app:
+  //   - lib/auth.ts e Login.tsx continuam no repo prontos pra ser religados
+  //     quando o piloto for pro dono (basta trocar `false` abaixo por
+  //     `!getToken()` e o gate volta a valer)
+  //   - o middleware do server só bloqueia se SHARED_ACCESS_TOKEN estiver setado
+  //     — em dev/homolog, sem env, a API fica aberta
+  //   - o botão Sair no Header só aparece se houver token gravado, então quem
+  //     testar com token continua conseguindo sair.
+  // Motivo do downgrade: durante a fase interna atual não deve travar a entrada
+  // — o dono ainda não está usando; sempre entra como Marco Antônio.
+  const tokenSalvo = getToken();
+  const onSair = tokenSalvo ? () => { clearToken(); window.location.reload(); } : undefined;
+
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
@@ -251,6 +266,7 @@ export function App() {
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
         onAbrirBusca={() => setBuscaAberta(true)}
+        onSair={onSair}
       />
       <AppSidebar
         current={tab}

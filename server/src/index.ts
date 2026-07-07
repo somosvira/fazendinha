@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
+import { authMiddleware } from "./middleware/auth.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { categoriasRouter } from "./routes/categorias.js";
 import { healthRouter } from "./routes/health.js";
@@ -59,12 +60,19 @@ const app = new Hono();
 app.use("*", logger());
 
 const corsOrigins = env.CORS_ORIGIN?.split(",").map((s) => s.trim()).filter(Boolean);
+if (env.NODE_ENV === "production" && (!corsOrigins || corsOrigins.length === 0)) {
+  console.warn("[cors] CORS_ORIGIN vazio em produção — API está permissiva a qualquer origem. Setar antes do teste com dono.");
+}
+if (env.NODE_ENV === "production" && !env.SHARED_ACCESS_TOKEN) {
+  console.warn("[auth] SHARED_ACCESS_TOKEN vazio em produção — API está aberta a qualquer requisição. Setar antes do teste com dono.");
+}
 app.use(
   "/api/*",
   cors({
     origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
   })
 );
+app.use("/api/*", authMiddleware);
 
 app.route("/api", healthRouter);
 app.route("/api", propriedadeRouter);

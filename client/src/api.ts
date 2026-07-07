@@ -134,7 +134,7 @@ export interface BotReply {
 export async function askBot(pergunta: string, sessao: string): Promise<BotReply> {
   const res = await fetch("/api/bot/ask", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: comPropriedade({ "content-type": "application/json" }),
     body: JSON.stringify({ pergunta, sessao }),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,7 +149,7 @@ export async function askBot(pergunta: string, sessao: string): Promise<BotReply
 export async function reclassificarCategoria(id: number, classificacao: "INVESTIMENTO" | "CUSTEIO"): Promise<void> {
   const res = await fetch(`/api/categorias/${id}/classificacao`, {
     method: "PATCH",
-    headers: { "content-type": "application/json" },
+    headers: comPropriedade({ "content-type": "application/json" }),
     body: JSON.stringify({ classificacao }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -10,6 +10,13 @@ const envSchema = z
     // Vazio = libera tudo (útil em dev). Em prod sempre setar.
     CORS_ORIGIN: z.string().optional(),
 
+    // Auth mínima para a fase de teste com o dono. Se setado, todas as rotas
+    // (exceto /api/health e /api/whatsapp/*) exigem `Authorization: Bearer <token>`.
+    // Se vazio (dev local), o middleware libera acesso. Não é sistema de usuários —
+    // é uma senha compartilhada de porta de entrada. Trocar por auth real (JWT/OAuth)
+    // quando escalar além do piloto. Mínimo 16 chars para evitar brute force trivial.
+    SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
+
     // --- OpenAI (provider único do app) ---
     // Cérebro do bot E da IA do rebanho. Sem a chave: bot desligado e IA do rebanho
     // em "modo demonstração" (regras locais).

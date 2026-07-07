@@ -30,7 +30,7 @@ export function useCadastros() {
   const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => {
     setLoading(true); setErro(null);
-    fetch("/api/cadastros")
+    fetch("/api/cadastros", { headers: comPropriedade() })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: Cadastros) => setData(j))
       .catch((e: unknown) => setErro(e instanceof Error ? e.message : String(e)))
@@ -65,7 +65,7 @@ export async function uploadPendenteNF(file: File): Promise<ResultadoUploadNF> {
   const form = new FormData();
   form.append("arquivo", file);
   try {
-    const res = await fetch("/api/nota-fiscal/upload-pendente", { method: "POST", body: form });
+    const res = await fetch("/api/nota-fiscal/upload-pendente", { method: "POST", headers: comPropriedade(), body: form });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json: any = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -86,7 +86,7 @@ export async function uploadPendenteNF(file: File): Promise<ResultadoUploadNF> {
 /** DELETE /api/nota-fiscal/upload-pendente/:id — best effort, idempotente. */
 export async function cancelarPendenteNF(id: number): Promise<void> {
   try {
-    await fetch(`/api/nota-fiscal/upload-pendente/${id}`, { method: "DELETE" });
+    await fetch(`/api/nota-fiscal/upload-pendente/${id}`, { method: "DELETE", headers: comPropriedade() });
   } catch {
     // best effort — o cleanup hourly do servidor expira pendentes órfãs
   }

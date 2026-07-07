@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "./Shell";
 import { COMANDOS, buscar, type Comando, type GrupoComando, type ResultadoBusca } from "../lib/searchIndex";
+import { comPropriedade } from "../propriedadeScope";
 
 type Props = {
   aberto: boolean;
@@ -94,7 +95,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
     let vivo = true;
     setBuscando(true);
     const id = window.setTimeout(() => {
-      fetch(`/api/busca?q=${encodeURIComponent(q)}`)
+      fetch(`/api/busca?q=${encodeURIComponent(q)}`, { headers: comPropriedade() })
         .then((r) => (r.ok ? r.json() : []))
         .then((data: ResultadoBusca[]) => {
           if (!vivo) return; // resposta obsoleta — a query já mudou
