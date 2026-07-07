@@ -339,8 +339,14 @@ export function useParametros() {
     setLoading(true); setErro(null);
     listarParametros().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, []);
+  // Atualiza uma única chave em memória a partir de uma resposta da API — usado
+  // por restaurar/salvar para refletir a mudança sem refetch (evita flash de loading).
+  const substituirUm = useCallback((dto: ParametroDTO) => {
+    setData((atual) => atual?.map((p) => (p.chave === dto.chave ? dto : p)) ?? [dto]);
+  }, []);
+  const substituir = useCallback((dtos: ParametroDTO[]) => { setData(dtos); }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  return { data, loading, erro, recarregar, substituir, substituirUm };
 }
 
 export interface ControlePayload { data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number }

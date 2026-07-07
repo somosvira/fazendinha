@@ -98,9 +98,9 @@ export function ConfiguracoesView() {
     if (patches.length === 0) return;
     setSalvandoParams(true); setErroSalvar(null); setFeedback(null);
     try {
-      await salvarParametrosApi(patches);
+      const atualizados = await salvarParametrosApi(patches);
+      params.substituir(atualizados);
       setRascunho({});
-      params.recarregar();
       setFeedback(`${patches.length} parâmetro(s) atualizado(s).`);
     } catch (e: any) {
       setErroSalvar(e.message);
@@ -112,9 +112,9 @@ export function ConfiguracoesView() {
   const restaurar = async (chave: string) => {
     setErroSalvar(null); setFeedback(null);
     try {
-      await resetarParametro(chave);
+      const dto = await resetarParametro(chave);
+      params.substituirUm(dto);
       setRascunho((r) => { const c = { ...r }; delete c[chave]; return c; });
-      params.recarregar();
       setFeedback("Parâmetro restaurado para o padrão Embrapa.");
     } catch (e: any) {
       setErroSalvar(e.message);
