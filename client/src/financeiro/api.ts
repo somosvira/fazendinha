@@ -259,9 +259,15 @@ export function useContasAVencer(hoje?: string) {
   const [data, setData] = useState<ContasAVencerDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    obterContasAVencer(hoje).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  // silent=true: revalida sem tocar em `loading`, mantendo a tabela visível
+  // (evita o flash de "Carregando…" após ações otimistas).
+  const recarregar = useCallback((opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    setErro(null);
+    obterContasAVencer(hoje)
+      .then(setData)
+      .catch((e) => setErro(e.message))
+      .finally(() => { if (!opts?.silent) setLoading(false); });
   }, [hoje]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
@@ -324,6 +330,9 @@ export interface ListaLancamentos {
   temMais: boolean;
 }
 
+export type OrdemLancamentos = "data" | "dataVencimento" | "valor" | "categoria" | "fornecedor";
+export type DirecaoOrdem = "asc" | "desc";
+
 export interface FiltrosLancamentos {
   from?: string; // YYYY-MM-DD (data de caixa)
   to?: string; // YYYY-MM-DD
@@ -331,6 +340,10 @@ export interface FiltrosLancamentos {
   situacao?: SituacaoLancamento;
   categoriaId?: number;
   q?: string;
+  vencimentoDe?: string; // YYYY-MM-DD (dataVencimento >= X)
+  vencimentoAte?: string; // YYYY-MM-DD (dataVencimento <= X)
+  orderBy?: OrdemLancamentos;
+  orderDir?: DirecaoOrdem;
   limit?: number;
   offset?: number;
 }
@@ -343,6 +356,10 @@ export function listarLancamentos(f: FiltrosLancamentos = {}): Promise<ListaLanc
   if (f.situacao) p.set("situacao", f.situacao);
   if (f.categoriaId != null) p.set("categoriaId", String(f.categoriaId));
   if (f.q && f.q.trim()) p.set("q", f.q.trim());
+  if (f.vencimentoDe) p.set("vencimentoDe", f.vencimentoDe);
+  if (f.vencimentoAte) p.set("vencimentoAte", f.vencimentoAte);
+  if (f.orderBy) p.set("orderBy", f.orderBy);
+  if (f.orderDir) p.set("orderDir", f.orderDir);
   if (f.limit != null) p.set("limit", String(f.limit));
   if (f.offset != null) p.set("offset", String(f.offset));
   const qs = p.toString();
@@ -354,15 +371,23 @@ export function useLancamentos(f: FiltrosLancamentos) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   // Desestrutura para dependências estáveis (evita refetch por identidade do objeto).
-  const { from, to, natureza, situacao, categoriaId, q, limit, offset } = f;
-  const recarregar = useCallback(() => {
-    setLoading(true);
+  const {
+    from, to, natureza, situacao, categoriaId, q,
+    vencimentoDe, vencimentoAte, orderBy, orderDir, limit, offset,
+  } = f;
+  // silent=true: revalida sem tocar em `loading` (mantém a tabela visível após
+  // ações otimistas, mesmo padrão de useContasAVencer).
+  const recarregar = useCallback((opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setErro(null);
-    listarLancamentos({ from, to, natureza, situacao, categoriaId, q, limit, offset })
+    listarLancamentos({
+      from, to, natureza, situacao, categoriaId, q,
+      vencimentoDe, vencimentoAte, orderBy, orderDir, limit, offset,
+    })
       .then(setData)
       .catch((e: unknown) => setErro(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, [from, to, natureza, situacao, categoriaId, q, limit, offset]);
+      .finally(() => { if (!opts?.silent) setLoading(false); });
+  }, [from, to, natureza, situacao, categoriaId, q, vencimentoDe, vencimentoAte, orderBy, orderDir, limit, offset]);
   useEffect(() => {
     recarregar();
   }, [recarregar]);

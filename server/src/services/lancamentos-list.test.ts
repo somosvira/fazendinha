@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { montarWhereLancamentos, normalizarPaginacao } from "./lancamentos-list.js";
+import { Prisma } from "@prisma/client";
+import { montarWhereLancamentos, normalizarPaginacao, parseValorTermo } from "./lancamentos-list.js";
 
 // Testa o núcleo PURO da listagem: montagem do `where` (data de caixa via OR,
 // busca textual via OR, combinação por AND) e normalização da paginação.
@@ -58,16 +59,33 @@ describe("montarWhereLancamentos", () => {
     ]);
   });
 
-  it("q → AND com OR (descricao contains + fornecedor.nome contains, case-insensitive); trim aplicado", () => {
+  it("q → AND com OR (descricao + fornecedor.nome + categoria.nome contains, case-insensitive); trim aplicado", () => {
     const w = montarWhereLancamentos({ q: "  nutron  " });
     expect(w.AND).toEqual([
       {
         OR: [
           { descricao: { contains: "nutron", mode: "insensitive" } },
           { clienteFornecedor: { nome: { contains: "nutron", mode: "insensitive" } } },
+          { categoria: { nome: { contains: "nutron", mode: "insensitive" } } },
         ],
       },
     ]);
+  });
+
+  it("q numérico → OR ganha cláusula valor exato (Decimal), além do texto", () => {
+    const w = montarWhereLancamentos({ q: "1500,50" });
+    const and = w.AND as Array<Record<string, unknown>>;
+    expect(and).toHaveLength(1);
+    const or = and[0].OR as Array<Record<string, unknown>>;
+    expect(or).toHaveLength(4);
+    // Últimas cláusulas: texto contains em cada campo textual + valor exato.
+    expect(or[3]).toEqual({ valor: new Prisma.Decimal(1500.5) });
+  });
+
+  it("q numérico simples (só dígitos) → valor tratado como inteiro", () => {
+    const w = montarWhereLancamentos({ q: "500" });
+    const or = (w.AND as Array<Record<string, unknown>>)[0].OR as Array<Record<string, unknown>>;
+    expect(or[3]).toEqual({ valor: new Prisma.Decimal(500) });
   });
 
   it("q vazio/só espaços → ignorado (sem AND)", () => {
@@ -95,13 +113,43 @@ describe("montarWhereLancamentos", () => {
     // 1º grupo: data de caixa
     expect(and[0]).toHaveProperty("OR");
     expect((and[0].OR as unknown[])[0]).toEqual({ dataLiquidacao: { not: null, gte: FROM, lte: TO } });
-    // 2º grupo: busca textual
+    // 2º grupo: busca textual (sem valor — "cocamar" não parseia como número)
     expect(and[1]).toEqual({
       OR: [
         { descricao: { contains: "cocamar", mode: "insensitive" } },
         { clienteFornecedor: { nome: { contains: "cocamar", mode: "insensitive" } } },
+        { categoria: { nome: { contains: "cocamar", mode: "insensitive" } } },
       ],
     });
+  });
+});
+
+describe("parseValorTermo", () => {
+  it("dígitos puros → número", () => {
+    expect(parseValorTermo("1500")).toBe(1500);
+    expect(parseValorTermo("  500  ")).toBe(500);
+  });
+  it("BR com vírgula decimal → número correto", () => {
+    expect(parseValorTermo("1500,50")).toBe(1500.5);
+    expect(parseValorTermo("1.500,50")).toBe(1500.5);
+    expect(parseValorTermo("1.234.567,89")).toBe(1234567.89);
+  });
+  it("prefixo R$ e espaços internos são tolerados", () => {
+    expect(parseValorTermo("R$ 1.500,00")).toBe(1500);
+    expect(parseValorTermo("r$1500")).toBe(1500);
+  });
+  it("ponto decimal (estilo EN) sem vírgula", () => {
+    expect(parseValorTermo("1500.50")).toBe(1500.5);
+  });
+  it("termos não-numéricos → null", () => {
+    expect(parseValorTermo("nutron")).toBe(null);
+    expect(parseValorTermo("cocamar 500")).toBe(null); // tem letra
+    expect(parseValorTermo("")).toBe(null);
+    expect(parseValorTermo("   ")).toBe(null);
+  });
+  it("zero e negativos → null (não faz sentido buscar)", () => {
+    expect(parseValorTermo("0")).toBe(null);
+    expect(parseValorTermo("-100")).toBe(null); // hífen falha regex
   });
 });
 
