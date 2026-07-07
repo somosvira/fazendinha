@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { PrismaClient, Natureza, Situacao } from "@prisma/client";
+import { garantirFundacaoPropriedade, propriedadePrincipalId } from "../src/services/propriedade.js";
 
 const prisma = new PrismaClient();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -93,6 +94,11 @@ async function main() {
     `Cadastros: ${centroId.size} centros, ${grupoId.size} grupos, ${categoriaId.size} categorias, ${contaId.size} contas, ${fornecedorId.size} fornecedores`
   );
 
+  // Multi-propriedade: carimba os históricos na principal direto (dispensa o
+  // backfill de boot). Idempotente — cria a Propriedade se não existir.
+  await garantirFundacaoPropriedade();
+  const propriedadeId = await propriedadePrincipalId();
+
   // --- Lançamentos em lote -------------------------------------------------
   console.log("Inserindo lançamentos...");
   const rows = lancs.map((l) => ({
@@ -110,6 +116,7 @@ async function main() {
     centroCustoId: centroId.get(l.centro)!,
     contaBancariaId: l.conta ? contaId.get(l.conta)! : null,
     clienteFornecedorId: l.fornecedor ? fornecedorId.get(l.fornecedor)! : null,
+    propriedadeId,
   }));
 
   const CHUNK = 1000;

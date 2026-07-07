@@ -1,4 +1,5 @@
 import { PrismaClient, Natureza, Situacao } from "@prisma/client";
+import { garantirFundacaoPropriedade, propriedadePrincipalId } from "../src/services/propriedade.js";
 
 const prisma = new PrismaClient();
 
@@ -176,6 +177,10 @@ async function main() {
   const contaPadrao = contas.get("BB MAGC")!;
   let count = 0;
 
+  // Multi-propriedade: carimba os históricos na principal direto.
+  await garantirFundacaoPropriedade();
+  const propriedadeId = await propriedadePrincipalId();
+
   async function inserir(linhas: Linha[], situacao: Situacao) {
     for (const l of linhas) {
       const categoriaId = categorias.get(`${l.grupo}|${l.categoria}`);
@@ -199,6 +204,7 @@ async function main() {
             contaBancariaId: contaPadrao,
             clienteFornecedorId: l.fornecedor ? fornecedores.get(l.fornecedor) ?? null : null,
             descricao: `${l.categoria} - ${ym}`,
+            propriedadeId,
           },
         });
         count++;
