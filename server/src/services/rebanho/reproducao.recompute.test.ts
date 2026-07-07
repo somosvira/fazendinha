@@ -54,4 +54,10 @@ describe("recomputarResumoReproducao", () => {
     expect(r.del).toBeNull();
     expect(r.ordemLactacao).toBeNull();
   });
+  it("override de pevDias: DEL=27 vira VAZIA se PEV for 25", () => {
+    const eventos = [ev("PARTO", "2026-05-20")];
+    const r = recomputarResumoReproducao(eventos, reconstruirLactacoes(eventos, 1), 1, HOJE, { pevDias: 25 });
+    expect(r.statusReprodutivo).toBe("VAZIA");
+    expect(r.del).toBe(27);
+  });
 });

@@ -17,6 +17,10 @@ import type { Prisma } from "@prisma/client";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ChaveParametro =
+  // Reprodução — constantes de manejo
+  | "PEV_DIAS"
+  | "GESTACAO_DIAS"
+  | "SECAGEM_ANTEC"
   // Manejo específico da fazenda
   | "DESMAME_MODO"
   | "DESMAME_DIAS"
@@ -90,6 +94,10 @@ const D = (
 });
 
 export const PARAMETRO_DEFAULTS: Record<ChaveParametro, Default> = {
+  PEV_DIAS:          D("REPRODUCAO", "Período de espera voluntária (PEV) pós-parto", "dias",  60, 40),
+  GESTACAO_DIAS:     D("REPRODUCAO", "Duração da gestação",                          "dias", 283, 41),
+  SECAGEM_ANTEC:     D("REPRODUCAO", "Antecedência da secagem antes do parto",       "dias",  60, 42),
+
   DESMAME_MODO:      D("MANEJO",    "Como decidir a hora do desmame",       null,    null, 1, { modo: "DIAS" }),
   DESMAME_DIAS:      D("MANEJO",    "Idade de desmame (por dias)",          "dias",   120, 2),
   DESMAME_PESO_KG:   D("MANEJO",    "Peso de desmame (por peso)",           "kg",     180, 3),
