@@ -10,7 +10,15 @@ export interface ResumoRepro {
   diasGestacao: number | null; iepProjetado: number | null; previsaoSecagem: string | null;
 }
 
-const PEV_DIAS = 60, GESTACAO_DIAS = 283, SECAGEM_ANTEC = 60, MS = 86_400_000;
+export interface ParamsReproducao {
+  pevDias?: number;
+  gestacaoDias?: number;
+  secagemAntec?: number;
+}
+
+const DEFAULT_PARAMS = { pevDias: 60, gestacaoDias: 283, secagemAntec: 60 } as const;
+
+const MS = 86_400_000;
 const diff = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / MS);
 const addDias = (iso: string, n: number) => new Date(Date.parse(iso) + n * MS).toISOString().slice(0, 10);
 
@@ -24,7 +32,10 @@ export function reconstruirLactacoes(eventos: EvtRepro[], numPartosEntrada: numb
   return lacts;
 }
 
-export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[], numPartosEntrada: number, hoje: string): ResumoRepro {
+export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[], numPartosEntrada: number, hoje: string, params: ParamsReproducao = {}): ResumoRepro {
+  const PEV_DIAS      = params.pevDias      ?? DEFAULT_PARAMS.pevDias;
+  const GESTACAO_DIAS = params.gestacaoDias ?? DEFAULT_PARAMS.gestacaoDias;
+  const SECAGEM_ANTEC = params.secagemAntec ?? DEFAULT_PARAMS.secagemAntec;
   const evs = eventos.slice().sort((a, b) => Date.parse(a.data) - Date.parse(b.data));
   const ultimo = (t: TipoEvt) => [...evs].reverse().find((e) => e.tipo === t) ?? null;
   const partos = evs.filter((e) => e.tipo === "PARTO");

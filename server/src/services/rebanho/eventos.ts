@@ -3,6 +3,7 @@ import { toTimeline, type EventoTimelineDTO } from "./eventos.mappers.js";
 import type { CriarEventoInput } from "./eventos.schemas.js";
 import { reconstruirLactacoes, recomputarResumoReproducao, type EvtRepro } from "./reproducao.recompute.js";
 import { calcularTaxaConcepcao, type TaxaConcepcaoMetodo } from "./reproducao.concepcao.js";
+import { getNumero } from "./parametros.js";
 
 export class EventoError extends Error {
   constructor(public code: "NAO_ENCONTRADO", message: string) { super(message); }
@@ -18,7 +19,16 @@ export async function recomputarAnimal(animalId: number): Promise<void> {
   // rebuild Lactacao rows
   await prisma.lactacao.deleteMany({ where: { animalId } });
   if (lacts.length) await prisma.lactacao.createMany({ data: lacts.map((l) => ({ animalId, numero: l.numero, dtInicio: new Date(l.dtInicio), dtFim: l.dtFim ? new Date(l.dtFim) : null })) });
-  const r = recomputarResumoReproducao(evs, lacts, animal.numPartosEntrada, new Date().toISOString().slice(0, 10));
+  const [pevDias, gestacaoDias, secagemAntec] = await Promise.all([
+    getNumero("PEV_DIAS"),
+    getNumero("GESTACAO_DIAS"),
+    getNumero("SECAGEM_ANTEC"),
+  ]);
+  const r = recomputarResumoReproducao(evs, lacts, animal.numPartosEntrada, new Date().toISOString().slice(0, 10), {
+    pevDias:      pevDias      ?? undefined,
+    gestacaoDias: gestacaoDias ?? undefined,
+    secagemAntec: secagemAntec ?? undefined,
+  });
   await prisma.resumoAnimal.upsert({
     where: { animalId },
     create: { animalId, statusReprodutivo: r.statusReprodutivo, del: r.del, ordemLactacao: r.ordemLactacao, ultimoDgData: d(r.ultimoDgData ?? undefined), ultimoDgResultado: r.ultimoDgResultado, diasGestacao: r.diasGestacao, iepProjetado: r.iepProjetado, previsaoSecagem: d(r.previsaoSecagem ?? undefined) },
