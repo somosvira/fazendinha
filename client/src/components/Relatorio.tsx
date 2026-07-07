@@ -333,6 +333,10 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         })
         .from(printRef.current)
         .save();
+    } catch (e) {
+      console.error("[exportarPDF] falhou:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Falha ao gerar PDF: ${msg}\n\nAbra o console (F12) para o stack completo.`);
     } finally {
       setExportando(false);
     }

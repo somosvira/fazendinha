@@ -318,17 +318,17 @@
 }
 
 .atencao-head .sev-chip.sev-alta {
-  background: color-mix(in srgb, var(--prejuizo) 14%, transparent);
+  background: rgba(198, 40, 40, 0.14);
   color: var(--prejuizo);
 }
 
 .atencao-head .sev-chip.sev-media {
-  background: color-mix(in srgb, var(--leite) 22%, transparent);
+  background: rgba(184, 154, 92, 0.22);
   color: var(--cafe);
 }
 
 .atencao-head .sev-chip.sev-baixa {
-  background: color-mix(in srgb, var(--outros) 20%, transparent);
+  background: rgba(107, 122, 92, 0.20);
   color: var(--ink-2);
 }
 
