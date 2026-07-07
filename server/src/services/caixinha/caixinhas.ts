@@ -48,8 +48,11 @@ function toMovimentoCaixinhaDTO(m: any) {
 }
 
 // ── Caixinhas ────────────────────────────────────────────────────────────
-export async function listarCaixinhas() {
-  const rows = await prisma.caixinha.findMany({ orderBy: { nome: "asc" } });
+export async function listarCaixinhas(propriedadeId?: number | null) {
+  const rows = await prisma.caixinha.findMany({
+    where: propriedadeId != null ? { propriedadeId } : undefined, // escopo do sítio
+    orderBy: { nome: "asc" },
+  });
   return rows.map(toCaixinhaDTO);
 }
 
@@ -59,9 +62,9 @@ async function assertExiste(id: number) {
   return existing;
 }
 
-export async function criarCaixinha(input: CriarCaixinhaInput) {
+export async function criarCaixinha(input: CriarCaixinhaInput, propriedadeId?: number | null) {
   const row = await prisma.caixinha.create({
-    data: { nome: input.nome, responsavel: input.responsavel ?? undefined },
+    data: { nome: input.nome, responsavel: input.responsavel ?? undefined, propriedadeId: propriedadeId ?? null },
   });
   return toCaixinhaDTO(row);
 }

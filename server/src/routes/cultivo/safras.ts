@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { criarSafraCultivoSchema, editarSafraCultivoSchema, listSafraCultivoFiltrosSchema } from "../../services/cultivo/schemas.js";
 import * as svc from "../../services/cultivo/safras.js";
 import { toResumoSafraCultivoDTO } from "../../services/cultivo/mappers.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.SafraCultivoError) {
@@ -21,7 +22,7 @@ const parseId = (raw: string): number | null => {
 
 // Rotas de SafraCultivo (módulo Cultivo — milho) — espelham /api/plantio/talhoes.
 export const cultivoSafrasRouter = new Hono()
-  .get("/cultivo/safras", zValidator("query", listSafraCultivoFiltrosSchema), async (c) => c.json(await svc.listarSafrasCultivo(c.req.valid("query"))))
+  .get("/cultivo/safras", zValidator("query", listSafraCultivoFiltrosSchema), async (c) => c.json(await svc.listarSafrasCultivo(c.req.valid("query"), await resolverEscopoLeitura(c))))
   .get("/cultivo/safras/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
@@ -29,7 +30,7 @@ export const cultivoSafrasRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "safra de cultivo não encontrada" }, 404);
   })
   .post("/cultivo/safras", zValidator("json", criarSafraCultivoSchema), async (c) => {
-    try { return c.json(await svc.criarSafraCultivo(c.req.valid("json")), 201); }
+    try { return c.json(await svc.criarSafraCultivo(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/cultivo/safras/:id", zValidator("json", editarSafraCultivoSchema), async (c) => {

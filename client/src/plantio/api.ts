@@ -15,9 +15,11 @@ import { HOJE } from "./HOJE";
 import { comPropriedade } from "../propriedadeScope";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
-  if (init?.body) headers["content-type"] = "application/json";
-  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
+  const headers = comPropriedade({
+    ...((init?.headers as Record<string, string>) || {}),
+    ...(init?.body ? { "content-type": "application/json" } : {}),
+  });
+  const res = await fetch(`/api${path}`, { ...init, headers });
   if (!res.ok) {
     const b: any = await res.json().catch(() => null);
     let msg = `HTTP ${res.status}`;

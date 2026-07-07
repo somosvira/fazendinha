@@ -13,11 +13,12 @@ const include = { resumo: true } as const;
 const d = (s?: string) => (s ? new Date(s) : undefined);
 const dn = (s?: string | null) => (s ? new Date(s) : s === null ? null : undefined);
 
-export async function listarSafrasCultivo(f: ListSafraCultivoFiltros) {
+export async function listarSafrasCultivo(f: ListSafraCultivoFiltros, propriedadeId?: number | null) {
   const where: any = {};
   if (f.cultura) where.cultura = f.cultura;
   if (f.fechada !== undefined) where.fechada = f.fechada;
   if (f.ano !== undefined) where.ano = f.ano;
+  if (propriedadeId != null) where.propriedadeId = propriedadeId; // escopo do sítio
   const rows = await prisma.safraCultivo.findMany({ where, include, orderBy: [{ ano: "desc" }, { nome: "asc" }] });
   return rows.map(toSafraCultivoDTO);
 }
@@ -27,9 +28,10 @@ export async function obterSafraCultivo(id: number) {
   return row ? toSafraCultivoDTO(row) : null;
 }
 
-export async function criarSafraCultivo(input: CriarSafraCultivoInput) {
+export async function criarSafraCultivo(input: CriarSafraCultivoInput, propriedadeId?: number | null) {
   const row = await prisma.safraCultivo.create({
     data: {
+      propriedadeId: propriedadeId ?? null, // sítio ativo (multi-propriedade)
       cultura: input.cultura,
       nome: input.nome,
       ano: input.ano,

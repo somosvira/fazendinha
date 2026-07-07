@@ -25,9 +25,9 @@ const HOJE = "2026-05-28";
 const isoOrNull = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const numOrNull = (v: any) => (v == null ? null : Number(v));
 
-async function carregarTalhoes(): Promise<TalhaoCtx[]> {
+async function carregarTalhoes(propriedadeId?: number | null): Promise<TalhaoCtx[]> {
   const rows = await prisma.talhao.findMany({
-    where: { estado: "ATIVO" },
+    where: { estado: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) }, // escopo do sítio
     include: { variedade: true, resumo: true },
     orderBy: { codigo: "asc" },
   });
@@ -51,30 +51,33 @@ async function carregarTalhoes(): Promise<TalhaoCtx[]> {
   }));
 }
 
-async function carregarColheita(): Promise<ColheitaCtx> {
+async function carregarColheita(propriedadeId?: number | null): Promise<ColheitaCtx> {
   const ano = Number(HOJE.slice(0, 4));
   const passadas = await prisma.passadaColheita.findMany({
-    where: { data: { gte: new Date(Date.UTC(ano, 0, 1)), lt: new Date(Date.UTC(ano + 1, 0, 1)) } },
+    where: {
+      data: { gte: new Date(Date.UTC(ano, 0, 1)), lt: new Date(Date.UTC(ano + 1, 0, 1)) },
+      ...(propriedadeId != null ? { talhao: { propriedadeId } } : {}), // escopo do sítio (via talhão)
+    },
     select: { sacasBeneficiadas: true },
   });
   const sacas = passadas.reduce((s, p) => s + (p.sacasBeneficiadas != null ? Number(p.sacasBeneficiadas) : 0), 0);
   return { passadas: passadas.length, sacasBeneficiadas: Math.round(sacas * 100) / 100 };
 }
 
-async function carregarEstoqueBaixo(): Promise<EstoqueBaixoCtx[]> {
-  const saldos = await listarEstoquePlantio();
+async function carregarEstoqueBaixo(propriedadeId?: number | null): Promise<EstoqueBaixoCtx[]> {
+  const saldos = await listarEstoquePlantio(propriedadeId);
   return saldos
     .filter((s) => s.abaixoMinimo)
     .map((s) => ({ nome: s.nome, saldo: s.saldo, unidade: s.unidade, minimoEstoque: s.minimoEstoque }));
 }
 
 // Monta o contexto real da lavoura (mesma fonte do chat) — reusado pelos insights.
-async function montarContextoReal(): Promise<ContextoPlantio> {
+async function montarContextoReal(propriedadeId?: number | null): Promise<ContextoPlantio> {
   const [talhoes, custoRaw, colheita, estoqueBaixo] = await Promise.all([
-    carregarTalhoes(),
-    agregarCustoPlantio(12),
-    carregarColheita(),
-    carregarEstoqueBaixo(),
+    carregarTalhoes(propriedadeId),
+    agregarCustoPlantio(12), // custo financeiro fica farm-wide (mesmo precedente do rebanho/custo-producao)
+    carregarColheita(propriedadeId),
+    carregarEstoqueBaixo(propriedadeId),
   ]);
 
   const custo: CustoCtx = {
@@ -91,12 +94,12 @@ async function montarContextoReal(): Promise<ContextoPlantio> {
 }
 
 // Cards proativos ("insights da semana") da lavoura, a partir do contexto real.
-export async function listarInsightsPlantio(): Promise<IaInsightDTO[]> {
-  return gerarInsightsPlantio(await montarContextoReal());
+export async function listarInsightsPlantio(propriedadeId?: number | null): Promise<IaInsightDTO[]> {
+  return gerarInsightsPlantio(await montarContextoReal(propriedadeId));
 }
 
-export async function responderIA(pergunta: string): Promise<RespostaIA> {
-  const ctx = await montarContextoReal();
+export async function responderIA(pergunta: string, propriedadeId?: number | null): Promise<RespostaIA> {
+  const ctx = await montarContextoReal(propriedadeId);
 
   if (env.OPENAI_API_KEY) {
     try {

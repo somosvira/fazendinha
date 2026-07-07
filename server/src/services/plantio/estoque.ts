@@ -18,11 +18,13 @@ export interface SaldoPlantio {
 // Insumos da lavoura = Produto com subtipoPlantio preenchido (null no rebanho).
 // O saldo vem dos MovimentoEstoque (Σ ENTRADA − Σ SAIDA ± AJUSTE), e o valor é
 // o saldo × custoUnitário do produto — fotografia do que está em galpão hoje.
-export async function listarEstoquePlantio(): Promise<SaldoPlantio[]> {
+export async function listarEstoquePlantio(propriedadeId?: number | null): Promise<SaldoPlantio[]> {
   const produtos = await prisma.produto.findMany({
     where: { subtipoPlantio: { not: null }, ativo: true },
     orderBy: { nome: "asc" },
-    include: { movimentos: true },
+    // Escopo do sítio: só os movimentos do sítio contam pro saldo (mirror do
+    // rebanho/estoque.listarSaldos). Produto em si é cadastro compartilhado.
+    include: { movimentos: propriedadeId != null ? { where: { propriedadeId } } : true },
   });
 
   return produtos.map((p) => {

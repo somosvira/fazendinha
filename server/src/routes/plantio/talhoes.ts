@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { criarTalhaoSchema, editarTalhaoSchema, baixaSchema, listFiltrosSchema } from "../../services/plantio/schemas.js";
 import * as svc from "../../services/plantio/talhoes.js";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
   if (err instanceof svc.TalhaoError) {
@@ -20,7 +21,7 @@ const parseId = (raw: string): number | null => {
 
 /* Rotas de Talhão — espelham /api/rebanho/animais. Persistência via Prisma. */
 export const plantioTalhoesRouter = new Hono()
-  .get("/plantio/talhoes", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarTalhoes(c.req.valid("query"))))
+  .get("/plantio/talhoes", zValidator("query", listFiltrosSchema), async (c) => c.json(await svc.listarTalhoes(c.req.valid("query"), await resolverEscopoLeitura(c))))
   .get("/plantio/talhoes/:id", async (c) => {
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
@@ -28,7 +29,7 @@ export const plantioTalhoesRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "talhão não encontrado" }, 404);
   })
   .post("/plantio/talhoes", zValidator("json", criarTalhaoSchema), async (c) => {
-    try { return c.json(await svc.criarTalhao(c.req.valid("json")), 201); }
+    try { return c.json(await svc.criarTalhao(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/plantio/talhoes/:id", zValidator("json", editarTalhaoSchema), async (c) => {

@@ -47,10 +47,10 @@ export function agregarTotais(linhas: FolhaLinhaDTO[]): FolhaTotais {
   };
 }
 
-export async function apurarFolha(mes: string): Promise<FolhaDTO> {
+export async function apurarFolha(mes: string, propriedadeId?: number | null): Promise<FolhaDTO> {
   const { inicio, fim } = janelaMes(mes);
   const funcionarios = await prisma.funcionario.findMany({
-    where: { ativo: true },
+    where: { ativo: true, ...(propriedadeId != null ? { propriedadeId } : {}) }, // escopo do sítio
     orderBy: { nome: "asc" },
     include: { registros: { where: { data: { gte: inicio, lt: fim } } } },
   });
