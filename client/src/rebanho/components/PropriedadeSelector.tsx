@@ -11,7 +11,7 @@ export function PropriedadeSelector({ value, onChange }: { value: number | null;
   if (loading) return null;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
+    <div className="propriedade-selector" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
       {ativos.length >= 2 ? (
         <>
           <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Sítio:</span>
