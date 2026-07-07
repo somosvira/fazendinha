@@ -47,6 +47,10 @@ const listQuerySchema = z.object({
   situacao: z.enum(["ABERTO", "LIQUIDADO", "LIQUIDADO_PARCIAL"]).optional(),
   categoriaId: z.coerce.number().int().positive().optional(),
   q: z.string().trim().min(1).optional(),
+  vencimentoDe: z.string().regex(DIA_RE, "vencimentoDe inválido (use YYYY-MM-DD)").optional(),
+  vencimentoAte: z.string().regex(DIA_RE, "vencimentoAte inválido (use YYYY-MM-DD)").optional(),
+  orderBy: z.enum(["data", "dataVencimento", "valor", "categoria", "fornecedor"]).optional(),
+  orderDir: z.enum(["asc", "desc"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -168,6 +172,10 @@ export const lancamentosRouter = new Hono().post(
     situacao: q.situacao,
     categoriaId: q.categoriaId,
     q: q.q,
+    vencimentoDe: parseDiaUTC(q.vencimentoDe),
+    vencimentoAte: parseDiaUTC(q.vencimentoAte),
+    orderBy: q.orderBy,
+    orderDir: q.orderDir,
     limit: q.limit,
     offset: q.offset,
     // Escopo do sítio: explícito → aquele; 1 sítio → principal; N sítios → null (consolidado).

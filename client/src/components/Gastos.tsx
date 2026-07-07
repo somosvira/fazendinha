@@ -219,7 +219,7 @@ function LancamentosReais({ range, search }: { range: DateRange; search: string 
         <div className="title">Não foi possível carregar os lançamentos</div>
         <div className="detail">{erro}</div>
         <div className="actions">
-          <button className="btn-ghost" onClick={recarregar}>Tentar de novo</button>
+          <button className="btn-ghost" onClick={() => recarregar()}>Tentar de novo</button>
         </div>
       </div>
     );

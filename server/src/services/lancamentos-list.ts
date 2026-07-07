@@ -23,6 +23,9 @@ import { prisma } from "../db.js";
 export type NaturezaLancamento = "DEBITO" | "CREDITO";
 export type SituacaoLancamento = "ABERTO" | "LIQUIDADO" | "LIQUIDADO_PARCIAL";
 
+export type OrdemLancamentos = "data" | "dataVencimento" | "valor" | "categoria" | "fornecedor";
+export type DirecaoOrdem = "asc" | "desc";
+
 export interface FiltrosLancamentos {
   /** Início do range de data de caixa (dataLiquidacao ?? dataCompetencia), UTC. */
   from?: Date;
@@ -35,6 +38,14 @@ export interface FiltrosLancamentos {
   propriedadeId?: number | null;
   /** Texto livre: casa em descricao OU nome do fornecedor (case-insensitive). */
   q?: string;
+  /** Filtro por data de vencimento — permite separar "vencidas" (< hoje) de "a vencer" (>= hoje). */
+  vencimentoDe?: Date;
+  /** Filtro por data de vencimento (limite superior inclusivo). */
+  vencimentoAte?: Date;
+  /** Coluna de ordenação. Ausente = default (data de caixa desc). */
+  orderBy?: OrdemLancamentos;
+  /** Direção da ordenação (default: asc para data/nome, desc para valor). */
+  orderDir?: DirecaoOrdem;
   /** default 50, máx 200. */
   limit?: number;
   offset?: number;
@@ -100,6 +111,14 @@ export function montarWhereLancamentos(f: FiltrosLancamentos): Prisma.Lancamento
     });
   }
 
+  // Range sobre a data de vencimento (independente da data de caixa).
+  if (f.vencimentoDe || f.vencimentoAte) {
+    const vRange: { gte?: Date; lte?: Date } = {};
+    if (f.vencimentoDe) vRange.gte = f.vencimentoDe;
+    if (f.vencimentoAte) vRange.lte = f.vencimentoAte;
+    and.push({ dataVencimento: vRange });
+  }
+
   // Busca textual: descricao OU nome do fornecedor.
   const termo = f.q?.trim();
   if (termo) {
@@ -126,13 +145,41 @@ export function normalizarPaginacao(f: Pick<FiltrosLancamentos, "limit" | "offse
 }
 
 /**
- * Lista lançamentos com filtros e paginação. Ordena por data de caixa desc:
- * liquidados (por dataLiquidacao desc) primeiro, depois os ABERTO/sem liquidação
- * (por dataCompetencia desc). `id` desc desempata → ordem determinística.
+ * Ordem padrão (sem orderBy explícito): data de caixa desc — liquidados por
+ * dataLiquidacao, ABERTO por dataCompetencia. `id` desc desempata.
+ * Quando orderBy é explícito, aplica a coluna pedida + `id` desc como tie-break.
+ */
+export function montarOrderBy(f: Pick<FiltrosLancamentos, "orderBy" | "orderDir">): Prisma.LancamentoOrderByWithRelationInput[] {
+  if (!f.orderBy) {
+    return [
+      { dataLiquidacao: { sort: "desc", nulls: "last" } },
+      { dataCompetencia: "desc" },
+      { id: "desc" },
+    ];
+  }
+  const dir: Prisma.SortOrder = f.orderDir === "desc" ? "desc" : "asc";
+  const tieBreak = { id: "desc" as const };
+  switch (f.orderBy) {
+    case "dataVencimento": return [{ dataVencimento: dir }, tieBreak];
+    case "valor":          return [{ valor: dir }, tieBreak];
+    case "categoria":      return [{ categoria: { nome: dir } }, tieBreak];
+    case "fornecedor":     return [{ clienteFornecedor: { nome: dir } }, tieBreak];
+    case "data":           return [
+      { dataLiquidacao: { sort: dir, nulls: "last" } },
+      { dataCompetencia: dir },
+      tieBreak,
+    ];
+  }
+}
+
+/**
+ * Lista lançamentos com filtros, ordenação e paginação. Ordem default = data
+ * de caixa desc; pode ser sobrescrita via `orderBy`/`orderDir`.
  */
 export async function listarLancamentos(f: FiltrosLancamentos): Promise<ListaLancamentos> {
   const where = montarWhereLancamentos(f);
   const { limit, offset } = normalizarPaginacao(f);
+  const orderBy = montarOrderBy(f);
 
   const [total, rows] = await Promise.all([
     prisma.lancamento.count({ where }),
@@ -151,11 +198,7 @@ export async function listarLancamentos(f: FiltrosLancamentos): Promise<ListaLan
         clienteFornecedor: { select: { nome: true } },
         _count: { select: { notasFiscais: true } },
       },
-      orderBy: [
-        { dataLiquidacao: { sort: "desc", nulls: "last" } },
-        { dataCompetencia: "desc" },
-        { id: "desc" },
-      ],
+      orderBy,
       take: limit,
       skip: offset,
     }),
