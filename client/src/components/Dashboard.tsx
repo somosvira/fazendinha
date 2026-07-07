@@ -482,10 +482,26 @@ function CategoryDropdown({ items, value, onChange }: { items: any[]; value: Cat
 
 function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const items = R.categoriasReais.slice().sort((a: any, b: any) => b.total23m - a.total23m);
-  const [catId, setCatId] = useState<CatId>(items[0].id);
+  const items = (R.categoriasReais ?? []).slice().sort((a: any, b: any) => b.total23m - a.total23m);
+  const [catId, setCatId] = useState<CatId>(items[0]?.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cat = items.find((c: any) => c.id === catId) ?? items[0];
+
+  if (!cat) {
+    return (
+      <section className="cockpit-section">
+        <div className="dash-sec-head">
+          <div className="dash-sec-titles">
+            <span className="eyebrow">Explorar</span>
+            <h2 className="dash-sec-title">Detalhe por categoria</h2>
+          </div>
+        </div>
+        <div className="ex-cell" style={{ padding: "24px 0" }}>
+          <span className="l">Sem categorias no período selecionado.</span>
+        </div>
+      </section>
+    );
+  }
 
   const total = cat.total23m; // já é o total DO PERÍODO (servidor manda categorias do filtro)
   const corAtv = cat.atividade === "leite" ? "var(--leite)" : cat.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
