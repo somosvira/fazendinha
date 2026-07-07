@@ -119,19 +119,43 @@ export function montarWhereLancamentos(f: FiltrosLancamentos): Prisma.Lancamento
     and.push({ dataVencimento: vRange });
   }
 
-  // Busca textual: descricao OU nome do fornecedor.
+  // Busca universal: descrição, nome do fornecedor, nome da categoria e — se o
+  // termo parece um valor monetário — o próprio valor (equality). Case-insensitive.
   const termo = f.q?.trim();
   if (termo) {
-    and.push({
-      OR: [
-        { descricao: { contains: termo, mode: "insensitive" } },
-        { clienteFornecedor: { nome: { contains: termo, mode: "insensitive" } } },
-      ],
-    });
+    const or: Prisma.LancamentoWhereInput[] = [
+      { descricao: { contains: termo, mode: "insensitive" } },
+      { clienteFornecedor: { nome: { contains: termo, mode: "insensitive" } } },
+      { categoria: { nome: { contains: termo, mode: "insensitive" } } },
+    ];
+    const valorNum = parseValorTermo(termo);
+    if (valorNum != null) {
+      or.push({ valor: new Prisma.Decimal(valorNum) });
+    }
+    and.push({ OR: or });
   }
 
   if (and.length > 0) where.AND = and;
   return where;
+}
+
+/**
+ * Interpreta um termo de busca como valor monetário. Aceita formatos BR
+ * ("1.500,50", "1500,50", "R$ 1.500,00") e "1500.50". Retorna null se o termo
+ * não for interpretável como número positivo — o chamador cai fora do filtro
+ * por valor e mantém só a busca textual.
+ *
+ * Ambiguidade conhecida: "1.500" sem vírgula é lido como 1.5 (ponto = decimal),
+ * não como 1500. Quem quer 1500 exato pode digitar "1500" ou "1500,00".
+ */
+export function parseValorTermo(termo: string): number | null {
+  const t = termo.trim().replace(/^r\$\s*/i, "").replace(/\s+/g, "");
+  if (!t || !/^[\d.,]+$/.test(t)) return null;
+  const normalizado = t.includes(",")
+    ? t.replace(/\./g, "").replace(",", ".")
+    : t;
+  const n = Number(normalizado);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /** Normaliza limit/offset (default 50, máx 200, não-negativos). */

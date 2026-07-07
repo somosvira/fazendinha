@@ -20,10 +20,10 @@ import { fmtMoneyExact } from "../components/charts";
 import { useToast } from "../components/Toast";
 import { HOJE } from "./HOJE";
 
-// "YYYY-MM-DD" → "dd/mm" sem passar por Date (evita shift de fuso).
+// "YYYY-MM-DD" → "dd/mm/aaaa" sem passar por Date (evita shift de fuso).
 const dataBR = (iso: string) => {
-  const [, m, d] = iso.split("-");
-  return `${d}/${m}`;
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
 };
 
 // Aritmética de dias sobre strings YYYY-MM-DD (UTC), sem fuso.
@@ -197,11 +197,23 @@ export function ContasAVencer() {
   const [liquidandoId, setLiquidandoId] = useState<number | null>(null);
   const [estadoLinha, setEstadoLinha] = useState<Record<number, "confirmando" | "saindo">>({});
 
+  // Busca universal (fornecedor, categoria, descrição e — se numérico — valor).
+  // Debounce leve pra não bater o backend a cada tecla.
+  const [q, setQ] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
+  useEffect(() => {
+    const id = window.setTimeout(() => setQDebounced(q.trim()), 250);
+    return () => window.clearTimeout(id);
+  }, [q]);
+
   // Reset paginação + ordem default ao trocar de tab.
   useEffect(() => {
     setPagina(1);
     setOrdem(ORDEM_DEFAULT[tab]);
   }, [tab]);
+
+  // Reset paginação quando a busca muda (senão a página 3 fica órfã).
+  useEffect(() => { setPagina(1); }, [qDebounced]);
 
   // Toggle asc/desc na mesma coluna; nova coluna aplica dir default e volta pra página 1.
   function ordenarPor(coluna: OrdemLancamentos) {
@@ -225,11 +237,12 @@ export function ContasAVencer() {
       offset: (pagina - 1) * POR_PAGINA,
       orderBy: ordem.by,
       orderDir: ordem.dir,
+      q: qDebounced || undefined,
     };
     if (tab === "aVencer") return { ...base, situacao: "ABERTO" as const, vencimentoDe: HOJE };
     if (tab === "vencidas") return { ...base, situacao: "ABERTO" as const, vencimentoAte: subDias(HOJE, 1) };
     return { ...base, situacao: "LIQUIDADO" as const };
-  }, [tab, pagina, ordem]);
+  }, [tab, pagina, ordem, qDebounced]);
 
   const { data, loading, erro, recarregar } = useLancamentos(filtros);
   const itens = data?.itens ?? [];
@@ -294,18 +307,48 @@ export function ContasAVencer() {
         </button>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-        {TABS.map((t) => (
-          <TabButton
-            key={t.id}
-            ativo={tab === t.id}
-            onClick={() => setTab(t.id)}
-            badge={t.id === "vencidas" ? qtdVencidas : undefined}
-          >
-            {t.label}
-          </TabButton>
-        ))}
+      {/* Tabs + busca universal (fornecedor, categoria, descrição, valor) */}
+      <div style={{
+        display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap",
+        alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {TABS.map((t) => (
+            <TabButton
+              key={t.id}
+              ativo={tab === t.id}
+              onClick={() => setTab(t.id)}
+              badge={t.id === "vencidas" ? qtdVencidas : undefined}
+            >
+              {t.label}
+            </TabButton>
+          ))}
+        </div>
+        <div className="search-box" style={{ marginLeft: "auto" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="16" y1="16" x2="21" y2="21"></line>
+          </svg>
+          <input
+            placeholder="Buscar fornecedor, categoria ou valor…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="Buscar contas"
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              aria-label="Limpar busca"
+              style={{
+                background: "none", border: 0, cursor: "pointer",
+                color: "var(--ink-3)", padding: 0, fontSize: 16, lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {erro ? (
@@ -316,9 +359,15 @@ export function ContasAVencer() {
         <p style={{ color: "var(--ink-3)", marginTop: 16, marginBottom: 0 }}>Carregando…</p>
       ) : itens.length === 0 ? (
         <p style={{ color: "var(--ink-2)", marginTop: 16, marginBottom: 0 }}>
-          {tab === "aVencer" && "Nenhuma conta a vencer no momento."}
-          {tab === "vencidas" && "Nenhuma conta vencida — em dia."}
-          {tab === "pagas" && "Nenhuma conta paga registrada."}
+          {qDebounced ? (
+            <>Nenhum resultado para <em>“{qDebounced}”</em> nesta aba.</>
+          ) : (
+            <>
+              {tab === "aVencer" && "Nenhuma conta a vencer no momento."}
+              {tab === "vencidas" && "Nenhuma conta vencida — em dia."}
+              {tab === "pagas" && "Nenhuma conta paga registrada."}
+            </>
+          )}
         </p>
       ) : (
         <>
@@ -331,7 +380,7 @@ export function ContasAVencer() {
                     coluna={tab === "pagas" ? "data" : "dataVencimento"}
                     ordem={ordem}
                     onOrdenar={ordenarPor}
-                    style={{ width: 88 }}
+                    style={{ width: 112 }}
                   />
                   <SortHeader label="Fornecedor" coluna="fornecedor" ordem={ordem} onOrdenar={ordenarPor} />
                   <SortHeader label="Categoria" coluna="categoria" ordem={ordem} onOrdenar={ordenarPor} />
