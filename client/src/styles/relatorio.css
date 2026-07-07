@@ -1,0 +1,457 @@
+/* Rio Novo — Relatório de Fechamento Mensal.
+ * Filosofia: veredictos com números gigantes + mini-gráfico. Sem prosa longa.
+ * Impressão: bloco `@media print` no final mantém cores, esconde controles. */
+
+.fechamento {
+  padding-bottom: 96px;
+}
+
+/* ============ Header ============ */
+
+.fech-hdr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: flex-end;
+  padding: 32px 0 20px;
+  border-bottom: 1px solid var(--rule-soft);
+  margin-bottom: 32px;
+}
+
+.fech-hdr-title .eyebrow {
+  color: var(--ink-3);
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.fech-h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 52px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 6px 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.fech-sub {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.fech-hdr-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.fech-nav {
+  display: inline-flex;
+  gap: 4px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.fech-nav-btn {
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.fech-nav-btn:disabled {
+  color: var(--ink-mute);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fech-nav-btn:not(:disabled):hover {
+  background: var(--bg-card);
+  color: var(--ink);
+}
+
+/* ============ Grid dos veredictos ============ */
+
+.fech-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .fech-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .veredicto.full {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ============ Bloco Veredicto ============ */
+
+.veredicto {
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  padding: 24px 26px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ver-pergunta {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ver-body {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(160px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.veredicto.full .ver-body {
+  grid-template-columns: minmax(0, auto) minmax(200px, 1fr);
+}
+
+.ver-resposta {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 64px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.ver-resposta.pos {
+  color: var(--lucro);
+}
+
+.ver-resposta.neg {
+  color: var(--prejuizo);
+}
+
+.ver-resposta-alt {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.ver-contexto {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.ver-contexto strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.ver-contexto-solo {
+  margin-bottom: 6px;
+}
+
+.ver-mini {
+  align-self: center;
+}
+
+/* ============ Stacked bar (invest. composição) ============ */
+
+.ver-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ver-stack-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--rule-soft);
+}
+
+.ver-stack-seg {
+  height: 100%;
+}
+
+.ver-stack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-family: var(--sans);
+}
+
+.ver-stack-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ver-stack-val {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ============ Vazamento (lista onde o dinheiro subiu) ============ */
+
+.vazamento-lista {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.vazamento-lista li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.vazamento-lista li:last-child {
+  border-bottom: 0;
+}
+
+.vaz-nome {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.vaz-val {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.vaz-delta {
+  font-size: 13px;
+  color: var(--prejuizo);
+  font-family: var(--sans);
+}
+
+.vaz-cta {
+  align-self: flex-start;
+  margin-top: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+/* ============ Atenção (inconsistências compactadas) ============ */
+
+.atencao-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.atencao-card {
+  background: var(--bg);
+  border: 1px solid var(--rule-soft);
+  border-left: 3px solid var(--ink-mute);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.atencao-card.sev-alta {
+  border-left-color: var(--prejuizo);
+}
+
+.atencao-card.sev-media {
+  border-left-color: var(--leite);
+}
+
+.atencao-card.sev-baixa {
+  border-left-color: var(--outros);
+}
+
+.atencao-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.atencao-head .sev-chip {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--rule-soft);
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-weight: 500;
+}
+
+.atencao-head .sev-chip.sev-alta {
+  background: rgba(198, 40, 40, 0.14);
+  color: var(--prejuizo);
+}
+
+.atencao-head .sev-chip.sev-media {
+  background: rgba(184, 154, 92, 0.22);
+  color: var(--cafe);
+}
+
+.atencao-head .sev-chip.sev-baixa {
+  background: rgba(107, 122, 92, 0.20);
+  color: var(--ink-2);
+}
+
+.atencao-valor {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.atencao-titulo {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.atencao-impacto {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+
+.atencao-cta {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* ============ Rodapé ============ */
+
+.fech-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.fech-footer-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ============ Mobile ============ */
+
+@media (max-width: 720px) {
+  .fech-h1 {
+    font-size: 36px;
+  }
+  .fech-hdr {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+  .fech-hdr-actions {
+    align-items: flex-start;
+  }
+  .ver-body {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ver-resposta {
+    font-size: 48px;
+    white-space: normal;
+  }
+  .vazamento-lista li {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+  .vaz-delta {
+    grid-column: 2;
+  }
+}
+
+/* ============ Estado de exportação (html2pdf) ============ */
+/* Enquanto o PDF é gerado, escondemos botões e navegação para que a captura
+ * do html2canvas não inclua controles interativos. Também deixamos o layout
+ * respirar como se estivesse em folha impressa. */
+
+.fechamento.gerando-pdf .no-print {
+  display: none !important;
+}
+
+.fechamento.gerando-pdf {
+  padding: 0 !important;
+}
+
+/* ============ Impressão / PDF (Ctrl+P fallback) ============ */
+
+@media print {
+  .no-print { display: none !important; }
+  .fechamento {
+    padding-bottom: 0;
+  }
+  .fech-hdr-actions,
+  .fech-footer-actions,
+  .vaz-cta,
+  .atencao-cta {
+    display: none !important;
+  }
+  .fech-nav {
+    display: none !important;
+  }
+  .veredicto {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #999;
+    background: #fff;
+  }
+  .atencao-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    background: #fff;
+  }
+  .fech-grid {
+    gap: 16px;
+  }
+  .fech-footer {
+    justify-content: flex-start;
+  }
+}

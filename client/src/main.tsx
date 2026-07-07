@@ -11,6 +11,7 @@ import "./styles/datepicker.css";
 import "./styles/acessos.css";
 import "./styles/simulador.css";
 import "./styles/vigilancia.css";
+import "./styles/relatorio.css";
 import "./rebanho/styles/rebanho.css";
 import "./styles/command-palette.css";
 import "./styles/chat.css";

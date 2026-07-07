@@ -1834,7 +1834,8 @@ body.no-scroll { overflow: hidden; }
   .ah-burger, .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
   .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
   .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
-  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay, .confirm-overlay {
+  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay, .confirm-overlay,
+  .chat-fab, .chat-panel, .propriedade-selector {
     display: none !important;
   }
   .app, .app-main, .shell, .shell-wide {
