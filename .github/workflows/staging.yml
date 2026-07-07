@@ -1,0 +1,82 @@
+name: Staging
+
+# CI (build + testes) como gate; deploy pra staging só depois que o CI passa.
+#
+# Setup único (uma vez):
+#   1. Neon: crie um branch/database de STAGING e pegue a URL pooled + a direct.
+#   2. Render: crie o serviço da API apontando pra branch `staging` com
+#      autoDeploy OFF (Settings → Auto-Deploy → No) e copie o "Deploy Hook" URL.
+#      Setar as envs no Render: DATABASE_URL, DIRECT_URL, OPENAI_API_KEY,
+#      JWT_SECRET, CORS_ORIGIN, DATABASE_URL_READONLY (ver DEPLOY.md).
+#   3. Cloudflare Pages (ou Vercel): projeto de staging → copie o Deploy Hook URL.
+#   4. GitHub → Settings → Environments → "staging" → Secrets:
+#        RENDER_STAGING_DEPLOY_HOOK   (obrigatório)
+#        CLIENT_STAGING_DEPLOY_HOOK   (opcional — CF Pages/Vercel)
+#
+# Depois: todo push na branch `staging` roda CI e, passando, dispara os deploys.
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # lê packageManager (pnpm@10.7.1) do package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Prisma Client é necessário pro tsc build (não conecta ao banco).
+      - run: pnpm --filter rionovo-server exec prisma generate
+
+      - name: Build (server + client)
+        run: pnpm -r run build
+
+      - name: Testes (server)
+        run: pnpm --filter rionovo-server test
+
+  deploy:
+    name: deploy staging
+    needs: ci
+    # não deploya em PR — só em push na branch staging ou disparo manual
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy API (Render)
+        env:
+          HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_STAGING_DEPLOY_HOOK não configurado no environment 'staging'."
+            exit 1
+          fi
+          curl -fsSL -X POST "$HOOK"
+          echo "Deploy da API disparado no Render."
+
+      - name: Deploy client (Cloudflare Pages / Vercel)
+        env:
+          HOOK: ${{ secrets.CLIENT_STAGING_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "CLIENT_STAGING_DEPLOY_HOOK não configurado — pulando deploy do client."
+            exit 0
+          fi
+          curl -fsSL -X POST "$HOOK"
+          echo "Deploy do client disparado."
