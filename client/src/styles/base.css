@@ -72,161 +72,17 @@
 .app-main { margin-left: var(--side-w); }
 
 /* ============================================================
-   APP HEADER — faixa preta global (logo + fazenda + usuário)
+   APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
+   Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
+   para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
    ============================================================ */
-.app-header {
-  position: fixed; top: 0; left: var(--side-w); right: 0; height: var(--header-h);
-  z-index: 10;
-  display: flex; align-items: center; gap: 14px;
-  padding: 0 18px;
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  border-bottom: 1px solid #0B0F0D;
-}
-.ah-burger {
-  display: none;
-  background: transparent; border: 1px solid #2a3025; color: var(--mast-ink);
-  width: 38px; height: 38px; border-radius: 8px;
-  align-items: center; justify-content: center; cursor: pointer; padding: 0;
-}
-.ah-burger svg { width: 18px; height: 18px; }
-
-.ah-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ah-brand-mark {
-  width: 28px; height: 28px;
-  border: 1px solid var(--mast-ink);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-size: 13px; font-weight: 500;
-  letter-spacing: 0.02em;
-}
-.ah-brand-name {
-  font-family: var(--serif); font-size: 18px; line-height: 1;
-  letter-spacing: 0.01em;
-}
-
-.ah-spacer { flex: 1; }
-
-.ah-chev { transition: transform .15s ease; opacity: .7; }
-.ah-chev.is-open { transform: rotate(180deg); }
-
-/* ---- seletor de fazenda ---- */
-.ah-farm { position: relative; }
-.ah-farm-btn {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--mast-bg-2); color: var(--mast-ink);
-  border: 1px solid #2a3025; border-radius: 9px;
-  padding: 6px 10px 6px 8px;
-  cursor: pointer; font-family: var(--sans);
-}
-.ah-farm-btn:hover { background: #1f2521; }
-.ah-farm-mark { font-size: 16px; line-height: 1; }
-.ah-farm-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
-.ah-farm-eyebrow {
-  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--mast-ink-2); font-weight: 600;
-}
-.ah-farm-name { font-size: 14px; font-weight: 600; color: var(--mast-ink); }
-
-/* ---- chip do usuário ---- */
-.ah-user { position: relative; }
-.ah-user-btn {
-  display: flex; align-items: center; gap: 10px;
-  background: transparent; color: var(--mast-ink);
-  border: 1px solid transparent; border-radius: 9px;
-  padding: 4px 8px 4px 4px;
-  cursor: default; font-family: var(--sans);
-}
-.ah-user-btn.has-menu { cursor: pointer; }
-.ah-user-btn.has-menu:hover { background: var(--mast-bg-2); border-color: #2a3025; }
-.ah-user-av {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: var(--leite); color: var(--mast-bg);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-weight: 600; font-size: 14px;
-}
-.ah-user-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
-.ah-user-nome { font-size: 14px; font-weight: 600; color: var(--mast-ink); }
-.ah-user-papel { font-size: 11px; color: var(--mast-ink-2); }
-
-/* ---- dropdown comum (claro, sobre paper) ---- */
-.ah-menu {
-  position: absolute; top: calc(100% + 8px);
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  box-shadow: 0 14px 40px rgba(20,25,26,.22);
-  min-width: 280px; max-width: 360px;
-  z-index: 50;
-  border-radius: 6px;
-  color: var(--ink);
-  overflow: hidden;
-}
-.ah-farm-menu { left: 0; }
-.ah-user-menu { right: 0; }
-.ah-menu-head {
-  padding: 10px 14px;
-  background: var(--bg-card-2);
-  border-bottom: 1px solid var(--rule);
-  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--ink-3); font-weight: 600;
-}
-.ah-menu-foot {
-  padding: 10px 14px;
-  border-top: 1px solid var(--rule-soft);
-  font-size: 12px; color: var(--ink-3); font-style: italic;
-}
-
-.ah-farm-opt, .ah-user-opt {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px; background: none; border: 0;
-  border-bottom: 1px solid var(--rule-soft);
-  text-align: left;
-}
-.ah-farm-opt:last-of-type, .ah-user-opt:last-of-type { border-bottom: none; }
-.ah-user-opt { cursor: pointer; font-family: var(--sans); color: var(--ink); }
-.ah-user-opt:hover { background: var(--bg-card-2); }
-.ah-farm-opt.is-current, .ah-user-opt.is-current { background: var(--bg-card-2); }
-
-.ah-farm-opt-mark { font-size: 16px; }
-.ah-farm-opt-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.ah-farm-opt-nome { font-size: 14px; color: var(--ink); font-weight: 600; }
-.ah-farm-opt-sub { font-size: 11px; color: var(--ink-3); }
-.ah-farm-opt-check, .ah-user-opt-check { color: var(--lucro); font-weight: 700; }
-
-.ah-user-opt-av {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--mast-bg); color: var(--mast-ink);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-size: 15px;
-}
-.ah-user-opt-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.ah-user-opt-nome { font-size: 14px; color: var(--ink); font-weight: 500; }
-.ah-user-opt-papel { font-size: 11px; color: var(--ink-3); }
-
 @media (max-width: 900px) {
-  /* sem sidebar fixa pra "desviar": header volta a ser full-width */
   :root { --header-h: 48px; }
-  .app-header { left: 0; gap: 10px; padding: 0 12px; }
-  .ah-burger { display: flex; width: 34px; height: 34px; }
-  .ah-burger svg { width: 16px; height: 16px; }
-  .ah-brand-mark { width: 26px; height: 26px; font-size: 12px; }
-  .ah-brand-name { display: none; }
-  .ah-farm-btn { padding: 4px 8px 4px 6px; gap: 8px; }
-  .ah-farm-eyebrow { display: none; }
-  .ah-farm-mark { font-size: 14px; }
-  .ah-farm-name { font-size: 13px; max-width: 26vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ah-user-txt { display: none; }
-  .ah-user-av { width: 28px; height: 28px; font-size: 13px; }
 }
 
-/* viewport realmente pequeno: farm picker fica icon-only */
+/* viewport realmente pequeno */
 @media (max-width: 560px) {
   :root { --header-h: 44px; }
-  .app-header { gap: 8px; padding: 0 10px; }
-  .ah-brand { gap: 6px; }
-  .ah-farm-btn { padding: 4px 6px; }
-  .ah-farm-txt { display: none; }
-  .ah-farm-mark { font-size: 16px; }
-  .ah-user-btn { padding: 2px; }
 }
 
 * { box-sizing: border-box; }
@@ -1369,7 +1225,7 @@ input:focus-visible:not([data-slot="input"]) {
 @media (max-width: 900px) {
   :root { --gutter: 14px; }
 
-  /* sidebar vira drawer; main perde offset (burger vive no .app-header) */
+  /* sidebar vira drawer; main perde offset (burger vive no header, ver Header.tsx) */
   .app-main { margin-left: 0; }
 
   .shell, .shell-wide { padding: 0 14px; }
@@ -1601,9 +1457,9 @@ body.no-scroll { overflow: hidden; }
 }
 
 @media print {
-  /* esconde shell — só conteúdo importa */
-  .app-header, .rb-side, .toast-viewport,
-  .ah-burger, .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
+  /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
+  .toast-viewport,
+  .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
   .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
   .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
   .gastos-toolbar .search-box, .viewas-banner, .modal-overlay {
