@@ -342,7 +342,7 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
         className={cn(
-          "group fixed inset-y-0 left-0 z-[11] hidden w-[222px] flex-col overflow-y-auto overscroll-contain bg-mast py-[18px] text-mast-ink",
+          "group fixed inset-y-0 left-0 z-[11] hidden w-[222px] flex-col overflow-y-auto overscroll-contain bg-mast py-[18px] text-mast-ink print:hidden",
           "[scrollbar-width:thin] [scrollbar-color:#2a3025_transparent]",
           "min-[901px]:flex",
           "min-[901px]:max-[1100px]:w-[60px] min-[901px]:max-[1100px]:overflow-x-hidden min-[901px]:max-[1100px]:whitespace-nowrap min-[901px]:max-[1100px]:py-3",

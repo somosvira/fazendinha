@@ -1458,7 +1458,7 @@ body.no-scroll { overflow: hidden; }
 
 @media print {
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
-  .rb-side, .toast-viewport,
+  .toast-viewport,
   .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
   .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
   .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
