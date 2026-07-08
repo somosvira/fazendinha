@@ -1,58 +1,8 @@
 /* Rio Novo — Dashboard v3 cockpit interativo */
 
-/* ===== KPI COCKPIT BAND ===== */
-.kpi-cockpit-band {
-  padding: 26px 0 0;
-  border-bottom: 1px solid var(--rule);
-}
-.kpi-cockpit-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 22px;
-}
-.kpi-cockpit-title {
-  font-family: var(--serif);
-  font-size: 40px;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  margin: 6px 0 0;
-  font-weight: 500;
-  color: var(--ink);
-}
-.kpi-cockpit-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  border-top: 1px solid var(--rule);
-}
-.kpi-cock {
-  padding: 18px 20px 20px 0;
-  border-right: 1px solid var(--rule-soft);
-  display: flex; flex-direction: column; gap: 5px;
-}
-.kpi-cock:first-child { }
-.kpi-cock:last-child { border-right: none; padding-right: 0; }
-.kpi-cock .lbl {
-  font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
-}
-.kpi-cock .val {
-  font-family: var(--serif);
-  font-size: 32px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-}
-.kpi-cock .val.neg { color: var(--prejuizo); }
-.kpi-cock .sub { font-size: 14px; color: var(--ink-2); font-weight: 500; }
-.kpi-cock-int {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ink-2);
-  margin-top: 6px;
-  line-height: 1.35;
-}
+/* ===== KPI COCKPIT (migrado p/ Tailwind em Dashboard.tsx — Fase 2 slice 4) =====
+   .kpi-cockpit-* / .kpi-cock (célula) / .kpi-cock-int foram aposentados.
+   .kpi-cock-imp permanece: ainda é consumido por rebanho/AnimalCockpit.tsx. */
 .kpi-cock-imp {
   font-size: 14px;
   font-weight: 600;

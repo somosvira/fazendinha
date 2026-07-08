@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import {
   Section,
   SectionHead,
+  DashSectionHeader,
   KpiRow,
   KpiTile,
   ChartLegend,
@@ -34,6 +35,30 @@ describe("primitivas do relatório", () => {
     expect(html).toContain("O leite paga o leite?");
     expect(html).toContain("pergunta ancora");
     expect(html).toContain("<h2");
+  });
+
+  it("DashSectionHeader mostra eyebrow, título serif e slot direito", () => {
+    const html = renderToString(
+      h(DashSectionHeader, {
+        eyebrow: "Distribuição",
+        title: "Gasto por categoria",
+        right: h("span", { className: "flag" }, "controle"),
+      }),
+    );
+    expect(html).toContain("eyebrow");
+    expect(html).toContain("Distribuição");
+    expect(html).toContain("<h2");
+    expect(html).toContain("Gasto por categoria");
+    expect(html).toContain("font-serif");
+    // slot direito renderizado como está
+    expect(html).toContain("controle");
+  });
+
+  it("DashSectionHeader sem right não quebra", () => {
+    const html = renderToString(
+      h(DashSectionHeader, { eyebrow: "Explorar", title: "Detalhe por categoria" }),
+    );
+    expect(html).toContain("Detalhe por categoria");
   });
 
   it("KpiTile pinta valor negativo e seta conforme delta", () => {

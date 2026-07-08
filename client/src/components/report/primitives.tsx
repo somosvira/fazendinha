@@ -58,6 +58,33 @@ export function SectionHead({
   );
 }
 
+/* ── DashSectionHeader: cabeçalho de seção do Dashboard (dash-sec-head) ──
+ * eyebrow + título serif + slot direito (controles/caption/flag). Reproduz em
+ * Tailwind o .dash-sec-head/.dash-sec-titles/.dash-sec-title do cockpit.css —
+ * o CSS legado segue vivo só porque RupturaCaixa.tsx ainda o consome. O título
+ * renderiza 30px/500 (typescale sobrepõe os 28px do cockpit.css). */
+export function DashSectionHeader({
+  eyebrow,
+  title,
+  right,
+}: {
+  eyebrow: string;
+  title: string;
+  right?: ReactNode;
+}) {
+  return (
+    <div className="mb-[22px] flex flex-wrap items-end justify-between gap-6">
+      <div className="flex flex-col gap-1">
+        <span className="eyebrow">{eyebrow}</span>
+        <h2 className="m-0 font-serif text-[30px] font-medium leading-[1.1] tracking-[-0.01em] text-foreground">
+          {title}
+        </h2>
+      </div>
+      {right}
+    </div>
+  );
+}
+
 /* ── KPI hero row: 4 células com regras superior/inferior ── */
 export function KpiRow({ children }: { children: ReactNode }) {
   return (
