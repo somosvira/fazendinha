@@ -2,10 +2,16 @@
  *
  * Modal client-only: navega entre páginas/abas + dispara ações (atalhos).
  * Filtra o índice por `podeVer` (abas bloqueadas do Financeiro/Admin somem;
- * abas de módulo passam sempre). Busca via `buscar()` puro. Teclado completo.
+ * abas de módulo passam sempre). Busca via `buscar()` puro (índice estático)
+ * + entidades reais do backend (GET /api/busca?q=). Teclado (setas/enter) é
+ * do cmdk; Escape/backdrop/foco-trap vêm do shadcn Dialog (Radix).
  *
- * Acessibilidade: role=dialog/aria-modal, foco no input ao abrir, foco preso no
- * painel, scroll do body travado enquanto aberto, clique no backdrop fecha.
+ * Reescrito sobre shadcn `command` (cmdk) + `Dialog` — ver
+ * docs/superpowers/specs/2026-07-08-shadcn-migration-playbook.md (Fase 1,
+ * Tarefa 5). A busca é SERVIDOR + índice estático (não é fuzzy-filter do
+ * cmdk), então `shouldFilter={false}` no `Command` e os resultados são
+ * filtrados/agrupados por nós mesmos; o cmdk só cuida de seleção/teclado.
+ *
  * Nada toca `window`/`document` no nível de módulo — só dentro de effects.
  */
 
@@ -13,6 +19,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "./Shell";
 import { COMANDOS, buscar, type Comando, type GrupoComando, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 type Props = {
   aberto: boolean;
@@ -46,28 +54,30 @@ const COR_GRUPO: Record<GrupoComando, string> = {
   Ações: "var(--leite-2)",
 };
 
-function MagnifierIcon() {
+// Estilo compartilhado das linhas selecionáveis (nav e entidade).
+const LINHA_CLASSE =
+  "gap-3 rounded-none px-3 py-2.5 text-foreground data-[selected=true]:bg-[color:var(--leite-soft)] data-[selected=true]:text-foreground";
+
+function Dot({ cor }: { cor: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-    </svg>
+    <span
+      aria-hidden
+      className="h-2 w-2 shrink-0 rounded-full"
+      style={{ background: cor, boxShadow: "0 0 0 3px var(--bg-card-2)" }}
+    />
   );
 }
 
 export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
   const [query, setQuery] = useState("");
-  const [sel, setSel] = useState(0);
   const [entidades, setEntidades] = useState<ResultadoBusca[]>([]);
   const [buscando, setBuscando] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
 
   // Índice já filtrado pela permissão — abas bloqueadas não aparecem.
   const visiveis = useMemo(() => COMANDOS.filter((c) => podeVer(c.tab)), [podeVer]);
 
-  // Resultado plano (na ordem de exibição) — usado para navegação por teclado.
+  // Resultado (índice estático) puro — `buscar()` não toca estado nenhum.
   const resultados = useMemo(() => buscar(visiveis, query), [visiveis, query]);
 
   // Agrupa preservando a ordem de ORDEM_GRUPO; dentro do grupo, ordem do resultado.
@@ -136,201 +146,149 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
     return out;
   }, [entidadesVisiveis]);
 
-  // Lista achatada NA MESMA ORDEM da exibição (nav primeiro, entidades depois) —
-  // o índice `sel` indexa aqui. Discrimina a origem de cada item para o Enter.
-  const planos = useMemo<({ kind: "nav"; item: Comando } | { kind: "ent"; item: ResultadoBusca })[]>(
-    () => [
-      ...grupos.flatMap((g) => g.itens.map((item) => ({ kind: "nav" as const, item }))),
-      ...gruposEntidade.flatMap((g) => g.itens.map((item) => ({ kind: "ent" as const, item }))),
-    ],
-    [grupos, gruposEntidade],
-  );
+  const semResultados = grupos.length === 0 && gruposEntidade.length === 0 && !buscando;
 
-  // Reset de seleção a cada nova query.
+  // Ao abrir: limpa a query (curadoria some, dicas voltam). Fechar/reabrir sempre
+  // parte de um estado limpo, igual ao comportamento anterior.
   useEffect(() => {
-    setSel(0);
-  }, [query]);
-
-  // Ao abrir: limpa estado, foca o input, trava o scroll do body. Ao fechar/desmontar: restaura.
-  useEffect(() => {
-    if (!aberto) return;
-    setQuery("");
-    setSel(0);
-    const id = window.setTimeout(() => inputRef.current?.focus(), 0);
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      window.clearTimeout(id);
-      document.body.style.overflow = prevOverflow;
-    };
+    if (aberto) setQuery("");
   }, [aberto]);
 
-  // Garante seleção dentro dos limites quando os resultados encolhem.
-  useEffect(() => {
-    if (sel > planos.length - 1) setSel(planos.length ? planos.length - 1 : 0);
-  }, [planos.length, sel]);
-
-  // Rola o item selecionado pra dentro da viewport da lista.
-  useEffect(() => {
-    if (!aberto) return;
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${sel}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [sel, aberto]);
-
-  if (!aberto) return null;
-
-  const escolher = (p: (typeof planos)[number] | undefined) => {
-    if (!p) return;
-    if (p.kind === "nav") onNav(p.item.tab);
-    else onNav(p.item.tab as Tab, p.item.entidadeId);
+  const escolher = (tab: Tab, entidadeId?: string) => {
+    onNav(tab, entidadeId);
     onFechar();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onFechar();
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (planos.length) setSel((s) => (s + 1) % planos.length);
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (planos.length) setSel((s) => (s - 1 + planos.length) % planos.length);
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      escolher(planos[sel]);
-      return;
-    }
-    if (e.key === "Tab") {
-      // Foco preso: só existe o input, então mantemos o foco nele.
-      e.preventDefault();
-      inputRef.current?.focus();
-    }
-  };
-
-  const onBackdrop = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onFechar();
-  };
-
   return (
-    <div className="cmdk-backdrop" onMouseDown={onBackdrop}>
-      <div
-        className="cmdk-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Busca global"
-        ref={panelRef}
-        onKeyDown={onKeyDown}
+    <Dialog
+      open={aberto}
+      onOpenChange={(open) => {
+        if (!open) onFechar();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        className="top-[12vh] flex max-h-[70vh] max-w-[640px] translate-y-0 flex-col gap-0 overflow-hidden p-0"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
       >
-        <div className="cmdk-search">
-          <span className="cmdk-search-icon">
-            <MagnifierIcon />
-          </span>
-          <input
-            ref={inputRef}
-            className="cmdk-input"
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pesquisar páginas, ações e recursos…"
-            autoComplete="off"
-            spellCheck={false}
-            aria-label="Pesquisar"
-            aria-controls="cmdk-list"
-          />
-          <button className="cmdk-esc" onClick={onFechar} aria-label="Fechar busca" tabIndex={-1}>
-            Esc
-          </button>
-        </div>
+        <DialogTitle className="sr-only">Busca global</DialogTitle>
+        <Command shouldFilter={false} className="flex h-full max-h-[70vh] flex-col">
+          <div className="relative flex items-center">
+            <CommandInput
+              ref={inputRef}
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Pesquisar páginas, ações e recursos…"
+              className="h-auto flex-1 border-0 py-3 pr-16 text-[15px]"
+            />
+            <button
+              type="button"
+              onClick={onFechar}
+              tabIndex={-1}
+              aria-label="Fechar busca"
+              className="absolute right-3 shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold tracking-wide text-ink-3"
+            >
+              Esc
+            </button>
+          </div>
 
-        <div className="cmdk-list" id="cmdk-list" role="listbox" ref={listRef}>
-          {vazio && (
-            <div className="cmdk-dicas">
-              Digite uma página, ação ou recurso — ex.: <em>talhão</em>, <em>ferrugem</em>, <em>lançar gasto</em>.
-            </div>
-          )}
+          <CommandList className="max-h-none flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2">
+            {vazio && (
+              <div className="px-3 pb-2.5 pt-2.5 text-[13px] text-ink-3">
+                Digite uma página, ação ou recurso — ex.: <em className="not-italic font-semibold text-ink-2">talhão</em>,{" "}
+                <em className="not-italic font-semibold text-ink-2">ferrugem</em>,{" "}
+                <em className="not-italic font-semibold text-ink-2">lançar gasto</em>.
+              </div>
+            )}
 
-          {planos.length === 0 && !buscando ? (
-            <div className="cmdk-empty">
-              Nenhum resultado para «{query.trim()}»
-            </div>
-          ) : (
-            <>
-              {grupos.map((g) => (
-                <div className="cmdk-group" key={g.grupo}>
-                  <div className="cmdk-group-head">{vazio && g.grupo === "Financeiro" ? "Sugestões" : g.grupo}</div>
-                  {g.itens.map((c) => {
-                    const idx = planos.findIndex((p) => p.kind === "nav" && p.item === c);
-                    const ativo = idx === sel;
-                    return (
-                      <div
+            {semResultados ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                Nenhum resultado para «{query.trim()}»
+              </div>
+            ) : (
+              <>
+                {grupos.map((g) => (
+                  <CommandGroup
+                    key={g.grupo}
+                    heading={vazio && g.grupo === "Financeiro" ? "Sugestões" : g.grupo}
+                    className="[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em]"
+                  >
+                    {g.itens.map((c) => (
+                      <CommandItem
                         key={c.id}
-                        data-idx={idx}
-                        role="option"
-                        aria-selected={ativo}
-                        className={"cmdk-row" + (ativo ? " is-active" : "")}
-                        onMouseMove={() => setSel(idx)}
-                        onClick={() => escolher(planos[idx])}
+                        value={c.id}
+                        onSelect={() => escolher(c.tab)}
+                        className={LINHA_CLASSE}
                       >
-                        <span className="cmdk-dot" style={{ background: COR_GRUPO[c.grupo] }} aria-hidden />
-                        <span className="cmdk-row-main">
-                          <span className="cmdk-row-label">{c.label}</span>
-                          {c.descricao && <span className="cmdk-row-desc">{c.descricao}</span>}
+                        <Dot cor={COR_GRUPO[c.grupo]} />
+                        <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                          <span className="truncate text-[15px] font-medium text-foreground">{c.label}</span>
+                          {c.descricao && (
+                            <span className="truncate text-xs text-ink-3">{c.descricao}</span>
+                          )}
                         </span>
-                        <span className="cmdk-row-crumb">{c.acao ? "Ação" : c.grupo}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                        <span className="shrink-0 text-[11px] text-[color:var(--ink-mute)]">
+                          {c.acao ? "Ação" : c.grupo}
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
 
-              {gruposEntidade.map((g) => (
-                <div className="cmdk-group" key={"ent-" + g.grupo}>
-                  <div className="cmdk-group-head">{g.grupo}</div>
-                  {g.itens.map((e) => {
-                    const idx = planos.findIndex((p) => p.kind === "ent" && p.item === e);
-                    const ativo = idx === sel;
-                    return (
-                      <div
+                {gruposEntidade.map((g) => (
+                  <CommandGroup
+                    key={"ent-" + g.grupo}
+                    heading={g.grupo}
+                    className="[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em]"
+                  >
+                    {g.itens.map((e) => (
+                      <CommandItem
                         key={e.tipo + ":" + e.entidadeId}
-                        data-idx={idx}
-                        role="option"
-                        aria-selected={ativo}
-                        className={"cmdk-row" + (ativo ? " is-active" : "")}
-                        onMouseMove={() => setSel(idx)}
-                        onClick={() => escolher(planos[idx])}
+                        value={e.tipo + ":" + e.entidadeId}
+                        onSelect={() => escolher(e.tab as Tab, e.entidadeId)}
+                        className={LINHA_CLASSE}
                       >
-                        <span className="cmdk-dot" style={{ background: "var(--ink-3)" }} aria-hidden />
-                        <span className="cmdk-row-main">
-                          <span className="cmdk-row-label">{e.label}</span>
-                          {e.sublabel && <span className="cmdk-row-desc">{e.sublabel}</span>}
+                        <Dot cor="var(--ink-3)" />
+                        <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                          <span className="truncate text-[15px] font-medium text-foreground">{e.label}</span>
+                          {e.sublabel && <span className="truncate text-xs text-ink-3">{e.sublabel}</span>}
                         </span>
-                        <span className="cmdk-row-crumb">{e.grupo}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                        <span className="shrink-0 text-[11px] text-[color:var(--ink-mute)]">{e.grupo}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
 
-              {buscando && <div className="cmdk-buscando">buscando…</div>}
-            </>
-          )}
-        </div>
+                {buscando && (
+                  <div className="px-3.5 pb-2.5 pt-2 text-xs tracking-wide text-[color:var(--ink-mute)]">
+                    buscando…
+                  </div>
+                )}
+              </>
+            )}
+          </CommandList>
 
-        <div className="cmdk-footer">
-          <span className="cmdk-hint"><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
-          <span className="cmdk-hint"><kbd>↵</kbd> selecionar</span>
-          <span className="cmdk-hint"><kbd>esc</kbd> fechar</span>
-        </div>
-      </div>
-    </div>
+          <div className="flex items-center gap-4 border-t border-[color:var(--rule-soft)] bg-muted px-3.5 py-2.5">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
+              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↑</kbd>
+              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↓</kbd>
+              navegar
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
+              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↵</kbd>
+              selecionar
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
+              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">esc</kbd>
+              fechar
+            </span>
+          </div>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 }
