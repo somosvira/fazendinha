@@ -1668,43 +1668,6 @@ body.no-scroll { overflow: hidden; }
   .toast-viewport { left: 12px; right: 12px; bottom: 12px; max-width: none; }
 }
 
-/* ============================================================
-   CONFIRM DIALOG — diálogo modal simples (acessível)
-   ============================================================ */
-.confirm-overlay {
-  position: fixed; inset: 0;
-  background: rgba(20, 25, 26, 0.45);
-  z-index: 1080;
-  display: grid; place-items: center;
-  padding: 24px;
-  animation: confirm-fade 140ms ease-out;
-}
-@keyframes confirm-fade { from { opacity: 0; } to { opacity: 1; } }
-.confirm-dialog {
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  width: 100%; max-width: 460px;
-  box-shadow: 0 24px 56px rgba(20, 25, 26, 0.28);
-  display: flex; flex-direction: column;
-}
-.confirm-head {
-  padding: 18px 22px 12px;
-  border-bottom: 1px solid var(--rule-soft);
-  font-family: var(--serif);
-  font-size: 20px;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-}
-.confirm-body {
-  padding: 16px 22px;
-  font-size: 15px; line-height: 1.5;
-  color: var(--ink-2);
-}
-.confirm-foot {
-  padding: 14px 22px 18px;
-  display: flex; justify-content: flex-end; gap: 10px;
-  border-top: 1px solid var(--rule-soft);
-}
 
 /* ============================================================
    ESTADOS VAZIOS — quando filtros zeram resultados
@@ -1756,7 +1719,7 @@ body.no-scroll { overflow: hidden; }
   .ah-burger, .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
   .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
   .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
-  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay, .confirm-overlay {
+  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay {
     display: none !important;
   }
   .app, .app-main, .shell, .shell-wide {

@@ -1,6 +1,16 @@
-/* Rio Novo — diálogo de confirmação para ações destrutivas/irreversíveis. */
+/* Rio Novo — diálogo de confirmação para ações destrutivas/irreversíveis.
+ * shadcn Dialog (Radix) trata Escape / clique-fora / foco-trap; Enter confirma
+ * via botão de confirmação autofocado. API pública inalterada. */
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export type ConfirmTone = "neutral" | "danger";
 
@@ -25,35 +35,50 @@ export function ConfirmDialog({
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    confirmRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-      if (e.key === "Enter") onConfirm();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel, onConfirm]);
-
-  if (!open) return null;
-
   return (
-    <div className="confirm-overlay" onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-head" id="confirm-title">{title}</div>
-        <div className="confirm-body">{message}</div>
-        <div className="confirm-foot">
-          <button className="btn-ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onCancel();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          confirmRef.current?.focus();
+        }}
+        className="gap-0"
+      >
+        <DialogHeader className="border-b border-[color:var(--rule-soft)] px-[22px] pb-3 pt-[18px]">
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="px-[22px] py-4 text-[15px] leading-relaxed text-muted-foreground">
+          {message}
+        </div>
+        <DialogFooter className="border-t border-[color:var(--rule-soft)] px-[22px] pb-[18px] pt-3.5">
+          <Button
+            variant="outline"
+            className="h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
             ref={confirmRef}
-            className={tone === "danger" ? "btn-ghost danger" : "btn-primary"}
+            variant={tone === "danger" ? "outline" : "default"}
+            className={
+              tone === "danger"
+                ? "h-auto px-3 py-1.5 text-xs tracking-[0.04em] hover:border-destructive hover:text-destructive"
+                : "h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
+            }
             onClick={onConfirm}
           >
             {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
