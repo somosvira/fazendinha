@@ -41,7 +41,7 @@ export function SectionHead({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-[22px] grid grid-cols-[auto_1fr_auto] items-baseline gap-6">
+    <div className="mb-[22px] grid grid-cols-[auto_1fr_auto] items-baseline gap-6 print:break-after-avoid">
       <span className="font-serif text-base font-medium tabular-nums text-ink-2">§ {num}</span>
       <div>
         <h2 className="font-serif text-[30px] font-medium leading-[1.15] tracking-[-0.01em] text-foreground">
@@ -60,7 +60,11 @@ export function SectionHead({
 
 /* ── KPI hero row: 4 células com regras superior/inferior ── */
 export function KpiRow({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-4 border-y border-border">{children}</div>;
+  return (
+    <div className="grid grid-cols-4 border-y border-border max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
+      {children}
+    </div>
+  );
 }
 
 export function KpiTile({
@@ -77,11 +81,11 @@ export function KpiTile({
   note: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 border-r border-[color:var(--rule-soft)] px-6 pt-6 pb-[22px] last:border-r-0">
+    <div className="flex flex-col gap-1.5 border-r border-[color:var(--rule-soft)] px-6 pt-6 pb-[22px] last:border-r-0 print:break-inside-avoid">
       <span className="eyebrow mb-1.5">{label}</span>
       <div
         className={cn(
-          "font-serif text-[44px] font-medium leading-none tracking-[-0.02em] tabular-nums",
+          "font-serif text-[46px] font-medium leading-none tracking-[-0.02em] tabular-nums print:text-black",
           negative ? "text-prejuizo" : "text-foreground",
         )}
       >
@@ -177,7 +181,7 @@ export function UnitCard({
   caption: string;
 }) {
   return (
-    <div className="flex items-stretch gap-7 bg-card p-7">
+    <div className="flex items-stretch gap-7 bg-card p-7 print:break-inside-avoid">
       <div className="w-1 self-stretch" style={{ background: accent }} />
       <div className="flex flex-1 flex-col gap-3">
         <span className="eyebrow">{eyebrow}</span>
@@ -255,7 +259,7 @@ export function ActivityCard({
 }) {
   const isNeg = margemOp < 0;
   return (
-    <div className="relative flex flex-col gap-3.5 bg-card px-6 pt-6 pb-[26px]">
+    <div className="relative flex flex-col gap-3.5 bg-card px-6 pt-6 pb-[26px] print:break-inside-avoid">
       <div className="flex items-center gap-2.5 border-b border-[color:var(--rule-soft)] pb-3.5">
         <span className="inline-block h-[18px] w-[18px]" style={{ background: color }} />
         <span className="font-serif text-[22px] tracking-[-0.005em] text-foreground">{nome}</span>
@@ -308,7 +312,7 @@ export function AlertCard({
   const stripe =
     tone === "neg" ? "var(--prejuizo)" : tone === "pos" ? "var(--lucro)" : "var(--atencao)";
   return (
-    <div className="grid grid-cols-[4px_1fr_auto] items-start gap-4 border border-border bg-[var(--bg-card-2)] px-5 py-[18px]">
+    <div className="grid grid-cols-[4px_1fr_auto] items-start gap-4 border border-border bg-[var(--bg-card-2)] px-5 py-[18px] print:break-inside-avoid">
       <div className="self-stretch" style={{ background: stripe }} />
       <div className="flex flex-col gap-1.5">
         <span className="eyebrow">{eyebrow}</span>
@@ -318,7 +322,7 @@ export function AlertCard({
       </div>
       <button
         onClick={onCta}
-        className="cursor-pointer self-end py-1.5 text-base font-semibold tracking-[0.02em] text-foreground underline underline-offset-4"
+        className="cursor-pointer self-end bg-transparent px-0 py-1.5 text-base font-semibold tracking-[0.02em] text-foreground underline underline-offset-4"
       >
         {ctaText} →
       </button>

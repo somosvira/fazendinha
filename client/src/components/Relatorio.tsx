@@ -145,7 +145,7 @@ function QuestionLeite() {
   return (
     <div className="grid grid-cols-[1.2fr_1fr] items-start gap-10 pt-2 pb-3">
       <div className="flex flex-col gap-3.5">
-        <div className="font-serif text-[22px] leading-[1.35] tracking-[-0.005em] text-foreground">
+        <div className="font-serif text-[23px] leading-[1.35] tracking-[-0.005em] text-foreground">
           <strong className="font-semibold">Não.</strong> Em 2025, o leite operacional consumiu{" "}
           <span className="font-semibold text-prejuizo">
             R$ {(deficitAbs / 1000).toFixed(2).replace(".", ",")} mi
@@ -153,7 +153,7 @@ function QuestionLeite() {
           a mais do que entregou — uma margem operacional de{" "}
           <strong className="font-semibold">−{((deficitAbs / receitaK) * 100).toFixed(0)}%</strong>.
         </div>
-        <div className="max-w-[50ch] text-[15px] font-medium leading-[1.55] text-ink-2">
+        <div className="max-w-[50ch] text-[16px] font-medium leading-[1.55] text-ink-2">
           Considera apenas custeio direto da atividade leiteira (ração, curral, medicamento animal, salários de
           tratadores, energia da sala de ordenha) — <em>reclassificando</em> a compra de matrizes Girolando (R$ 1,26
           mi marcados como “Animal Aquisição” em custeio) como investimento. Sem essa reclassificação, o operacional
@@ -267,7 +267,7 @@ function CusteioVsInvestimento() {
 
 function ActivityComparison() {
   return (
-    <div className="grid grid-cols-3 gap-px border border-border bg-[var(--rule-soft)]">
+    <div className="grid grid-cols-3 gap-px border border-border bg-[var(--rule-soft)] max-[900px]:grid-cols-1">
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {R.atividades.map((a: any) => (
         <ActivityCard
@@ -337,7 +337,7 @@ function TopCategories() {
                 { pct: (c.outros / c.total) * 100, color: "var(--outros)" },
               ]}
             />
-            <span className="text-right font-serif text-[19px] font-medium tabular-nums text-foreground">
+            <span className="text-right font-serif text-[19px] font-medium tabular-nums text-foreground print:text-black">
               {fmtMoney(c.total)}
             </span>
             <span
@@ -357,7 +357,7 @@ function TopCategories() {
 
 function UnitCost() {
   return (
-    <div className="grid grid-cols-2 gap-px border border-border bg-[var(--rule-soft)]">
+    <div className="grid grid-cols-2 gap-px border border-border bg-[var(--rule-soft)] max-[900px]:grid-cols-1">
       <UnitCard
         accent="var(--leite)"
         eyebrow="Leite"
@@ -386,7 +386,7 @@ function UnitCost() {
 
 function ContextualCards({ onNav }: { onNav: (t: Tab) => void }) {
   return (
-    <div className="mt-4 grid grid-cols-3 gap-[18px]">
+    <div className="mt-4 grid grid-cols-3 gap-[18px] max-[1100px]:grid-cols-2 max-[900px]:grid-cols-1">
       <AlertCard
         tone="neg"
         eyebrow="Alerta — categoria"
