@@ -1438,8 +1438,12 @@ section.report-section:last-child { border-bottom: none; }
   font-style: italic;
 }
 
-/* focus ring */
-button:focus-visible, a:focus-visible, input:focus-visible {
+/* focus ring — as primitivas shadcn (Button/Input) trazem o próprio anel
+   (focus-visible:ring-*); excluí-las evita anel duplo (outline + box-shadow),
+   já que esta regra não-layered vence utilities do Tailwind. Ver base.css. */
+button:focus-visible:not([data-slot="button"]),
+a:focus-visible,
+input:focus-visible:not([data-slot="input"]) {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -1667,7 +1671,6 @@ body.no-scroll { overflow: hidden; }
 @media (max-width: 600px) {
   .toast-viewport { left: 12px; right: 12px; bottom: 12px; max-width: none; }
 }
-
 
 /* ============================================================
    ESTADOS VAZIOS — quando filtros zeram resultados
