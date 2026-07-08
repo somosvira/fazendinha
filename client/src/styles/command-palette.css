@@ -2,50 +2,8 @@
  * Painel claro arredondado, sombra suave, backdrop escuro com blur.
  * Usa as variáveis de paleta e as fontes do app (DM Sans / Newsreader). */
 
-/* ---- gatilho visível no header (masthead escuro) ---- */
-.ah-search {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  max-width: 340px;
-  flex: 0 1 340px;
-  background: var(--mast-bg-2);
-  color: var(--mast-ink-2);
-  border: 1px solid #2a3025;
-  border-radius: 9px;
-  padding: 6px 8px 6px 10px;
-  cursor: text;
-  font-family: var(--sans);
-  text-align: left;
-  margin-left: 6px;
-}
-.ah-search:hover { background: #1f2521; border-color: #343b30; }
-.ah-search-ic { width: 16px; height: 16px; flex: 0 0 auto; opacity: 0.85; }
-.ah-search-txt {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ah-search-kbd {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--mast-ink-2);
-  border: 1px solid #343b30;
-  border-radius: 6px;
-  padding: 2px 6px;
-  line-height: 1;
-}
-
-/* Em telas estreitas o campo vira só a lupa (rótulo + atalho somem). */
-@media (max-width: 760px) {
-  .ah-search { flex: 0 0 auto; max-width: none; padding: 6px; }
-  .ah-search-txt, .ah-search-kbd { display: none; }
-}
+/* O gatilho de busca no header (.ah-search*) migrou para Tailwind em
+ * Header.tsx — ver docs/superpowers/specs/2026-07-08-shadcn-migration-playbook.md. */
 
 .cmdk-backdrop {
   position: fixed;
