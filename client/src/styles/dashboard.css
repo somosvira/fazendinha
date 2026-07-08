@@ -1,27 +1,5 @@
 /* Rio Novo — Dashboard interativo (visão operacional) */
 
-/* activity filter */
-.act-filter {
-  display: inline-flex;
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-}
-.act-filter button {
-  background: none; border: none;
-  padding: 7px 12px;
-  font-family: var(--sans);
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-  cursor: pointer;
-  border-right: 1px solid var(--rule);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.act-filter button:last-child { border-right: none; }
-.act-filter button[aria-pressed="true"] { background: var(--mast-bg); color: var(--mast-ink); }
-.act-filter .swatch { width: 8px; height: 8px; display: inline-block; }
 
 
 .panel {
