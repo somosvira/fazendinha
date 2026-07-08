@@ -297,6 +297,21 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
     try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
   }, [openModulo]);
 
+  // Fecha o drawer mobile se a viewport estiver (ou passar a estar) >=901px —
+  // nessa largura o trilho desktop assume e o painel do Sheet vira `hidden`
+  // via CSS, mas o Radix mantém overlay/scroll-lock/focus-trap ativos sobre um
+  // painel invisível se ninguém desmontar o Dialog. Sem um listener de resize,
+  // abrir o drawer em <=900px e depois alargar/rotacionar a tela deixa o
+  // desktop inteiro escuro e inclicável.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const mq = window.matchMedia("(min-width: 901px)");
+    if (mq.matches) { onMobileToggle(false); return; }
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) onMobileToggle(false); };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [mobileOpen, onMobileToggle]);
+
   // relabel financeiro: "IA" -> "IA financeira"
   const fin = financeiro.map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
@@ -361,7 +376,7 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="max-w-none w-[min(280px,86vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden"
+          className="max-w-none w-[min(280px,86vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>

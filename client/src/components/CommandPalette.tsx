@@ -176,7 +176,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
         }}
       >
         <DialogTitle className="sr-only">Busca global</DialogTitle>
-        <Command shouldFilter={false} className="flex h-full max-h-[70vh] flex-col">
+        <Command shouldFilter={false} vimBindings={false} className="flex h-full max-h-[70vh] flex-col">
           <div className="relative flex items-center">
             <CommandInput
               ref={inputRef}

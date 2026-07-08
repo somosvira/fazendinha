@@ -22,11 +22,34 @@ function makeLocalStorageMock() {
   };
 }
 
+// jsdom não implementa `window.matchMedia` — o efeito que fecha o drawer
+// mobile no crossover de 901px (fix da revisão final) chama
+// `window.matchMedia("(min-width: 901px)")` a cada render com mobileOpen=true.
+// Sem esse stub o teste do Sheet quebra com "matchMedia is not a function".
+// `matches: false` simula uma viewport <=900px (o cenário em que o drawer
+// mobile existe) — o efeito só adiciona o listener de "change" e não chama
+// onMobileToggle de cara, então não interfere nas asserções abaixo.
+function makeMatchMediaMock() {
+  return (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  });
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
-beforeEach(() => vi.stubGlobal("localStorage", makeLocalStorageMock()));
+beforeEach(() => {
+  vi.stubGlobal("localStorage", makeLocalStorageMock());
+  vi.stubGlobal("matchMedia", makeMatchMediaMock());
+});
 
 function baseProps(overrides: Partial<{
   current: Tab;
