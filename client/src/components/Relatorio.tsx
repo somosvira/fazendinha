@@ -1,10 +1,27 @@
-/* Rio Novo — Relatório gerencial (visão editorial) */
+/* Rio Novo — Relatório gerencial (visão editorial).
+ * Fase 2 shadcn: markup migrado para Tailwind + primitivas em ./report/primitives.
+ * O CSS monopolizado (report-section, kpi-hero, answer/activity/unit/dual-stat/
+ * two-up) saiu de base.css; classes compartilhadas (.legend*, .eyebrow, .caption,
+ * .footnote, .cat-*, .chart-*) seguem vivas até suas próprias fases. */
 
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import R from "../data/rionovo";
 import { ReportHeader } from "./Shell";
 import { fmtMoney, MonthlyFlowChart, WaterfallChart } from "./charts";
 import { getHoje } from "../lib/hoje";
+import { cn } from "@/lib/utils";
+import {
+  Section,
+  SectionHead,
+  KpiRow,
+  KpiTile,
+  ChartLegend,
+  LegendItem,
+  SplitBar,
+  UnitCard,
+  ActivityCard,
+  AlertCard,
+} from "./report/primitives";
 import type { Tab } from "./Shell";
 import type { DateRange } from "./DateRangePicker";
 
@@ -25,7 +42,7 @@ function KpiHero({
   const investAbs = Math.abs(kpis.investimento.value);
   const pctInvest = fluxoAbs > 0 ? Math.round((investAbs / fluxoAbs) * 100) : 0;
   return (
-    <div className="kpi-row">
+    <KpiRow>
       {cells.map((c) => {
         const isNeg = c.value < 0;
         const delta = c.value - c.prev;
@@ -46,46 +63,22 @@ function KpiHero({
                 : "leite + café + outros";
 
         return (
-          <div className="kpi" key={c.k}>
-            <span className="eyebrow">{c.label}</span>
-            <div className={"kpi-value mono-nums " + (isNeg ? "neg" : "")}>{fmtMoney(c.value)}</div>
-            <div
-              className={"kpi-delta " + (good ? "up" : "down")}
-              title={`Comparação contra o mesmo período do ano anterior (${c.prev > 0 ? fmtMoney(c.prev, { compact: true }) : "—"}).`}
-            >
-              <span className="arrow">{up ? "▲" : "▼"}</span>
-              <span>
-                {fmtMoney(Math.abs(delta), { compact: true })} ({Math.abs(deltaPct).toFixed(0)}%) vs mesmo período de 2025
-              </span>
-            </div>
-            <div className="kpi-note">{note}{good ? " · acima do esperado" : " · abaixo do esperado"}</div>
-          </div>
+          <KpiTile
+            key={c.k}
+            label={c.label}
+            value={fmtMoney(c.value)}
+            negative={isNeg}
+            delta={{
+              up,
+              good,
+              text: `${fmtMoney(Math.abs(delta), { compact: true })} (${Math.abs(deltaPct).toFixed(0)}%) vs mesmo período de 2025`,
+              title: `Comparação contra o mesmo período do ano anterior (${c.prev > 0 ? fmtMoney(c.prev, { compact: true }) : "—"}).`,
+            }}
+            note={`${note}${good ? " · acima do esperado" : " · abaixo do esperado"}`}
+          />
         );
       })}
-    </div>
-  );
-}
-
-function SectionHead({
-  num,
-  title,
-  lede,
-  right,
-}: {
-  num: string;
-  title: string;
-  lede?: string;
-  right?: ReactNode;
-}) {
-  return (
-    <div className="section-head">
-      <span className="section-num">§ {num}</span>
-      <div>
-        <h2 className="section-title">{title}</h2>
-        {lede && <p className="section-lede">{lede}</p>}
-      </div>
-      <div>{right}</div>
-    </div>
+    </KpiRow>
   );
 }
 
@@ -150,49 +143,60 @@ function QuestionLeite() {
   const deficitK = receitaK - custeioK;
   const deficitAbs = Math.abs(deficitK);
   return (
-    <div className="answer-block">
-      <div className="answer-verdict">
-        <div className="verdict-line">
-          <strong>Não.</strong> Em 2025, o leite operacional consumiu{" "}
-          <span className="accent-neg">R$ {(deficitAbs / 1000).toFixed(2).replace(".", ",")} mi</span> a mais do que
-          entregou — uma margem operacional de <strong>−{((deficitAbs / receitaK) * 100).toFixed(0)}%</strong>.
+    <div className="grid grid-cols-[1.2fr_1fr] items-start gap-10 pt-2 pb-3">
+      <div className="flex flex-col gap-3.5">
+        <div className="font-serif text-[22px] leading-[1.35] tracking-[-0.005em] text-foreground">
+          <strong className="font-semibold">Não.</strong> Em 2025, o leite operacional consumiu{" "}
+          <span className="font-semibold text-prejuizo">
+            R$ {(deficitAbs / 1000).toFixed(2).replace(".", ",")} mi
+          </span>{" "}
+          a mais do que entregou — uma margem operacional de{" "}
+          <strong className="font-semibold">−{((deficitAbs / receitaK) * 100).toFixed(0)}%</strong>.
         </div>
-        <div className="verdict-detail">
+        <div className="max-w-[50ch] text-[15px] font-medium leading-[1.55] text-ink-2">
           Considera apenas custeio direto da atividade leiteira (ração, curral, medicamento animal, salários de
           tratadores, energia da sala de ordenha) — <em>reclassificando</em> a compra de matrizes Girolando (R$ 1,26
           mi marcados como “Animal Aquisição” em custeio) como investimento. Sem essa reclassificação, o operacional
           aparente fica −R$ 1,96 mi e fica impossível ler o que é prejuízo e o que é crescimento.
         </div>
-        <div className="dual-stat">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-6 py-4">
           <div>
-            <div className="label">Receita leite 2025</div>
-            <div className="value" style={{ color: "var(--leite)" }}>
+            <div className="mb-2 text-[14px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+              Receita leite 2025
+            </div>
+            <div
+              className="font-serif text-[40px] font-medium leading-none tabular-nums tracking-[-0.015em]"
+              style={{ color: "var(--leite)" }}
+            >
               {fmtMoney(receitaK)}
             </div>
           </div>
-          <div className="versus">contra</div>
+          <div className="pb-2 font-serif text-[18px] italic text-ink-2">contra</div>
           <div>
-            <div className="label">Custeio puro 2025</div>
-            <div className="value" style={{ color: "var(--cafe)" }}>
+            <div className="mb-2 text-[14px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+              Custeio puro 2025
+            </div>
+            <div
+              className="font-serif text-[40px] font-medium leading-none tabular-nums tracking-[-0.015em]"
+              style={{ color: "var(--cafe)" }}
+            >
               {fmtMoney(custeioK)}
             </div>
           </div>
         </div>
       </div>
       <div>
-        <div className="eyebrow" style={{ marginBottom: 12 }}>
-          Cobertura mês a mês — 2025
-        </div>
+        <div className="eyebrow mb-3">Cobertura mês a mês — 2025</div>
         <Leite2025CoverageChart />
-        <div className="legend" style={{ marginTop: 14 }}>
-          <span>
-            <span className="legend-dot" style={{ background: "var(--leite)" }}></span> Receita
-          </span>
-          <span>
-            <span className="legend-dash" style={{ color: "var(--cafe)" }}></span> Custeio puro
-          </span>
-        </div>
-        <div className="footnote" style={{ marginTop: 14 }}>
+        <ChartLegend className="mt-3.5">
+          <LegendItem mark="dot" color="var(--leite)">
+            Receita
+          </LegendItem>
+          <LegendItem mark="dash" color="var(--cafe)">
+            Custeio puro
+          </LegendItem>
+        </ChartLegend>
+        <div className="footnote mt-3.5">
           <span className="dagger">†</span>
           <span>
             Em <em>nenhum</em> mês de 2025 a receita do leite cobriu o custeio puro da atividade. O rebanho expandiu
@@ -206,65 +210,50 @@ function QuestionLeite() {
 
 function CusteioVsInvestimento() {
   return (
-    <div className="two-up" style={{ gridTemplateColumns: "1.6fr 1fr" }}>
+    <div className="grid grid-cols-[1.6fr_1fr] items-start gap-8">
       <div>
         <WaterfallChart data={R.waterfall} />
-        <div className="legend" style={{ marginTop: 8, paddingLeft: 24 }}>
-          <span>
-            <span className="legend-dot" style={{ background: "var(--leite)" }}></span> Receita
-          </span>
-          <span>
-            <span className="legend-dot" style={{ background: "var(--cafe)" }}></span> Custeio
-          </span>
-          <span>
-            <span
-              className="legend-dot"
-              style={{ background: "var(--outros)", opacity: 0.5, border: "1px dashed var(--outros)" }}
-            ></span>{" "}
+        <ChartLegend className="mt-2 pl-6">
+          <LegendItem mark="dot" color="var(--leite)">
+            Receita
+          </LegendItem>
+          <LegendItem mark="dot" color="var(--cafe)">
+            Custeio
+          </LegendItem>
+          <LegendItem mark="dot" color="var(--outros)" opacity={0.5} dashedBorder>
             Investimento
-          </span>
-          <span>
-            <span className="legend-dot" style={{ background: "var(--ink)" }}></span> Subtotal / Fluxo
-          </span>
-        </div>
+          </LegendItem>
+          <LegendItem mark="dot" color="var(--ink)">
+            Subtotal / Fluxo
+          </LegendItem>
+        </ChartLegend>
       </div>
       <div>
-        <div className="eyebrow" style={{ marginBottom: 14 }}>
-          Investimento — onde foi
-        </div>
-        <div className="col" style={{ gap: 14 }}>
+        <div className="eyebrow mb-3.5">Investimento — onde foi</div>
+        <div className="flex flex-col gap-3.5">
           {R.investimentoBreakdown.map(
             (it: { nome: string; value: number; atividade: string }, i: number) => {
               const colorVar =
                 it.atividade === "leite" ? "var(--leite)" : it.atividade === "cafe" ? "var(--cafe)" : "var(--outros)";
               return (
-                <div key={i} className="col" style={{ gap: 6 }}>
-                  <div className="row-between">
-                    <span style={{ fontSize: 14, color: "var(--ink-2)" }}>{it.nome}</span>
-                    <span
-                      className="mono-nums"
-                      style={{ fontFamily: "var(--serif)", fontSize: 18 }}
-                    >
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[14px] text-ink-2">{it.nome}</span>
+                    <span className="font-serif text-[18px] tabular-nums text-foreground">
                       {fmtMoney(it.value)}
                     </span>
                   </div>
-                  <div style={{ height: 6, background: "var(--rule-soft)", position: "relative" }}>
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: `${(it.value / 3564) * 100}%`,
-                        background: colorVar,
-                        opacity: 0.85,
-                      }}
-                    ></div>
-                  </div>
+                  <SplitBar
+                    className="h-1.5"
+                    width={(it.value / 3564) * 100}
+                    segments={[{ pct: 100, color: colorVar, opacity: 0.85 }]}
+                  />
                 </div>
               );
             },
           )}
         </div>
-        <div className="footnote" style={{ marginTop: 22 }}>
+        <div className="footnote mt-[22px]">
           <span className="dagger">†</span>
           <span>
             Compra de matrizes Girolando é o maior item — entram em produção em ~6 meses, elevando a entrega de leite
@@ -276,68 +265,23 @@ function CusteioVsInvestimento() {
   );
 }
 
-function ActivityCard({
-  atv,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  atv: any;
-}) {
-  const isNegMargem = atv.margemOp < 0;
-  return (
-    <div className="activity-card">
-      <div className="activity-card-head">
-        <span className="swatch" style={{ background: atv.cor }}></span>
-        <span className="name">{atv.nome}</span>
-        <span className="pct">{atv.pctReceita}% da receita</span>
-      </div>
-
-      <div className="activity-stat">
-        <span className="stat-label">Receita</span>
-        <span className="stat-val">{fmtMoney(atv.receita)}</span>
-      </div>
-      <div className="activity-stat">
-        <span className="stat-label">Custeio</span>
-        <span className="stat-val">{fmtMoney(-atv.custeio)}</span>
-      </div>
-      <div className="activity-stat">
-        <span className="stat-label">Investimento</span>
-        <span className="stat-val invest">{fmtMoney(-atv.investimento)}</span>
-      </div>
-
-      <div className="activity-foot">
-        <span className="key">Margem op.</span>
-        <span
-          className={"val mono-nums "}
-          style={{ color: isNegMargem ? "var(--prejuizo)" : "var(--lucro)" }}
-        >
-          {atv.margemOp >= 0 ? "+" : ""}
-          {fmtMoney(atv.margemOp)}
-        </span>
-      </div>
-
-      <div
-        style={{
-          paddingTop: 12,
-          borderTop: "1px solid var(--rule-soft)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-        }}
-      >
-        <span className="eyebrow">{atv.volume.label}</span>
-        <span style={{ fontFamily: "var(--serif)", fontSize: 18, color: "var(--ink)" }}>{atv.volume.value}</span>
-        <span style={{ fontSize: 12, color: "var(--ink-3)" }}>{atv.volume.subtitle}</span>
-      </div>
-    </div>
-  );
-}
-
 function ActivityComparison() {
   return (
-    <div className="activity-grid">
+    <div className="grid grid-cols-3 gap-px border border-border bg-[var(--rule-soft)]">
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {R.atividades.map((a: any) => (
-        <ActivityCard key={a.key} atv={a} />
+        <ActivityCard
+          key={a.key}
+          color={a.cor}
+          nome={a.nome}
+          pctReceita={a.pctReceita}
+          receita={fmtMoney(a.receita)}
+          custeio={fmtMoney(-a.custeio)}
+          investimento={fmtMoney(-a.investimento)}
+          margemOp={a.margemOp}
+          volume={a.volume}
+          fmt={(n) => fmtMoney(n)}
+        />
       ))}
     </div>
   );
@@ -347,24 +291,20 @@ function MonthlyFlow() {
   return (
     <div>
       <MonthlyFlowChart data={R.fluxoMensal} />
-      <div className="legend" style={{ marginTop: 10, paddingLeft: 56 }}>
-        <span>
-          <span className="legend-dot" style={{ background: "var(--leite)" }}></span> Receita
-        </span>
-        <span>
-          <span className="legend-dot" style={{ background: "var(--cafe)" }}></span> Custeio
-        </span>
-        <span>
-          <span
-            className="legend-dot"
-            style={{ background: "var(--outros)", opacity: 0.5, border: "1px dashed var(--outros)" }}
-          ></span>{" "}
+      <ChartLegend className="mt-2.5 pl-14">
+        <LegendItem mark="dot" color="var(--leite)">
+          Receita
+        </LegendItem>
+        <LegendItem mark="dot" color="var(--cafe)">
+          Custeio
+        </LegendItem>
+        <LegendItem mark="dot" color="var(--outros)" opacity={0.5} dashedBorder>
           Investimento
-        </span>
-        <span>
-          <span className="legend-line" style={{ background: "var(--ink)" }}></span> Fluxo líquido
-        </span>
-      </div>
+        </LegendItem>
+        <LegendItem mark="line" color="var(--ink)">
+          Fluxo líquido
+        </LegendItem>
+      </ChartLegend>
     </div>
   );
 }
@@ -374,30 +314,38 @@ function TopCategories() {
   const cats: any[] = R.topCategorias;
   const max = Math.max(...cats.map((c) => c.total));
   return (
-    <div className="cat-list">
+    <div className="flex flex-col">
       {cats.map((c) => {
         const w = (c.total / max) * 100;
-        const lW = (c.leite / c.total) * w;
-        const cW = (c.cafe / c.total) * w;
-        const oW = (c.outros / c.total) * w;
         return (
-          <div className="cat-row" key={c.rank}>
-            <span className="cat-rank">{String(c.rank).padStart(2, "0")}</span>
-            <div className="cat-name">
+          <div
+            className="grid grid-cols-[28px_1.8fr_3fr_1fr_90px] items-center gap-4 border-b border-[color:var(--rule-soft)] py-3.5 text-[15px] last:border-b-0"
+            key={c.rank}
+          >
+            <span className="font-serif text-[15px] font-medium tabular-nums text-ink-2">
+              {String(c.rank).padStart(2, "0")}
+            </span>
+            <div className="text-[16px] font-semibold text-foreground">
               {c.nome}
-              <small>{c.sub}</small>
+              <small className="mt-0.5 block text-[14px] font-medium text-ink-2">{c.sub}</small>
             </div>
-            <div style={{ position: "relative" }}>
-              <div className="cat-bar-track">
-                <div className="cat-bar-split" style={{ width: `${w}%`, position: "absolute", inset: 0 }}>
-                  <div style={{ width: `${(lW / w) * 100}%`, background: "var(--leite)" }}></div>
-                  <div style={{ width: `${(cW / w) * 100}%`, background: "var(--cafe)" }}></div>
-                  <div style={{ width: `${(oW / w) * 100}%`, background: "var(--outros)" }}></div>
-                </div>
-              </div>
-            </div>
-            <span className="cat-val mono-nums">{fmtMoney(c.total)}</span>
-            <span className={"cat-delta mono-nums " + (c.delta > 0 ? "up" : "down")}>
+            <SplitBar
+              width={w}
+              segments={[
+                { pct: (c.leite / c.total) * 100, color: "var(--leite)" },
+                { pct: (c.cafe / c.total) * 100, color: "var(--cafe)" },
+                { pct: (c.outros / c.total) * 100, color: "var(--outros)" },
+              ]}
+            />
+            <span className="text-right font-serif text-[19px] font-medium tabular-nums text-foreground">
+              {fmtMoney(c.total)}
+            </span>
+            <span
+              className={cn(
+                "text-right text-[14px] font-semibold tabular-nums",
+                c.delta > 0 ? "text-prejuizo" : "text-lucro",
+              )}
+            >
               {c.delta > 0 ? "▲" : "▼"} {Math.abs(c.delta)}% vs 2025
             </span>
           </div>
@@ -409,89 +357,36 @@ function TopCategories() {
 
 function UnitCost() {
   return (
-    <div className="unit-grid">
-      <div className="unit-card">
-        <div className="stripe" style={{ background: "var(--leite)" }}></div>
-        <div className="body-col">
-          <span className="unit-eyebrow">Leite</span>
-          <div className="unit-headline">A cada litro entregue, sobra R$ 0,41 antes de qualquer investimento.</div>
-          <div className="unit-numbers">
-            <div className="un-cell">
-              <span className="un-label">Custo / L</span>
-              <span className="un-val">R$ 3,10</span>
-            </div>
-            <div className="un-cell">
-              <span className="un-label">Preço médio / L</span>
-              <span className="un-val">R$ 3,51</span>
-            </div>
-            <div className="un-cell">
-              <span className="un-label">Margem / L</span>
-              <span className="un-val pos">+R$ 0,41</span>
-            </div>
-          </div>
-          <div className="caption" style={{ marginTop: 10 }}>
-            Base: 250.380 L entregues à Embaré entre Jan–Mai 2026.
-          </div>
-        </div>
-      </div>
-      <div className="unit-card">
-        <div className="stripe" style={{ background: "var(--cafe)" }}></div>
-        <div className="body-col">
-          <span className="unit-eyebrow">Café</span>
-          <div className="unit-headline">Margem por saca alta — mas safra única concentra o risco em uma janela.</div>
-          <div className="unit-numbers">
-            <div className="un-cell">
-              <span className="un-label">Custo / saca</span>
-              <span className="un-val">R$ 391</span>
-            </div>
-            <div className="un-cell">
-              <span className="un-label">Preço médio</span>
-              <span className="un-val">R$ 707</span>
-            </div>
-            <div className="un-cell">
-              <span className="un-label">Margem</span>
-              <span className="un-val pos">+R$ 316</span>
-            </div>
-          </div>
-          <div className="caption" style={{ marginTop: 10 }}>
-            Base: 430 sacas comercializadas na safra 01/2026 — tipo 6/7, bebida dura.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AlertCard({
-  tone = "warn",
-  eyebrow,
-  title,
-  ctaText,
-  onCta,
-}: {
-  tone?: "warn" | "neg" | "pos";
-  eyebrow: string;
-  title: string;
-  ctaText: string;
-  onCta?: () => void;
-}) {
-  return (
-    <div className={"alert-card " + tone}>
-      <div className="stripe"></div>
-      <div className="body-col">
-        <span className="eyebrow">{eyebrow}</span>
-        <div className="alert-title">{title}</div>
-      </div>
-      <button className="alert-cta" onClick={onCta}>
-        {ctaText} →
-      </button>
+    <div className="grid grid-cols-2 gap-px border border-border bg-[var(--rule-soft)]">
+      <UnitCard
+        accent="var(--leite)"
+        eyebrow="Leite"
+        headline="A cada litro entregue, sobra R$ 0,41 antes de qualquer investimento."
+        cells={[
+          { label: "Custo / L", value: "R$ 3,10" },
+          { label: "Preço médio / L", value: "R$ 3,51" },
+          { label: "Margem / L", value: "+R$ 0,41", pos: true },
+        ]}
+        caption="Base: 250.380 L entregues à Embaré entre Jan–Mai 2026."
+      />
+      <UnitCard
+        accent="var(--cafe)"
+        eyebrow="Café"
+        headline="Margem por saca alta — mas safra única concentra o risco em uma janela."
+        cells={[
+          { label: "Custo / saca", value: "R$ 391" },
+          { label: "Preço médio", value: "R$ 707" },
+          { label: "Margem", value: "+R$ 316", pos: true },
+        ]}
+        caption="Base: 430 sacas comercializadas na safra 01/2026 — tipo 6/7, bebida dura."
+      />
     </div>
   );
 }
 
 function ContextualCards({ onNav }: { onNav: (t: Tab) => void }) {
   return (
-    <div className="context-cards-row">
+    <div className="mt-4 grid grid-cols-3 gap-[18px]">
       <AlertCard
         tone="neg"
         eyebrow="Alerta — categoria"
@@ -533,7 +428,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         updatedAt={R.UPDATED_AT}
       />
 
-      <section className="report-section" style={{ paddingTop: 24 }}>
+      <Section className="pt-6">
         <KpiHero kpis={R.kpisYTD} />
         <div className="footnote">
           <span className="dagger">†</span>
@@ -544,18 +439,18 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
             <a href="#"> ver detalhes</a>.
           </span>
         </div>
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         <SectionHead
           num="I"
           title="O leite paga o leite?"
           lede="A pergunta que ancora a leitura da atividade principal: a operação leiteira gera caixa próprio, antes de qualquer investimento em rebanho?"
         />
         <QuestionLeite />
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         {(() => {
           const fluxoAbs = Math.abs(R.kpisYTD.fluxo.value);
           const investAbs = Math.abs(R.kpisYTD.investimento.value);
@@ -567,65 +462,65 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
               title="Quanto do negativo é prejuízo, quanto é investimento?"
               lede={`Dos R$ ${ledeFluxo} mi negativos no ano, ${pct}% é compra de gado, máquinas e plantio — capital novo entrando, não dinheiro perdido.`}
               right={
-                <div className="legend">
-                  <span style={{ color: "var(--prejuizo)" }}>{pct}% investimento</span>
-                </div>
+                <ChartLegend>
+                  <span className="text-prejuizo">{pct}% investimento</span>
+                </ChartLegend>
               }
             />
           );
         })()}
         <CusteioVsInvestimento />
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         <SectionHead
           num="III"
           title="Leite, Café e Outros — lado a lado"
           lede="Cada atividade é uma operação distinta. Comparar receita, custeio e investimento na mesma régua revela onde está o motor e onde está o peso."
         />
         <ActivityComparison />
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         <SectionHead
           num="IV"
           title="Fluxo mês a mês"
           lede="A linha do fluxo líquido mês a mês mostra o ritmo do investimento — março e abril carregam a maior parte do negativo do ano."
         />
         <MonthlyFlow />
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         <SectionHead
           num="V"
           title="Onde o dinheiro foi"
           lede="As oito maiores categorias respondem por 82% do desembolso de custeio no ano. Ração e pessoal seguem dominando."
           right={
-            <div className="legend">
-              <span>
-                <span className="legend-dot" style={{ background: "var(--leite)" }}></span>Leite
-              </span>
-              <span>
-                <span className="legend-dot" style={{ background: "var(--cafe)" }}></span>Café
-              </span>
-              <span>
-                <span className="legend-dot" style={{ background: "var(--outros)" }}></span>Outros
-              </span>
-            </div>
+            <ChartLegend>
+              <LegendItem mark="dot" color="var(--leite)">
+                Leite
+              </LegendItem>
+              <LegendItem mark="dot" color="var(--cafe)">
+                Café
+              </LegendItem>
+              <LegendItem mark="dot" color="var(--outros)">
+                Outros
+              </LegendItem>
+            </ChartLegend>
           }
         />
         <TopCategories />
         <ContextualCards onNav={onNav} />
-      </section>
+      </Section>
 
-      <section className="report-section">
+      <Section>
         <SectionHead
           num="VI"
           title="Custo por unidade produzida"
           lede="Reduzir leite e café a R$ por litro e R$ por saca — o KPI que importa para quem opera, indiferente ao tamanho do mês."
         />
         <UnitCost />
-      </section>
+      </Section>
 
       <div style={{ padding: "40px 0 60px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
         <button
