@@ -1,6 +1,3 @@
-# Reverse proxy: /api/* → Render. Substitua RIONOVO_API_URL pela URL do seu Render
-# (ex.: https://rionovo-api.onrender.com). O :splat preserva o resto do path.
-/api/*  https://RIONOVO_API_URL.onrender.com/api/:splat  200
-
-# SPA fallback: qualquer rota não-arquivo cai no index.html (React decide).
-/*      /index.html                                      200
+# O proxy /api/* → Render é feito pelo _worker.js (CF Pages não faz proxy externo
+# via _redirects). Aqui fica só o SPA fallback.
+/*      /index.html      200
