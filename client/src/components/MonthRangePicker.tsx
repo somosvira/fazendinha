@@ -7,6 +7,7 @@
  */
 
 import type { DateRange } from "./DateRangePicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -55,14 +56,24 @@ export function MonthRangePicker({ value, onChange, min, max }: {
   };
 
   return (
-    <div className="mrp">
-      <select className="mrp-sel" value={startKey} onChange={(e) => setStart(e.target.value)} aria-label="Mês inicial">
-        {meses.map((mo) => <option key={mo.key} value={mo.key}>{mo.label}</option>)}
-      </select>
-      <span className="mrp-sep">→</span>
-      <select className="mrp-sel" value={endKey} onChange={(e) => setEnd(e.target.value)} aria-label="Mês final">
-        {meses.map((mo) => <option key={mo.key} value={mo.key}>{mo.label}</option>)}
-      </select>
+    <div className="inline-flex items-center gap-2">
+      <Select value={startKey} onValueChange={setStart}>
+        <SelectTrigger aria-label="Mês inicial" className="tabular-nums">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {meses.map((mo) => <SelectItem key={mo.key} value={mo.key}>{mo.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <span className="text-[13px] text-ink-3">→</span>
+      <Select value={endKey} onValueChange={setEnd}>
+        <SelectTrigger aria-label="Mês final" className="tabular-nums">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {meses.map((mo) => <SelectItem key={mo.key} value={mo.key}>{mo.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

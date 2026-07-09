@@ -128,7 +128,7 @@ function UserPicker({ user, allUsers, onSwitchUser, onSair }: {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="group flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-transparent py-1 pl-1 pr-2 font-sans hover:border-[#2a3025] hover:bg-[var(--mast-bg-2)]"
+          className="group flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-transparent bg-transparent py-1 pl-1 pr-2 font-sans hover:border-[#2a3025] hover:bg-[var(--mast-bg-2)]"
           aria-haspopup="menu"
         >
           {chipInner}

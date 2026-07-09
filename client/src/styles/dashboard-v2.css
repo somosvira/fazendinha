@@ -195,18 +195,5 @@
 .cat-real-row:hover .arr { color: var(--ink); }
 
 
-/* MonthRangePicker — filtro mensal (dois selects de mês/ano) */
-.mrp { display: inline-flex; align-items: center; gap: 8px; }
-.mrp-sel {
-  font-family: var(--sans);
-  font-size: 13px;
-  color: var(--ink);
-  background: var(--surface, #fff);
-  border: 1px solid var(--line, #d9d6cf);
-  border-radius: 8px;
-  padding: 7px 10px;
-  cursor: pointer;
-}
-.mrp-sel:hover { border-color: var(--ink-3); }
-.mrp-sel:focus-visible { outline: 2px solid var(--leite); outline-offset: 1px; }
-.mrp-sep { color: var(--ink-3); font-size: 13px; }
+/* MonthRangePicker migrou p/ o primitivo shadcn Select (ui/select.tsx) —
+   mrp/mrp-sel/mrp-sep aposentadas (usavam --surface/--line, vars inexistentes). */
