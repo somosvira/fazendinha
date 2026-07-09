@@ -60,9 +60,9 @@ export function SectionHead({
 
 /* ── DashSectionHeader: cabeçalho de seção do Dashboard (dash-sec-head) ──
  * eyebrow + título serif + slot direito (controles/caption/flag). Reproduz em
- * Tailwind o .dash-sec-head/.dash-sec-titles/.dash-sec-title do cockpit.css —
- * o CSS legado segue vivo só porque RupturaCaixa.tsx ainda o consome. O título
- * renderiza 30px/500 (typescale sobrepõe os 28px do cockpit.css). */
+ * Tailwind o antigo .dash-sec-head/.dash-sec-titles/.dash-sec-title — esse CSS
+ * foi aposentado no slice 5 (CategoryDrill era o último consumidor direto). O
+ * título renderiza 30px/500 (o mesmo que o typescale dava ao .dash-sec-title). */
 export function DashSectionHeader({
   eyebrow,
   title,

@@ -11,62 +11,19 @@
 }
 .kpi-cock-imp.is-neg { color: var(--prejuizo); }
 
-/* ===== COCKPIT SECTION FRAME ===== */
-.cockpit-section {
-  padding: 34px 0 30px;
-  border-bottom: 1px solid var(--rule);
-}
-.dash-sec-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 24px;
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-}
-.dash-sec-titles { display: flex; flex-direction: column; gap: 4px; }
-.dash-sec-title {
-  font-family: var(--serif);
-  font-size: 28px;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  margin: 0;
-  font-weight: 500;
-  color: var(--ink);
-}
-.dash-sec-controls {
-  display: flex; align-items: center; gap: 12px;
-}
+/* ===== COCKPIT SECTION FRAME =====
+   .cockpit-section, .dash-sec-head/.dash-sec-titles/.dash-sec-title,
+   .dash-sec-controls e o override .cockpit-section .timeline-slices migrados p/
+   Tailwind em Dashboard.tsx (CategoryDrill usa a primitiva DashSectionHeader;
+   demais seções já usavam) — Fase 2 slice 5. */
 
+/* ===== SUBCATEGORIA DRILL (tipos de X) — .drill-subhint migrado p/ Tailwind
+   em Dashboard.tsx (CategoryDrill, Fase 2 slice 5). ===== */
 
-/* timeline slices reuse */
-.cockpit-section .timeline-slices {
-  display: flex; border: 1px solid var(--rule); background: var(--bg-card);
-}
-.cockpit-section .timeline-slices .t-slice {
-  background: none; border: none; padding: 7px 14px;
-  font-family: var(--sans); font-size: 14px; letter-spacing: 0.04em;
-  color: var(--ink-3); cursor: pointer; border-right: 1px solid var(--rule);
-}
-.cockpit-section .timeline-slices .t-slice:last-child { border-right: none; }
-.cockpit-section .timeline-slices .t-slice[aria-pressed="true"] { background: var(--mast-bg); color: var(--mast-ink); }
-
-/* ===== SUBCATEGORIA DRILL (tipos de X) ===== */
-.drill-subhint {
-  font-family: var(--serif);
-  font-size: 16px;
-  font-style: italic;
-  color: var(--ink-2);
-  margin: -8px 0 20px;
-  max-width: 70ch;
-  line-height: 1.4;
-}
-.drill-subhint strong { font-style: normal; font-weight: 500; color: var(--ink); }
-
-/* .subcat-*/.sc-* (drill de subcategorias) migrados p/ Tailwind em Dashboard.tsx
+/* subcat-* / sc-* (drill de subcategorias) migrados p/ Tailwind em Dashboard.tsx
    (SubcatBreakdown, Fase 2 slice 5) — inclui o responsivo @1100px. */
 
-/* lançamentos individuais (3º nível) — .lanc-*/.ld-*/.nf-link migrados p/
+/* lançamentos individuais (3º nível) — lanc-* / ld-* / nf-link migrados p/
    Tailwind em Dashboard.tsx (LancamentosPanel, Fase 2 slice 5). */
 
 /* ===== timeline month hover (clicável) ===== */

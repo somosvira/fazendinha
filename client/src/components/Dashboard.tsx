@@ -224,6 +224,10 @@ function Donut({ segments, total, onSliceClick, hovered, setHovered }: {
 
 /* ========== SECTION 1 — GASTO POR CATEGORIA (interactive donut) ========== */
 
+// breadcrumb/rodapé: botão-link (Preflight OFF → zera bg/padding nativos)
+const CRUMB_BTN =
+  "cursor-pointer bg-transparent p-0 font-sans text-[14px] text-ink-3 underline underline-offset-[3px] hover:text-foreground";
+
 function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void }) {
   const [period, setPeriod] = useState<"23m" | "ytd">("23m");
   const [act, setAct] = useState("tudo");
@@ -946,15 +950,15 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
   if (!cat) {
     return (
       <div className="shell-wide">
-        <div className="breadcrumb">
-          <button className="crumb-btn" onClick={onBack}>Dashboard</button>
-          <span className="sep">›</span>
-          <span className="now">Categoria</span>
+        <div className="flex items-center gap-1.5 pt-[18px] pb-3.5 text-[14px] text-ink-3">
+          <button className={CRUMB_BTN} onClick={onBack}>Dashboard</button>
+          <span className="text-ink-2">›</span>
+          <span className="text-foreground">Categoria</span>
         </div>
         <LoadingShell>
           Categoria sem detalhe disponível neste período.
           <div style={{ marginTop: 14 }}>
-            <button className="crumb-btn" onClick={onBack}>← voltar ao Dashboard</button>
+            <button className={CRUMB_BTN} onClick={onBack}>← voltar ao Dashboard</button>
           </div>
         </LoadingShell>
       </div>
@@ -970,63 +974,63 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
 
   return (
     <div className="shell-wide">
-      <div className="breadcrumb">
-        <button className="crumb-btn" onClick={onBack}>Dashboard</button>
-        <span className="sep">›</span>
-        <button className="crumb-btn" onClick={onBack}>Gasto por categoria</button>
-        <span className="sep">›</span>
-        <span className="now">{cat.nome}</span>
+      <div className="flex items-center gap-1.5 pt-[18px] pb-3.5 text-[14px] text-ink-3">
+        <button className={CRUMB_BTN} onClick={onBack}>Dashboard</button>
+        <span className="text-ink-2">›</span>
+        <button className={CRUMB_BTN} onClick={onBack}>Gasto por categoria</button>
+        <span className="text-ink-2">›</span>
+        <span className="text-foreground">{cat.nome}</span>
       </div>
 
-      <div className="drill-head">
-        <div className="title-block">
+      <div className="grid grid-cols-[auto_1fr_auto] items-end gap-6 border-b border-solid border-border pt-1 pb-[22px]">
+        <div className="flex flex-col gap-1.5">
           <span className="eyebrow">Categoria · {cat.grupo} → {cat.subgrupo}</span>
-          <div className="cat-name">{cat.nome}{cat.flag && <span className="flag-warn-big">⚠</span>}</div>
+          <div className="font-serif text-[46px] font-medium leading-none tracking-[-0.02em]">{cat.nome}{cat.flag && <span className="ml-3.5 inline-block h-8 w-8 rounded-full border-[1.5px] border-solid border-prejuizo text-center align-middle text-[22px] leading-[28px] text-prejuizo">⚠</span>}</div>
         </div>
         <div></div>
-        <div className="total-block">
+        <div className="flex flex-col gap-1 text-right">
           <span className="eyebrow">Total 23 meses</span>
-          <span className="v mono-nums">{fmtBRL(cat.total23m)}</span>
-          <span className="dlt" style={{ color: cat.delta > 0 ? "var(--prejuizo)" : "var(--lucro)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}% vs 2025</span>
+          <span className="mono-nums whitespace-nowrap font-serif text-[44px] leading-none tracking-[-0.02em]">{fmtBRL(cat.total23m)}</span>
+          <span className="whitespace-nowrap text-[14px]" style={{ color: cat.delta > 0 ? "var(--prejuizo)" : "var(--lucro)" }}>{cat.delta > 0 ? "▲ +" : "▼ "}{Math.abs(cat.delta)}% vs 2025</span>
         </div>
       </div>
 
-      <div className="drill-stats">
-        <div className="cell"><span className="l">2026 YTD</span><span className="v mono-nums">{fmtBRL(cat.ytd2026)}</span></div>
-        <div className="cell"><span className="l">Média mensal</span><span className="v mono-nums">{fmtBRL(media)}</span></div>
-        <div className="cell"><span className="l">Mês de pico</span><span className="v mono-nums">{R.MESES_23M[maxIdx].replace("*", "")}</span></div>
-        <div className="cell"><span className="l">Tipos distintos</span><span className="v mono-nums">{nSubs || "—"}</span></div>
+      <div className="grid grid-cols-4 border-b border-solid border-border">
+        <div className="flex flex-col gap-1 border-r border-solid border-[color:var(--rule-soft)] py-4 pl-0 pr-5 last:border-r-0"><span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">2026 YTD</span><span className="mono-nums font-serif text-[26px] font-medium tracking-[-0.005em]">{fmtBRL(cat.ytd2026)}</span></div>
+        <div className="flex flex-col gap-1 border-r border-solid border-[color:var(--rule-soft)] py-4 pl-0 pr-5 last:border-r-0"><span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Média mensal</span><span className="mono-nums font-serif text-[26px] font-medium tracking-[-0.005em]">{fmtBRL(media)}</span></div>
+        <div className="flex flex-col gap-1 border-r border-solid border-[color:var(--rule-soft)] py-4 pl-0 pr-5 last:border-r-0"><span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Mês de pico</span><span className="mono-nums font-serif text-[26px] font-medium tracking-[-0.005em]">{R.MESES_23M[maxIdx].replace("*", "")}</span></div>
+        <div className="flex flex-col gap-1 border-r border-solid border-[color:var(--rule-soft)] py-4 pl-0 pr-5 last:border-r-0"><span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Tipos distintos</span><span className="mono-nums font-serif text-[26px] font-medium tracking-[-0.005em]">{nSubs || "—"}</span></div>
       </div>
 
       {hasSubs && (
-        <section className="cockpit-section" style={{ borderBottom: "1px solid var(--rule)", paddingTop: 30 }}>
-          <div className="dash-sec-head">
-            <div className="dash-sec-titles">
-              <span className="eyebrow">Composição detalhada</span>
-              <h2 className="dash-sec-title">Tipos de {cat.nome.toLowerCase()}</h2>
-            </div>
-            <div className="period-switch">
-              <button aria-current={period === "23m"} onClick={() => setPeriod("23m")}>23 meses</button>
-              <button aria-current={period === "ytd"} onClick={() => setPeriod("ytd")}>2026 YTD</button>
-            </div>
-          </div>
-          <p className="drill-subhint">
+        <section className="border-b border-solid border-border py-[30px]">
+          <DashSectionHeader
+            eyebrow="Composição detalhada"
+            title={`Tipos de ${cat.nome.toLowerCase()}`}
+            right={
+              <div className="period-switch">
+                <button aria-current={period === "23m"} onClick={() => setPeriod("23m")}>23 meses</button>
+                <button aria-current={period === "ytd"} onClick={() => setPeriod("ytd")}>2026 YTD</button>
+              </div>
+            }
+          />
+          <p className="mb-5 mt-[-8px] max-w-[70ch] font-serif text-[17px] font-medium italic leading-[1.4] text-ink-2 [&_strong]:font-medium [&_strong]:not-italic [&_strong]:text-foreground">
             Tudo isso costuma entrar como uma linha só: <strong>"{cat.nome}"</strong>. Aqui está aberto no que realmente foi comprado.
           </p>
           <SubcatBreakdown R={R} cat={cat} period={period} />
         </section>
       )}
 
-      <div style={{ padding: "30px 0", borderBottom: "1px solid var(--rule)" }}>
-        <div className="panel-title" style={{ marginBottom: 12 }}>
-          <h3>{cat.nome} — total mês a mês (jul/24 → mai/26)</h3>
+      <div className="border-b border-solid border-border py-[30px]">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h3 className="m-0 font-serif text-[18px] font-medium tracking-[-0.005em]">{cat.nome} — total mês a mês (jul/24 → mai/26)</h3>
         </div>
         <BarSeries data={monthly} labels={R.MESES_23M} color={corAtv} height={240} />
       </div>
 
-      <div style={{ padding: "30px 0 60px", display: "flex", justifyContent: "space-between" }}>
-        <button className="crumb-btn" onClick={onBack}>← voltar ao Dashboard</button>
-        <button className="crumb-btn" onClick={() => onNav("ia")}>perguntar à IA sobre {cat.nome.toLowerCase()} →</button>
+      <div className="flex justify-between pt-[30px] pb-[60px]">
+        <button className={CRUMB_BTN} onClick={onBack}>← voltar ao Dashboard</button>
+        <button className={CRUMB_BTN} onClick={() => onNav("ia")}>perguntar à IA sobre {cat.nome.toLowerCase()} →</button>
       </div>
     </div>
   );
@@ -1271,7 +1275,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
         <span className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
           Agregado em runtime (via /api/dashboard)
         </span>
-        <button className="crumb-btn" onClick={() => onNav("relatorio")}>ver Relatório editorial →</button>
+        <button className={CRUMB_BTN} onClick={() => onNav("relatorio")}>ver Relatório editorial →</button>
       </div>
     </div>
   );
