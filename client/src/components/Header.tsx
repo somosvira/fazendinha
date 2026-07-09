@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PAPEIS, type User } from "../data/acessos";
 import { fazendas, fazendaAtualId, type Fazenda } from "../data/fazendas";
+import { TerranoSymbol } from "./TerranoLogo";
 
 function useClickOutside<T extends HTMLElement>(open: boolean, close: () => void) {
   const ref = useRef<T | null>(null);
@@ -165,8 +166,11 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
       </button>
 
       <div className="ah-brand">
-        <span className="ah-brand-mark" aria-hidden>RN</span>
-        <span className="ah-brand-name">Rio Novo</span>
+        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol" />
+        <span className="ah-brand-txt">
+          <span className="ah-brand-name">Terrano</span>
+          <span className="ah-brand-sub">Fazenda Rio Novo</span>
+        </span>
       </div>
 
       <FarmPicker atual={atual} />

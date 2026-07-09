@@ -32,6 +32,35 @@ import { Login } from "./components/Login";
 import { getToken, clearToken } from "./lib/auth";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 import { BootSplash } from "./components/Loading";
+import { TerranoIntro } from "./components/TerranoIntro";
+
+// Abertura Terrano (marca grande + música no centro, some pro canto).
+//   "always"  → toca em todo load do dashboard (bom pra testar)
+//   "session" → uma vez por sessão do navegador (usar antes do push)
+//   "once"    → uma vez por dispositivo (localStorage)
+// ⚠️ TROCAR PARA "session" ANTES DO PUSH.
+const INTRO_MODE: "always" | "session" | "once" = "session";
+const INTRO_SEEN_KEY = "terrano:intro:seen";
+
+function deveTocarIntro(tabInicial: Tab): boolean {
+  if (tabInicial !== "dashboard") return false;
+  if (INTRO_MODE === "always") return true;
+  try {
+    const store = INTRO_MODE === "session" ? sessionStorage : localStorage;
+    return !store.getItem(INTRO_SEEN_KEY);
+  } catch {
+    return true;
+  }
+}
+
+function marcarIntroVista() {
+  if (INTRO_MODE === "always") return;
+  try {
+    (INTRO_MODE === "session" ? sessionStorage : localStorage).setItem(INTRO_SEEN_KEY, "1");
+  } catch {
+    /* storage indisponível — ignora */
+  }
+}
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   return (
@@ -117,6 +146,12 @@ export function App() {
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
+  );
+  // Abertura Terrano: só quando o app inicia já no dashboard (ver INTRO_MODE).
+  const [showIntro, setShowIntro] = useState<boolean>(() =>
+    typeof window === "undefined"
+      ? false
+      : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
@@ -275,7 +310,17 @@ export function App() {
 
   return (
     <>
-      {booting && <BootSplash leaving={bootLeaving} />}
+      {/* Sem BootSplash quando a abertura Terrano vai rodar — o overlay dela já
+          cobre o app (fundo desfocado) e evita dois splashes empilhados. */}
+      {booting && !showIntro && <BootSplash leaving={bootLeaving} />}
+      {showIntro && (
+        <TerranoIntro
+          onDone={() => {
+            marcarIntroVista();
+            setShowIntro(false);
+          }}
+        />
+      )}
     <div className="app">
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header

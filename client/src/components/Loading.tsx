@@ -165,8 +165,8 @@ export function BootSplash({ leaving = false, motif = "coffee" }: { leaving?: bo
   return (
     <div className={`boot-splash${leaving ? " is-leaving" : ""}`} role="status" aria-live="polite">
       <div className="boot-header">
-        <span className="boot-eyebrow">Gestão Rural</span>
-        <span className="boot-brand">Fazenda Rio Novo</span>
+        <span className="boot-eyebrow">Gestão da Fazenda</span>
+        <span className="boot-brand">Terrano</span>
       </div>
       <div className="boot-field">
         {motif === "tractor" && <div className="boot-ground" />}
