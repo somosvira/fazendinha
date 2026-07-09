@@ -90,19 +90,13 @@ body            { font-size: 17px; }
 .gastos-summary .sum .val     { font-size: 30px; font-weight: 500; }
 .filter-chip                  { font-size: 14px; font-weight: 600; }
 
-/* ===== forms (lançar) ===== */
+/* ===== forms =====
+   Lançar migrou p/ Tailwind (Fase 3 slice 2) — form-section-title/cat-chip
+   saíram com ela; field-* fica p/ Acessos e PlanoContas. */
 .field-label         { font-size: 14px; font-weight: 600; }
 .field-input,
 .field-textarea      { font-size: 16px; }
-.form-section-title  { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
-.cat-chip            { font-size: 14px; font-weight: 600; }
 .chip-group .chip    { font-size: 14px; font-weight: 600; }
-
-/* ===== plano de contas ===== */
-.tree-cat-head .cnm  { font-size: 16px; font-weight: 600; }
-.tree-sub .snm       { font-size: 15px; }
-.ia-suggestion-card .ttl { font-size: 17px; font-weight: 500; }
-.ia-suggestion-card .det { font-size: 14px; }
 
 /* ===== IA chat ===== */
 .ia-prompt           { font-size: 16px; }
@@ -113,11 +107,7 @@ body            { font-size: 17px; }
 .ai-mini-table th,
 .ai-mini-table td    { font-size: 15px; }
 
-/* ===== date picker ===== */
-.drp-trigger        { font-size: 14px; font-weight: 600; }
-.drp-preset         { font-size: 14px; font-weight: 500; }
-.cal-day            { font-size: 15px; }
-.drp-readout-cell .v { font-size: 19px; font-weight: 500; }
+/* ===== date picker — migrado p/ Tailwind + ui/popover (Fase 3 slice 5) ===== */
 
 /* ===== relatório editorial ===== */
 .section-title    { font-size: 30px; font-weight: 500; }

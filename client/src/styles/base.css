@@ -442,21 +442,6 @@ a { color: inherit; }
 .filter-chip[aria-pressed="true"] { background: var(--mast-bg); color: var(--mast-ink); border-color: var(--mast-bg); }
 .filter-chip .chip-label { color: var(--ink-2); font-size: var(--ts-label); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .filter-chip[aria-pressed="true"] .chip-label { color: var(--mast-ink-2); }
-.search-box {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 8px;
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-  padding: 7px 12px;
-  width: 280px;
-}
-.search-box input {
-  border: none; background: none; outline: none;
-  font-family: var(--sans); font-size: 15px; color: var(--ink); font-weight: 500;
-  flex: 1;
-}
-.search-box svg { color: var(--ink-2); }
-
 .gastos-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -900,7 +885,6 @@ input:focus-visible:not([data-slot="input"]) {
 
   /* tabela de gastos com scroll horizontal e menos padding */
   .gastos-toolbar { padding: 12px 0; gap: 8px; }
-  .search-box { width: 100%; margin-left: 0; }
   .expense-table thead th { padding: 12px 8px; }
   .expense-table tbody td { padding: 12px 8px; }
 
@@ -1041,33 +1025,6 @@ body.no-scroll { overflow: hidden; }
 /* ============================================================
    ESTADOS VAZIOS — quando filtros zeram resultados
    ============================================================ */
-.empty-state {
-  padding: 56px 24px;
-  display: flex; flex-direction: column; gap: 8px;
-  align-items: center; text-align: center;
-  color: var(--ink-2);
-}
-.empty-state .icon {
-  width: 44px; height: 44px;
-  border: 1px dashed var(--rule);
-  border-radius: 50%;
-  display: grid; place-items: center;
-  color: var(--ink-3);
-  font-family: var(--serif); font-size: 22px;
-  margin-bottom: 6px;
-}
-.empty-state .title {
-  font-family: var(--serif); font-size: 20px;
-  color: var(--ink); font-weight: 500;
-}
-.empty-state .detail {
-  font-size: 14px; color: var(--ink-2);
-  max-width: 42ch;
-}
-.empty-state .actions {
-  display: flex; gap: 10px; margin-top: 10px;
-}
-
 /* gated-msg e viewas-banner moram em acessos.css */
 
 /* ============================================================
@@ -1086,9 +1043,8 @@ body.no-scroll { overflow: hidden; }
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
   .toast-viewport,
   .anom-dismiss, .ia-composer, .skip-link,
-  .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
-  .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
-  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay {
+  .acessos-summary .ac-sum-action, .gastos-toolbar .filter-chip,
+  .viewas-banner, .modal-overlay {
     display: none !important;
   }
   .app, .app-main, .shell, .shell-wide {

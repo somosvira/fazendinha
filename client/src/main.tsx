@@ -8,7 +8,6 @@ import "./styles/dashboard.css";
 import "./styles/dashboard-v2.css";
 import "./styles/cockpit.css";
 import "./styles/forms.css";
-import "./styles/datepicker.css";
 import "./styles/acessos.css";
 import "./styles/simulador.css";
 import "./styles/vigilancia.css";
