@@ -542,226 +542,20 @@ a { color: inherit; }
 /* .split-stack/.split-row migrados p/ Tailwind em Dashboard.tsx (NotaDrawer, Fase 2 slice 5). */
 
 /* IA chat */
-.ia-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr 280px;
-  gap: 0;
-  min-height: calc(100vh - 130px);
-  border-top: 1px solid var(--rule);
-}
-.ia-sidebar {
-  border-right: 1px solid var(--rule);
-  padding: 24px 20px;
-  background: var(--bg-card);
-  display: flex; flex-direction: column; gap: 20px;
-}
-.ia-sidebar h4 { margin: 0; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
-.ia-prompt {
-  background: none; border: none; text-align: left;
-  font-family: var(--serif);
-  font-size: 15px;
-  line-height: 1.4;
-  color: var(--ink-2);
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rule-soft);
-  cursor: pointer;
-  font-style: italic;
-  letter-spacing: -0.005em;
-}
-.ia-prompt:hover { color: var(--ink); }
 
-.ia-main {
-  display: flex; flex-direction: column;
-  background: var(--bg);
-}
-.ia-thread {
-  flex: 1;
-  overflow-y: auto;
-  padding: 28px 36px;
-  display: flex; flex-direction: column;
-  gap: 28px;
-  max-width: 920px;
-  width: 100%;
-  margin: 0 auto;
-}
-.msg { display: flex; flex-direction: column; gap: 10px; }
-.msg.user { align-items: flex-end; }
-.msg.user .bubble {
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  padding: 12px 18px;
-  max-width: 520px;
-  font-size: 16px;
-}
-.msg.ai .bubble {
-  background: transparent;
-  color: var(--ink);
-  padding: 0;
-  font-size: 16px;
-  line-height: 1.55;
-}
-.msg.ai .ai-signature {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  display: flex; gap: 10px; align-items: center;
-}
-.msg.ai .ai-signature .dot { width: 6px; height: 6px; background: var(--pos); }
-.msg.ai .ai-card {
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  padding: 22px 24px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.msg.ai .ai-card-title {
-  font-family: var(--serif);
-  font-size: 20px;
-  letter-spacing: -0.005em;
-}
-.msg.ai .ai-narrative {
-  font-family: var(--serif);
-  font-size: 18px;
-  line-height: 1.5;
-  color: var(--ink);
-}
-.msg.ai p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--ink-2); }
-.ai-mini-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.ai-mini-table th, .ai-mini-table td {
-  text-align: left;
-  padding: 8px 10px;
-  font-size: 14px;
-  border-bottom: 1px solid var(--rule-soft);
-}
-.ai-mini-table th {
-  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink-3); font-weight: 500;
-}
-.ai-mini-table td.r { text-align: right; font-family: var(--serif); font-variant-numeric: tabular-nums; }
+/* IA conversacional (base.css) migrada p/ Tailwind (Fase 4 slice B).
+   Keyframes do mic ficam abaixo — referenciados via animate-[mic-*]. */
 
-.ia-composer {
-  border-top: 1px solid var(--rule);
-  padding: 18px 36px 28px;
-  background: var(--bg);
-}
-.ia-composer-inner {
-  max-width: 920px;
-  margin: 0 auto;
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ia-input {
-  border: none; background: none; outline: none;
-  width: 100%;
-  font-family: var(--sans);
-  font-size: 16px;
-  color: var(--ink);
-  min-height: 28px;
-  resize: none;
-}
-.ia-composer-row {
-  display: flex; align-items: center; gap: 12px;
-}
-.ia-scope-pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 4px 10px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  border: 1px solid var(--rule);
-}
-.ia-scope-pill .dot { width: 6px; height: 6px; background: var(--pos); }
-.ia-send {
-  margin-left: auto;
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  border: none;
-  padding: 8px 18px;
-  font-family: var(--sans);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.ia-send:disabled { background: var(--rule); color: var(--ink-mute); cursor: not-allowed; }
-
-/* mic button */
-.ia-mic {
-  width: 40px; height: 40px;
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-  color: var(--ink-2);
-  cursor: pointer;
-  display: grid; place-items: center;
-  transition: background 120ms, color 120ms, border-color 120ms;
-  flex-shrink: 0;
-}
-.ia-mic:hover { border-color: var(--ink); color: var(--ink); }
-.ia-mic.listening {
-  background: var(--neg);
-  border-color: var(--neg);
-  color: var(--mast-ink);
-  animation: mic-pulse 1.4s ease-in-out infinite;
-}
 @keyframes mic-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(122, 51, 40, 0.32); }
   50% { box-shadow: 0 0 0 7px rgba(122, 51, 40, 0); }
 }
-/* equalizer bars while listening */
-.mic-eq { display: inline-flex; align-items: center; gap: 2px; height: 18px; }
-.mic-eq i {
-  width: 2.5px; height: 6px;
-  background: var(--mast-ink);
-  display: inline-block;
-  animation: mic-bar 0.9s ease-in-out infinite;
-}
-.mic-eq i:nth-child(2) { animation-delay: 0.15s; }
-.mic-eq i:nth-child(3) { animation-delay: 0.3s; }
-.mic-eq i:nth-child(4) { animation-delay: 0.45s; }
 @keyframes mic-bar {
   0%, 100% { height: 5px; }
   50% { height: 16px; }
 }
-.ia-composer-inner.is-listening {
-  border-color: var(--neg);
-}
-.ia-mic-hint {
-  max-width: 920px;
-  margin: 8px auto 0;
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px;
-  color: var(--ink-3);
-  letter-spacing: 0.01em;
-}
-.ia-mic-hint .rec-dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--neg);
-  animation: mic-blink 1s steps(2, start) infinite;
-}
 @keyframes mic-blink { 50% { opacity: 0.25; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .ia-mic.listening, .mic-eq i, .ia-mic-hint .rec-dot { animation: none; }
-}
-
-.ia-context {
-  border-left: 1px solid var(--rule);
-  padding: 24px 22px;
-  background: var(--bg-card);
-  display: flex; flex-direction: column; gap: 22px;
-}
-.ia-context h4 { margin: 0; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
-.ctx-list { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--ink-2); }
-.ctx-list .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.ctx-list .row .v { font-family: var(--serif); font-variant-numeric: tabular-nums; }
 
 /* svg chart elements */
 .chart-axis { stroke: var(--rule); stroke-width: 1; }
@@ -875,11 +669,7 @@ input:focus-visible:not([data-slot="input"]) {
   .unit-grid { grid-template-columns: 1fr; }
   .unit-card { padding: 18px 14px; gap: 16px; }
 
-  /* IA layout vira coluna (sidebars escondem) */
-  .ia-layout { grid-template-columns: 1fr; }
-  .ia-sidebar, .ia-context { display: none; }
-  .ia-thread { padding: 20px 14px; }
-  .ia-composer { padding: 12px 14px 18px; }
+  /* IA layout (responsivo) migrado p/ Tailwind (IA.tsx, Fase 4 slice B) */
 
   /* drawer responsivo migrado p/ Tailwind (NotaDrawer, Fase 2 slice 5) */
 
@@ -1042,7 +832,7 @@ body.no-scroll { overflow: hidden; }
 @media print {
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
   .toast-viewport,
-  .anom-dismiss, .ia-composer, .skip-link,
+  .anom-dismiss, .skip-link,
   .acessos-summary .ac-sum-action, .gastos-toolbar .filter-chip,
   .viewas-banner, .modal-overlay {
     display: none !important;
