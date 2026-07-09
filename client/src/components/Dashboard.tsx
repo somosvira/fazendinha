@@ -226,7 +226,7 @@ function Donut({ segments, total, onSliceClick, hovered, setHovered }: {
 
 // breadcrumb/rodapé: botão-link (Preflight OFF → zera bg/padding nativos)
 const CRUMB_BTN =
-  "cursor-pointer bg-transparent p-0 font-sans text-[14px] text-ink-3 underline underline-offset-[3px] hover:text-foreground";
+  "cursor-pointer bg-transparent p-0 font-sans text-[15px] font-semibold text-ink-3 underline underline-offset-[3px] hover:text-foreground";
 
 function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void }) {
   const [period, setPeriod] = useState<"23m" | "ytd">("23m");
@@ -950,7 +950,7 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
   if (!cat) {
     return (
       <div className="shell-wide">
-        <div className="flex items-center gap-1.5 pt-[18px] pb-3.5 text-[14px] text-ink-3">
+        <div className="flex items-center gap-2.5 pt-[18px] pb-3.5 text-[15px] font-medium text-ink-3">
           <button className={CRUMB_BTN} onClick={onBack}>Dashboard</button>
           <span className="text-ink-2">›</span>
           <span className="text-foreground">Categoria</span>
@@ -974,7 +974,7 @@ function CategoryDrill({ R, catId, onBack, onNav }: { R: R; catId: CatId; onBack
 
   return (
     <div className="shell-wide">
-      <div className="flex items-center gap-1.5 pt-[18px] pb-3.5 text-[14px] text-ink-3">
+      <div className="flex items-center gap-2.5 pt-[18px] pb-3.5 text-[15px] font-medium text-ink-3">
         <button className={CRUMB_BTN} onClick={onBack}>Dashboard</button>
         <span className="text-ink-2">›</span>
         <button className={CRUMB_BTN} onClick={onBack}>Gasto por categoria</button>
