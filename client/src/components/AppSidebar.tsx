@@ -1,5 +1,13 @@
+/* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
+ * DESKTOP: trilho fixo sempre visível; entre 901–1100px vira ícone-only e expande
+ * ao passar o mouse/focar (hover/focus-within), reexpressando em Tailwind o que
+ * antes era CSS puro em `.rb-side` (rebanho.css). MOBILE (<=900px): drawer via
+ * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
+
 import { useEffect, useState } from "react";
 import type { Tab } from "./Shell";
+import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -148,42 +156,111 @@ function moduloOfTab(t: Tab): ModuloId | null {
   return null;
 }
 
+// Breakpoints do antigo `.rb-side` (rebanho.css): >=901px o trilho fica sempre
+// visível; entre 901–1100px vira ícone-only (colapsado) e expande temporário por
+// cima do conteúdo no hover/foco; <=900px quem assume é o drawer (Sheet) abaixo.
+// IMPORTANTE: o scanner do Tailwind lê o TEXTO literal do arquivo (não executa
+// JS) — por isso estas constantes precisam conter os nomes de classe já
+// escritos por extenso (sem `${...}` template), senão a CSS correspondente
+// nunca é gerada (utilitário "desconhecido", descartado silenciosamente).
+const RAIL_ICON_BTN =
+  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100";
+// item/módulo ativo dentro da faixa colapsada: troca a borda-esquerda por um
+// realce "inset" (não há espaço pra borda com o ícone centralizado).
+const RAIL_ACTIVE =
+  "min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:bg-[#1a201c] min-[901px]:max-[1100px]:shadow-[inset_3px_0_0_var(--leite)]";
+// hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
+const RAIL_LABEL =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline";
+const RAIL_GROUP =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex";
+const RAIL_BLOCK =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block";
+const RAIL_INLINE_FLEX =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline-flex min-[901px]:max-[1100px]:group-focus-within:inline-flex";
+
 function Item({ id, label, current, onNav, nested }: { id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean }) {
+  const isOn = current === id;
   return (
     <button
-      className={"navi" + (current === id ? " on" : "") + (nested ? " is-nested" : "")}
+      type="button"
       onClick={() => onNav(id)}
       title={label}
       aria-label={label}
+      className={cn(
+        "relative flex w-full cursor-pointer items-center gap-[11px] border-l-[3px] border-l-transparent bg-transparent px-5 py-[9px] text-left font-sans text-sm text-[var(--mast-ink-2)]",
+        "[&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:flex-none [&_svg]:opacity-85",
+        "hover:bg-[#161b17] hover:text-mast-ink",
+        RAIL_ICON_BTN,
+        nested && "px-5 py-[7px] pl-3.5 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
+        isOn && "border-l-[var(--leite)] bg-[#171d18] font-semibold text-mast-ink [&_svg]:text-[var(--leite)] [&_svg]:opacity-100",
+        isOn && !nested && RAIL_ACTIVE,
+        // sub-item ativo: some com o fundo/borda e ganha uma barrinha à esquerda (::before)
+        isOn && nested && "border-l-transparent bg-transparent before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-[0_2px_2px_0] before:bg-leite",
+      )}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>{ICON[id]}</svg>
-      <span className="navi-label">{label}</span>
+      <span className={RAIL_LABEL}>{label}</span>
     </button>
+  );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 px-5 pb-2 pt-[18px] font-serif text-sm font-medium italic text-[#8a8470]",
+        "after:h-px after:flex-1 after:bg-gradient-to-r after:from-[#23291f] after:to-transparent",
+        RAIL_GROUP,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
 function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: boolean; isActive: boolean; onToggle: () => void }) {
   return (
     <button
-      className={"modulo-h" + (isActive ? " is-active" : "") + (m.disabled ? " is-disabled" : "")}
+      type="button"
       onClick={m.disabled ? undefined : onToggle}
       aria-expanded={isOpen}
       aria-disabled={m.disabled || undefined}
       disabled={m.disabled}
       title={m.disabled ? `${m.label} — em breve` : m.label}
+      className={cn(
+        "flex w-full items-center gap-[11px] border-l-[3px] border-l-transparent bg-transparent px-5 py-[9px] text-left font-sans text-sm text-[var(--mast-ink-2)]",
+        "[&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:flex-none [&_svg]:opacity-85",
+        RAIL_ICON_BTN,
+        m.disabled ? "cursor-not-allowed text-[#6b6b5e] opacity-65 [&_svg]:opacity-60" : "cursor-pointer hover:bg-[#161b17] hover:text-mast-ink",
+        isActive && !m.disabled && "font-semibold text-mast-ink [&_svg]:text-[var(--leite)] [&_svg]:opacity-100",
+      )}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
-      <span className="modulo-label">{m.label}</span>
+      <span className={cn("flex-1", RAIL_LABEL)}>{m.label}</span>
       {m.disabled ? (
-        <span className="modulo-lock" aria-label="em breve">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <span
+          aria-label="em breve"
+          className={cn(
+            "inline-flex items-center gap-[5px] rounded-[4px] border border-[#2a3025] bg-[#1c211d] px-[7px] py-[1px] font-serif text-[11px] italic text-[#8a8470]",
+            RAIL_INLINE_FLEX,
+          )}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-3 w-3 flex-none opacity-85">
             <rect x="5" y="11" width="14" height="9" rx="2"/>
             <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
           </svg>
-          <span className="modulo-lock-txt">em breve</span>
+          <span className="leading-none">em breve</span>
         </span>
       ) : (
-        <svg className={"modulo-chev" + (isOpen ? " is-open" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
+          className={cn(
+            "!h-[11px] !w-[11px] !opacity-55 transition-transform duration-150 ease-in-out",
+            isOpen && "rotate-90",
+            RAIL_BLOCK,
+          )}
+        >
           <path d="M9 6l6 6-6 6"/>
         </svg>
       )}
@@ -220,6 +297,21 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
     try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
   }, [openModulo]);
 
+  // Fecha o drawer mobile se a viewport estiver (ou passar a estar) >=901px —
+  // nessa largura o trilho desktop assume e o painel do Sheet vira `hidden`
+  // via CSS, mas o Radix mantém overlay/scroll-lock/focus-trap ativos sobre um
+  // painel invisível se ninguém desmontar o Dialog. Sem um listener de resize,
+  // abrir o drawer em <=900px e depois alargar/rotacionar a tela deixa o
+  // desktop inteiro escuro e inclicável.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const mq = window.matchMedia("(min-width: 901px)");
+    if (mq.matches) { onMobileToggle(false); return; }
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) onMobileToggle(false); };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [mobileOpen, onMobileToggle]);
+
   // relabel financeiro: "IA" -> "IA financeira"
   const fin = financeiro.map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
@@ -227,36 +319,72 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
 
   const toggleModulo = (id: ModuloId) => setOpenModulo((cur) => (cur === id ? null : id));
 
+  const navBody = (
+    <>
+      <GroupLabel>Visão &amp; gestão</GroupLabel>
+      {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
+
+      <GroupLabel>Operações</GroupLabel>
+      {modulosVisiveis.map((m) => {
+        const isOpen = openModulo === m.id && !m.disabled;
+        const isActive = m.subs.some((s) => s.id === current);
+        return (
+          <div key={m.id} className="flex flex-col">
+            <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
+            {isOpen && (
+              <div
+                className={cn("ml-7 border-l border-[#23291f] pb-1.5 pt-0.5", RAIL_BLOCK)}
+              >
+                {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="flex-1" />
+
+      <GroupLabel>Administração</GroupLabel>
+      <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
+      <Item id="config" label="Configurações" current={current} onNav={nav} />
+      {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}
+    </>
+  );
+
   return (
     <>
-      <div className={"rb-side-backdrop" + (mobileOpen ? " is-open" : "")} onClick={() => onMobileToggle(false)} />
-      <aside className={"rb-side" + (mobileOpen ? " is-open" : "")}>
-        <div className="grp">Visão &amp; gestão</div>
-        {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
-
-        <div className="grp">Operações</div>
-        {modulosVisiveis.map((m) => {
-          const isOpen = openModulo === m.id && !m.disabled;
-          const isActive = m.subs.some((s) => s.id === current);
-          return (
-            <div key={m.id} className={"modulo" + (isOpen ? " is-open" : "")}>
-              <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
-              {isOpen && (
-                <div className="modulo-subs">
-                  {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="spacer" />
-
-        <div className="grp">Administração</div>
-        <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
-        <Item id="config" label="Configurações" current={current} onNav={nav} />
-        {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}
+      {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
+         o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
+      <aside
+        className={cn(
+          "group fixed inset-y-0 left-0 z-[11] hidden w-[222px] flex-col overflow-y-auto overscroll-contain bg-mast py-[18px] text-mast-ink print:hidden",
+          "[scrollbar-width:thin] [scrollbar-color:#2a3025_transparent]",
+          "min-[901px]:flex",
+          "min-[901px]:max-[1100px]:w-[60px] min-[901px]:max-[1100px]:overflow-x-hidden min-[901px]:max-[1100px]:whitespace-nowrap min-[901px]:max-[1100px]:py-3",
+          "min-[901px]:max-[1100px]:transition-[width,box-shadow] min-[901px]:max-[1100px]:duration-[180ms] min-[901px]:max-[1100px]:ease-in-out",
+          "min-[901px]:max-[1100px]:hover:z-20 min-[901px]:max-[1100px]:hover:w-[232px] min-[901px]:max-[1100px]:hover:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
+          "min-[901px]:max-[1100px]:focus-within:z-20 min-[901px]:max-[1100px]:focus-within:w-[232px] min-[901px]:max-[1100px]:focus-within:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
+        )}
+      >
+        {navBody}
       </aside>
+
+      {/* MOBILE — drawer via shadcn Sheet (Radix Dialog): overlay, clique-fora,
+         Escape e foco-trap já vêm de graça. `min-[901px]:hidden` garante que o
+         drawer nunca aparece nas larguras onde o trilho já está visível. */}
+      <Sheet open={mobileOpen} onOpenChange={onMobileToggle}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="max-w-none w-[min(280px,86vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
+        >
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>
+          <div className="flex h-full flex-col overflow-y-auto py-[18px]">
+            {navBody}
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

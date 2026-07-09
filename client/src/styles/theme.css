@@ -1,0 +1,106 @@
+/* Rio Novo — camada Tailwind v4 + tokens shadcn (identidade editorial).
+ * Importado ANTES do CSS legado em main.tsx: durante a migração o CSS antigo
+ * ainda sobrepõe. O Preflight do Tailwind é OMITIDO de propósito (protege as 12
+ * folhas legadas); um shim mínimo no fim dá só o que as utilidades shadcn usam. */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+
+:root {
+  --radius: 0rem;
+
+  /* superfícies */
+  --background: #F2EDE2;
+  --foreground: #14191A;
+  --card: #FAF6EC;
+  --card-foreground: #14191A;
+  --popover: #FAF6EC;
+  --popover-foreground: #14191A;
+
+  /* ação primária = CTA escuro do masthead */
+  --primary: #0E1311;
+  --primary-foreground: #E8DCC4;
+
+  --secondary: #F6F1E4;
+  --secondary-foreground: #14191A;
+  --muted: #F6F1E4;
+  --muted-foreground: #3A4341;
+  --accent: #F6F1E4;
+  --accent-foreground: #14191A;
+
+  --destructive: #C62828;
+  --destructive-foreground: #F2EDE2;
+
+  --border: #D6CDB8;
+  --input: #D6CDB8;
+  --ring: #14191A;
+
+  /* gráficos: brass / coffee / sage */
+  --chart-1: #B89A5C;
+  --chart-2: #5C3A1E;
+  --chart-3: #6B7A5C;
+  --chart-4: #8A5A30;
+  --chart-5: #93A07F;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* extras editoriais — reaproveitam as variáveis definidas em base.css */
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-leite: var(--leite);
+  --color-cafe: var(--cafe);
+  --color-outros: var(--outros);
+  --color-lucro: var(--lucro);
+  --color-prejuizo: var(--prejuizo);
+  --color-atencao: var(--atencao);
+  --color-info: var(--info);
+  --color-rural: var(--rural);
+  --color-mast: var(--mast-bg);
+  --color-mast-ink: var(--mast-ink);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "Newsreader", "Source Serif 4", Georgia, serif;
+}
+
+/* Shim mínimo (substitui o Preflight omitido): só o que as utilidades e
+ * componentes shadcn assumem. Inócuo ao CSS legado, que sempre usa shorthands
+ * completos de border; largura 0 continua invisível como hoje. */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    box-sizing: border-box;
+    border: 0 solid var(--border);
+  }
+}

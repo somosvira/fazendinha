@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
 import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 /* Estoque de insumos da lavoura — espelha a EstoqueTab do rebanho.
  * Agora REAL (DB-backed): lê GET /api/plantio/estoque, que devolve os Produto
@@ -80,10 +81,12 @@ export function EstoqueTab() {
             <input type="search" className="rb-fld" placeholder="Buscar por nome ou tipo…"
               value={busca} onChange={(e) => setBusca(e.target.value)}
               style={{ flex: "1 1 240px", maxWidth: 320 }} />
-            <select className="rb-select" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value as any)}>
-              <option value="">Todos os tipos</option>
-              {TIPOS_FILTRO.map((t) => <option key={t} value={t}>{TIPO_LBL[t]}</option>)}
-            </select>
+            <ToolbarSelect
+              value={tipoFiltro}
+              onChange={(v) => setTipoFiltro(v as TipoInsumoPlantio | "")}
+              ariaLabel="Filtrar por tipo de insumo"
+              options={[{ value: "", label: "Todos os tipos" }, ...TIPOS_FILTRO.map((t) => ({ value: t, label: TIPO_LBL[t] }))]}
+            />
             {nAbaixo > 0 && (
               <button type="button" className={"rb-chip-q" + (soAbaixoMin ? " on" : "")}
                 onClick={() => setSoAbaixoMin((v) => !v)}
