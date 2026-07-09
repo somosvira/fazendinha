@@ -584,13 +584,9 @@ a { color: inherit; }
   vertical-align: middle;
 }
 
-/* drawer — overlay/painel/head/body/amount/meta-grid migrados p/ Tailwind em
-   Dashboard.tsx (NotaDrawer, Fase 2 slice 5). .drawer-close segue vivo:
-   LancamentosPanel ainda o consome (migra no mesmo slice, commit seguinte). */
-.drawer-close {
-  background: none; border: none; color: var(--mast-ink);
-  font-family: var(--serif); font-size: 22px; cursor: pointer;
-}
+/* drawer — overlay/painel/head/body/amount/meta-grid/close migrados p/ Tailwind
+   em Dashboard.tsx (NotaDrawer + LancamentosPanel, Fase 2 slice 5).
+   Botões de fechar reproduzem o print:hidden via utilitário Tailwind. */
 .nota-frame {
   border: 1px solid var(--rule);
   background: var(--bg-card);
@@ -1140,7 +1136,7 @@ body.no-scroll { overflow: hidden; }
 @media print {
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
   .toast-viewport,
-  .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
+  .anom-dismiss, .ia-composer, .skip-link,
   .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
   .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
   .gastos-toolbar .search-box, .viewas-banner, .modal-overlay {

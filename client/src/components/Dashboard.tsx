@@ -783,41 +783,44 @@ function LancamentosPanel({ cat, sub, from, to, onClose }: { cat: any; sub: any;
 
   const total = (rows ?? []).reduce((s, r) => s + r.valor, 0);
 
+  const thBase = "border-b border-solid border-border px-4 py-3 font-sans text-[14px] font-semibold uppercase tracking-[0.14em] text-ink-3";
+  const tdBase = "border-b border-solid border-[color:var(--rule-soft)] px-4 py-[11px]";
+
   return (
-    <div className="lanc-panel">
-      <div className="lanc-panel-head">
+    <div className="mt-[18px] border border-solid border-foreground bg-card">
+      <div className="flex items-start justify-between border-b border-solid border-border bg-[var(--bg-card-2)] px-5 py-[18px]">
         <div>
           <span className="eyebrow">Lançamentos individuais</span>
-          <div className="lanc-panel-title">{sub.nome}</div>
+          <div className="my-1 font-serif text-[24px] font-medium tracking-[-0.01em]">{sub.nome}</div>
           <span className="caption">
             {rows == null
               ? "carregando…"
               : `${rows.length} lançamento${rows.length === 1 ? "" : "s"} · total ${fmtBRL(total)}`}
           </span>
         </div>
-        <button className="drawer-close" onClick={onClose} aria-label="Fechar">×</button>
+        <button className="cursor-pointer bg-transparent font-serif text-[22px] text-mast-ink print:hidden" onClick={onClose} aria-label="Fechar">×</button>
       </div>
       {erro ? (
         <div className="caption" style={{ padding: 14, color: "var(--prejuizo)" }}>Erro ao carregar: {erro}</div>
       ) : (
-      <table className="lanc-table">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th style={{ width: 90 }}>Data</th>
-            <th>Descrição</th>
-            <th>Fornecedor</th>
-            <th style={{ width: 130 }}>Documento</th>
-            <th className="r" style={{ width: 130 }}>Valor</th>
+            <th className={cn(thBase, "text-left")} style={{ width: 90 }}>Data</th>
+            <th className={cn(thBase, "text-left")}>Descrição</th>
+            <th className={cn(thBase, "text-left")}>Fornecedor</th>
+            <th className={cn(thBase, "text-left")} style={{ width: 130 }}>Documento</th>
+            <th className={cn(thBase, "text-right")} style={{ width: 130 }}>Valor</th>
           </tr>
         </thead>
         <tbody>
           {(rows ?? []).map((row, i) => (
-            <tr key={i} onClick={() => setOpenRow(i)} className="lanc-row-click">
-              <td className="ld-date mono-nums">{fmtData(row.data)}</td>
-              <td className="ld-marca">{row.descricao || "—"}</td>
-              <td className="ld-forn">{row.fornecedor}</td>
-              <td className="mono-nums">{row.doc || "—"}</td>
-              <td className="r ld-val mono-nums">{fmtBRL(row.valor)}</td>
+            <tr key={i} onClick={() => setOpenRow(i)} className="cursor-pointer hover:bg-[var(--bg-card-2)] [&:last-child>td]:border-b-0">
+              <td className={cn(tdBase, "mono-nums font-serif text-[15px] text-ink-2")}>{fmtData(row.data)}</td>
+              <td className={cn(tdBase, "text-[15px] font-medium text-foreground")}>{row.descricao || "—"}</td>
+              <td className={cn(tdBase, "text-[15px] text-ink-3")}>{row.fornecedor}</td>
+              <td className={cn(tdBase, "mono-nums text-[15px] text-ink-2")}>{row.doc || "—"}</td>
+              <td className={cn(tdBase, "mono-nums text-right font-serif text-[16px] font-medium text-foreground")}>{fmtBRL(row.valor)}</td>
             </tr>
           ))}
           {rows != null && rows.length === 0 && (

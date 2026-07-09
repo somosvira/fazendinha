@@ -59,13 +59,9 @@ body            { font-size: 17px; }
 .sc-val            { font-size: 17px; font-weight: 500; }
 .sc-pct            { font-size: 14px; font-weight: 600; }
 
-/* ===== lançamentos + nota ===== */
-.lanc-panel-title          { font-size: 24px; font-weight: 500; }
-.lanc-table thead th       { font-size: 14px; font-weight: 600; }
-.lanc-table tbody td       { font-size: 15px; }
-.ld-val                    { font-size: 16px; font-weight: 500; }
-.ld-nf, .nf-link           { font-size: 14px; font-weight: 600; }
-/* .drawer-meta-grid .mcell .ml/.mv migrados p/ Tailwind (NotaDrawer, Fase 2 slice 5) */
+/* ===== lançamentos + nota (migrados p/ Tailwind em Dashboard.tsx, Fase 2 slice 5) =====
+   .lanc-panel-title/.lanc-table/.ld-val/.ld-nf/.nf-link e .drawer-meta-grid .mcell
+   .ml/.mv saíram junto com LancamentosPanel + NotaDrawer. */
 
 /* ===== drill head / stats ===== */
 .drill-head .cat-name    { font-size: 46px; font-weight: 500; }

@@ -127,65 +127,8 @@
 .sc-open { font-family: var(--serif); font-size: 16px; color: var(--ink-2); text-align: center; }
 .subcat-tr.is-hover .sc-open { color: var(--ink); }
 
-/* lançamentos individuais (3º nível) */
-.lanc-panel {
-  border: 1px solid var(--ink);
-  background: var(--bg-card);
-  margin-top: 18px;
-}
-.lanc-panel-head {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--rule);
-  background: var(--bg-card-2);
-}
-.lanc-panel-head .eyebrow { font-size: 14px; }
-.lanc-panel-title {
-  font-family: var(--serif);
-  font-size: 22px;
-  letter-spacing: -0.01em;
-  margin: 4px 0 4px;
-}
-.lanc-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.lanc-table thead th {
-  text-align: left;
-  font-family: var(--sans);
-  font-size: 14px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 500;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule);
-}
-.lanc-table thead th.r { text-align: right; }
-.lanc-table tbody td {
-  padding: 11px 16px;
-  border-bottom: 1px solid var(--rule-soft);
-  font-size: 14px;
-  color: var(--ink-2);
-}
-.lanc-table tbody tr:last-child td { border-bottom: none; }
-.lanc-table tbody tr:hover { background: var(--bg-card-2); }
-.lanc-table td.r { text-align: right; }
-.ld-date { font-family: var(--serif); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.ld-marca { color: var(--ink); font-weight: 500; }
-.ld-forn { color: var(--ink-3); }
-.ld-val { font-family: var(--serif); font-size: 14px; color: var(--ink); }
-.ld-nf { font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.lanc-row-click { cursor: pointer; }
-.nf-link {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  letter-spacing: 0.02em;
-}
-.lanc-table tbody tr:hover .nf-link { color: var(--cafe); }
+/* lançamentos individuais (3º nível) — .lanc-*/.ld-*/.nf-link migrados p/
+   Tailwind em Dashboard.tsx (LancamentosPanel, Fase 2 slice 5). */
 
 @media (max-width: 1100px) {
   .subcat-block { grid-template-columns: 1fr; }
