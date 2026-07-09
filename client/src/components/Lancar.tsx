@@ -7,6 +7,7 @@ import type { Tab } from "./Shell";
 import { useToast } from "./Toast";
 import { fmtMoneyExact } from "./charts";
 import { formatBRDate, getHoje } from "../lib/hoje";
+import { Loader } from "./Loading";
 import {
   useCadastros,
   uploadPendenteNF,
@@ -1207,7 +1208,7 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
             </div>
           )}
           {cadastrosLoading && !cadastros && (
-            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+            <Loader label="Carregando cadastros…" />
           )}
 
           {view === "form" && cadastros && (
@@ -1236,7 +1237,7 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
             </div>
           )}
           {cadastrosLoading && !cadastros && (
-            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+            <Loader label="Carregando cadastros…" />
           )}
 
           {view === "form" && cadastros && (

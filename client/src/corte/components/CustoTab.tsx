@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { useCustoCorte } from "../api";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -30,7 +31,7 @@ export function CustoTab() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar o custo: {erro}</p>
       ) : loading || !data ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (
         <>
           <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>

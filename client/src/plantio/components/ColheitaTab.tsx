@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useTalhoes, usePassadas, type PassadaDTO } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
 import { DOMAINS, type DomainConfig } from "../domains";
@@ -48,7 +49,7 @@ const colheitaCfg: DomainConfig = {
 export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => void }) {
   const { data, loading } = useTalhoes({ estado: "ATIVO" });
   const [aba, setAba] = useState<"painel" | "passadas">("painel");
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Colheita</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Colheita</h1></div><Loader /></main>;
 
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
@@ -90,7 +91,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
         <button className="rb-btn" onClick={onVoltarPainel}>← Painel</button>
       </div>
       {loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
       ) : (

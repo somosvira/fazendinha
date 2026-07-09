@@ -20,6 +20,7 @@ import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
 import { RupturaCaixa } from "./RupturaCaixa";
 import { ContextStrip } from "./ContextStrip";
+import { DashboardSkeleton } from "./Loading";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -2032,7 +2033,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
     );
   }
   if (!data) {
-    return <LoadingShell>Carregando dados…</LoadingShell>;
+    return <DashboardSkeleton />;
   }
 
   const maskVals = !!user && !user.flags.includes("verValores");

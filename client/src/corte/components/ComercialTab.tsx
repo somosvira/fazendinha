@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useLotes } from "../api";
 import { LoteDomainView } from "./LoteDomainView";
 import { DOMAINS } from "../domains";
@@ -21,7 +22,7 @@ export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => voi
   const [aba, setAba] = useState<"painel" | "simulador">("painel");
   const { data, loading } = useLotes({ estado: "ATIVO" });
 
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Comercial</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Comercial</h1></div><Loader /></main>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrar(l); };
 

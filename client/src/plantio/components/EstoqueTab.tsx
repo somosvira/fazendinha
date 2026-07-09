@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
 
@@ -56,7 +57,7 @@ export function EstoqueTab() {
       <div className="rb-head"><h1>Estoque</h1></div>
 
       {erro && <div className="rb-empty" style={{ borderColor: "var(--neg)", color: "var(--neg)" }}>Erro ao carregar o estoque: {erro}</div>}
-      {loading && !erro && <div className="rb-empty">Carregando estoque…</div>}
+      {loading && !erro && <Loader label="Carregando estoque…" />}
 
       {!loading && !erro && (
         <>
