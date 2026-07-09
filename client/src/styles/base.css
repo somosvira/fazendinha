@@ -72,161 +72,17 @@
 .app-main { margin-left: var(--side-w); }
 
 /* ============================================================
-   APP HEADER — faixa preta global (logo + fazenda + usuário)
+   APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
+   Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
+   para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
    ============================================================ */
-.app-header {
-  position: fixed; top: 0; left: var(--side-w); right: 0; height: var(--header-h);
-  z-index: 10;
-  display: flex; align-items: center; gap: 14px;
-  padding: 0 18px;
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  border-bottom: 1px solid #0B0F0D;
-}
-.ah-burger {
-  display: none;
-  background: transparent; border: 1px solid #2a3025; color: var(--mast-ink);
-  width: 38px; height: 38px; border-radius: 8px;
-  align-items: center; justify-content: center; cursor: pointer; padding: 0;
-}
-.ah-burger svg { width: 18px; height: 18px; }
-
-.ah-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ah-brand-mark {
-  width: 28px; height: 28px;
-  border: 1px solid var(--mast-ink);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-size: 13px; font-weight: 500;
-  letter-spacing: 0.02em;
-}
-.ah-brand-name {
-  font-family: var(--serif); font-size: 18px; line-height: 1;
-  letter-spacing: 0.01em;
-}
-
-.ah-spacer { flex: 1; }
-
-.ah-chev { transition: transform .15s ease; opacity: .7; }
-.ah-chev.is-open { transform: rotate(180deg); }
-
-/* ---- seletor de fazenda ---- */
-.ah-farm { position: relative; }
-.ah-farm-btn {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--mast-bg-2); color: var(--mast-ink);
-  border: 1px solid #2a3025; border-radius: 9px;
-  padding: 6px 10px 6px 8px;
-  cursor: pointer; font-family: var(--sans);
-}
-.ah-farm-btn:hover { background: #1f2521; }
-.ah-farm-mark { font-size: 16px; line-height: 1; }
-.ah-farm-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
-.ah-farm-eyebrow {
-  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--mast-ink-2); font-weight: 600;
-}
-.ah-farm-name { font-size: 14px; font-weight: 600; color: var(--mast-ink); }
-
-/* ---- chip do usuário ---- */
-.ah-user { position: relative; }
-.ah-user-btn {
-  display: flex; align-items: center; gap: 10px;
-  background: transparent; color: var(--mast-ink);
-  border: 1px solid transparent; border-radius: 9px;
-  padding: 4px 8px 4px 4px;
-  cursor: default; font-family: var(--sans);
-}
-.ah-user-btn.has-menu { cursor: pointer; }
-.ah-user-btn.has-menu:hover { background: var(--mast-bg-2); border-color: #2a3025; }
-.ah-user-av {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: var(--leite); color: var(--mast-bg);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-weight: 600; font-size: 14px;
-}
-.ah-user-txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
-.ah-user-nome { font-size: 14px; font-weight: 600; color: var(--mast-ink); }
-.ah-user-papel { font-size: 11px; color: var(--mast-ink-2); }
-
-/* ---- dropdown comum (claro, sobre paper) ---- */
-.ah-menu {
-  position: absolute; top: calc(100% + 8px);
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  box-shadow: 0 14px 40px rgba(20,25,26,.22);
-  min-width: 280px; max-width: 360px;
-  z-index: 50;
-  border-radius: 6px;
-  color: var(--ink);
-  overflow: hidden;
-}
-.ah-farm-menu { left: 0; }
-.ah-user-menu { right: 0; }
-.ah-menu-head {
-  padding: 10px 14px;
-  background: var(--bg-card-2);
-  border-bottom: 1px solid var(--rule);
-  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--ink-3); font-weight: 600;
-}
-.ah-menu-foot {
-  padding: 10px 14px;
-  border-top: 1px solid var(--rule-soft);
-  font-size: 12px; color: var(--ink-3); font-style: italic;
-}
-
-.ah-farm-opt, .ah-user-opt {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px; background: none; border: 0;
-  border-bottom: 1px solid var(--rule-soft);
-  text-align: left;
-}
-.ah-farm-opt:last-of-type, .ah-user-opt:last-of-type { border-bottom: none; }
-.ah-user-opt { cursor: pointer; font-family: var(--sans); color: var(--ink); }
-.ah-user-opt:hover { background: var(--bg-card-2); }
-.ah-farm-opt.is-current, .ah-user-opt.is-current { background: var(--bg-card-2); }
-
-.ah-farm-opt-mark { font-size: 16px; }
-.ah-farm-opt-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.ah-farm-opt-nome { font-size: 14px; color: var(--ink); font-weight: 600; }
-.ah-farm-opt-sub { font-size: 11px; color: var(--ink-3); }
-.ah-farm-opt-check, .ah-user-opt-check { color: var(--lucro); font-weight: 700; }
-
-.ah-user-opt-av {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: var(--mast-bg); color: var(--mast-ink);
-  display: grid; place-items: center;
-  font-family: var(--serif); font-size: 15px;
-}
-.ah-user-opt-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.ah-user-opt-nome { font-size: 14px; color: var(--ink); font-weight: 500; }
-.ah-user-opt-papel { font-size: 11px; color: var(--ink-3); }
-
 @media (max-width: 900px) {
-  /* sem sidebar fixa pra "desviar": header volta a ser full-width */
   :root { --header-h: 48px; }
-  .app-header { left: 0; gap: 10px; padding: 0 12px; }
-  .ah-burger { display: flex; width: 34px; height: 34px; }
-  .ah-burger svg { width: 16px; height: 16px; }
-  .ah-brand-mark { width: 26px; height: 26px; font-size: 12px; }
-  .ah-brand-name { display: none; }
-  .ah-farm-btn { padding: 4px 8px 4px 6px; gap: 8px; }
-  .ah-farm-eyebrow { display: none; }
-  .ah-farm-mark { font-size: 14px; }
-  .ah-farm-name { font-size: 13px; max-width: 26vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ah-user-txt { display: none; }
-  .ah-user-av { width: 28px; height: 28px; font-size: 13px; }
 }
 
-/* viewport realmente pequeno: farm picker fica icon-only */
+/* viewport realmente pequeno */
 @media (max-width: 560px) {
   :root { --header-h: 44px; }
-  .app-header { gap: 8px; padding: 0 10px; }
-  .ah-brand { gap: 6px; }
-  .ah-farm-btn { padding: 4px 6px; }
-  .ah-farm-txt { display: none; }
-  .ah-farm-mark { font-size: 16px; }
-  .ah-user-btn { padding: 2px; }
 }
 
 * { box-sizing: border-box; }
@@ -311,115 +167,7 @@ a { color: inherit; }
   padding: 0 var(--gutter);
 }
 
-/* masthead */
-.masthead {
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  border-bottom: 1px solid #0B0F0D;
-}
-.masthead-inner {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 18px var(--gutter);
-  max-width: 1520px;
-  margin: 0 auto;
-  gap: 24px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.brand-mark {
-  width: 28px; height: 28px;
-  border: 1px solid var(--mast-ink);
-  display: grid;
-  place-items: center;
-  font-family: var(--serif);
-  font-size: 16px;
-  font-weight: 500;
-}
-.brand-name {
-  font-family: var(--serif);
-  font-size: 18px;
-  letter-spacing: 0.01em;
-}
-.brand-sub {
-  display: block;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--mast-ink-2);
-  margin-top: 2px;
-}
-.nav-tabs {
-  display: flex;
-  gap: 0;
-}
-.nav-tab {
-  background: none;
-  border: none;
-  color: var(--mast-ink-2);
-  font-family: var(--sans);
-  font-size: var(--ts-label);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 12px 18px;
-  cursor: pointer;
-  border-bottom: 1px solid transparent;
-  transition: color 120ms, border-color 120ms;
-}
-.nav-tab:hover { color: var(--mast-ink); }
-.nav-tab[aria-current="true"] {
-  color: var(--mast-ink);
-  border-bottom-color: var(--mast-ink);
-}
-.mast-right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 18px;
-}
-.user-chip {
-  display: flex; align-items: center; gap: 10px;
-  font-size: var(--ts-label);
-  font-weight: 600;
-  color: var(--mast-ink);
-}
-.user-avatar {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: var(--mast-ink);
-  color: var(--mast-bg);
-  display: grid; place-items: center;
-  font-family: var(--serif);
-  font-size: 14px;
-}
 
-/* report header band */
-.report-header {
-  border-bottom: 1px solid var(--rule);
-  padding: 28px 0 22px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 24px;
-}
-.report-title {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.report-meta {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
 /* period switcher */
 .period-switch {
@@ -445,27 +193,8 @@ a { color: inherit; }
   color: var(--mast-ink);
 }
 
-/* sections */
-section.report-section {
-  padding: 36px 0 4px;
-  border-bottom: 1px solid var(--rule-soft);
-}
-section.report-section:last-child { border-bottom: none; }
-
-.section-head {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  gap: 24px;
-  margin-bottom: 22px;
-}
-.section-num {
-  font-family: var(--serif);
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-}
+/* sections — section-head/num/lede migraram p/ Tailwind (report/primitives).
+   .section-title segue viva: ainda usada por Lancar.tsx. */
 .section-title {
   font-family: var(--serif);
   font-size: 30px;
@@ -474,24 +203,9 @@ section.report-section:last-child { border-bottom: none; }
   line-height: 1.15;
   color: var(--ink);
 }
-.section-lede {
-  font-family: var(--serif);
-  font-size: 19px;
-  font-weight: 500;
-  font-style: italic;
-  color: var(--ink-2);
-  margin-top: 10px;
-  max-width: 56ch;
-  line-height: 1.45;
-}
 
-/* KPI hero row */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-}
+/* KPI cell — compartilhada (Kpi.tsx, IA, Simulador, Dashboard). A hero-row do
+   Relatório (kpi-row/kpi-value/kpi-delta/kpi-note) migrou p/ Tailwind. */
 .kpi {
   padding: 24px 24px 22px;
   border-right: 1px solid var(--rule-soft);
@@ -501,30 +215,6 @@ section.report-section:last-child { border-bottom: none; }
 }
 .kpi:last-child { border-right: none; }
 .kpi .eyebrow { margin-bottom: 6px; }
-.kpi-value {
-  font-family: var(--serif);
-  font-size: 44px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  color: var(--ink);
-}
-.kpi-value.neg { color: var(--prejuizo); }
-.kpi-value.pos { color: var(--lucro); }
-.kpi-delta {
-  font-size: 15px;
-  color: var(--ink);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.kpi-delta .arrow { font-family: var(--serif); }
-.kpi-delta.up   { color: var(--lucro); }
-.kpi-delta.down { color: var(--prejuizo); }
-.kpi-note { font-size: var(--ts-label); color: var(--ink-2); font-weight: 500; margin-top: 6px; }
 
 /* ContextStrip — onde estou / qual período / qual animal / qual categoria */
 .ctx-strip {
@@ -621,150 +311,8 @@ section.report-section:last-child { border-bottom: none; }
 .kpi-prim.is-compact .kpi-prim-int { font-size: 15px; }
 
 /* answer block (executive question) */
-.answer-block {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 40px;
-  align-items: start;
-  padding: 8px 0 12px;
-}
-.answer-verdict {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.verdict-line {
-  font-family: var(--serif);
-  font-size: 22px;
-  line-height: 1.35;
-  color: var(--ink);
-  letter-spacing: -0.005em;
-}
-.verdict-line strong { font-weight: 600; }
-.verdict-line .accent-pos { color: var(--lucro); font-weight: 600; }
-.verdict-line .accent-neg { color: var(--prejuizo); font-weight: 600; }
-.verdict-detail {
-  font-size: 15px;
-  color: var(--ink-2);
-  font-weight: 500;
-  max-width: 50ch;
-  line-height: 1.55;
-}
-
-/* dual stat */
-.dual-stat {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: end;
-  gap: 24px;
-  padding: 16px 0;
-}
-.dual-stat .label {
-  font-size: var(--ts-label);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.dual-stat .value {
-  font-family: var(--serif);
-  font-size: 40px;
-  line-height: 1;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.015em;
-  color: var(--ink);
-}
-.dual-stat .versus {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 18px;
-  color: var(--ink-2);
-  padding-bottom: 8px;
-}
-
-/* activity grid */
-.activity-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--rule-soft);
-  border: 1px solid var(--rule);
-}
-.activity-card {
-  background: var(--bg-card);
-  padding: 24px 24px 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: relative;
-}
-.activity-card .swatch {
-  width: 18px; height: 18px;
-  display: inline-block;
-}
-.activity-card-head {
-  display: flex; align-items: center; gap: 10px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--rule-soft);
-}
-.activity-card-head .name {
-  font-family: var(--serif);
-  font-size: 22px;
-  letter-spacing: -0.005em;
-}
-.activity-card-head .pct {
-  margin-left: auto;
-  font-family: var(--sans);
-  font-size: var(--ts-label);
-  letter-spacing: 0.04em;
-  color: var(--ink-2);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.activity-stat {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 12px;
-}
-.activity-stat .stat-label {
-  font-size: 15px;
-  color: var(--ink-2);
-  font-weight: 500;
-}
-.activity-stat .stat-val {
-  font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-}
-.activity-stat .stat-val.neg { color: var(--prejuizo); }
-.activity-stat .stat-val.invest { color: var(--ink-2); font-style: italic; }
-.activity-foot {
-  margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px solid var(--rule-soft);
-  display: flex; justify-content: space-between;
-  align-items: baseline;
-}
-.activity-foot .key {
-  font-size: var(--ts-label);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  font-weight: 600;
-}
-.activity-foot .val {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
+/* answer-block/verdict, dual-stat e activity-grid migraram p/ Tailwind
+   (Relatorio.tsx + report/primitives ActivityCard). */
 
 /* legend */
 .legend {
@@ -796,134 +344,11 @@ section.report-section:last-child { border-bottom: none; }
   vertical-align: middle;
 }
 
-/* category list (horizontal bars) */
-.cat-list {
-  display: flex;
-  flex-direction: column;
-}
-.cat-row {
-  display: grid;
-  grid-template-columns: 28px 1.8fr 3fr 1fr 90px;
-  gap: 16px;
-  align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--rule-soft);
-  font-size: 15px;
-}
-.cat-row:last-child { border-bottom: none; }
-.cat-row .cat-rank {
-  font-family: var(--serif);
-  color: var(--ink-2);
-  font-weight: 500;
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-.cat-row .cat-name {
-  font-family: var(--sans);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.cat-row .cat-name small {
-  display: block;
-  font-size: var(--ts-label);
-  color: var(--ink-2);
-  font-weight: 500;
-  margin-top: 2px;
-}
-.cat-bar-track {
-  height: 10px;
-  background: var(--rule-soft);
-  position: relative;
-}
-.cat-bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  height: 100%;
-}
-.cat-bar-split {
-  display: flex;
-  height: 10px;
-  background: var(--rule-soft);
-}
-.cat-row .cat-val {
-  font-family: var(--serif);
-  font-size: 19px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--ink);
-}
-.cat-row .cat-delta {
-  font-size: var(--ts-label);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  text-align: right;
-}
-/* em gastos: subir = ruim (gastei mais); descer = bom (gastei menos) */
-.cat-row .cat-delta.up   { color: var(--prejuizo); }
-.cat-row .cat-delta.down { color: var(--lucro); }
 
-/* unit cost */
-.unit-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--rule-soft);
-  border: 1px solid var(--rule);
-}
-.unit-card {
-  background: var(--bg-card);
-  padding: 28px;
-  display: flex;
-  gap: 28px;
-  align-items: stretch;
-}
-.unit-card .stripe {
-  width: 4px;
-  align-self: stretch;
-}
-.unit-card .body-col {
-  flex: 1;
-  display: flex; flex-direction: column;
-  gap: 12px;
-}
-.unit-card .unit-eyebrow {
-  font-size: var(--ts-label);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  font-weight: 600;
-}
-.unit-card .unit-headline {
-  font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-}
-.unit-card .unit-numbers {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  column-gap: 32px;
-  row-gap: 6px;
-  margin-top: 8px;
-}
-.unit-card .un-cell { display: flex; flex-direction: column; gap: 4px; }
-.unit-card .un-cell .un-label { font-size: var(--ts-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
-.unit-card .un-cell .un-val {
-  font-family: var(--serif);
-  font-size: 28px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-.unit-card .un-cell .un-val.pos { color: var(--lucro); }
-.unit-card .un-cell .un-val.neg { color: var(--prejuizo); }
+/* unit-grid/unit-card migraram p/ Tailwind (report/primitives UnitCard). */
 
-/* contextual alert cards */
+/* contextual alert cards — .alert-card segue viva em IA.tsx; o Relatório usa
+   a primitiva Tailwind AlertCard (report/primitives). */
 .alert-card {
   border: 1px solid var(--rule);
   background: var(--bg-card-2);
@@ -1091,49 +516,9 @@ section.report-section:last-child { border-bottom: none; }
   vertical-align: middle;
 }
 
-/* drawer */
-.drawer-overlay {
-  position: fixed; inset: 0;
-  background: rgba(20, 25, 26, 0.35);
-  z-index: 40;
-  display: flex; justify-content: flex-end;
-}
-.drawer {
-  width: 540px;
-  background: var(--bg);
-  height: 100%;
-  overflow: auto;
-  box-shadow: -10px 0 30px rgba(20, 25, 26, 0.12);
-  display: flex;
-  flex-direction: column;
-}
-.drawer-head {
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  padding: 22px 28px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.drawer-head .eyebrow { color: var(--mast-ink-2); }
-.drawer-close {
-  background: none; border: none; color: var(--mast-ink);
-  font-family: var(--serif); font-size: 22px; cursor: pointer;
-}
-.drawer-body { padding: 28px; display: flex; flex-direction: column; gap: 28px; }
-.drawer-amount {
-  font-family: var(--serif);
-  font-size: 48px;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.drawer-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px 24px;
-}
-.drawer-meta-grid .mcell { display: flex; flex-direction: column; gap: 4px; }
-.drawer-meta-grid .mcell .ml { font-size: var(--ts-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
-.drawer-meta-grid .mcell .mv { font-size: 16px; color: var(--ink); font-weight: 500; }
+/* drawer — overlay/painel/head/body/amount/meta-grid/close migrados p/ Tailwind
+   em Dashboard.tsx (NotaDrawer + LancamentosPanel, Fase 2 slice 5).
+   Botões de fechar reproduzem o print:hidden via utilitário Tailwind. */
 .nota-frame {
   border: 1px solid var(--rule);
   background: var(--bg-card);
@@ -1152,18 +537,7 @@ section.report-section:last-child { border-bottom: none; }
   color: var(--ink-2);
   font-weight: 600;
 }
-.split-stack {
-  display: flex; flex-direction: column; gap: 8px;
-}
-.split-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--rule-soft);
-}
+/* .split-stack/.split-row migrados p/ Tailwind em Dashboard.tsx (NotaDrawer, Fase 2 slice 5). */
 
 /* IA chat */
 .ia-layout {
@@ -1410,23 +784,11 @@ section.report-section:last-child { border-bottom: none; }
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
 
-/* two-up */
-.two-up {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 32px;
-  align-items: start;
-}
+/* two-up e context-cards-row migraram p/ Tailwind (Relatorio.tsx). */
 .three-up {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-}
-.context-cards-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  margin-top: 16px;
 }
 
 /* whatsapp mock (for later) */
@@ -1438,8 +800,12 @@ section.report-section:last-child { border-bottom: none; }
   font-style: italic;
 }
 
-/* focus ring */
-button:focus-visible, a:focus-visible, input:focus-visible {
+/* focus ring — as primitivas shadcn (Button/Input) trazem o próprio anel
+   (focus-visible:ring-*); excluí-las evita anel duplo (outline + box-shadow),
+   já que esta regra não-layered vence utilities do Tailwind. Ver base.css. */
+button:focus-visible:not([data-slot="button"]),
+a:focus-visible,
+input:focus-visible:not([data-slot="input"]) {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -1468,26 +834,18 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .dre-section, .cats-real { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .dre-table { min-width: 640px; }
   .cat-real-row { min-width: 720px; }
-
-  /* report header: meta volta pra baixo */
-  .report-header { grid-template-columns: 1fr !important; }
-  .report-meta { text-align: left !important; align-items: flex-start !important; }
 }
 
 @media (max-width: 900px) {
   :root { --gutter: 14px; }
 
-  /* sidebar vira drawer; main perde offset (burger vive no .app-header) */
+  /* sidebar vira drawer; main perde offset (burger vive no header, ver Header.tsx) */
   .app-main { margin-left: 0; }
 
   .shell, .shell-wide { padding: 0 14px; }
 
-  /* masthead financeiro (caso volte a ter um) */
-  .masthead-inner { grid-template-columns: 1fr; padding: 14px 16px; gap: 12px; }
-
   /* títulos um tom menor */
   .h1, h1.h1 { font-size: 26px; line-height: 1.15; }
-  .report-header { padding: 16px 0 14px; gap: 12px; }
   .section-head { gap: 14px; margin-bottom: 14px; }
   .section-title { font-size: 24px; }
   .section-lede { font-size: 16px; margin-top: 6px; }
@@ -1521,12 +879,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .ia-thread { padding: 20px 14px; }
   .ia-composer { padding: 12px 14px 18px; }
 
-  /* drawer ocupa quase a tela */
-  .drawer { width: min(540px, 100vw); }
-  .drawer-head { padding: 16px 18px; }
-  .drawer-body { padding: 18px; gap: 20px; }
-  .drawer-amount { font-size: 36px; }
-  .drawer-meta-grid { grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+  /* drawer responsivo migrado p/ Tailwind (NotaDrawer, Fase 2 slice 5) */
 
   /* tabela de gastos com scroll horizontal e menos padding */
   .gastos-toolbar { padding: 12px 0; gap: 8px; }
@@ -1669,44 +1022,6 @@ body.no-scroll { overflow: hidden; }
 }
 
 /* ============================================================
-   CONFIRM DIALOG — diálogo modal simples (acessível)
-   ============================================================ */
-.confirm-overlay {
-  position: fixed; inset: 0;
-  background: rgba(20, 25, 26, 0.45);
-  z-index: 1080;
-  display: grid; place-items: center;
-  padding: 24px;
-  animation: confirm-fade 140ms ease-out;
-}
-@keyframes confirm-fade { from { opacity: 0; } to { opacity: 1; } }
-.confirm-dialog {
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  width: 100%; max-width: 460px;
-  box-shadow: 0 24px 56px rgba(20, 25, 26, 0.28);
-  display: flex; flex-direction: column;
-}
-.confirm-head {
-  padding: 18px 22px 12px;
-  border-bottom: 1px solid var(--rule-soft);
-  font-family: var(--serif);
-  font-size: 20px;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-}
-.confirm-body {
-  padding: 16px 22px;
-  font-size: 15px; line-height: 1.5;
-  color: var(--ink-2);
-}
-.confirm-foot {
-  padding: 14px 22px 18px;
-  display: flex; justify-content: flex-end; gap: 10px;
-  border-top: 1px solid var(--rule-soft);
-}
-
-/* ============================================================
    ESTADOS VAZIOS — quando filtros zeram resultados
    ============================================================ */
 .empty-state {
@@ -1737,6 +1052,42 @@ body.no-scroll { overflow: hidden; }
 }
 
 /* gated-msg e viewas-banner moram em acessos.css */
+
+/* ============================================================
+   ACESSIBILIDADE — reduced motion + print
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
+  .toast-viewport,
+  .anom-dismiss, .ia-composer, .skip-link,
+  .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
+  .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
+  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay {
+    display: none !important;
+  }
+  .app, .app-main, .shell, .shell-wide {
+    margin: 0 !important; padding: 0 !important; max-width: none !important;
+    background: white !important; color: black !important;
+  }
+  body, html { background: white !important; }
+  /* contraste alto em impressão */
+  .h1, .h2, .h3, h1, h2, h3 { color: black !important; }
+  .kpi-value, .kpi-prim-val, .cat-val, .activity-stat .stat-val { color: black !important; }
+  /* evita quebra dentro de cards */
+  .kpi, .activity-card, .alert-card, .unit-card, .dash-card, .anom-card {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .dash-sec-head, .section-head { break-after: avoid; }
+}
 
 /* ============================================================
    LOADING — dialeto único (Loader, BootSplash, Skeleton)
@@ -1924,117 +1275,3 @@ body.no-scroll { overflow: hidden; }
   .dash-skeleton-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ============================================================
-   ACESSIBILIDADE — reduced motion + print
-   ============================================================ */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* Login (piloto) — tela mínima antes do App carregar. */
-.login-screen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: var(--bg);
-  padding: 24px;
-}
-.login-card {
-  width: 100%;
-  max-width: 380px;
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  border-radius: 14px;
-  padding: 28px 26px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.login-brand {
-  font-family: var(--serif);
-  font-size: 15px;
-  color: var(--ink-3);
-  letter-spacing: 0.02em;
-}
-.login-title {
-  font-family: var(--serif);
-  font-size: 26px;
-  line-height: 1.1;
-  color: var(--ink);
-  margin-bottom: 4px;
-}
-.login-caption {
-  font-size: 13px;
-  color: var(--ink-3);
-  margin-bottom: 12px;
-}
-.login-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  margin-top: 4px;
-}
-.login-input {
-  padding: 10px 12px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--bg);
-  font-size: 15px;
-  font-family: inherit;
-  color: var(--ink);
-}
-.login-input:focus {
-  outline: 2px solid var(--warn);
-  outline-offset: 1px;
-}
-.login-erro {
-  font-size: 13px;
-  color: var(--neg);
-}
-.login-btn {
-  margin-top: 8px;
-  padding: 10px 14px;
-  background: var(--ink);
-  color: var(--bg);
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.login-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-@media print {
-  /* esconde shell — só conteúdo importa */
-  .app-header, .rb-side, .toast-viewport,
-  .ah-burger, .anom-dismiss, .drawer-close, .ia-composer, .skip-link,
-  .acessos-summary .ac-sum-action, .plano-toolbar .btn-primary,
-  .plano-toolbar .btn-ghost, .gastos-toolbar .filter-chip,
-  .gastos-toolbar .search-box, .viewas-banner, .modal-overlay, .confirm-overlay,
-  .chat-fab, .chat-panel, .propriedade-selector {
-    display: none !important;
-  }
-  .app, .app-main, .shell, .shell-wide {
-    margin: 0 !important; padding: 0 !important; max-width: none !important;
-    background: white !important; color: black !important;
-  }
-  body, html { background: white !important; }
-  /* contraste alto em impressão */
-  .h1, .h2, .h3, h1, h2, h3 { color: black !important; }
-  .kpi-value, .kpi-prim-val, .cat-val, .activity-stat .stat-val { color: black !important; }
-  /* evita quebra dentro de cards */
-  .kpi, .activity-card, .alert-card, .unit-card, .dash-card, .anom-card {
-    break-inside: avoid; page-break-inside: avoid;
-  }
-  .report-header, .dash-sec-head, .section-head { break-after: avoid; }
-}

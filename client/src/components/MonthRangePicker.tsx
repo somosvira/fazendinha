@@ -7,6 +7,7 @@
  */
 
 import type { DateRange } from "./DateRangePicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
@@ -52,17 +53,22 @@ export function MonthRangePicker({ value, onChange, min, max }: {
       >
         ‹
       </button>
-      <select
-        className="mrp-sel"
+      {/* dropdown = primitivo Radix (popup estilizado); label como children →
+          visível já no primeiro paint (Radix só resolve na hidratação) */}
+      <Select
         value={cur.key}
-        onChange={(e) => {
-          const mo = meses.find((x) => x.key === e.target.value);
+        onValueChange={(key) => {
+          const mo = meses.find((x) => x.key === key);
           if (mo) irPara(mo);
         }}
-        aria-label="Mês"
       >
-        {meses.map((mo) => <option key={mo.key} value={mo.key}>{mo.label}</option>)}
-      </select>
+        <SelectTrigger aria-label="Mês" className="tabular-nums">
+          <SelectValue>{cur.label}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {meses.map((mo) => <SelectItem key={mo.key} value={mo.key}>{mo.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
       <button
         type="button"
         className="mrp-nav"

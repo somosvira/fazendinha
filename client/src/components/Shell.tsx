@@ -27,12 +27,15 @@ export function ReportHeader({
   rightExtra?: ReactNode;
 }) {
   return (
-    <div className="report-header">
-      <div className="report-title">
+    <div
+      data-slot="report-header"
+      className="grid grid-cols-[1fr_auto] items-end gap-6 border-b border-border pt-7 pb-[22px]"
+    >
+      <div className="flex flex-col gap-2">
         <span className="eyebrow">Visão executiva</span>
         <h1 className="h1">{subtitle}</h1>
       </div>
-      <div className="report-meta">
+      <div className="flex flex-col gap-1 text-right">
         {range && onRangeChange && <DateRangePicker value={range} onChange={onRangeChange} anchor="right" />}
         {updatedAt && (
           <span className="caption" style={{ marginTop: 8 }}>
