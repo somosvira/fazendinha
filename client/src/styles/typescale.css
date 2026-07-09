@@ -98,12 +98,6 @@ body            { font-size: 17px; }
 .field-textarea      { font-size: 16px; }
 .chip-group .chip    { font-size: 14px; font-weight: 600; }
 
-/* ===== plano de contas ===== */
-.tree-cat-head .cnm  { font-size: 16px; font-weight: 600; }
-.tree-sub .snm       { font-size: 15px; }
-.ia-suggestion-card .ttl { font-size: 17px; font-weight: 500; }
-.ia-suggestion-card .det { font-size: 14px; }
-
 /* ===== IA chat ===== */
 .ia-prompt           { font-size: 16px; }
 .msg.ai .ai-narrative { font-size: 19px; }
