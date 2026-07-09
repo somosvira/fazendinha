@@ -5,6 +5,7 @@ import { LoteDomainView, COR_TOOLBAR } from "./LoteDomainView";
 import { DOMAINS, CATEGORIAS_ORDEM } from "../domains";
 import type { ResumoLote } from "../types";
 import { CATEGORIA_LABEL } from "../types";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 type EstadoFiltro = "ATIVO" | "VENDIDO" | "TODOS";
 const OPCOES: { k: EstadoFiltro; lab: string }[] = [
@@ -29,10 +30,12 @@ export function LoteTab({ onAbrirLote, onNovo }: { onAbrirLote: (id: string) => 
           </button>
         ))}
       </div>
-      <select className="rb-select" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-        <option value="">Todas as categorias</option>
-        {CATEGORIAS_ORDEM.map((c) => <option key={c} value={c}>{CATEGORIA_LABEL[c]}</option>)}
-      </select>
+      <ToolbarSelect
+        value={categoria}
+        onChange={setCategoria}
+        ariaLabel="Filtrar por categoria"
+        options={[{ value: "", label: "Todas as categorias" }, ...CATEGORIAS_ORDEM.map((c) => ({ value: c, label: CATEGORIA_LABEL[c] }))]}
+      />
       <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={onNovo}>+ Novo lote</button>
     </>
   );
