@@ -1,75 +1,7 @@
 /* Rio Novo — Simulador de cenários (IA) */
 
-.ia-mode-switch {
-  display: inline-flex;
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-  margin: 18px 0 0;
-}
-.ia-mode-btn {
-  background: none; border: none;
-  padding: 10px 22px;
-  font-family: var(--sans);
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-  cursor: pointer;
-  border-right: 1px solid var(--rule);
-}
-.ia-mode-btn:last-child { border-right: none; }
-.ia-mode-btn.active { background: var(--mast-bg); color: var(--mast-ink); }
-
-/* ===== Memória da IA ===== */
-.mem-clear {
-  background: none; border: none; cursor: pointer;
-  font-family: var(--sans); font-size: 11px; color: var(--ink-mute);
-  text-decoration: underline; text-underline-offset: 2px;
-}
-.mem-clear:hover { color: var(--neg); }
-.mem-convos { display: flex; flex-direction: column; gap: 0; }
-.mem-convo {
-  display: flex; flex-direction: column; gap: 1px;
-  background: none; border: none; cursor: pointer; text-align: left;
-  padding: 8px 0; border-bottom: 1px solid var(--rule-soft);
-}
-.mem-convo:hover .mc-titulo { color: var(--ink); }
-.mc-data { font-size: 11px; color: var(--ink-mute); letter-spacing: 0.04em; }
-.mc-titulo { font-size: 13px; color: var(--ink-3); line-height: 1.35; }
-
-/* recall bubble na thread */
-.mem-recall {
-  background: var(--bg-card-2);
-  border-left: 3px solid var(--leite);
-  padding: 12px 16px;
-  display: flex; flex-direction: column; gap: 4px;
-  max-width: 560px;
-}
-.mem-recall-head {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--sans); font-size: 11px;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
-}
-.mem-recall-icon { font-size: 14px; color: var(--leite); }
-.mem-recall-titulo { font-family: var(--serif); font-size: 16px; color: var(--ink); letter-spacing: -0.005em; }
-.mem-recall-resumo { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
-
-/* fatos lembrados (painel direito) */
-.mem-fatos { display: flex; flex-direction: column; gap: 9px; margin-top: 12px; }
-.mem-fato { display: flex; gap: 9px; align-items: flex-start; }
-.mf-dot { width: 6px; height: 6px; background: var(--pos); border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-.mf-txt { font-size: 13px; color: var(--ink-2); line-height: 1.45; }
-
-.mem-pend { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule-soft); display: flex; flex-direction: column; gap: 8px; }
-.mem-pend-head { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
-.mem-pend-item {
-  display: flex; gap: 9px; align-items: flex-start;
-  background: var(--bg-card-2); border: 1px solid var(--rule-soft);
-  padding: 9px 11px; cursor: pointer; text-align: left;
-}
-.mem-pend-item:hover { border-color: var(--ink-3); }
-.mp-icon { color: var(--warn); font-size: 13px; margin-top: 1px; }
-.mp-txt { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--ink); line-height: 1.4; }
-.mp-txt small { font-size: 11px; color: var(--ink-mute); }
+/* .ia-mode-*/.mem-* migrados p/ Tailwind em IA.tsx (Fase 4 slice B).
+   Só o bloco sim-* (Simulador) fica aqui até a Fase 7. */
 
 .sim-wrap {
   border-top: 1px solid var(--rule);
