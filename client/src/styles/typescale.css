@@ -107,11 +107,7 @@ body            { font-size: 17px; }
 .ai-mini-table th,
 .ai-mini-table td    { font-size: 15px; }
 
-/* ===== date picker ===== */
-.drp-trigger        { font-size: 14px; font-weight: 600; }
-.drp-preset         { font-size: 14px; font-weight: 500; }
-.cal-day            { font-size: 15px; }
-.drp-readout-cell .v { font-size: 19px; font-weight: 500; }
+/* ===== date picker — migrado p/ Tailwind + ui/popover (Fase 3 slice 5) ===== */
 
 /* ===== relatório editorial ===== */
 .section-title    { font-size: 30px; font-weight: 500; }

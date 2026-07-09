@@ -1,7 +1,14 @@
-/* Rio Novo — DateRangePicker (cream agro-premium) */
+/* Rio Novo — DateRangePicker (cream agro-premium)
+ *
+ * Fase 3 slice 5: chrome em Tailwind + ui/Popover (Radix cuida de outside
+ * click/posicionamento). O calendário pt-BR é próprio (11 presets, "Hoje"
+ * pinado) — NÃO adotar react-day-picker; só as classes migraram. */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { getHoje } from "../lib/hoje";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const PT_MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -82,15 +89,15 @@ function CalendarMonth({
   const hi = hasFullRange ? (isBefore(rangeStart, rangeEnd) ? rangeEnd : rangeStart) : null;
 
   return (
-    <div className="cal-month">
-      <div className="cal-month-head">
-        <span className="cal-month-name">
-          {PT_MONTHS[month]} <span className="cal-year">{year}</span>
+    <div className="flex flex-col">
+      <div className="pb-3.5 pt-1 text-center">
+        <span className="font-serif text-[17px] tracking-[-0.005em] text-foreground">
+          {PT_MONTHS[month]} <span className="tabular-nums text-ink-3">{year}</span>
         </span>
       </div>
-      <div className="cal-grid">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {PT_WEEKDAYS.map((w, i) => (
-          <div key={i} className="cal-wd">
+          <div key={i} className="pb-2 pt-1 text-center font-sans text-[10px] uppercase tracking-[0.18em] text-ink-3">
             {w}
           </div>
         ))}
@@ -101,25 +108,36 @@ function CalendarMonth({
           const inRange = !!(lo && hi) && isBetween(d, lo, hi);
           const isToday = sameDay(d, today);
           const disabled = (minDate && isBefore(d, minDate)) || (maxDate && isAfter(d, maxDate));
-
-          let cls = "cal-day";
-          if (!inMonth) cls += " outside";
-          if (disabled) cls += " disabled";
-          if (isStart) cls += " start";
-          if (isEnd) cls += " end";
-          if (inRange && !isStart && !isEnd) cls += " in-range";
-          if (isToday) cls += " today";
+          const isPonta = isStart || isEnd;
 
           return (
             <button
               key={i}
               type="button"
-              className={cls}
+              className={cn(
+                "group/day relative grid h-9 cursor-pointer place-items-center border-0 bg-transparent p-0 font-serif text-[15px] tabular-nums text-foreground",
+                (!inMonth || disabled) && "text-[color:var(--ink-mute)]",
+                disabled && "cursor-not-allowed",
+                // banda do range (pseudo-elemento); nas pontas cobre só meia célula
+                (inRange || isPonta) && !(isStart && isEnd) &&
+                  "before:absolute before:inset-x-0 before:inset-y-1 before:z-[1] before:bg-card before:content-['']",
+                isStart && !isEnd && "before:left-1/2",
+                isEnd && !isStart && "before:right-1/2",
+              )}
               disabled={!!disabled}
               onClick={() => onPickDay(d)}
               onMouseEnter={() => onHoverDay(d)}
             >
-              <span className="cal-day-n">{d.getDate()}</span>
+              <span
+                className={cn(
+                  "relative z-[2] grid h-7 w-7 place-items-center",
+                  isToday && "font-medium underline underline-offset-4",
+                  isPonta && "bg-mast text-mast-ink",
+                  !isPonta && inMonth && !disabled && "group-hover/day:[outline:1px_solid_var(--ink-3)]",
+                )}
+              >
+                {d.getDate()}
+              </span>
             </button>
           );
         })}
@@ -171,22 +189,9 @@ export function DateRangePicker({
     value?.start ? startOfMonth(value.start) : addMonths(startOfMonth(today), -1),
   );
   const rightView = addMonths(leftView, 1);
-  const popRef = useRef<HTMLDivElement | null>(null);
-  const btnRef = useRef<HTMLButtonElement | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const presets = useMemo(() => buildPresets(today), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (popRef.current && !popRef.current.contains(target) && btnRef.current && !btnRef.current.contains(target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
 
   const pickDay = (d: Date) => {
     if (!draft.start || (draft.start && draft.end)) {
@@ -226,96 +231,120 @@ export function DateRangePicker({
   }, [value, presets]);
 
   return (
-    <div className="drp-wrapper">
-      <button
-        ref={btnRef}
-        type="button"
-        className="drp-trigger"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group inline-flex cursor-pointer items-center gap-2.5 border border-border bg-card px-3.5 py-2 font-sans text-sm font-semibold tracking-[0.02em] text-foreground transition-colors hover:border-ink-3 aria-expanded:border-mast aria-expanded:bg-mast aria-expanded:text-mast-ink"
+        >
+          <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <rect x="3" y="5" width="18" height="16" rx="1"></rect>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <line x1="8" y1="3" x2="8" y2="7"></line>
+            <line x1="16" y1="3" x2="16" y2="7"></line>
+          </svg>
+          <span className="font-sans tabular-nums">{formatRangeLabel(value)}</span>
+          <span className="text-[10px] text-ink-3 group-aria-expanded:text-[color:var(--mast-ink-2)]">▾</span>
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align={anchor === "right" ? "end" : "start"}
+        sideOffset={6}
+        className="grid w-auto min-w-[720px] grid-cols-[180px_1fr] bg-background p-0 shadow-[0_18px_48px_rgba(20,25,26,0.18),0_4px_14px_rgba(20,25,26,0.06)]"
       >
-        <svg className="drp-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <rect x="3" y="5" width="18" height="16" rx="1"></rect>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-          <line x1="8" y1="3" x2="8" y2="7"></line>
-          <line x1="16" y1="3" x2="16" y2="7"></line>
-        </svg>
-        <span className="drp-label">{formatRangeLabel(value)}</span>
-        <span className="drp-chev">▾</span>
-      </button>
+        <aside className="flex flex-col border-r border-border bg-card py-4">
+          <div className="px-4 pb-3 font-sans text-[10px] uppercase tracking-[0.18em] text-ink-3">Presets</div>
+          {presets.map((p) => (
+            <button
+              key={p.id}
+              className={cn(
+                "cursor-pointer border-l-2 border-transparent bg-transparent px-4 py-2 text-left font-sans text-sm font-medium tracking-[0.01em] text-ink-2 transition-colors hover:bg-accent hover:text-foreground",
+                matchedPreset === p.id && "border-l-foreground bg-accent text-foreground",
+              )}
+              onClick={() => applyPreset(p)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </aside>
 
-      {open && (
-        <div ref={popRef} className={"drp-pop " + (anchor === "right" ? "anchor-right" : "")}>
-          <aside className="drp-presets">
-            <div className="drp-presets-head">Presets</div>
-            {presets.map((p) => (
-              <button
-                key={p.id}
-                className={"drp-preset " + (matchedPreset === p.id ? "active" : "")}
-                onClick={() => applyPreset(p)}
+        <div className="flex flex-col px-5 pt-4">
+          <div className="mb-2.5 flex items-center">
+            <button
+              className="grid h-8 w-8 cursor-pointer place-items-center border border-border bg-card font-serif text-lg text-foreground transition-colors hover:border-mast hover:bg-mast hover:text-mast-ink"
+              onClick={() => setLeftView(addMonths(leftView, -1))}
+              aria-label="Mês anterior"
+            >
+              ‹
+            </button>
+            <div className="flex-1"></div>
+            <button
+              className="grid h-8 w-8 cursor-pointer place-items-center border border-border bg-card font-serif text-lg text-foreground transition-colors hover:border-mast hover:bg-mast hover:text-mast-ink"
+              onClick={() => setLeftView(addMonths(leftView, 1))}
+              aria-label="Próximo mês"
+            >
+              ›
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-7 pb-3.5">
+            <CalendarMonth
+              year={leftView.getFullYear()}
+              month={leftView.getMonth()}
+              range={draft}
+              hoverEnd={hoverEnd}
+              onPickDay={pickDay}
+              onHoverDay={(d) => {
+                if (draft.start && !draft.end) setHoverEnd(d);
+              }}
+            />
+            <CalendarMonth
+              year={rightView.getFullYear()}
+              month={rightView.getMonth()}
+              range={draft}
+              hoverEnd={hoverEnd}
+              onPickDay={pickDay}
+              onHoverDay={(d) => {
+                if (draft.start && !draft.end) setHoverEnd(d);
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t border-border py-3.5">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Início</span>
+                <span className="font-serif text-[19px] font-medium tabular-nums tracking-[-0.005em] text-foreground">
+                  {draft.start ? formatBR(draft.start) : "—"}
+                </span>
+              </div>
+              <div className="pt-3.5 font-serif text-lg text-[color:var(--ink-mute)]">→</div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Fim</span>
+                <span className="font-serif text-[19px] font-medium tabular-nums tracking-[-0.005em] text-foreground">
+                  {draft.end ? formatBR(draft.end) : "—"}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <Button
+                variant="outline"
+                className="h-auto px-3.5 py-[9px] text-xs font-normal tracking-[0.04em] text-ink-2 hover:text-ink-2"
+                onClick={cancel}
               >
-                {p.label}
-              </button>
-            ))}
-          </aside>
-
-          <div className="drp-cals">
-            <div className="drp-cals-head">
-              <button className="drp-nav" onClick={() => setLeftView(addMonths(leftView, -1))} aria-label="Mês anterior">
-                ‹
-              </button>
-              <div style={{ flex: 1 }}></div>
-              <button className="drp-nav" onClick={() => setLeftView(addMonths(leftView, 1))} aria-label="Próximo mês">
-                ›
-              </button>
-            </div>
-            <div className="drp-cals-grid">
-              <CalendarMonth
-                year={leftView.getFullYear()}
-                month={leftView.getMonth()}
-                range={draft}
-                hoverEnd={hoverEnd}
-                onPickDay={pickDay}
-                onHoverDay={(d) => {
-                  if (draft.start && !draft.end) setHoverEnd(d);
-                }}
-              />
-              <CalendarMonth
-                year={rightView.getFullYear()}
-                month={rightView.getMonth()}
-                range={draft}
-                hoverEnd={hoverEnd}
-                onPickDay={pickDay}
-                onHoverDay={(d) => {
-                  if (draft.start && !draft.end) setHoverEnd(d);
-                }}
-              />
-            </div>
-
-            <div className="drp-foot">
-              <div className="drp-readout">
-                <div className="drp-readout-cell">
-                  <span className="l">Início</span>
-                  <span className="v">{draft.start ? formatBR(draft.start) : "—"}</span>
-                </div>
-                <div className="drp-readout-sep">→</div>
-                <div className="drp-readout-cell">
-                  <span className="l">Fim</span>
-                  <span className="v">{draft.end ? formatBR(draft.end) : "—"}</span>
-                </div>
-              </div>
-              <div className="drp-actions">
-                <button className="btn-ghost" onClick={cancel}>
-                  Cancelar
-                </button>
-                <button className="btn-primary" onClick={apply} disabled={!(draft.start && draft.end)}>
-                  Aplicar período
-                </button>
-              </div>
+                Cancelar
+              </Button>
+              <Button
+                className="h-auto px-4 py-[9px] text-[13px] font-normal uppercase tracking-[0.08em] disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-border disabled:text-[color:var(--ink-mute)] disabled:opacity-100"
+                onClick={apply}
+                disabled={!(draft.start && draft.end)}
+              >
+                Aplicar período
+              </Button>
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
