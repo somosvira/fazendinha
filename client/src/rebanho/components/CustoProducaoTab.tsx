@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { useCustoProducao, useCustoSanidade } from "../api";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -16,7 +17,7 @@ export function CustoProducaoTab() {
       <div className="rb-head"><h1>Custo de Produção</h1></div>
 
       {loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (erro || !data) ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar: {erro ?? "sem dados"}</p>
       ) : (
@@ -101,7 +102,7 @@ export function CustoProducaoTab() {
       <h2 className="rb-sec-title">Custo de sanidade (estimado)</h2>
 
       {sanLoading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (sanErro || !san) ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar: {sanErro ?? "sem dados"}</p>
       ) : (

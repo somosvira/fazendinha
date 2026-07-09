@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import {
   useConfig, salvarConfig, type ModoProducao,
   useParametros, salvarParametrosApi, resetarParametro,
@@ -44,7 +45,7 @@ export function ConfiguracoesView() {
     return map;
   }, [params.data]);
 
-  if (cfg.loading) return <main className="rb-main"><div className="rb-eyebrow">Configurações</div><div className="rb-head"><h1>Configurações</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (cfg.loading) return <main className="rb-main"><div className="rb-eyebrow">Configurações</div><div className="rb-head"><h1>Configurações</h1></div><Loader /></main>;
   if (cfg.erro || !cfg.data) return <main className="rb-main"><div className="rb-head"><h1>Configurações</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {cfg.erro}</p></main>;
 
   // Sincroniza estado local do input com o valor do banco quando ele muda
@@ -189,7 +190,7 @@ export function ConfiguracoesView() {
         </button>
       </div>
 
-      {params.loading && <p className="rb-sub">Carregando parâmetros…</p>}
+      {params.loading && <Loader label="Carregando parâmetros…" />}
       {params.erro && <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {params.erro}</p>}
 
       {!params.loading && !params.erro && CATEGORIAS.map(({ id, titulo }) => {

@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { usePiquetes, useLotes } from "../api";
 import { toUA } from "../lib/derive";
 
@@ -17,7 +18,7 @@ export function PastoTab() {
   const { data: piquetes } = usePiquetes();
   const { data: lotes, loading: loadingLotes } = useLotes({ estado: "ATIVO" });
 
-  if (loadingLotes) return <main className="rb-main"><div className="rb-eyebrow">Corte · pasto</div><div className="rb-head"><h1>Pasto & piquetes</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loadingLotes) return <main className="rb-main"><div className="rb-eyebrow">Corte · pasto</div><div className="rb-head"><h1>Pasto & piquetes</h1></div><Loader /></main>;
 
   const ocupados = piquetes.filter((p) => p.estado === "OCUPADO");
   const areaAtiva = ocupados.reduce((a, p) => a + p.areaHa, 0);

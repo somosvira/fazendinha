@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 
@@ -165,7 +166,7 @@ export function PontoTab() {
       ) : erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar os registros: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (
         <div className="rb-tbl-wrap"><table className="rb-tbl">
           <thead>

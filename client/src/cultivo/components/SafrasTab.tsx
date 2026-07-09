@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import {
   useSafrasCultivo,
   useSafraCultivo,
@@ -58,7 +59,7 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar safras: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : data.length === 0 ? (
         <div className="rb-empty">Nenhuma safra de milho cadastrada ainda.</div>
       ) : (
@@ -126,7 +127,7 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
           <h1>Safra</h1>
           <button className="rb-btn" onClick={onVoltar}>← Safras</button>
         </div>
-        {erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p> : <p className="rb-sub">Carregando…</p>}
+        {erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p> : <Loader />}
       </main>
     );
   }
@@ -178,7 +179,7 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
       </div>
 
       {loadingAreas ? (
-        <p className="rb-sub">Carregando áreas…</p>
+        <Loader label="Carregando áreas…" />
       ) : areas.length === 0 ? (
         <div className="rb-empty">Nenhuma área cadastrada para esta safra ainda.</div>
       ) : (

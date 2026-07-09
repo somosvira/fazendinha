@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import type { RebanhoTab } from "../nav";
 import { insightDoRebanho } from "../mock";
 import { IaInsightBand } from "./IaInsight";
@@ -6,7 +7,7 @@ import { useDashboard } from "../api";
 export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
   const { data, loading, erro } = useDashboard();
   const insight = insightDoRebanho("reproducao");
-  if (loading) return <main className="rb-main"><div className="rb-head"><h1>Dashboard</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-head"><h1>Dashboard</h1></div><Loader /></main>;
   if (erro || !data) return <main className="rb-main"><div className="rb-head"><h1>Dashboard</h1></div><p className="rb-sub" style={{ color: "var(--prejuizo)" }}>Erro: {erro}</p></main>;
   const k = data.kpis;
   const pctLactacao = k.rebanhoAtivo > 0 ? Math.round((k.emLactacao / k.rebanhoAtivo) * 100) : 0;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useProdutos, useFornecedores, editarProduto, editarFornecedor, type ProdutoDTO, type FornecedorDTO, type TipoProduto, type TipoPessoa } from "../api";
 import { ProdutoForm } from "./ProdutoForm";
 import { FornecedorForm } from "./FornecedorForm";
@@ -61,7 +62,7 @@ function Produtos() {
         <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      {loading ? <p className="rb-sub">Carregando…</p>
+      {loading ? <Loader />
         : erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
         : data.length === 0 ? <p className="rb-sub">Nenhum produto encontrado.</p>
         : (
@@ -113,7 +114,7 @@ function Fornecedores() {
         <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      {loading ? <p className="rb-sub">Carregando…</p>
+      {loading ? <Loader />
         : erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
         : data.length === 0 ? <p className="rb-sub">Nenhum fornecedor encontrado.</p>
         : (

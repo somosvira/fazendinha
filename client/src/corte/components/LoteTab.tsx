@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useLotes } from "../api";
 import { LoteDomainView, COR_TOOLBAR } from "./LoteDomainView";
 import { DOMAINS, CATEGORIAS_ORDEM } from "../domains";
@@ -42,7 +43,7 @@ export function LoteTab({ onAbrirLote, onNovo }: { onAbrirLote: (id: string) => 
         <div className="rb-eyebrow">{DOMAINS.lote.eyebrow}</div>
         <div className="rb-head"><h1>Lote</h1></div>
         <div className="rb-toolbar" style={COR_TOOLBAR}>{controles}</div>
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       </main>
     );
   }

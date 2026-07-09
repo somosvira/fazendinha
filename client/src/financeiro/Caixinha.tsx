@@ -15,6 +15,7 @@ import {
   type TipoMovimentoCaixinha,
 } from "./api";
 import { fmtMoneyExact } from "../components/charts";
+import { Loader } from "../components/Loading";
 import { useToast } from "../components/Toast";
 import { HOJE } from "./HOJE";
 
@@ -41,7 +42,7 @@ export function Caixinha() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar caixinhas: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : !ativa ? (
         <div className="rb-empty">
           <p style={{ marginTop: 0 }}>Nenhuma caixinha cadastrada ainda.</p>
@@ -143,7 +144,7 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar o extrato: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : movimentos.length === 0 ? (
         <div className="rb-empty">Nenhum movimento neste mês.</div>
       ) : (

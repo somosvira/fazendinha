@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useAnimal, useTimeline, useConfig, useAnimalInsights } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
@@ -78,7 +79,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
     return () => window.clearTimeout(t);
   }, [flashLocalId, flashTick]);
 
-  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><Loader /></main>;
   if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--prejuizo)" }}>Erro: {erro}</p></main>;
   if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
 
