@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useCustoPlantio, useCustoOperacionalCafe, useSafras } from "../api";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
@@ -43,7 +44,7 @@ export function CustoTab() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar o custo: {erro}</p>
       ) : loading || !data ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (
         <>
           <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
@@ -79,7 +80,7 @@ export function CustoTab() {
             ) : !safraAtual && !loadingSafras ? (
               <p className="rb-sub" style={{ marginTop: 0 }}>Cadastre uma safra (aba Planejamento) para ver o custo operacional das operações reais.</p>
             ) : loadingOp || !op ? (
-              <p className="rb-sub" style={{ marginTop: 0 }}>Carregando…</p>
+              <Loader />
             ) : (
               <>
                 <div className="rb-kstrip" style={{ ["--cols" as any]: 4, marginTop: 8 }}>

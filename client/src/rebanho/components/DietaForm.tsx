@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta, useProdutos, type DietaDTO, type DietaItemInput } from "../api";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -150,7 +151,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
       <h4 style={{ margin: "0 0 4px" }}>Composição</h4>
       <p className="rb-sub" style={{ margin: "0 0 10px", fontSize: 12.5 }}>Quanto de cada produto cada cabeça consome por dia. Alimenta a baixa de estoque e o custo por vaca/dia.</p>
 
-      {loading ? <p className="rb-sub">Carregando…</p> : (
+      {loading ? <Loader /> : (
         <>
           {linhas.length === 0 ? <p className="rb-sub" style={{ fontStyle: "italic" }}>Nenhum produto na composição ainda.</p> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

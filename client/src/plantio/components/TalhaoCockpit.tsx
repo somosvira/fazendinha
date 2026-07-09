@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useTalhao, useEventos } from "../api";
 import { idadeAnos, totalPlantas, categoriaIdade } from "../lib/derive";
 import { FASES_LABEL } from "../lib/fenologia";
@@ -11,7 +12,7 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
   const { data: eventos, recarregar } = useEventos(talhaoId);
   const [registrando, setRegistrando] = useState(false);
 
-  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lavoura</button><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lavoura</button><Loader /></main>;
   if (!t) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lavoura</button><p>Talhão não encontrado.</p></main>;
 
   const idade = idadeAnos(t, HOJE);

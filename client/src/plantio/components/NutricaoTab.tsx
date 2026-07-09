@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { useTalhoes, useLavouras, usePlanosAdubacao } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
 import { DOMAINS } from "../domains";
@@ -9,7 +10,7 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
   const { data: lavouras } = useLavouras();
   const { data: planos } = usePlanosAdubacao();
 
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Nutrição & Solo</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Nutrição & Solo</h1></div><Loader /></main>;
   if (erro) return <main className="rb-main"><div className="rb-head"><h1>Nutrição & Solo</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];

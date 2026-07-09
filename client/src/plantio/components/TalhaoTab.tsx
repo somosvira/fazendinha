@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useTalhoes } from "../api";
 import { LavouraDomainView, PLA_TOOLBAR } from "./LavouraDomainView";
 import { DOMAINS } from "../domains";
@@ -59,7 +60,7 @@ export function TalhaoTab({ onAbrirTalhao, onNovo }: { onAbrirTalhao: (id: strin
         <div className="rb-head"><h1>Talhão</h1></div>
         <div className="rb-toolbar" style={PLA_TOOLBAR}>{controles}</div>
         {loading
-          ? <p className="rb-sub">Carregando…</p>
+          ? <Loader />
           : <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>}
       </main>
     );

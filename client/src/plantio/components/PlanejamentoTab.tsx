@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useSafras, useTarefas, useApontamentos, excluirTarefa, excluirApontamento } from "../api";
 import type { TarefaPlanejada } from "../types";
 import { TarefaForm } from "./TarefaForm";
@@ -68,7 +69,7 @@ export function PlanejamentoTab() {
       {erroSafras ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar as safras: {erroSafras}</p>
       ) : loadingSafras ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : safras.length === 0 ? (
         <p className="rb-sub">Nenhuma safra cadastrada ainda.</p>
       ) : (
@@ -131,7 +132,7 @@ export function PlanejamentoTab() {
           {erroTarefas ? (
             <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar tarefas: {erroTarefas}</p>
           ) : loadingTarefas ? (
-            <p className="rb-sub">Carregando tarefas…</p>
+            <Loader label="Carregando tarefas…" />
           ) : (
             <div className="rb-tbl-wrap"><table className="rb-tbl">
               <thead>
@@ -184,7 +185,7 @@ export function PlanejamentoTab() {
           </div>
 
           {loadingApt ? (
-            <p className="rb-sub">Carregando apontamentos…</p>
+            <Loader label="Carregando apontamentos…" />
           ) : (
             <div className="rb-tbl-wrap"><table className="rb-tbl">
               <thead><tr><th>Data</th><th>Tipo</th><th>Recurso</th><th>Operador</th><th>Horas</th><th>R$</th><th></th></tr></thead>

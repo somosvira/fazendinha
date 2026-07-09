@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { useLote, useEventos } from "../api";
 import { CATEGORIA_LABEL, FASE_LABEL, pesoToArrobas } from "../types";
 import { idadeMesesAprox, mortalidadeAcumulada, GMD_ESPERADO } from "../lib/derive";
@@ -11,7 +12,7 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
   const { data: l, resumo, loading } = useLote(loteId);
   const { data: eventos } = useEventos(loteId);
 
-  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lotes</button><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lotes</button><Loader /></main>;
   if (!l) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lotes</button><p>Lote não encontrado.</p></main>;
 
   const idade = idadeMesesAprox(l, HOJE);

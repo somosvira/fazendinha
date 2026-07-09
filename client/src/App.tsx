@@ -31,6 +31,7 @@ import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
 import { getToken, clearToken } from "./lib/auth";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
+import { BootSplash } from "./components/Loading";
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   return (
@@ -131,6 +132,22 @@ export function App() {
   // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
+
+  // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
+  // resolverem, com um tempo mínimo pra não piscar. Some com fade-out.
+  const [booting, setBooting] = useState(true);
+  const [bootLeaving, setBootLeaving] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    const minTempo = new Promise<void>((r) => window.setTimeout(r, 750));
+    const fontes = (document as unknown as { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
+    Promise.all([minTempo, fontes]).then(() => {
+      if (!vivo) return;
+      setBootLeaving(true);
+      window.setTimeout(() => { if (vivo) setBooting(false); }, 480);
+    });
+    return () => { vivo = false; };
+  }, []);
 
   // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
   useEffect(() => {
@@ -257,6 +274,8 @@ export function App() {
     );
 
   return (
+    <>
+      {booting && <BootSplash leaving={bootLeaving} />}
     <div className="app">
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header
@@ -322,5 +341,6 @@ export function App() {
       />
       <ChatWidget />
     </div>
+    </>
   );
 }

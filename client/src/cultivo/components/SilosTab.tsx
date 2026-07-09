@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import {
   useSilos,
   useMovimentosSilo,
@@ -49,7 +50,7 @@ export function SilosTab() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar silos: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : data.length === 0 ? (
         <div className="rb-empty">Nenhum silo cadastrado ainda.</div>
       ) : (
@@ -118,7 +119,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : movimentos.length === 0 ? (
         <div className="rb-empty">Nenhum movimento registrado ainda.</div>
       ) : (

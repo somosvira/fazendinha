@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import type { PlantioTab } from "../nav";
 import { insightDaLavoura } from "../mock";
 import { IaInsightBand } from "./IaInsight";
@@ -10,7 +11,7 @@ export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
   if (loading || !data) {
     return <main className="rb-main">
       <div className="rb-head"><h1>Lavoura · Painel</h1></div>
-      <p className="rb-sub">Carregando…</p>
+      <Loader />
     </main>;
   }
   const k = data.k;

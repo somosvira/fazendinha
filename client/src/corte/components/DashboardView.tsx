@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import type { CorteTab } from "../nav";
 import { insightDaFazenda } from "../mock";
 import { IaInsightBand } from "./IaInsight";
@@ -10,7 +11,7 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
   const insight = insightDaFazenda("comercial");
 
   if (loading || !data) {
-    return <main className="rb-main"><div className="rb-head"><h1>Corte · Painel</h1></div><p className="rb-sub">Carregando…</p></main>;
+    return <main className="rb-main"><div className="rb-head"><h1>Corte · Painel</h1></div><Loader /></main>;
   }
   const k = data.k;
   return (

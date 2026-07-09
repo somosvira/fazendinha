@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useLotes, useDietas, type DietaDTO, type LoteDTO } from "../api";
 import { DietaForm } from "./DietaForm";
 import { LoteForm } from "./LoteForm";
@@ -42,7 +43,7 @@ function SecaoLotes({ lotes, loading, erro, recarregar }: { lotes: LoteDTO[]; lo
       </div>
       <p className="rb-sec-sub">Cada lote agrupa animais que recebem a mesma dieta. Crie um lote, escolha a dieta e adicione os animais.</p>
 
-      {loading ? <p className="rb-sub">Carregando…</p>
+      {loading ? <Loader />
         : erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
         : lotes.length === 0 ? <p className="rb-empty">Nenhum lote cadastrado ainda. Clique em <b>+ Novo lote</b> para começar.</p>
         : (

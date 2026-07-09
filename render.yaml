@@ -20,6 +20,10 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Senha compartilhada do piloto — se setada, exige Authorization: Bearer <token>
+      # em todas as rotas (exceto /health e /whatsapp). O client tem tela de login.
+      - key: SHARED_ACCESS_TOKEN
+        sync: false
       - key: CORS_ORIGIN
         sync: false
       # OpenAI (chat/bot + IA dos módulos). Sem ela: chat 503 e IA em modo demo.

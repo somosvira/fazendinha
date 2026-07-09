@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAnimais, useSetores } from "../api";
 import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
 import { DOMAINS } from "../domains";
+import { Loader } from "../../components/Loading";
 import type { ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 
@@ -61,7 +62,7 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         <div className="rb-head"><h1>Animal</h1></div>
         <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>
         {loading
-          ? <p className="rb-sub">Carregando…</p>
+          ? <Loader size="sm" />
           : <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>}
       </main>
     );

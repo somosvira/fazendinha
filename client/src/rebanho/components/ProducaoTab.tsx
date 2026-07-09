@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useProducao, registrarProducaoLote, listarGrupos, type GrupoDTO } from "../api";
 import { HOJE } from "../HOJE";
 
@@ -41,7 +42,7 @@ function LoteForm({ onSalvo }: { onSalvo: () => void }) {
 
 export function ProducaoTab() {
   const { data, loading, erro, recarregar } = useProducao();
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Produção</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Produção</h1></div><Loader /></main>;
   if (erro || !data) return <main className="rb-main"><div className="rb-head"><h1>Produção</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
 
   const tanque = data.modo === "TANQUE_LOTE";

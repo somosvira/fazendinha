@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import {
   useSafrasCultivo,
   useAreasCultivo,
@@ -68,7 +69,7 @@ export function ProducaoTab() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar produção: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (
         <>
           <div className="rb-kstrip" style={{ ["--cols" as any]: 2 }}>

@@ -1,3 +1,4 @@
+import { Loader } from "../../components/Loading";
 import { useAnimais, useParametros, useTaxaConcepcao, type TaxaConcepcaoMetodo } from "../api";
 import { HerdDomainView } from "./HerdDomainView";
 import { DOMAINS, worklistDesmame } from "../domains";
@@ -33,7 +34,7 @@ function TaxaConcepcaoStrip() {
 export function ReproducaoTab({ onRegistrarEvento }: { onRegistrarEvento: (animal: Animal) => void }) {
   const { data, loading, erro } = useAnimais({ status: "ATIVO" });
   const params = useParametros(); // critério do desmame (DESMAME_MODO/DIAS/PESO_KG); enquanto carrega, usa o default Embrapa
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Reprodução</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Reprodução</h1></div><Loader /></main>;
   if (erro) return <main className="rb-main"><div className="rb-head"><h1>Reprodução</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
   // Enriquece o resumo com categoria/nascimento/último peso do Animal — insumos
   // da work-list "A desmamar" (não vêm no read-model ResumoAnimal do servidor).

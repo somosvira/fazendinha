@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
@@ -114,7 +115,7 @@ export function EstoqueTab() {
   // exclusão real acontece dentro do modal de confirmação
 
   if (custo.loading && saldos.loading && movimentos.loading) {
-    return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Estoque</h1></div><p className="rb-sub">Carregando…</p></main>;
+    return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Estoque</h1></div><Loader /></main>;
   }
 
   const c = custo.data;
@@ -182,7 +183,7 @@ export function EstoqueTab() {
           )}
         </div>
       )}
-      {saldos.loading ? <p className="rb-sub">Carregando…</p>
+      {saldos.loading ? <Loader />
         : saldos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {saldos.erro}</p>
         : saldos.data.length === 0 ? <div className="rb-empty">Nenhum produto estocável cadastrado.</div>
         : saldosVisiveis.length === 0 ? <div className="rb-empty">Nenhum produto bate com a busca.</div>
@@ -221,7 +222,7 @@ export function EstoqueTab() {
         <h3>Movimentos recentes</h3>
         <button className="rb-btn pri" onClick={() => setForm(true)}>+ Registrar movimento</button>
       </div>
-      {movimentos.loading ? <p className="rb-sub">Carregando…</p>
+      {movimentos.loading ? <Loader />
         : movimentos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {movimentos.erro}</p>
         : movimentos.data.length === 0 ? <div className="rb-empty">Nenhum movimento registrado ainda.</div>
         : (

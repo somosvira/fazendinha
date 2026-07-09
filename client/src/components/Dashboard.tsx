@@ -19,6 +19,7 @@ import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
 import { ContextStrip } from "./ContextStrip";
+import { DashboardSkeleton } from "./Loading";
 import { DashSectionHeader } from "./report/primitives";
 import { cn } from "@/lib/utils";
 
@@ -1235,7 +1236,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
     );
   }
   if (!data) {
-    return <LoadingShell>Carregando dados…</LoadingShell>;
+    return <DashboardSkeleton />;
   }
 
   const maskVals = !!user && !user.flags.includes("verValores");

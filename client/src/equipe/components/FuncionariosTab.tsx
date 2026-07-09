@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useFuncionarios, useCustoMOSetor, money, horasFmt, dateBR } from "../api";
 import type { FuncionarioDTO } from "../types";
 import { FuncionarioForm } from "./FuncionarioForm";
@@ -59,7 +60,7 @@ export function FuncionariosTab() {
       {erro ? (
         <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (
         <div className="rb-tbl-wrap"><table className="rb-tbl">
           <thead>
@@ -115,7 +116,7 @@ export function FuncionariosTab() {
         {custo.erro ? (
           <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar: {custo.erro}</p>
         ) : custo.loading ? (
-          <p className="rb-sub">Carregando…</p>
+          <Loader />
         ) : custo.data.length === 0 ? (
           <p className="rb-sub">Nenhum funcionário ativo.</p>
         ) : (
