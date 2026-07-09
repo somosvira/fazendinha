@@ -1091,6 +1091,12 @@ body.no-scroll { overflow: hidden; }
 .tractor--spin .puff-2 { animation: puff 1.6s ease-out 0.5s infinite; }
 .tractor--spin .puff-3 { animation: puff 1.6s ease-out 1s infinite; }
 
+/* chat typing dots (ChatWidget migrado p/ Tailwind na Fase 4 — keyframe vive aqui) */
+@keyframes chat-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
 @keyframes tw-spin { to { transform: rotate(360deg); } }
 @keyframes tractor-bob {
   0%, 100% { transform: translateY(0); }
