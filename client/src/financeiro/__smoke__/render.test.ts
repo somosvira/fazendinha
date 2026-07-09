@@ -20,6 +20,7 @@ describe("financeiro render smoke", () => {
     // hooks de fetch não disparam no SSR (useEffect) → renderiza o título + shell.
     // ToastProvider necessário: o card usa useToast (botão "marcar pago").
     const html = renderToString(h(ToastProvider, null, h(ContasAVencer)));
-    expect(html).toContain("Contas a vencer");
+    expect(html).toContain("Contas");
+    expect(html).toContain("Contas em aberto ainda no prazo");
   });
 });
