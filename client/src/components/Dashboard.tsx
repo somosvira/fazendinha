@@ -869,18 +869,18 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
 
   return (
     <div>
-      <div className="subcat-block">
-        <div className="subcat-donut">
+      <div className="grid grid-cols-[300px_1fr] items-start gap-10 max-[1100px]:grid-cols-1">
+        <div className="flex flex-col items-center gap-3 pt-1">
           <Donut segments={segments} total={total} onSliceClick={toggle} hovered={hovered} setHovered={setHovered} />
-          <span className="caption" style={{ textAlign: "center" }}>{active.length} de {subs.length} tipos · clique na fatia pra filtrar</span>
+          <span className="caption text-center">{active.length} de {subs.length} tipos · clique na fatia pra filtrar</span>
         </div>
 
-        <div className="subcat-table">
-          <div className="subcat-th">
+        <div className="border border-solid border-border bg-card">
+          <div className="grid grid-cols-[1fr_80px_130px_64px_24px] gap-2.5 border-b border-solid border-border bg-[var(--bg-card-2)] px-4 py-3 text-[14px] font-semibold uppercase tracking-[0.16em] text-ink-3">
             <span>Tipo de {cat.nome.toLowerCase()}</span>
-            <span style={{ textAlign: "right" }}>Lançam.</span>
-            <span style={{ textAlign: "right" }}>Valor</span>
-            <span style={{ textAlign: "right" }}>%</span>
+            <span className="text-right">Lançam.</span>
+            <span className="text-right">Valor</span>
+            <span className="text-right">%</span>
             <span></span>
           </div>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -891,30 +891,35 @@ function SubcatBreakdown({ R, cat, period }: { R: R; cat: any; period: "23m" | "
             return (
               <div
                 key={s.id}
-                className={"subcat-tr " + (isOff ? "is-off " : "") + (hovered === s.id ? "is-hover " : "") + (isSel ? "is-sel" : "")}
+                className={cn(
+                  "grid grid-cols-[1fr_80px_130px_64px_24px] cursor-pointer items-center gap-2.5 border-b border-solid border-[color:var(--rule-soft)] py-3 transition-colors duration-[80ms] last:border-b-0",
+                  isSel ? "border-l-[3px] border-l-foreground bg-[var(--bg-card-2)] pl-[13px] pr-4" : "px-4",
+                  !isSel && hovered === s.id && "bg-[var(--bg-card-2)]",
+                  isOff && "opacity-[0.42]",
+                )}
                 onMouseEnter={() => setHovered(s.id)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => setSelected(isSel ? null : s.idx)}
               >
-                <span className="sc-name">
+                <span className="flex min-w-0 items-center gap-3">
                   <button
-                    className="sc-check-btn"
+                    className="grid cursor-pointer place-items-center bg-transparent p-0"
                     onClick={(e) => { e.stopPropagation(); toggle(s.id); }}
                     title={isOff ? "Ativar na pizza" : "Desativar na pizza"}
                   >
-                    <span className="sc-check" style={{ background: isOff ? "transparent" : s.color, borderColor: s.color }}>
-                      {!isOff && <span className="tick">✓</span>}
+                    <span className="grid h-4 w-4 flex-shrink-0 place-items-center border-[1.5px] border-solid" style={{ background: isOff ? "transparent" : s.color, borderColor: s.color }}>
+                      {!isOff && <span className="text-[14px] leading-none" style={{ color: "var(--bg-card)" }}>✓</span>}
                     </span>
                   </button>
-                  <span className="sc-nm-txt">
+                  <span className="flex min-w-0 flex-col gap-px font-sans text-[16px] font-medium text-foreground">
                     {s.nome}
-                    <small>{s.fornecedor}</small>
+                    <small className="text-[14px] font-medium tracking-[0.01em] text-ink-3">{s.fornecedor}</small>
                   </span>
                 </span>
-                <span className="sc-lanc mono-nums">{s.lanc || "—"}</span>
-                <span className="sc-val mono-nums">{fmtBRL(s.value)}</span>
-                <span className="sc-pct mono-nums">{isOff ? "—" : `${pct}%`}</span>
-                <span className="sc-open">{isSel ? "▾" : "›"}</span>
+                <span className="mono-nums text-right font-serif text-[15px] font-medium text-ink-3">{s.lanc || "—"}</span>
+                <span className="mono-nums text-right font-serif text-[17px] font-medium">{fmtBRL(s.value)}</span>
+                <span className="mono-nums text-right text-[14px] font-semibold text-ink-3">{isOff ? "—" : `${pct}%`}</span>
+                <span className={cn("text-center font-serif text-[16px]", hovered === s.id ? "text-foreground" : "text-ink-2")}>{isSel ? "▾" : "›"}</span>
               </div>
             );
           })}

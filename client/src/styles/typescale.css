@@ -52,12 +52,7 @@ body            { font-size: 17px; }
 
 /* ===== subcategorias (tipos de X) ===== */
 .drill-subhint     { font-size: 17px; font-weight: 500; }
-.subcat-th         { font-size: 14px; font-weight: 600; }
-.sc-nm-txt         { font-size: 16px; font-weight: 500; }
-.sc-nm-txt small   { font-size: 14px; font-weight: 500; }
-.sc-lanc           { font-size: 15px; font-weight: 500; }
-.sc-val            { font-size: 17px; font-weight: 500; }
-.sc-pct            { font-size: 14px; font-weight: 600; }
+/* .subcat-th/.sc-* migrados p/ Tailwind em Dashboard.tsx (SubcatBreakdown, Fase 2 slice 5) */
 
 /* ===== lançamentos + nota (migrados p/ Tailwind em Dashboard.tsx, Fase 2 slice 5) =====
    .lanc-panel-title/.lanc-table/.ld-val/.ld-nf/.nf-link e .drawer-meta-grid .mcell

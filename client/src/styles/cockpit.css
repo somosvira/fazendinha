@@ -63,76 +63,11 @@
 }
 .drill-subhint strong { font-style: normal; font-weight: 500; color: var(--ink); }
 
-.subcat-block {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 40px;
-  align-items: start;
-}
-.subcat-donut {
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  padding-top: 4px;
-}
-.subcat-table {
-  border: 1px solid var(--rule);
-  background: var(--bg-card);
-}
-.subcat-th {
-  display: grid;
-  grid-template-columns: 1fr 80px 130px 64px 24px;
-  gap: 10px;
-  padding: 12px 16px;
-  background: var(--bg-card-2);
-  border-bottom: 1px solid var(--rule);
-  font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3);
-}
-.subcat-tr {
-  display: grid;
-  grid-template-columns: 1fr 80px 130px 64px 24px;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule-soft);
-  cursor: pointer;
-  transition: background 80ms;
-}
-.subcat-tr:last-child { border-bottom: none; }
-.subcat-tr.is-hover { background: var(--bg-card-2); }
-.subcat-tr.is-off { opacity: 0.42; }
-.subcat-tr.is-sel { background: var(--bg-card-2); border-left: 3px solid var(--ink); padding-left: 13px; }
-.sc-name { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.sc-check-btn {
-  background: none; border: none; padding: 0; cursor: pointer;
-  display: grid; place-items: center;
-}
-.sc-check {
-  width: 16px; height: 16px;
-  border: 1.5px solid;
-  display: grid; place-items: center;
-  flex-shrink: 0;
-}
-.sc-check .tick { color: var(--bg-card); font-size: 14px; line-height: 1; }
-.sc-nm-txt {
-  display: flex; flex-direction: column; gap: 1px; min-width: 0;
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--ink);
-}
-.sc-nm-txt small {
-  font-size: 14px; color: var(--ink-3); letter-spacing: 0.01em;
-}
-.sc-lanc { font-family: var(--serif); font-size: 14px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
-.sc-val { font-family: var(--serif); font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; }
-.sc-pct { font-size: 14px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
-.sc-open { font-family: var(--serif); font-size: 16px; color: var(--ink-2); text-align: center; }
-.subcat-tr.is-hover .sc-open { color: var(--ink); }
+/* .subcat-*/.sc-* (drill de subcategorias) migrados p/ Tailwind em Dashboard.tsx
+   (SubcatBreakdown, Fase 2 slice 5) — inclui o responsivo @1100px. */
 
 /* lançamentos individuais (3º nível) — .lanc-*/.ld-*/.nf-link migrados p/
    Tailwind em Dashboard.tsx (LancamentosPanel, Fase 2 slice 5). */
-
-@media (max-width: 1100px) {
-  .subcat-block { grid-template-columns: 1fr; }
-}
 
 /* ===== timeline month hover (clicável) ===== */
 .tl-month-g .tl-hit { transition: opacity 100ms; }
