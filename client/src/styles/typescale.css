@@ -90,12 +90,12 @@ body            { font-size: 17px; }
 .gastos-summary .sum .val     { font-size: 30px; font-weight: 500; }
 .filter-chip                  { font-size: 14px; font-weight: 600; }
 
-/* ===== forms (lançar) ===== */
+/* ===== forms =====
+   Lançar migrou p/ Tailwind (Fase 3 slice 2) — form-section-title/cat-chip
+   saíram com ela; field-* fica p/ Acessos e PlanoContas. */
 .field-label         { font-size: 14px; font-weight: 600; }
 .field-input,
 .field-textarea      { font-size: 16px; }
-.form-section-title  { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
-.cat-chip            { font-size: 14px; font-weight: 600; }
 .chip-group .chip    { font-size: 14px; font-weight: 600; }
 
 /* ===== plano de contas ===== */
