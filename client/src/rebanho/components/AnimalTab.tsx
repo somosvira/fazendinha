@@ -3,6 +3,7 @@ import { useAnimais, useSetores } from "../api";
 import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
 import { DOMAINS } from "../domains";
 import type { ResumoAnimal } from "../types";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 type StatusFiltro = "ATIVO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: StatusFiltro; lab: string }[] = [
@@ -43,10 +44,12 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
           </button>
         ))}
       </div>
-      <select className="rb-select" value={setor} onChange={(e) => setSetor(e.target.value)}>
-        <option value="">Todos os setores</option>
-        {(setores ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
-      </select>
+      <ToolbarSelect
+        value={setor}
+        onChange={setSetor}
+        ariaLabel="Filtrar por setor"
+        options={[{ value: "", label: "Todos os setores" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
+      />
       <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={onNovo}>+ Novo animal</button>
     </>
   );

@@ -10,6 +10,7 @@ import {
 } from "../api";
 import type { TipoProducao, UnidadeProducao, DestinoProducao } from "../types";
 import { HOJE } from "../HOJE";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -49,10 +50,15 @@ export function ProducaoTab() {
       <div className="rb-head"><h1>Produção</h1></div>
 
       <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <select className="rb-select" value={safraCultivoId} onChange={(e) => setSafraCultivoId(e.target.value ? Number(e.target.value) : "")}>
-          <option value="">Todas as safras</option>
-          {safras.map((s) => <option key={s.id} value={s.id}>{s.nome} · {s.ano}</option>)}
-        </select>
+        <ToolbarSelect
+          value={String(safraCultivoId)}
+          onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
+          ariaLabel="Filtrar por safra"
+          options={[
+            { value: "", label: "Todas as safras" },
+            ...safras.map((s) => ({ value: String(s.id), label: `${s.nome} · ${s.ano}` })),
+          ]}
+        />
         <button className="rb-btn pri" style={{ marginLeft: "auto" }} disabled={!safraCultivoId} onClick={() => setForm(true)}>
           + Registrar produção
         </button>

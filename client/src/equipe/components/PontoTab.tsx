@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -130,17 +131,23 @@ export function PontoTab() {
 
       <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
         <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Funcionário</label>
-        <select className="rb-select" value={funcionarioId} onChange={(e) => setFuncionarioId(e.target.value)}>
-          {loadFunc && <option value="">Carregando…</option>}
-          {!loadFunc && funcionarios.length === 0 && <option value="">Nenhum funcionário ativo</option>}
-          {funcionarios.map((f) => (
-            <option key={f.id} value={f.id}>{f.nome}{f.cargo ? ` · ${f.cargo}` : ""}</option>
-          ))}
-        </select>
+        <ToolbarSelect
+          value={funcionarioId}
+          onChange={setFuncionarioId}
+          ariaLabel="Escolher funcionário"
+          options={[
+            ...(loadFunc ? [{ value: "", label: "Carregando…" }] : []),
+            ...(!loadFunc && funcionarios.length === 0 ? [{ value: "", label: "Nenhum funcionário ativo" }] : []),
+            ...funcionarios.map((f) => ({ value: String(f.id), label: `${f.nome}${f.cargo ? ` · ${f.cargo}` : ""}` })),
+          ]}
+        />
         <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Mês</label>
-        <select className="rb-select" value={mes} onChange={(e) => setMes(e.target.value)}>
-          {meses.map((m) => <option key={m} value={m}>{mesBR(m)}</option>)}
-        </select>
+        <ToolbarSelect
+          value={mes}
+          onChange={setMes}
+          ariaLabel="Escolher mês"
+          options={meses.map((m) => ({ value: m, label: mesBR(m) }))}
+        />
 
         <button
           className="rb-btn"
@@ -191,9 +198,12 @@ export function PontoTab() {
                 <tr key={l.data} style={domingo ? { background: "var(--wash, transparent)" } : undefined}>
                   <td className="rb-anm" style={{ whiteSpace: "nowrap" }}>{dia} <small style={{ color: "var(--ink-3)" }}>{dow}</small></td>
                   <td>
-                    <select className="rb-select" value={l.tipoDia} onChange={(e) => set(i, { tipoDia: e.target.value })}>
-                      {TIPOS.map((t) => <option key={t.k} value={t.k}>{t.lab}</option>)}
-                    </select>
+                    <ToolbarSelect
+                      value={l.tipoDia}
+                      onChange={(v) => set(i, { tipoDia: v })}
+                      ariaLabel="Tipo do dia"
+                      options={TIPOS.map((t) => ({ value: t.k, label: t.lab }))}
+                    />
                   </td>
                   <td><input className="rb-inp" type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 108 }} /></td>
                   <td><input className="rb-inp" type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 108 }} /></td>

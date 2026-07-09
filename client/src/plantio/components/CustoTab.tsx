@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCustoPlantio, useCustoOperacionalCafe, useSafras } from "../api";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 // Em fase de formação não há saca/ha computável — o backend devolve null e
@@ -27,10 +28,15 @@ export function CustoTab() {
       <div className="rb-head"><h1>Custo de produção</h1></div>
 
       <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <select className="rb-select" value={safraId} onChange={(e) => setSafraId(e.target.value ? Number(e.target.value) : "")}>
-          <option value="">{safraAtual ? `${safraAtual.nome} (mais recente)` : loadingSafras ? "Carregando safras…" : "Sem safra cadastrada"}</option>
-          {safras.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-        </select>
+        <ToolbarSelect
+          value={String(safraId)}
+          onChange={(v) => setSafraId(v ? Number(v) : "")}
+          ariaLabel="Escolher safra"
+          options={[
+            { value: "", label: safraAtual ? `${safraAtual.nome} (mais recente)` : loadingSafras ? "Carregando safras…" : "Sem safra cadastrada" },
+            ...safras.map((s) => ({ value: String(s.id), label: s.nome })),
+          ]}
+        />
         <ClasseToggle value={classe} onChange={setClasse} />
       </div>
 

@@ -3,6 +3,7 @@ import { useSafras, useTarefas, useApontamentos, excluirTarefa, excluirApontamen
 import type { TarefaPlanejada } from "../types";
 import { TarefaForm } from "./TarefaForm";
 import { ApontamentoForm } from "./ApontamentoForm";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null | undefined) => (n == null ? "—" : money(n));
@@ -75,11 +76,13 @@ export function PlanejamentoTab() {
           {/* Seletor de safra */}
           <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
             <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Safra</label>
-            <select className="rb-select" value={safraId ?? ""} onChange={(e) => setSafraId(Number(e.target.value))}>
-              {safras.map((s) => (
-                <option key={s.id} value={s.id}>{s.nome}{s.fechada ? " · fechada" : ""}</option>
-              ))}
-            </select>
+            <ToolbarSelect
+              value={safraId != null ? String(safraId) : ""}
+              onChange={(v) => setSafraId(Number(v))}
+              ariaLabel="Escolher safra"
+              placeholder="Escolher safra…"
+              options={safras.map((s) => ({ value: String(s.id), label: `${s.nome}${s.fechada ? " · fechada" : ""}` }))}
+            />
             {safra?.centroCustoNome && <span className="rb-sub" style={{ margin: 0 }}>Centro de custo: <b>{safra.centroCustoNome}</b></span>}
           </div>
 

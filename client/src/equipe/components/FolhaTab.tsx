@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFolha, money, num, horasFmt, mesesRecentes, mesBR } from "../api";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 /* Apuração da folha do mês para todos: cruza horas trabalhadas × salário e
  * mostra o valor da hora extra (50%/100%) e o total a pagar. Seletor de mês →
@@ -16,9 +17,12 @@ export function FolhaTab() {
 
       <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
         <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Mês</label>
-        <select className="rb-select" value={mes} onChange={(e) => setMes(e.target.value)}>
-          {meses.map((m) => <option key={m} value={m}>{mesBR(m)}</option>)}
-        </select>
+        <ToolbarSelect
+          value={mes}
+          onChange={setMes}
+          ariaLabel="Escolher mês"
+          options={meses.map((m) => ({ value: m, label: mesBR(m) }))}
+        />
       </div>
 
       {erro ? (

@@ -10,6 +10,7 @@ import {
 import type { TipoCustoCultivo, ClassificacaoCategoria } from "../types";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { HOJE } from "../HOJE";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -59,10 +60,15 @@ export function CustosTab() {
       <div className="rb-head"><h1>Custos</h1></div>
 
       <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <select className="rb-select" value={safraCultivoId} onChange={(e) => setSafraCultivoId(e.target.value ? Number(e.target.value) : "")}>
-          <option value="">Todas as safras</option>
-          {safras.map((s) => <option key={s.id} value={s.id}>{s.nome} · {s.ano}</option>)}
-        </select>
+        <ToolbarSelect
+          value={String(safraCultivoId)}
+          onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
+          ariaLabel="Filtrar por safra"
+          options={[
+            { value: "", label: "Todas as safras" },
+            ...safras.map((s) => ({ value: String(s.id), label: `${s.nome} · ${s.ano}` })),
+          ]}
+        />
         <ClasseToggle value={classe} onChange={setClasse} />
         <button className="rb-btn pri" style={{ marginLeft: "auto" }} disabled={!safraCultivoId} onClick={() => setForm(true)}>
           + Lançar custo

@@ -3,6 +3,7 @@ import { useTalhoes } from "../api";
 import { LavouraDomainView, PLA_TOOLBAR } from "./LavouraDomainView";
 import { DOMAINS } from "../domains";
 import type { ResumoTalhao } from "../types";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 type EstadoFiltro = "ATIVO" | "FORMACAO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: EstadoFiltro; lab: string }[] = [
@@ -41,10 +42,12 @@ export function TalhaoTab({ onAbrirTalhao, onNovo }: { onAbrirTalhao: (id: strin
           </button>
         ))}
       </div>
-      <select className="rb-select" value={lavoura} onChange={(e) => setLavoura(e.target.value)}>
-        <option value="">Todas as lavouras</option>
-        {lavouras.map((l) => <option key={l} value={l}>{l}</option>)}
-      </select>
+      <ToolbarSelect
+        value={lavoura}
+        onChange={setLavoura}
+        ariaLabel="Filtrar por lavoura"
+        options={[{ value: "", label: "Todas as lavouras" }, ...lavouras.map((l) => ({ value: l, label: l }))]}
+      />
       <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={onNovo}>+ Novo talhão</button>
     </>
   );

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useFuncionarios, useCustoMOSetor, money, horasFmt, dateBR } from "../api";
 import type { FuncionarioDTO } from "../types";
 import { FuncionarioForm } from "./FuncionarioForm";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 type Filtro = "ATIVOS" | "TODOS";
 
@@ -39,10 +40,12 @@ export function FuncionariosTab() {
         <button className="rb-btn" aria-pressed={filtro === "TODOS"} onClick={() => setFiltro("TODOS")}>Todos</button>
       </div>
       <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Setor</label>
-      <select className="rb-select" value={setorSel} onChange={(e) => setSetorSel(e.target.value)}>
-        <option value="">Todos os setores</option>
-        {setores.map((s) => <option key={s} value={s}>{s}</option>)}
-      </select>
+      <ToolbarSelect
+        value={setorSel}
+        onChange={setSetorSel}
+        ariaLabel="Filtrar por setor"
+        options={[{ value: "", label: "Todos os setores" }, ...setores.map((s) => ({ value: s, label: s }))]}
+      />
       <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</button>
     </div>
   );

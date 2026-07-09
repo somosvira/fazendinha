@@ -45,19 +45,8 @@
 .rb-btn.pri { background: var(--mast-bg); color: var(--mast-ink); border: 0; }
 .rb-btn[aria-pressed="true"] { background: var(--bg-card-2); border-color: var(--ink-2); color: var(--ink); }
 
-/* dropdown de filtro inline (toolbar) — pareado com .rb-btn em altura e raio */
-.rb-select {
-  font-family: var(--sans); font-size: 14px; font-weight: 600;
-  color: var(--ink-2); background: transparent;
-  border: 1px solid var(--rule); border-radius: 8px;
-  padding: 7px 32px 7px 13px; cursor: pointer;
-  appearance: none; -webkit-appearance: none; -moz-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2374705e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
-  background-repeat: no-repeat; background-position: right 11px center;
-  line-height: 1.2;
-}
-.rb-select:hover { border-color: var(--ink-2); color: var(--ink); }
-.rb-select:focus { outline: 0; border-color: var(--cafe); }
+/* dropdown de filtro inline (toolbar) migrou p/ ToolbarSelect (Radix ui/select,
+   popup estilizado) — .rb-select aposentada. */
 
 /* input inline (célula de tabela editável — ex.: grade de Ponto) */
 .rb-inp {

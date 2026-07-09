@@ -59,7 +59,8 @@ export function MonthRangePicker({ value, onChange, min, max }: {
     <div className="inline-flex items-center gap-2">
       <Select value={startKey} onValueChange={setStart}>
         <SelectTrigger aria-label="Mês inicial" className="tabular-nums">
-          <SelectValue />
+          {/* label como children → visível já no primeiro paint (Radix só resolve na hidratação) */}
+          <SelectValue>{meses.find((mo) => mo.key === startKey)?.label}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {meses.map((mo) => <SelectItem key={mo.key} value={mo.key}>{mo.label}</SelectItem>)}
@@ -68,7 +69,7 @@ export function MonthRangePicker({ value, onChange, min, max }: {
       <span className="text-[13px] text-ink-3">→</span>
       <Select value={endKey} onValueChange={setEnd}>
         <SelectTrigger aria-label="Mês final" className="tabular-nums">
-          <SelectValue />
+          <SelectValue>{meses.find((mo) => mo.key === endKey)?.label}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {meses.map((mo) => <SelectItem key={mo.key} value={mo.key}>{mo.label}</SelectItem>)}
