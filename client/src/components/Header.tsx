@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PAPEIS, type User } from "../data/acessos";
 import { fazendas, fazendaAtualId, type Fazenda } from "../data/fazendas";
+import { TerranoSymbol } from "./TerranoLogo";
 
 function Chevron({ className }: { className?: string }) {
   return (
@@ -206,14 +207,12 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
         </svg>
       </button>
 
-      <div className="flex min-w-0 items-center gap-2.5 max-[560px]:gap-1.5">
-        <span
-          className="grid h-7 w-7 place-items-center border border-mast-ink font-serif text-[13px] font-medium tracking-[0.02em] max-[900px]:h-[26px] max-[900px]:w-[26px] max-[900px]:text-xs"
-          aria-hidden
-        >
-          RN
+      <div className="ah-brand">
+        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol" />
+        <span className="ah-brand-txt">
+          <span className="ah-brand-name">Terrano</span>
+          <span className="ah-brand-sub">Fazenda Rio Novo</span>
         </span>
-        <span className="font-serif text-lg leading-none tracking-[0.01em] max-[900px]:hidden">Rio Novo</span>
       </div>
 
       <FarmPicker atual={atual} />
