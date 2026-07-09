@@ -65,8 +65,7 @@ body            { font-size: 17px; }
 .lanc-table tbody td       { font-size: 15px; }
 .ld-val                    { font-size: 16px; font-weight: 500; }
 .ld-nf, .nf-link           { font-size: 14px; font-weight: 600; }
-.drawer-meta-grid .mcell .ml { font-size: 14px; font-weight: 600; }
-.drawer-meta-grid .mcell .mv { font-size: 16px; font-weight: 500; }
+/* .drawer-meta-grid .mcell .ml/.mv migrados p/ Tailwind (NotaDrawer, Fase 2 slice 5) */
 
 /* ===== drill head / stats ===== */
 .drill-head .cat-name    { font-size: 46px; font-weight: 500; }

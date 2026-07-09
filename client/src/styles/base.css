@@ -584,49 +584,13 @@ a { color: inherit; }
   vertical-align: middle;
 }
 
-/* drawer */
-.drawer-overlay {
-  position: fixed; inset: 0;
-  background: rgba(20, 25, 26, 0.35);
-  z-index: 40;
-  display: flex; justify-content: flex-end;
-}
-.drawer {
-  width: 540px;
-  background: var(--bg);
-  height: 100%;
-  overflow: auto;
-  box-shadow: -10px 0 30px rgba(20, 25, 26, 0.12);
-  display: flex;
-  flex-direction: column;
-}
-.drawer-head {
-  background: var(--mast-bg);
-  color: var(--mast-ink);
-  padding: 22px 28px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.drawer-head .eyebrow { color: var(--mast-ink-2); }
+/* drawer — overlay/painel/head/body/amount/meta-grid migrados p/ Tailwind em
+   Dashboard.tsx (NotaDrawer, Fase 2 slice 5). .drawer-close segue vivo:
+   LancamentosPanel ainda o consome (migra no mesmo slice, commit seguinte). */
 .drawer-close {
   background: none; border: none; color: var(--mast-ink);
   font-family: var(--serif); font-size: 22px; cursor: pointer;
 }
-.drawer-body { padding: 28px; display: flex; flex-direction: column; gap: 28px; }
-.drawer-amount {
-  font-family: var(--serif);
-  font-size: 48px;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.drawer-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px 24px;
-}
-.drawer-meta-grid .mcell { display: flex; flex-direction: column; gap: 4px; }
-.drawer-meta-grid .mcell .ml { font-size: var(--ts-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
-.drawer-meta-grid .mcell .mv { font-size: 16px; color: var(--ink); font-weight: 500; }
 .nota-frame {
   border: 1px solid var(--rule);
   background: var(--bg-card);
@@ -645,18 +609,7 @@ a { color: inherit; }
   color: var(--ink-2);
   font-weight: 600;
 }
-.split-stack {
-  display: flex; flex-direction: column; gap: 8px;
-}
-.split-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--rule-soft);
-}
+/* .split-stack/.split-row migrados p/ Tailwind em Dashboard.tsx (NotaDrawer, Fase 2 slice 5). */
 
 /* IA chat */
 .ia-layout {
@@ -998,12 +951,7 @@ input:focus-visible:not([data-slot="input"]) {
   .ia-thread { padding: 20px 14px; }
   .ia-composer { padding: 12px 14px 18px; }
 
-  /* drawer ocupa quase a tela */
-  .drawer { width: min(540px, 100vw); }
-  .drawer-head { padding: 16px 18px; }
-  .drawer-body { padding: 18px; gap: 20px; }
-  .drawer-amount { font-size: 36px; }
-  .drawer-meta-grid { grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+  /* drawer responsivo migrado p/ Tailwind (NotaDrawer, Fase 2 slice 5) */
 
   /* tabela de gastos com scroll horizontal e menos padding */
   .gastos-toolbar { padding: 12px 0; gap: 8px; }
