@@ -1,11 +1,18 @@
 /* Rio Novo — camada Tailwind v4 + tokens shadcn (identidade editorial).
- * Importado ANTES do CSS legado em main.tsx: durante a migração o CSS antigo
- * ainda sobrepõe. O Preflight do Tailwind é OMITIDO de propósito (protege as 12
- * folhas legadas); um shim mínimo no fim dá só o que as utilidades shadcn usam. */
+ * Importado ANTES do CSS legado em main.tsx.
+ *
+ * Fase 7 (encerramento da migração): o Preflight do Tailwind está LIGADO, mas
+ * dentro de `@layer base`. As folhas legadas restantes (base/dashboard/cockpit/
+ * forms/typescale/acessos/terrano-intro) são TODAS não-camadas ("unlayered") —
+ * e regras não-camadas VENCEM as camadas no cascade — então o preflight zera
+ * margens/bordas/etc. só onde NÃO há CSS legado (telas migradas + primitivos
+ * shadcn), sem regredir as telas ainda em CSS bespoke. O shim manual de border/
+ * box virou redundante (o preflight já faz) e foi removido. */
 
 @layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 
@@ -95,9 +102,11 @@
   --font-serif: "Newsreader", "Source Serif 4", Georgia, serif;
 }
 
-/* Shim mínimo (substitui o Preflight omitido): só o que as utilidades e
- * componentes shadcn assumem. Inócuo ao CSS legado, que sempre usa shorthands
- * completos de border; largura 0 continua invisível como hoje. */
+/* Complemento do Preflight (convenção shadcn): a cor de borda default é a do
+ * token `--border` — o Preflight zera a LARGURA da borda mas deixa a cor em
+ * currentColor; os primitivos shadcn assumem `--border`. Fica DEPOIS do import
+ * do preflight dentro de @layer base, então vence dentro da camada. Inócuo ao
+ * CSS legado (unlayered, que sempre vence a camada e usa border completo). */
 @layer base {
   *, ::after, ::before, ::backdrop, ::file-selector-button {
     box-sizing: border-box;
