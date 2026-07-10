@@ -16,7 +16,7 @@ export interface RebButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEle
 }
 
 const BASE =
-  "cursor-pointer rounded-lg px-[13px] py-[7px] font-sans text-sm font-semibold transition-colors disabled:cursor-not-allowed";
+  "cursor-pointer rounded-[var(--radius-btn)] px-[13px] py-[7px] font-sans text-sm font-semibold transition-colors disabled:cursor-not-allowed";
 
 const VARIANTS: Record<Variant, string> = {
   // .rb-btn (base) + aria-pressed
