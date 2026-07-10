@@ -17,6 +17,8 @@ import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
+import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm } from "@/components/rb/RebPrimitives";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -56,10 +58,10 @@ export function ProducaoTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Produção" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <ToolbarSelect
           value={String(safraCultivoId)}
           onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
@@ -93,7 +95,7 @@ export function ProducaoTab() {
           </RebKpiStrip>
 
           {data.length === 0 ? (
-            <div className="rb-empty">Nenhuma produção registrada ainda.</div>
+            <RebEmpty>Nenhuma produção registrada ainda.</RebEmpty>
           ) : (
             <RebTable>
               <thead>
@@ -103,7 +105,7 @@ export function ProducaoTab() {
                 {data.map((p) => (
                   <tr key={p.id}>
                     <td>{new Date(p.data).toLocaleDateString("pt-BR")}</td>
-                    <td className="rb-anm">{TIPO_LABEL[p.tipo]}</td>
+                    <td><RebAnm>{TIPO_LABEL[p.tipo]}</RebAnm></td>
                     <td>{p.areaCodigo ?? "—"}</td>
                     <td>{qtd(p.quantidade)} {p.unidade.toLowerCase()}</td>
                     <td>{p.destino ? DESTINO_LABEL[p.destino] : "—"}</td>
@@ -128,7 +130,7 @@ export function ProducaoTab() {
           onSalvo={() => { setForm(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -190,54 +192,47 @@ function ProducaoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: n
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data*</label>
+        <RebField label="Data*" style={{ flex: 1 }}>
           <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Tipo*</label>
-          <select value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoProducao)}>
+        </RebField>
+        <RebField label="Tipo*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoProducao)}>
             <option value="GRAO">Grão (SC)</option>
             <option value="SILAGEM">Silagem (TON)</option>
           </select>
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Área</label>
-          <select value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
+        </RebField>
+        <RebField label="Área" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
             <option value="">—</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
           </select>
-        </div>
+        </RebField>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Quantidade* ({unidade.toLowerCase()})</label>
+        <RebField label={`Quantidade* (${unidade.toLowerCase()})`} style={{ flex: 1 }}>
           <input type="number" step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Destino</label>
-          <select value={destino} onChange={(e) => setDestino(e.target.value as DestinoProducao | "")}>
+        </RebField>
+        <RebField label="Destino" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={destino} onChange={(e) => setDestino(e.target.value as DestinoProducao | "")}>
             <option value="">—</option>
             <option value="VENDA">Venda</option>
             <option value="SILO">Silo</option>
           </select>
-        </div>
+        </RebField>
         {destino === "SILO" && (
-          <div className="rb-fld" style={{ flex: 1 }}>
-            <label>Silo</label>
-            <select value={siloId} onChange={(e) => setSiloId(e.target.value)}>
+          <RebField label="Silo" style={{ flex: 1 }}>
+            <select className="rb-field-select" value={siloId} onChange={(e) => setSiloId(e.target.value)}>
               <option value="">Selecione…</option>
               {silos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
-          </div>
+          </RebField>
         )}
       </div>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

@@ -7,6 +7,7 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 type Filtro = "ATIVOS" | "TODOS";
 
@@ -38,7 +39,7 @@ export function FuncionariosTab() {
   const aposSalvar = () => { setForm(null); recarregar(); custo.recarregar(); };
 
   const controles = (
-    <div className="rb-toolbar mb-[18px] flex flex-wrap items-center gap-2.5">
+    <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
       <div className="flex gap-1.5">
         <RebButton aria-pressed={filtro === "ATIVOS"} onClick={() => setFiltro("ATIVOS")}>Ativos</RebButton>
         <RebButton aria-pressed={filtro === "TODOS"} onClick={() => setFiltro("TODOS")}>Todos</RebButton>
@@ -55,7 +56,7 @@ export function FuncionariosTab() {
   );
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Equipe · Funcionários" title="Funcionários" />
       {controles}
 
@@ -86,15 +87,15 @@ export function FuncionariosTab() {
             )}
             {linhas.map((fn) => (
               <tr key={fn.id}>
-                <td className="rb-anm">{fn.nome}</td>
+                <td><RebAnm>{fn.nome}</RebAnm></td>
                 <td>{fn.cargo ?? "—"}</td>
-                <td><span className="rb-pill">{setorLabel(fn)}</span></td>
+                <td><RebPill>{setorLabel(fn)}</RebPill></td>
                 <td className="text-right">{money(fn.salarioMensal)}</td>
                 <td className="text-right">{horasFmt(fn.cargaMensalHoras)}</td>
                 <td className="text-right">{horasFmt(fn.jornadaDiariaHoras)}</td>
                 <td>{dateBR(fn.dataAdmissao)}</td>
                 <td>
-                  <span className={"rb-pill" + (fn.ativo ? " ok" : " bad")}>{fn.ativo ? "Ativo" : "Baixado"}</span>
+                  <RebPill tone={fn.ativo ? "ok" : "bad"}>{fn.ativo ? "Ativo" : "Baixado"}</RebPill>
                 </td>
                 <td className="whitespace-nowrap">
                   <RebButton onClick={() => setForm({ modo: "editar", funcionario: fn })}>Editar</RebButton>
@@ -133,7 +134,7 @@ export function FuncionariosTab() {
             <tbody>
               {custo.data.map((c) => (
                 <tr key={c.setor}>
-                  <td><span className="rb-pill">{c.setor}</span></td>
+                  <td><RebPill>{c.setor}</RebPill></td>
                   <td className="text-right">{c.qtd}</td>
                   <td className="text-right">{money(c.totalMensal)}</td>
                 </tr>
@@ -158,6 +159,6 @@ export function FuncionariosTab() {
           onSalvo={aposSalvar}
         />
       )}
-    </main>
+    </RebMain>
   );
 }

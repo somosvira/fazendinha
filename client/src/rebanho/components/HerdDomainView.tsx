@@ -6,6 +6,7 @@ import { IaInsightBand } from "./IaInsight";
 import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain } from "@/components/rb/RebPrimitives";
 
 // Toolbar do header (filtros/controles) — reaproveitada por AnimalTab etc.
 export const RB_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -28,7 +29,7 @@ export function HerdDomainView({
   const kpis = config.kpis(resumos);
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={config.eyebrow} title={config.titulo} />
 
       {topo}
@@ -100,6 +101,6 @@ export function HerdDomainView({
           </RebTable>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

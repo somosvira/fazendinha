@@ -6,6 +6,7 @@ import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebPill, RebEmpty, RebAnm } from "@/components/rb/RebPrimitives";
 import { DOMAINS, type DomainConfig } from "../domains";
 import { prontosParaColher, emColheita } from "../lib/worklists";
 import { FASES_LABEL } from "../lib/fenologia";
@@ -42,7 +43,7 @@ const colheitaCfg: DomainConfig = {
     { id: "verdes", label: "Maturação verde (atrasados)", selecionar: (rs) => rs.filter((r) => r.fase === "MATURACAO_VERDE") },
   ],
   colunas: [
-    { nome: "Fase", render: (r) => <span className="rb-pill">{FASES_LABEL[r.fase]}</span> },
+    { nome: "Fase", render: (r) => <RebPill>{FASES_LABEL[r.fase]}</RebPill> },
     { nome: "Cereja", render: (r) => `${Math.round(r.maturacaoCereja ?? 0)}%` },
     { nome: "Verde", render: (r) => `${Math.round(r.maturacaoVerde ?? 0)}%` },
     { nome: "Boia/passa", render: (r) => `${Math.round(r.maturacaoBoia ?? 0)}%` },
@@ -53,7 +54,7 @@ const colheitaCfg: DomainConfig = {
 export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => void }) {
   const { data, loading } = useTalhoes({ estado: "ATIVO" });
   const [aba, setAba] = useState<"painel" | "passadas">("painel");
-  if (loading) return <main className="rb-main"><RebHeader eyebrow="Lavoura" title="Colheita" /><Loader /></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Lavoura" title="Colheita" /><Loader /></RebMain>;
 
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
@@ -86,7 +87,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
   const totalSc = passadas.reduce((a, p) => a + (p.sacasBeneficiadas ?? 0), 0);
   const totalLitros = passadas.reduce((a, p) => a + (p.litrosCereja ?? 0), 0);
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader
         eyebrow="Lavoura · colheita 2026"
         title="Passadas registradas"
@@ -106,7 +107,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
           </RebKpiStrip>
           <h2 className="mb-3 font-serif text-xl font-medium">Histórico</h2>
           {passadas.length === 0 ? (
-            <div className="rb-empty">Nenhuma passada registrada ainda. Abra um talhão e use <b>+ Registrar operação</b> → Colheita.</div>
+            <RebEmpty>Nenhuma passada registrada ainda. Abra um talhão e use <b>+ Registrar operação</b> → Colheita.</RebEmpty>
           ) : (
             <RebTable>
               <thead><tr><th>Data</th><th>Talhão</th><th>Passada</th><th>Litros cereja</th><th>Rend. (L/sc)</th><th>Sc beneficiadas</th></tr></thead>
@@ -114,7 +115,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
                 {passadas.map((p) => (
                   <tr key={p.id}>
                     <td>{new Date(p.data).toLocaleDateString("pt-BR")}</td>
-                    <td className="rb-anm">{p.talhaoNome ? `${p.talhaoNome} · ${p.talhaoCodigo}` : p.talhaoCodigo || p.talhaoId}</td>
+                    <td><RebAnm>{p.talhaoNome ? `${p.talhaoNome} · ${p.talhaoCodigo}` : p.talhaoCodigo || p.talhaoId}</RebAnm></td>
                     <td>{rotuloPassada(p)}</td>
                     <td>{p.litrosCereja.toLocaleString("pt-BR")} L</td>
                     <td>{p.rendimentoLPorSc ? p.rendimentoLPorSc.toLocaleString("pt-BR") : "—"}</td>
@@ -126,7 +127,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
           )}
         </>
       )}
-    </main>
+    </RebMain>
   );
 }
 

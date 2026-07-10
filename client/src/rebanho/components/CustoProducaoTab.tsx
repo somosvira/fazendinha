@@ -3,6 +3,7 @@ import { useCustoProducao, useCustoSanidade } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const litros = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
@@ -15,7 +16,7 @@ export function CustoProducaoTab() {
   const custoLitroTxt = data?.custoLitro != null ? money(data.custoLitro) : "—";
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Rebanho · custo de produção" title="Custo de Produção" />
 
       {loading ? (
@@ -39,14 +40,14 @@ export function CustoProducaoTab() {
           {/* Quebra por componente — categoria · valor · % com barra (largura = pct%) */}
           <h2 className="font-serif text-xl font-medium mb-3">Quebra por componente</h2>
           {data.breakdown.length === 0 ? (
-            <div className="rb-empty">Sem custeio do leite no período.</div>
+            <RebEmpty>Sem custeio do leite no período.</RebEmpty>
           ) : (
             <RebTable>
               <thead><tr><th>Categoria</th><th style={{ width: "45%" }}>Participação</th><th>Valor</th><th>%</th></tr></thead>
               <tbody>
                 {data.breakdown.map((l) => (
                   <tr key={l.categoria}>
-                    <td className="rb-anm">{l.categoria}</td>
+                    <td><RebAnm>{l.categoria}</RebAnm></td>
                     <td>
                       <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                         <div style={{ width: `${l.pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -61,7 +62,7 @@ export function CustoProducaoTab() {
           )}
 
           {/* Card de transparência — como o custo/litro é calculado */}
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Como calculamos o custo/litro</h3>
             <p className="mt-0 text-sm text-ink-3">{data.nota}</p>
             <RebKpiStrip cols={3} className="mt-2">
@@ -76,7 +77,7 @@ export function CustoProducaoTab() {
             <p className="mb-0 text-sm text-ink-3">
               Os litros são uma estimativa: a produção média atual das vacas em lactação projetada para o período. À medida que entram novos controles leiteiros, o número se aproxima da produção realizada de fato.
             </p>
-          </div>
+          </RebBox>
         </>
       )}
 
@@ -116,7 +117,7 @@ export function CustoProducaoTab() {
                     const pct = maxCusto > 0 ? (a.custoEstimado / maxCusto) * 100 : 0;
                     return (
                       <tr key={a.numero}>
-                        <td className="rb-anm">{a.nome} #{a.numero}</td>
+                        <td><RebAnm>{a.nome} #{a.numero}</RebAnm></td>
                         <td>
                           <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                             <div style={{ width: `${pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -164,12 +165,12 @@ export function CustoProducaoTab() {
           )}
 
           {/* Card de transparência */}
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Como estimamos</h3>
             <p className="mt-0 mb-0 text-sm text-ink-3">{san.nota}</p>
-          </div>
+          </RebBox>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

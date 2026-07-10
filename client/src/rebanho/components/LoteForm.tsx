@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { criarLote, editarLote, excluirLote, obterLote, useAnimaisDisponiveis, useDietas, type LoteDetalheDTO, type LoteDTO } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField, REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebFieldset, REB_SUB } from "@/components/rb/RebPrimitives";
 
 type Props = {
   lote?: LoteDTO | null;
@@ -89,7 +91,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
           </div>
         }
       >
-        <div className="rb-confirm-icon">
+        <div className="mt-0.5 flex justify-center [&>svg]:h-11 [&>svg]:w-11 [&>svg]:text-prejuizo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -121,28 +123,28 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
         </div>
       }
     >
-      <label className="rb-fld">Nome*<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Lactação alta" autoFocus /></label>
+      <RebField label="Nome*"><input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Lactação alta" autoFocus /></RebField>
 
-        <label className="rb-fld">Dieta
-          <select value={dietaId} onChange={(e) => setDietaId(e.target.value)}>
+        <RebField label="Dieta">
+          <select className="rb-field-select" value={dietaId} onChange={(e) => setDietaId(e.target.value)}>
             <option value="">— sem dieta —</option>
             {dietas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
           </select>
-        </label>
+        </RebField>
 
-        <fieldset className="rb-fieldset" style={{ padding: "10px 14px 12px" }}>
+        <RebFieldset style={{ padding: "10px 14px 12px" }}>
           <legend>Animais do lote · {totalSelecionados} selecionado{totalSelecionados === 1 ? "" : "s"}</legend>
           <input
-            className="rb-fld"
+            className={REB_FIELD_BOXED}
             style={{ display: "block", marginBottom: 10, padding: "7px 11px", fontSize: 13.5 }}
             placeholder="Buscar por número ou nome…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
           {carregandoAnimais || carregandoDetalhe ? (
-            <p className="rb-sub" style={{ margin: "8px 4px" }}>Carregando animais…</p>
+            <p className={REB_SUB} style={{ margin: "8px 4px" }}>Carregando animais…</p>
           ) : animaisFiltrados.length === 0 ? (
-            <p className="rb-sub" style={{ margin: "8px 4px" }}>Nenhum animal {busca ? "encontrado" : "ativo"}.</p>
+            <p className={REB_SUB} style={{ margin: "8px 4px" }}>Nenhum animal {busca ? "encontrado" : "ativo"}.</p>
           ) : (
             <div style={{ maxHeight: 280, overflowY: "auto", border: "1px solid var(--rule-soft)", borderRadius: 8, background: "var(--bg)" }}>
               {animaisFiltrados.map((a) => {
@@ -173,7 +175,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
               })}
             </div>
           )}
-        </fieldset>
+        </RebFieldset>
 
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>

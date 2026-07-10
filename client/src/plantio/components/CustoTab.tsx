@@ -5,6 +5,7 @@ import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebBox, RebAnm } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
@@ -33,7 +34,7 @@ export function CustoTab() {
   const { data: op, loading: loadingOp, erro: erroOp } = useCustoOperacionalCafe(safraAtual?.id ?? null);
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Lavoura · custo de produção" title="Custo de produção" />
 
       <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
@@ -81,7 +82,7 @@ export function CustoTab() {
           {/* Operacional × Financeiro (Fase 1c) — o custo operacional vem das
               operações reais da safra selecionada (tarefas + hora-máquina),
               aditivo à leitura financeira acima. */}
-          <div className="rb-box mt-[26px]">
+          <RebBox className="mt-[26px]">
             <h3 className="mb-1.5 mt-0 font-serif font-medium">Operacional × Financeiro{safraAtual ? ` — ${safraAtual.nome}` : ""}</h3>
             {erroOp ? (
               <p className="mt-0 text-sm text-prejuizo">Não foi possível carregar o custo operacional: {erroOp}</p>
@@ -116,7 +117,7 @@ export function CustoTab() {
                 <p className="mb-0 text-sm text-ink-3">{op.nota}</p>
               </>
             )}
-          </div>
+          </RebBox>
 
           <h2 className="mb-3 mt-6 font-serif text-xl font-medium">Quebra por componente</h2>
           <RebTable>
@@ -127,7 +128,7 @@ export function CustoTab() {
               )}
               {data.breakdown.map((l) => (
                 <tr key={l.categoria}>
-                  <td className="rb-anm">{l.categoria}</td>
+                  <td><RebAnm>{l.categoria}</RebAnm></td>
                   <td>
                     <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                       <div style={{ width: `${l.pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -141,7 +142,7 @@ export function CustoTab() {
           </RebTable>
 
           {/* Comparativo com benchmark — Conab/Cepea (só quando há custo/saca) */}
-          <div className="rb-box mt-[26px]">
+          <RebBox className="mt-[26px]">
             <h3 className="mb-1.5 mt-0 font-serif font-medium">Comparativo com o mercado</h3>
             {data.custoSaca == null ? (
               <p className="mt-0 text-sm text-ink-3">
@@ -176,9 +177,9 @@ export function CustoTab() {
               </>
             )}
             <p className="mb-0 text-sm text-ink-3">{data.nota}</p>
-          </div>
+          </RebBox>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

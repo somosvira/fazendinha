@@ -3,6 +3,7 @@ import { useCustoCorte } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebBox, RebAnm } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 // A economia do corte sai dos dados do próprio módulo; quando ainda não há base
@@ -33,7 +34,7 @@ export function CustoTab() {
           : null;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Corte · custo de produção" title="Custo de produção" />
 
       {erro ? (
@@ -62,7 +63,7 @@ export function CustoTab() {
               )}
               {data.breakdown.map((l) => (
                 <tr key={l.categoria}>
-                  <td className="rb-anm">{l.categoria}</td>
+                  <td><RebAnm>{l.categoria}</RebAnm></td>
                   <td>
                     <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                       <div style={{ width: `${l.pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -75,7 +76,7 @@ export function CustoTab() {
             </tbody>
           </RebTable>
 
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Comparativo com o mercado</h3>
             {data.custoArroba == null ? (
               <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
@@ -104,9 +105,9 @@ export function CustoTab() {
               </>
             )}
             <p className="text-sm text-ink-3" style={{ marginBottom: 0 }}>{data.nota}</p>
-          </div>
+          </RebBox>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

@@ -6,6 +6,7 @@ import { IaInsightBand } from "./IaInsight";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 
 // Toolbar do header (filtros/controles) — reaproveitada por TalhaoTab etc.
 export const PLA_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -34,7 +35,7 @@ export function LavouraDomainView({
   const kpis = config.kpis(resumos);
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={config.eyebrow} title={config.titulo} />
 
       {controles && <div className={PLA_TOOLBAR}>{controles}</div>}
@@ -86,7 +87,7 @@ export function LavouraDomainView({
                 const t = nomes?.[r.talhaoId] ?? getTalhao(r.talhaoId);
                 return (
                   <tr className="rb-row" key={r.talhaoId} onClick={() => onAbrirTalhao(r.talhaoId)}>
-                    <td className="rb-anm">{t?.nome} <small>· {(t as any)?.codigo ?? ""}</small></td>
+                    <td><RebAnm>{t?.nome} <small>· {(t as any)?.codigo ?? ""}</small></RebAnm></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>
                 );
@@ -95,6 +96,6 @@ export function LavouraDomainView({
           </RebTable>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

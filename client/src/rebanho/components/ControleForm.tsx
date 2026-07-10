@@ -3,6 +3,7 @@ import { registrarControle, type ModoProducao, type ControlePayload } from "../a
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   animalId: string;
@@ -39,15 +40,15 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
         </>
       }
     >
-      <label className="rb-fld">Data*<input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
+      <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
       {modo === "ORDENHA" ? (
         <>
-          <label className="rb-fld">1ª ordenha (manhã) · L<input type="number" min={0} step="0.1" value={f.peso1} onChange={(e) => set("peso1", e.target.value)} /></label>
-          <label className="rb-fld">2ª ordenha (tarde) · L<input type="number" min={0} step="0.1" value={f.peso2} onChange={(e) => set("peso2", e.target.value)} /></label>
-          <label className="rb-fld">3ª ordenha (noite) · L<input type="number" min={0} step="0.1" value={f.peso3} onChange={(e) => set("peso3", e.target.value)} /></label>
+          <RebField label="1ª ordenha (manhã) · L"><input type="number" min={0} step="0.1" value={f.peso1} onChange={(e) => set("peso1", e.target.value)} /></RebField>
+          <RebField label="2ª ordenha (tarde) · L"><input type="number" min={0} step="0.1" value={f.peso2} onChange={(e) => set("peso2", e.target.value)} /></RebField>
+          <RebField label="3ª ordenha (noite) · L"><input type="number" min={0} step="0.1" value={f.peso3} onChange={(e) => set("peso3", e.target.value)} /></RebField>
         </>
       ) : (
-        <label className="rb-fld">Total do dia · L*<input type="number" min={0} step="0.1" value={f.pesoTotal} onChange={(e) => set("pesoTotal", e.target.value)} /></label>
+        <RebField label="Total do dia · L*"><input type="number" min={0} step="0.1" value={f.pesoTotal} onChange={(e) => set("pesoTotal", e.target.value)} /></RebField>
       )}
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>

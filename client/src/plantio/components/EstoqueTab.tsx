@@ -4,8 +4,10 @@ import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebEmpty, RebAnm, RebPill, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 /* Estoque de insumos da lavoura — espelha a EstoqueTab do rebanho.
@@ -63,10 +65,10 @@ export function EstoqueTab() {
   const custoHa = totalEstoque / 80;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Lavoura · insumos da safra" title="Estoque" />
 
-      {erro && <div className="rb-empty border-[color:var(--neg)] text-[color:var(--neg)]">Erro ao carregar o estoque: {erro}</div>}
+      {erro && <RebEmpty className="border-[color:var(--neg)] text-[color:var(--neg)]">Erro ao carregar o estoque: {erro}</RebEmpty>}
       {loading && !erro && <Loader label="Carregando estoque…" />}
 
       {!loading && !erro && (
@@ -99,7 +101,7 @@ export function EstoqueTab() {
             <span className="text-sm text-ink-3">{visiveis.length} de {saldos.length} {saldos.length === 1 ? "produto" : "produtos"}</span>
           </div>
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
-            <input type="search" className="rb-fld max-w-[320px] flex-[1_1_240px]" placeholder="Buscar por nome ou tipo…"
+            <input type="search" className={`${REB_FIELD_BOXED} max-w-[320px] flex-[1_1_240px]`} placeholder="Buscar por nome ou tipo…"
               value={busca} onChange={(e) => setBusca(e.target.value)} />
             <ToolbarSelect
               value={tipoFiltro}
@@ -108,7 +110,7 @@ export function EstoqueTab() {
               options={[{ value: "", label: "Todos os tipos" }, ...TIPOS_FILTRO.map((t) => ({ value: t, label: TIPO_LBL[t] }))]}
             />
             {nAbaixo > 0 && (
-              <button type="button" className={"rb-chip-q" + (soAbaixoMin ? " on" : "")}
+              <button type="button" className={REB_CHIP_Q}
                 onClick={() => setSoAbaixoMin((v) => !v)}
                 style={soAbaixoMin ? { borderColor: "var(--neg)", color: "var(--neg)" } : undefined}>
                 ⚠ Só abaixo do mínimo ({nAbaixo})
@@ -118,14 +120,14 @@ export function EstoqueTab() {
           </div>
 
           {saldos.length === 0 ? (
-            <div className="rb-empty">Nenhum insumo cadastrado no estoque da lavoura ainda.</div>
+            <RebEmpty>Nenhum insumo cadastrado no estoque da lavoura ainda.</RebEmpty>
           ) : (
             <>
               <RebTable>
                 <thead><tr><th>Produto</th><th>Tipo</th><th>Saldo</th><th>Valor</th><th>Mínimo</th></tr></thead>
                 <tbody>{visiveis.map((s) => (
                   <tr key={s.produtoId}>
-                    <td className="rb-anm">{s.nome} {s.abaixoMinimo && <span className="rb-pill bad">⚠ abaixo do mínimo</span>}</td>
+                    <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
                     <td>{tipoLabel(s.tipo)}</td>
                     <td>{qtd(s.saldo)} {s.unidade}</td>
                     <td>{money(s.valor)}</td>
@@ -134,11 +136,11 @@ export function EstoqueTab() {
                 ))}</tbody>
               </RebTable>
 
-              {visiveis.length === 0 && <div className="rb-empty mt-3">Nenhum produto bate com a busca.</div>}
+              {visiveis.length === 0 && <RebEmpty className="mt-3">Nenhum produto bate com a busca.</RebEmpty>}
             </>
           )}
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

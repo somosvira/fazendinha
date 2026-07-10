@@ -6,6 +6,8 @@ import { FornecedorForm } from "./FornecedorForm";
 import { RebHeader } from "./RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 
 type Sub = "produtos" | "fornecedores";
 
@@ -30,14 +32,14 @@ const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", curr
 export function CadastrosView() {
   const [sub, setSub] = useState<Sub>("produtos");
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cadastros · Sítio São Francisco" title="Cadastros" />
-      <div className="rb-chips" style={{ marginBottom: 18 }}>
-        <button className={"rb-chip-q" + (sub === "produtos" ? " on" : "")} onClick={() => setSub("produtos")} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
-        <button className={"rb-chip-q" + (sub === "fornecedores" ? " on" : "")} onClick={() => setSub("fornecedores")} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
+      <div className={REB_CHIPS} style={{ marginBottom: 18 }}>
+        <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
+        <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
       </div>
       {sub === "produtos" ? <Produtos /> : <Fornecedores />}
-    </main>
+    </RebMain>
   );
 }
 
@@ -56,12 +58,12 @@ function Produtos() {
         <h3 className="m-0 font-serif text-lg font-medium">Produtos</h3>
         <RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo produto</RebButton>
       </div>
-      <div className="rb-chips" style={{ marginBottom: 12, alignItems: "center" }}>
-        <button className="rb-chip-q" onClick={() => setTipo("")} style={tipo === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
+      <div className={REB_CHIPS} style={{ marginBottom: 12, alignItems: "center" }}>
+        <button className={REB_CHIP_Q} onClick={() => setTipo("")} style={tipo === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
         {TIPO_PRODUTO.map((t) => (
-          <button key={t.id} className="rb-chip-q" onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
+          <button key={t.id} className={REB_CHIP_Q} onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
         ))}
-        <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={REB_FIELD_BOXED} style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {loading ? <Loader />
@@ -72,11 +74,11 @@ function Produtos() {
             <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Custo</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((p) => (
               <tr key={p.id}>
-                <td className="rb-anm">{p.nome}</td>
+                <td><RebAnm>{p.nome}</RebAnm></td>
                 <td>{LABEL_PRODUTO[p.tipo]}</td>
                 <td>{p.unidade}</td>
                 <td>{p.custoUnitario != null ? money(p.custoUnitario) : "—"}</td>
-                <td><span className={"rb-pill" + (p.ativo ? "" : " bad")}>{p.ativo ? "Ativo" : "Inativo"}</span></td>
+                <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(p)}>Editar</RebButton>{" "}
                   <RebButton onClick={() => toggleAtivo(p)}>{p.ativo ? "Desativar" : "Ativar"}</RebButton>
@@ -108,12 +110,12 @@ function Fornecedores() {
         <h3 className="m-0 font-serif text-lg font-medium">Fornecedores</h3>
         <RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo fornecedor</RebButton>
       </div>
-      <div className="rb-chips" style={{ marginBottom: 12, alignItems: "center" }}>
-        <button className="rb-chip-q" onClick={() => setTipo("")} style={tipo === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
+      <div className={REB_CHIPS} style={{ marginBottom: 12, alignItems: "center" }}>
+        <button className={REB_CHIP_Q} onClick={() => setTipo("")} style={tipo === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
         {TIPO_PESSOA.map((t) => (
-          <button key={t.id} className="rb-chip-q" onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
+          <button key={t.id} className={REB_CHIP_Q} onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
         ))}
-        <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={REB_FIELD_BOXED} style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {loading ? <Loader />
@@ -124,11 +126,11 @@ function Fornecedores() {
             <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((fr) => (
               <tr key={fr.id}>
-                <td className="rb-anm">{fr.nome}</td>
+                <td><RebAnm>{fr.nome}</RebAnm></td>
                 <td>{LABEL_PESSOA[fr.tipo]}</td>
                 <td>{fr.documento ?? "—"}</td>
                 <td>{contato(fr)}</td>
-                <td><span className={"rb-pill" + (fr.ativo ? "" : " bad")}>{fr.ativo ? "Ativo" : "Inativo"}</span></td>
+                <td><RebPill tone={fr.ativo ? "ok" : "bad"}>{fr.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(fr)}>Editar</RebButton>{" "}
                   <RebButton onClick={() => toggleAtivo(fr)}>{fr.ativo ? "Desativar" : "Ativar"}</RebButton>

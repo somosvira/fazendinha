@@ -5,6 +5,7 @@ import { IaInsightBand } from "./IaInsight";
 import { useDashboard } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -19,11 +20,11 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
   const insight = insightDaFazenda("comercial");
 
   if (loading || !data) {
-    return <main className="rb-main"><RebHeader title="Corte · Painel" /><Loader /></main>;
+    return <RebMain><RebHeader title="Corte · Painel" /><Loader /></RebMain>;
   }
   const k = data.k;
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Atividade Corte · Rio Novo · ${k.totalCabecas} cabeças · ${k.totalAtivos} lotes`} title="Painel da pecuária" />
 
       <RebKpiStrip cols={6}>
@@ -76,7 +77,7 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
       </div>
 
       {/* Pull-quote editorial: curva B3 contango — narrativa que o produtor entende */}
-      <div className="rb-box" style={{ marginTop: 26, borderLeft: "3px solid var(--leite)" }}>
+      <RebBox style={{ marginTop: 26, borderLeft: "3px solid var(--leite)" }}>
         <h3 style={{ margin: "0 0 6px" }}>Janela comercial: B3 sinaliza contango</h3>
         <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
           A curva futura B3/Esalq fechou junho com <b>contango</b>: arroba spot em <b>R$ {k.precoArrobaSpot}/@</b> (MG),
@@ -84,7 +85,7 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
           hoje, atrasar a venda em ~60 dias renderia <b>{money(k.arrobasProntas * (k.precoArrobaSet - k.precoArrobaSpot))}</b>
           {" "}— descontando consumo de pasto e risco. Use a aba <b>Comercial</b> para simular cada lote.
         </p>
-      </div>
-    </main>
+      </RebBox>
+    </RebMain>
   );
 }

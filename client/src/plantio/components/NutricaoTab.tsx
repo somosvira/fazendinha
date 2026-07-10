@@ -3,6 +3,7 @@ import { useTalhoes, useLavouras, usePlanosAdubacao } from "../api";
 import { LavouraDomainView, RB_TBL_LAVOURA } from "./LavouraDomainView";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebEmpty, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";
 import { insightDaLavoura } from "../mock";
 import type { ResumoTalhao, Talhao, Lavoura, PlanoAdubacao } from "../types";
@@ -12,8 +13,8 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
   const { data: lavouras } = useLavouras();
   const { data: planos } = usePlanosAdubacao();
 
-  if (loading) return <main className="rb-main"><RebHeader eyebrow="Lavoura" title="Nutrição & Solo" /><Loader /></main>;
-  if (erro) return <main className="rb-main"><RebHeader title="Nutrição & Solo" /><p className="text-sm text-prejuizo">Erro: {erro}</p></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Lavoura" title="Nutrição & Solo" /><Loader /></RebMain>;
+  if (erro) return <RebMain><RebHeader title="Nutrição & Solo" /><p className="text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
   const nomes = Object.fromEntries(data.map((t) => [t.id, { nome: t.nome, codigo: t.codigo }]));
@@ -30,10 +31,10 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
         onAbrirTalhao={abrir}
         dicaLinha="clique numa linha pra registrar adubação ou amostragem"
       />
-      <main className="rb-main pt-0">
+      <RebMain className="pt-0">
         <SecaoLavouras lavouras={lavouras} />
         <SecaoPlanos planos={planos} />
-      </main>
+      </RebMain>
     </>
   );
 }
@@ -45,15 +46,15 @@ function SecaoLavouras({ lavouras }: { lavouras: Lavoura[] }) {
         <h3 className="m-0 font-serif text-lg font-medium">Lavouras</h3>
         <span className="text-sm text-ink-3">{lavouras.length} {lavouras.length === 1 ? "agrupamento" : "agrupamentos"} de talhões</span>
       </div>
-      <p className="rb-sec-sub">Cada lavoura agrupa talhões da mesma variedade ou plano de manejo. Crie uma lavoura, escolha o plano de adubação e adicione os talhões.</p>
+      <p className={REB_SEC_SUB}>Cada lavoura agrupa talhões da mesma variedade ou plano de manejo. Crie uma lavoura, escolha o plano de adubação e adicione os talhões.</p>
       {lavouras.length === 0 ? (
-        <p className="rb-empty">Nenhuma lavoura cadastrada ainda.</p>
+        <RebEmpty>Nenhuma lavoura cadastrada ainda.</RebEmpty>
       ) : (
         <RebTable className={RB_TBL_LAVOURA}>
           <thead><tr><th>Lavoura</th><th>Talhões</th><th>Área</th><th>Variedade dominante</th><th>Produtividade</th><th>Plano de adubação</th></tr></thead>
           <tbody>{lavouras.map((l) => (
             <tr key={l.id}>
-              <td className="rb-anm">{l.nome}</td>
+              <td><RebAnm>{l.nome}</RebAnm></td>
               <td>{l.numTalhoes}</td>
               <td>{l.areaHa} ha</td>
               <td>{l.variedade ?? "—"}</td>
@@ -74,9 +75,9 @@ function SecaoPlanos({ planos }: { planos: PlanoAdubacao[] }) {
         <h3 className="m-0 font-serif text-lg font-medium">Planos de adubação</h3>
         <span className="text-sm text-ink-3">{planos.length} {planos.length === 1 ? "receita" : "receitas"}</span>
       </div>
-      <p className="rb-sec-sub">Receitas de NPK que podem ser atribuídas a uma lavoura inteira. Valores em kg/ha/safra distribuídos nas parcelas indicadas.</p>
+      <p className={REB_SEC_SUB}>Receitas de NPK que podem ser atribuídas a uma lavoura inteira. Valores em kg/ha/safra distribuídos nas parcelas indicadas.</p>
       {planos.length === 0 ? (
-        <p className="rb-empty">Nenhum plano cadastrado.</p>
+        <RebEmpty>Nenhum plano cadastrado.</RebEmpty>
       ) : (
         <div className="grid grid-cols-2 content-start gap-3 max-[900px]:grid-cols-1">{planos.map((d) => (
           <div className="cursor-default rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5 text-left font-sans" key={d.id}>

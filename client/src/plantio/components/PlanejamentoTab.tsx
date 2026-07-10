@@ -8,6 +8,7 @@ import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebPill, RebAnm } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
@@ -34,13 +35,12 @@ const TIPO_LABEL: Record<string, string> = {
 };
 const tipoLabel = (t: string) => TIPO_LABEL[t] ?? t.replace(/_/g, " ").toLowerCase();
 
-// Pill de status — reusa .rb-pill (e .bad/.ok onde o CSS já define tons).
+// Pill de status — RebPill; tom "bad" p/ cancelada, default p/ os demais.
 const STATUS_LABEL: Record<string, string> = {
   PLANEJADA: "Planejada", EM_ANDAMENTO: "Em andamento", CONCLUIDA: "Concluída", CANCELADA: "Cancelada",
 };
 function StatusPill({ status }: { status: string }) {
-  const cls = status === "CONCLUIDA" ? " ok" : status === "CANCELADA" ? " bad" : "";
-  return <span className={"rb-pill" + cls}>{STATUS_LABEL[status] ?? status}</span>;
+  return <RebPill tone={status === "CANCELADA" ? "bad" : "ok"}>{STATUS_LABEL[status] ?? status}</RebPill>;
 }
 
 export function PlanejamentoTab() {
@@ -72,7 +72,7 @@ export function PlanejamentoTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Lavoura · Planejamento" title="Planejamento da safra" />
 
       {erroSafras ? (
@@ -167,7 +167,7 @@ export function PlanejamentoTab() {
                 )}
                 {tarefas.map((tf) => (
                   <tr key={tf.id}>
-                    <td className="rb-anm">{tf.descricao}</td>
+                    <td><RebAnm>{tf.descricao}</RebAnm></td>
                     <td>{tipoLabel(tf.tipo)}</td>
                     <td>{tf.talhaoCodigo ?? tf.lavouraNome ?? "—"}</td>
                     <td style={{ borderLeft: "1px solid var(--rule)" }}>{numN(tf.qtdHaPrev)}</td>
@@ -205,8 +205,8 @@ export function PlanejamentoTab() {
                 {apontamentos.map((a) => (
                   <tr key={a.id}>
                     <td>{dateN(a.data)}</td>
-                    <td><span className="rb-pill">{a.tipo === "MAQUINA" ? "Máquina" : "Homem"}</span></td>
-                    <td className="rb-anm">{a.recurso}{a.implemento ? <small> · {a.implemento}</small> : null}</td>
+                    <td><RebPill>{a.tipo === "MAQUINA" ? "Máquina" : "Homem"}</RebPill></td>
+                    <td><RebAnm>{a.recurso}{a.implemento ? <small> · {a.implemento}</small> : null}</RebAnm></td>
                     <td>{a.operador ?? "—"}</td>
                     <td>{horasFmt(a.horas)}</td>
                     <td>{moneyN(a.valorTotal)}</td>
@@ -235,6 +235,6 @@ export function PlanejamentoTab() {
           onSalvo={() => { setFormApt(false); recApt(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }

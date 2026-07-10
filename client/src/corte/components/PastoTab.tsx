@@ -4,6 +4,7 @@ import { toUA } from "../lib/derive";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const ESTADO_LABEL: Record<string, string> = {
   OCUPADO: "Ocupado",
@@ -21,7 +22,7 @@ export function PastoTab() {
   const { data: piquetes } = usePiquetes();
   const { data: lotes, loading: loadingLotes } = useLotes({ estado: "ATIVO" });
 
-  if (loadingLotes) return <main className="rb-main"><RebHeader eyebrow="Corte · pasto" title="Pasto & piquetes" /><Loader /></main>;
+  if (loadingLotes) return <RebMain><RebHeader eyebrow="Corte · pasto" title="Pasto & piquetes" /><Loader /></RebMain>;
 
   const ocupados = piquetes.filter((p) => p.estado === "OCUPADO");
   const areaAtiva = ocupados.reduce((a, p) => a + p.areaHa, 0);
@@ -29,7 +30,7 @@ export function PastoTab() {
   const uaPorHa = areaAtiva > 0 ? uaTotal / areaAtiva : 0;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Corte · gestão de pasto" title="Pasto & piquetes" />
 
       <RebKpiStrip cols={4}>
@@ -61,12 +62,12 @@ export function PastoTab() {
             const uaHa = ua / p.areaHa;
             return (
               <tr key={p.id}>
-                <td className="rb-anm">{p.codigo}</td>
+                <td><RebAnm>{p.codigo}</RebAnm></td>
                 <td>{p.nome}</td>
                 <td style={{ fontStyle: "italic" }}>{p.capim}</td>
                 <td>{p.areaHa.toFixed(1)} ha</td>
                 <td>{p.lotacaoMaxUA} UA</td>
-                <td><span className={"rb-pill" + (ESTADO_TOM[p.estado] ? " " + ESTADO_TOM[p.estado] : "")}>{ESTADO_LABEL[p.estado]}</span></td>
+                <td><RebPill tone={ESTADO_TOM[p.estado]}>{ESTADO_LABEL[p.estado]}</RebPill></td>
                 <td>
                   {lote
                     ? <>{lote.nome} <small style={{ color: "var(--ink-2)" }}>· {ua.toFixed(1)} UA ({uaHa.toFixed(2)}/ha)</small></>
@@ -77,6 +78,6 @@ export function PastoTab() {
           })}
         </tbody>
       </RebTable>
-    </main>
+    </RebMain>
   );
 }

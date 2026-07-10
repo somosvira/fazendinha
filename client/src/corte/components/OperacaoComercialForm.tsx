@@ -5,6 +5,7 @@ import { arrobasCarcaca } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 /* Tipos de operação comercial. O valor é o enum TipoComercial em UPPERCASE. */
 const TIPOS: { v: TipoComercial; lab: string }[] = [
@@ -71,32 +72,27 @@ export function OperacaoComercialForm({ lote, onFechar, onSalvo }: { lote: Lote;
     >
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Venda/compra/descarte — entra na linha do tempo do lote.</p>
 
-      <div className="rb-fld">
-        <label>Tipo de operação*</label>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoComercial)}>
+      <RebField label="Tipo de operação*">
+        <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComercial)}>
           {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
         </select>
-      </div>
+      </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data*</label>
+        <RebField label="Data*" style={{ flex: 1 }}>
           <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Cabeças*</label>
+        </RebField>
+        <RebField label="Cabeças*" style={{ flex: 1 }}>
           <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} max={lote.numCabecas} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Peso médio (kg)*</label>
+        </RebField>
+        <RebField label="Peso médio (kg)*" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Preço da @ (R$)</label>
+      <RebField label="Preço da @ (R$)">
         <input type="number" step="0.01" value={precoArroba} onChange={(e) => setPrecoArroba(e.target.value)} placeholder={`Spot MG ≈ ${PRECO_SPOT_MG}`} />
-      </div>
+      </RebField>
 
       {arrobasTot > 0 && (
         <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
@@ -105,15 +101,13 @@ export function OperacaoComercialForm({ lote, onFechar, onSalvo }: { lote: Lote;
         </p>
       )}
 
-      <div className="rb-fld">
-        <label>Comprador / origem</label>
+      <RebField label="Comprador / origem">
         <input value={comprador} onChange={(e) => setComprador(e.target.value)} placeholder="Ex.: Frigorífico Minerva · Leilão Boa Esperança" />
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Enfase } from "./IaInsight";
 import { perguntarIA, useInsights } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebMain, REB_CHIP_Q, REB_CHIP_DEMO } from "@/components/rb/RebPrimitives";
 
 const SUGESTOES = [
   "Quais talhões estão com ferrugem subindo?",
@@ -38,7 +39,7 @@ export function IaView() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Assistente · Caatinga" title="IA" />
 
       <div className="mt-2 grid grid-cols-[1fr_300px] gap-6">
@@ -46,7 +47,7 @@ export function IaView() {
           <p className="mb-3.5 mt-0 text-sm text-ink-3">Pergunte qualquer coisa sobre a lavoura — fenologia, fitossanidade, nutrição, colheita, custo. A IA lê o contexto dos talhões e responde com os dados reais.</p>
           <div className="mb-5 flex flex-wrap gap-2">
             {SUGESTOES.map((s) => (
-              <button key={s} className="rb-chip-q" onClick={() => enviar(s)} disabled={enviando}>{s}</button>
+              <button key={s} className={REB_CHIP_Q} onClick={() => enviar(s)} disabled={enviando}>{s}</button>
             ))}
           </div>
           <div className="flex flex-1 flex-col gap-3.5">
@@ -60,7 +61,7 @@ export function IaView() {
                     <Enfase texto={m.txt} />
                     {m.lista && <ul className="m-0 mt-[9px] list-none p-0 [&>li]:border-t [&>li]:border-dashed [&>li]:border-[color:var(--rule-soft)] [&>li]:py-[5px] [&>li]:text-sm">{m.lista.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     {m.rodape && <div className="mt-[9px] font-semibold text-[color:var(--ink)]">{m.rodape}</div>}
-                    {m.modo === "demo" && <span className="rb-chip-demo">modo demonstração</span>}
+                    {m.modo === "demo" && <span className={REB_CHIP_DEMO}>modo demonstração</span>}
                   </div>
                 </div>
               ),
@@ -92,6 +93,6 @@ export function IaView() {
               ))}
         </aside>
       </div>
-    </main>
+    </RebMain>
   );
 }

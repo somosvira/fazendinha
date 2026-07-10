@@ -9,6 +9,8 @@ import {
 import type { Animal } from "../types";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
+import { RebPill } from "@/components/rb/RebPrimitives";
 
 interface Props {
   animalId: string;
@@ -144,7 +146,7 @@ export function BaixaEstoqueCard({
       }
     >
       <>
-        <dl className="rb-baixa-resumo">
+        <dl className="mb-4 grid grid-cols-1 gap-1.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-3.5 py-3 font-sans text-sm [&>div]:grid [&>div]:grid-cols-[88px_1fr] [&>div]:items-baseline [&>div]:gap-3 [&_dt]:m-0 [&_dt]:font-serif [&_dt]:italic [&_dt]:text-ink-3 [&_dd]:m-0 [&_dd]:text-foreground">
           <div><dt>Data</dt><dd>{fmtDataBR(data)}</dd></div>
           {animal && <div><dt>Animal</dt><dd>{animal.nome ? `${animal.nome} (${animal.numero})` : animal.numero}</dd></div>}
           <div><dt>Produto</dt><dd>{produtoDigitado || "—"}</dd></div>
@@ -152,9 +154,9 @@ export function BaixaEstoqueCard({
           {loteProduto && <div><dt>Lote</dt><dd>{loteProduto}</dd></div>}
         </dl>
 
-        <label className="rb-fld">
-          Produto do estoque a abater
+        <RebField label="Produto do estoque a abater">
           <select
+            className="rb-field-select"
             value={produtoId ?? ""}
             onChange={(e) => setProdutoId(e.target.value ? Number(e.target.value) : null)}
             disabled={carregando}
@@ -166,31 +168,30 @@ export function BaixaEstoqueCard({
               </option>
             ))}
           </select>
-        </label>
+        </RebField>
 
         {produtoSel && (
-          <div className="rb-baixa-status">
+          <div className="-mt-1.5 mb-3 flex min-h-[26px] items-center">
             {naoEstocavel ? (
-              <span className="rb-pill">Produto não é controlado por estoque</span>
+              <RebPill>Produto não é controlado por estoque</RebPill>
             ) : !saldoSel || saldoSel.saldo <= 0 ? (
-              <span className="rb-pill bad">
+              <RebPill tone="bad">
                 Sem estoque{saldoSel ? ` (saldo: ${fmtQtd(saldoSel.saldo)} ${produtoSel.unidade})` : ""}
-              </span>
+              </RebPill>
             ) : saldoSel.abaixoMinimo ? (
-              <span className="rb-pill warn">
+              <RebPill tone="warn">
                 ⚠ Abaixo do mínimo — saldo {fmtQtd(saldoSel.saldo)} {produtoSel.unidade}
                 {saldoSel.minimoEstoque != null ? ` · mín ${fmtQtd(saldoSel.minimoEstoque)}` : ""}
-              </span>
+              </RebPill>
             ) : (
-              <span className="rb-baixa-saldo">
+              <span className="font-sans text-[13.5px] italic text-ink-3">
                 Saldo atual: {fmtQtd(saldoSel.saldo)} {produtoSel.unidade}
               </span>
             )}
           </div>
         )}
 
-        <label className="rb-fld">
-          Quantidade{produtoSel ? ` (${produtoSel.unidade})` : ""}
+        <RebField label={<>Quantidade{produtoSel ? ` (${produtoSel.unidade})` : ""}</>}>
           <input
             type="number"
             min={0}
@@ -199,12 +200,11 @@ export function BaixaEstoqueCard({
             onChange={(e) => setQuantidade(e.target.value)}
             disabled={!produtoSel || !!naoEstocavel}
           />
-        </label>
+        </RebField>
 
-        <label className="rb-fld">
-          Observação
+        <RebField label="Observação">
           <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-        </label>
+        </RebField>
 
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
         {sucesso && <p style={{ color: "var(--lucro)", fontSize: 13 }}>Baixa registrada.</p>}

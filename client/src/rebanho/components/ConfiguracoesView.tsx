@@ -7,6 +7,8 @@ import {
 } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebMain, REB_SEC_SUB, REB_SUB } from "@/components/rb/RebPrimitives";
 
 const MODOS: { id: ModoProducao; titulo: string; desc: string }[] = [
   { id: "ORDENHA", titulo: "Controle leiteiro", desc: "Peso por ordenha (manhã/tarde/noite) por vaca — controle individual." },
@@ -47,8 +49,8 @@ export function ConfiguracoesView() {
     return map;
   }, [params.data]);
 
-  if (cfg.loading) return <main className="rb-main"><RebHeader eyebrow="Configurações" title="Configurações" /><Loader /></main>;
-  if (cfg.erro || !cfg.data) return <main className="rb-main"><RebHeader title="Configurações" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {cfg.erro}</p></main>;
+  if (cfg.loading) return <RebMain><RebHeader eyebrow="Configurações" title="Configurações" /><Loader /></RebMain>;
+  if (cfg.erro || !cfg.data) return <RebMain><RebHeader title="Configurações" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {cfg.erro}</p></RebMain>;
 
   // Sincroniza estado local do input com o valor do banco quando ele muda
   if (cfg.data.precoLeite != null && precoLeite === "") setPrecoLeite(String(cfg.data.precoLeite));
@@ -134,13 +136,13 @@ export function ConfiguracoesView() {
   const nMudancas = Object.keys(rascunho).length;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Configurações · Sítio São Francisco" title="Configurações" />
 
       <h2 className="mb-3 font-serif text-xl font-medium">Como a fazenda mede o leite?</h2>
-      <p className="rb-sec-sub">Define como a produção é registrada e como a média por vaca é calculada. Trocar o modo recalcula todo o rebanho.</p>
+      <p className={REB_SEC_SUB}>Define como a produção é registrada e como a média por vaca é calculada. Trocar o modo recalcula todo o rebanho.</p>
 
-      <div className="rb-dcards" role="radiogroup" aria-label="Modo de produção">
+      <div className="grid grid-cols-2 content-start gap-3 max-[900px]:grid-cols-1" role="radiogroup" aria-label="Modo de produção">
         {MODOS.map((m) => {
           const ativo = cfg.data!.producaoModo === m.id;
           return (
@@ -149,7 +151,10 @@ export function ConfiguracoesView() {
               type="button"
               role="radio"
               aria-checked={ativo}
-              className={"rb-dcard" + (ativo ? " on" : "")}
+              className={
+                "cursor-pointer rounded-[10px] border bg-card px-4 py-3.5 text-left font-sans hover:bg-[color:var(--bg-card-2)] disabled:cursor-default disabled:opacity-85 [&>h4]:m-0 [&>h4]:mb-[9px] [&>h4]:flex [&>h4]:items-baseline [&>h4]:justify-between [&>h4]:font-serif [&>h4]:text-[17px] [&>h4]:font-medium [&_.go]:text-sm [&_.go]:font-semibold [&_.go]:text-cafe [&>ul]:m-0 [&>ul]:list-none [&>ul]:p-0 [&_li]:border-b [&_li]:border-dashed [&_li]:border-[color:var(--rule-soft)] [&_li]:py-1 [&_li]:text-sm [&_li]:text-ink-2 [&_li:last-child]:border-0 " +
+                (ativo ? "border-cafe shadow-[inset_0_0_0_1px_var(--cafe)]" : "border-[color:var(--rule-soft)]")
+              }
               onClick={() => escolher(m.id)}
               disabled={salvando != null}
             >
@@ -161,13 +166,13 @@ export function ConfiguracoesView() {
       </div>
 
       <h2 className="mb-3 font-serif text-xl font-medium" style={{ marginTop: 36 }}>Preço do leite</h2>
-      <p className="rb-sec-sub">Valor recebido por litro. Alimenta os cálculos de receita e rentabilidade na ficha do animal. Vazio = sistema usa R$ 2,40/L como fallback.</p>
+      <p className={REB_SEC_SUB}>Valor recebido por litro. Alimenta os cálculos de receita e rentabilidade na ficha do animal. Vazio = sistema usa R$ 2,40/L como fallback.</p>
       <div style={{ display: "flex", gap: 12, alignItems: "center", maxWidth: 360 }}>
         <input
           type="number"
           step="0.01"
           min={0}
-          className="rb-fld"
+          className={REB_FIELD_BOXED}
           value={precoLeite}
           onChange={(e) => setPrecoLeite(e.target.value)}
           placeholder="ex.: 2.40"
@@ -180,7 +185,7 @@ export function ConfiguracoesView() {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 36 }}>
         <div>
           <h2 className="mb-3 font-serif text-xl font-medium" style={{ marginTop: 0 }}>Parâmetros de manejo</h2>
-          <p className="rb-sec-sub">Metas Embrapa, pesos de referência e regras da fazenda. O valor Embrapa fica sempre à direita como comparação — a fazenda pode sobrescrever.</p>
+          <p className={REB_SEC_SUB}>Metas Embrapa, pesos de referência e regras da fazenda. O valor Embrapa fica sempre à direita como comparação — a fazenda pode sobrescrever.</p>
         </div>
         <RebButton
           variant="pri"
@@ -200,7 +205,7 @@ export function ConfiguracoesView() {
         return (
           <details key={id} open style={{ marginTop: 18, borderTop: "1px solid var(--linha)", paddingTop: 12 }}>
             <summary style={{ cursor: "pointer", fontFamily: "Newsreader, serif", fontSize: 18, fontWeight: 500 }}>
-              {titulo} <span className="rb-sub" style={{ fontSize: 13 }}>({items.length})</span>
+              {titulo} <span className={REB_SUB} style={{ fontSize: 13 }}>({items.length})</span>
             </summary>
             <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
               {items.map((p) => {
@@ -216,7 +221,7 @@ export function ConfiguracoesView() {
                   }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{p.descricao}</div>
-                      <div className="rb-sub" style={{ fontSize: 12 }}>{p.chave}{p.unidade ? ` · ${p.unidade}` : ""}</div>
+                      <div className={REB_SUB} style={{ fontSize: 12 }}>{p.chave}{p.unidade ? ` · ${p.unidade}` : ""}</div>
                     </div>
 
                     {desmame ? (
@@ -231,14 +236,14 @@ export function ConfiguracoesView() {
                     ) : (
                       <>
                         <input
-                          type="number" step="any" className="rb-fld"
+                          type="number" step="any" className={REB_FIELD_BOXED}
                           value={efetivo(p, "valorNumero")}
                           placeholder={temAceitavel ? "ideal" : ""}
                           onChange={(e) => setPatch(p.chave, "valorNumero", parseNum(e.target.value))}
                         />
                         {temAceitavel && (
                           <input
-                            type="number" step="any" className="rb-fld"
+                            type="number" step="any" className={REB_FIELD_BOXED}
                             value={efetivo(p, "valorNumeroAceitavel")}
                             placeholder="aceitável"
                             onChange={(e) => setPatch(p.chave, "valorNumeroAceitavel", parseNum(e.target.value))}
@@ -247,7 +252,7 @@ export function ConfiguracoesView() {
                       </>
                     )}
 
-                    <div className="rb-sub" style={{ fontSize: 12 }}>
+                    <div className={REB_SUB} style={{ fontSize: 12 }}>
                       {desmame
                         ? "Embrapa: 120 dias (padrão)"
                         : temAceitavel
@@ -274,6 +279,6 @@ export function ConfiguracoesView() {
 
       {feedback && <p className="mt-[14px] text-sm text-lucro">{feedback}</p>}
       {erroSalvar && <p className="mt-[14px] text-sm text-prejuizo">Erro: {erroSalvar}</p>}
-    </main>
+    </RebMain>
   );
 }

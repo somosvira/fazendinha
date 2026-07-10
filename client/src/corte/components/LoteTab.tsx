@@ -8,6 +8,7 @@ import { CATEGORIA_LABEL } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebMain } from "@/components/rb/RebPrimitives";
 
 type EstadoFiltro = "ATIVO" | "VENDIDO" | "TODOS";
 const OPCOES: { k: EstadoFiltro; lab: string }[] = [
@@ -44,11 +45,11 @@ export function LoteTab({ onAbrirLote, onNovo }: { onAbrirLote: (id: string) => 
 
   if (loading) {
     return (
-      <main className="rb-main">
+      <RebMain>
         <RebHeader eyebrow={DOMAINS.lote.eyebrow} title="Lote" />
         <div className={COR_TOOLBAR}>{controles}</div>
         <Loader />
-      </main>
+      </RebMain>
     );
   }
 

@@ -5,6 +5,7 @@ import { IaInsightBand } from "./IaInsight";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 
 // Toolbar do header (filtros/controles) — reaproveitada por LoteTab etc.
 export const COR_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -30,7 +31,7 @@ export function LoteDomainView({
   const loteById = Object.fromEntries(lotes.map((l) => [l.id, l]));
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={config.eyebrow} title={config.titulo} />
 
       {controles && <div className={COR_TOOLBAR}>{controles}</div>}
@@ -80,7 +81,7 @@ export function LoteDomainView({
                 const l = loteById[r.loteId];
                 return (
                   <tr className="rb-row" key={r.loteId} onClick={() => onAbrirLote(r.loteId)}>
-                    <td className="rb-anm">{l?.nome ?? r.loteId} <small>· {l?.codigo ?? ""}</small></td>
+                    <td><RebAnm>{l?.nome ?? r.loteId} <small>· {l?.codigo ?? ""}</small></RebAnm></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r, l)}</td>)}
                   </tr>
                 );
@@ -89,6 +90,6 @@ export function LoteDomainView({
           </RebTable>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }
