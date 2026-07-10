@@ -4,6 +4,16 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-D
 
 export const tipoMovimentoCaixinha = z.enum(["ENTRADA", "SAIDA"]);
 
+// Categoria do gasto (só faz sentido em SAIDA). Espelha o enum Prisma CategoriaCaixinha.
+export const categoriaCaixinha = z.enum([
+  "ALIMENTACAO",
+  "COMBUSTIVEL",
+  "MERCADO",
+  "INSUMOS",
+  "MANUTENCAO",
+  "OUTROS",
+]);
+
 // ── Caixinha ─────────────────────────────────────────────────────────────
 export const criarCaixinhaSchema = z.object({
   nome: z.string().min(1, "nome é obrigatório").max(80),
@@ -21,6 +31,8 @@ export const editarCaixinhaSchema = z.object({
 export const criarMovimentoCaixinhaSchema = z.object({
   data: isoDate,
   tipo: tipoMovimentoCaixinha,
+  // categoria do gasto — só em SAIDA; ignorada (→ null) em ENTRADA. Ver caixinhas.ts.
+  categoria: categoriaCaixinha.nullish(),
   // valor sempre POSITIVO — o sinal vem do tipo (convenção do projeto)
   valor: z.number().positive("valor deve ser positivo"),
   descricao: z.string().min(1, "descrição é obrigatória").max(200),

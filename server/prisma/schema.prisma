@@ -1803,6 +1803,17 @@ enum TipoMovimentoCaixinha {
   SAIDA
 }
 
+// Categoria do gasto do dia a dia da caixinha — usada só em SAIDA
+// (ENTRADA/aporte fica sem categoria). Conjunto fixo.
+enum CategoriaCaixinha {
+  ALIMENTACAO
+  COMBUSTIVEL
+  MERCADO
+  INSUMOS
+  MANUTENCAO
+  OUTROS
+}
+
 model Caixinha {
   id          Int                 @id @default(autoincrement())
   nome        String
@@ -1825,6 +1836,8 @@ model MovimentoCaixinha {
   caixinhaId Int
   data       DateTime              @db.Date
   tipo       TipoMovimentoCaixinha
+  // categoria do gasto — só em SAIDA; ENTRADA (aporte) fica null
+  categoria  CategoriaCaixinha?
   // valor sempre positivo — o sinal vem do tipo (convenção do Lancamento)
   valor      Decimal               @db.Decimal(14, 2)
   descricao  String
