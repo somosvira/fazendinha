@@ -104,3 +104,20 @@
     border: 0 solid var(--border);
   }
 }
+
+/* Utilitários que precisam de CSS real (fora do parser de arbitrary-value do
+ * Tailwind). Usados pelos primitivos rb/ (Fase 7 da migração shadcn). */
+@layer components {
+  /* seta customizada do <select> do RebField — reproduz `.rb-fld select` do
+   * rebanho.css (data-URI SVG que o parser de arbitrary-value não engole). */
+  .rb-field-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 22px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2374705e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 2px center;
+  }
+}
