@@ -2,6 +2,11 @@
  * TODO: quando FechamentoMensal existir no backend, o mês vira query real —
  * hoje "Abril 2026" é estático porque a única fonte é o mock. Botões
  * ◂ Março / Maio ▸ ficam desabilitados até isso existir.
+ *
+ * Migrado para Tailwind (Fase 7 shadcn). Regras antes em relatorio.css agora
+ * são utilitárias inline; o pipeline de PDF (html2pdf/printRef/estado
+ * `exportando`) é preservado byte-a-byte. Impressão via `print:` variants;
+ * o estado "gerando-pdf" (antes classe togglada) vira condicional em `exportando`.
  */
 
 import { ReactNode, useRef, useState } from "react";
@@ -9,6 +14,7 @@ import R from "../data/rionovo";
 import { fmtMoney } from "./charts";
 import type { Tab } from "./Shell";
 import { reclassificarCategoria } from "../api";
+import { cn } from "@/lib/utils";
 
 /* ============ CONSTANTES DO MÊS FECHADO ============ */
 /* Mai/2026 no mock tem receita=0 (marcado "Mai/26*" — mês em curso). O último
@@ -54,30 +60,57 @@ function categoriasQueSubiram(): Alta[] {
 
 /* ============ HEADER (substitui o DateRangePicker inútil) ============ */
 
-function FechamentoHeader({ onExportar, exportando }: { onExportar: () => void; exportando: boolean }) {
+function FechamentoHeader({
+  onExportar,
+  exportando,
+  oculto,
+}: {
+  onExportar: () => void;
+  exportando: boolean;
+  oculto: boolean;
+}) {
   return (
-    <div className="fech-hdr no-print">
-      <div className="fech-hdr-title">
-        <span className="eyebrow">Fechamento mensal</span>
-        <h1 className="fech-h1">{MES_FECHADO_LABEL}</h1>
-        <p className="fech-sub">
+    <div
+      className={cn(
+        "mb-8 grid grid-cols-[1fr_auto] items-end gap-6 border-b border-[color:var(--rule-soft)] pt-8 pb-5 print:hidden",
+        "max-[720px]:grid-cols-1 max-[720px]:items-start",
+        oculto && "hidden",
+      )}
+    >
+      <div>
+        <span className="eyebrow text-[11px] uppercase tracking-[0.14em] text-ink-3">Fechamento mensal</span>
+        <h1 className="m-0 mt-1.5 mb-2 font-serif text-[52px] font-normal leading-[1.05] tracking-[-0.02em] text-foreground max-[720px]:text-[36px]">
+          {MES_FECHADO_LABEL}
+        </h1>
+        <p className="m-0 font-sans text-sm text-ink-3">
           Emitido em {EMITIDO_EM} · {R.iaScope.lancamentos} do BPO
         </p>
       </div>
-      <div className="fech-hdr-actions">
+      <div className="flex flex-col items-end gap-3 max-[720px]:items-start">
         <button
-          className="btn-ghost"
+          className="btn-ghost font-sans"
           onClick={onExportar}
           disabled={exportando}
           title="Baixa o relatório como PDF direto."
         >
           {exportando ? "Gerando PDF…" : "⤓ Baixar PDF"}
         </button>
-        <div className="fech-nav" aria-label="Navegar entre meses fechados">
-          <button className="fech-nav-btn" disabled title="Meses anteriores serão liberados quando o backend de fechamento estiver ativo.">
+        <div
+          className="inline-flex gap-1 overflow-hidden rounded-md border border-[color:var(--rule-soft)]"
+          aria-label="Navegar entre meses fechados"
+        >
+          <button
+            className="cursor-pointer border-0 bg-transparent px-3 py-1.5 font-sans text-xs text-ink-3 hover:enabled:bg-card hover:enabled:text-foreground disabled:cursor-not-allowed disabled:text-[color:var(--ink-mute)] disabled:opacity-50"
+            disabled
+            title="Meses anteriores serão liberados quando o backend de fechamento estiver ativo."
+          >
             ◂ Março
           </button>
-          <button className="fech-nav-btn" disabled title="Maio ainda não fechou.">
+          <button
+            className="cursor-pointer border-0 bg-transparent px-3 py-1.5 font-sans text-xs text-ink-3 hover:enabled:bg-card hover:enabled:text-foreground disabled:cursor-not-allowed disabled:text-[color:var(--ink-mute)] disabled:opacity-50"
+            disabled
+            title="Maio ainda não fechou."
+          >
             Maio ▸
           </button>
         </div>
@@ -106,13 +139,41 @@ function Veredicto({
   children?: ReactNode;
 }) {
   return (
-    <section className={"veredicto" + (full ? " full" : "")}>
-      <h2 className="ver-pergunta">{pergunta}</h2>
-      <div className="ver-body">
-        <div className={"ver-resposta " + tom}>{resposta}</div>
-        {mini ? <div className="ver-mini">{mini}</div> : null}
+    /* `veredicto` fica como marcador puro (sem CSS): o html2pdf lê `.veredicto`
+     * no `pagebreak.avoid` para não quebrar o cartão entre páginas. Idem
+     * `.atencao-card`. Preservados como hooks de JS/lib, não como estilo. */
+    <section
+      className={cn(
+        "veredicto flex flex-col gap-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-[26px] pt-6 pb-[26px]",
+        "print:break-inside-avoid print:border print:border-[#999] print:bg-white",
+        full && "min-[900px]:col-[1/-1]",
+      )}
+    >
+      <h2 className="m-0 font-serif text-[22px] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
+        {pergunta}
+      </h2>
+      <div
+        className={cn(
+          "grid grid-cols-[minmax(0,auto)_minmax(160px,1fr)] items-center gap-6",
+          "max-[720px]:grid-cols-1 max-[720px]:gap-3",
+          full && "min-[900px]:grid-cols-[minmax(0,auto)_minmax(200px,1fr)]",
+        )}
+      >
+        <div
+          className={cn(
+            "whitespace-nowrap font-serif text-[64px] font-medium leading-none tracking-[-0.03em] max-[720px]:whitespace-normal max-[720px]:text-[48px]",
+            tom === "pos" ? "text-lucro" : tom === "neg" ? "text-prejuizo" : "text-foreground",
+          )}
+        >
+          {resposta}
+        </div>
+        {mini ? <div className="self-center">{mini}</div> : null}
       </div>
-      {contexto ? <div className="ver-contexto">{contexto}</div> : null}
+      {contexto ? (
+        <div className="m-0 font-sans text-[13px] leading-[1.5] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
+          {contexto}
+        </div>
+      ) : null}
       {children}
     </section>
   );
@@ -244,23 +305,23 @@ function StackedBarComposicao({
   const total = itens.reduce((s, x) => s + x.valorMil, 0);
   if (total <= 0) return null;
   return (
-    <div className="ver-stack">
-      <div className="ver-stack-bar">
+    <div className="mt-1 flex flex-col gap-2.5">
+      <div className="flex h-3 overflow-hidden rounded-[3px] bg-[color:var(--rule-soft)]">
         {itens.map((it, i) => (
           <div
             key={i}
-            className="ver-stack-seg"
+            className="h-full"
             style={{ width: `${(it.valorMil / total) * 100}%`, background: it.cor }}
             title={`${it.nome}: ${fmtMoney(it.valorMil, { compact: false })}`}
           />
         ))}
       </div>
-      <div className="ver-stack-legend">
+      <div className="flex flex-wrap gap-x-6 gap-y-4 font-sans text-xs text-ink-2">
         {itens.map((it, i) => (
-          <span key={i} className="ver-stack-item">
+          <span key={i} className="inline-flex items-center gap-1.5">
             <span className="legend-dot" style={{ background: it.cor }} />
             <span>{it.nome}</span>
-            <span className="mono-nums ver-stack-val">{fmtMoney(it.valorMil, { compact: false })}</span>
+            <span className="mono-nums font-medium text-foreground">{fmtMoney(it.valorMil, { compact: false })}</span>
           </span>
         ))}
       </div>
@@ -279,23 +340,49 @@ function AtencaoCard({
   onReclassificar: () => void;
 }) {
   const sevLabel = item.severidade === "alta" ? "Crítica" : item.severidade === "media" ? "Média" : "Baixa";
+  const stripe =
+    item.severidade === "alta"
+      ? "var(--prejuizo)"
+      : item.severidade === "media"
+        ? "var(--leite)"
+        : item.severidade === "baixa"
+          ? "var(--outros)"
+          : "var(--ink-mute)";
+  const chipCls =
+    item.severidade === "alta"
+      ? "bg-[rgba(198,40,40,0.14)] text-prejuizo"
+      : item.severidade === "media"
+        ? "bg-[rgba(184,154,92,0.22)] text-cafe"
+        : item.severidade === "baixa"
+          ? "bg-[rgba(107,122,92,0.20)] text-ink-2"
+          : "bg-[color:var(--rule-soft)] text-ink-2";
   return (
-    <div className={"atencao-card sev-" + item.severidade}>
-      <div className="atencao-head">
-        <span className={"sev-chip sev-" + item.severidade}>{sevLabel}</span>
-        <span className="atencao-valor mono-nums">R$ {(item.valor / 1000).toFixed(0)}k</span>
+    <div
+      className="atencao-card flex flex-col gap-2 rounded-md border border-[color:var(--rule-soft)] bg-background p-4 print:break-inside-avoid print:bg-white"
+      style={{ borderLeft: `3px solid ${stripe}` }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span
+          className={cn(
+            "rounded-[3px] px-2 py-[3px] font-sans text-[10px] font-medium uppercase tracking-[0.1em]",
+            chipCls,
+          )}
+        >
+          {sevLabel}
+        </span>
+        <span className="mono-nums font-serif text-lg text-foreground">R$ {(item.valor / 1000).toFixed(0)}k</span>
       </div>
-      <div className="atencao-titulo">{item.titulo}</div>
-      <div className="atencao-impacto">{item.impacto}</div>
+      <div className="font-sans text-[13px] font-medium leading-[1.35] text-foreground">{item.titulo}</div>
+      <div className="font-sans text-xs leading-[1.45] text-ink-3">{item.impacto}</div>
       {item.categoriaId ? (
         <button
-          className="btn-primary atencao-cta"
+          className="btn-primary mt-1 self-start px-3 py-1.5 text-xs font-sans"
           onClick={() => reclassificarCategoria(item.categoriaId, "INVESTIMENTO").then(onReclassificar)}
         >
           {item.acao} →
         </button>
       ) : (
-        <button className="btn-primary atencao-cta">{item.acao} →</button>
+        <button className="btn-primary mt-1 self-start px-3 py-1.5 text-xs font-sans">{item.acao} →</button>
       )}
     </div>
   );
@@ -366,10 +453,20 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
   const idxNoUltimo12 = 10; // Abr/26 é o 11º de 12 (índice 10)
 
   return (
-    <div className={"shell-wide fechamento" + (exportando ? " gerando-pdf" : "")} key={tick} ref={printRef}>
-      <FechamentoHeader onExportar={exportarPDF} exportando={exportando} />
+    /* shell-wide (largura) permanece — classe compartilhada em base.css. Padding
+     * inferior 96px; em `exportando` (antes .gerando-pdf) vira p-0 para o
+     * html2canvas capturar como folha. print:pb-0 replica o @media print. */
+    <div
+      className={cn(
+        "shell-wide pb-24 print:pb-0",
+        exportando && "!p-0",
+      )}
+      key={tick}
+      ref={printRef}
+    >
+      <FechamentoHeader onExportar={exportarPDF} exportando={exportando} oculto={exportando} />
 
-      <div className="fech-grid">
+      <div className="grid grid-cols-1 gap-5 min-[900px]:grid-cols-2 print:gap-4">
         {/* 1) Fluxo do mês ---------------------------------------------------- */}
         <Veredicto
           pergunta="Sobrou ou faltou em abril?"
@@ -419,20 +516,30 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         {/* 4) Onde vazou ------------------------------------------------------ */}
         <Veredicto
           pergunta="Onde vazou este ano?"
-          resposta={<span className="ver-resposta-alt">3 categorias</span>}
+          resposta={
+            <span className="font-serif text-[40px] font-medium leading-[1.1] tracking-[-0.02em] text-foreground">
+              3 categorias
+            </span>
+          }
           tom="neg"
           contexto={<>Aceleraram acima do restante — comparadas ao mesmo período de 2025.</>}
         >
-          <ul className="vazamento-lista">
+          <ul className="m-0 mt-2 flex list-none flex-col gap-0 p-0">
             {altas.map((a) => (
-              <li key={a.nome}>
-                <span className="vaz-nome">{a.nome}</span>
-                <span className="vaz-val mono-nums">R$ {a.valorMil}k</span>
-                <span className="vaz-delta mono-nums">▲ {a.delta}%</span>
+              <li
+                key={a.nome}
+                className="grid grid-cols-[1fr_auto_auto] items-baseline gap-4 border-b border-[color:var(--rule-soft)] py-3 last:border-b-0 max-[720px]:grid-cols-[1fr_auto] max-[720px]:gap-y-1"
+              >
+                <span className="font-sans text-sm text-foreground">{a.nome}</span>
+                <span className="mono-nums font-serif text-lg text-foreground">R$ {a.valorMil}k</span>
+                <span className="mono-nums font-sans text-[13px] text-prejuizo max-[720px]:col-start-2">▲ {a.delta}%</span>
               </li>
             ))}
           </ul>
-          <button className="btn-ghost vaz-cta" onClick={() => onNav("dashboard")}>
+          <button
+            className="btn-ghost mt-2.5 self-start px-3.5 py-2 text-[13px] font-sans print:hidden"
+            onClick={() => onNav("dashboard")}
+          >
             Ver detalhe no Dashboard →
           </button>
         </Veredicto>
@@ -460,12 +567,14 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         </Veredicto>
 
         {/* 6) Atenção --------------------------------------------------------- */}
-        <section className="veredicto full">
-          <h2 className="ver-pergunta">O que precisa da sua atenção?</h2>
-          <p className="ver-contexto ver-contexto-solo">
+        <section className="veredicto flex flex-col gap-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-[26px] pt-6 pb-[26px] min-[900px]:col-[1/-1] print:break-inside-avoid print:border print:border-[#999] print:bg-white">
+          <h2 className="m-0 font-serif text-[22px] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
+            O que precisa da sua atenção?
+          </h2>
+          <p className="m-0 mb-1.5 font-sans text-[13px] leading-[1.5] text-ink-2">
             Inconsistências que a IA levantou nos lançamentos deste fechamento. Corrigir na origem melhora o próximo mês.
           </p>
-          <div className="atencao-grid">
+          <div className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3.5">
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {R.inconsistencias.map((it: any) => (
               <AtencaoCard key={it.id} item={it} onReclassificar={bump} />
@@ -475,13 +584,13 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
       </div>
 
       {/* Rodapé ------------------------------------------------------------- */}
-      <footer className="fech-footer">
+      <footer className="mt-12 flex flex-wrap items-center justify-between gap-6 border-t border-[color:var(--rule-soft)] pt-6 print:justify-start">
         <span className="caption">Fechamento gerado a partir de {R.iaScope.lancamentos} do BPO ({R.iaScope.periodo}).</span>
-        <div className="fech-footer-actions no-print">
-          <button className="btn-ghost" onClick={exportarPDF} disabled={exportando}>
+        <div className={cn("flex gap-3 print:hidden", exportando && "hidden")}>
+          <button className="btn-ghost font-sans" onClick={exportarPDF} disabled={exportando}>
             {exportando ? "Gerando PDF…" : "⤓ Baixar PDF"}
           </button>
-          <button className="btn-primary" onClick={() => onNav("dashboard")}>
+          <button className="btn-primary font-sans" onClick={() => onNav("dashboard")}>
             Abrir Dashboard interativo →
           </button>
         </div>
