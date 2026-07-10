@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Lote, TipoSanitario } from "../types";
 import { registrarManejoSanitario, type ManejoInput } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 /* Catálogo de manejos sanitários (Calendário Embrapa cronograma 11). O label é
  * editorial; o valor é o enum TipoSanitario em UPPERCASE que o backend espera. */
@@ -64,73 +66,68 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="manejo-title">
-        <div className="rb-drawer-head">
-          <h3 id="manejo-title">Registrar manejo — {lote.codigo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
+    <RebModal
+      title={`Registrar manejo — ${lote.codigo}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar manejo"}</RebButton>
+        </>
+      }
+    >
+      <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Vacina, vermífugo e controles entram na linha do tempo do lote.</p>
+
+      <div className="rb-fld">
+        <label>Tipo de manejo*</label>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoSanitario)}>
+          {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
+        </select>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Data*</label>
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
         </div>
-        <div className="rb-drawer-body">
-          <p className="rb-sub">{lote.nome} · {lote.numCabecas} cabeças. Vacina, vermífugo e controles entram na linha do tempo do lote.</p>
-
-          <div className="rb-fld">
-            <label>Tipo de manejo*</label>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoSanitario)}>
-              {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data*</label>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cabeças manejadas*</label>
-              <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 2 }}>
-              <label>Produto</label>
-              <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: Aftosa Marca · Vermífugo Ivomec" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Dose (mL)</label>
-              <input type="number" step="0.1" value={doseMl} onChange={(e) => setDoseMl(e.target.value)} placeholder="por cabeça" />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Carência (dias)</label>
-              <input type="number" value={carenciaDias} onChange={(e) => setCarenciaDias(e.target.value)} placeholder="até liberar venda" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Próxima dose</label>
-              <input type="date" value={proximaDose} onChange={(e) => setProximaDose(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="rb-fld">
-            <label>Responsável</label>
-            <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Ex.: MV Carla · Vaqueiro João" />
-          </div>
-
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Cabeças manejadas*</label>
+          <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
         </div>
+      </div>
 
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar manejo"}</button>
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 2 }}>
+          <label>Produto</label>
+          <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: Aftosa Marca · Vermífugo Ivomec" />
         </div>
-      </aside>
-    </>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Dose (mL)</label>
+          <input type="number" step="0.1" value={doseMl} onChange={(e) => setDoseMl(e.target.value)} placeholder="por cabeça" />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Carência (dias)</label>
+          <input type="number" value={carenciaDias} onChange={(e) => setCarenciaDias(e.target.value)} placeholder="até liberar venda" />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Próxima dose</label>
+          <input type="date" value={proximaDose} onChange={(e) => setProximaDose(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="rb-fld">
+        <label>Responsável</label>
+        <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Ex.: MV Carla · Vaqueiro João" />
+      </div>
+
+      <div className="rb-fld">
+        <label>Observação</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

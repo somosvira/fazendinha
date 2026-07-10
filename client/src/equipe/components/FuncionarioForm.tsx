@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FuncionarioDTO } from "../types";
 import { criarFuncionario, editarFuncionario, baixarFuncionario, type FuncionarioInput } from "../api";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 /* Drawer de cadastro/edição/baixa de funcionário — espelha o TalhaoForm.
  * Opcionais vazios são enviados como `undefined` (o backend trata como ausência),
@@ -67,128 +69,119 @@ export function FuncionarioForm({
 
   if (modo === "baixa") {
     return (
-      <>
-        <div className="rb-drawer-bg" onClick={onFechar} />
-        <aside className="rb-drawer" role="dialog">
-          <div className="rb-drawer-head">
-            <h3>Dar baixa em {f?.nome}</h3>
-            <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-          </div>
-          <div className="rb-drawer-body">
-            <p className="rb-sub">O funcionário sai do quadro ativo. Mantém histórico de ponto e folha.</p>
-            {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-          </div>
-          <div className="rb-drawer-actions">
-            <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-            <button className="rb-btn rb-btn-danger" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</button>
-          </div>
-        </aside>
-      </>
+      <RebModal
+        title={`Dar baixa em ${f?.nome}`}
+        onClose={onFechar}
+        actions={
+          <>
+            <RebButton onClick={onFechar}>Cancelar</RebButton>
+            <RebButton variant="danger" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</RebButton>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-3">O funcionário sai do quadro ativo. Mantém histórico de ponto e folha.</p>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </RebModal>
     );
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>{titulo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 2 }}>
-              <label>Nome*</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: José da Silva" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cargo</label>
-              <input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Tratorista" />
-            </div>
-          </div>
-
-          <div className="rb-fld">
-            <label>Setor</label>
-            {/* datalist: sugere setores comuns mas deixa digitar livre (varia por fazenda). */}
-            <input
-              list="setores-sugeridos"
-              value={setor}
-              onChange={(e) => setSetor(e.target.value)}
-              placeholder="Ex.: Curral (opcional — vazio = Geral)"
-            />
-            <datalist id="setores-sugeridos">
-              <option value="Curral" />
-              <option value="Ordenha" />
-              <option value="Bezerreiro" />
-              <option value="Recria" />
-              <option value="Café" />
-              <option value="Milho" />
-              <option value="Geral" />
-            </datalist>
-          </div>
-
-          <div className="rb-fld">
-            <label>Salário mensal (R$)*</label>
-            <input type="number" step="0.01" value={salarioMensal} onChange={(e) => setSalarioMensal(e.target.value)} placeholder="Ex.: 2200.00" />
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Carga mensal (h)*</label>
-              <input type="number" step="1" value={cargaMensalHoras} onChange={(e) => setCargaMensalHoras(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Jornada diária (h)*</label>
-              <input type="number" step="0.5" value={jornadaDiariaHoras} onChange={(e) => setJornadaDiariaHoras(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Admissão</label>
-              <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Entrada padrão</label>
-              <input type="time" value={horaEntradaPadrao} onChange={(e) => setHoraEntradaPadrao(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Saída padrão</label>
-              <input type="time" value={horaSaidaPadrao} onChange={(e) => setHoraSaidaPadrao(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Intervalo padrão (min)</label>
-              <input type="number" step="5" min="0" value={intervaloPadraoMin} placeholder="60" onChange={(e) => setIntervaloPadraoMin(e.target.value)} />
-            </div>
-          </div>
-          <p className="rb-sub" style={{ margin: "2px 0 0", fontSize: 12 }}>
-            Opcional. Preenchido, agiliza a grade do mês: use "Preencher grade" no Ponto para lançar os dias úteis automaticamente.
-          </p>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>CPF</label>
-              <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Chave Pix</label>
-              <input value={chavePix} onChange={(e) => setChavePix(e.target.value)} placeholder="CPF, telefone, e-mail…" />
-            </div>
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button
-            className="rb-btn pri"
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton
+            variant="pri"
             disabled={salvando || !nome.trim() || !salarioMensal || !cargaMensalHoras || !jornadaDiariaHoras}
             onClick={salvar}
           >
             {salvando ? "Salvando…" : "Salvar"}
-          </button>
+          </RebButton>
+        </>
+      }
+    >
+      <div className="flex gap-2.5">
+        <div className="rb-fld" style={{ flex: 2 }}>
+          <label>Nome*</label>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: José da Silva" />
         </div>
-      </aside>
-    </>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Cargo</label>
+          <input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Tratorista" />
+        </div>
+      </div>
+
+      <div className="rb-fld">
+        <label>Setor</label>
+        {/* datalist: sugere setores comuns mas deixa digitar livre (varia por fazenda). */}
+        <input
+          list="setores-sugeridos"
+          value={setor}
+          onChange={(e) => setSetor(e.target.value)}
+          placeholder="Ex.: Curral (opcional — vazio = Geral)"
+        />
+        <datalist id="setores-sugeridos">
+          <option value="Curral" />
+          <option value="Ordenha" />
+          <option value="Bezerreiro" />
+          <option value="Recria" />
+          <option value="Café" />
+          <option value="Milho" />
+          <option value="Geral" />
+        </datalist>
+      </div>
+
+      <div className="rb-fld">
+        <label>Salário mensal (R$)*</label>
+        <input type="number" step="0.01" value={salarioMensal} onChange={(e) => setSalarioMensal(e.target.value)} placeholder="Ex.: 2200.00" />
+      </div>
+
+      <div className="flex gap-2.5">
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Carga mensal (h)*</label>
+          <input type="number" step="1" value={cargaMensalHoras} onChange={(e) => setCargaMensalHoras(e.target.value)} />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Jornada diária (h)*</label>
+          <input type="number" step="0.5" value={jornadaDiariaHoras} onChange={(e) => setJornadaDiariaHoras(e.target.value)} />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Admissão</label>
+          <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="flex gap-2.5">
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Entrada padrão</label>
+          <input type="time" value={horaEntradaPadrao} onChange={(e) => setHoraEntradaPadrao(e.target.value)} />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Saída padrão</label>
+          <input type="time" value={horaSaidaPadrao} onChange={(e) => setHoraSaidaPadrao(e.target.value)} />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Intervalo padrão (min)</label>
+          <input type="number" step="5" min="0" value={intervaloPadraoMin} placeholder="60" onChange={(e) => setIntervaloPadraoMin(e.target.value)} />
+        </div>
+      </div>
+      <p className="mt-0.5 text-xs text-ink-3">
+        Opcional. Preenchido, agiliza a grade do mês: use "Preencher grade" no Ponto para lançar os dias úteis automaticamente.
+      </p>
+
+      <div className="flex gap-2.5">
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>CPF</label>
+          <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Chave Pix</label>
+          <input value={chavePix} onChange={(e) => setChavePix(e.target.value)} placeholder="CPF, telefone, e-mail…" />
+        </div>
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { usePropriedades, criarPropriedade, editarPropriedade, type PropriedadeDTO, type PropriedadeInput } from "../api";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 // Seletor de sítio + cadastro. Com 1 propriedade a camada é quase invisível
 // (só um link discreto pra criar a 2ª); com ≥2 vira o seletor Consolidado/Sítio.
@@ -19,10 +21,10 @@ export function PropriedadeSelector({ value, onChange }: { value: number | null;
             <option value="">Consolidado</option>
             {ativos.map((p) => <option key={p.id} value={p.id}>{p.apelido || p.nome}</option>)}
           </select>
-          <button className="rb-btn" type="button" onClick={() => setGerenciar(true)}>Gerenciar</button>
+          <RebButton type="button" onClick={() => setGerenciar(true)}>Gerenciar</RebButton>
         </>
       ) : (
-        <button className="rb-btn" type="button" onClick={() => setGerenciar(true)} style={{ fontSize: 12, opacity: 0.65 }}>＋ Propriedade</button>
+        <RebButton type="button" onClick={() => setGerenciar(true)} className="text-xs opacity-65">＋ Propriedade</RebButton>
       )}
       {gerenciar && <GerenciarPropriedades propriedades={props} onFechar={() => setGerenciar(false)} onMudou={recarregar} />}
     </div>
@@ -34,32 +36,31 @@ function GerenciarPropriedades({ propriedades, onFechar, onMudou }: { propriedad
 
   return (
     <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>Propriedades</h3>
-        <p className="rb-sub" style={{ margin: "0 0 12px", fontSize: 12.5 }}>Sítios da fazenda. Cada animal e lote pertence a um sítio; a principal é o default.</p>
+      <RebModal
+        title="Propriedades"
+        onClose={onFechar}
+        actions={<RebButton onClick={onFechar}>Fechar</RebButton>}
+      >
+        <p className="mb-3 mt-0 text-[12.5px] text-ink-3">Sítios da fazenda. Cada animal e lote pertence a um sítio; a principal é o default.</p>
 
-        {propriedades.length === 0 ? <p className="rb-sub" style={{ fontStyle: "italic" }}>Nenhuma propriedade.</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+        {propriedades.length === 0 ? <p className="text-sm italic text-ink-3">Nenhuma propriedade.</p> : (
+          <div className="mb-3 flex flex-col gap-1.5">
             {propriedades.map((p) => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13.5 }}>
+              <div key={p.id} className="flex items-center justify-between gap-2 text-[13.5px]">
                 <span>
                   {p.apelido ? <b>{p.apelido}</b> : <b>{p.nome}</b>}
-                  {p.apelido && <span style={{ color: "var(--ink-3)" }}> · {p.nome}</span>}
+                  {p.apelido && <span className="text-ink-3"> · {p.nome}</span>}
                   {p.principal && <span className="rb-pill" style={{ marginLeft: 6 }}>principal</span>}
                   {!p.ativo && <span className="rb-pill warn" style={{ marginLeft: 6 }}>inativa</span>}
                 </span>
-                <button className="rb-btn" type="button" onClick={() => setEditando(p)}>Editar</button>
+                <RebButton type="button" onClick={() => setEditando(p)}>Editar</RebButton>
               </div>
             ))}
           </div>
         )}
 
-        <button className="rb-btn pri" type="button" onClick={() => setEditando("nova")}>+ Nova propriedade</button>
-        <div className="rb-drawer-actions" style={{ justifyContent: "flex-end", marginTop: 18 }}>
-          <button className="rb-btn" onClick={onFechar}>Fechar</button>
-        </div>
-      </aside>
+        <RebButton variant="pri" type="button" onClick={() => setEditando("nova")}>+ Nova propriedade</RebButton>
+      </RebModal>
       {editando && <PropriedadeForm propriedade={editando === "nova" ? null : editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); onMudou(); }} />}
     </>
   );
@@ -98,24 +99,26 @@ function PropriedadeForm({ propriedade, onFechar, onSalvo }: { propriedade: Prop
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>{editando ? `Editar ${propriedade!.nome}` : "Nova propriedade"}</h3>
-        <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus placeholder="ex.: Fazenda Recria" /></label>
-        <label className="rb-fld">Apelido<input value={f.apelido} onChange={(e) => set("apelido", e.target.value)} placeholder="ex.: Recria (rótulo curto do seletor)" /></label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <label className="rb-fld" style={{ flex: 2 }}>Cidade<input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} /></label>
-          <label className="rb-fld" style={{ flex: 1 }}>UF<input value={f.uf} maxLength={2} onChange={(e) => set("uf", e.target.value.toUpperCase())} placeholder="MG" /></label>
-        </div>
-        <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.principal} onChange={(e) => set("principal", e.target.checked)} style={{ width: "auto" }} />Principal (default quando não há filtro)</label>
-        <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.ativo} onChange={(e) => set("ativo", e.target.checked)} style={{ width: "auto" }} />Ativa</label>
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        <div className="rb-drawer-actions" style={{ justifyContent: "flex-end", gap: 8 }}>
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+    <RebModal
+      stacked
+      title={editando ? `Editar ${propriedade!.nome}` : "Nova propriedade"}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus placeholder="ex.: Fazenda Recria" /></label>
+      <label className="rb-fld">Apelido<input value={f.apelido} onChange={(e) => set("apelido", e.target.value)} placeholder="ex.: Recria (rótulo curto do seletor)" /></label>
+      <div style={{ display: "flex", gap: 8 }}>
+        <label className="rb-fld" style={{ flex: 2 }}>Cidade<input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} /></label>
+        <label className="rb-fld" style={{ flex: 1 }}>UF<input value={f.uf} maxLength={2} onChange={(e) => set("uf", e.target.value.toUpperCase())} placeholder="MG" /></label>
+      </div>
+      <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.principal} onChange={(e) => set("principal", e.target.checked)} style={{ width: "auto" }} />Principal (default quando não há filtro)</label>
+      <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.ativo} onChange={(e) => set("ativo", e.target.checked)} style={{ width: "auto" }} />Ativa</label>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

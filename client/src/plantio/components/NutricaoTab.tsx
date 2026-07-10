@@ -1,6 +1,8 @@
 import { Loader } from "../../components/Loading";
 import { useTalhoes, useLavouras, usePlanosAdubacao } from "../api";
-import { LavouraDomainView } from "./LavouraDomainView";
+import { LavouraDomainView, RB_TBL_LAVOURA } from "./LavouraDomainView";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebTable } from "@/components/rb/RebTable";
 import { DOMAINS } from "../domains";
 import { insightDaLavoura } from "../mock";
 import type { ResumoTalhao, Talhao, Lavoura, PlanoAdubacao } from "../types";
@@ -10,8 +12,8 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
   const { data: lavouras } = useLavouras();
   const { data: planos } = usePlanosAdubacao();
 
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Nutrição & Solo</h1></div><Loader /></main>;
-  if (erro) return <main className="rb-main"><div className="rb-head"><h1>Nutrição & Solo</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
+  if (loading) return <main className="rb-main"><RebHeader eyebrow="Lavoura" title="Nutrição & Solo" /><Loader /></main>;
+  if (erro) return <main className="rb-main"><RebHeader title="Nutrição & Solo" /><p className="text-sm text-prejuizo">Erro: {erro}</p></main>;
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
   const nomes = Object.fromEntries(data.map((t) => [t.id, { nome: t.nome, codigo: t.codigo }]));
@@ -28,7 +30,7 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
         onAbrirTalhao={abrir}
         dicaLinha="clique numa linha pra registrar adubação ou amostragem"
       />
-      <main className="rb-main" style={{ paddingTop: 0 }}>
+      <main className="rb-main pt-0">
         <SecaoLavouras lavouras={lavouras} />
         <SecaoPlanos planos={planos} />
       </main>
@@ -38,16 +40,16 @@ export function NutricaoTab({ onRegistrarOperacao }: { onRegistrarOperacao: (tal
 
 function SecaoLavouras({ lavouras }: { lavouras: Lavoura[] }) {
   return (
-    <section style={{ marginTop: 8, marginBottom: 36 }}>
-      <div className="rb-listhead">
-        <h3>Lavouras</h3>
-        <span className="hint">{lavouras.length} {lavouras.length === 1 ? "agrupamento" : "agrupamentos"} de talhões</span>
+    <section className="mb-9 mt-2">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="m-0 font-serif text-lg font-medium">Lavouras</h3>
+        <span className="text-sm text-ink-3">{lavouras.length} {lavouras.length === 1 ? "agrupamento" : "agrupamentos"} de talhões</span>
       </div>
       <p className="rb-sec-sub">Cada lavoura agrupa talhões da mesma variedade ou plano de manejo. Crie uma lavoura, escolha o plano de adubação e adicione os talhões.</p>
       {lavouras.length === 0 ? (
         <p className="rb-empty">Nenhuma lavoura cadastrada ainda.</p>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable className={RB_TBL_LAVOURA}>
           <thead><tr><th>Lavoura</th><th>Talhões</th><th>Área</th><th>Variedade dominante</th><th>Produtividade</th><th>Plano de adubação</th></tr></thead>
           <tbody>{lavouras.map((l) => (
             <tr key={l.id}>
@@ -55,11 +57,11 @@ function SecaoLavouras({ lavouras }: { lavouras: Lavoura[] }) {
               <td>{l.numTalhoes}</td>
               <td>{l.areaHa} ha</td>
               <td>{l.variedade ?? "—"}</td>
-              <td>{l.produtividadeMedia ? `${l.produtividadeMedia} sc/ha` : <span style={{ color: "var(--ink-3)" }}>—</span>}</td>
-              <td>{l.planoAdubacaoNome ?? <span style={{ color: "var(--ink-3)" }}>—</span>}</td>
+              <td>{l.produtividadeMedia ? `${l.produtividadeMedia} sc/ha` : <span className="text-ink-3">—</span>}</td>
+              <td>{l.planoAdubacaoNome ?? <span className="text-ink-3">—</span>}</td>
             </tr>
           ))}</tbody>
-        </table></div>
+        </RebTable>
       )}
     </section>
   );
@@ -68,22 +70,22 @@ function SecaoLavouras({ lavouras }: { lavouras: Lavoura[] }) {
 function SecaoPlanos({ planos }: { planos: PlanoAdubacao[] }) {
   return (
     <section>
-      <div className="rb-listhead">
-        <h3>Planos de adubação</h3>
-        <span className="hint">{planos.length} {planos.length === 1 ? "receita" : "receitas"}</span>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="m-0 font-serif text-lg font-medium">Planos de adubação</h3>
+        <span className="text-sm text-ink-3">{planos.length} {planos.length === 1 ? "receita" : "receitas"}</span>
       </div>
       <p className="rb-sec-sub">Receitas de NPK que podem ser atribuídas a uma lavoura inteira. Valores em kg/ha/safra distribuídos nas parcelas indicadas.</p>
       {planos.length === 0 ? (
         <p className="rb-empty">Nenhum plano cadastrado.</p>
       ) : (
-        <div className="rb-dcards">{planos.map((d) => (
-          <div className="rb-dcard" key={d.id} style={{ cursor: "default" }}>
-            <h4>{d.nome}</h4>
-            <ul>
-              {d.descricao && <li>{d.descricao}</li>}
-              {d.nKgHa != null && <li><b>N</b>: {d.nKgHa} kg/ha · {d.parcelas ?? 4} parcelas</li>}
-              {d.p2o5KgHa != null && <li><b>P₂O₅</b>: {d.p2o5KgHa} kg/ha</li>}
-              {d.k2oKgHa != null && <li><b>K₂O</b>: {d.k2oKgHa} kg/ha</li>}
+        <div className="grid grid-cols-2 content-start gap-3 max-[900px]:grid-cols-1">{planos.map((d) => (
+          <div className="cursor-default rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5 text-left font-sans" key={d.id}>
+            <h4 className="mb-[9px] mt-0 flex items-baseline justify-between font-serif text-[17px] font-medium">{d.nome}</h4>
+            <ul className="m-0 list-none p-0">
+              {d.descricao && <li className="border-b border-dashed border-[color:var(--rule-soft)] py-1 text-sm text-ink-2 last:border-0">{d.descricao}</li>}
+              {d.nKgHa != null && <li className="border-b border-dashed border-[color:var(--rule-soft)] py-1 text-sm text-ink-2 last:border-0"><b>N</b>: {d.nKgHa} kg/ha · {d.parcelas ?? 4} parcelas</li>}
+              {d.p2o5KgHa != null && <li className="border-b border-dashed border-[color:var(--rule-soft)] py-1 text-sm text-ink-2 last:border-0"><b>P₂O₅</b>: {d.p2o5KgHa} kg/ha</li>}
+              {d.k2oKgHa != null && <li className="border-b border-dashed border-[color:var(--rule-soft)] py-1 text-sm text-ink-2 last:border-0"><b>K₂O</b>: {d.k2oKgHa} kg/ha</li>}
             </ul>
           </div>
         ))}</div>

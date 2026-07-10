@@ -3,6 +3,9 @@ import { Loader } from "../../components/Loading";
 import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebTable } from "@/components/rb/RebTable";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -127,11 +130,10 @@ export function PontoTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Equipe · Ponto</div>
-      <div className="rb-head"><h1>Ponto</h1></div>
+      <RebHeader eyebrow="Equipe · Ponto" title="Ponto" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
-        <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Funcionário</label>
+      <div className="rb-toolbar mb-[18px] flex flex-wrap items-center gap-2.5">
+        <label className="text-[13px] text-ink-3">Funcionário</label>
         <ToolbarSelect
           value={funcionarioId}
           onChange={setFuncionarioId}
@@ -142,7 +144,7 @@ export function PontoTab() {
             ...funcionarios.map((f) => ({ value: String(f.id), label: `${f.nome}${f.cargo ? ` · ${f.cargo}` : ""}` })),
           ]}
         />
-        <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Mês</label>
+        <label className="text-[13px] text-ink-3">Mês</label>
         <ToolbarSelect
           value={mes}
           onChange={setMes}
@@ -150,8 +152,7 @@ export function PontoTab() {
           options={meses.map((m) => ({ value: m, label: mesBR(m) }))}
         />
 
-        <button
-          className="rb-btn"
+        <RebButton
           disabled={!funcionarioId || !temPadrao || preenchendo || loading}
           title={temPadrao
             ? "Cria os dias úteis do mês com o horário padrão do funcionário (não sobrescreve dias já lançados)"
@@ -159,9 +160,9 @@ export function PontoTab() {
           onClick={preencherComPadrao}
         >
           {preenchendo ? "Preenchendo…" : "Preencher grade com horário padrão"}
-        </button>
+        </RebButton>
 
-        <div className="rb-sub" style={{ margin: 0, marginLeft: "auto", display: "flex", gap: 16 }}>
+        <div className="ml-auto flex gap-4 text-sm text-ink-3">
           <span>Horas: <b>{horasFmt(totais.horas)}</b></span>
           <span>Extra 50%: <b>{num(totais.extra50, 1)} h</b></span>
           <span>Extra 100%: <b>{num(totais.extra100, 1)} h</b></span>
@@ -169,23 +170,23 @@ export function PontoTab() {
       </div>
 
       {!funcionarioId ? (
-        <p className="rb-sub">Selecione um funcionário para lançar a jornada.</p>
+        <p className="text-sm text-ink-3">Selecione um funcionário para lançar a jornada.</p>
       ) : erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar os registros: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro ao carregar os registros: {erro}</p>
       ) : loading ? (
         <Loader />
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead>
             <tr>
               <th>Dia</th>
               <th>Tipo</th>
               <th>Entrada</th>
               <th>Saída</th>
-              <th style={{ textAlign: "right" }}>Interv. (min)</th>
-              <th style={{ textAlign: "right" }}>Horas</th>
-              <th style={{ textAlign: "right" }}>Extra 50%</th>
-              <th style={{ textAlign: "right" }}>Extra 100%</th>
+              <th className="text-right">Interv. (min)</th>
+              <th className="text-right">Horas</th>
+              <th className="text-right">Extra 50%</th>
+              <th className="text-right">Extra 100%</th>
               <th>Obs</th>
               <th></th>
             </tr>
@@ -197,7 +198,7 @@ export function PontoTab() {
               const domingo = tipoDiaPadrao(l.data) === "DOMINGO";
               return (
                 <tr key={l.data} style={domingo ? { background: "var(--wash, transparent)" } : undefined}>
-                  <td className="rb-anm" style={{ whiteSpace: "nowrap" }}>{dia} <small style={{ color: "var(--ink-3)" }}>{dow}</small></td>
+                  <td className="rb-anm whitespace-nowrap">{dia} <small className="text-ink-3">{dow}</small></td>
                   <td>
                     <ToolbarSelect
                       value={l.tipoDia}
@@ -208,19 +209,19 @@ export function PontoTab() {
                   </td>
                   <td><input className="rb-inp" type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 108 }} /></td>
                   <td><input className="rb-inp" type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 108 }} /></td>
-                  <td style={{ textAlign: "right" }}>
+                  <td className="text-right">
                     <input className="rb-inp" type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 78, textAlign: "right" }} />
                   </td>
-                  <td style={{ textAlign: "right" }}>{l.reg ? horasFmt(l.reg.horas) : "—"}</td>
-                  <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
-                  <td style={{ textAlign: "right" }}>{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
+                  <td className="text-right">{l.reg ? horasFmt(l.reg.horas) : "—"}</td>
+                  <td className="text-right">{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
+                  <td className="text-right">{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
                   <td><input className="rb-inp" value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
-                  <td><button className="rb-btn" disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</button></td>
+                  <td><RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton></td>
                 </tr>
               );
             })}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
     </main>
   );

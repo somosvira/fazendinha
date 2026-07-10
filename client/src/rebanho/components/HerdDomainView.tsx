@@ -3,8 +3,12 @@ import type { DomainConfig } from "../domains";
 import type { ResumoAnimal, IaInsight } from "../types";
 import { getAnimal } from "../mock";
 import { IaInsightBand } from "./IaInsight";
+import { RebHeader } from "./RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
 
-export const RB_TOOLBAR: React.CSSProperties = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" };
+// Toolbar do header (filtros/controles) — reaproveitada por AnimalTab etc.
+export const RB_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
 
 export function HerdDomainView({
   config, resumos, insight, onAbrirAnimal, nomes, controles, dicaLinha, topo,
@@ -25,59 +29,75 @@ export function HerdDomainView({
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">{config.eyebrow}</div>
-      <div className="rb-head">
-        <h1>{config.titulo}</h1>
-      </div>
+      <RebHeader eyebrow={config.eyebrow} title={config.titulo} />
 
       {topo}
 
-      {controles && <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>}
+      {controles && <div className={RB_TOOLBAR}>{controles}</div>}
 
       {kpis.length > 0 && (
-        <div className="rb-kstrip" style={{ ["--cols" as any]: kpis.length }}>
+        <RebKpiStrip cols={kpis.length}>
           {kpis.map((k) => (
-            <div className="rb-k" key={k.lab}>
-              <div className="lab">{k.lab}</div>
-              <div className="val">{k.val}{k.sufixo && <small style={{ fontSize: 13 }}>{k.sufixo}</small>}</div>
-              {k.d && <div className={"d" + (k.tom === "up" ? " rb-up" : k.tom === "ok" ? " rb-ok" : "")}>{k.d}</div>}
-            </div>
+            <RebKpi
+              key={k.lab}
+              lab={k.lab}
+              val={k.val}
+              sufixo={k.sufixo}
+              d={k.d}
+              tom={k.tom}
+            />
           ))}
-        </div>
+        </RebKpiStrip>
       )}
 
       {insight && <IaInsightBand insight={insight} />}
 
       {config.worklists.length > 0 && (
         <>
-          <h2 className="rb-sec-title">Tarefas do dia</h2>
-          <div className="rb-tasks">
-            {config.worklists.map((w) => (
-              <button key={w.id} className={"rb-task" + (w.id === wlId ? " on" : "") + (w.alerta ? " alert" : "")} onClick={() => setWlId(w.id)}>
-                <div className="n">{w.selecionar(resumos).length}</div>
-                <div className="l">{w.label}</div>
-              </button>
-            ))}
+          <h2 className="mb-3 font-serif text-xl font-medium">Tarefas do dia</h2>
+          <div className="mb-[22px] flex gap-3.5 max-[900px]:overflow-x-auto max-[900px]:pb-1">
+            {config.worklists.map((w) => {
+              const on = w.id === wlId;
+              return (
+                <button
+                  key={w.id}
+                  className={
+                    "flex-1 cursor-pointer border-t-2 bg-transparent px-1 pb-1.5 pt-3 text-left transition-colors max-[900px]:min-w-[130px] max-[900px]:flex-none " +
+                    (on
+                      ? "border-t-cafe"
+                      : "border-t-[color:var(--rule-soft)] hover:border-t-ink-2")
+                  }
+                  onClick={() => setWlId(w.id)}
+                >
+                  <div className={"font-serif text-[30px] font-medium leading-none " + (w.alerta ? "text-prejuizo" : "text-[color:var(--ink)]")}>
+                    {w.selecionar(resumos).length}
+                  </div>
+                  <div className="mt-1.5 text-sm text-ink-3">{w.label}</div>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="rb-listhead">
-            <h3>{wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}</h3>
-            <span className="hint">{dicaLinha ?? "clique numa linha pra abrir a ficha"}</span>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h3 className="m-0 font-serif text-lg font-medium">
+              {wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}
+            </h3>
+            <span className="text-sm text-ink-3">{dicaLinha ?? "clique numa linha pra abrir a ficha"}</span>
           </div>
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
               {linhas.map((r) => {
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
                   <tr className="rb-row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
-                    <td className="rb-anm">{a?.nome} <small>#{a?.numero}</small></td>
+                    <td className="font-semibold text-[color:var(--ink)] [&_small]:font-medium [&_small]:text-ink-2">{a?.nome} <small>#{a?.numero}</small></td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>
                 );
               })}
             </tbody>
-          </table></div>
+          </RebTable>
         </>
       )}
     </main>

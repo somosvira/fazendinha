@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useFolha, money, num, horasFmt, mesesRecentes, mesBR } from "../api";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 
 /* Apuração da folha do mês para todos: cruza horas trabalhadas × salário e
  * mostra o valor da hora extra (50%/100%) e o total a pagar. Seletor de mês →
@@ -12,11 +15,10 @@ export function FolhaTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Equipe · Folha</div>
-      <div className="rb-head"><h1>Folha do mês</h1></div>
+      <RebHeader eyebrow="Equipe · Folha" title="Folha do mês" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
-        <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Mês</label>
+      <div className="rb-toolbar mb-[18px] flex flex-wrap items-center gap-2.5">
+        <label className="text-[13px] text-ink-3">Mês</label>
         <ToolbarSelect
           value={mes}
           onChange={setMes}
@@ -26,49 +28,38 @@ export function FolhaTab() {
       </div>
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível apurar a folha: {erro}</p>
+        <p className="text-sm text-prejuizo">Não foi possível apurar a folha: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Apurando…</p>
+        <p className="text-sm text-ink-3">Apurando…</p>
       ) : !data || data.linhas.length === 0 ? (
-        <p className="rb-sub">Nenhum funcionário com apuração em {mesBR(mes)}.</p>
+        <p className="text-sm text-ink-3">Nenhum funcionário com apuração em {mesBR(mes)}.</p>
       ) : (
         <>
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 4, marginBottom: 22 }}>
-            <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-              <div className="lab">Salários</div>
-              <div className="val" style={{ fontSize: 20 }}>{money(data.totais.salarios)}</div>
-              <div className="d">base do mês</div>
+          <RebKpiStrip cols={4} className="mb-[22px]">
+            {/* célula custom: borda esquerda leite (sobrepõe o first:border-l-0 do primitivo) */}
+            <div className="relative border-l-[3px] border-l-[color:var(--leite)] bg-transparent px-[22px] pt-1.5 pb-1">
+              <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Salários</div>
+              <div className="mt-1.5 font-serif text-[20px] font-medium leading-none text-[color:var(--ink)]">{money(data.totais.salarios)}</div>
+              <div className="mt-2 text-[15px] font-medium text-ink-2">base do mês</div>
             </div>
-            <div className="rb-k">
-              <div className="lab">Valor de hora extra</div>
-              <div className="val" style={{ fontSize: 20, color: "var(--cafe)" }}>{money(data.totais.valorExtra)}</div>
-              <div className="d">50% + 100%</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">Total a pagar</div>
-              <div className="val" style={{ fontSize: 20 }}>{money(data.totais.totalPagar)}</div>
-              <div className="d">salários + extra</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">Total de horas</div>
-              <div className="val">{num(data.totais.totalHoras, 1)}<u>h</u></div>
-              <div className="d">trabalhadas no mês</div>
-            </div>
-          </div>
+            <RebKpi lab="Valor de hora extra" val={money(data.totais.valorExtra)} valClassName="text-[20px] text-cafe" d="50% + 100%" />
+            <RebKpi lab="Total a pagar" val={money(data.totais.totalPagar)} valClassName="text-[20px]" d="salários + extra" />
+            <RebKpi lab="Total de horas" val={<>{num(data.totais.totalHoras, 1)}<u>h</u></>} d="trabalhadas no mês" />
+          </RebKpiStrip>
 
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead>
               <tr>
                 <th>Funcionário</th>
                 <th>Cargo</th>
-                <th style={{ textAlign: "right" }}>Salário</th>
-                <th style={{ textAlign: "right" }}>Valor/hora</th>
-                <th style={{ textAlign: "right" }}>Dias</th>
-                <th style={{ textAlign: "right" }}>Horas</th>
-                <th style={{ textAlign: "right", borderLeft: "1px solid var(--rule)" }}>Extra 50%</th>
-                <th style={{ textAlign: "right" }}>Extra 100%</th>
-                <th style={{ textAlign: "right" }}>Valor extra</th>
-                <th style={{ textAlign: "right", borderLeft: "1px solid var(--rule)" }}>Total a pagar</th>
+                <th className="text-right">Salário</th>
+                <th className="text-right">Valor/hora</th>
+                <th className="text-right">Dias</th>
+                <th className="text-right">Horas</th>
+                <th className="text-right" style={{ borderLeft: "1px solid var(--rule)" }}>Extra 50%</th>
+                <th className="text-right">Extra 100%</th>
+                <th className="text-right">Valor extra</th>
+                <th className="text-right" style={{ borderLeft: "1px solid var(--rule)" }}>Total a pagar</th>
               </tr>
             </thead>
             <tbody>
@@ -76,29 +67,29 @@ export function FolhaTab() {
                 <tr key={l.funcionarioId}>
                   <td className="rb-anm">{l.nome}</td>
                   <td>{l.cargo ?? "—"}</td>
-                  <td style={{ textAlign: "right" }}>{money(l.salarioMensal)}</td>
-                  <td style={{ textAlign: "right" }}>{money(l.valorHora)}</td>
-                  <td style={{ textAlign: "right" }}>{l.diasTrabalhados}</td>
-                  <td style={{ textAlign: "right" }}>{horasFmt(l.totalHoras)}</td>
-                  <td style={{ textAlign: "right", borderLeft: "1px solid var(--rule)" }}>{l.extra50 > 0 ? `${num(l.extra50, 1)} h` : "—"}</td>
-                  <td style={{ textAlign: "right" }}>{l.extra100 > 0 ? `${num(l.extra100, 1)} h` : "—"}</td>
-                  <td style={{ textAlign: "right" }}>{l.valorExtra > 0 ? money(l.valorExtra) : "—"}</td>
-                  <td style={{ textAlign: "right", fontWeight: 600, borderLeft: "1px solid var(--rule)" }}>{money(l.totalPagar)}</td>
+                  <td className="text-right">{money(l.salarioMensal)}</td>
+                  <td className="text-right">{money(l.valorHora)}</td>
+                  <td className="text-right">{l.diasTrabalhados}</td>
+                  <td className="text-right">{horasFmt(l.totalHoras)}</td>
+                  <td className="text-right" style={{ borderLeft: "1px solid var(--rule)" }}>{l.extra50 > 0 ? `${num(l.extra50, 1)} h` : "—"}</td>
+                  <td className="text-right">{l.extra100 > 0 ? `${num(l.extra100, 1)} h` : "—"}</td>
+                  <td className="text-right">{l.valorExtra > 0 ? money(l.valorExtra) : "—"}</td>
+                  <td className="text-right font-semibold" style={{ borderLeft: "1px solid var(--rule)" }}>{money(l.totalPagar)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ fontWeight: 600 }}>
+              <tr className="font-semibold">
                 <td colSpan={2}>Total da fazenda</td>
-                <td style={{ textAlign: "right" }}>{money(data.totais.salarios)}</td>
+                <td className="text-right">{money(data.totais.salarios)}</td>
                 <td colSpan={2}></td>
-                <td style={{ textAlign: "right" }}>{horasFmt(data.totais.totalHoras)}</td>
+                <td className="text-right">{horasFmt(data.totais.totalHoras)}</td>
                 <td colSpan={2} style={{ borderLeft: "1px solid var(--rule)" }}></td>
-                <td style={{ textAlign: "right" }}>{money(data.totais.valorExtra)}</td>
-                <td style={{ textAlign: "right", borderLeft: "1px solid var(--rule)" }}>{money(data.totais.totalPagar)}</td>
+                <td className="text-right">{money(data.totais.valorExtra)}</td>
+                <td className="text-right" style={{ borderLeft: "1px solid var(--rule)" }}>{money(data.totais.totalPagar)}</td>
               </tr>
             </tfoot>
-          </table></div>
+          </RebTable>
         </>
       )}
     </main>

@@ -29,7 +29,7 @@ import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
-import { getToken, clearToken } from "./lib/auth";
+import { getToken, setToken, clearToken } from "./lib/auth";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
@@ -41,6 +41,12 @@ import { TerranoIntro } from "./components/TerranoIntro";
 // ⚠️ TROCAR PARA "session" ANTES DO PUSH.
 const INTRO_MODE: "always" | "session" | "once" = "session";
 const INTRO_SEEN_KEY = "terrano:intro:seen";
+
+// Gate de acesso. `false` na fase interna (entra direto, sem login). Trocar por
+// `true` religa a tela de senha — e com ela a música da intro ancorada no clique
+// de "Entrar" (ver comentário do token em App). O middleware do server só fecha
+// de fato se SHARED_ACCESS_TOKEN estiver setado; em dev, qualquer senha entra.
+const GATE_ATIVO = false;
 
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
@@ -129,30 +135,43 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Auth mínima está ENGATILHADA mas NÃO trava o app:
-  //   - lib/auth.ts e Login.tsx continuam no repo prontos pra ser religados
-  //     quando o piloto for pro dono (basta trocar `false` abaixo por
-  //     `!getToken()` e o gate volta a valer)
-  //   - o middleware do server só bloqueia se SHARED_ACCESS_TOKEN estiver setado
-  //     — em dev/homolog, sem env, a API fica aberta
-  //   - o botão Sair no Header só aparece se houver token gravado, então quem
-  //     testar com token continua conseguindo sair.
-  // Motivo do downgrade: durante a fase interna atual não deve travar a entrada
-  // — o dono ainda não está usando; sempre entra como Marco Antônio.
-  const tokenSalvo = getToken();
-  const onSair = tokenSalvo ? () => { clearToken(); window.location.reload(); } : undefined;
+  // Auth mínima (senha compartilhada). Durante a fase interna o gate fica
+  // DESLIGADO (GATE_ATIVO=false) — entra direto como Marco, sem tela de senha.
+  // Ligar GATE_ATIVO religa o Login e, com ele, a música da abertura ancorada no
+  // clique de "Entrar": o login/logout transicionam EM ESTADO, sem
+  // window.location.reload() — um reload mataria a "sticky activation" do
+  // documento e o navegador voltaria a bloquear o áudio da intro.
+  // ⚠️ Com o gate desligado não há clique de login: a intro roda o visual e a
+  // música entra no 1º gesto do usuário (fallback em TerranoIntro).
+  const [token, setTokenState] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : getToken(),
+  );
 
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
   );
-  // Abertura Terrano: só quando o app inicia já no dashboard (ver INTRO_MODE).
+  // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). Com
+  // o gate ligado ela também é (re)disparada no clique de "Entrar" — aí a música
+  // toca junto com a logo, porque o clique libera o áudio.
   const [showIntro, setShowIntro] = useState<boolean>(() =>
     typeof window === "undefined"
       ? false
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
+  const entrar = (senha: string) => {
+    setToken(senha); // persiste pro comAuth() das próximas requests
+    setTokenState(senha); // transiciona pro app SEM reload (mantém o gesto vivo p/ o áudio)
+    setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
+  };
+  const onSair = token
+    ? () => {
+        clearToken();
+        setTokenState(null);
+        setShowIntro(false);
+      }
+    : undefined;
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
@@ -307,6 +326,14 @@ export function App() {
         {tab === "cadastros" && <CadastrosView />}
       </>
     );
+
+  // Gate de acesso (ligado por GATE_ATIVO): sem token, só a tela de login.
+  // `entrar` recebe o clique (gesto) e transiciona em estado — a intro monta no
+  // MESMO documento, então o play() da música é liberado. (Todos os hooks acima
+  // já rodaram — early return aqui não viola as Rules of Hooks.)
+  if (GATE_ATIVO && !token) {
+    return <Login onEntrar={entrar} />;
+  }
 
   return (
     <>

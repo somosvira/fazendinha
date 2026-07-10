@@ -8,12 +8,15 @@
  * proposital ao visual reto do app), botão gray-out enquanto valida. */
 
 import { FormEvent, useState } from "react";
-import { setToken } from "../lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function Login() {
+// `onEntrar` recebe a senha validada. Quem chama (App) persiste o token e
+// transiciona pro app EM ESTADO — sem window.location.reload(). O reload
+// mataria a "sticky activation" do documento e a música da abertura Terrano,
+// que é ancorada justamente neste clique, voltaria a ser bloqueada.
+export function Login({ onEntrar }: { onEntrar: (senha: string) => void }) {
   const [senha, setSenha] = useState("");
   const [validando, setValidando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -39,10 +42,10 @@ export function Login() {
         setValidando(false);
         return;
       }
-      setToken(senha);
-      // Reload traz a app renderizando com o token gravado — evita gerenciar
-      // um bus global de "acabei de logar" atravessando módulos.
-      window.location.reload();
+      // Sem reload: entrega a senha ao App, que grava o token e troca de tela
+      // em estado. Assim o gesto deste clique continua valendo no mesmo
+      // documento e a música da intro toca junto com a logo.
+      onEntrar(senha);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha de rede.");
       setValidando(false);

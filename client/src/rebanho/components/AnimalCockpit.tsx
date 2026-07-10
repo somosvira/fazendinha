@@ -6,6 +6,8 @@ import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { EventoForm } from "./EventoForm";
 import { ControleForm } from "./ControleForm";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import {
   ScoreBadge, RentabilidadeKpi, Tendencias, Insights, Percentis,
   ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
@@ -40,6 +42,16 @@ function ccsClassificacao(ccs: number | null | undefined): { texto: string; tom:
   if (ccs < 400) return { texto: "Atenção", tom: "atencao" };
   return { texto: "Alarme — investigar", tom: "prejuizo" };
 }
+
+// Migalha (voltar) — reproduz .rb-crumb.
+const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
+// .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)] [&_u]:ml-1 [&_u]:text-[15px] [&_u]:font-medium [&_u]:not-italic [&_u]:no-underline [&_u]:text-ink-2";
+const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
+// .kpi-cock-imp — linha de impacto do KPI (cockpit.css).
+const KPI_IMP = "mt-1 text-sm font-semibold tabular-nums text-[color:var(--ink)]";
 
 export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onBaixa, flashEventoId, flashKey }: {
   animalId: string;
@@ -79,9 +91,9 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
     return () => window.clearTimeout(t);
   }, [flashLocalId, flashTick]);
 
-  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><Loader /></main>;
-  if (erro) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p className="rb-sub" style={{ color: "var(--prejuizo)" }}>Erro: {erro}</p></main>;
-  if (!a) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
+  if (loading) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><Loader /></main>;
+  if (erro) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></main>;
+  if (!a) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
 
   const r = a.resumo;
   const meses = a.dataNascimento ? idadeMeses(a.dataNascimento, HOJE) : null;
@@ -89,25 +101,25 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 
   return (
     <main className="rb-main">
-      <button className="rb-crumb" onClick={onVoltar}>← <b>Rebanho</b> &nbsp;/&nbsp; Animal #{a.numero}</button>
+      <button className={CRUMB} onClick={onVoltar}>← <b>Rebanho</b> &nbsp;/&nbsp; Animal #{a.numero}</button>
 
-      <div className="rb-head">
+      <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>
-          <h1>
+          <h1 className="mt-1 font-serif text-[38px] font-medium leading-[1.05] [&_small]:text-2xl [&_small]:font-medium [&_small]:text-ink-2">
             {a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}
             {insights?.score && <ScoreBadge score={insights.score} />}
           </h1>
-          <div className="rb-sub">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
+          <div className="mt-[7px] text-sm text-ink-3">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
         </div>
-        <div className="rb-chips">
-          {r?.statusReprodutivo === "PRENHE" && <span className="rb-chip preg">Prenhe · {r.diasGestacao} dias</span>}
-          {r?.ordemLactacao && <span className="rb-chip lact">{r.ordemLactacao}ª lactação · DEL {r.del}</span>}
+        <div className="flex flex-wrap gap-2">
+          {r?.statusReprodutivo === "PRENHE" && <span className="rounded-[13px] border border-[#D8C3A8] bg-[color:var(--cafe-soft)] px-[11px] py-[5px] text-sm font-semibold text-cafe">Prenhe · {r.diasGestacao} dias</span>}
+          {r?.ordemLactacao && <span className="rounded-[13px] border border-[#E0CF9E] bg-[color:var(--leite-soft)] px-[11px] py-[5px] text-sm font-semibold text-[#6e5a26]">{r.ordemLactacao}ª lactação · DEL {r.del}</span>}
           {a.ativo && (
-            <span className="rb-head-actions">
-              <button className="rb-btn pri" onClick={() => setRegistrando(true)}>+ Registrar evento</button>
-              {!tanque && <button className="rb-btn" onClick={() => setRegistrandoControle(true)}>+ Registrar controle</button>}
-              <button className="rb-btn" onClick={() => onEditar(a)}>Editar</button>
-              <button className="rb-btn" onClick={() => onBaixa(a)}>Dar baixa</button>
+            <span className="flex gap-2">
+              <RebButton variant="pri" onClick={() => setRegistrando(true)}>+ Registrar evento</RebButton>
+              {!tanque && <RebButton onClick={() => setRegistrandoControle(true)}>+ Registrar controle</RebButton>}
+              <RebButton onClick={() => onEditar(a)}>Editar</RebButton>
+              <RebButton onClick={() => onBaixa(a)}>Dar baixa</RebButton>
             </span>
           )}
         </div>
@@ -116,16 +128,16 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
       {/* I — KPI strip: rentabilidade primeiro, depois operacionais.
               Cada KPI responde 3 perguntas (o quê + significado + ação/impacto) */}
       {(insights || r) && (
-        <div className="rb-kstrip" style={{ ["--cols" as any]: insights ? 5 : 6 }}>
+        <RebKpiStrip cols={insights ? 5 : 6}>
           {insights && <RentabilidadeKpi f={insights.financeiro} />}
           {r && (() => {
             const diasSec = diasAte(r.previsaoSecagem);
             return (
-              <div className="rb-k">
-                <div className="lab">DEL</div>
-                <div className="val">{r.del ?? "—"}<u>d</u></div>
-                <div className="d">{delInterpretacao(r.del)}</div>
-                {diasSec != null && diasSec > 0 && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>Faltam {diasSec} dias para secagem</div>}
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>DEL</div>
+                <div className={RB_K_VAL}>{r.del ?? "—"}<u>d</u></div>
+                <div className={RB_K_D}>{delInterpretacao(r.del)}</div>
+                {diasSec != null && diasSec > 0 && <div className={KPI_IMP}>Faltam {diasSec} dias para secagem</div>}
               </div>
             );
           })()}
@@ -139,72 +151,72 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
               : r.producaoTendencia === "descendo" ? "Caindo — investigar"
               : "Estável nas últimas 4 semanas";
             return (
-              <div className="rb-k">
-                <div className="lab">Produção</div>
-                <div className="val">{litros ?? "—"}<u>L/d</u></div>
-                <div className={"d" + (r.producaoTendencia === "subindo" ? " rb-ok" : r.producaoTendencia === "descendo" ? " rb-up" : "")}>{tendTexto}</div>
-                {receitaDia != null && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>Receita R$ {receitaDia.toFixed(2).replace(".", ",")}/dia</div>}
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Produção</div>
+                <div className={RB_K_VAL}>{litros ?? "—"}<u>L/d</u></div>
+                <div className={RB_K_D + (r.producaoTendencia === "subindo" ? " text-lucro" : r.producaoTendencia === "descendo" ? " text-prejuizo" : "")}>{tendTexto}</div>
+                {receitaDia != null && <div className={KPI_IMP}>Receita R$ {receitaDia.toFixed(2).replace(".", ",")}/dia</div>}
               </div>
             );
           })()}
           {r && (() => {
             const cls = ccsClassificacao(r.ccs);
-            const tomCls = cls.tom === "lucro" ? " rb-ok" : (cls.tom === "prejuizo" || cls.tom === "atencao") ? " rb-up" : "";
+            const tomCls = cls.tom === "lucro" ? " text-lucro" : (cls.tom === "prejuizo" || cls.tom === "atencao") ? " text-prejuizo" : "";
             return (
-              <div className="rb-k">
-                <div className="lab">CCS</div>
-                <div className="val">{r.ccs ?? "—"}<u>mil</u></div>
-                <div className={"d" + tomCls}>{cls.texto}</div>
-                {r.ccsTendencia === "subindo" && <div className="kpi-cock-imp is-neg" style={{ marginTop: 4 }}>Tendência de alta — risco de mastite</div>}
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>CCS</div>
+                <div className={RB_K_VAL}>{r.ccs ?? "—"}<u>mil</u></div>
+                <div className={RB_K_D + tomCls}>{cls.texto}</div>
+                {r.ccsTendencia === "subindo" && <div className={KPI_IMP + " text-prejuizo"}>Tendência de alta — risco de mastite</div>}
               </div>
             );
           })()}
           {r && (() => {
             const diasDG = diasAte(r.ultimoDgData);
             return (
-              <div className="rb-k">
-                <div className="lab">Reprodução</div>
-                <div className="val" style={{ fontSize: 22, paddingTop: 4 }}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div>
-                <div className="d">{r.ultimoDgData ? `DG ${new Date(r.ultimoDgData).toLocaleDateString("pt-BR")}` : "Sem DG registrado"}</div>
-                {diasDG != null && diasDG < 0 && <div className="kpi-cock-imp" style={{ marginTop: 4 }}>{Math.abs(diasDG)} dias atrás</div>}
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Reprodução</div>
+                <div className={RB_K_VAL + " !text-[22px] pt-1"}>{r.statusReprodutivo === "PRENHE" ? "Prenhe" : r.statusReprodutivo}</div>
+                <div className={RB_K_D}>{r.ultimoDgData ? `DG ${new Date(r.ultimoDgData).toLocaleDateString("pt-BR")}` : "Sem DG registrado"}</div>
+                {diasDG != null && diasDG < 0 && <div className={KPI_IMP}>{Math.abs(diasDG)} dias atrás</div>}
               </div>
             );
           })()}
           {r && (
-            <div className="rb-k">
-              <div className="lab">Prev. secagem</div>
-              <div className="val" style={{ fontSize: 22, paddingTop: 4 }}>{fmtPrevSecagem(r.previsaoSecagem)}</div>
-              <div className="d">Programada pelo sistema</div>
+            <div className={RB_K}>
+              <div className={RB_K_LAB}>Prev. secagem</div>
+              <div className={RB_K_VAL + " !text-[22px] pt-1"}>{fmtPrevSecagem(r.previsaoSecagem)}</div>
+              <div className={RB_K_D}>Programada pelo sistema</div>
             </div>
           )}
-        </div>
+        </RebKpiStrip>
       )}
 
       {/* II — Insights horizontais quando houver alertas críticos */}
       {insights && insights.insights.length > 0 && <Insights insights={insights.insights} />}
 
       {/* III — Grid 2 colunas: timeline + tendências à esquerda; cards de decisão à direita */}
-      <div className="rb-grid">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_clamp(280px,24vw,360px)] gap-[clamp(20px,2.4vw,36px)] max-[1100px]:grid-cols-1">
         <div>
           <div key={flashTick} className={"rb-tl-card" + (flashLocalId ? " rb-tl-card-flash" : "")}>
-            <h3 className="rb-sec-title">Linha do tempo</h3>
-            <p className="rb-sec-sub">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
+            <h3 className="mb-3 font-serif text-xl font-medium">Linha do tempo</h3>
+            <p className="mb-4 mt-0 text-sm text-ink-3">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
             {eventos.length === 0
-              ? <div className="rb-empty">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
+              ? <div className="rounded-[10px] border border-dashed border-[color:var(--rule)] bg-[color:var(--bg-card-2)] p-[22px] text-sm text-ink-3">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
               : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} flashEventoId={flashLocalId} />}
           </div>
 
           {insights && <Tendencias tendencias={insights.tendencias} />}
         </div>
         <div>
-          <div className="rb-box">
-            <div className="rb-box-section">
-              <h4>Estado atual</h4>
-              <div className="rb-kv"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
-              <div className="rb-kv"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
-              <div className="rb-kv"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
-              <div className="rb-kv"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
-              {tanque && <p className="rb-sec-sub" style={{ margin: "8px 0 0" }}>Produção estimada por rateio do lote.</p>}
+          <div className="mb-4 rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-[15px]">
+            <div>
+              <h4 className="mb-[11px] mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Estado atual</h4>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
+              <div className="flex justify-between py-[5px] text-sm [&_b]:font-semibold"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
+              {tanque && <p className="mb-0 mt-2 text-sm text-ink-3">Produção estimada por rateio do lote.</p>}
             </div>
           </div>
           {insights && <Percentis p={insights.percentis} />}

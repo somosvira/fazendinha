@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { type Animal, type CategoriaAnimal, type EspecieAnimal, ESPECIE_POR_CATEGORIA } from "../types";
 import { criarAnimal, editarAnimal, darBaixa, listarRacas, listarGrupos, type RacaDTO, type GrupoDTO } from "../api";
 import { FRACOES, complementoLabel, montarGrauSangue, parseGrauSangue } from "../lib/sangue";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 type Modo = "novo" | "editar" | "baixa";
 
@@ -93,10 +95,17 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
 
   const titulo = modo === "novo" ? "Novo animal" : modo === "editar" ? `Editar ${animal?.nome ?? animal?.numero}` : `Dar baixa — ${animal?.nome ?? animal?.numero}`;
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>{titulo}</h3>
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <>
         {modo === "baixa" ? (
           <label className="rb-fld">Motivo da baixa<input value={f.motivo} onChange={(e) => set("motivo", e.target.value)} placeholder="venda, morte, descarte…" /></label>
         ) : (
@@ -148,12 +157,8 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
             <label className="rb-fld">Brinco eletrônico<input value={f.brincoEletronico} onChange={(e) => set("brincoEletronico", e.target.value)} /></label>
           </>
         )}
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }

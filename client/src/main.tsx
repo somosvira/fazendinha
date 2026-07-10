@@ -13,7 +13,6 @@ import "./styles/simulador.css";
 import "./styles/vigilancia.css";
 import "./styles/relatorio.css";
 import "./rebanho/styles/rebanho.css";
-import "./styles/caixinha.css";
 import "./styles/terrano-intro.css";
 import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 
