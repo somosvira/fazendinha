@@ -154,9 +154,9 @@ function Veredicto({
       </h2>
       <div
         className={cn(
-          "grid grid-cols-[minmax(0,auto)_minmax(160px,1fr)] items-center gap-6",
+          "grid grid-cols-[minmax(0,auto)_minmax(220px,1.2fr)] items-center gap-6",
           "max-[720px]:grid-cols-1 max-[720px]:gap-3",
-          full && "min-[900px]:grid-cols-[minmax(0,auto)_minmax(200px,1fr)]",
+          full && "min-[900px]:grid-cols-[minmax(0,auto)_minmax(300px,1.2fr)]",
         )}
       >
         <div
@@ -190,12 +190,12 @@ function MiniBarsAssinadas({
   data: { x: string; y: number }[];
   destaqueIdx?: number;
 }) {
-  const W = 320;
-  const H = 100;
+  const W = 380;
+  const H = 132;
   const padL = 4;
   const padR = 4;
   const padT = 6;
-  const padB = 18;
+  const padB = 20;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const values = data.map((d) => d.y);
@@ -203,10 +203,10 @@ function MiniBarsAssinadas({
   const zeroY = padT + innerH / 2;
   const scale = (innerH / 2) / maxAbs;
   const xBand = innerW / data.length;
-  const barW = xBand * 0.62;
+  const barW = xBand * 0.68;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 340 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 480 }}>
       <line x1={padL} x2={W - padR} y1={zeroY} y2={zeroY} className="chart-axis" />
       {data.map((d, i) => {
         const x = padL + i * xBand + (xBand - barW) / 2;
@@ -255,21 +255,21 @@ function MiniBarsPositivas({
   cor?: string;
   destaqueIdx?: number;
 }) {
-  const W = 320;
-  const H = 100;
+  const W = 380;
+  const H = 132;
   const padL = 4;
   const padR = 4;
   const padT = 10;
-  const padB = 18;
+  const padB = 20;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const max = Math.max(...data.map((d) => d.y), 1);
   const scale = innerH / max;
   const xBand = innerW / data.length;
-  const barW = xBand * 0.62;
+  const barW = xBand * 0.68;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 340 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 480 }}>
       <line x1={padL} x2={W - padR} y1={padT + innerH} y2={padT + innerH} className="chart-axis" />
       {data.map((d, i) => {
         const x = padL + i * xBand + (xBand - barW) / 2;
@@ -430,16 +430,20 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
   };
 
   const meses12m = R.MESES_23M.slice(11, 23); // últimos 12 meses (mai/25 → abr/26 + mai/26*)
+  // Rótulo do eixo: só a inicial do mês (M · J · J · A …). A barra do mês em
+  // foco (destaqueIdx) é quem o identifica de fato — o texto é só orientação,
+  // então a ambiguidade (M=Mar/Mai, J=Jan/Jun/Jul) é aceitável na sparkline.
+  const inicialMes = (i: number) => meses12m[i].slice(0, 1).toUpperCase();
   const fluxo12m = R.totalGeral.slice(11, 23).map((v: number, i: number) => ({
-    x: meses12m[i].slice(0, 3),
+    x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
   const saldoLeite12m = R.saldoOpLeite.slice(11, 23).map((v: number, i: number) => ({
-    x: meses12m[i].slice(0, 3),
+    x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
   const receitaCafe12m = R.receitaCafe.slice(11, 23).map((v: number, i: number) => ({
-    x: meses12m[i].slice(0, 3),
+    x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
 
