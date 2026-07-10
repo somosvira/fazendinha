@@ -41,6 +41,7 @@ function toMovimentoCaixinhaDTO(m: any) {
     caixinhaId: m.caixinhaId,
     data: iso(m.data),
     tipo: m.tipo as "ENTRADA" | "SAIDA",
+    categoria: m.categoria ?? null, // só em SAIDA; ENTRADA vem null
     valor: Number(m.valor),
     descricao: m.descricao,
     observacao: m.observacao ?? null,
@@ -104,11 +105,14 @@ export async function criarMovimentoCaixinha(caixinhaId: number, input: CriarMov
   const caixinha = await assertExiste(caixinhaId);
   const data = new Date(input.data);
   await assertMesAberto(data); // mês fechado → FechamentoMensalError (rota devolve 409)
+  // Categoria só vale para SAIDA. ENTRADA (aporte) fica null; SAIDA sem categoria → OUTROS.
+  const categoria = input.tipo === "SAIDA" ? input.categoria ?? "OUTROS" : null;
   const row = await prisma.movimentoCaixinha.create({
     data: {
       caixinhaId,
       data,
       tipo: input.tipo,
+      categoria,
       valor: new Prisma.Decimal(input.valor.toFixed(2)),
       descricao: input.descricao,
       observacao: input.observacao ?? undefined,
