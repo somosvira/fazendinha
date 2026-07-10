@@ -3,6 +3,8 @@ import { Loader } from "../../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -274,52 +276,55 @@ function ConfirmarExclusao({ movimento, onCancelar, onConfirmado }: { movimento:
   const dataFmt = new Date(movimento.data).toLocaleDateString("pt-BR");
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={excluindo ? undefined : onCancelar} />
-      <aside className="rb-drawer rb-confirm" role="alertdialog" aria-labelledby="rb-confirm-title">
-        <div className="rb-confirm-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </div>
-        <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
-        <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
-          Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
-        </p>
-
-        <div className="rb-confirm-recibo">
-          <div className="rb-kv"><span>Data</span><b>{dataFmt}</b></div>
-          <div className="rb-kv"><span>Produto</span><b>{movimento.produto}</b></div>
-          <div className="rb-kv"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></div>
-          <div className="rb-kv"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></div>
-          <div className="rb-kv"><span>Valor</span><b>{money(movimento.valorTotal)}</b></div>
-        </div>
-
-        <div className="rb-confirm-warn">
-          <span>⚠</span>
-          <div>
-            <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
-            Movimentos em mês fechado não podem ser excluídos.
-          </div>
-        </div>
-
-        <label className="rb-confirm-ack">
-          <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
-          Entendo que esta exclusão é permanente.
-        </label>
-
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
-
-        <div className="rb-drawer-actions" style={{ justifyContent: "space-between", marginTop: 18 }}>
-          <button className="rb-btn" onClick={onCancelar} disabled={excluindo}>Cancelar</button>
-          <button className="rb-btn rb-btn-danger" onClick={confirmar} disabled={!aceito || excluindo}>
+    <RebModal
+      title=""
+      onClose={excluindo ? () => {} : onCancelar}
+      showClose={false}
+      className="max-w-[460px]"
+      actions={
+        <div className="flex w-full justify-between">
+          <RebButton onClick={onCancelar} disabled={excluindo}>Cancelar</RebButton>
+          <RebButton variant="danger" onClick={confirmar} disabled={!aceito || excluindo}>
             {excluindo ? "Excluindo…" : "Excluir definitivamente"}
-          </button>
+          </RebButton>
         </div>
-      </aside>
-    </>
+      }
+    >
+      <div className="rb-confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
+      <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
+        Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
+      </p>
+
+      <div className="rb-confirm-recibo">
+        <div className="rb-kv"><span>Data</span><b>{dataFmt}</b></div>
+        <div className="rb-kv"><span>Produto</span><b>{movimento.produto}</b></div>
+        <div className="rb-kv"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></div>
+        <div className="rb-kv"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></div>
+        <div className="rb-kv"><span>Valor</span><b>{money(movimento.valorTotal)}</b></div>
+      </div>
+
+      <div className="rb-confirm-warn">
+        <span>⚠</span>
+        <div>
+          <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
+          Movimentos em mês fechado não podem ser excluídos.
+        </div>
+      </div>
+
+      <label className="rb-confirm-ack">
+        <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
+        Entendo que esta exclusão é permanente.
+      </label>
+
+      {erro && <p className="text-prejuizo" style={{ fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
+    </RebModal>
   );
 }
 

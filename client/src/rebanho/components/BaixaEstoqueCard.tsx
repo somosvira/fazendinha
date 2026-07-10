@@ -7,6 +7,8 @@ import {
   type SaldoDTO,
 } from "../api";
 import type { Animal } from "../types";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 interface Props {
   animalId: string;
@@ -127,11 +129,21 @@ export function BaixaEstoqueCard({
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>Atividade registrada · {rotuloTipo(tipo)}</h3>
-
+    <RebModal
+      title={`Atividade registrada · ${rotuloTipo(tipo)}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>
+            Fechar sem baixar
+          </RebButton>
+          <RebButton variant="pri" onClick={darBaixa} disabled={!podeDarBaixa}>
+            {salvando ? "Baixando…" : "Dar baixa no estoque"}
+          </RebButton>
+        </>
+      }
+    >
+      <>
         <dl className="rb-baixa-resumo">
           <div><dt>Data</dt><dd>{fmtDataBR(data)}</dd></div>
           {animal && <div><dt>Animal</dt><dd>{animal.nome ? `${animal.nome} (${animal.numero})` : animal.numero}</dd></div>}
@@ -194,18 +206,9 @@ export function BaixaEstoqueCard({
           <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
         </label>
 
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
         {sucesso && <p style={{ color: "var(--lucro)", fontSize: 13 }}>Baixa registrada.</p>}
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>
-            Fechar sem baixar
-          </button>
-          <button className="rb-btn pri" onClick={darBaixa} disabled={!podeDarBaixa}>
-            {salvando ? "Baixando…" : "Dar baixa no estoque"}
-          </button>
-        </div>
-      </aside>
-    </>
+      </>
+    </RebModal>
   );
 }
