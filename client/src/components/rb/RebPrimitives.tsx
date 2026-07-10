@@ -155,6 +155,40 @@ export const REB_SANGUE_FRAC_COMP = "font-sans text-sm italic text-ink-3";
 export const REB_INP =
   "font-sans text-sm text-foreground bg-[color:var(--bg)] border border-border rounded-lg px-2.5 py-1.5 leading-tight transition-colors hover:border-ink-2 focus:outline-none focus:border-[color:var(--cafe)] placeholder:text-ink-3";
 
+/* Chrome de cabeçalho/seção reutilizado nas telas (não são wrappers próprios —
+ * strings de classe aplicadas inline no PR-3). Reproduzem rebanho.css 1:1. */
+
+// .rb-sub (subtítulo do cabeçalho, ink-3)
+export const REB_SUB = "mt-[7px] text-sm text-ink-3";
+// .rb-sec-sub (subtítulo de seção, ink-3)
+export const REB_SEC_SUB = "mb-4 text-sm text-ink-3";
+// .rb-crumb (breadcrumb-botão) + <b> ink-2
+export const REB_CRUMB =
+  "mb-4 cursor-pointer border-0 bg-none p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
+// .rb-chips (linha de chips)
+export const REB_CHIPS = "flex flex-wrap gap-2";
+// .rb-chip (chip base) — tons preg/lact via classe extra (ver REB_CHIP_PREG/LACT)
+export const REB_CHIP =
+  "rounded-[13px] border border-border px-[11px] py-[5px] text-sm font-semibold";
+export const REB_CHIP_PREG =
+  "bg-[color:var(--cafe-soft)] text-cafe border-[#D8C3A8]";
+export const REB_CHIP_LACT = "bg-[color:var(--leite-soft)] text-[#6e5a26] border-[#E0CF9E]";
+// .rb-chip-q (chip de pergunta sugerida da IA)
+export const REB_CHIP_Q =
+  "cursor-pointer rounded-[14px] border border-border bg-card px-3 py-1.5 font-sans text-sm text-ink-2 hover:border-cafe hover:text-cafe disabled:cursor-default disabled:opacity-55";
+// .rb-chip-demo (etiqueta "demonstração")
+export const REB_CHIP_DEMO =
+  "mt-[9px] inline-block rounded-[10px] border border-[color:var(--rule-soft)] px-2 py-0.5 text-sm font-semibold uppercase tracking-[0.04em] text-ink-2";
+// .rb-grid (cockpit: conteúdo + coluna lateral; empilha < 900px via max-[900px])
+export const REB_GRID =
+  "mt-2 grid grid-cols-[minmax(0,1fr)_clamp(280px,24vw,360px)] gap-[clamp(20px,2.4vw,36px)] max-[900px]:grid-cols-1";
+// .rb-pag / -info / -ctrl / -page (paginação de tabela)
+export const REB_PAG =
+  "mt-3 flex items-center justify-between gap-3 font-sans text-[13.5px] text-ink-3";
+export const REB_PAG_INFO = "italic";
+export const REB_PAG_CTRL = "flex items-center gap-2.5";
+export const REB_PAG_PAGE = "font-semibold text-ink-2";
+
 /* .rb-fieldset + > legend (serif itálico, ink-3) */
 export const RebFieldset = React.forwardRef<
   HTMLFieldSetElement,
