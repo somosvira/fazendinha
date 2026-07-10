@@ -9,6 +9,7 @@ import {
 import type { Animal } from "../types";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 interface Props {
   animalId: string;
@@ -152,9 +153,9 @@ export function BaixaEstoqueCard({
           {loteProduto && <div><dt>Lote</dt><dd>{loteProduto}</dd></div>}
         </dl>
 
-        <label className="rb-fld">
-          Produto do estoque a abater
+        <RebField label="Produto do estoque a abater">
           <select
+            className="rb-field-select"
             value={produtoId ?? ""}
             onChange={(e) => setProdutoId(e.target.value ? Number(e.target.value) : null)}
             disabled={carregando}
@@ -166,7 +167,7 @@ export function BaixaEstoqueCard({
               </option>
             ))}
           </select>
-        </label>
+        </RebField>
 
         {produtoSel && (
           <div className="rb-baixa-status">
@@ -189,8 +190,7 @@ export function BaixaEstoqueCard({
           </div>
         )}
 
-        <label className="rb-fld">
-          Quantidade{produtoSel ? ` (${produtoSel.unidade})` : ""}
+        <RebField label={<>Quantidade{produtoSel ? ` (${produtoSel.unidade})` : ""}</>}>
           <input
             type="number"
             min={0}
@@ -199,12 +199,11 @@ export function BaixaEstoqueCard({
             onChange={(e) => setQuantidade(e.target.value)}
             disabled={!produtoSel || !!naoEstocavel}
           />
-        </label>
+        </RebField>
 
-        <label className="rb-fld">
-          Observação
+        <RebField label="Observação">
           <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-        </label>
+        </RebField>
 
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
         {sucesso && <p style={{ color: "var(--lucro)", fontSize: 13 }}>Baixa registrada.</p>}

@@ -3,6 +3,7 @@ import type { FuncionarioDTO } from "../types";
 import { criarFuncionario, editarFuncionario, baixarFuncionario, type FuncionarioInput } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 /* Drawer de cadastro/edição/baixa de funcionário — espelha o TalhaoForm.
  * Opcionais vazios são enviados como `undefined` (o backend trata como ausência),
@@ -103,18 +104,15 @@ export function FuncionarioForm({
       }
     >
       <div className="flex gap-2.5">
-        <div className="rb-fld" style={{ flex: 2 }}>
-          <label>Nome*</label>
+        <RebField label="Nome*" style={{ flex: 2 }}>
           <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: José da Silva" />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Cargo</label>
+        </RebField>
+        <RebField label="Cargo" style={{ flex: 1 }}>
           <input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Tratorista" />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Setor</label>
+      <RebField label="Setor">
         {/* datalist: sugere setores comuns mas deixa digitar livre (varia por fazenda). */}
         <input
           list="setores-sugeridos"
@@ -131,55 +129,46 @@ export function FuncionarioForm({
           <option value="Milho" />
           <option value="Geral" />
         </datalist>
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Salário mensal (R$)*</label>
+      <RebField label="Salário mensal (R$)*">
         <input type="number" step="0.01" value={salarioMensal} onChange={(e) => setSalarioMensal(e.target.value)} placeholder="Ex.: 2200.00" />
-      </div>
+      </RebField>
 
       <div className="flex gap-2.5">
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Carga mensal (h)*</label>
+        <RebField label="Carga mensal (h)*" style={{ flex: 1 }}>
           <input type="number" step="1" value={cargaMensalHoras} onChange={(e) => setCargaMensalHoras(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Jornada diária (h)*</label>
+        </RebField>
+        <RebField label="Jornada diária (h)*" style={{ flex: 1 }}>
           <input type="number" step="0.5" value={jornadaDiariaHoras} onChange={(e) => setJornadaDiariaHoras(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Admissão</label>
+        </RebField>
+        <RebField label="Admissão" style={{ flex: 1 }}>
           <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
       <div className="flex gap-2.5">
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Entrada padrão</label>
+        <RebField label="Entrada padrão" style={{ flex: 1 }}>
           <input type="time" value={horaEntradaPadrao} onChange={(e) => setHoraEntradaPadrao(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Saída padrão</label>
+        </RebField>
+        <RebField label="Saída padrão" style={{ flex: 1 }}>
           <input type="time" value={horaSaidaPadrao} onChange={(e) => setHoraSaidaPadrao(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Intervalo padrão (min)</label>
+        </RebField>
+        <RebField label="Intervalo padrão (min)" style={{ flex: 1 }}>
           <input type="number" step="5" min="0" value={intervaloPadraoMin} placeholder="60" onChange={(e) => setIntervaloPadraoMin(e.target.value)} />
-        </div>
+        </RebField>
       </div>
       <p className="mt-0.5 text-xs text-ink-3">
         Opcional. Preenchido, agiliza a grade do mês: use "Preencher grade" no Ponto para lançar os dias úteis automaticamente.
       </p>
 
       <div className="flex gap-2.5">
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>CPF</label>
+        <RebField label="CPF" style={{ flex: 1 }}>
           <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Chave Pix</label>
+        </RebField>
+        <RebField label="Chave Pix" style={{ flex: 1 }}>
           <input value={chavePix} onChange={(e) => setChavePix(e.target.value)} placeholder="CPF, telefone, e-mail…" />
-        </div>
+        </RebField>
       </div>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>

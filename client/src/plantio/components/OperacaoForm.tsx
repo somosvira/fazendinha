@@ -4,6 +4,7 @@ import { registrarOperacao, type OperacaoInput } from "../api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 // Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
 // decimal pt-BR) e campos vazios. Retorna {} quando não há número parseável.
@@ -164,106 +165,90 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
             </div>
           )}
 
-          <div className="rb-fld">
-            <label>Tipo de operação</label>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoOperacao)}>
+          <RebField label="Tipo de operação">
+            <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoOperacao)}>
               {opcoesTipo.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
-          </div>
+          </RebField>
 
-          <div className="rb-fld">
-            <label>Data</label>
+          <RebField label="Data">
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </div>
+          </RebField>
 
           {/* Fitossanidade — praga + produto + calda + incidência observada */}
           {dominio === "fitossanidade" && (
             <>
-              <div className="rb-fld">
-                <label>Praga/doença alvo</label>
-                <select value={praga} onChange={(e) => setPraga(e.target.value as PragaDoenca)}>
+              <RebField label="Praga/doença alvo">
+                <select className="rb-field-select" value={praga} onChange={(e) => setPraga(e.target.value as PragaDoenca)}>
                   {PRAGAS.map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
                 </select>
-              </div>
+              </RebField>
               {tipo !== "MONITORAMENTO_MIP" && (
                 <>
-                  <div className="rb-fld">
-                    <label>Produto / princípio ativo</label>
+                  <RebField label="Produto / princípio ativo">
                     <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: Ciproconazol + Trifloxistrobina" />
-                  </div>
-                  <div className="rb-fld">
-                    <label>Dose (g ou mL / ha)</label>
+                  </RebField>
+                  <RebField label="Dose (g ou mL / ha)">
                     <input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex.: 600 mL/ha" />
-                  </div>
-                  <div className="rb-fld">
-                    <label>Volume de calda (L/ha)</label>
+                  </RebField>
+                  <RebField label="Volume de calda (L/ha)">
                     <input type="number" value={volumeCalda} onChange={(e) => setVolumeCalda(e.target.value)} placeholder="Ex.: 500" />
-                  </div>
+                  </RebField>
                 </>
               )}
-              <div className="rb-fld">
-                <label>Incidência observada (%)</label>
+              <RebField label="Incidência observada (%)">
                 <input type="number" step="0.1" value={incidencia} onChange={(e) => setIncidencia(e.target.value)} placeholder="Folhas/frutos amostrados" />
-              </div>
+              </RebField>
             </>
           )}
 
           {/* Nutrição — NPK em kg/ha */}
           {dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR") && (
             <>
-              <div className="rb-fld">
-                <label>Produto / formulado</label>
+              <RebField label="Produto / formulado">
                 <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: 20-00-20 ou Sulfato de amônio" />
-              </div>
+              </RebField>
               <div style={{ display: "flex", gap: 10 }}>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>N (kg/ha)</label>
+                <RebField label="N (kg/ha)" style={{ flex: 1 }}>
                   <input type="number" value={nKg} onChange={(e) => setNKg(e.target.value)} />
-                </div>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>P₂O₅ (kg/ha)</label>
+                </RebField>
+                <RebField label="P₂O₅ (kg/ha)" style={{ flex: 1 }}>
                   <input type="number" value={pKg} onChange={(e) => setPKg(e.target.value)} />
-                </div>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>K₂O (kg/ha)</label>
+                </RebField>
+                <RebField label="K₂O (kg/ha)" style={{ flex: 1 }}>
                   <input type="number" value={kKg} onChange={(e) => setKKg(e.target.value)} />
-                </div>
+                </RebField>
               </div>
             </>
           )}
           {dominio === "nutricao" && (tipo === "CALAGEM" || tipo === "GESSAGEM") && (
             <>
-              <div className="rb-fld">
-                <label>Produto</label>
+              <RebField label="Produto">
                 <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder={tipo === "CALAGEM" ? "Ex.: Calcário dolomítico PRNT 85%" : "Ex.: Gesso agrícola"} />
-              </div>
-              <div className="rb-fld">
-                <label>Dose (t/ha)</label>
+              </RebField>
+              <RebField label="Dose (t/ha)">
                 <input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex.: 2,5" />
-              </div>
+              </RebField>
             </>
           )}
 
           {/* Colheita — litros + rendimento + método */}
           {dominio === "colheita" && (
             <>
-              <div className="rb-fld">
-                <label>Método</label>
-                <select value={metodoColheita} onChange={(e) => setMetodoColheita(e.target.value as any)}>
+              <RebField label="Método">
+                <select className="rb-field-select" value={metodoColheita} onChange={(e) => setMetodoColheita(e.target.value as any)}>
                   <option value="DERRIÇA_PANO">Derriça no pano</option>
                   <option value="DERRIÇA_MECANIZADA">Derriça mecanizada</option>
                   <option value="SELETIVA">Seletiva (catação)</option>
                   <option value="VARRIÇÃO">Varrição</option>
                 </select>
-              </div>
-              <div className="rb-fld">
-                <label>Litros de cereja colhidos</label>
+              </RebField>
+              <RebField label="Litros de cereja colhidos">
                 <input type="number" value={litrosCereja} onChange={(e) => setLitrosCereja(e.target.value)} placeholder="Medido no campo" />
-              </div>
-              <div className="rb-fld">
-                <label>Rendimento (L/saca)</label>
+              </RebField>
+              <RebField label="Rendimento (L/saca)">
                 <input type="number" value={rendimentoLsc} onChange={(e) => setRendimentoLsc(e.target.value)} placeholder="Típico 480–520" />
-              </div>
+              </RebField>
               {litrosCereja && rendimentoLsc && (
                 <p className="text-sm text-ink-3">
                   Saída estimada: <b>{(Number(litrosCereja) / Number(rendimentoLsc)).toFixed(1)} sc</b> beneficiadas.
@@ -272,15 +257,13 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
             </>
           )}
 
-          <div className="rb-fld">
-            <label>Responsável</label>
+          <RebField label="Responsável">
             <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem executou" />
-          </div>
+          </RebField>
 
-          <div className="rb-fld">
-            <label>Observação</label>
+          <RebField label="Observação">
             <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} />
-          </div>
+          </RebField>
 
           {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </>

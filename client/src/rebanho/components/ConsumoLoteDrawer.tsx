@@ -3,6 +3,7 @@ import { previsaoConsumo, fecharConsumo, listarConsumos, estornarConsumo, type L
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebField } from "@/components/rb/RebField";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -67,8 +68,8 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <label className="rb-fld" style={{ flex: 1 }}>Início<input type="date" value={dataInicio} max={dataFim} onChange={(e) => setDataInicio(e.target.value)} /></label>
-          <label className="rb-fld" style={{ flex: 1 }}>Fim<input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></label>
+          <RebField label="Início" style={{ flex: 1 }}><input type="date" value={dataInicio} max={dataFim} onChange={(e) => setDataInicio(e.target.value)} /></RebField>
+          <RebField label="Fim" style={{ flex: 1 }}><input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></RebField>
         </div>
 
         {carregando ? <p className="mt-[7px] text-sm text-ink-3">Calculando prévia…</p>

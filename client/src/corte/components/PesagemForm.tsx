@@ -4,6 +4,7 @@ import { criarPesagem, type PesagemInput } from "../api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 type Metodo = Pesagem["metodo"];
 const METODOS: { k: Metodo; lab: string }[] = [
@@ -60,36 +61,30 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
     >
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. O GMD é recalculado a partir da pesagem anterior.</p>
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data*</label>
+        <RebField label="Data*" style={{ flex: 1 }}>
           <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Peso médio (kg)*</label>
+        </RebField>
+        <RebField label="Peso médio (kg)*" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Cabeças pesadas*</label>
+        </RebField>
+        <RebField label="Cabeças pesadas*" style={{ flex: 1 }}>
           <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Método*</label>
-        <select value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
+      <RebField label="Método*">
+        <select className="rb-field-select" value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
           {METODOS.map((m) => <option key={m.k} value={m.k}>{m.lab}</option>)}
         </select>
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Responsável</label>
+      <RebField label="Responsável">
         <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Ex.: Vaqueiro João" />
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

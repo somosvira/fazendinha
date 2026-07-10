@@ -6,6 +6,7 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
+import { REB_INP } from "@/components/rb/RebPrimitives";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -207,15 +208,15 @@ export function PontoTab() {
                       options={TIPOS.map((t) => ({ value: t.k, label: t.lab }))}
                     />
                   </td>
-                  <td><input className="rb-inp" type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 108 }} /></td>
-                  <td><input className="rb-inp" type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 108 }} /></td>
+                  <td><input className={REB_INP} type="time" value={l.entrada} onChange={(e) => set(i, { entrada: e.target.value })} style={{ width: 108 }} /></td>
+                  <td><input className={REB_INP} type="time" value={l.saida} onChange={(e) => set(i, { saida: e.target.value })} style={{ width: 108 }} /></td>
                   <td className="text-right">
-                    <input className="rb-inp" type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 78, textAlign: "right" }} />
+                    <input className={REB_INP} type="number" step="5" value={l.intervaloMin} placeholder={funcSel?.intervaloPadraoMin != null ? String(funcSel.intervaloPadraoMin) : "60"} onChange={(e) => set(i, { intervaloMin: e.target.value })} style={{ width: 78, textAlign: "right" }} />
                   </td>
                   <td className="text-right">{l.reg ? horasFmt(l.reg.horas) : "—"}</td>
                   <td className="text-right">{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
                   <td className="text-right">{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
-                  <td><input className="rb-inp" value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
+                  <td><input className={REB_INP} value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
                   <td><RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton></td>
                 </tr>
               );

@@ -20,6 +20,7 @@ import { useToast } from "../components/Toast";
 import { HOJE } from "./HOJE";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebModal } from "@/components/rb/RebModal";
@@ -110,14 +111,13 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
   return (
     <>
       {caixinhas.length > 1 && (
-        <div className="rb-fld" style={{ maxWidth: 320, marginBottom: 12 }}>
-          <label>Caixinha</label>
-          <select value={caixinha.id} onChange={(e) => onTrocar(Number(e.target.value))}>
+        <RebField label="Caixinha" style={{ maxWidth: 320, marginBottom: 12 }}>
+          <select className="rb-field-select" value={caixinha.id} onChange={(e) => onTrocar(Number(e.target.value))}>
             {caixinhas.map((c) => (
               <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>
             ))}
           </select>
-        </div>
+        </RebField>
       )}
 
       <RebKpiStrip cols={3}>
@@ -136,10 +136,9 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
       </RebKpiStrip>
 
       <div className="rb-toolbar" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div className="rb-fld" style={{ margin: 0 }}>
-          <label>Mês</label>
+        <RebField label="Mês" style={{ margin: 0 }}>
           <input type="month" value={mes} max={MES_ATUAL} onChange={(e) => setMes(e.target.value || MES_ATUAL)} />
-        </div>
+        </RebField>
         <div style={{ flex: 1 }} />
         <RebButton variant="pri" onClick={() => setForm(true)}>+ Lançar</RebButton>
       </div>
@@ -215,14 +214,12 @@ function CaixinhaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: ()
         </>
       }
     >
-      <div className="rb-fld">
-        <label>Nome*</label>
+      <RebField label="Nome*">
         <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Caixinha do escritório" />
-      </div>
-      <div className="rb-fld">
-        <label>Responsável</label>
+      </RebField>
+      <RebField label="Responsável">
         <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem guarda o dinheiro" />
-      </div>
+      </RebField>
     </RebModal>
   );
 }
@@ -275,30 +272,25 @@ function MovimentoForm({ caixinhaId, onFechar, onSalvo }: {
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Tipo*</label>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimentoCaixinha)}>
+        <RebField label="Tipo*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimentoCaixinha)}>
             <option value="ENTRADA">Entrada</option>
             <option value="SAIDA">Saída</option>
           </select>
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data*</label>
+        </RebField>
+        <RebField label="Data*" style={{ flex: 1 }}>
           <input type="date" value={data} max={HOJE} onChange={(e) => setData(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Valor (R$)*</label>
+        </RebField>
+        <RebField label="Valor (R$)*" style={{ flex: 1 }}>
           <input type="number" step="0.01" min="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
-        </div>
+        </RebField>
       </div>
-      <div className="rb-fld">
-        <label>Descrição*</label>
+      <RebField label="Descrição*">
         <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: compra de material de limpeza" />
-      </div>
-      <div className="rb-fld">
-        <label>Observação</label>
+      </RebField>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
     </RebModal>
   );
 }

@@ -8,6 +8,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -151,14 +152,14 @@ export function EstoqueTab() {
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
           <input
             type="search"
-            className="rb-fld"
+            className={REB_FIELD_BOXED}
             placeholder="Buscar por nome ou tipo…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             style={{ flex: "1 1 240px", maxWidth: 360 }}
           />
           <select
-            className="rb-fld"
+            className={`${REB_FIELD_BOXED} rb-field-select`}
             value={setorFiltro}
             onChange={(e) => setSetorFiltro(e.target.value)}
             style={{ flex: "0 1 180px" }}

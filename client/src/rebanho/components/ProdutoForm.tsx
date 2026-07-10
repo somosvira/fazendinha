@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { criarProduto, editarProduto, listarCategorias, listarCentrosCusto, SETORES_ESTOQUE, type ProdutoDTO, type RefDTO, type SetorEstoque, type TipoProduto } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const TIPOS: { id: TipoProduto; label: string }[] = [
   { id: "MEDICAMENTO", label: "Medicamento" },
@@ -65,33 +66,33 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         </>
       }
     >
-      <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></label>
-      <label className="rb-fld">Tipo<select value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
-      <label className="rb-fld">Unidade<input value={f.unidade} onChange={(e) => set("unidade", e.target.value)} placeholder="un, kg, dose…" /></label>
-      <label className="rb-fld">Setor
-        <select value={f.setor} onChange={(e) => set("setor", e.target.value)}>
+      <RebField label="Nome*"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></RebField>
+      <RebField label="Tipo"><select className="rb-field-select" value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></RebField>
+      <RebField label="Unidade"><input value={f.unidade} onChange={(e) => set("unidade", e.target.value)} placeholder="un, kg, dose…" /></RebField>
+      <RebField label="Setor">
+        <select className="rb-field-select" value={f.setor} onChange={(e) => set("setor", e.target.value)}>
           <option value="">— (Geral)</option>
           {SETORES_ESTOQUE.filter((s) => s.id !== "GERAL").map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           <option value="GERAL">Geral (explícito)</option>
         </select>
-      </label>
-      <label className="rb-fld">Custo unitário (R$)<input type="number" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} /></label>
-      <label className="rb-fld">Categoria contábil
-        <select value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
+      </RebField>
+      <RebField label="Custo unitário (R$)"><input type="number" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} /></RebField>
+      <RebField label="Categoria contábil">
+        <select className="rb-field-select" value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
           <option value="">—</option>
           {categorias.map((cat) => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
         </select>
-      </label>
-      <label className="rb-fld">Centro de custo
-        <select value={f.centroCustoId} onChange={(e) => set("centroCustoId", e.target.value)}>
+      </RebField>
+      <RebField label="Centro de custo">
+        <select className="rb-field-select" value={f.centroCustoId} onChange={(e) => set("centroCustoId", e.target.value)}>
           <option value="">—</option>
           {centros.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
         </select>
-      </label>
-      <label className="rb-fld">Estoque mínimo<input type="number" step="0.01" min={0} value={f.minimoEstoque} onChange={(e) => set("minimoEstoque", e.target.value)} placeholder="dispara alerta abaixo desse valor" /></label>
-      <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal", marginTop: 4 }}>
+      </RebField>
+      <RebField label="Estoque mínimo"><input type="number" step="0.01" min={0} value={f.minimoEstoque} onChange={(e) => set("minimoEstoque", e.target.value)} placeholder="dispara alerta abaixo desse valor" /></RebField>
+      <RebField style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal", marginTop: 4 }}>
         <input type="checkbox" checked={f.estocavel} onChange={(e) => set("estocavel", e.target.checked)} style={{ width: "auto" }} />Estocável
-      </label>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

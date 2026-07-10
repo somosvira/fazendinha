@@ -9,6 +9,7 @@ import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebField } from "@/components/rb/RebField";
 import type { ResumoLote, Lote } from "../types";
 
 const PRECO_SPOT_MG = 317;
@@ -69,15 +70,14 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
         actions={<RebButton onClick={onVoltar}>← Painel comercial</RebButton>}
       />
 
-      <div className="rb-fld" style={{ maxWidth: 480 }}>
-        <label>Lote a simular</label>
-        <select value={loteId} onChange={(e) => setLoteId(e.target.value)}>
+      <RebField label="Lote a simular" style={{ maxWidth: 480 }}>
+        <select className="rb-field-select" value={loteId} onChange={(e) => setLoteId(e.target.value)}>
           {lotes.map((l) => {
             const ready = (l.resumo?.pesoMedio ?? 0) >= 480;
             return <option key={l.id} value={l.id}>{l.codigo} — {l.nome} ({l.numCabecas} cab · {l.resumo?.pesoMedio ?? "—"} kg){ready ? " · pronto" : ""}</option>;
           })}
         </select>
-      </div>
+      </RebField>
 
       {lote && resumo && (
         <>

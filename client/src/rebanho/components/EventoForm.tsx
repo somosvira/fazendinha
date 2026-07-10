@@ -5,6 +5,8 @@ import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
+import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
@@ -177,128 +179,128 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
       }
     >
       <>
-        {!dominioFixo && <label className="rb-fld">Domínio<select value={dominio} onChange={(e) => setDominio(e.target.value as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></select></label>}
+        {!dominioFixo && <RebField label="Domínio"><select className="rb-field-select" value={dominio} onChange={(e) => setDominio(e.target.value as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></select></RebField>}
         {dominio === "reproducao"
-          ? <label className="rb-fld">Tipo<select value={tipo} onChange={(e) => setTipo(e.target.value as any)}>{TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>
-          : <label className="rb-fld">Tipo<select value={tipoSan} onChange={(e) => setTipoSan(e.target.value as any)}>{TIPOS_SAN.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>}
-        <label className="rb-fld">Data*<input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
+          ? <RebField label="Tipo"><select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as any)}>{TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></RebField>
+          : <RebField label="Tipo"><select className="rb-field-select" value={tipoSan} onChange={(e) => setTipoSan(e.target.value as any)}>{TIPOS_SAN.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></RebField>}
+        <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
         {dominio === "reproducao" && <>
           {tipo === "CIO" && (
-            <label className="rb-fld">Detecção
-              <select value={f.deteccaoCio} onChange={(e) => set("deteccaoCio", e.target.value)}>
+            <RebField label="Detecção">
+              <select className="rb-field-select" value={f.deteccaoCio} onChange={(e) => set("deteccaoCio", e.target.value)}>
                 {DETECCAO_CIO.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
-            </label>
+            </RebField>
           )}
           {tipo === "INSEMINACAO" && <>
-            <label className="rb-fld">Raça do reprodutor*
-              <select value={f.racaReprodutorId} onChange={(e) => set("racaReprodutorId", e.target.value)}>
+            <RebField label="Raça do reprodutor*">
+              <select className="rb-field-select" value={f.racaReprodutorId} onChange={(e) => set("racaReprodutorId", e.target.value)}>
                 <option value="">—</option>
                 {racasDaEspecie.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
               </select>
-            </label>
+            </RebField>
             {racaReprodutor && (
-              <fieldset className="rb-fieldset">
+              <RebFieldset>
                 <legend>Grau de sangue</legend>
-                <div className="rb-sangue-row">
-                  <span className="rb-sangue-raca">{racaReprodutor.nome}</span>
-                  <select className="rb-sangue-frac" value={f.fracaoReprodutor} onChange={(e) => set("fracaoReprodutor", e.target.value)} aria-label="Fração da raça principal">
+                <div className={REB_SANGUE_ROW}>
+                  <span className={REB_SANGUE_RACA}>{racaReprodutor.nome}</span>
+                  <select className={REB_SANGUE_INPUT} value={f.fracaoReprodutor} onChange={(e) => set("fracaoReprodutor", e.target.value)} aria-label="Fração da raça principal">
                     {FRACOES.map((fr) => <option key={fr.id} value={fr.id}>{fr.label}</option>)}
                   </select>
                 </div>
                 {!ehPuroRep && (
-                  <div className="rb-sangue-row">
-                    <select className="rb-sangue-raca-sec" value={f.racaSecReprodutorId} onChange={(e) => set("racaSecReprodutorId", e.target.value)} aria-label="Raça secundária">
+                  <div className={REB_SANGUE_ROW}>
+                    <select className={REB_SANGUE_INPUT} value={f.racaSecReprodutorId} onChange={(e) => set("racaSecReprodutorId", e.target.value)} aria-label="Raça secundária">
                       <option value="">— escolher raça —</option>
                       {opcoesSecReprodutor.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
                     </select>
-                    <span className="rb-sangue-frac-comp">{fracCompRep}</span>
+                    <span className={REB_SANGUE_FRAC_COMP}>{fracCompRep}</span>
                   </div>
                 )}
-              </fieldset>
+              </RebFieldset>
             )}
-            <label className="rb-fld">Protocolo
-              <select value={f.protocolo} onChange={(e) => set("protocolo", e.target.value)}>
+            <RebField label="Protocolo">
+              <select className="rb-field-select" value={f.protocolo} onChange={(e) => set("protocolo", e.target.value)}>
                 {PROTOCOLOS.map((p) => <option key={p} value={p}>{p}</option>)}
                 <option value="Outro">Outro…</option>
               </select>
-            </label>
+            </RebField>
             {f.protocolo === "Outro" && (
-              <label className="rb-fld">Descrever protocolo<input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: P36 / FertilizAID" /></label>
+              <RebField label="Descrever protocolo"><input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: P36 / FertilizAID" /></RebField>
             )}
           </>}
           {tipo === "TRANSFERENCIA_EMBRIAO" && <>
             <p className="rb-hint" style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
               A receptora (este animal) carrega o embrião; a genética do bezerro vem da <b>doadora</b>.
             </p>
-            <label className="rb-fld">Doadora (genética)
-              <select value={f.doadoraId} onChange={(e) => set("doadoraId", e.target.value)}>
+            <RebField label="Doadora (genética)">
+              <select className="rb-field-select" value={f.doadoraId} onChange={(e) => set("doadoraId", e.target.value)}>
                 <option value="">— selecionar —</option>
                 {animais.filter((a) => a.id !== animalId).map((a) => (
                   <option key={a.id} value={a.id}>{a.nome ? `${a.nome} · #${a.numero}` : `#${a.numero}`}</option>
                 ))}
               </select>
-            </label>
-            <label className="rb-fld">Touro / sêmen do embrião<input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></label>
-            <label className="rb-fld">Protocolo
-              <select value={f.protocolo} onChange={(e) => set("protocolo", e.target.value)}>
+            </RebField>
+            <RebField label="Touro / sêmen do embrião"><input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></RebField>
+            <RebField label="Protocolo">
+              <select className="rb-field-select" value={f.protocolo} onChange={(e) => set("protocolo", e.target.value)}>
                 {PROTOCOLOS.map((p) => <option key={p} value={p}>{p}</option>)}
                 <option value="Outro">Outro…</option>
               </select>
-            </label>
+            </RebField>
             {f.protocolo === "Outro" && (
-              <label className="rb-fld">Descrever protocolo<input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: sincronização de receptoras" /></label>
+              <RebField label="Descrever protocolo"><input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: sincronização de receptoras" /></RebField>
             )}
           </>}
           {tipo === "DIAGNOSTICO" && <>
-            <label className="rb-fld">Resultado<select value={f.resultado} onChange={(e) => set("resultado", e.target.value)}><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></label>
-            <label className="rb-fld">Parto previsto<input type="date" value={f.dtPartoPrevista} onChange={(e) => set("dtPartoPrevista", e.target.value)} /></label>
+            <RebField label="Resultado"><select className="rb-field-select" value={f.resultado} onChange={(e) => set("resultado", e.target.value)}><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></RebField>
+            <RebField label="Parto previsto"><input type="date" value={f.dtPartoPrevista} onChange={(e) => set("dtPartoPrevista", e.target.value)} /></RebField>
           </>}
           {tipo === "PARTO" && <>
-            <label className="rb-fld">Nº de crias<input type="number" min={1} max={3} value={f.numCrias} onChange={(e) => set("numCrias", e.target.value)} /></label>
-            <label className="rb-fld">Sexo da cria<select value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar</option></select></label>
-            <label className="rb-fld">Tipo de parto<select value={f.tipoParto} onChange={(e) => set("tipoParto", e.target.value)}>{TIPOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>
+            <RebField label="Nº de crias"><input type="number" min={1} max={3} value={f.numCrias} onChange={(e) => set("numCrias", e.target.value)} /></RebField>
+            <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar</option></select></RebField>
+            <RebField label="Tipo de parto"><select className="rb-field-select" value={f.tipoParto} onChange={(e) => set("tipoParto", e.target.value)}>{TIPOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></RebField>
           </>}
           {tipo === "SECAGEM" && (
-            <label className="rb-fld">Motivo
-              <select value={f.motivoSecagem} onChange={(e) => set("motivoSecagem", e.target.value)}>
+            <RebField label="Motivo">
+              <select className="rb-field-select" value={f.motivoSecagem} onChange={(e) => set("motivoSecagem", e.target.value)}>
                 {MOTIVOS_SECAGEM.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-            </label>
+            </RebField>
           )}
         </>}
         {dominio === "sanidade" && <>
           {tipoSan === "EXAME" && <>
-            <label className="rb-fld">CCS (mil)*<input type="number" min={0} value={f.ccs} onChange={(e) => set("ccs", e.target.value)} /></label>
-            <label className="rb-fld">Gordura (%)<input type="number" step="0.01" value={f.gordura} onChange={(e) => set("gordura", e.target.value)} /></label>
-            <label className="rb-fld">Proteína (%)<input type="number" step="0.01" value={f.proteina} onChange={(e) => set("proteina", e.target.value)} /></label>
+            <RebField label="CCS (mil)*"><input type="number" min={0} value={f.ccs} onChange={(e) => set("ccs", e.target.value)} /></RebField>
+            <RebField label="Gordura (%)"><input type="number" step="0.01" value={f.gordura} onChange={(e) => set("gordura", e.target.value)} /></RebField>
+            <RebField label="Proteína (%)"><input type="number" step="0.01" value={f.proteina} onChange={(e) => set("proteina", e.target.value)} /></RebField>
           </>}
           {tipoSan === "APLICACAO" && <>
-            <label className="rb-fld">Produto*<input value={f.produto} onChange={(e) => set("produto", e.target.value)} placeholder="Mastijet" /></label>
-            <label className="rb-fld">Dose<input value={f.dose} onChange={(e) => set("dose", e.target.value)} placeholder="1 bisnaga" /></label>
-            <label className="rb-fld">Carência (h)<input type="number" min={0} value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></label>
-            <label className="rb-fld">Lote do produto<input value={f.loteProduto} onChange={(e) => set("loteProduto", e.target.value)} placeholder="MAST-2231" /></label>
+            <RebField label="Produto*"><input value={f.produto} onChange={(e) => set("produto", e.target.value)} placeholder="Mastijet" /></RebField>
+            <RebField label="Dose"><input value={f.dose} onChange={(e) => set("dose", e.target.value)} placeholder="1 bisnaga" /></RebField>
+            <RebField label="Carência (h)"><input type="number" min={0} value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
+            <RebField label="Lote do produto"><input value={f.loteProduto} onChange={(e) => set("loteProduto", e.target.value)} placeholder="MAST-2231" /></RebField>
           </>}
           {tipoSan === "OCORRENCIA" && <>
-            <label className="rb-fld">Doença*<input value={f.doenca} onChange={(e) => set("doenca", e.target.value)} placeholder="Mastite clínica" /></label>
-            <label className="rb-fld">Dias de tratamento<input type="number" min={0} value={f.diasTratamento} onChange={(e) => set("diasTratamento", e.target.value)} /></label>
+            <RebField label="Doença*"><input value={f.doenca} onChange={(e) => set("doenca", e.target.value)} placeholder="Mastite clínica" /></RebField>
+            <RebField label="Dias de tratamento"><input type="number" min={0} value={f.diasTratamento} onChange={(e) => set("diasTratamento", e.target.value)} /></RebField>
           </>}
           {tipoSan === "MASTITE" && <>
-            <label className="rb-fld">Quarto
-              <select value={f.quarto} onChange={(e) => set("quarto", e.target.value)}>
+            <RebField label="Quarto">
+              <select className="rb-field-select" value={f.quarto} onChange={(e) => set("quarto", e.target.value)}>
                 {QUARTOS_UBERE.map((q) => <option key={q} value={q}>{q}</option>)}
               </select>
-            </label>
-            <label className="rb-fld">Severidade
-              <select value={f.severidade} onChange={(e) => set("severidade", e.target.value)}>
+            </RebField>
+            <RebField label="Severidade">
+              <select className="rb-field-select" value={f.severidade} onChange={(e) => set("severidade", e.target.value)}>
                 {SEVERIDADES_MASTITE.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
-            </label>
-            <label className="rb-fld">Resultado do cultivo<input value={f.resultadoCultivo} onChange={(e) => set("resultadoCultivo", e.target.value)} placeholder="ex.: Staphylococcus aureus" /></label>
+            </RebField>
+            <RebField label="Resultado do cultivo"><input value={f.resultadoCultivo} onChange={(e) => set("resultadoCultivo", e.target.value)} placeholder="ex.: Staphylococcus aureus" /></RebField>
           </>}
-          {tipoSan === "VACINA" && <label className="rb-fld">Produto*<input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></label>}
+          {tipoSan === "VACINA" && <RebField label="Produto*"><input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></RebField>}
         </>}
-        <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></label>
+        <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </>
     </RebModal>

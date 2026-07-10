@@ -17,6 +17,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
+import { RebField } from "@/components/rb/RebField";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -205,63 +206,53 @@ function LancamentoCustoForm({ safraCultivoId, onFechar, onSalvo }: { safraCulti
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Tipo*</label>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoCustoCultivo)}>
+        <RebField label="Tipo*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoCustoCultivo)}>
             {TIPOS.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}
           </select>
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Classe*</label>
-          <select value={classe} onChange={(e) => setClasse(e.target.value as ClassificacaoCategoria)}>
+        </RebField>
+        <RebField label="Classe*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={classe} onChange={(e) => setClasse(e.target.value as ClassificacaoCategoria)}>
             <option value="CUSTEIO">Custeio</option>
             <option value="INVESTIMENTO">Investimento</option>
           </select>
-        </div>
+        </RebField>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data*</label>
+        <RebField label="Data*" style={{ flex: 1 }}>
           <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Área</label>
-          <select value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
+        </RebField>
+        <RebField label="Área" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
             <option value="">—</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
           </select>
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Valor (R$)*</label>
+        </RebField>
+        <RebField label="Valor (R$)*" style={{ flex: 1 }}>
           <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Descrição*</label>
+      <RebField label="Descrição*">
         <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Adubação de cobertura — ureia" />
-      </div>
+      </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Horas-máquina</label>
+        <RebField label="Horas-máquina" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={horasMaquina} onChange={(e) => setHorasMaquina(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Nº de máquinas</label>
+        </RebField>
+        <RebField label="Nº de máquinas" style={{ flex: 1 }}>
           <input type="number" value={numMaquinas} onChange={(e) => setNumMaquinas(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Nº de caminhões</label>
+        </RebField>
+        <RebField label="Nº de caminhões" style={{ flex: 1 }}>
           <input type="number" value={numCaminhoes} onChange={(e) => setNumCaminhoes(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );
