@@ -65,7 +65,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
 
 type ModuloId = string;
 type SubItem = { id: Tab; label: string };
-type Modulo = { id: ModuloId; label: string; icon: JSX.Element; subs: SubItem[]; disabled?: boolean };
+type Modulo = { id: ModuloId; label: string; icon: JSX.Element; subs: SubItem[]; disabled?: boolean; meta?: string };
 
 // Registrar um novo módulo operacional (Plantio, Gado de corte, Olericultura, etc.)
 // é só adicionar uma entrada aqui. O acordeão e o estado persistido funcionam
@@ -74,6 +74,7 @@ const MODULOS: Modulo[] = [
   {
     id: "rebanho",
     label: "Rebanho leiteiro",
+    meta: "gado leiteiro",
     icon: <><circle cx="12" cy="10" r="5"/><path d="M7 8c-1-2-3-2-3 0M17 8c1-2 3-2 3 0"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
     subs: [
       { id: "reb-dashboard", label: "Painel" },
@@ -90,6 +91,7 @@ const MODULOS: Modulo[] = [
   {
     id: "plantio",
     label: "Plantio · café",
+    meta: "lavoura de café",
     icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
     subs: [
       { id: "pla-dashboard", label: "Painel" },
@@ -107,6 +109,7 @@ const MODULOS: Modulo[] = [
   {
     id: "corte",
     label: "Gado de corte",
+    meta: "gado de corte",
     icon: <><circle cx="12" cy="11" r="5"/><path d="M6 7L3 4M18 7l3-3"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
     // Módulo liberado (Onda 1 — núcleo lê/escreve em /api/corte/*).
     subs: [
@@ -124,6 +127,7 @@ const MODULOS: Modulo[] = [
   {
     id: "cultivo",
     label: "Milho",
+    meta: "grão e silagem",
     icon: <><path d="M12 22v-5"/><path d="M12 17c-3 0-5.5-2.8-5.5-6.5C6.5 6.5 9 3 12 2c3 1 5.5 4.5 5.5 8.5C17.5 14.2 15 17 12 17z"/><path d="M12 6v11M9 9c1 .8 2 1.2 3 1.2s2-.4 3-1.2M9 13c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/></>,
     // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
     subs: [
@@ -137,6 +141,7 @@ const MODULOS: Modulo[] = [
   {
     id: "equipe",
     label: "Equipe & Ponto",
+    meta: "pessoas e diárias",
     icon: <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
     // Módulo de RH leve (admin gerencia) — funcionários, ponto e folha.
     subs: [
