@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { Talhao } from "../types";
 import { criarTalhao, editarTalhao, darBaixa, listarVariedades, useLavouras, type VariedadeDTO, type TalhaoInput } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" | "editar" | "baixa"; talhao?: Talhao; onFechar: () => void; onSalvo: () => void }) {
   const t = talhao;
@@ -88,47 +90,46 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
 
   if (modo === "baixa") {
     return (
-      <>
-        <div className="rb-drawer-bg" onClick={onFechar} />
-        <aside className="rb-drawer" role="dialog">
-          <div className="rb-drawer-head">
-            <h3>Dar baixa em {t?.codigo}</h3>
-            <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-          </div>
-          <div className="rb-drawer-body">
-            <p className="rb-sub">O talhão sai do conjunto ativo. Mantém histórico para fins contábeis.</p>
-            <div className="rb-fld">
-              <label>Motivo</label>
-              <select value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)}>
-                <option value="">Selecione…</option>
-                <option>Erradicação (lavoura exausta)</option>
-                <option>Conversão para pasto</option>
-                <option>Conversão para outra cultura</option>
-                <option>Geada severa</option>
-                <option>Desapropriação / venda</option>
-                <option>Outro</option>
-              </select>
-            </div>
-            {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-          </div>
-          <div className="rb-drawer-actions">
-            <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-            <button className="rb-btn rb-btn-danger" disabled={!motivoBaixa || salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</button>
-          </div>
-        </aside>
-      </>
+      <RebModal
+        title={`Dar baixa em ${t?.codigo}`}
+        onClose={onFechar}
+        actions={
+          <>
+            <RebButton onClick={onFechar}>Cancelar</RebButton>
+            <RebButton variant="danger" disabled={!motivoBaixa || salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</RebButton>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-3">O talhão sai do conjunto ativo. Mantém histórico para fins contábeis.</p>
+        <div className="rb-fld">
+          <label>Motivo</label>
+          <select value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)}>
+            <option value="">Selecione…</option>
+            <option>Erradicação (lavoura exausta)</option>
+            <option>Conversão para pasto</option>
+            <option>Conversão para outra cultura</option>
+            <option>Geada severa</option>
+            <option>Desapropriação / venda</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </RebModal>
     );
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>{titulo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !codigo || !areaHa || !variedadeId} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <>
           <div style={{ display: "flex", gap: 10 }}>
             <div className="rb-fld" style={{ flex: 1 }}>
               <label>Código*</label>
@@ -215,14 +216,8 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
               </label>
             </div>
           </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !codigo || !areaHa || !variedadeId} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+          {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }

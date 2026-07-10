@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Loader } from "../../components/Loading";
 import { useTalhoes, usePassadas, type PassadaDTO } from "../api";
 import { LavouraDomainView } from "./LavouraDomainView";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
 import { DOMAINS, type DomainConfig } from "../domains";
 import { prontosParaColher, emColheita } from "../lib/worklists";
 import { FASES_LABEL } from "../lib/fenologia";
@@ -49,7 +53,7 @@ const colheitaCfg: DomainConfig = {
 export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => void }) {
   const { data, loading } = useTalhoes({ estado: "ATIVO" });
   const [aba, setAba] = useState<"painel" | "passadas">("painel");
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Lavoura</div><div className="rb-head"><h1>Colheita</h1></div><Loader /></main>;
+  if (loading) return <main className="rb-main"><RebHeader eyebrow="Lavoura" title="Colheita" /><Loader /></main>;
 
   // Resumo real embutido em cada talhão (.resumo); filtra nulos (talhão sem resumo).
   const resumos: ResumoTalhao[] = data.map((t) => t.resumo).filter(Boolean) as ResumoTalhao[];
@@ -66,12 +70,10 @@ export function ColheitaTab({ onAbrirTalhao }: { onAbrirTalhao: (id: string) => 
         onAbrirTalhao={onAbrirTalhao}
         dicaLinha="clique num talhão para abrir o cockpit"
         controles={
-          <>
-            <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
-              <button className="rb-btn" aria-pressed onClick={() => setAba("painel")}>Painel</button>
-              <button className="rb-btn" onClick={() => setAba("passadas")}>Passadas registradas</button>
-            </div>
-          </>
+          <div className="flex gap-1.5">
+            <RebButton aria-pressed onClick={() => setAba("painel")}>Painel</RebButton>
+            <RebButton onClick={() => setAba("passadas")}>Passadas registradas</RebButton>
+          </div>
         }
       />
     </>
@@ -85,28 +87,28 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
   const totalLitros = passadas.reduce((a, p) => a + (p.litrosCereja ?? 0), 0);
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Lavoura · colheita 2026</div>
-      <div className="rb-head">
-        <h1>Passadas registradas</h1>
-        <button className="rb-btn" onClick={onVoltarPainel}>← Painel</button>
-      </div>
+      <RebHeader
+        eyebrow="Lavoura · colheita 2026"
+        title="Passadas registradas"
+        actions={<RebButton onClick={onVoltarPainel}>← Painel</RebButton>}
+      />
       {loading ? (
         <Loader />
       ) : erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro: {erro}</p>
       ) : (
         <>
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-            <div className="rb-k"><div className="lab">Passadas</div><div className="val">{passadas.length}</div></div>
-            <div className="rb-k"><div className="lab">Talhões colhidos</div><div className="val">{new Set(passadas.map((p) => p.talhaoId)).size}</div></div>
-            <div className="rb-k"><div className="lab">Litros cereja</div><div className="val">{Math.round(totalLitros).toLocaleString("pt-BR")}<u>L</u></div></div>
-            <div className="rb-k"><div className="lab">Sc beneficiadas</div><div className="val">{Math.round(totalSc)}<u>sc</u></div></div>
-          </div>
-          <h2 className="rb-sec-title">Histórico</h2>
+          <RebKpiStrip cols={4}>
+            <RebKpi lab="Passadas" val={passadas.length} />
+            <RebKpi lab="Talhões colhidos" val={new Set(passadas.map((p) => p.talhaoId)).size} />
+            <RebKpi lab="Litros cereja" val={Math.round(totalLitros).toLocaleString("pt-BR")} sufixo="L" />
+            <RebKpi lab="Sc beneficiadas" val={Math.round(totalSc)} sufixo="sc" />
+          </RebKpiStrip>
+          <h2 className="mb-3 font-serif text-xl font-medium">Histórico</h2>
           {passadas.length === 0 ? (
             <div className="rb-empty">Nenhuma passada registrada ainda. Abra um talhão e use <b>+ Registrar operação</b> → Colheita.</div>
           ) : (
-            <div className="rb-tbl-wrap"><table className="rb-tbl">
+            <RebTable>
               <thead><tr><th>Data</th><th>Talhão</th><th>Passada</th><th>Litros cereja</th><th>Rend. (L/sc)</th><th>Sc beneficiadas</th></tr></thead>
               <tbody>
                 {passadas.map((p) => (
@@ -120,7 +122,7 @@ function PassadasView({ onVoltarPainel }: { onVoltarPainel: () => void }) {
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </RebTable>
           )}
         </>
       )}

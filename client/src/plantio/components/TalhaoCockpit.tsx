@@ -6,14 +6,24 @@ import { FASES_LABEL } from "../lib/fenologia";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { OperacaoForm } from "./OperacaoForm";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+
+// Migalha (voltar) — reproduz .rb-crumb.
+const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
+// .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)] [&_u]:ml-1 [&_u]:text-[15px] [&_u]:font-medium [&_u]:not-italic [&_u]:no-underline [&_u]:text-ink-2";
+const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 
 export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVoltar: () => void }) {
   const { data: t, resumo, loading } = useTalhao(talhaoId);
   const { data: eventos, recarregar } = useEventos(talhaoId);
   const [registrando, setRegistrando] = useState(false);
 
-  if (loading) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lavoura</button><Loader /></main>;
-  if (!t) return <main className="rb-main"><button className="rb-crumb" onClick={onVoltar}>← Lavoura</button><p>Talhão não encontrado.</p></main>;
+  if (loading) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lavoura</button><Loader /></main>;
+  if (!t) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lavoura</button><p>Talhão não encontrado.</p></main>;
 
   const idade = idadeAnos(t, HOJE);
   const categoria = categoriaIdade(idade);
@@ -21,72 +31,72 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
 
   return (
     <main className="rb-main">
-      <button className="rb-crumb" onClick={onVoltar}>← <b>Lavoura</b> &nbsp;/&nbsp; Talhão {t.codigo}</button>
+      <button className={CRUMB} onClick={onVoltar}>← <b>Lavoura</b> &nbsp;/&nbsp; Talhão {t.codigo}</button>
 
-      <div className="rb-head">
+      <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>
-          <h1>{t.nome} <small>· {t.codigo}</small></h1>
-          <div className="rb-sub">
+          <h1 className="mt-1 font-serif text-[38px] font-medium leading-[1.05] [&_small]:text-2xl [&_small]:font-medium [&_small]:text-ink-2">{t.nome} <small>· {t.codigo}</small></h1>
+          <div className="mt-[7px] text-sm text-ink-3">
             {t.variedade} · {t.areaHa} ha · plantio em {new Date(t.dataPlantio).toLocaleDateString("pt-BR")} ({idade}a · {categoria}){t.altitude ? ` · ${t.altitude} m` : ""}
             {t.irrigado && " · irrigado"}
           </div>
         </div>
-        <div className="rb-chips">
+        <div className="flex flex-wrap gap-2">
           {resumo && <span className="rb-chip lact">{FASES_LABEL[resumo.fase]}{resumo.diasNaFase ? ` · ${resumo.diasNaFase}d` : ""}</span>}
           {resumo?.bienalidade && <span className={"rb-chip " + (resumo.bienalidade === "POSITIVA" ? "preg" : "")}>Bienalidade {resumo.bienalidade.toLowerCase()}</span>}
           {t.estado === "ATIVO" && (
-            <span className="rb-head-actions">
-              <button className="rb-btn pri" onClick={() => setRegistrando(true)}>+ Registrar operação</button>
+            <span className="flex gap-2">
+              <RebButton variant="pri" onClick={() => setRegistrando(true)}>+ Registrar operação</RebButton>
             </span>
           )}
         </div>
       </div>
 
       {resumo && (
-        <div className="rb-kstrip" style={{ ["--cols" as any]: 6 }}>
-          <div className="rb-k">
-            <div className="lab">Produtividade</div>
-            <div className="val">{resumo.produtividadeEsperada ?? "—"}<u>sc/ha</u></div>
-            <div className="d">safra 2026 estimada</div>
+        <RebKpiStrip cols={6}>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Produtividade</div>
+            <div className={RB_K_VAL}>{resumo.produtividadeEsperada ?? "—"}<u>sc/ha</u></div>
+            <div className={RB_K_D}>safra 2026 estimada</div>
           </div>
-          <div className="rb-k">
-            <div className="lab">Safra anterior</div>
-            <div className="val">{resumo.produtividadeUltima ?? "—"}<u>sc/ha</u></div>
-            <div className="d">{resumo.bienalidade === "POSITIVA" ? "ano de carga" : "ano de descarga"}</div>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Safra anterior</div>
+            <div className={RB_K_VAL}>{resumo.produtividadeUltima ?? "—"}<u>sc/ha</u></div>
+            <div className={RB_K_D}>{resumo.bienalidade === "POSITIVA" ? "ano de carga" : "ano de descarga"}</div>
           </div>
-          <div className="rb-k">
-            <div className="lab">Cereja</div>
-            <div className="val">{resumo.maturacaoCereja != null ? Math.round(resumo.maturacaoCereja) : "—"}<u>%</u></div>
-            <div className="d">verde {resumo.maturacaoVerde ?? "—"}% · boia {resumo.maturacaoBoia ?? "—"}%</div>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Cereja</div>
+            <div className={RB_K_VAL}>{resumo.maturacaoCereja != null ? Math.round(resumo.maturacaoCereja) : "—"}<u>%</u></div>
+            <div className={RB_K_D}>verde {resumo.maturacaoVerde ?? "—"}% · boia {resumo.maturacaoBoia ?? "—"}%</div>
           </div>
-          <div className="rb-k">
-            <div className="lab">Ferrugem</div>
-            <div className="val" style={{ color: (resumo.ferrugem ?? 0) >= 5 ? "var(--prejuizo)" : undefined }}>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Ferrugem</div>
+            <div className={RB_K_VAL} style={{ color: (resumo.ferrugem ?? 0) >= 5 ? "var(--prejuizo)" : undefined }}>
               {resumo.ferrugem != null ? resumo.ferrugem.toFixed(1) : "—"}<u>%</u>
             </div>
-            <div className={"d" + (resumo.tendFerrugem === "subindo" ? " rb-up" : resumo.tendFerrugem === "caindo" ? " rb-ok" : "")}>
+            <div className={RB_K_D + (resumo.tendFerrugem === "subindo" ? " text-prejuizo" : resumo.tendFerrugem === "caindo" ? " text-lucro" : "")}>
               {resumo.tendFerrugem ?? "—"}
             </div>
           </div>
-          <div className="rb-k">
-            <div className="lab">Broca</div>
-            <div className="val" style={{ color: (resumo.broca ?? 0) >= 3 ? "var(--prejuizo)" : undefined }}>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Broca</div>
+            <div className={RB_K_VAL} style={{ color: (resumo.broca ?? 0) >= 3 ? "var(--prejuizo)" : undefined }}>
               {resumo.broca != null ? resumo.broca.toFixed(1) : "—"}<u>%</u>
             </div>
-            <div className="d">bicho-min. {resumo.bichoMineiro != null ? `${Math.round(resumo.bichoMineiro)}%` : "—"}</div>
+            <div className={RB_K_D}>bicho-min. {resumo.bichoMineiro != null ? `${Math.round(resumo.bichoMineiro)}%` : "—"}</div>
           </div>
-          <div className="rb-k">
-            <div className="lab">Próxima operação</div>
-            <div className="val" style={{ fontSize: 16, paddingTop: 6 }}>{resumo.proximaOperacao ?? "—"}</div>
-            <div className="d">{resumo.proximaOperacaoEm ? new Date(resumo.proximaOperacaoEm).toLocaleDateString("pt-BR") : "—"}</div>
+          <div className={RB_K}>
+            <div className={RB_K_LAB}>Próxima operação</div>
+            <div className={RB_K_VAL + " !text-[16px] pt-1.5"}>{resumo.proximaOperacao ?? "—"}</div>
+            <div className={RB_K_D}>{resumo.proximaOperacaoEm ? new Date(resumo.proximaOperacaoEm).toLocaleDateString("pt-BR") : "—"}</div>
           </div>
-        </div>
+        </RebKpiStrip>
       )}
 
-      <div className="rb-grid">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_clamp(280px,24vw,360px)] gap-[clamp(20px,2.4vw,36px)] max-[1100px]:grid-cols-1">
         <div>
           <div className="rb-tl-card">
-            <h3 className="rb-sec-title">Linha do tempo</h3>
+            <h3 className="mb-3 font-serif text-xl font-medium">Linha do tempo</h3>
             <p className="rb-sec-sub">Fenologia, fitossanidade, nutrição e colheita — interpretadas pelo sistema.</p>
             {eventos.length === 0
               ? <div className="rb-empty">Nenhum evento registrado. Use <b>+ Registrar operação</b> para começar.</div>
@@ -111,7 +121,7 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
             </div>
           </div>
           {resumo && (resumo.pH != null || resumo.fosforo != null || resumo.potassio != null) && (
-            <div className="rb-box" style={{ marginTop: 14 }}>
+            <div className="rb-box mt-3.5">
               <div className="rb-box-section">
                 <h4>Última análise de solo</h4>
                 {resumo.ultimaAnaliseSolo && <div className="rb-kv"><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseSolo).toLocaleDateString("pt-BR")}</b></div>}
@@ -124,7 +134,7 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
             </div>
           )}
           {resumo?.ultimaAnaliseFoliar && (
-            <div className="rb-box" style={{ marginTop: 14 }}>
+            <div className="rb-box mt-3.5">
               <div className="rb-box-section">
                 <h4>Última análise foliar</h4>
                 <div className="rb-kv"><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseFoliar).toLocaleDateString("pt-BR")}</b></div>

@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { TarefaPlanejada, TipoOperacao } from "../types";
 import { criarTarefa, editarTarefa, useTalhoes, useLavouras } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 // Conjunto de tipos de operação — reusa os mesmos rótulos do OperacaoForm,
 // agora num único select (a tarefa não distingue domínio).
@@ -113,15 +115,19 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
   const titulo = modo === "novo" ? "Nova tarefa" : `Realizar — ${t?.descricao ?? "tarefa"}`;
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="tarefa-title">
-        <div className="rb-drawer-head">
-          <h3 id="tarefa-title">{titulo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-
-        <div className="rb-drawer-body">
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || (modo === "novo" && !descricao.trim())} onClick={salvar}>
+            {salvando ? "Salvando…" : modo === "novo" ? "Criar tarefa" : "Salvar realizado"}
+          </RebButton>
+        </>
+      }
+    >
+      <>
           {modo === "novo" ? (
             <>
               <div className="rb-fld">
@@ -195,7 +201,7 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
             </>
           ) : (
             <>
-              <p className="rb-sub" style={{ marginTop: 0 }}>
+              <p className="mt-0 text-sm text-ink-3">
                 Planejado: <b>{t?.descricao}</b>
                 {t?.dataPrevista ? ` · prev. ${t.dataPrevista}` : ""}
                 {t?.custoPrev != null ? ` · R$ ${t.custoPrev.toLocaleString("pt-BR")}` : ""}
@@ -234,16 +240,8 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
             </>
           )}
 
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || (modo === "novo" && !descricao.trim())} onClick={salvar}>
-            {salvando ? "Salvando…" : modo === "novo" ? "Criar tarefa" : "Salvar realizado"}
-          </button>
-        </div>
-      </aside>
-    </>
+          {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }
