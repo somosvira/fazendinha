@@ -238,10 +238,10 @@ function SimSlider({
 }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
-    <div className="sim-slider">
-      <div className="sim-slider-top">
-        <span className="sim-slider-label">{label}</span>
-        <span className="sim-slider-val mono-nums">{fmt(value)}</span>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-ink-2">{label}</span>
+        <span className="mono-nums font-serif text-[17px] tabular-nums text-foreground">{fmt(value)}</span>
       </div>
       <input
         type="range"
@@ -251,9 +251,9 @@ function SimSlider({
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         style={{ ["--pct" as string]: pct + "%" } as React.CSSProperties}
-        className="sim-range"
+        className="my-0.5 h-1 w-full cursor-pointer appearance-none bg-[linear-gradient(90deg,var(--ink)_var(--pct),var(--rule-soft)_var(--pct))] outline-none [&::-moz-range-thumb]:h-[18px] [&::-moz-range-thumb]:w-[18px] [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[color:var(--ink)] [&::-moz-range-thumb]:bg-card [&::-webkit-slider-thumb]:h-[18px] [&::-webkit-slider-thumb]:w-[18px] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[color:var(--ink)] [&::-webkit-slider-thumb]:bg-card"
       />
-      {hint && <span className="sim-slider-hint">{hint}</span>}
+      {hint && <span className="text-[11px] tracking-[0.02em] text-[color:var(--ink-mute)]">{hint}</span>}
     </div>
   );
 }
@@ -290,12 +290,12 @@ export function Simulador({ R }: { R: R }) {
   const folegoSev = sim.folegoMeses < 4 ? "neg" : sim.folegoMeses < 9 ? "warn" : "pos";
 
   return (
-    <div className="sim-wrap">
-      <div className="sim-grid">
-        <div className="sim-controls">
-          <div className="sim-controls-head">
+    <div className="mt-[18px] border-t border-[color:var(--rule)] pt-1">
+      <div className="grid min-h-[calc(100vh-220px)] grid-cols-[360px_1fr] gap-0 max-[1100px]:grid-cols-1">
+        <div className="flex flex-col gap-[22px] border-r border-[color:var(--rule)] bg-card px-[22px] py-6 max-[1100px]:border-b max-[1100px]:border-r-0">
+          <div className="flex flex-col gap-1">
             <span className="eyebrow">Ajuste as variáveis</span>
-            <h3>Cenário</h3>
+            <h3 className="m-0 font-serif text-2xl font-normal tracking-[-0.01em]">Cenário</h3>
           </div>
           <SimSlider label="Preço do leite" value={precoLeite} min={3.0} max={4.5} step={0.05} onChange={setPreco} fmt={(v) => "R$ " + v.toFixed(2).replace(".", ",") + "/L"} hint="média CEPEA recente ~R$ 3,50" />
           <SimSlider label="Crescimento do volume" value={volGrowth} min={0} max={12} step={0.5} onChange={setVolGrowth} fmt={(v) => "+" + v.toFixed(1).replace(".", ",") + "%/mês"} hint="matrizes entrando em produção" />
@@ -303,54 +303,58 @@ export function Simulador({ R }: { R: R }) {
           <SimSlider label="Investimento mensal" value={investMensal} min={0} max={1200000} step={20000} onChange={setInvest} fmt={(v) => fmtBRLsim(v) + "/mês"} hint="compra de gado, máquina, benfeitoria" />
           <SimSlider label="Receita safra de café" value={cafeSafra} min={0} max={600000} step={10000} onChange={setCafe} fmt={(v) => fmtBRLsim(v)} hint="safra única ~Mar/27" />
 
-          <div className="sim-presets">
+          <div className="mt-1.5 flex flex-wrap gap-2 border-t border-[color:var(--rule-soft)] pt-[18px]">
             {presets.map((p, i) => (
-              <button key={i} className="sim-preset" onClick={p.apply}>
+              <button
+                key={i}
+                className="cursor-pointer border border-[color:var(--rule)] bg-transparent px-3 py-[7px] font-sans text-[12.5px] tracking-[0.01em] text-ink-2 hover:border-mast hover:bg-mast hover:text-mast-ink"
+                onClick={p.apply}
+              >
                 {p.nome}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="sim-results">
-          <div className="sim-kpis">
-            <div className="sim-kpi">
-              <span className="l">Break-even do leite</span>
-              <span className="v mono-nums">{sim.breakEvenMes || "—"}</span>
-              <span className="s">{sim.breakEvenIdx >= 0 ? `em ${sim.breakEvenIdx + 1} meses` : "fora de 12m"}</span>
+        <div className="flex flex-col gap-[22px] bg-background px-7 py-6">
+          <div className="grid grid-cols-3 border border-[color:var(--rule)] bg-card max-[1100px]:grid-cols-1">
+            <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Break-even do leite</span>
+              <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{sim.breakEvenMes || "—"}</span>
+              <span className="text-xs text-[color:var(--ink-mute)]">{sim.breakEvenIdx >= 0 ? `em ${sim.breakEvenIdx + 1} meses` : "fora de 12m"}</span>
             </div>
-            <div className="sim-kpi">
-              <span className="l">Fôlego de caixa</span>
-              <span className={"v mono-nums " + folegoSev}>{folegoTxt}</span>
-              <span className="s">{sim.caixaZeraMes ? "zera em " + sim.caixaZeraMes : "não zera no período"}</span>
+            <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Fôlego de caixa</span>
+              <span className={"mono-nums font-serif text-[32px] leading-none tracking-[-0.015em] " + (folegoSev === "neg" ? "text-prejuizo" : folegoSev === "warn" ? "text-atencao" : "text-lucro")}>{folegoTxt}</span>
+              <span className="text-xs text-[color:var(--ink-mute)]">{sim.caixaZeraMes ? "zera em " + sim.caixaZeraMes : "não zera no período"}</span>
             </div>
-            <div className="sim-kpi">
-              <span className="l">Caixa em 12 meses</span>
-              <span className={"v mono-nums " + (sim.caixaFinal < 0 ? "neg" : "pos")}>{fmtBRLsim(sim.caixaFinal)}</span>
-              <span className="s">vs base {fmtBRLsim(base.caixaFinal)}</span>
+            <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Caixa em 12 meses</span>
+              <span className={"mono-nums font-serif text-[32px] leading-none tracking-[-0.015em] " + (sim.caixaFinal < 0 ? "text-prejuizo" : "text-lucro")}>{fmtBRLsim(sim.caixaFinal)}</span>
+              <span className="text-xs text-[color:var(--ink-mute)]">vs base {fmtBRLsim(base.caixaFinal)}</span>
             </div>
           </div>
 
-          <div className="sim-narr">
+          <div className="flex flex-col gap-2.5 border-l-[3px] border-l-[color:var(--pos)] bg-card px-5 py-[18px]">
             <div className="ai-signature">
               <span className="dot"></span>
               <span>Rio Novo · IA analista</span>
               <span style={{ color: "var(--ink-mute)" }}>· simulação ao vivo</span>
             </div>
-            <div className="sim-narr-body">
+            <div className="flex flex-col gap-2 [&_p]:m-0 [&_p]:font-serif [&_p]:text-[17px] [&_p]:leading-[1.5] [&_p]:text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
               {narrativa.map((f, i) => (
                 <p key={i} dangerouslySetInnerHTML={{ __html: f.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") }}></p>
               ))}
             </div>
           </div>
 
-          <div className="sim-charts">
-            <div className="sim-chart">
-              <div className="sim-chart-title">Custo × preço por litro</div>
+          <div className="grid grid-cols-2 gap-6 max-[1100px]:grid-cols-1">
+            <div className="border border-[color:var(--rule)] bg-card px-[18px] py-4">
+              <div className="mb-2 font-sans text-xs uppercase tracking-[0.12em] text-ink-3">Custo × preço por litro</div>
               <SimLineChart proj={sim.proj} accessorA={(p) => p.custoLitro} accessorB={(p) => p.preco} colorA="var(--neg)" colorB="var(--leite)" labelA="custo" labelB="preço" fmtY={(v) => "R$" + v.toFixed(1)} />
             </div>
-            <div className="sim-chart">
-              <div className="sim-chart-title">Caixa projetado</div>
+            <div className="border border-[color:var(--rule)] bg-card px-[18px] py-4">
+              <div className="mb-2 font-sans text-xs uppercase tracking-[0.12em] text-ink-3">Caixa projetado</div>
               <SimLineChart proj={sim.proj} accessorA={(p) => p.caixa} accessorB={() => 0} colorA="var(--ink)" colorB="var(--neg)" labelA="caixa" labelB="R$0" fmtY={(v) => (Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1) + "mi" : (v / 1000).toFixed(0) + "k")} />
             </div>
           </div>

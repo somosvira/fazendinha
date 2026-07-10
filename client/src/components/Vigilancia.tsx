@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { Tab } from "./Shell";
 import type { AnalisePreco } from "../data/anomalias";
 import { useToast } from "./Toast";
+import { cn } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -51,16 +52,16 @@ export function AnomaliasStrip({
   if (lista.length === 0) {
     // Todas dispensadas — não escondemos a strip, oferecemos restaurar
     return (
-      <div className="anom-strip is-empty">
-        <div className="anom-strip-head">
-          <span className="anom-badge">
-            <span className="dot"></span>IA · Vigilância de gastos
+      <div className="border border-border bg-card px-5 pt-[18px] pb-3 mt-[18px] mb-1">
+        <div className="flex items-center gap-[14px] flex-wrap mb-[14px]">
+          <span className="inline-flex items-center gap-2 font-sans text-sm tracking-[0.14em] uppercase text-foreground">
+            <span className="w-[7px] h-[7px] bg-atencao rounded-full"></span>IA · Vigilância de gastos
           </span>
-          <span className="anom-sub">
+          <span className="text-sm text-ink-3 italic">
             Todos os {anomalias.length} desvios foram dispensados.
           </span>
           <button
-            className="anom-restore"
+            className="ml-auto bg-transparent border border-border px-3 py-1.5 font-sans text-[13px] font-semibold tracking-[0.02em] text-foreground cursor-pointer hover:bg-[var(--bg-card-2)]"
             onClick={() => {
               setDismissed({});
               toast.info("Avisos restaurados", "Você verá novamente os desvios detectados pela IA.");
@@ -86,56 +87,82 @@ export function AnomaliasStrip({
   };
 
   return (
-    <div className="anom-strip">
-      <div className="anom-strip-head">
-        <span className="anom-badge">
-          <span className="dot"></span>IA · Vigilância de gastos
+    <div className="border border-border bg-card px-5 pt-[18px] pb-5 mt-[18px] mb-1">
+      <div className="flex items-center gap-[14px] flex-wrap mb-[14px]">
+        <span className="inline-flex items-center gap-2 font-sans text-sm tracking-[0.14em] uppercase text-foreground">
+          <span className="w-[7px] h-[7px] bg-atencao rounded-full"></span>IA · Vigilância de gastos
         </span>
-        <span className="anom-sub">
+        <span className="text-sm text-ink-3 italic">
           {totalNaoDispensadas} {totalNaoDispensadas === 1 ? "desvio detectado" : "desvios detectados"} no período
           {anomalias.length !== totalNaoDispensadas && ` · ${anomalias.length - totalNaoDispensadas} dispensados`}
         </span>
       </div>
-      <div className="anom-cards">
+      <div className="grid grid-cols-3 gap-[14px] max-[1100px]:grid-cols-1">
         {lista.map((a) => {
           const isUp = a.delta > 0;
           const isFlat = a.delta === 0;
+          const sevBorder =
+            a.severidade === "alta" ? "border-l-prejuizo" : a.severidade === "media" ? "border-l-atencao" : "border-l-ink-3";
+          const sevText =
+            a.severidade === "alta" ? "text-prejuizo" : a.severidade === "media" ? "text-atencao" : "text-ink-3";
           return (
-            <div key={a.id} className={"anom-card sev-" + a.severidade}>
+            <div
+              key={a.id}
+              className={cn(
+                "relative bg-[var(--bg-card-2)] border-l-[3px] px-[18px] py-4 flex flex-col gap-2",
+                sevBorder,
+              )}
+            >
               <button
-                className="anom-dismiss"
+                className="absolute top-2.5 right-2.5 bg-transparent border-none cursor-pointer font-serif text-[18px] text-ink-2 leading-none hover:text-foreground"
                 onClick={() => dispensar(a.id, a.titulo)}
                 title="Dispensar"
                 aria-label={`Dispensar aviso: ${a.titulo}`}
               >
                 ×
               </button>
-              <div className="anom-card-head">
-                <span className={"anom-sev sev-" + a.severidade}>
+              <div className="flex items-center gap-2.5">
+                <span className={cn("text-sm tracking-[0.14em] uppercase px-2 py-0.5 border border-current", sevText)}>
                   {a.severidade === "alta" ? "Alta" : a.severidade === "media" ? "Média" : "Baixa"}
                 </span>
-                <span className={"anom-delta " + (isFlat ? "flat" : isUp ? "up" : "down")}>
+                <span
+                  className={cn(
+                    "text-sm tabular-nums",
+                    isFlat ? "text-ink-3" : isUp ? "text-prejuizo" : "text-lucro",
+                  )}
+                >
                   {isFlat ? "—" : isUp ? "▲ +" : "▼ "}
                   {!isFlat && `${Math.abs(a.delta)}%`}
                 </span>
               </div>
-              <div className="anom-title">{a.titulo}</div>
-              <div className="anom-resumo">{a.resumo}</div>
+              <div className="font-serif text-[18px] leading-[1.25] tracking-[-0.005em] text-foreground">{a.titulo}</div>
+              <div className="text-[15px] text-ink-2 font-medium leading-[1.5]">{a.resumo}</div>
               {typeof a.valor === "number" && a.valor > 0 && (
-                <div className={"anom-impacto mono-nums " + (isUp ? "is-neg" : "is-pos")}>
+                <div
+                  className={cn(
+                    "mono-nums font-sans text-base font-semibold tabular-nums py-1.5",
+                    isUp ? "text-prejuizo" : "text-lucro",
+                  )}
+                >
                   {isUp ? "Custo extra " : "Economia "}
                   R$ {Math.abs(a.valor).toLocaleString("pt-BR")}
                 </div>
               )}
-              <div className="anom-pergunta">"{a.pergunta}"</div>
-              <div className="anom-actions">
+              <div className="font-serif italic text-[15px] text-ink-2 leading-[1.4] font-medium pl-2.5 border-l-2 border-l-border">"{a.pergunta}"</div>
+              <div className="flex gap-3 mt-0.5">
                 {onDrill && a.catId && (
-                  <button className="anom-cta" onClick={() => onDrill(a.catId)}>
+                  <button
+                    className="bg-transparent border-none px-0 py-1.5 font-sans text-base text-foreground font-semibold underline underline-offset-4 cursor-pointer hover:text-cafe"
+                    onClick={() => onDrill(a.catId)}
+                  >
                     Ver lançamentos →
                   </button>
                 )}
                 {onNav && (
-                  <button className="anom-cta ghost" onClick={() => onNav("ia")}>
+                  <button
+                    className="bg-transparent border-none px-0 py-1.5 font-sans text-base text-ink-3 font-semibold underline underline-offset-4 cursor-pointer hover:text-cafe"
+                    onClick={() => onNav("ia")}
+                  >
                     Explicar com IA
                   </button>
                 )}
@@ -170,44 +197,48 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
   const pts = precos.map((v, i) => `${xS(i)},${yS(v)}`).join(" ");
   const fmtP = (v: number) => (a.unidade === "L" ? "R$ " + v.toFixed(2).replace(".", ",") : "R$ " + v.toLocaleString("pt-BR"));
 
-  const tone = a.alerta ? "warn" : "ok";
+  const warn = a.alerta;
 
   return (
-    <div className={"preco-alerta " + tone}>
-      <div className="preco-alerta-head">
-        <span className="pa-badge">
-          <span className="dot"></span>IA · Preço pago
+    <div className={cn("border border-border bg-card border-l-[3px]", warn ? "border-l-atencao" : "border-l-lucro")}>
+      <div className="flex justify-between items-center px-4 py-3 border-b border-b-[var(--rule-soft)] bg-[var(--bg-card-2)]">
+        <span className="inline-flex items-center gap-2 font-sans text-sm tracking-[0.14em] uppercase text-ink-2">
+          <span className={cn("w-1.5 h-1.5 rounded-full", warn ? "bg-atencao" : "bg-lucro")}></span>IA · Preço pago
         </span>
-        {a.alerta ? <span className="pa-flag warn">acima do normal</span> : <span className="pa-flag ok">dentro do padrão</span>}
+        {a.alerta ? (
+          <span className="text-sm tracking-[0.1em] uppercase px-2 py-0.5 border border-current text-atencao">acima do normal</span>
+        ) : (
+          <span className="text-sm tracking-[0.1em] uppercase px-2 py-0.5 border border-current text-lucro">dentro do padrão</span>
+        )}
       </div>
 
-      <div className="preco-alerta-body">
-        <div className="pa-nums">
-          <div className="pa-cell">
-            <span className="pa-l">Pago agora</span>
-            <span className="pa-v mono-nums">
+      <div className="grid grid-cols-[1fr_auto] gap-[18px] p-4 items-center max-[1100px]:grid-cols-1">
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-sm tracking-[0.1em] uppercase text-ink-3 min-w-[116px]">Pago agora</span>
+            <span className="mono-nums font-serif text-[20px] text-foreground tabular-nums">
               {fmtP(a.atual)}
-              <small>/{a.unidade}</small>
+              <small className="text-sm text-ink-3">/{a.unidade}</small>
             </span>
           </div>
-          <div className="pa-cell">
-            <span className="pa-l">Compra anterior</span>
-            <span className="pa-v sub mono-nums">{fmtP(a.anterior)}</span>
-            <span className={"pa-delta " + (a.deltaUlt > 0 ? "up" : "down")}>
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-sm tracking-[0.1em] uppercase text-ink-3 min-w-[116px]">Compra anterior</span>
+            <span className="mono-nums font-serif text-base text-ink-2 tabular-nums">{fmtP(a.anterior)}</span>
+            <span className={cn("text-sm tabular-nums", a.deltaUlt > 0 ? "text-prejuizo" : "text-lucro")}>
               {a.deltaUlt > 0 ? "▲ +" : "▼ "}
               {Math.abs(a.deltaUlt).toFixed(0)}%
             </span>
           </div>
-          <div className="pa-cell">
-            <span className="pa-l">Média mercado</span>
-            <span className="pa-v sub mono-nums">{fmtP(a.mediaMercado)}</span>
-            <span className={"pa-delta " + (a.deltaMercado > 0 ? "up" : "down")}>
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-sm tracking-[0.1em] uppercase text-ink-3 min-w-[116px]">Média mercado</span>
+            <span className="mono-nums font-serif text-base text-ink-2 tabular-nums">{fmtP(a.mediaMercado)}</span>
+            <span className={cn("text-sm tabular-nums", a.deltaMercado > 0 ? "text-prejuizo" : "text-lucro")}>
               {a.deltaMercado > 0 ? "▲ +" : "▼ "}
               {Math.abs(a.deltaMercado).toFixed(0)}%
             </span>
           </div>
         </div>
-        <div className="pa-spark">
+        <div className="flex flex-col gap-1 w-[220px] max-[1100px]:w-full">
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
             <line x1={padL} x2={W - padR} y1={yS(a.mediaMercado)} y2={yS(a.mediaMercado)} stroke="var(--ink-2)" strokeWidth="1" strokeDasharray="3 2" />
             <polyline points={pts} fill="none" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="2" />
@@ -215,7 +246,7 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
               <circle key={i} cx={xS(i)} cy={yS(v)} r="2.5" fill="var(--bg-card)" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="1.5" />
             ))}
           </svg>
-          <span className="pa-spark-cap">5 últimas compras · linha = média mercado</span>
+          <span className="text-sm text-ink-2 text-center">5 últimas compras · linha = média mercado</span>
         </div>
       </div>
 
@@ -227,11 +258,11 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
 function PrecoAlertaFoot({ delta, marca }: { delta: number; marca: string }) {
   const toast = useToast();
   return (
-    <div className="preco-alerta-foot">
-      Você pagou <strong>{delta.toFixed(0)}% a mais</strong> que na última compra. Vale cotar outro fornecedor ou
+    <div className="px-4 py-3 border-t border-t-[var(--rule-soft)] text-sm text-ink-2 leading-[1.5] flex flex-col gap-2 items-start">
+      Você pagou <strong className="text-prejuizo">{delta.toFixed(0)}% a mais</strong> que na última compra. Vale cotar outro fornecedor ou
       renegociar.
       <button
-        className="pa-cta"
+        className="bg-transparent border border-[var(--ink)] px-3 py-1.5 font-sans text-sm text-foreground cursor-pointer hover:bg-mast hover:text-mast-ink hover:border-mast"
         onClick={() => toast.info("Cotação solicitada", `Vamos buscar 3 fornecedores alternativos para “${marca}”. Você recebe o resultado no WhatsApp em até 24h.`)}
       >
         Cotar alternativas →
