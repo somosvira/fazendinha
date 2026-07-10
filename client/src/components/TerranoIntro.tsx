@@ -164,15 +164,28 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
         fallback = window.setTimeout(finalizar, dur + 700);
       };
       audio.addEventListener("playing", onPlaying, { once: true });
+
+      // Destrava a música no 1º gesto caso o autoplay seja bloqueado (ex.: boot
+      // sem passar pelo login). No fluxo normal — intro logo após o clique de
+      // "Entrar" — a sticky activation do documento já libera e isto nem roda.
+      const destravar = () => audio.play().catch(() => {});
+      const desarmarDestrava = () => {
+        window.removeEventListener("pointerdown", destravar);
+        window.removeEventListener("keydown", destravar);
+      };
+
       const p = audio.play();
       if (p && typeof p.catch === "function") {
         p.catch(() => {
-          /* autoplay bloqueado — o timer de fallback cuida do fim; parte visual roda igual */
+          /* autoplay bloqueado — tenta de novo no 1º gesto; a parte visual roda igual */
+          window.addEventListener("pointerdown", destravar, { once: true });
+          window.addEventListener("keydown", destravar, { once: true });
         });
       }
       return () => {
         audio.removeEventListener("ended", onEnded);
         audio.removeEventListener("playing", onPlaying);
+        desarmarDestrava();
         window.clearTimeout(fallback);
         window.clearTimeout(flyTimer);
       };

@@ -77,8 +77,8 @@
    para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
    ============================================================ */
 /* Marca Terrano no header (símbolo + nome). O resto do header foi migrado
-   para Tailwind; só a marca continua em CSS pois é o alvo do voo da abertura
-   (TerranoIntro pousa em `.ah-brand .terrano-symbol`). */
+   para Tailwind + shadcn; só a marca continua em CSS pois é o alvo do voo da
+   abertura (TerranoIntro pousa em `.ah-brand .terrano-symbol`). */
 .ah-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .ah-brand-symbol { display: block; flex: none; }
 .ah-brand-txt { display: flex; flex-direction: column; line-height: 1; min-width: 0; }
