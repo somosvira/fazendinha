@@ -5,6 +5,8 @@ import {
   useParametros, salvarParametrosApi, resetarParametro,
   type ParametroDTO, type CategoriaParametro, type ParametroPatch,
 } from "../api";
+import { RebHeader } from "./RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
 
 const MODOS: { id: ModoProducao; titulo: string; desc: string }[] = [
   { id: "ORDENHA", titulo: "Controle leiteiro", desc: "Peso por ordenha (manhã/tarde/noite) por vaca — controle individual." },
@@ -45,8 +47,8 @@ export function ConfiguracoesView() {
     return map;
   }, [params.data]);
 
-  if (cfg.loading) return <main className="rb-main"><div className="rb-eyebrow">Configurações</div><div className="rb-head"><h1>Configurações</h1></div><Loader /></main>;
-  if (cfg.erro || !cfg.data) return <main className="rb-main"><div className="rb-head"><h1>Configurações</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {cfg.erro}</p></main>;
+  if (cfg.loading) return <main className="rb-main"><RebHeader eyebrow="Configurações" title="Configurações" /><Loader /></main>;
+  if (cfg.erro || !cfg.data) return <main className="rb-main"><RebHeader title="Configurações" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {cfg.erro}</p></main>;
 
   // Sincroniza estado local do input com o valor do banco quando ele muda
   if (cfg.data.precoLeite != null && precoLeite === "") setPrecoLeite(String(cfg.data.precoLeite));
@@ -133,10 +135,9 @@ export function ConfiguracoesView() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Configurações · Sítio São Francisco</div>
-      <div className="rb-head"><h1>Configurações</h1></div>
+      <RebHeader eyebrow="Configurações · Sítio São Francisco" title="Configurações" />
 
-      <h2 className="rb-sec-title">Como a fazenda mede o leite?</h2>
+      <h2 className="mb-3 font-serif text-xl font-medium">Como a fazenda mede o leite?</h2>
       <p className="rb-sec-sub">Define como a produção é registrada e como a média por vaca é calculada. Trocar o modo recalcula todo o rebanho.</p>
 
       <div className="rb-dcards" role="radiogroup" aria-label="Modo de produção">
@@ -159,7 +160,7 @@ export function ConfiguracoesView() {
         })}
       </div>
 
-      <h2 className="rb-sec-title" style={{ marginTop: 36 }}>Preço do leite</h2>
+      <h2 className="mb-3 font-serif text-xl font-medium" style={{ marginTop: 36 }}>Preço do leite</h2>
       <p className="rb-sec-sub">Valor recebido por litro. Alimenta os cálculos de receita e rentabilidade na ficha do animal. Vazio = sistema usa R$ 2,40/L como fallback.</p>
       <div style={{ display: "flex", gap: 12, alignItems: "center", maxWidth: 360 }}>
         <input
@@ -172,26 +173,26 @@ export function ConfiguracoesView() {
           placeholder="ex.: 2.40"
           style={{ flex: 1 }}
         />
-        <button className="rb-btn pri" disabled={salvandoPreco} onClick={salvarPreco}>{salvandoPreco ? "Salvando…" : "Salvar"}</button>
+        <RebButton variant="pri" disabled={salvandoPreco} onClick={salvarPreco}>{salvandoPreco ? "Salvando…" : "Salvar"}</RebButton>
       </div>
 
       {/* ── Parâmetros de manejo ─────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 36 }}>
         <div>
-          <h2 className="rb-sec-title" style={{ marginTop: 0 }}>Parâmetros de manejo</h2>
+          <h2 className="mb-3 font-serif text-xl font-medium" style={{ marginTop: 0 }}>Parâmetros de manejo</h2>
           <p className="rb-sec-sub">Metas Embrapa, pesos de referência e regras da fazenda. O valor Embrapa fica sempre à direita como comparação — a fazenda pode sobrescrever.</p>
         </div>
-        <button
-          className="rb-btn pri"
+        <RebButton
+          variant="pri"
           disabled={salvandoParams || nMudancas === 0}
           onClick={salvarParametros}
         >
           {salvandoParams ? "Salvando…" : nMudancas === 0 ? "Salvar parâmetros" : `Salvar ${nMudancas} alteração(ões)`}
-        </button>
+        </RebButton>
       </div>
 
       {params.loading && <Loader label="Carregando parâmetros…" />}
-      {params.erro && <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {params.erro}</p>}
+      {params.erro && <p className="mt-[7px] text-sm text-prejuizo">Erro: {params.erro}</p>}
 
       {!params.loading && !params.erro && CATEGORIAS.map(({ id, titulo }) => {
         const items = paramsPorCategoria.get(id) ?? [];
@@ -255,15 +256,14 @@ export function ConfiguracoesView() {
                       {p.temOverride && <span style={{ color: "var(--brass)", marginLeft: 8 }}>· fazenda</span>}
                     </div>
 
-                    <button
-                      className="rb-btn"
+                    <RebButton
                       style={{ padding: "4px 10px", fontSize: 12 }}
                       disabled={!p.temOverride}
                       onClick={() => restaurar(p.chave)}
                       title="Restaurar padrão Embrapa"
                     >
                       Restaurar
-                    </button>
+                    </RebButton>
                   </div>
                 );
               })}
@@ -272,8 +272,8 @@ export function ConfiguracoesView() {
         );
       })}
 
-      {feedback && <p className="rb-sub" style={{ marginTop: 14, color: "var(--pos)" }}>{feedback}</p>}
-      {erroSalvar && <p className="rb-sub" style={{ marginTop: 14, color: "var(--neg)" }}>Erro: {erroSalvar}</p>}
+      {feedback && <p className="mt-[14px] text-sm text-lucro">{feedback}</p>}
+      {erroSalvar && <p className="mt-[14px] text-sm text-prejuizo">Erro: {erroSalvar}</p>}
     </main>
   );
 }

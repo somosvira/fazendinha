@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { previsaoConsumo, fecharConsumo, listarConsumos, estornarConsumo, type LoteDTO, type PrevisaoConsumoDTO, type ConsumoPeriodoDTO } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebTable } from "@/components/rb/RebTable";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -61,7 +62,7 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
       actions={<RebButton onClick={onFechar}>Fechar</RebButton>}
     >
       <>
-        <p className="rb-sub" style={{ margin: "0 0 12px", fontSize: 12.5 }}>
+        <p className="text-ink-3" style={{ margin: "0 0 12px", fontSize: 12.5 }}>
           Baixa do estoque o consumo da dieta {lote.dietaNome ? <b>{lote.dietaNome}</b> : "do lote"} × cabeças ativas × dias. Confira a prévia antes de fechar.
         </p>
 
@@ -70,11 +71,11 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
           <label className="rb-fld" style={{ flex: 1 }}>Fim<input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></label>
         </div>
 
-        {carregando ? <p className="rb-sub">Calculando prévia…</p>
-          : erroPrev ? <p className="rb-sub" style={{ color: "var(--neg)" }}>{erroPrev}</p>
+        {carregando ? <p className="mt-[7px] text-sm text-ink-3">Calculando prévia…</p>
+          : erroPrev ? <p className="mt-[7px] text-sm text-prejuizo">{erroPrev}</p>
           : prev ? (
             <>
-              <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <RebTable>
                 <thead><tr><th>Produto</th><th>Baixa</th><th>Saldo→</th><th>Custo</th></tr></thead>
                 <tbody>{prev.linhas.map((l) => (
                   <tr key={l.produtoId}>
@@ -84,7 +85,7 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
                     <td>{money(l.custoTotal)}</td>
                   </tr>
                 ))}</tbody>
-              </table></div>
+              </RebTable>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, margin: "10px 0", fontSize: 13 }}>
                 <span>{prev.numCabecas} cabeça(s) · {prev.dias} dia(s)</span>
                 <span>Total: <b>{money(prev.custoTotal)}</b></span>
