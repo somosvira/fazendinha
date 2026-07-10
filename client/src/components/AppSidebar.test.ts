@@ -5,6 +5,12 @@ import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { AppSidebar } from "./AppSidebar";
 import type { Tab } from "./Shell";
 
+// PropriedadePicker (bloco de marca) chama usePropriedades — mock offline p/
+// o teste não depender de rede/backend.
+vi.mock("../rebanho/api", () => ({
+  usePropriedades: () => ({ data: [{ id: 1, nome: "Rio Novo", principal: true, ativo: true }], loading: false, recarregar: vi.fn() }),
+}));
+
 // Node 22+ define um `localStorage` global "experimental" (atrás de
 // --localstorage-file) que sombreia o do jsdom e quebra com "Cannot read
 // properties of undefined" — substituímos por um mock em memória via
@@ -59,6 +65,8 @@ function baseProps(overrides: Partial<{
   podeVerFolha: boolean;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  propAtiva: number | null;
+  onTrocarProp: (id: number | null) => void;
 }> = {}) {
   return {
     current: "dashboard" as Tab,
@@ -71,6 +79,8 @@ function baseProps(overrides: Partial<{
     podeVerFolha: true,
     mobileOpen: false,
     onMobileToggle: vi.fn(),
+    propAtiva: null as number | null,
+    onTrocarProp: vi.fn(),
     ...overrides,
   };
 }
@@ -93,31 +103,29 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Equipe & Ponto")).toBeTruthy();
   });
 
-  it("clicar no cabeçalho de um módulo alterna (acordeão) seus sub-itens", () => {
-    render(h(AppSidebar, baseProps()));
-    // Sem localStorage e current="dashboard" (não pertence a nenhum módulo),
-    // o 1º módulo não-desabilitado ("Rebanho leiteiro") abre por padrão.
-    expect(screen.getByText("Painel")).toBeTruthy();
-
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.queryByText("Painel")).toBeNull();
-
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.getByText("Painel")).toBeTruthy();
+  it("expande o módulo da aba atual (single-open dirigido pela aba)", () => {
+    render(h(AppSidebar, baseProps({ current: "reb-nutricao" as Tab })));
+    expect(screen.getByText("Nutrição")).toBeTruthy();  // sub-item do Rebanho, expandido
+    expect(screen.queryByText("Safras")).toBeNull();     // Milho fechado
   });
 
-  it("persiste o módulo aberto no localStorage e abre automaticamente o módulo da aba atual ao navegar", () => {
-    const { rerender } = render(h(AppSidebar, baseProps()));
-
-    fireEvent.click(screen.getByText("Milho"));
-    expect(localStorage.getItem("rionovo:sidebar:openModulo")).toBe("cultivo");
-    expect(screen.getByText("Safras")).toBeTruthy();
-
-    // navega (via prop `current`, como o App faria) para uma aba de outro módulo:
-    // o efeito de auto-open deve trocar o acordeão sem clique no cabeçalho.
-    rerender(h(AppSidebar, baseProps({ current: "reb-nutricao" as Tab })));
+  it("troca o módulo expandido quando a aba muda", () => {
+    const { rerender } = render(h(AppSidebar, baseProps({ current: "reb-nutricao" as Tab })));
     expect(screen.getByText("Nutrição")).toBeTruthy();
-    expect(screen.queryByText("Safras")).toBeNull();
+    rerender(h(AppSidebar, baseProps({ current: "mil-safras" as Tab })));
+    expect(screen.getByText("Safras")).toBeTruthy();
+    expect(screen.queryByText("Nutrição")).toBeNull();
+  });
+
+  it("mostra o meta subtitle do módulo", () => {
+    render(h(AppSidebar, baseProps()));
+    expect(screen.getByText("gado leiteiro")).toBeTruthy();
+  });
+
+  it("mostra o bloco de marca Terrano e o seletor de propriedade", () => {
+    render(h(AppSidebar, baseProps()));
+    expect(screen.getAllByText("Terrano").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /Propriedade \/ sítio/i }).length).toBeGreaterThan(0);
   });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {

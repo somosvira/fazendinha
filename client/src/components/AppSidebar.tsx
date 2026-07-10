@@ -4,10 +4,12 @@
  * antes era CSS puro em `.rb-side` (rebanho.css). MOBILE (<=900px): drawer via
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { PropriedadePicker } from "./PropriedadePicker";
+import { TerranoSymbol } from "./TerranoLogo";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -152,14 +154,15 @@ const MODULOS: Modulo[] = [
   },
 ];
 
-const STORAGE_KEY = "rionovo:sidebar:openModulo";
-
 function moduloOfTab(t: Tab): ModuloId | null {
   for (const m of MODULOS) {
     if (m.subs.some((s) => s.id === t)) return m.id;
   }
   return null;
 }
+
+// primeira sub-aba do módulo = seu "painel" (destino ao clicar no cabeçalho)
+function firstTabOf(m: Modulo): Tab { return m.subs[0].id; }
 
 // Breakpoints do antigo `.rb-side` (rebanho.css): >=901px o trilho fica sempre
 // visível; entre 901–1100px vira ícone-only (colapsado) e expande temporário por
@@ -242,7 +245,10 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
       )}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>{m.label}</span>
+      <span className={cn("flex flex-1 flex-col leading-[1.2]", RAIL_LABEL)}>
+        <span>{m.label}</span>
+        {m.meta && <span className="mt-0.5 text-[11px] text-[var(--mast-ink-2)]">{m.meta}</span>}
+      </span>
       {m.disabled ? (
         <span
           aria-label="em breve"
@@ -273,34 +279,21 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
   );
 }
 
-export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, mobileOpen, onMobileToggle }: {
+export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, mobileOpen, onMobileToggle, propAtiva, onTrocarProp }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
   podeVerFolha: boolean;
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
+  propAtiva: number | null; onTrocarProp: (id: number | null) => void;
 }) {
   // Módulos exibidos = MODULOS - equipe se o user não tem verSalarios.
   const modulosVisiveis = podeVerFolha ? MODULOS : MODULOS.filter((m) => m.id !== "equipe");
-  const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && MODULOS.some((m) => m.id === stored && !m.disabled)) return stored;
-    } catch { /* ignora SSR / storage indisponível */ }
-    return moduloOfTab(current) ?? MODULOS.find((m) => !m.disabled)?.id ?? null;
-  });
 
-  // Abre automaticamente o módulo da aba atual quando o usuário navega via outro caminho
-  // (ex.: link do Dashboard que pula direto pro reb-animal).
-  useEffect(() => {
-    const m = moduloOfTab(current);
-    if (m && m !== openModulo) setOpenModulo(m);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
-
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
-  }, [openModulo]);
+  // Acordeão single-open dirigido pela aba: o módulo aberto é sempre o da aba
+  // atual; se a aba não pertence a nenhum módulo (ex.: dashboard financeiro),
+  // nenhum módulo fica expandido. Sem estado persistido.
+  const openModulo = moduloOfTab(current);
 
   // Fecha o drawer mobile se a viewport estiver (ou passar a estar) >=901px —
   // nessa largura o trilho desktop assume e o painel do Sheet vira `hidden`
@@ -322,24 +315,29 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
 
-  const toggleModulo = (id: ModuloId) => setOpenModulo((cur) => (cur === id ? null : id));
-
   const navBody = (
     <>
-      <GroupLabel>Visão &amp; gestão</GroupLabel>
+      {/* bloco de marca — Terrano + seletor de propriedade */}
+      <div className={cn("flex flex-col gap-3 px-3.5 pb-3.5", RAIL_BLOCK)}>
+        <div className="flex items-center gap-2.5 px-1.5 pt-0.5">
+          <TerranoSymbol size={28} tone="dark" strokeWidth={4.4} />
+          <span className="font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-mast-ink">Terrano</span>
+        </div>
+        <PropriedadePicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} variant="sidebar" />
+      </div>
+
+      <GroupLabel>Gestão</GroupLabel>
       {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
 
-      <GroupLabel>Operações</GroupLabel>
+      <GroupLabel>Atividades</GroupLabel>
       {modulosVisiveis.map((m) => {
         const isOpen = openModulo === m.id && !m.disabled;
         const isActive = m.subs.some((s) => s.id === current);
         return (
           <div key={m.id} className="flex flex-col">
-            <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
+            <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => nav(firstTabOf(m))} />
             {isOpen && (
-              <div
-                className={cn("ml-7 border-l border-[#23291f] pb-1.5 pt-0.5", RAIL_BLOCK)}
-              >
+              <div className={cn("ml-7 border-l border-[#23291f] pb-1.5 pt-0.5", RAIL_BLOCK)}>
                 {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
               </div>
             )}
@@ -351,8 +349,12 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
 
       <GroupLabel>Administração</GroupLabel>
       <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
-      <Item id="config" label="Configurações" current={current} onNav={nav} />
       {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}
+
+      {/* rodapé — Configurações separado por hairline (mockup .side-foot) */}
+      <div className={cn("mt-2 border-t border-[rgba(232,220,196,.10)] pt-2", RAIL_BLOCK)}>
+        <Item id="config" label="Configurações" current={current} onNav={nav} />
+      </div>
     </>
   );
 
