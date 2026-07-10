@@ -18,7 +18,6 @@ import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
-import { PropriedadeSelector } from "./rebanho/components/PropriedadeSelector";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
@@ -358,6 +357,8 @@ export function App() {
         onMobileToggle={setMobileOpen}
         onAbrirBusca={() => setBuscaAberta(true)}
         onSair={onSair}
+        propAtiva={propAtiva}
+        onTrocarProp={trocarPropriedade}
       />
       <AppSidebar
         current={tab}
@@ -386,7 +387,6 @@ export function App() {
             </button>
           </div>
         )}
-        <PropriedadeSelector value={propAtiva} onChange={trocarPropriedade} />
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
           {conteudo}
         </div>

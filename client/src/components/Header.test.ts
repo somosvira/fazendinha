@@ -40,6 +40,8 @@ function baseProps() {
     onMobileToggle: vi.fn(),
     onAbrirBusca: vi.fn(),
     onSair: vi.fn(),
+    propAtiva: null,
+    onTrocarProp: vi.fn(),
   };
 }
 
@@ -83,10 +85,11 @@ describe("Header", () => {
     expect(props.onMobileToggle).toHaveBeenCalledWith(true);
   });
 
-  it("mostra a fazenda atual no seletor (display-only, sem troca)", () => {
+  it("mostra o seletor de propriedade/sítio no header", () => {
     const props = baseProps();
     render(h(Header, props));
-    const farmTrigger = screen.getByRole("button", { name: /Fazenda/i });
+    // seletor unificado (antes eram 2: fazenda display-only + sítio no corpo)
+    const farmTrigger = screen.getByRole("button", { name: /Propriedade \/ sítio/i });
     expect(farmTrigger.textContent).toContain("Rio Novo");
   });
 });

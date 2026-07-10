@@ -5,35 +5,10 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebPill } from "@/components/rb/RebPrimitives";
 
-// Seletor de sítio + cadastro. Com 1 propriedade a camada é quase invisível
-// (só um link discreto pra criar a 2ª); com ≥2 vira o seletor Consolidado/Sítio.
-export function PropriedadeSelector({ value, onChange }: { value: number | null; onChange: (id: number | null) => void }) {
-  const { data: props, loading, recarregar } = usePropriedades();
-  const [gerenciar, setGerenciar] = useState(false);
-  const ativos = props.filter((p) => p.ativo);
-
-  if (loading) return null;
-
-  return (
-    <div className="propriedade-selector" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
-      {ativos.length >= 2 ? (
-        <>
-          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Sítio:</span>
-          <select value={value ?? ""} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)} style={{ padding: "4px 8px" }}>
-            <option value="">Consolidado</option>
-            {ativos.map((p) => <option key={p.id} value={p.id}>{p.apelido || p.nome}</option>)}
-          </select>
-          <RebButton type="button" onClick={() => setGerenciar(true)}>Gerenciar</RebButton>
-        </>
-      ) : (
-        <RebButton type="button" onClick={() => setGerenciar(true)} className="text-xs opacity-65">＋ Propriedade</RebButton>
-      )}
-      {gerenciar && <GerenciarPropriedades propriedades={props} onFechar={() => setGerenciar(false)} onMudou={recarregar} />}
-    </div>
-  );
-}
-
-function GerenciarPropriedades({ propriedades, onFechar, onMudou }: { propriedades: PropriedadeDTO[]; onFechar: () => void; onMudou: () => void }) {
+// Modal de gestão de propriedades/sítios (lista + cadastro/edição). O seletor de
+// sítio em si vive no header (FarmPicker); este modal é aberto por ele via
+// "Gerenciar propriedades". Cada animal/lote pertence a um sítio; a principal é o default.
+export function GerenciarPropriedades({ propriedades, onFechar, onMudou }: { propriedades: PropriedadeDTO[]; onFechar: () => void; onMudou: () => void }) {
   const [editando, setEditando] = useState<PropriedadeDTO | "nova" | null>(null);
 
   return (

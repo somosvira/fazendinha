@@ -18,6 +18,10 @@
 
 :root {
   --radius: 0rem;
+  /* raio dedicado dos BOTÕES — leve (4px), sem afetar inputs/cards/modais que
+   * seguem --radius: 0 (identidade editorial de cantos retos). Usado por
+   * ui/button + RebButton. Ajuste aqui num único lugar. */
+  --radius-btn: 4px;
 
   /* superfícies */
   --background: #F2EDE2;
