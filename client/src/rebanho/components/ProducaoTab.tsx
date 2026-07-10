@@ -7,6 +7,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 
 function LoteForm({ onSalvo }: { onSalvo: () => void }) {
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
@@ -27,7 +28,7 @@ function LoteForm({ onSalvo }: { onSalvo: () => void }) {
   }
 
   return (
-    <div className="rb-box" style={{ marginTop: 18 }}>
+    <RebBox style={{ marginTop: 18 }}>
       <h4>Registrar produção do tanque / lote</h4>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <RebField label="Lote" style={{ marginBottom: 0 }}>
@@ -41,20 +42,20 @@ function LoteForm({ onSalvo }: { onSalvo: () => void }) {
         <RebButton variant="pri" disabled={salvando || !litros} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
       </div>
       {erro && <p className="mt-[7px] text-sm text-prejuizo">{erro}</p>}
-    </div>
+    </RebBox>
   );
 }
 
 export function ProducaoTab() {
   const { data, loading, erro, recarregar } = useProducao();
-  if (loading) return <main className="rb-main"><RebHeader eyebrow="Rebanho" title="Produção" /><Loader /></main>;
-  if (erro || !data) return <main className="rb-main"><RebHeader title="Produção" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Rebanho" title="Produção" /><Loader /></RebMain>;
+  if (erro || !data) return <RebMain><RebHeader title="Produção" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
 
   const tanque = data.modo === "TANQUE_LOTE";
   const modoLabel = data.modo === "ORDENHA" ? "Controle leiteiro" : data.modo === "TOTAL_DIARIO" ? "Total diário" : "Tanque / lote";
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Rebanho · medição: ${modoLabel}`} title="Produção" />
 
       <RebKpiStrip cols={3}>
@@ -69,10 +70,10 @@ export function ProducaoTab() {
           <RebTable>
             <thead><tr><th>Lote</th><th>Litros/dia</th><th>Vacas</th><th>Rateio por vaca</th></tr></thead>
             <tbody>{(data.lotes ?? []).map((l, i) => (
-              <tr key={i}><td className="rb-anm">{l.grupo}</td><td>{l.litros != null ? `${l.litros} L` : "—"}</td><td>{l.vacas}</td><td>{l.rateio != null ? `${l.rateio} L/d` : "—"}</td></tr>
+              <tr key={i}><td><RebAnm>{l.grupo}</RebAnm></td><td>{l.litros != null ? `${l.litros} L` : "—"}</td><td>{l.vacas}</td><td>{l.rateio != null ? `${l.rateio} L/d` : "—"}</td></tr>
             ))}</tbody>
           </RebTable>
-          {(data.lotes ?? []).length === 0 && <div className="rb-empty" style={{ marginTop: 12 }}>Nenhuma produção de lote registrada ainda.</div>}
+          {(data.lotes ?? []).length === 0 && <RebEmpty style={{ marginTop: 12 }}>Nenhuma produção de lote registrada ainda.</RebEmpty>}
           <LoteForm onSalvo={recarregar} />
         </>
       ) : (
@@ -82,15 +83,15 @@ export function ProducaoTab() {
             <thead><tr><th>Vaca</th><th>Produção</th></tr></thead>
             <tbody>{(data.ranking ?? []).map((r) => (
               <tr key={r.numero}>
-                <td className="rb-anm">{r.nome ? <>{r.nome} <small>#{r.numero}</small></> : <>#{r.numero}</>}</td>
+                <td><RebAnm>{r.nome ? <>{r.nome} <small>#{r.numero}</small></> : <>#{r.numero}</>}</RebAnm></td>
                 <td>{r.litros} L/d</td>
               </tr>
             ))}</tbody>
           </RebTable>
-          {(data.ranking ?? []).length === 0 && <div className="rb-empty" style={{ marginTop: 12 }}>Nenhuma vaca em lactação com produção registrada.</div>}
+          {(data.ranking ?? []).length === 0 && <RebEmpty style={{ marginTop: 12 }}>Nenhuma vaca em lactação com produção registrada.</RebEmpty>}
           <p className="mt-[14px] text-sm text-ink-3">Registre controles na ficha de cada animal (+ Registrar controle).</p>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

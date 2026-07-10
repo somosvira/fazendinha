@@ -18,6 +18,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -68,10 +69,10 @@ export function CustosTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Custos" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <ToolbarSelect
           value={String(safraCultivoId)}
           onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
@@ -108,7 +109,7 @@ export function CustosTab() {
           </RebKpiStrip>
 
           {data.length === 0 ? (
-            <div className="rb-empty">Nenhum lançamento de custo encontrado.</div>
+            <RebEmpty>Nenhum lançamento de custo encontrado.</RebEmpty>
           ) : (
             <RebTable>
               <thead>
@@ -121,8 +122,8 @@ export function CustosTab() {
                 {data.map((l) => (
                   <tr key={l.id}>
                     <td>{new Date(l.data).toLocaleDateString("pt-BR")}</td>
-                    <td className="rb-anm">{TIPO_LABEL[l.tipo]}</td>
-                    <td><span className="rb-pill">{l.classe === "CUSTEIO" ? "custeio" : "investimento"}</span></td>
+                    <td><RebAnm>{TIPO_LABEL[l.tipo]}</RebAnm></td>
+                    <td><RebPill>{l.classe === "CUSTEIO" ? "custeio" : "investimento"}</RebPill></td>
                     <td>{l.descricao}</td>
                     <td>{l.areaCodigo ?? "—"}</td>
                     <td>{money(l.valor)}</td>
@@ -149,7 +150,7 @@ export function CustosTab() {
           onSalvo={() => { setForm(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 

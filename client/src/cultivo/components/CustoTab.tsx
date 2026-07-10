@@ -4,6 +4,7 @@ import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 // custoHa/custoSaca/custoTonelada podem vir null (safra em formação, sem
@@ -34,10 +35,10 @@ export function CustoTab() {
   const carregando = loadingSafras || loadingResumo;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Custo de produção" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <ToolbarSelect
           value={String(safraCultivoId)}
           onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
@@ -79,7 +80,7 @@ export function CustoTab() {
             </div>
           </RebKpiStrip>
 
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Detalhamento</h3>
             <RebKpiStrip cols={3} style={{ marginTop: 8 }}>
               <div className={RB_K}>
@@ -95,13 +96,13 @@ export function CustoTab() {
                 <div className={RB_K_VAL} style={{ fontSize: 20, color: "var(--cafe)" }}>{qtd(dadosResumo.horasMaquinaTotal)}<u>h</u></div>
               </div>
             </RebKpiStrip>
-          </div>
+          </RebBox>
 
           {dadosResumo.nota && (
             <p className="text-sm text-ink-3" style={{ marginTop: 16 }}>{dadosResumo.nota}</p>
           )}
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

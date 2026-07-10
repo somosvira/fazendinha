@@ -24,6 +24,7 @@ import { RebField } from "@/components/rb/RebField";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebModal } from "@/components/rb/RebModal";
+import { RebMain, RebAnm, RebPill, RebEmpty } from "@/components/rb/RebPrimitives";
 
 const MES_ATUAL = HOJE.slice(0, 7); // "2026-05"
 
@@ -41,7 +42,7 @@ export function Caixinha() {
     caixinhas.find((c) => c.id === caixinhaId) ?? caixinhas[0] ?? null;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Financeiro" title="Caixinha" />
 
       {erro ? (
@@ -49,10 +50,10 @@ export function Caixinha() {
       ) : loading ? (
         <Loader />
       ) : !ativa ? (
-        <div className="rb-empty">
+        <RebEmpty>
           <p style={{ marginTop: 0 }}>Nenhuma caixinha cadastrada ainda.</p>
           <RebButton variant="pri" onClick={() => setFormCaixinha(true)}>Criar caixinha</RebButton>
-        </div>
+        </RebEmpty>
       ) : (
         <CaixinhaDetalhe
           caixinha={ativa}
@@ -68,7 +69,7 @@ export function Caixinha() {
           onSalvo={() => { setFormCaixinha(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -135,7 +136,7 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
         </div>
       </RebKpiStrip>
 
-      <div className="rb-toolbar" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <RebField label="Mês" style={{ margin: 0 }}>
           <input type="month" value={mes} max={MES_ATUAL} onChange={(e) => setMes(e.target.value || MES_ATUAL)} />
         </RebField>
@@ -148,7 +149,7 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
-        <div className="rb-empty">Nenhum movimento neste mês.</div>
+        <RebEmpty>Nenhum movimento neste mês.</RebEmpty>
       ) : (
         <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style={{ textAlign: "right" }}>Valor</th><th /></tr></thead>
@@ -156,8 +157,8 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
             {movimentos.map((m) => (
               <tr key={m.id}>
                 <td>{dataBR(m.data)}</td>
-                <td><span className={"rb-pill" + (m.tipo === "SAIDA" ? " bad" : "")}>{TIPO_LABEL[m.tipo]}</span></td>
-                <td className="rb-anm" title={m.observacao ?? undefined}>{m.descricao}</td>
+                <td><RebPill tone={m.tipo === "SAIDA" ? "bad" : "ok"}>{TIPO_LABEL[m.tipo]}</RebPill></td>
+                <td title={m.observacao ?? undefined}><RebAnm>{m.descricao}</RebAnm></td>
                 <td style={{ textAlign: "right", color: m.tipo === "SAIDA" ? "var(--neg)" : "var(--pos)" }}>
                   {fmtMoneyExact(m.tipo === "SAIDA" ? -m.valor : m.valor)}
                 </td>

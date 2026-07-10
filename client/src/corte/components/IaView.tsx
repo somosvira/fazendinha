@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Enfase } from "./IaInsight";
 import { perguntarIA, useInsights } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebMain, REB_CHIP_DEMO } from "@/components/rb/RebPrimitives";
 
 const SUGESTOES = [
   "Quais lotes estão prontos pra venda?",
@@ -38,7 +39,7 @@ export function IaView() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Assistente · Capão" title="IA" />
 
       <div className="mt-2 grid grid-cols-[1fr_300px] gap-6">
@@ -70,7 +71,7 @@ export function IaView() {
                     <Enfase texto={m.txt} />
                     {m.lista && <ul className="m-0 mt-[9px] list-none p-0 [&>li]:border-t [&>li]:border-dashed [&>li]:border-[color:var(--rule-soft)] [&>li]:py-[5px] [&>li]:text-sm">{m.lista.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     {m.rodape && <div className="mt-[9px] font-semibold text-[color:var(--ink)]">{m.rodape}</div>}
-                    {m.modo === "demo" && <span className="rb-chip-demo">modo demonstração</span>}
+                    {m.modo === "demo" && <span className={REB_CHIP_DEMO}>modo demonstração</span>}
                   </div>
                 </div>
               ),
@@ -102,6 +103,6 @@ export function IaView() {
               ))}
         </aside>
       </div>
-    </main>
+    </RebMain>
   );
 }

@@ -4,6 +4,7 @@ import { useTalhoes } from "../api";
 import { LavouraDomainView, PLA_TOOLBAR } from "./LavouraDomainView";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebMain } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";
 import type { ResumoTalhao } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
@@ -57,13 +58,13 @@ export function TalhaoTab({ onAbrirTalhao, onNovo }: { onAbrirTalhao: (id: strin
 
   if (loading || erro) {
     return (
-      <main className="rb-main">
+      <RebMain>
         <RebHeader eyebrow={DOMAINS.talhao.eyebrow} title="Talhão" />
         <div className={PLA_TOOLBAR}>{controles}</div>
         {loading
           ? <Loader />
           : <p className="text-sm text-prejuizo">Erro: {erro}</p>}
-      </main>
+      </RebMain>
     );
   }
 

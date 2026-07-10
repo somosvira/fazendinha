@@ -4,6 +4,7 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 
 /* Apuração da folha do mês para todos: cruza horas trabalhadas × salário e
  * mostra o valor da hora extra (50%/100%) e o total a pagar. Seletor de mês →
@@ -14,10 +15,10 @@ export function FolhaTab() {
   const { data, loading, erro } = useFolha(mes);
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Equipe · Folha" title="Folha do mês" />
 
-      <div className="rb-toolbar mb-[18px] flex flex-wrap items-center gap-2.5">
+      <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
         <label className="text-[13px] text-ink-3">Mês</label>
         <ToolbarSelect
           value={mes}
@@ -65,7 +66,7 @@ export function FolhaTab() {
             <tbody>
               {data.linhas.map((l) => (
                 <tr key={l.funcionarioId}>
-                  <td className="rb-anm">{l.nome}</td>
+                  <td><RebAnm>{l.nome}</RebAnm></td>
                   <td>{l.cargo ?? "—"}</td>
                   <td className="text-right">{money(l.salarioMensal)}</td>
                   <td className="text-right">{money(l.valorHora)}</td>
@@ -92,6 +93,6 @@ export function FolhaTab() {
           </RebTable>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

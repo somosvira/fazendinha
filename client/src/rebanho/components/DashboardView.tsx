@@ -5,16 +5,17 @@ import { IaInsightBand } from "./IaInsight";
 import { useDashboard } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebMain } from "@/components/rb/RebPrimitives";
 
 export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
   const { data, loading, erro } = useDashboard();
   const insight = insightDoRebanho("reproducao");
-  if (loading) return <main className="rb-main"><RebHeader title="Dashboard" /><Loader /></main>;
-  if (erro || !data) return <main className="rb-main"><RebHeader title="Dashboard" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></main>;
+  if (loading) return <RebMain><RebHeader title="Dashboard" /><Loader /></RebMain>;
+  if (erro || !data) return <RebMain><RebHeader title="Dashboard" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
   const k = data.kpis;
   const pctLactacao = k.rebanhoAtivo > 0 ? Math.round((k.emLactacao / k.rebanhoAtivo) * 100) : 0;
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Sítio São Francisco · ${k.rebanhoAtivo} animais`} title="Dashboard" />
       <RebKpiStrip cols={6}>
         <RebKpi lab="Rebanho ativo" val={k.rebanhoAtivo} d="Total da fazenda" />
@@ -64,6 +65,6 @@ export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
           ))}
         </div>
       </div>
-    </main>
+    </RebMain>
   );
 }

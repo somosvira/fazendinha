@@ -10,6 +10,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
 import type { ResumoLote, Lote } from "../types";
 
 const PRECO_SPOT_MG = 317;
@@ -27,7 +28,7 @@ export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => voi
   const [aba, setAba] = useState<"painel" | "simulador">("painel");
   const { data, loading } = useLotes({ estado: "ATIVO" });
 
-  if (loading) return <main className="rb-main"><RebHeader eyebrow="Corte" title="Comercial" /><Loader /></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Comercial" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrar(l); };
 
@@ -63,7 +64,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
   const receitaHoje = arrobasHoje * PRECO_SPOT_MG;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader
         eyebrow="Corte · simulador de venda"
         title="Simulador de janela comercial"
@@ -89,7 +90,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
           </RebKpiStrip>
 
           <h2 className="font-serif text-xl font-medium mb-3">Cenários</h2>
-          <p className="rb-sec-sub">
+          <p className={REB_SEC_SUB}>
             Receita estimada por mês de saída. <b>Vender agora:</b> indicador Cepea/Esalq MG @ <b>R$ {PRECO_SPOT_MG}/@</b>.
             <b> Atrasar:</b> indicador futuro B3 (sem desconto de basis frigorífico, custos de manutenção descontados a R$ 1,80/cab/dia).
           </p>
@@ -97,7 +98,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
             <thead><tr><th>Janela</th><th>Preço @</th><th>Peso projetado</th><th>@ projetadas</th><th>Receita bruta</th><th>Custo manutenção</th><th>Diferença vs. hoje</th></tr></thead>
             <tbody>
               <tr>
-                <td className="rb-anm">Hoje (spot)</td>
+                <td><RebAnm>Hoje (spot)</RebAnm></td>
                 <td>R$ {PRECO_SPOT_MG}</td>
                 <td>{resumo.pesoMedio} kg</td>
                 <td>{arrobasHoje.toFixed(0)} @</td>
@@ -115,7 +116,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
                 const diff = liquido - receitaHoje;
                 return (
                   <tr key={c.mes}>
-                    <td className="rb-anm">{c.mes}</td>
+                    <td><RebAnm>{c.mes}</RebAnm></td>
                     <td>R$ {c.preco.toFixed(2)}</td>
                     <td>{pesoProj.toFixed(0)} kg</td>
                     <td>{arrProj.toFixed(0)} @</td>
@@ -137,6 +138,6 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
           </p>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

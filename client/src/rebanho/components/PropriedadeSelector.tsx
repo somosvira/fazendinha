@@ -3,6 +3,7 @@ import { usePropriedades, criarPropriedade, editarPropriedade, type PropriedadeD
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebPill } from "@/components/rb/RebPrimitives";
 
 // Seletor de sítio + cadastro. Com 1 propriedade a camada é quase invisível
 // (só um link discreto pra criar a 2ª); com ≥2 vira o seletor Consolidado/Sítio.
@@ -51,8 +52,8 @@ function GerenciarPropriedades({ propriedades, onFechar, onMudou }: { propriedad
                 <span>
                   {p.apelido ? <b>{p.apelido}</b> : <b>{p.nome}</b>}
                   {p.apelido && <span className="text-ink-3"> · {p.nome}</span>}
-                  {p.principal && <span className="rb-pill" style={{ marginLeft: 6 }}>principal</span>}
-                  {!p.ativo && <span className="rb-pill warn" style={{ marginLeft: 6 }}>inativa</span>}
+                  {p.principal && <RebPill style={{ marginLeft: 6 }}>principal</RebPill>}
+                  {!p.ativo && <RebPill tone="warn" style={{ marginLeft: 6 }}>inativa</RebPill>}
                 </span>
                 <RebButton type="button" onClick={() => setEditando(p)}>Editar</RebButton>
               </div>

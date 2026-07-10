@@ -5,8 +5,9 @@ import { idadeMesesAprox, mortalidadeAcumulada, GMD_ESPERADO } from "../lib/deri
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+import { RebMain, RebBox, RebBoxSection, RebKv, RebEmpty, REB_SEC_SUB, REB_GRID, REB_CHIP, REB_CHIP_PREG, REB_CHIP_LACT } from "@/components/rb/RebPrimitives";
 
-// Migalha (voltar) — reproduz .rb-crumb.
+// Migalha (voltar) — breadcrumb-botão (ink-3, <b> em ink-2).
 const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
@@ -21,8 +22,8 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
   const { data: l, resumo, loading } = useLote(loteId);
   const { data: eventos } = useEventos(loteId);
 
-  if (loading) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lotes</button><Loader /></main>;
-  if (!l) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lotes</button><p>Lote não encontrado.</p></main>;
+  if (loading) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Lotes</button><Loader /></RebMain>;
+  if (!l) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Lotes</button><p>Lote não encontrado.</p></RebMain>;
 
   const idade = idadeMesesAprox(l, HOJE);
   const mort = mortalidadeAcumulada(l);
@@ -32,7 +33,7 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
   const gmdGap = (resumo?.gmd ?? 0) - esperadoGmd;
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <button className={CRUMB} onClick={onVoltar}>← <b>Corte</b> &nbsp;/&nbsp; Lote {l.codigo}</button>
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
@@ -44,8 +45,8 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span className="rb-chip lact">{FASE_LABEL[l.fase]}</span>
-          {l.piqueteAtual && <span className="rb-chip preg">{l.piqueteAtual}</span>}
+          <span className={`${REB_CHIP} ${REB_CHIP_LACT}`}>{FASE_LABEL[l.fase]}</span>
+          {l.piqueteAtual && <span className={`${REB_CHIP} ${REB_CHIP_PREG}`}>{l.piqueteAtual}</span>}
         </div>
       </div>
 
@@ -90,42 +91,42 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
         </RebKpiStrip>
       )}
 
-      <div className="rb-grid">
+      <div className={REB_GRID}>
         <div>
           <div className="rb-tl-card">
             <h3 className="font-serif text-xl font-medium mb-3">Linha do tempo</h3>
-            <p className="rb-sec-sub">Pesagem, sanidade, nutrição e comercial — interpretadas pelo sistema.</p>
+            <p className={REB_SEC_SUB}>Pesagem, sanidade, nutrição e comercial — interpretadas pelo sistema.</p>
             {eventos.length === 0
-              ? <div className="rb-empty">Nenhum evento registrado neste lote ainda.</div>
+              ? <RebEmpty>Nenhum evento registrado neste lote ainda.</RebEmpty>
               : <Timeline eventos={eventos} />}
           </div>
         </div>
         <div>
-          <div className="rb-box">
-            <div className="rb-box-section">
+          <RebBox>
+            <RebBoxSection>
               <h4>Ficha do lote</h4>
-              <div className="rb-kv"><span>Categoria</span><b>{CATEGORIA_LABEL[l.categoria]}</b></div>
-              <div className="rb-kv"><span>Raça</span><b>{l.raca}</b></div>
-              <div className="rb-kv"><span>Fase</span><b>{FASE_LABEL[l.fase]}</b></div>
-              <div className="rb-kv"><span>Origem</span><b>{l.origem ?? "—"}</b></div>
-              <div className="rb-kv"><span>Piquete</span><b>{l.piqueteAtual ?? "—"}</b></div>
-              <div className="rb-kv"><span>Estado</span><b>{l.estado}</b></div>
-              <div className="rb-kv"><span>Formado</span><b>{new Date(l.dataFormacao).toLocaleDateString("pt-BR")}</b></div>
-              <div className="rb-kv"><span>Cabeças entrada</span><b>{l.numCabecasEntrada}</b></div>
-              <div className="rb-kv"><span>Cabeças hoje</span><b>{l.numCabecas}</b></div>
-              <div className="rb-kv"><span>Mortalidade acumulada</span>
+              <RebKv><span>Categoria</span><b>{CATEGORIA_LABEL[l.categoria]}</b></RebKv>
+              <RebKv><span>Raça</span><b>{l.raca}</b></RebKv>
+              <RebKv><span>Fase</span><b>{FASE_LABEL[l.fase]}</b></RebKv>
+              <RebKv><span>Origem</span><b>{l.origem ?? "—"}</b></RebKv>
+              <RebKv><span>Piquete</span><b>{l.piqueteAtual ?? "—"}</b></RebKv>
+              <RebKv><span>Estado</span><b>{l.estado}</b></RebKv>
+              <RebKv><span>Formado</span><b>{new Date(l.dataFormacao).toLocaleDateString("pt-BR")}</b></RebKv>
+              <RebKv><span>Cabeças entrada</span><b>{l.numCabecasEntrada}</b></RebKv>
+              <RebKv><span>Cabeças hoje</span><b>{l.numCabecas}</b></RebKv>
+              <RebKv><span>Mortalidade acumulada</span>
                 <b style={{ color: mort >= 8 ? "var(--prejuizo)" : undefined }}>{mort.toFixed(1)}%</b>
-              </div>
-            </div>
+              </RebKv>
+            </RebBoxSection>
             {l.observacao && (
-              <div className="rb-box-section">
+              <RebBoxSection>
                 <h4>Observação</h4>
                 <p className="text-sm text-ink-3" style={{ margin: 0 }}>{l.observacao}</p>
-              </div>
+              </RebBoxSection>
             )}
-          </div>
+          </RebBox>
         </div>
       </div>
-    </main>
+    </RebMain>
   );
 }

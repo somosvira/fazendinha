@@ -8,6 +8,7 @@ import { EventoForm } from "./EventoForm";
 import { ControleForm } from "./ControleForm";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+import { RebMain } from "@/components/rb/RebPrimitives";
 import {
   ScoreBadge, RentabilidadeKpi, Tendencias, Insights, Percentis,
   ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
@@ -43,7 +44,7 @@ function ccsClassificacao(ccs: number | null | undefined): { texto: string; tom:
   return { texto: "Alarme — investigar", tom: "prejuizo" };
 }
 
-// Migalha (voltar) — reproduz .rb-crumb.
+// Migalha (voltar) — breadcrumb-botão.
 const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
@@ -91,16 +92,16 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
     return () => window.clearTimeout(t);
   }, [flashLocalId, flashTick]);
 
-  if (loading) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><Loader /></main>;
-  if (erro) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></main>;
-  if (!a) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></main>;
+  if (loading) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><Loader /></RebMain>;
+  if (erro) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
+  if (!a) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Rebanho</button><p>Animal não encontrado.</p></RebMain>;
 
   const r = a.resumo;
   const meses = a.dataNascimento ? idadeMeses(a.dataNascimento, HOJE) : null;
   const idade = meses != null ? `${Math.floor(meses / 12)}a ${meses % 12}m` : "—";
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <button className={CRUMB} onClick={onVoltar}>← <b>Rebanho</b> &nbsp;/&nbsp; Animal #{a.numero}</button>
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
@@ -229,6 +230,6 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 
       {registrando && <EventoForm animalId={animalId} animal={a} onFechar={() => setRegistrando(false)} onSalvo={(evento) => { setRegistrando(false); recarregarTudo(); if (evento?.id) { setFlashLocalId(evento.id); setFlashTick((n) => n + 1); } }} />}
       {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarTudo(); }} />}
-    </main>
+    </RebMain>
   );
 }

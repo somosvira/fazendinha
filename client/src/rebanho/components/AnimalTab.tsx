@@ -7,6 +7,7 @@ import { Loader } from "../../components/Loading";
 import type { ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebMain } from "@/components/rb/RebPrimitives";
 
 type StatusFiltro = "ATIVO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: StatusFiltro; lab: string }[] = [
@@ -59,13 +60,13 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
 
   if (loading || erro) {
     return (
-      <main className="rb-main">
+      <RebMain>
         <RebHeader eyebrow={DOMAINS.animal.eyebrow} title="Animal" />
         <div className={RB_TOOLBAR}>{controles}</div>
         {loading
           ? <Loader size="sm" />
           : <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>}
-      </main>
+      </RebMain>
     );
   }
 

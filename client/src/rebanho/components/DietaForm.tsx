@@ -4,6 +4,7 @@ import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta,
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { REB_SUB } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -65,7 +66,7 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
           </div>
         }
       >
-        <div className="rb-confirm-icon">
+        <div className="mt-0.5 flex justify-center [&>svg]:h-11 [&>svg]:w-11 [&>svg]:text-prejuizo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -157,11 +158,11 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   return (
     <div style={{ marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
       <h4 style={{ margin: "0 0 4px" }}>Composição</h4>
-      <p className="rb-sub" style={{ margin: "0 0 10px", fontSize: 12.5 }}>Quanto de cada produto cada cabeça consome por dia. Alimenta a baixa de estoque e o custo por vaca/dia.</p>
+      <p className={REB_SUB} style={{ margin: "0 0 10px", fontSize: 12.5 }}>Quanto de cada produto cada cabeça consome por dia. Alimenta a baixa de estoque e o custo por vaca/dia.</p>
 
       {loading ? <Loader /> : (
         <>
-          {linhas.length === 0 ? <p className="rb-sub" style={{ fontStyle: "italic" }}>Nenhum produto na composição ainda.</p> : (
+          {linhas.length === 0 ? <p className={REB_SUB} style={{ fontStyle: "italic" }}>Nenhum produto na composição ainda.</p> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {linhas.map((l) => {
                 const p = prodPorId.get(l.produtoId);
