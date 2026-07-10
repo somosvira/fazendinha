@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useAnimais, useSetores } from "../api";
 import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
+import { RebHeader } from "./RebHeader";
 import { DOMAINS } from "../domains";
 import { Loader } from "../../components/Loading";
 import type { ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { RebButton } from "@/components/rb/RebButton";
 
 type StatusFiltro = "ATIVO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: StatusFiltro; lab: string }[] = [
@@ -38,11 +40,11 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
   // (em fluxo normal, sem sobrepor o cabeçalho). Espelha o filtro do Ideagri.
   const controles = (
     <>
-      <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
+      <div className="flex gap-1.5">
         {OPCOES.map((o) => (
-          <button key={o.k} className="rb-btn" aria-pressed={status === o.k} onClick={() => setStatus(o.k)}>
+          <RebButton key={o.k} aria-pressed={status === o.k} onClick={() => setStatus(o.k)}>
             {o.lab}
-          </button>
+          </RebButton>
         ))}
       </div>
       <ToolbarSelect
@@ -51,19 +53,18 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         ariaLabel="Filtrar por setor"
         options={[{ value: "", label: "Todos os setores" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
       />
-      <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={onNovo}>+ Novo animal</button>
+      <RebButton variant="pri" className="ml-auto" onClick={onNovo}>+ Novo animal</RebButton>
     </>
   );
 
   if (loading || erro) {
     return (
       <main className="rb-main">
-        <div className="rb-eyebrow">{DOMAINS.animal.eyebrow}</div>
-        <div className="rb-head"><h1>Animal</h1></div>
-        <div className="rb-toolbar" style={RB_TOOLBAR}>{controles}</div>
+        <RebHeader eyebrow={DOMAINS.animal.eyebrow} title="Animal" />
+        <div className={RB_TOOLBAR}>{controles}</div>
         {loading
           ? <Loader size="sm" />
-          : <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>}
+          : <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>}
       </main>
     );
   }

@@ -3,6 +3,8 @@ import { useLotes } from "../api";
 import { LoteDomainView } from "./LoteDomainView";
 import { DOMAINS } from "../domains";
 import { insightDaFazenda } from "../mock";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebTable } from "@/components/rb/RebTable";
 import type { ResumoLote, Lote } from "../types";
 
 /* Catálogo de suplementos típicos Sul de Minas, com R$/kg de mai/2026. */
@@ -16,7 +18,7 @@ const SUPLEMENTOS = [
 
 export function NutricaoTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Nutrição</h1></div><Loader /></main>;
+  if (loading) return <main className="rb-main"><RebHeader eyebrow="Corte" title="Nutrição" /><Loader /></main>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrarManejo(l); };
 
@@ -31,9 +33,9 @@ export function NutricaoTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
         dicaLinha="clique num lote pra registrar suplementação"
       />
       <main className="rb-main" style={{ paddingTop: 0 }}>
-        <h2 className="rb-sec-title" style={{ marginTop: 8 }}>Catálogo de suplementação</h2>
+        <h2 className="font-serif text-xl font-medium mb-3" style={{ marginTop: 8 }}>Catálogo de suplementação</h2>
         <p className="rb-sec-sub">Valores médios de referência (Sul de Minas, jun/2026). Defina o protocolo por lote na ficha do lote.</p>
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Produto</th><th>Consumo (g/cab/dia)</th><th>R$/kg</th><th>R$/cab/dia</th><th>R$/cab/mês</th></tr></thead>
           <tbody>
             {SUPLEMENTOS.map((s) => {
@@ -50,7 +52,7 @@ export function NutricaoTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
               );
             })}
           </tbody>
-        </table></div>
+        </RebTable>
       </main>
     </>
   );

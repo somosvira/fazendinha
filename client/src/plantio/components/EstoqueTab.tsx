@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
 import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 
 /* Estoque de insumos da lavoura — espelha a EstoqueTab do rebanho.
@@ -11,6 +15,12 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
  * tem em galpão na época: fertilizantes (NPK + ureia + KCl), fungicidas
  * cúpricos e sistêmicos, inseticidas (broca e bicho-mineiro), herbicidas
  * e calcário. Custos atualizados Mar/2026. */
+
+// .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]";
+const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 
 const TIPO_LBL: Record<TipoInsumoPlantio, string> = {
   FERTILIZANTE: "Fertilizante",
@@ -54,33 +64,43 @@ export function EstoqueTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Lavoura · insumos da safra</div>
-      <div className="rb-head"><h1>Estoque</h1></div>
+      <RebHeader eyebrow="Lavoura · insumos da safra" title="Estoque" />
 
-      {erro && <div className="rb-empty" style={{ borderColor: "var(--neg)", color: "var(--neg)" }}>Erro ao carregar o estoque: {erro}</div>}
+      {erro && <div className="rb-empty border-[color:var(--neg)] text-[color:var(--neg)]">Erro ao carregar o estoque: {erro}</div>}
       {loading && !erro && <Loader label="Carregando estoque…" />}
 
       {!loading && !erro && (
         <>
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-            <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-              <div className="lab">Valor em estoque</div>
-              <div className="val" style={{ fontSize: 28, color: "var(--cafe)" }}>{money(totalEstoque)}</div>
-              <div className="d">{saldos.length} produtos estocados</div>
+          <RebKpiStrip cols={4}>
+            <div className={RB_K} style={{ borderLeft: "3px solid var(--leite)" }}>
+              <div className={RB_K_LAB}>Valor em estoque</div>
+              <div className={RB_K_VAL + " !text-[28px] text-cafe"}>{money(totalEstoque)}</div>
+              <div className={RB_K_D}>{saldos.length} produtos estocados</div>
             </div>
-            <div className="rb-k"><div className="lab">Custo / ha</div><div className="val">{money(custoHa)}</div><div className="d">média sobre área em produção</div></div>
-            <div className="rb-k"><div className="lab">Abaixo do mínimo</div><div className={"val" + (nAbaixo > 0 ? " rb-up" : "")}>{nAbaixo}</div><div className="d">precisam de reposição</div></div>
-            <div className="rb-k"><div className="lab">Defensivos</div><div className="val">{saldos.filter((s) => s.tipo === "DEFENSIVO").length}</div><div className="d">princípios ativos</div></div>
-          </div>
+            <div className={RB_K}>
+              <div className={RB_K_LAB}>Custo / ha</div>
+              <div className={RB_K_VAL}>{money(custoHa)}</div>
+              <div className={RB_K_D}>média sobre área em produção</div>
+            </div>
+            <div className={RB_K}>
+              <div className={RB_K_LAB}>Abaixo do mínimo</div>
+              <div className={RB_K_VAL + (nAbaixo > 0 ? " text-prejuizo" : "")}>{nAbaixo}</div>
+              <div className={RB_K_D}>precisam de reposição</div>
+            </div>
+            <div className={RB_K}>
+              <div className={RB_K_LAB}>Defensivos</div>
+              <div className={RB_K_VAL}>{saldos.filter((s) => s.tipo === "DEFENSIVO").length}</div>
+              <div className={RB_K_D}>princípios ativos</div>
+            </div>
+          </RebKpiStrip>
 
-          <div className="rb-listhead">
-            <h2 className="rb-sec-title" style={{ margin: 0 }}>Saldos</h2>
-            <span className="hint">{visiveis.length} de {saldos.length} {saldos.length === 1 ? "produto" : "produtos"}</span>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="m-0 font-serif text-xl font-medium">Saldos</h2>
+            <span className="text-sm text-ink-3">{visiveis.length} de {saldos.length} {saldos.length === 1 ? "produto" : "produtos"}</span>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
-            <input type="search" className="rb-fld" placeholder="Buscar por nome ou tipo…"
-              value={busca} onChange={(e) => setBusca(e.target.value)}
-              style={{ flex: "1 1 240px", maxWidth: 320 }} />
+          <div className="mb-3 flex flex-wrap items-center gap-2.5">
+            <input type="search" className="rb-fld max-w-[320px] flex-[1_1_240px]" placeholder="Buscar por nome ou tipo…"
+              value={busca} onChange={(e) => setBusca(e.target.value)} />
             <ToolbarSelect
               value={tipoFiltro}
               onChange={(v) => setTipoFiltro(v as TipoInsumoPlantio | "")}
@@ -94,14 +114,14 @@ export function EstoqueTab() {
                 ⚠ Só abaixo do mínimo ({nAbaixo})
               </button>
             )}
-            <button className="rb-btn pri" style={{ marginLeft: "auto" }}>+ Registrar movimento</button>
+            <RebButton variant="pri" className="ml-auto">+ Registrar movimento</RebButton>
           </div>
 
           {saldos.length === 0 ? (
             <div className="rb-empty">Nenhum insumo cadastrado no estoque da lavoura ainda.</div>
           ) : (
             <>
-              <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <RebTable>
                 <thead><tr><th>Produto</th><th>Tipo</th><th>Saldo</th><th>Valor</th><th>Mínimo</th></tr></thead>
                 <tbody>{visiveis.map((s) => (
                   <tr key={s.produtoId}>
@@ -112,9 +132,9 @@ export function EstoqueTab() {
                     <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
                   </tr>
                 ))}</tbody>
-              </table></div>
+              </RebTable>
 
-              {visiveis.length === 0 && <div className="rb-empty" style={{ marginTop: 12 }}>Nenhum produto bate com a busca.</div>}
+              {visiveis.length === 0 && <div className="rb-empty mt-3">Nenhum produto bate com a busca.</div>}
             </>
           )}
         </>

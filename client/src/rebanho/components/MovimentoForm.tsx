@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type MovimentoResult, type MovimentoInput } from "../api";
 import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -65,52 +67,63 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     const qtdNum = Number(f.quantidade);
     const valorTotal = produtoSel?.custoUnitario != null ? Number(produtoSel.custoUnitario) * Math.abs(qtdNum) : null;
     return (
-      <>
-        <div className="rb-drawer-bg" onClick={onSalvo} />
-        <aside className="rb-drawer rb-success">
-          <div className="rb-success-check">
-            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="24" cy="24" r="21" />
-              <path d="M15 24l7 7 12-14" />
-            </svg>
+      <RebModal
+        title=""
+        showClose={false}
+        onClose={onSalvo}
+        className="max-w-[440px]"
+        actions={
+          <div className="flex w-full justify-center">
+            <RebButton variant="pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</RebButton>
           </div>
-          <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
-          <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
-            <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
-            {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
-          </p>
-          <div className="rb-success-line">
-            {resultado.lancamentoCriado ? (
-              <>
-                <span className="rb-success-dot ok">✓</span>
-                <div>
-                  <b>Lançamento financeiro gerado</b>
-                  <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="rb-success-dot off">—</span>
-                <div>
-                  <b>Sem lançamento financeiro</b>
-                  <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="rb-drawer-actions" style={{ justifyContent: "center", marginTop: 22 }}>
-            <button className="rb-btn pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</button>
-          </div>
-        </aside>
-      </>
+        }
+      >
+        <div className="rb-success-check">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="24" cy="24" r="21" />
+            <path d="M15 24l7 7 12-14" />
+          </svg>
+        </div>
+        <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
+        <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
+          <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
+          {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
+        </p>
+        <div className="rb-success-line">
+          {resultado.lancamentoCriado ? (
+            <>
+              <span className="rb-success-dot ok">✓</span>
+              <div>
+                <b>Lançamento financeiro gerado</b>
+                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="rb-success-dot off">—</span>
+              <div>
+                <b>Sem lançamento financeiro</b>
+                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
+              </div>
+            </>
+          )}
+        </div>
+      </RebModal>
     );
   }
 
   return (
     <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>Registrar movimento</h3>
+      <RebModal
+        title="Registrar movimento"
+        onClose={onFechar}
+        actions={
+          <>
+            <RebButton onClick={onFechar}>Cancelar</RebButton>
+            <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+          </>
+        }
+      >
         <label className="rb-fld">Tipo<select value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
 
         <div className="rb-fld">
@@ -157,12 +170,8 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </label>
         )}
         <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></label>
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </RebModal>
       {novoProduto && (
         <ProdutoForm
           stacked

@@ -4,7 +4,17 @@ import { useSafras, useTarefas, useApontamentos, excluirTarefa, excluirApontamen
 import type { TarefaPlanejada } from "../types";
 import { TarefaForm } from "./TarefaForm";
 import { ApontamentoForm } from "./ApontamentoForm";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+
+// .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)] [&_u]:ml-1 [&_u]:text-[15px] [&_u]:font-medium [&_u]:not-italic [&_u]:no-underline [&_u]:text-ink-2";
+const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null | undefined) => (n == null ? "—" : money(n));
@@ -63,20 +73,19 @@ export function PlanejamentoTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Lavoura · Planejamento</div>
-      <div className="rb-head"><h1>Planejamento da safra</h1></div>
+      <RebHeader eyebrow="Lavoura · Planejamento" title="Planejamento da safra" />
 
       {erroSafras ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar as safras: {erroSafras}</p>
+        <p className="text-sm text-prejuizo">Não foi possível carregar as safras: {erroSafras}</p>
       ) : loadingSafras ? (
         <Loader />
       ) : safras.length === 0 ? (
-        <p className="rb-sub">Nenhuma safra cadastrada ainda.</p>
+        <p className="text-sm text-ink-3">Nenhuma safra cadastrada ainda.</p>
       ) : (
         <>
           {/* Seletor de safra */}
-          <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
-            <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Safra</label>
+          <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
+            <label className="text-sm text-ink-3">Safra</label>
             <ToolbarSelect
               value={safraId != null ? String(safraId) : ""}
               onChange={(v) => setSafraId(Number(v))}
@@ -84,57 +93,57 @@ export function PlanejamentoTab() {
               placeholder="Escolher safra…"
               options={safras.map((s) => ({ value: String(s.id), label: `${s.nome}${s.fechada ? " · fechada" : ""}` }))}
             />
-            {safra?.centroCustoNome && <span className="rb-sub" style={{ margin: 0 }}>Centro de custo: <b>{safra.centroCustoNome}</b></span>}
+            {safra?.centroCustoNome && <span className="text-sm text-ink-3">Centro de custo: <b>{safra.centroCustoNome}</b></span>}
           </div>
 
           {/* KPI strip da safra selecionada */}
           {r && (
-            <div className="rb-kstrip" style={{ ["--cols" as any]: 6 }}>
-              <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-                <div className="lab">Custo previsto</div>
-                <div className="val" style={{ fontSize: 20 }}>{money(r.custoPrevTotal)}</div>
-                <div className="d">planejado na safra</div>
+            <RebKpiStrip cols={6}>
+              <div className={RB_K} style={{ borderLeft: "3px solid var(--leite)" }}>
+                <div className={RB_K_LAB}>Custo previsto</div>
+                <div className={RB_K_VAL + " !text-[20px]"}>{money(r.custoPrevTotal)}</div>
+                <div className={RB_K_D}>planejado na safra</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">Custo realizado</div>
-                <div className="val" style={{ fontSize: 20, color: "var(--cafe)" }}>{money(r.custoRealTotal)}</div>
-                <div className="d">apurado até hoje</div>
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Custo realizado</div>
+                <div className={RB_K_VAL + " !text-[20px] text-cafe"}>{money(r.custoRealTotal)}</div>
+                <div className={RB_K_D}>apurado até hoje</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">% concluído</div>
-                <div className="val">{pctConcluido}<u>%</u></div>
-                <div className="d">{r.tarefasConcluidas}/{r.tarefasTotal} tarefas</div>
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>% concluído</div>
+                <div className={RB_K_VAL}>{pctConcluido}<u>%</u></div>
+                <div className={RB_K_D}>{r.tarefasConcluidas}/{r.tarefasTotal} tarefas</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">Horas-máquina</div>
-                <div className="val">{r.horasMaquina.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}<u>h</u></div>
-                <div className="d">apontadas</div>
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Horas-máquina</div>
+                <div className={RB_K_VAL}>{r.horasMaquina.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}<u>h</u></div>
+                <div className={RB_K_D}>apontadas</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">Horas-homem</div>
-                <div className="val">{r.horasHomem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}<u>h</u></div>
-                <div className="d">apontadas</div>
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Horas-homem</div>
+                <div className={RB_K_VAL}>{r.horasHomem.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}<u>h</u></div>
+                <div className={RB_K_D}>apontadas</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">Custo operacional</div>
-                <div className="val" style={{ fontSize: 20 }}>{money(r.custoOperacional)}</div>
-                <div className="d">máquina + homem</div>
+              <div className={RB_K}>
+                <div className={RB_K_LAB}>Custo operacional</div>
+                <div className={RB_K_VAL + " !text-[20px]"}>{money(r.custoOperacional)}</div>
+                <div className={RB_K_D}>máquina + homem</div>
               </div>
-            </div>
+            </RebKpiStrip>
           )}
 
           {/* Tarefas: previsto × realizado */}
-          <div className="rb-listhead" style={{ marginTop: 26 }}>
-            <h2 className="rb-sec-title" style={{ margin: 0 }}>Tarefas — planejado × realizado</h2>
-            <button className="rb-btn pri" style={{ marginLeft: "auto" }} disabled={safra?.fechada} onClick={() => setFormTarefa({ modo: "novo" })}>+ Nova tarefa</button>
+          <div className="mb-2 mt-[26px] flex items-baseline justify-between">
+            <h2 className="m-0 font-serif text-xl font-medium">Tarefas — planejado × realizado</h2>
+            <RebButton variant="pri" className="ml-auto" disabled={safra?.fechada} onClick={() => setFormTarefa({ modo: "novo" })}>+ Nova tarefa</RebButton>
           </div>
 
           {erroTarefas ? (
-            <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar tarefas: {erroTarefas}</p>
+            <p className="text-sm text-prejuizo">Erro ao carregar tarefas: {erroTarefas}</p>
           ) : loadingTarefas ? (
             <Loader label="Carregando tarefas…" />
           ) : (
-            <div className="rb-tbl-wrap"><table className="rb-tbl">
+            <RebTable>
               <thead>
                 <tr>
                   <th>Descrição</th>
@@ -154,7 +163,7 @@ export function PlanejamentoTab() {
               </thead>
               <tbody>
                 {tarefas.length === 0 && (
-                  <tr><td colSpan={11} className="rb-sub">Nenhuma tarefa nesta safra. Use “+ Nova tarefa”.</td></tr>
+                  <tr><td colSpan={11} className="text-ink-3">Nenhuma tarefa nesta safra. Use “+ Nova tarefa”.</td></tr>
                 )}
                 {tarefas.map((tf) => (
                   <tr key={tf.id}>
@@ -169,29 +178,29 @@ export function PlanejamentoTab() {
                     <td>{moneyN(tf.custoReal)}</td>
                     <td><StatusPill status={tf.status} /></td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      <button className="rb-btn" disabled={safra?.fechada} onClick={() => setFormTarefa({ modo: "realizar", tarefa: tf })}>Realizar</button>
-                      <button className="rb-btn" style={{ marginLeft: 6 }} disabled={safra?.fechada} onClick={() => removerTarefa(tf.id)} aria-label="Excluir tarefa">×</button>
+                      <RebButton disabled={safra?.fechada} onClick={() => setFormTarefa({ modo: "realizar", tarefa: tf })}>Realizar</RebButton>
+                      <RebButton className="ml-1.5" disabled={safra?.fechada} onClick={() => removerTarefa(tf.id)} aria-label="Excluir tarefa">×</RebButton>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </RebTable>
           )}
 
           {/* Hora-máquina / hora-homem */}
-          <div className="rb-listhead" style={{ marginTop: 26 }}>
-            <h2 className="rb-sec-title" style={{ margin: 0 }}>Hora-máquina / hora-homem</h2>
-            <button className="rb-btn pri" style={{ marginLeft: "auto" }} disabled={safra?.fechada} onClick={() => setFormApt(true)}>+ Apontar</button>
+          <div className="mb-2 mt-[26px] flex items-baseline justify-between">
+            <h2 className="m-0 font-serif text-xl font-medium">Hora-máquina / hora-homem</h2>
+            <RebButton variant="pri" className="ml-auto" disabled={safra?.fechada} onClick={() => setFormApt(true)}>+ Apontar</RebButton>
           </div>
 
           {loadingApt ? (
             <Loader label="Carregando apontamentos…" />
           ) : (
-            <div className="rb-tbl-wrap"><table className="rb-tbl">
+            <RebTable>
               <thead><tr><th>Data</th><th>Tipo</th><th>Recurso</th><th>Operador</th><th>Horas</th><th>R$</th><th></th></tr></thead>
               <tbody>
                 {apontamentos.length === 0 && (
-                  <tr><td colSpan={7} className="rb-sub">Nenhum apontamento nesta safra.</td></tr>
+                  <tr><td colSpan={7} className="text-ink-3">Nenhum apontamento nesta safra.</td></tr>
                 )}
                 {apontamentos.map((a) => (
                   <tr key={a.id}>
@@ -201,11 +210,11 @@ export function PlanejamentoTab() {
                     <td>{a.operador ?? "—"}</td>
                     <td>{horasFmt(a.horas)}</td>
                     <td>{moneyN(a.valorTotal)}</td>
-                    <td><button className="rb-btn" disabled={safra?.fechada} onClick={() => removerApt(a.id)} aria-label="Excluir apontamento">×</button></td>
+                    <td><RebButton disabled={safra?.fechada} onClick={() => removerApt(a.id)} aria-label="Excluir apontamento">×</RebButton></td>
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </RebTable>
           )}
         </>
       )}

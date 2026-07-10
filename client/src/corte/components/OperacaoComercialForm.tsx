@@ -3,6 +3,8 @@ import type { Lote, TipoComercial } from "../types";
 import { registrarOperacaoComercial, type OperacaoComercialInput } from "../api";
 import { arrobasCarcaca } from "../lib/derive";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 /* Tipos de operação comercial. O valor é o enum TipoComercial em UPPERCASE. */
 const TIPOS: { v: TipoComercial; lab: string }[] = [
@@ -57,67 +59,62 @@ export function OperacaoComercialForm({ lote, onFechar, onSalvo }: { lote: Lote;
   const receita = arrobasTot && precoArroba ? arrobasTot * Number(precoArroba) : 0;
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="oper-title">
-        <div className="rb-drawer-head">
-          <h3 id="oper-title">Registrar operação — {lote.codigo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
+    <RebModal
+      title={`Registrar operação — ${lote.codigo}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !numCabecas || !pesoMedio} onClick={salvar}>{salvando ? "Salvando…" : "Salvar operação"}</RebButton>
+        </>
+      }
+    >
+      <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Venda/compra/descarte — entra na linha do tempo do lote.</p>
+
+      <div className="rb-fld">
+        <label>Tipo de operação*</label>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoComercial)}>
+          {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
+        </select>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Data*</label>
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
         </div>
-        <div className="rb-drawer-body">
-          <p className="rb-sub">{lote.nome} · {lote.numCabecas} cabeças. Venda/compra/descarte — entra na linha do tempo do lote.</p>
-
-          <div className="rb-fld">
-            <label>Tipo de operação*</label>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoComercial)}>
-              {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data*</label>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cabeças*</label>
-              <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} max={lote.numCabecas} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Peso médio (kg)*</label>
-              <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="rb-fld">
-            <label>Preço da @ (R$)</label>
-            <input type="number" step="0.01" value={precoArroba} onChange={(e) => setPrecoArroba(e.target.value)} placeholder={`Spot MG ≈ ${PRECO_SPOT_MG}`} />
-          </div>
-
-          {arrobasTot > 0 && (
-            <p className="rb-sub" style={{ marginTop: 0 }}>
-              <b>{arrobasTot.toFixed(0)} @</b> carcaça (rend. 52%)
-              {receita > 0 && <> · receita estimada <b>{receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}</b></>}
-            </p>
-          )}
-
-          <div className="rb-fld">
-            <label>Comprador / origem</label>
-            <input value={comprador} onChange={(e) => setComprador(e.target.value)} placeholder="Ex.: Frigorífico Minerva · Leilão Boa Esperança" />
-          </div>
-
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Cabeças*</label>
+          <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} max={lote.numCabecas} />
         </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !numCabecas || !pesoMedio} onClick={salvar}>{salvando ? "Salvando…" : "Salvar operação"}</button>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Peso médio (kg)*</label>
+          <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
         </div>
-      </aside>
-    </>
+      </div>
+
+      <div className="rb-fld">
+        <label>Preço da @ (R$)</label>
+        <input type="number" step="0.01" value={precoArroba} onChange={(e) => setPrecoArroba(e.target.value)} placeholder={`Spot MG ≈ ${PRECO_SPOT_MG}`} />
+      </div>
+
+      {arrobasTot > 0 && (
+        <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
+          <b>{arrobasTot.toFixed(0)} @</b> carcaça (rend. 52%)
+          {receita > 0 && <> · receita estimada <b>{receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}</b></>}
+        </p>
+      )}
+
+      <div className="rb-fld">
+        <label>Comprador / origem</label>
+        <input value={comprador} onChange={(e) => setComprador(e.target.value)} placeholder="Ex.: Frigorífico Minerva · Leilão Boa Esperança" />
+      </div>
+
+      <div className="rb-fld">
+        <label>Observação</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

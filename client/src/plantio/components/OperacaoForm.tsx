@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 // Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
 // decimal pt-BR) e campos vazios. Retorna {} quando não há número parseável.
@@ -140,22 +142,24 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="op-title">
-        <div className="rb-drawer-head">
-          <h3 id="op-title">Registrar operação{talhao ? ` — ${talhao.codigo}` : ""}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-
-        <div className="rb-drawer-body">
+    <RebModal
+      title={`Registrar operação${talhao ? ` — ${talhao.codigo}` : ""}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <>
           {/* Segmented domain selector — espelha o do EventoForm do rebanho. */}
           {!dominioFixo && (
-            <div className="rb-seg" style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+            <div className="mb-[18px] flex gap-1.5">
               {DOMINIOS.map((d) => (
-                <button key={d.v} className="rb-btn" aria-pressed={dominio === d.v} onClick={() => { setDominio(d.v); setTipo((d.v === "fitossanidade" ? OP_FITO : d.v === "nutricao" ? OP_NUT : OP_FEN)[0].v); }}>
+                <RebButton key={d.v} aria-pressed={dominio === d.v} onClick={() => { setDominio(d.v); setTipo((d.v === "fitossanidade" ? OP_FITO : d.v === "nutricao" ? OP_NUT : OP_FEN)[0].v); }}>
                   {d.label}
-                </button>
+                </RebButton>
               ))}
             </div>
           )}
@@ -261,7 +265,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                 <input type="number" value={rendimentoLsc} onChange={(e) => setRendimentoLsc(e.target.value)} placeholder="Típico 480–520" />
               </div>
               {litrosCereja && rendimentoLsc && (
-                <p className="rb-sub">
+                <p className="text-sm text-ink-3">
                   Saída estimada: <b>{(Number(litrosCereja) / Number(rendimentoLsc)).toFixed(1)} sc</b> beneficiadas.
                 </p>
               )}
@@ -278,14 +282,8 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
             <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} />
           </div>
 
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+          {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }

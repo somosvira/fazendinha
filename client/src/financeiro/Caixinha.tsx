@@ -18,6 +18,11 @@ import { fmtMoneyExact } from "../components/charts";
 import { Loader } from "../components/Loading";
 import { useToast } from "../components/Toast";
 import { HOJE } from "./HOJE";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebModal } from "@/components/rb/RebModal";
 
 const MES_ATUAL = HOJE.slice(0, 7); // "2026-05"
 
@@ -36,17 +41,16 @@ export function Caixinha() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Financeiro</div>
-      <div className="rb-head"><h1>Caixinha</h1></div>
+      <RebHeader eyebrow="Financeiro" title="Caixinha" />
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar caixinhas: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro ao carregar caixinhas: {erro}</p>
       ) : loading ? (
         <Loader />
       ) : !ativa ? (
         <div className="rb-empty">
           <p style={{ marginTop: 0 }}>Nenhuma caixinha cadastrada ainda.</p>
-          <button className="rb-btn pri" onClick={() => setFormCaixinha(true)}>Criar caixinha</button>
+          <RebButton variant="pri" onClick={() => setFormCaixinha(true)}>Criar caixinha</RebButton>
         </div>
       ) : (
         <CaixinhaDetalhe
@@ -116,21 +120,20 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
         </div>
       )}
 
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
-        <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="lab">Saldo atual{caixinha.responsavel ? ` · ${caixinha.responsavel}` : ""}</div>
-          <div className="val" style={{ fontSize: 26, color: "var(--cafe)" }}>{fmtMoneyExact(caixinha.saldoAtual)}</div>
+      <RebKpiStrip cols={3}>
+        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Saldo atual{caixinha.responsavel ? ` · ${caixinha.responsavel}` : ""}</div>
+          <div className="mt-1.5 font-serif text-[26px] font-medium leading-none text-cafe">{fmtMoneyExact(caixinha.saldoAtual)}</div>
         </div>
-        <div className="rb-k">
-          <div className="lab">Entradas do mês</div>
-          <div className="val" style={{ color: "var(--pos)" }}>{fmtMoneyExact(entradasMes)}</div>
+        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5">
+          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Entradas do mês</div>
+          <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--pos)]">{fmtMoneyExact(entradasMes)}</div>
         </div>
-        <div className="rb-k">
-          <div className="lab">Saídas do mês</div>
-          <div className="val" style={{ color: "var(--neg)" }}>{fmtMoneyExact(-saidasMes)}</div>
+        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5">
+          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Saídas do mês</div>
+          <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--neg)]">{fmtMoneyExact(-saidasMes)}</div>
         </div>
-      </div>
+      </RebKpiStrip>
 
       <div className="rb-toolbar" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div className="rb-fld" style={{ margin: 0 }}>
@@ -138,17 +141,17 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
           <input type="month" value={mes} max={MES_ATUAL} onChange={(e) => setMes(e.target.value || MES_ATUAL)} />
         </div>
         <div style={{ flex: 1 }} />
-        <button className="rb-btn pri" onClick={() => setForm(true)}>+ Lançar</button>
+        <RebButton variant="pri" onClick={() => setForm(true)}>+ Lançar</RebButton>
       </div>
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar o extrato: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro ao carregar o extrato: {erro}</p>
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
         <div className="rb-empty">Nenhum movimento neste mês.</div>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style={{ textAlign: "right" }}>Valor</th><th /></tr></thead>
           <tbody>
             {movimentos.map((m) => (
@@ -160,14 +163,14 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
                   {fmtMoneyExact(m.tipo === "SAIDA" ? -m.valor : m.valor)}
                 </td>
                 <td style={{ textAlign: "right" }}>
-                  <button className="rb-btn" disabled={excluindoId === m.id} onClick={() => excluir(m.id)}>
+                  <RebButton disabled={excluindoId === m.id} onClick={() => excluir(m.id)}>
                     {excluindoId === m.id ? "…" : "Excluir"}
-                  </button>
+                  </RebButton>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {form && (
@@ -200,31 +203,27 @@ function CaixinhaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: ()
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Criar caixinha</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div className="rb-fld">
-            <label>Nome*</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Caixinha do escritório" />
-          </div>
-          <div className="rb-fld">
-            <label>Responsável</label>
-            <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem guarda o dinheiro" />
-          </div>
-        </div>
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !nome.trim()} onClick={salvar}>
+    <RebModal
+      title="Criar caixinha"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !nome.trim()} onClick={salvar}>
             {salvando ? "Salvando…" : "Salvar"}
-          </button>
-        </div>
-      </aside>
-    </>
+          </RebButton>
+        </>
+      }
+    >
+      <div className="rb-fld">
+        <label>Nome*</label>
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Caixinha do escritório" />
+      </div>
+      <div className="rb-fld">
+        <label>Responsável</label>
+        <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem guarda o dinheiro" />
+      </div>
+    </RebModal>
   );
 }
 
@@ -263,47 +262,43 @@ function MovimentoForm({ caixinhaId, onFechar, onSalvo }: {
   const valido = Number(valor) > 0 && descricao.trim().length > 0 && !!data;
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Lançar movimento</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Tipo*</label>
-              <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimentoCaixinha)}>
-                <option value="ENTRADA">Entrada</option>
-                <option value="SAIDA">Saída</option>
-              </select>
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data*</label>
-              <input type="date" value={data} max={HOJE} onChange={(e) => setData(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Valor (R$)*</label>
-              <input type="number" step="0.01" min="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
-            </div>
-          </div>
-          <div className="rb-fld">
-            <label>Descrição*</label>
-            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: compra de material de limpeza" />
-          </div>
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-        </div>
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !valido} onClick={salvar}>
+    <RebModal
+      title="Lançar movimento"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !valido} onClick={salvar}>
             {salvando ? "Salvando…" : "Salvar"}
-          </button>
+          </RebButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Tipo*</label>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoMovimentoCaixinha)}>
+            <option value="ENTRADA">Entrada</option>
+            <option value="SAIDA">Saída</option>
+          </select>
         </div>
-      </aside>
-    </>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Data*</label>
+          <input type="date" value={data} max={HOJE} onChange={(e) => setData(e.target.value)} />
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Valor (R$)*</label>
+          <input type="number" step="0.01" min="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
+        </div>
+      </div>
+      <div className="rb-fld">
+        <label>Descrição*</label>
+        <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: compra de material de limpeza" />
+      </div>
+      <div className="rb-fld">
+        <label>Observação</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </div>
+    </RebModal>
   );
 }

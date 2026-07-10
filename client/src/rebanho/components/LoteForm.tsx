@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarLote, editarLote, excluirLote, obterLote, useAnimaisDisponiveis, useDietas, type LoteDetalheDTO, type LoteDTO } from "../api";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 type Props = {
   lote?: LoteDTO | null;
@@ -75,36 +77,51 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
 
   if (confirmandoExcluir && lote) {
     return (
-      <>
-        <div className="rb-drawer-bg" onClick={() => !salvando && setConfirmandoExcluir(false)} />
-        <aside className="rb-drawer rb-confirm" role="alertdialog">
-          <div className="rb-confirm-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
+      <RebModal
+        title=""
+        showClose={false}
+        onClose={() => !salvando && setConfirmandoExcluir(false)}
+        className="max-w-[460px]"
+        actions={
+          <div className="flex w-full justify-between">
+            <RebButton onClick={() => setConfirmandoExcluir(false)} disabled={salvando}>Cancelar</RebButton>
+            <RebButton variant="danger" onClick={confirmarExcluir} disabled={salvando}>{salvando ? "Excluindo…" : "Excluir lote"}</RebButton>
           </div>
-          <h3 style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir lote {lote.nome}?</h3>
-          <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
-            Esta ação não pode ser desfeita. Só será permitida se o lote estiver vazio (sem animais, produção ou movimentações).
-          </p>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
-          <div className="rb-drawer-actions" style={{ justifyContent: "space-between", marginTop: 18 }}>
-            <button className="rb-btn" onClick={() => setConfirmandoExcluir(false)} disabled={salvando}>Cancelar</button>
-            <button className="rb-btn rb-btn-danger" onClick={confirmarExcluir} disabled={salvando}>{salvando ? "Excluindo…" : "Excluir lote"}</button>
-          </div>
-        </aside>
-      </>
+        }
+      >
+        <div className="rb-confirm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <h3 style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir lote {lote.nome}?</h3>
+        <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
+          Esta ação não pode ser desfeita. Só será permitida se o lote estiver vazio (sem animais, produção ou movimentações).
+        </p>
+        {erro && <p style={{ color: "var(--neg)", fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
+      </RebModal>
     );
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" style={{ width: "min(640px, calc(100vw - 32px))" }}>
-        <h3>{editando ? `Editar ${lote!.nome}` : "Novo lote"}</h3>
-
-        <label className="rb-fld">Nome*<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Lactação alta" autoFocus /></label>
+    <RebModal
+      title={editando ? `Editar ${lote!.nome}` : "Novo lote"}
+      onClose={onFechar}
+      className="w-[min(640px,calc(100vw-32px))]"
+      actions={
+        <div className="flex w-full items-center justify-between">
+          {editando ? (
+            <RebButton variant="danger" onClick={() => setConfirmandoExcluir(true)} disabled={salvando}>Excluir</RebButton>
+          ) : <span />}
+          <span style={{ display: "flex", gap: 8 }}>
+            <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+            <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+          </span>
+        </div>
+      }
+    >
+      <label className="rb-fld">Nome*<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Lactação alta" autoFocus /></label>
 
         <label className="rb-fld">Dieta
           <select value={dietaId} onChange={(e) => setDietaId(e.target.value)}>
@@ -158,18 +175,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
           )}
         </fieldset>
 
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-
-        <div className="rb-drawer-actions" style={{ justifyContent: "space-between" }}>
-          {editando ? (
-            <button className="rb-btn rb-btn-danger" onClick={() => setConfirmandoExcluir(true)} disabled={salvando}>Excluir</button>
-          ) : <span />}
-          <span style={{ display: "flex", gap: 8 }}>
-            <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-            <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-          </span>
-        </div>
-      </aside>
-    </>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

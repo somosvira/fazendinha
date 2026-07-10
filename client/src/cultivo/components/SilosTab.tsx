@@ -11,8 +11,18 @@ import {
 } from "../api";
 import type { TipoSilo, TipoMovimentoSilo, OrigemMovimentoSilo } from "../types";
 import { HOJE } from "../HOJE";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebModal } from "@/components/rb/RebModal";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+
+// Reproduz .rb-k para células custom (borda colorida / fonte custom).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]";
 
 const TIPO_LABEL: Record<TipoSilo, string> = { GRAO: "Grão", SILAGEM: "Silagem" };
 const ORIGEM_LABEL: Record<OrigemMovimentoSilo, string> = {
@@ -40,21 +50,20 @@ export function SilosTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Cultivo · milho</div>
-      <div className="rb-head"><h1>Silos</h1></div>
+      <RebHeader eyebrow="Cultivo · milho" title="Silos" />
 
       <div className="rb-toolbar" style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button className="rb-btn pri" onClick={() => setForm(true)}>+ Novo silo</button>
+        <RebButton variant="pri" onClick={() => setForm(true)}>+ Novo silo</RebButton>
       </div>
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar silos: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro ao carregar silos: {erro}</p>
       ) : loading ? (
         <Loader />
       ) : data.length === 0 ? (
         <div className="rb-empty">Nenhum silo cadastrado ainda.</div>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Nome</th><th>Tipo</th><th>Saldo</th><th>Capacidade</th><th>Status</th></tr></thead>
           <tbody>
             {data.map((s) => (
@@ -67,7 +76,7 @@ export function SilosTab() {
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {form && (
@@ -94,36 +103,29 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Cultivo · milho · silos</div>
-      <div className="rb-head">
-        <h1>{silo.nome}</h1>
-        <button className="rb-btn" onClick={onVoltar}>← Silos</button>
-      </div>
+      <RebHeader eyebrow="Cultivo · milho · silos" title={silo.nome} actions={<RebButton onClick={onVoltar}>← Silos</RebButton>} />
 
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 2 }}>
-        <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="lab">Saldo atual</div>
-          <div className="val" style={{ fontSize: 26, color: "var(--cafe)" }}>{qtd(silo.saldoAtual)} {silo.unidade}</div>
+      <RebKpiStrip cols={2}>
+        <div className={RB_K} style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className={RB_K_LAB}>Saldo atual</div>
+          <div className={RB_K_VAL} style={{ fontSize: 26, color: "var(--cafe)" }}>{qtd(silo.saldoAtual)} {silo.unidade}</div>
         </div>
-        <div className="rb-k">
-          <div className="lab">Capacidade</div>
-          <div className="val">{silo.capacidade != null ? `${qtd(silo.capacidade)} ${silo.unidade}` : "—"}</div>
-        </div>
-      </div>
+        <RebKpi lab="Capacidade" val={silo.capacidade != null ? `${qtd(silo.capacidade)} ${silo.unidade}` : "—"} />
+      </RebKpiStrip>
 
-      <div className="rb-listhead">
-        <h2 className="rb-sec-title" style={{ margin: 0 }}>Movimentos</h2>
-        <button className="rb-btn pri" onClick={() => setForm(true)}>+ Lançar saída</button>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="m-0 font-serif text-xl font-medium">Movimentos</h2>
+        <RebButton variant="pri" onClick={() => setForm(true)}>+ Lançar saída</RebButton>
       </div>
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro: {erro}</p>
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
         <div className="rb-empty">Nenhum movimento registrado ainda.</div>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Quantidade</th><th /></tr></thead>
           <tbody>
             {movimentos.map((m) => (
@@ -134,15 +136,15 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
                 <td>{qtd(m.quantidade)} {silo.unidade}</td>
                 <td>
                   {m.origem !== "COLHEITA" && (
-                    <button className="rb-btn" disabled={excluindoId === m.id} onClick={() => excluir(m.id)}>
+                    <RebButton disabled={excluindoId === m.id} onClick={() => excluir(m.id)}>
                       {excluindoId === m.id ? "…" : "Excluir"}
-                    </button>
+                    </RebButton>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {form && (
@@ -188,44 +190,39 @@ function SiloForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => 
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Novo silo</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
+    <RebModal
+      title="Novo silo"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !nome} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <div className="rb-fld">
+        <label>Nome*</label>
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Silo bolsa 1" />
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Tipo*</label>
+          <select value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoSilo)}>
+            <option value="GRAO">Grão</option>
+            <option value="SILAGEM">Silagem</option>
+          </select>
         </div>
-        <div className="rb-drawer-body">
-          <div className="rb-fld">
-            <label>Nome*</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Silo bolsa 1" />
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Tipo*</label>
-              <select value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoSilo)}>
-                <option value="GRAO">Grão</option>
-                <option value="SILAGEM">Silagem</option>
-              </select>
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Unidade*</label>
-              <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="sc / ton" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Capacidade</label>
-              <input type="number" step="0.1" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} />
-            </div>
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Unidade*</label>
+          <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="sc / ton" />
         </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !nome} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Capacidade</label>
+          <input type="number" step="0.1" value={capacidade} onChange={(e) => setCapacidade(e.target.value)} />
         </div>
-      </aside>
-    </>
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }
 
@@ -258,43 +255,38 @@ function MovimentoSiloForm({ siloId, onFechar, onSalvo }: { siloId: number; onFe
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Lançar saída</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
+    <RebModal
+      title="Lançar saída"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !quantidade} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Data*</label>
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
         </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data*</label>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Origem*</label>
-              <select value={origem} onChange={(e) => setOrigem(e.target.value as OrigemMovimentoSilo)}>
-                {ORIGENS_MANUAIS.map((o) => <option key={o} value={o}>{ORIGEM_LABEL[o]}</option>)}
-              </select>
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Quantidade*</label>
-              <input type="number" step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
-            </div>
-          </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Origem*</label>
+          <select value={origem} onChange={(e) => setOrigem(e.target.value as OrigemMovimentoSilo)}>
+            {ORIGENS_MANUAIS.map((o) => <option key={o} value={o}>{ORIGEM_LABEL[o]}</option>)}
+          </select>
+        </div>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Quantidade*</label>
+          <input type="number" step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
+        </div>
+      </div>
 
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !quantidade} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+      <div className="rb-fld">
+        <label>Observação</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

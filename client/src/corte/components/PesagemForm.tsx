@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Lote, Pesagem } from "../types";
 import { criarPesagem, type PesagemInput } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 type Metodo = Pesagem["metodo"];
 const METODOS: { k: Metodo; lab: string }[] = [
@@ -46,54 +48,49 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Pesar {lote.codigo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
+    <RebModal
+      title={`Pesar ${lote.codigo}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !pesoMedio || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar pesagem"}</RebButton>
+        </>
+      }
+    >
+      <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. O GMD é recalculado a partir da pesagem anterior.</p>
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Data*</label>
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
         </div>
-        <div className="rb-drawer-body">
-          <p className="rb-sub">{lote.nome} · {lote.numCabecas} cabeças. O GMD é recalculado a partir da pesagem anterior.</p>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data*</label>
-              <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Peso médio (kg)*</label>
-              <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cabeças pesadas*</label>
-              <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="rb-fld">
-            <label>Método*</label>
-            <select value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
-              {METODOS.map((m) => <option key={m.k} value={m.k}>{m.lab}</option>)}
-            </select>
-          </div>
-
-          <div className="rb-fld">
-            <label>Responsável</label>
-            <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Ex.: Vaqueiro João" />
-          </div>
-
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Peso médio (kg)*</label>
+          <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
         </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !pesoMedio || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar pesagem"}</button>
+        <div className="rb-fld" style={{ flex: 1 }}>
+          <label>Cabeças pesadas*</label>
+          <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
         </div>
-      </aside>
-    </>
+      </div>
+
+      <div className="rb-fld">
+        <label>Método*</label>
+        <select value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
+          {METODOS.map((m) => <option key={m.k} value={m.k}>{m.lab}</option>)}
+        </select>
+      </div>
+
+      <div className="rb-fld">
+        <label>Responsável</label>
+        <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Ex.: Vaqueiro João" />
+      </div>
+
+      <div className="rb-fld">
+        <label>Observação</label>
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }
