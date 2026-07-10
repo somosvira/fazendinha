@@ -75,26 +75,11 @@
    APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
    Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
    para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
+   A marca Terrano deixou o header no restyle Terrano (agora mora no bloco de
+   marca da sidebar, em AppSidebar.tsx) — as regras `.ah-brand*` foram removidas.
    ============================================================ */
-/* Marca Terrano no header (símbolo + nome). O resto do header foi migrado
-   para Tailwind + shadcn; só a marca continua em CSS pois é o alvo do voo da
-   abertura (TerranoIntro pousa em `.ah-brand .terrano-symbol`). */
-.ah-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.ah-brand-symbol { display: block; flex: none; }
-.ah-brand-txt { display: flex; flex-direction: column; line-height: 1; min-width: 0; }
-.ah-brand-name {
-  font-family: var(--serif); font-size: 19px; line-height: 0.95; font-weight: 500;
-  letter-spacing: -0.02em; color: var(--mast-ink);
-}
-.ah-brand-sub {
-  font-family: var(--sans); font-size: 8.5px; line-height: 1;
-  letter-spacing: 0.24em; text-transform: uppercase; color: var(--mast-ink-2);
-  margin-top: 3px;
-}
-
 @media (max-width: 900px) {
   :root { --header-h: 48px; }
-  .ah-brand-txt { display: none; }
 }
 
 /* viewport realmente pequeno */

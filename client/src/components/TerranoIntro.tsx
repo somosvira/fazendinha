@@ -118,8 +118,13 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
     function voarAteOCanto() {
       const lockup = lockupRef.current;
       const symbol = symbolRef.current;
-      // alvo: o mesmo símbolo Terrano no cabeçalho (canto sup. esquerdo)
-      const alvo = document.querySelector<HTMLElement>(".ah-brand .terrano-symbol");
+      // alvo: o mesmo símbolo Terrano no bloco de marca da sidebar (canto sup.
+      // esquerdo). Ficava no header (.ah-brand) antes do restyle Terrano; agora
+      // mora no trilho persistente marcado com data-terrano-rail. Fallback ao
+      // seletor antigo mantém a compat caso o header volte a exibir a marca.
+      const alvo =
+        document.querySelector<HTMLElement>("[data-terrano-rail] .terrano-symbol") ||
+        document.querySelector<HTMLElement>(".ah-brand .terrano-symbol");
       if (reduzido || !lockup || !symbol || !alvo) return; // sem voo: só o fade do overlay
 
       const sRect = symbol.getBoundingClientRect();

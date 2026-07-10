@@ -361,8 +361,11 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
   return (
     <>
       {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
-         o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
+         o hover/focus-within-expande dos filhos na faixa 901–1100px.
+         `data-terrano-rail` marca este trilho como alvo do voo da abertura
+         (TerranoIntro pousa o logo no símbolo do bloco de marca daqui). */}
       <aside
+        data-terrano-rail
         className={cn(
           "group fixed inset-y-0 left-0 z-[11] hidden w-[222px] flex-col overflow-y-auto overscroll-contain bg-mast py-[18px] text-mast-ink print:hidden",
           "[scrollbar-width:thin] [scrollbar-color:#2a3025_transparent]",
