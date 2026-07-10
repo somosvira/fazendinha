@@ -3,6 +3,8 @@ import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, t
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
@@ -164,10 +166,17 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>Registrar evento{dominioFixo ? ` · ${dominioFixo === "reproducao" ? "Reprodução" : "Sanidade"}` : ""}</h3>
+    <RebModal
+      title={`Registrar evento${dominioFixo ? ` · ${dominioFixo === "reproducao" ? "Reprodução" : "Sanidade"}` : ""}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <>
         {!dominioFixo && <label className="rb-fld">Domínio<select value={dominio} onChange={(e) => setDominio(e.target.value as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></select></label>}
         {dominio === "reproducao"
           ? <label className="rb-fld">Tipo<select value={tipo} onChange={(e) => setTipo(e.target.value as any)}>{TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></label>
@@ -290,12 +299,8 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
           {tipoSan === "VACINA" && <label className="rb-fld">Produto*<input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></label>}
         </>}
         <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></label>
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }
