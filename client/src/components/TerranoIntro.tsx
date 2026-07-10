@@ -129,6 +129,10 @@ export function TerranoIntro({ onDone }: { onDone: () => void }) {
 
       const sRect = symbol.getBoundingClientRect();
       const tRect = alvo.getBoundingClientRect();
+      // No mobile (<901px) o trilho é display:none — o seletor casa o elemento,
+      // mas o rect vem zerado. Sem alvo real, cai só no fade do overlay (senão o
+      // logo voaria pro canto {0,0} numa escala minúscula).
+      if (tRect.width === 0) return;
       const lRect = lockup.getBoundingClientRect();
       const escala = tRect.width / sRect.width || 0.2;
 

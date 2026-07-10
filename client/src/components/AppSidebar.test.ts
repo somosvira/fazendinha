@@ -124,8 +124,10 @@ describe("AppSidebar", () => {
 
   it("mostra o bloco de marca Terrano e o seletor de propriedade", () => {
     render(h(AppSidebar, baseProps()));
-    expect(screen.getAllByText("Terrano").length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /Propriedade \/ sítio/i }).length).toBeGreaterThan(0);
+    // mobileOpen=false → só o trilho desktop está montado (Sheet fechado), logo
+    // exatamente uma marca "Terrano" e um seletor de propriedade no DOM.
+    expect(screen.getAllByText("Terrano").length).toBe(1);
+    expect(screen.getAllByRole("button", { name: /Propriedade \/ sítio/i }).length).toBe(1);
   });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {
