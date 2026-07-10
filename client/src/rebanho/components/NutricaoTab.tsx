@@ -7,6 +7,7 @@ import { ConsumoLoteDrawer } from "./ConsumoLoteDrawer";
 import { RebHeader } from "./RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebMain, RebAnm, RebEmpty, REB_SEC_SUB, REB_PAG, REB_PAG_INFO, REB_PAG_CTRL, REB_PAG_PAGE } from "@/components/rb/RebPrimitives";
 
 const POR_PAGINA = 8;
 
@@ -17,12 +18,12 @@ export function NutricaoTab() {
   const recarregarTudo = () => { recarregarLotes(); recarregarDietas(); };
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Rebanho · ${animaisAtivos} ${animaisAtivos === 1 ? "animal ativo" : "animais ativos"} em lotes`} title="Nutrição" />
 
       <SecaoLotes lotes={lotes} loading={loadingLotes} erro={erroLotes} recarregar={recarregarTudo} />
       <SecaoDietas dietas={dietas} recarregar={recarregarTudo} />
-    </main>
+    </RebMain>
   );
 }
 
@@ -43,18 +44,18 @@ function SecaoLotes({ lotes, loading, erro, recarregar }: { lotes: LoteDTO[]; lo
         <h3 className="m-0 font-serif text-lg font-medium">Lotes</h3>
         <RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo lote</RebButton>
       </div>
-      <p className="rb-sec-sub">Cada lote agrupa animais que recebem a mesma dieta. Crie um lote, escolha a dieta e adicione os animais.</p>
+      <p className={REB_SEC_SUB}>Cada lote agrupa animais que recebem a mesma dieta. Crie um lote, escolha a dieta e adicione os animais.</p>
 
       {loading ? <Loader />
         : erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>
-        : lotes.length === 0 ? <p className="rb-empty">Nenhum lote cadastrado ainda. Clique em <b>+ Novo lote</b> para começar.</p>
+        : lotes.length === 0 ? <RebEmpty>Nenhum lote cadastrado ainda. Clique em <b>+ Novo lote</b> para começar.</RebEmpty>
         : (
           <>
             <RebTable>
               <thead><tr><th>Lote</th><th>Animais</th><th>Produção média</th><th>Dieta</th><th></th></tr></thead>
               <tbody>{visiveis.map((l) => (
                 <tr key={l.id}>
-                  <td className="rb-anm">{l.nome}</td>
+                  <td><RebAnm>{l.nome}</RebAnm></td>
                   <td>{l.numAnimais}</td>
                   <td>{l.producaoMedia != null ? `${l.producaoMedia} L/d` : "—"}</td>
                   <td>{l.dietaNome ?? <span style={{ color: "var(--ink-3)" }}>—</span>}</td>
@@ -96,10 +97,10 @@ function SecaoDietas({ dietas, recarregar }: { dietas: DietaDTO[]; recarregar: (
         <h3 className="m-0 font-serif text-lg font-medium">Dietas</h3>
         <RebButton variant="pri" onClick={() => setNovo(true)}>+ Nova dieta</RebButton>
       </div>
-      <p className="rb-sec-sub">Receitas de alimentação que podem ser atribuídas aos lotes.</p>
+      <p className={REB_SEC_SUB}>Receitas de alimentação que podem ser atribuídas aos lotes.</p>
 
       {dietas.length === 0 ? (
-        <p className="rb-empty">Nenhuma dieta cadastrada ainda.</p>
+        <RebEmpty>Nenhuma dieta cadastrada ainda.</RebEmpty>
       ) : (
         <div className="grid grid-cols-2 gap-3 content-start max-[900px]:grid-cols-1">{dietas.map((d) => (
           <button
@@ -134,11 +135,11 @@ function SecaoDietas({ dietas, recarregar }: { dietas: DietaDTO[]; recarregar: (
 
 function Paginacao({ pagina, total, totalItens, inicio, fim, onMudar }: { pagina: number; total: number; totalItens: number; inicio: number; fim: number; onMudar: (p: number) => void }) {
   return (
-    <div className="rb-pag">
-      <span className="rb-pag-info">{inicio}–{fim} de {totalItens}</span>
-      <span className="rb-pag-ctrl">
+    <div className={REB_PAG}>
+      <span className={REB_PAG_INFO}>{inicio}–{fim} de {totalItens}</span>
+      <span className={REB_PAG_CTRL}>
         <RebButton disabled={pagina === 1} onClick={() => onMudar(pagina - 1)}>← Anterior</RebButton>
-        <span className="rb-pag-page">Página {pagina} de {total}</span>
+        <span className={REB_PAG_PAGE}>Página {pagina} de {total}</span>
         <RebButton disabled={pagina === total} onClick={() => onMudar(pagina + 1)}>Próxima →</RebButton>
       </span>
     </div>

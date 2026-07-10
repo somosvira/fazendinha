@@ -17,6 +17,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -50,10 +51,10 @@ export function SilosTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Silos" />
 
-      <div className="rb-toolbar" style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <RebButton variant="pri" onClick={() => setForm(true)}>+ Novo silo</RebButton>
       </div>
 
@@ -62,18 +63,18 @@ export function SilosTab() {
       ) : loading ? (
         <Loader />
       ) : data.length === 0 ? (
-        <div className="rb-empty">Nenhum silo cadastrado ainda.</div>
+        <RebEmpty>Nenhum silo cadastrado ainda.</RebEmpty>
       ) : (
         <RebTable>
           <thead><tr><th>Nome</th><th>Tipo</th><th>Saldo</th><th>Capacidade</th><th>Status</th></tr></thead>
           <tbody>
             {data.map((s) => (
               <tr key={s.id} className="rb-row" onClick={() => setSiloId(s.id)}>
-                <td className="rb-anm">{s.nome}</td>
+                <td><RebAnm>{s.nome}</RebAnm></td>
                 <td>{TIPO_LABEL[s.tipo]}</td>
                 <td>{qtd(s.saldoAtual)} {s.unidade}</td>
                 <td>{s.capacidade != null ? `${qtd(s.capacidade)} ${s.unidade}` : "—"}</td>
-                <td><span className={"rb-pill" + (s.ativo ? "" : " bad")}>{s.ativo ? "ativo" : "inativo"}</span></td>
+                <td><RebPill tone={s.ativo ? "ok" : "bad"}>{s.ativo ? "ativo" : "inativo"}</RebPill></td>
               </tr>
             ))}
           </tbody>
@@ -83,7 +84,7 @@ export function SilosTab() {
       {form && (
         <SiloForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregar(); }} />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -103,7 +104,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho · silos" title={silo.nome} actions={<RebButton onClick={onVoltar}>← Silos</RebButton>} />
 
       <RebKpiStrip cols={2}>
@@ -124,7 +125,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
-        <div className="rb-empty">Nenhum movimento registrado ainda.</div>
+        <RebEmpty>Nenhum movimento registrado ainda.</RebEmpty>
       ) : (
         <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Quantidade</th><th /></tr></thead>
@@ -132,7 +133,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
             {movimentos.map((m) => (
               <tr key={m.id}>
                 <td>{new Date(m.data).toLocaleDateString("pt-BR")}</td>
-                <td className="rb-anm">{m.tipo === "ENTRADA" ? "Entrada" : "Saída"}</td>
+                <td><RebAnm>{m.tipo === "ENTRADA" ? "Entrada" : "Saída"}</RebAnm></td>
                 <td>{ORIGEM_LABEL[m.origem]}</td>
                 <td>{qtd(m.quantidade)} {silo.unidade}</td>
                 <td>
@@ -155,7 +156,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
           onSalvo={() => { setForm(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 

@@ -230,7 +230,7 @@ export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }:
             )}
           </>}
           {tipo === "TRANSFERENCIA_EMBRIAO" && <>
-            <p className="rb-hint" style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
+            <p style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
               A receptora (este animal) carrega o embrião; a genética do bezerro vem da <b>doadora</b>.
             </p>
             <RebField label="Doadora (genética)">

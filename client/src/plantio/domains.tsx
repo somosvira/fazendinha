@@ -7,6 +7,7 @@ import {
 } from "./lib/worklists";
 import { FASES_LABEL } from "./lib/fenologia";
 import { HOJE } from "./HOJE";
+import { RebPill } from "@/components/rb/RebPrimitives";
 
 export interface Kpi { lab: string; val: string; sufixo?: string; d?: string; tom?: "up" | "ok"; }
 export interface Coluna { nome: string; render: (r: ResumoTalhao) => React.ReactNode; }
@@ -21,7 +22,7 @@ export interface DomainConfig {
 }
 
 const pill = (txt: string, tom?: "warn" | "bad") =>
-  <span className={"rb-pill" + (tom ? " " + tom : "")}>{txt}</span>;
+  <RebPill tone={tom}>{txt}</RebPill>;
 
 const pct = (n: number | undefined) => n != null ? `${n.toFixed(1)}%` : "—";
 const pctInt = (n: number | undefined) => n != null ? `${Math.round(n)}%` : "—";

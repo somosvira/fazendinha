@@ -6,7 +6,7 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
-import { REB_INP } from "@/components/rb/RebPrimitives";
+import { REB_INP, RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -130,10 +130,10 @@ export function PontoTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Equipe · Ponto" title="Ponto" />
 
-      <div className="rb-toolbar mb-[18px] flex flex-wrap items-center gap-2.5">
+      <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
         <label className="text-[13px] text-ink-3">Funcionário</label>
         <ToolbarSelect
           value={funcionarioId}
@@ -199,7 +199,7 @@ export function PontoTab() {
               const domingo = tipoDiaPadrao(l.data) === "DOMINGO";
               return (
                 <tr key={l.data} style={domingo ? { background: "var(--wash, transparent)" } : undefined}>
-                  <td className="rb-anm whitespace-nowrap">{dia} <small className="text-ink-3">{dow}</small></td>
+                  <td className="whitespace-nowrap"><RebAnm>{dia} <small className="text-ink-3">{dow}</small></RebAnm></td>
                   <td>
                     <ToolbarSelect
                       value={l.tipoDia}
@@ -224,6 +224,6 @@ export function PontoTab() {
           </tbody>
         </RebTable>
       )}
-    </main>
+    </RebMain>
   );
 }

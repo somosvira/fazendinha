@@ -1,6 +1,7 @@
 import type { ResumoAnimal } from "./types";
 import { aInseminar, dgPendente, aSecar, partosPrevistos, aDesmamar, type CriterioDesmame } from "./lib/worklists";
 import { HOJE } from "./HOJE";
+import { RebPill } from "@/components/rb/RebPrimitives";
 
 export interface Kpi { lab: string; val: string; sufixo?: string; d?: string; tom?: "up" | "ok"; }
 export interface Coluna { nome: string; render: (r: ResumoAnimal) => React.ReactNode; }
@@ -14,7 +15,7 @@ export interface DomainConfig {
   colunas: Coluna[];
 }
 
-const pill = (txt: string, tom?: "warn" | "bad") => <span className={"rb-pill" + (tom ? " " + tom : "")}>{txt}</span>;
+const pill = (txt: string, tom?: "warn" | "bad") => <RebPill tone={tom ?? "ok"}>{txt}</RebPill>;
 
 export const reproducao: DomainConfig = {
   titulo: "Reprodução",

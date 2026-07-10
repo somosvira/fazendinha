@@ -22,6 +22,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
@@ -55,10 +56,10 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Safras" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 6 }}>
           <RebButton aria-pressed={filtroFechada === "false"} onClick={() => setFiltroFechada("false")}>Abertas</RebButton>
           <RebButton aria-pressed={filtroFechada === "true"} onClick={() => setFiltroFechada("true")}>Fechadas</RebButton>
@@ -72,7 +73,7 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
       ) : loading ? (
         <Loader />
       ) : data.length === 0 ? (
-        <div className="rb-empty">Nenhuma safra de milho cadastrada ainda.</div>
+        <RebEmpty>Nenhuma safra de milho cadastrada ainda.</RebEmpty>
       ) : (
         <RebTable>
           <thead>
@@ -83,12 +84,12 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
           <tbody>
             {data.map((s) => (
               <tr key={s.id} className="rb-row" onClick={() => setSafraId(s.id)}>
-                <td className="rb-anm">{s.nome}</td>
+                <td><RebAnm>{s.nome}</RebAnm></td>
                 <td>{s.ano}</td>
                 <td>{ha(s.areaHaTotal)}</td>
                 <td>{s.resumo ? moneyN(s.resumo.custeioTotal) : "—"}</td>
                 <td>{s.resumo ? moneyN(s.resumo.custoHa) : "—"}</td>
-                <td><span className={"rb-pill" + (s.fechada ? " bad" : "")}>{s.fechada ? "fechada" : "aberta"}</span></td>
+                <td><RebPill tone={s.fechada ? "bad" : "ok"}>{s.fechada ? "fechada" : "aberta"}</RebPill></td>
               </tr>
             ))}
           </tbody>
@@ -102,7 +103,7 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
           onSalvo={() => { setFormNova(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -132,19 +133,19 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
 
   if (loading || !safra) {
     return (
-      <main className="rb-main">
+      <RebMain>
         <RebHeader eyebrow="Cultivo · milho" title="Safra" actions={<RebButton onClick={onVoltar}>← Safras</RebButton>} />
         {erro ? <p className="text-sm text-prejuizo">Erro: {erro}</p> : <Loader />}
-      </main>
+      </RebMain>
     );
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Cultivo · milho · ${safra.ano}`} title={safra.nome} actions={<RebButton onClick={onVoltar}>← Safras</RebButton>} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-        <span className={"rb-pill" + (safra.fechada ? " bad" : "")}>{safra.fechada ? "fechada" : "aberta"}</span>
+        <RebPill tone={safra.fechada ? "bad" : "ok"}>{safra.fechada ? "fechada" : "aberta"}</RebPill>
         <ClasseToggle value={classe} onChange={setClasse} />
         <RebButton style={{ marginLeft: "auto" }} onClick={() => setFormEditar(true)}>Editar</RebButton>
         <RebButton onClick={() => onNavMil("custos")}>Ver custos</RebButton>
@@ -175,14 +176,14 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
       {loadingAreas ? (
         <Loader label="Carregando áreas…" />
       ) : areas.length === 0 ? (
-        <div className="rb-empty">Nenhuma área cadastrada para esta safra ainda.</div>
+        <RebEmpty>Nenhuma área cadastrada para esta safra ainda.</RebEmpty>
       ) : (
         <RebTable>
           <thead><tr><th>Código</th><th>Nome</th><th>Área</th></tr></thead>
           <tbody>
             {areas.map((a) => (
               <tr key={a.id}>
-                <td className="rb-anm">{a.codigo}</td>
+                <td><RebAnm>{a.codigo}</RebAnm></td>
                 <td>{a.nome ?? "—"}</td>
                 <td>{ha(a.areaHa)}</td>
               </tr>
@@ -207,7 +208,7 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
           onSalvo={() => { setFormEditar(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 

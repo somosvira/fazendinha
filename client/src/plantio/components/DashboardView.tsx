@@ -6,16 +6,17 @@ import { useDashboard } from "../api";
 import { FASES_LABEL } from "../lib/fenologia";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebMain } from "@/components/rb/RebPrimitives";
 
 export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
   const { data, loading } = useDashboard();
   const insight = insightDaLavoura("colheita");
   if (loading || !data) {
-    return <main className="rb-main"><RebHeader title="Lavoura · Painel" /><Loader /></main>;
+    return <RebMain><RebHeader title="Lavoura · Painel" /><Loader /></RebMain>;
   }
   const k = data.k;
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow={`Lavoura Rio Novo · ${k.areaTotal} ha · ${k.talhoesAtivos} talhões ativos`} title="Painel da lavoura" />
 
       <RebKpiStrip cols={6}>
@@ -68,6 +69,6 @@ export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
           ))}
         </div>
       </div>
-    </main>
+    </RebMain>
   );
 }

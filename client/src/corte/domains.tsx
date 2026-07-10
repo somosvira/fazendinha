@@ -3,6 +3,7 @@ import { CATEGORIA_LABEL } from "./types";
 import { pesagemVencida, gmdBaixo, vacinaPendente, vermifugoPendente, prontosParaAbate, lotacaoExcedida, mortalidadeAlta, todos } from "./lib/worklists";
 import { arrobasCarcaca, GMD_ESPERADO } from "./lib/derive";
 import { HOJE } from "./HOJE";
+import { RebPill } from "@/components/rb/RebPrimitives";
 
 export interface Kpi { lab: string; val: string; sufixo?: string; d?: string; tom?: "up" | "ok"; }
 export interface Coluna { nome: string; render: (r: ResumoLote, l?: Lote) => React.ReactNode; }
@@ -17,7 +18,7 @@ export interface DomainConfig {
 }
 
 const pill = (txt: string, tom?: "warn" | "bad") =>
-  <span className={"rb-pill" + (tom ? " " + tom : "")}>{txt}</span>;
+  <RebPill tone={tom}>{txt}</RebPill>;
 
 // LOTE (visão geral) -----------------------------------------------------
 export const lote: DomainConfig = {

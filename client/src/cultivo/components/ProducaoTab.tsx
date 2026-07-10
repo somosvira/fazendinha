@@ -18,6 +18,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm } from "@/components/rb/RebPrimitives";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -57,10 +58,10 @@ export function ProducaoTab() {
   }
 
   return (
-    <main className="rb-main">
+    <RebMain>
       <RebHeader eyebrow="Cultivo · milho" title="Produção" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <ToolbarSelect
           value={String(safraCultivoId)}
           onChange={(v) => setSafraCultivoId(v ? Number(v) : "")}
@@ -94,7 +95,7 @@ export function ProducaoTab() {
           </RebKpiStrip>
 
           {data.length === 0 ? (
-            <div className="rb-empty">Nenhuma produção registrada ainda.</div>
+            <RebEmpty>Nenhuma produção registrada ainda.</RebEmpty>
           ) : (
             <RebTable>
               <thead>
@@ -104,7 +105,7 @@ export function ProducaoTab() {
                 {data.map((p) => (
                   <tr key={p.id}>
                     <td>{new Date(p.data).toLocaleDateString("pt-BR")}</td>
-                    <td className="rb-anm">{TIPO_LABEL[p.tipo]}</td>
+                    <td><RebAnm>{TIPO_LABEL[p.tipo]}</RebAnm></td>
                     <td>{p.areaCodigo ?? "—"}</td>
                     <td>{qtd(p.quantidade)} {p.unidade.toLowerCase()}</td>
                     <td>{p.destino ? DESTINO_LABEL[p.destino] : "—"}</td>
@@ -129,7 +130,7 @@ export function ProducaoTab() {
           onSalvo={() => { setForm(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 

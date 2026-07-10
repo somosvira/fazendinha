@@ -8,9 +8,11 @@ import { Timeline } from "./Timeline";
 import { OperacaoForm } from "./OperacaoForm";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
+import {
+  RebMain, RebBox, RebBoxSection, RebKv, RebEmpty,
+  REB_CRUMB, REB_SEC_SUB, REB_CHIP, REB_CHIP_PREG, REB_CHIP_LACT,
+} from "@/components/rb/RebPrimitives";
 
-// Migalha (voltar) — reproduz .rb-crumb.
-const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
 const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
@@ -22,16 +24,16 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
   const { data: eventos, recarregar } = useEventos(talhaoId);
   const [registrando, setRegistrando] = useState(false);
 
-  if (loading) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lavoura</button><Loader /></main>;
-  if (!t) return <main className="rb-main"><button className={CRUMB} onClick={onVoltar}>← Lavoura</button><p>Talhão não encontrado.</p></main>;
+  if (loading) return <RebMain><button className={REB_CRUMB} onClick={onVoltar}>← Lavoura</button><Loader /></RebMain>;
+  if (!t) return <RebMain><button className={REB_CRUMB} onClick={onVoltar}>← Lavoura</button><p>Talhão não encontrado.</p></RebMain>;
 
   const idade = idadeAnos(t, HOJE);
   const categoria = categoriaIdade(idade);
   const plantas = totalPlantas(t);
 
   return (
-    <main className="rb-main">
-      <button className={CRUMB} onClick={onVoltar}>← <b>Lavoura</b> &nbsp;/&nbsp; Talhão {t.codigo}</button>
+    <RebMain>
+      <button className={REB_CRUMB} onClick={onVoltar}>← <b>Lavoura</b> &nbsp;/&nbsp; Talhão {t.codigo}</button>
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>
@@ -42,8 +44,8 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {resumo && <span className="rb-chip lact">{FASES_LABEL[resumo.fase]}{resumo.diasNaFase ? ` · ${resumo.diasNaFase}d` : ""}</span>}
-          {resumo?.bienalidade && <span className={"rb-chip " + (resumo.bienalidade === "POSITIVA" ? "preg" : "")}>Bienalidade {resumo.bienalidade.toLowerCase()}</span>}
+          {resumo && <span className={`${REB_CHIP} ${REB_CHIP_LACT}`}>{FASES_LABEL[resumo.fase]}{resumo.diasNaFase ? ` · ${resumo.diasNaFase}d` : ""}</span>}
+          {resumo?.bienalidade && <span className={resumo.bienalidade === "POSITIVA" ? `${REB_CHIP} ${REB_CHIP_PREG}` : REB_CHIP}>Bienalidade {resumo.bienalidade.toLowerCase()}</span>}
           {t.estado === "ATIVO" && (
             <span className="flex gap-2">
               <RebButton variant="pri" onClick={() => setRegistrando(true)}>+ Registrar operação</RebButton>
@@ -97,56 +99,56 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
         <div>
           <div className="rb-tl-card">
             <h3 className="mb-3 font-serif text-xl font-medium">Linha do tempo</h3>
-            <p className="rb-sec-sub">Fenologia, fitossanidade, nutrição e colheita — interpretadas pelo sistema.</p>
+            <p className={REB_SEC_SUB}>Fenologia, fitossanidade, nutrição e colheita — interpretadas pelo sistema.</p>
             {eventos.length === 0
-              ? <div className="rb-empty">Nenhum evento registrado. Use <b>+ Registrar operação</b> para começar.</div>
+              ? <RebEmpty>Nenhum evento registrado. Use <b>+ Registrar operação</b> para começar.</RebEmpty>
               : <Timeline eventos={eventos} />}
           </div>
         </div>
         <div>
-          <div className="rb-box">
-            <div className="rb-box-section">
+          <RebBox>
+            <RebBoxSection>
               <h4>Ficha do talhão</h4>
-              <div className="rb-kv"><span>Lavoura</span><b>{t.lavoura}</b></div>
-              <div className="rb-kv"><span>Variedade</span><b>{t.variedade}</b></div>
-              <div className="rb-kv"><span>Espaçamento</span><b>{t.espacamento}</b></div>
-              <div className="rb-kv"><span>Densidade</span><b>{t.plantasHa.toLocaleString("pt-BR")} pl/ha</b></div>
-              <div className="rb-kv"><span>Plantas totais</span><b>{plantas.toLocaleString("pt-BR")}</b></div>
-              <div className="rb-kv"><span>Área</span><b>{t.areaHa} ha</b></div>
-              {t.altitude != null && <div className="rb-kv"><span>Altitude</span><b>{t.altitude} m</b></div>}
-              {t.exposicao && <div className="rb-kv"><span>Exposição</span><b>{t.exposicao}</b></div>}
-              {t.declive != null && <div className="rb-kv"><span>Declive</span><b>{t.declive}%</b></div>}
-              {t.irrigado && <div className="rb-kv"><span>Irrigação</span><b>sim</b></div>}
-              {t.ultimaRecepa && <div className="rb-kv"><span>Última recepa</span><b>{new Date(t.ultimaRecepa).toLocaleDateString("pt-BR")}</b></div>}
-            </div>
-          </div>
+              <RebKv><span>Lavoura</span><b>{t.lavoura}</b></RebKv>
+              <RebKv><span>Variedade</span><b>{t.variedade}</b></RebKv>
+              <RebKv><span>Espaçamento</span><b>{t.espacamento}</b></RebKv>
+              <RebKv><span>Densidade</span><b>{t.plantasHa.toLocaleString("pt-BR")} pl/ha</b></RebKv>
+              <RebKv><span>Plantas totais</span><b>{plantas.toLocaleString("pt-BR")}</b></RebKv>
+              <RebKv><span>Área</span><b>{t.areaHa} ha</b></RebKv>
+              {t.altitude != null && <RebKv><span>Altitude</span><b>{t.altitude} m</b></RebKv>}
+              {t.exposicao && <RebKv><span>Exposição</span><b>{t.exposicao}</b></RebKv>}
+              {t.declive != null && <RebKv><span>Declive</span><b>{t.declive}%</b></RebKv>}
+              {t.irrigado && <RebKv><span>Irrigação</span><b>sim</b></RebKv>}
+              {t.ultimaRecepa && <RebKv><span>Última recepa</span><b>{new Date(t.ultimaRecepa).toLocaleDateString("pt-BR")}</b></RebKv>}
+            </RebBoxSection>
+          </RebBox>
           {resumo && (resumo.pH != null || resumo.fosforo != null || resumo.potassio != null) && (
-            <div className="rb-box mt-3.5">
-              <div className="rb-box-section">
+            <RebBox className="mt-3.5">
+              <RebBoxSection>
                 <h4>Última análise de solo</h4>
-                {resumo.ultimaAnaliseSolo && <div className="rb-kv"><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseSolo).toLocaleDateString("pt-BR")}</b></div>}
-                <div className="rb-kv"><span>pH (CaCl₂)</span><b style={{ color: (resumo.pH ?? 7) < 5.2 ? "var(--prejuizo)" : undefined }}>{resumo.pH ?? "—"}</b></div>
-                <div className="rb-kv"><span>V (sat. de bases)</span><b style={{ color: (resumo.v ?? 100) < 50 ? "var(--prejuizo)" : undefined }}>{resumo.v ?? "—"}%</b></div>
-                <div className="rb-kv"><span>M.O.</span><b>{resumo.mo ?? "—"} g/dm³</b></div>
-                <div className="rb-kv"><span>P</span><b>{resumo.fosforo ?? "—"} mg/dm³</b></div>
-                <div className="rb-kv"><span>K</span><b>{resumo.potassio ?? "—"} mg/dm³</b></div>
-              </div>
-            </div>
+                {resumo.ultimaAnaliseSolo && <RebKv><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseSolo).toLocaleDateString("pt-BR")}</b></RebKv>}
+                <RebKv><span>pH (CaCl₂)</span><b style={{ color: (resumo.pH ?? 7) < 5.2 ? "var(--prejuizo)" : undefined }}>{resumo.pH ?? "—"}</b></RebKv>
+                <RebKv><span>V (sat. de bases)</span><b style={{ color: (resumo.v ?? 100) < 50 ? "var(--prejuizo)" : undefined }}>{resumo.v ?? "—"}%</b></RebKv>
+                <RebKv><span>M.O.</span><b>{resumo.mo ?? "—"} g/dm³</b></RebKv>
+                <RebKv><span>P</span><b>{resumo.fosforo ?? "—"} mg/dm³</b></RebKv>
+                <RebKv><span>K</span><b>{resumo.potassio ?? "—"} mg/dm³</b></RebKv>
+              </RebBoxSection>
+            </RebBox>
           )}
           {resumo?.ultimaAnaliseFoliar && (
-            <div className="rb-box mt-3.5">
-              <div className="rb-box-section">
+            <RebBox className="mt-3.5">
+              <RebBoxSection>
                 <h4>Última análise foliar</h4>
-                <div className="rb-kv"><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseFoliar).toLocaleDateString("pt-BR")}</b></div>
-                <div className="rb-kv"><span>N</span><b>{resumo.nFoliar ?? "—"}%</b></div>
-                <div className="rb-kv"><span>K</span><b>{resumo.kFoliar ?? "—"}%</b></div>
-              </div>
-            </div>
+                <RebKv><span>Coleta</span><b>{new Date(resumo.ultimaAnaliseFoliar).toLocaleDateString("pt-BR")}</b></RebKv>
+                <RebKv><span>N</span><b>{resumo.nFoliar ?? "—"}%</b></RebKv>
+                <RebKv><span>K</span><b>{resumo.kFoliar ?? "—"}%</b></RebKv>
+              </RebBoxSection>
+            </RebBox>
           )}
         </div>
       </div>
 
       {registrando && <OperacaoForm talhaoId={talhaoId} talhao={t} onFechar={() => setRegistrando(false)} onSalvo={() => { setRegistrando(false); recarregar(); }} />}
-    </main>
+    </RebMain>
   );
 }

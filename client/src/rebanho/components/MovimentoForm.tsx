@@ -79,7 +79,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </div>
         }
       >
-        <div className="rb-success-check">
+        <div className="mt-1 flex justify-center animate-[rb-check-pop_0.3s_cubic-bezier(0.34,1.56,0.64,1)] [&>svg]:h-16 [&>svg]:w-16 [&>svg]:text-lucro [&_circle]:[stroke-dasharray:132] [&_circle]:[stroke-dashoffset:0] [&_circle]:animate-[rb-check-circle_0.4s_ease-out_backwards] [&_path]:[stroke-dasharray:30] [&_path]:[stroke-dashoffset:0] [&_path]:animate-[rb-check-path_0.25s_ease-out_0.25s_backwards]">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="24" cy="24" r="21" />
             <path d="M15 24l7 7 12-14" />
@@ -90,10 +90,10 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
           {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
         </p>
-        <div className="rb-success-line">
+        <div className="flex items-start gap-3 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3.5 text-sm [&_b]:font-semibold [&_b]:text-foreground">
           {resultado.lancamentoCriado ? (
             <>
-              <span className="rb-success-dot ok">✓</span>
+              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color-mix(in_srgb,var(--lucro)_14%,transparent)] text-lucro">✓</span>
               <div>
                 <b>Lançamento financeiro gerado</b>
                 <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
@@ -101,7 +101,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
             </>
           ) : (
             <>
-              <span className="rb-success-dot off">—</span>
+              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color:var(--rule-soft)] text-ink-3">—</span>
               <div>
                 <b>Sem lançamento financeiro</b>
                 <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
