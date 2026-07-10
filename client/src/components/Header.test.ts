@@ -40,8 +40,6 @@ function baseProps() {
     onMobileToggle: vi.fn(),
     onAbrirBusca: vi.fn(),
     onSair: vi.fn(),
-    propAtiva: null,
-    onTrocarProp: vi.fn(),
   };
 }
 
@@ -85,11 +83,9 @@ describe("Header", () => {
     expect(props.onMobileToggle).toHaveBeenCalledWith(true);
   });
 
-  it("mostra o seletor de propriedade/sítio no header", () => {
+  it("não renderiza mais o seletor de propriedade no header", () => {
     const props = baseProps();
     render(h(Header, props));
-    // seletor unificado (antes eram 2: fazenda display-only + sítio no corpo)
-    const farmTrigger = screen.getByRole("button", { name: /Propriedade \/ sítio/i });
-    expect(farmTrigger.textContent).toContain("Rio Novo");
+    expect(screen.queryByRole("button", { name: /Propriedade \/ sítio/i })).toBeNull();
   });
 });

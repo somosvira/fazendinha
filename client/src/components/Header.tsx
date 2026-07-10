@@ -1,7 +1,8 @@
 /* Rio Novo — header global.
- * Faixa preta no topo com logo, seletor de fazenda (display-only) e chip do
- * usuário (com dropdown para "ver como" outro perfil). O burger só aparece
- * no mobile e controla o drawer da sidebar.
+ * Faixa preta no topo com busca (⌘K) e chip do usuário (com dropdown para
+ * "ver como" outro perfil). O burger só aparece no mobile e controla o
+ * drawer da sidebar. Marca e seletor de propriedade/sítio moraram no
+ * bloco de brand da sidebar (ver AppSidebar.tsx).
  * Migrado para o primitivo shadcn `DropdownMenu` (Radix): outside-click,
  * Escape e foco já vêm de graça — não há mais `useClickOutside` manual. */
 
@@ -14,8 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PAPEIS, type User } from "../data/acessos";
-import { TerranoSymbol } from "./TerranoLogo";
-import { PropriedadePicker } from "./PropriedadePicker";
 
 function Chevron({ className }: { className?: string }) {
   return (
@@ -120,7 +119,7 @@ function UserPicker({ user, allUsers, onSwitchUser, onSair }: {
   );
 }
 
-export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca, onSair, propAtiva, onTrocarProp }: {
+export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca, onSair }: {
   user: User;
   allUsers: User[] | null;
   onSwitchUser: (id: string) => void;
@@ -128,8 +127,6 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
   onMobileToggle: (open: boolean) => void;
   onAbrirBusca?: () => void;
   onSair?: () => void;
-  propAtiva: number | null;
-  onTrocarProp: (id: number | null) => void;
 }) {
   return (
     <header
@@ -146,16 +143,6 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
             : <><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></>}
         </svg>
       </button>
-
-      <div className="ah-brand">
-        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol" />
-        <span className="ah-brand-txt">
-          <span className="ah-brand-name">Terrano</span>
-          <span className="ah-brand-sub">Fazenda Rio Novo</span>
-        </span>
-      </div>
-
-      <PropriedadePicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
 
       {onAbrirBusca && (
         <button

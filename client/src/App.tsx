@@ -357,8 +357,6 @@ export function App() {
         onMobileToggle={setMobileOpen}
         onAbrirBusca={() => setBuscaAberta(true)}
         onSair={onSair}
-        propAtiva={propAtiva}
-        onTrocarProp={trocarPropriedade}
       />
       <AppSidebar
         current={tab}
@@ -368,6 +366,8 @@ export function App() {
         podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        propAtiva={propAtiva}
+        onTrocarProp={trocarPropriedade}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         {viewAsId && (
