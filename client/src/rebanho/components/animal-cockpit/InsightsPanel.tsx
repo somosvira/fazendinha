@@ -19,16 +19,21 @@ const LABEL_CLAS: Record<ScoreDTO["classificacao"], string> = {
 // ── 1. Score (selo discreto ao lado do nome) ───────────────────────────────
 export function ScoreBadge({ score }: { score: ScoreDTO }) {
   const cheias = score.estrelas;
-  const tomCls = score.classificacao === "ELITE" || score.classificacao === "MUITO_BOA"
+  const tom = score.classificacao === "ELITE" || score.classificacao === "MUITO_BOA"
     ? "ok" : score.classificacao === "DESCARTE" || score.classificacao === "ATENCAO" ? "warn" : "";
+  const labTomCls = tom === "ok"
+    ? "text-lucro border-[color:color-mix(in_srgb,var(--lucro)_30%,var(--rule))]"
+    : tom === "warn"
+    ? "text-prejuizo border-[color:color-mix(in_srgb,var(--prejuizo)_30%,var(--rule))]"
+    : "text-ink-3 border-[color:var(--rule)]";
   return (
-    <span className={`rb-score ${tomCls}`} title={`Score ${score.valor}/100 — ${LABEL_CLAS[score.classificacao]}`}>
-      <span className="rb-score-stars" aria-label={`${cheias} de 5 estrelas`}>
+    <span className="inline-flex items-center gap-2 ml-3.5 align-[6px] font-sans" title={`Score ${score.valor}/100 — ${LABEL_CLAS[score.classificacao]}`}>
+      <span className="text-sm tracking-[1px] leading-none text-ink-2" aria-label={`${cheias} de 5 estrelas`}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className={i < cheias ? "on" : "off"}>★</span>
+          <span key={i} className={i < cheias ? "text-leite" : "text-[color:var(--rule)]"}>★</span>
         ))}
       </span>
-      <span className="rb-score-lab">{LABEL_CLAS[score.classificacao]}</span>
+      <span className={`text-sm tracking-[.06em] uppercase font-semibold px-[9px] py-[3px] border rounded-[11px] ${labTomCls}`}>{LABEL_CLAS[score.classificacao]}</span>
     </span>
   );
 }
@@ -42,17 +47,17 @@ export function RentabilidadeKpi({ f }: { f: FinanceiroDTO }) {
     ? "Esta vaca não paga seus custos."
     : "Margem apertada — atenção.";
   return (
-    <div className="rb-k rb-rentab" style={{ borderLeft: `3px solid ${cor}` }}>
-      <div className="lab">Rentabilidade {f.fontePreco === "fallback" && <small>(estimativa)</small>}</div>
-      <div className="rb-rentab-grid">
+    <div className="relative bg-transparent border-l border-[color:var(--rule-soft)] pl-[18px] pr-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: `3px solid ${cor}` }}>
+      <div className="text-sm tracking-[.06em] uppercase text-ink-2 font-semibold">Rentabilidade {f.fontePreco === "fallback" && <small>(estimativa)</small>}</div>
+      <div className="grid grid-cols-2 gap-[18px] mt-1.5 items-end max-[1100px]:grid-cols-1 max-[1100px]:gap-2.5">
         <div>
-          <div className="rb-rentab-num" style={{ color: cor }}>{fmtBRL(f.lucro)}</div>
-          <div className="rb-rentab-sub">{interpretacao}</div>
+          <div className="font-serif text-[30px] font-medium leading-none text-[color:var(--ink)]" style={{ color: cor }}>{fmtBRL(f.lucro)}</div>
+          <div className="text-sm text-ink-2 mt-1.5 font-medium">{interpretacao}</div>
         </div>
-        <div className="rb-rentab-side">
-          <div className="rb-rentab-row"><span>Receita</span><b>{fmtBRL(f.receitaLactacao)}</b></div>
-          <div className="rb-rentab-row"><span>Custos</span><b>{fmtBRL(f.custosTotal)}</b></div>
-          <div className="rb-rentab-row"><span>Margem</span><b style={{ color: cor }}>{fmtPct(f.margem)}</b></div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between text-sm text-ink-2 font-medium"><span>Receita</span><b className="font-semibold text-[color:var(--ink)]">{fmtBRL(f.receitaLactacao)}</b></div>
+          <div className="flex justify-between text-sm text-ink-2 font-medium"><span>Custos</span><b className="font-semibold text-[color:var(--ink)]">{fmtBRL(f.custosTotal)}</b></div>
+          <div className="flex justify-between text-sm text-ink-2 font-medium"><span>Margem</span><b className="font-semibold" style={{ color: cor }}>{fmtPct(f.margem)}</b></div>
         </div>
       </div>
     </div>
@@ -63,16 +68,16 @@ export function RentabilidadeKpi({ f }: { f: FinanceiroDTO }) {
 export function Tendencias({ tendencias }: { tendencias: TendenciaDTO[] }) {
   if (tendencias.length === 0) return null;
   const seta = (d: TendenciaDTO["direcao"]) => d === "up" ? "⬈" : d === "down" ? "⬊" : "→";
-  const corClass = (s: TendenciaDTO["sentido"]) => s === "pos" ? "rb-ok" : s === "neg" ? "rb-up" : "";
+  const corClass = (s: TendenciaDTO["sentido"]) => s === "pos" ? "text-lucro" : s === "neg" ? "text-prejuizo" : "text-ink-3";
   return (
-    <div className="rb-card-mini">
-      <h4>Tendências</h4>
-      <ul className="rb-trend-list">
+    <div className="mt-[22px]">
+      <h4 className="font-serif italic font-medium text-[15px] text-[color:var(--ink)] mb-2.5">Tendências</h4>
+      <ul className="list-none p-0 m-0 flex flex-col gap-2">
         {tendencias.map((t) => (
-          <li key={t.chave} className="rb-trend-li">
-            <span className={`rb-trend-arrow ${corClass(t.sentido)}`}>{seta(t.direcao)}</span>
-            <span className="rb-trend-lab">{t.label}</span>
-            {t.delta && <span className="rb-trend-delta">{t.delta}</span>}
+          <li key={t.chave} className="grid grid-cols-[24px_1fr_auto] items-center gap-2.5 py-1.5 border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0 text-sm">
+            <span className={`text-base leading-none text-center ${corClass(t.sentido)}`}>{seta(t.direcao)}</span>
+            <span className="text-ink-2">{t.label}</span>
+            {t.delta && <span className="text-ink-3 text-sm italic">{t.delta}</span>}
           </li>
         ))}
       </ul>
@@ -84,15 +89,15 @@ export function Tendencias({ tendencias }: { tendencias: TendenciaDTO[] }) {
 export function Insights({ insights }: { insights: InsightDTO[] }) {
   if (insights.length === 0) return null;
   return (
-    <div className="rb-card-mini">
-      <h4>Insights</h4>
-      <ul className="rb-insights-list">
+    <div className="mt-[22px]">
+      <h4 className="font-serif italic font-medium text-[15px] text-[color:var(--ink)] mb-2.5">Insights</h4>
+      <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
         {insights.map((i, idx) => (
-          <li key={idx} className={`rb-pull ${i.tipo}`}>
-            <span className="rb-pull-mark">{i.tipo === "warn" ? "⚠" : "✓"}</span>
+          <li key={idx} className={`grid grid-cols-[22px_1fr] gap-3 items-start px-3.5 py-2.5 bg-transparent border-0 border-l-2 ${i.tipo === "warn" ? "border-l-[color:var(--prejuizo)]" : i.tipo === "ok" ? "border-l-[color:var(--lucro)]" : "border-l-[color:var(--rule)]"}`}>
+            <span className={`text-sm leading-[1.6] ${i.tipo === "warn" ? "text-prejuizo" : i.tipo === "ok" ? "text-lucro" : "text-ink-3"}`}>{i.tipo === "warn" ? "⚠" : "✓"}</span>
             <div>
-              <div className="rb-pull-tit">{i.titulo}</div>
-              {i.detalhe && <div className="rb-pull-det">{i.detalhe}</div>}
+              <div className="text-sm text-ink-2 leading-[1.4]">{i.titulo}</div>
+              {i.detalhe && <div className="text-sm text-ink-3 mt-1">{i.detalhe}</div>}
             </div>
           </li>
         ))}
@@ -110,18 +115,18 @@ export function Percentis({ p }: { p: PercentisDTO }) {
     { lab: "CCS", val: p.ccs, baseHint: "menor = melhor" },
   ];
   return (
-    <div className="rb-card-mini">
-      <h4>Comparação com o lote</h4>
-      <div className="rb-perc-grid">
+    <div className="mt-[22px]">
+      <h4 className="font-serif italic font-medium text-[15px] text-[color:var(--ink)] mb-2.5">Comparação com o lote</h4>
+      <div className="flex flex-col gap-2.5">
         {linhas.map((l) => (
-          <div key={l.lab} className="rb-perc-row">
-            <div className="rb-perc-lab">{l.lab}</div>
-            <div className="rb-bar"><div className="rb-bar-fill" style={{ width: `${l.val ?? 0}%` }} /></div>
-            <div className="rb-perc-val">{l.val != null ? `${l.val}º percentil` : "—"}</div>
+          <div key={l.lab} className="grid grid-cols-[110px_1fr_90px] gap-3 items-center text-sm max-[1100px]:[grid-template-columns:90px_1fr_80px]">
+            <div className="text-ink-2">{l.lab}</div>
+            <div className="h-1.5 bg-[color:var(--rule-soft)] rounded-[3px] overflow-hidden"><div className="h-full bg-leite rounded-[3px] transition-[width] duration-[250ms] ease-[ease]" style={{ width: `${l.val ?? 0}%` }} /></div>
+            <div className="text-ink-3 text-sm text-right">{l.val != null ? `${l.val}º percentil` : "—"}</div>
           </div>
         ))}
       </div>
-      {p.ranking && <p className="rb-perc-rank">{p.ranking.posicao}ª de {p.ranking.total} em produção</p>}
+      {p.ranking && <p className="font-serif italic text-sm text-ink-2 mt-2.5">{p.ranking.posicao}ª de {p.ranking.total} em produção</p>}
     </div>
   );
 }
@@ -129,16 +134,16 @@ export function Percentis({ p }: { p: PercentisDTO }) {
 // ── 6. Produção financeira (expansão) ──────────────────────────────────────
 export function ProducaoFinanceira({ pf }: { pf: ProducaoFinanceiraDTO }) {
   return (
-    <div className="rb-box">
-      <h4>Produção financeira</h4>
-      <div className="rb-kv"><span>Acumulado</span><b>{fmtNum(pf.acumuladoLitros)} L</b></div>
-      <div className="rb-kv"><span>Valor recebido</span><b>{fmtBRL(pf.valorRecebido)}</b></div>
-      <div className="rb-kv"><span>Preço médio</span><b>{fmtBRLExato(pf.precoMedio)}/L</b></div>
+    <div className="bg-[color:var(--bg-card)] border border-[color:var(--rule-soft)] rounded-[10px] px-4 py-[15px] mb-4">
+      <h4 className="mb-[11px] text-sm tracking-[.06em] uppercase text-ink-3">Produção financeira</h4>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Acumulado</span><b className="font-semibold">{fmtNum(pf.acumuladoLitros)} L</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Valor recebido</span><b className="font-semibold">{fmtBRL(pf.valorRecebido)}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Preço médio</span><b className="font-semibold">{fmtBRLExato(pf.precoMedio)}/L</b></div>
       {pf.lucroPorLitro != null && (
-        <div className="rb-kv"><span>Lucro por litro</span><b>{fmtBRLExato(pf.lucroPorLitro)}</b></div>
+        <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Lucro por litro</span><b className="font-semibold">{fmtBRLExato(pf.lucroPorLitro)}</b></div>
       )}
-      <div className="rb-kv"><span>Receita diária</span><b>{fmtBRLExato(pf.receitaDiaria)}</b></div>
-      <div className="rb-kv"><span>Receita mensal estimada</span><b>{fmtBRL(pf.receitaMensal)}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Receita diária</span><b className="font-semibold">{fmtBRLExato(pf.receitaDiaria)}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Receita mensal estimada</span><b className="font-semibold">{fmtBRL(pf.receitaMensal)}</b></div>
     </div>
   );
 }
@@ -156,17 +161,17 @@ export function EficienciaGauge({ e }: { e: EficienciaDTO }) {
   const largeArc = pct > 50 ? 1 : 0;
   const tom = pct >= 90 ? "var(--lucro)" : pct >= 60 ? "var(--atencao)" : "var(--prejuizo)";
   return (
-    <div className="rb-card-mini">
-      <h4>Eficiência</h4>
-      <div className="rb-gauge">
+    <div className="mt-[22px]">
+      <h4 className="font-serif italic font-medium text-[15px] text-[color:var(--ink)] mb-2.5">Eficiência</h4>
+      <div className="flex flex-col items-center gap-0 mb-3">
         <svg width="120" height="70" viewBox="0 0 120 70" aria-hidden>
           <path d={`M 8 60 A ${r} ${r} 0 0 1 112 60`} fill="none" stroke="var(--rule-soft)" strokeWidth="6" />
           <path d={`M 8 60 A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(2)} ${y.toFixed(2)}`} fill="none" stroke={tom} strokeWidth="6" strokeLinecap="round" />
         </svg>
-        <div className="rb-gauge-num" style={{ color: tom }}>{e.percentual}%</div>
+        <div className="font-serif font-medium text-[22px] -mt-2.5" style={{ color: tom }}>{e.percentual}%</div>
       </div>
-      <div className="rb-kv"><span>Atual</span><b>{e.atual} L/dia</b></div>
-      <div className="rb-kv"><span>Meta</span><b>{e.meta} L/dia</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Atual</span><b className="font-semibold">{e.atual} L/dia</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Meta</span><b className="font-semibold">{e.meta} L/dia</b></div>
     </div>
   );
 }
@@ -175,13 +180,13 @@ export function EficienciaGauge({ e }: { e: EficienciaDTO }) {
 export function Projecoes({ p, fontePreco }: { p: ProjecoesDTO; fontePreco: FinanceiroDTO["fontePreco"] }) {
   const data = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
   return (
-    <div className="rb-box">
-      <h4>Projeções <small style={{ fontWeight: 500, color: "var(--ink-2)" }}>(estimativa{fontePreco === "fallback" ? " · preço de fallback" : ""})</small></h4>
-      <div className="rb-kv"><span>Produção da lactação</span><b>{p.producaoLactacao != null ? `${fmtNum(p.producaoLactacao)} L` : "—"}</b></div>
-      <div className="rb-kv"><span>Receita esperada</span><b>{p.receitaLactacao != null ? fmtBRL(p.receitaLactacao) : "—"}</b></div>
-      <div className="rb-kv"><span>Lucro esperado</span><b>{p.lucroLactacao != null ? fmtBRL(p.lucroLactacao) : "—"}</b></div>
-      <div className="rb-kv"><span>Data prevista de secagem</span><b>{data(p.dataSecagem)}</b></div>
-      <div className="rb-kv"><span>Parto previsto</span><b>{data(p.dataParto)}</b></div>
+    <div className="bg-[color:var(--bg-card)] border border-[color:var(--rule-soft)] rounded-[10px] px-4 py-[15px] mb-4">
+      <h4 className="mb-[11px] text-sm tracking-[.06em] uppercase text-ink-3">Projeções <small style={{ fontWeight: 500, color: "var(--ink-2)" }}>(estimativa{fontePreco === "fallback" ? " · preço de fallback" : ""})</small></h4>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Produção da lactação</span><b className="font-semibold">{p.producaoLactacao != null ? `${fmtNum(p.producaoLactacao)} L` : "—"}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Receita esperada</span><b className="font-semibold">{p.receitaLactacao != null ? fmtBRL(p.receitaLactacao) : "—"}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Lucro esperado</span><b className="font-semibold">{p.lucroLactacao != null ? fmtBRL(p.lucroLactacao) : "—"}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Data prevista de secagem</span><b className="font-semibold">{data(p.dataSecagem)}</b></div>
+      <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Parto previsto</span><b className="font-semibold">{data(p.dataParto)}</b></div>
     </div>
   );
 }
@@ -189,40 +194,40 @@ export function Projecoes({ p, fontePreco }: { p: ProjecoesDTO; fontePreco: Fina
 // ── 9. Genealogia ──────────────────────────────────────────────────────────
 export function Genealogia({ g, onAbrirAnimal }: { g: GenealogiaDTO; onAbrirAnimal: (id: string) => void }) {
   return (
-    <div className="rb-box">
-      <h4>Genealogia</h4>
-      <div className="rb-ped-tree">
-        <div className="rb-ped-col">
-          <div className="rb-ped-line">
+    <div className="bg-[color:var(--bg-card)] border border-[color:var(--rule-soft)] rounded-[10px] px-4 py-[15px] mb-4">
+      <h4 className="mb-[11px] text-sm tracking-[.06em] uppercase text-ink-3">Genealogia</h4>
+      <div className="grid grid-cols-2 gap-[18px] mt-2 max-[600px]:grid-cols-1">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Mãe</span>
             {g.mae ? (
-              <button onClick={() => onAbrirAnimal(g.mae!.id)}>{g.mae.nome ?? "—"} #{g.mae.numero}</button>
-            ) : <span className="rb-ped-empty">—</span>}
+              <button className="bg-none border-0 p-0 cursor-pointer text-cafe font-semibold font-sans text-sm text-right hover:underline" onClick={() => onAbrirAnimal(g.mae!.id)}>{g.mae.nome ?? "—"} #{g.mae.numero}</button>
+            ) : <span className="text-ink-2 text-sm italic text-right">—</span>}
           </div>
-          {g.mae?.producaoMediaDia != null && <div className="rb-ped-mini">produção {g.mae.producaoMediaDia} L/dia</div>}
-          <div className="rb-ped-line">
+          {g.mae?.producaoMediaDia != null && <div className="text-sm text-ink-3 italic text-right -mt-1 mb-0.5">produção {g.mae.producaoMediaDia} L/dia</div>}
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Avó materna</span>
             {g.avoMaterna ? (
-              <button onClick={() => onAbrirAnimal(g.avoMaterna!.id)}>{g.avoMaterna.nome ?? "—"} #{g.avoMaterna.numero}</button>
-            ) : <span className="rb-ped-empty">sem registro</span>}
+              <button className="bg-none border-0 p-0 cursor-pointer text-cafe font-semibold font-sans text-sm text-right hover:underline" onClick={() => onAbrirAnimal(g.avoMaterna!.id)}>{g.avoMaterna.nome ?? "—"} #{g.avoMaterna.numero}</button>
+            ) : <span className="text-ink-2 text-sm italic text-right">sem registro</span>}
           </div>
-          <div className="rb-ped-line">
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Avô materno</span>
-            <span className="rb-ped-text">{g.avoMaterno ?? "sem registro"}</span>
+            <span className="text-ink-2 text-sm text-right">{g.avoMaterno ?? "sem registro"}</span>
           </div>
         </div>
-        <div className="rb-ped-col">
-          <div className="rb-ped-line">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Pai</span>
-            <span className="rb-ped-text">{g.pai ?? "—"}</span>
+            <span className="text-ink-2 text-sm text-right">{g.pai ?? "—"}</span>
           </div>
-          <div className="rb-ped-line">
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Avó paterna</span>
-            <span className="rb-ped-empty">sem registro</span>
+            <span className="text-ink-2 text-sm italic text-right">sem registro</span>
           </div>
-          <div className="rb-ped-line">
+          <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Avô paterno</span>
-            <span className="rb-ped-empty">sem registro</span>
+            <span className="text-ink-2 text-sm italic text-right">sem registro</span>
           </div>
         </div>
       </div>
