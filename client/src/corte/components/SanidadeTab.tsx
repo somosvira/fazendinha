@@ -4,11 +4,13 @@ import { LoteDomainView } from "./LoteDomainView";
 import { DOMAINS } from "../domains";
 import { insightDaFazenda } from "../mock";
 import { CALENDARIO_SANITARIO } from "../lib/calendario";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebTable } from "@/components/rb/RebTable";
 import type { ResumoLote, Lote } from "../types";
 
 export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Sanidade</h1></div><Loader /></main>;
+  if (loading) return <main className="rb-main"><RebHeader eyebrow="Corte" title="Sanidade" /><Loader /></main>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrarManejo(l); };
 
@@ -23,9 +25,9 @@ export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
         dicaLinha="clique num lote pra registrar manejo sanitário"
       />
       <main className="rb-main" style={{ paddingTop: 0 }}>
-        <h2 className="rb-sec-title" style={{ marginTop: 8 }}>Calendário sanitário Embrapa (Sul de Minas)</h2>
+        <h2 className="font-serif text-xl font-medium mb-3" style={{ marginTop: 8 }}>Calendário sanitário Embrapa (Sul de Minas)</h2>
         <p className="rb-sec-sub">Cronograma 11 — referência regional. Etapas <b>obrigatórias</b> (aftosa) marcadas em destaque.</p>
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Mês</th><th>Ação</th><th>Detalhe</th><th>Público</th></tr></thead>
           <tbody>
             {CALENDARIO_SANITARIO.map((i, idx) => (
@@ -42,7 +44,7 @@ export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       </main>
     </>
   );
