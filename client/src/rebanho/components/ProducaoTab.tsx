@@ -6,6 +6,7 @@ import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 function LoteForm({ onSalvo }: { onSalvo: () => void }) {
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
@@ -29,14 +30,14 @@ function LoteForm({ onSalvo }: { onSalvo: () => void }) {
     <div className="rb-box" style={{ marginTop: 18 }}>
       <h4>Registrar produção do tanque / lote</h4>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label className="rb-fld" style={{ marginBottom: 0 }}>Lote
-          <select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+        <RebField label="Lote" style={{ marginBottom: 0 }}>
+          <select className="rb-field-select" value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
             <option value="">Fazenda inteira</option>
             {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
           </select>
-        </label>
-        <label className="rb-fld" style={{ marginBottom: 0 }}>Data*<input type="date" value={data} onChange={(e) => setData(e.target.value)} /></label>
-        <label className="rb-fld" style={{ marginBottom: 0 }}>Litros*<input type="number" min={0} step="0.1" value={litros} onChange={(e) => setLitros(e.target.value)} /></label>
+        </RebField>
+        <RebField label="Data*" style={{ marginBottom: 0 }}><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></RebField>
+        <RebField label="Litros*" style={{ marginBottom: 0 }}><input type="number" min={0} step="0.1" value={litros} onChange={(e) => setLitros(e.target.value)} /></RebField>
         <RebButton variant="pri" disabled={salvando || !litros} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
       </div>
       {erro && <p className="mt-[7px] text-sm text-prejuizo">{erro}</p>}

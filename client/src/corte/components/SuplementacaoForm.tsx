@@ -4,6 +4,7 @@ import { registrarSuplementacao, type SuplementacaoInput } from "../api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 /* Catálogo de suplementos típicos Sul de Minas (espelha o da NutricaoTab). O
  * valor é o enum TipoSuplemento em UPPERCASE; o resto pré-preenche o formulário. */
@@ -73,27 +74,23 @@ export function SuplementacaoForm({ lote, onFechar, onSalvo }: { lote: Lote; onF
     >
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Define o protocolo de suplemento vigente do lote.</p>
 
-      <div className="rb-fld">
-        <label>Tipo de suplemento*</label>
-        <select value={tipo} onChange={(e) => escolherTipo(e.target.value as TipoSuplemento)}>
+      <RebField label="Tipo de suplemento*">
+        <select className="rb-field-select" value={tipo} onChange={(e) => escolherTipo(e.target.value as TipoSuplemento)}>
           {SUPLEMENTOS.map((s) => <option key={s.v} value={s.v}>{s.lab}</option>)}
         </select>
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Produto*</label>
+      <RebField label="Produto*">
         <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: Proteinado 30% PB" />
-      </div>
+      </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Consumo (g/cab/dia)*</label>
+        <RebField label="Consumo (g/cab/dia)*" style={{ flex: 1 }}>
           <input type="number" value={consumo} onChange={(e) => setConsumo(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Custo (R$/kg)</label>
+        </RebField>
+        <RebField label="Custo (R$/kg)" style={{ flex: 1 }}>
           <input type="number" step="0.01" value={custoKg} onChange={(e) => setCustoKg(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
       {custoCabDia > 0 && (
@@ -104,20 +101,17 @@ export function SuplementacaoForm({ lote, onFechar, onSalvo }: { lote: Lote; onF
       )}
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Início*</label>
+        <RebField label="Início*" style={{ flex: 1 }}>
           <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Fim (opcional)</label>
+        </RebField>
+        <RebField label="Fim (opcional)" style={{ flex: 1 }}>
           <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

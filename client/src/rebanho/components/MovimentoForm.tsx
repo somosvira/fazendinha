@@ -4,6 +4,7 @@ import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -124,18 +125,18 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </>
         }
       >
-        <label className="rb-fld">Tipo<select value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
+        <RebField label="Tipo"><select className="rb-field-select" value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></RebField>
 
-        <div className="rb-fld">
+        <RebField>
           <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             Produto*
             <button type="button" onClick={() => setNovoProduto(true)} style={{ background: "transparent", border: 0, color: "var(--cafe)", fontSize: 12.5, fontFamily: "var(--sans)", fontStyle: "normal", cursor: "pointer", padding: 0 }}>+ novo produto</button>
           </span>
-          <select value={f.produtoId} onChange={(e) => set("produtoId", e.target.value)}>
+          <select className="rb-field-select" value={f.produtoId} onChange={(e) => set("produtoId", e.target.value)}>
             <option value="">Selecione…</option>
             {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
           </select>
-        </div>
+        </RebField>
 
         {produtoSel && (
           <div style={{ marginTop: -6, marginBottom: 14, fontSize: 12.5, color: "var(--ink-3)", fontFamily: "var(--sans)" }}>
@@ -146,30 +147,30 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </div>
         )}
 
-        <label className="rb-fld">Data*<input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
-        <label className="rb-fld">Quantidade*{f.tipo === "AJUSTE" && <small style={{ color: "var(--ink-3)", fontStyle: "normal", marginLeft: 4 }}>— negativo subtrai</small>}<input type="number" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></label>
+        <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
+        <RebField label={<>Quantidade*{f.tipo === "AJUSTE" && <small style={{ color: "var(--ink-3)", fontStyle: "normal", marginLeft: 4 }}>— negativo subtrai</small>}</>}><input type="number" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></RebField>
         {f.tipo === "ENTRADA" && (
-          <label className="rb-fld">Fornecedor
-            <select value={f.fornecedorId} onChange={(e) => set("fornecedorId", e.target.value)}>
+          <RebField label="Fornecedor">
+            <select className="rb-field-select" value={f.fornecedorId} onChange={(e) => set("fornecedorId", e.target.value)}>
               <option value="">—</option>
               {fornecedores.map((fr) => <option key={fr.id} value={fr.id}>{fr.nome}</option>)}
             </select>
-          </label>
+          </RebField>
         )}
         {f.tipo === "SAIDA" && (
-          <label className="rb-fld">Lote
-            <select value={f.grupoId} onChange={(e) => set("grupoId", e.target.value)}>
+          <RebField label="Lote">
+            <select className="rb-field-select" value={f.grupoId} onChange={(e) => set("grupoId", e.target.value)}>
               <option value="">—</option>
               {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
             </select>
-          </label>
+          </RebField>
         )}
         {f.tipo === "ENTRADA" && (
-          <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal" }}>
+          <RebField style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal" }}>
             <input type="checkbox" checked={f.gerarLancamento} onChange={(e) => set("gerarLancamento", e.target.checked)} style={{ width: "auto" }} />Gerar lançamento financeiro
-          </label>
+          </RebField>
         )}
-        <label className="rb-fld">Observação<input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></label>
+        <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </RebModal>
       {novoProduto && (

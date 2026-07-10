@@ -3,6 +3,7 @@ import { Loader } from "../../components/Loading";
 import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta, useProdutos, type DietaDTO, type DietaItemInput } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -95,10 +96,10 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
         </div>
       }
     >
-      <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus /></label>
-      <label className="rb-fld">Descrição<input value={f.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="ex.: silagem + concentrado 22%" /></label>
-      <label className="rb-fld">% Proteína bruta<input type="number" step="0.1" min={0} max={999.9} value={f.pb} onChange={(e) => set("pb", e.target.value)} placeholder="ex.: 18" /></label>
-      <label className="rb-fld">Energia (Mcal/kg)<input type="number" step="0.01" min={0} max={99.99} value={f.edMcal} onChange={(e) => set("edMcal", e.target.value)} placeholder="ex.: 2.8 (típico: 2–4)" /></label>
+      <RebField label="Nome*"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus /></RebField>
+      <RebField label="Descrição"><input value={f.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="ex.: silagem + concentrado 22%" /></RebField>
+      <RebField label="% Proteína bruta"><input type="number" step="0.1" min={0} max={999.9} value={f.pb} onChange={(e) => set("pb", e.target.value)} placeholder="ex.: 18" /></RebField>
+      <RebField label="Energia (Mcal/kg)"><input type="number" step="0.01" min={0} max={99.99} value={f.edMcal} onChange={(e) => set("edMcal", e.target.value)} placeholder="ex.: 2.8 (típico: 2–4)" /></RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       {editando && <ComposicaoDieta dietaId={dieta!.id} />}
     </RebModal>

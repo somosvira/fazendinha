@@ -6,6 +6,7 @@ import { FornecedorForm } from "./FornecedorForm";
 import { RebHeader } from "./RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 
 type Sub = "produtos" | "fornecedores";
 
@@ -61,7 +62,7 @@ function Produtos() {
         {TIPO_PRODUTO.map((t) => (
           <button key={t.id} className="rb-chip-q" onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
         ))}
-        <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={REB_FIELD_BOXED} style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {loading ? <Loader />
@@ -113,7 +114,7 @@ function Fornecedores() {
         {TIPO_PESSOA.map((t) => (
           <button key={t.id} className="rb-chip-q" onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
         ))}
-        <input className="rb-fld" style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={REB_FIELD_BOXED} style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
       {loading ? <Loader />

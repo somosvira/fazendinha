@@ -2,6 +2,7 @@ import { useState } from "react";
 import { usePropriedades, criarPropriedade, editarPropriedade, type PropriedadeDTO, type PropriedadeInput } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 // Seletor de sítio + cadastro. Com 1 propriedade a camada é quase invisível
 // (só um link discreto pra criar a 2ª); com ≥2 vira o seletor Consolidado/Sítio.
@@ -110,14 +111,14 @@ function PropriedadeForm({ propriedade, onFechar, onSalvo }: { propriedade: Prop
         </>
       }
     >
-      <label className="rb-fld">Nome*<input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus placeholder="ex.: Fazenda Recria" /></label>
-      <label className="rb-fld">Apelido<input value={f.apelido} onChange={(e) => set("apelido", e.target.value)} placeholder="ex.: Recria (rótulo curto do seletor)" /></label>
+      <RebField label="Nome*"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} autoFocus placeholder="ex.: Fazenda Recria" /></RebField>
+      <RebField label="Apelido"><input value={f.apelido} onChange={(e) => set("apelido", e.target.value)} placeholder="ex.: Recria (rótulo curto do seletor)" /></RebField>
       <div style={{ display: "flex", gap: 8 }}>
-        <label className="rb-fld" style={{ flex: 2 }}>Cidade<input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} /></label>
-        <label className="rb-fld" style={{ flex: 1 }}>UF<input value={f.uf} maxLength={2} onChange={(e) => set("uf", e.target.value.toUpperCase())} placeholder="MG" /></label>
+        <RebField label="Cidade" style={{ flex: 2 }}><input value={f.cidade} onChange={(e) => set("cidade", e.target.value)} /></RebField>
+        <RebField label="UF" style={{ flex: 1 }}><input value={f.uf} maxLength={2} onChange={(e) => set("uf", e.target.value.toUpperCase())} placeholder="MG" /></RebField>
       </div>
-      <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.principal} onChange={(e) => set("principal", e.target.checked)} style={{ width: "auto" }} />Principal (default quando não há filtro)</label>
-      <label className="rb-fld" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.ativo} onChange={(e) => set("ativo", e.target.checked)} style={{ width: "auto" }} />Ativa</label>
+      <RebField style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.principal} onChange={(e) => set("principal", e.target.checked)} style={{ width: "auto" }} />Principal (default quando não há filtro)</RebField>
+      <RebField style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><input type="checkbox" checked={f.ativo} onChange={(e) => set("ativo", e.target.checked)} style={{ width: "auto" }} />Ativa</RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

@@ -21,6 +21,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
+import { RebField } from "@/components/rb/RebField";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
@@ -261,35 +262,29 @@ function SafraForm({ modo, safra, onFechar, onSalvo }: {
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 2 }}>
-          <label>Nome*</label>
+        <RebField label="Nome*" style={{ flex: 2 }}>
           <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Milho safrinha 2026" />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Ano*</label>
+        </RebField>
+        <RebField label="Ano*" style={{ flex: 1 }}>
           <input type="number" value={ano} onChange={(e) => setAno(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Início*</label>
+        <RebField label="Início*" style={{ flex: 1 }}>
           <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Fim (previsto)</label>
+        </RebField>
+        <RebField label="Fim (previsto)" style={{ flex: 1 }}>
           <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Área total (ha)</label>
+        </RebField>
+        <RebField label="Área total (ha)" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={areaHaTotal} onChange={(e) => setAreaHaTotal(e.target.value)} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );
@@ -332,18 +327,15 @@ function AreaForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: numbe
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Código*</label>
+        <RebField label="Código*" style={{ flex: 1 }}>
           <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: A1" />
-        </div>
-        <div className="rb-fld" style={{ flex: 2 }}>
-          <label>Nome</label>
+        </RebField>
+        <RebField label="Nome" style={{ flex: 2 }}>
           <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Talhão da represa" />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Área (ha)*</label>
+        </RebField>
+        <RebField label="Área (ha)*" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={areaHa} onChange={(e) => setAreaHa(e.target.value)} />
-        </div>
+        </RebField>
       </div>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>

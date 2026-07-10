@@ -7,6 +7,7 @@ import {
 } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 
 const MODOS: { id: ModoProducao; titulo: string; desc: string }[] = [
   { id: "ORDENHA", titulo: "Controle leiteiro", desc: "Peso por ordenha (manhã/tarde/noite) por vaca — controle individual." },
@@ -167,7 +168,7 @@ export function ConfiguracoesView() {
           type="number"
           step="0.01"
           min={0}
-          className="rb-fld"
+          className={REB_FIELD_BOXED}
           value={precoLeite}
           onChange={(e) => setPrecoLeite(e.target.value)}
           placeholder="ex.: 2.40"
@@ -231,14 +232,14 @@ export function ConfiguracoesView() {
                     ) : (
                       <>
                         <input
-                          type="number" step="any" className="rb-fld"
+                          type="number" step="any" className={REB_FIELD_BOXED}
                           value={efetivo(p, "valorNumero")}
                           placeholder={temAceitavel ? "ideal" : ""}
                           onChange={(e) => setPatch(p.chave, "valorNumero", parseNum(e.target.value))}
                         />
                         {temAceitavel && (
                           <input
-                            type="number" step="any" className="rb-fld"
+                            type="number" step="any" className={REB_FIELD_BOXED}
                             value={efetivo(p, "valorNumeroAceitavel")}
                             placeholder="aceitável"
                             onChange={(e) => setPatch(p.chave, "valorNumeroAceitavel", parseNum(e.target.value))}

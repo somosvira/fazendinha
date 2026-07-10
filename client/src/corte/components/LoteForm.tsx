@@ -6,6 +6,7 @@ import { criarLote, editarLote, darBaixa, usePiquetes, type LoteInput } from "..
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const FASES: FaseCiclo[] = ["CRIA", "RECRIA", "TERMINACAO", "REPRODUCAO"];
 
@@ -85,17 +86,15 @@ export function LoteForm({ modo, lote, onFechar, onSalvo }: { modo: "novo" | "ed
         }
       >
         <p className="text-sm text-ink-3">O lote sai do conjunto ativo. Mantém histórico para fins de fechamento da atividade.</p>
-        <div className="rb-fld">
-          <label>Tipo de baixa</label>
-          <select value={estadoBaixa} onChange={(e) => setEstadoBaixa(e.target.value as "VENDIDO" | "EXTINTO")}>
+        <RebField label="Tipo de baixa">
+          <select className="rb-field-select" value={estadoBaixa} onChange={(e) => setEstadoBaixa(e.target.value as "VENDIDO" | "EXTINTO")}>
             <option value="VENDIDO">Vendido (abate / reprodução / descarte)</option>
             <option value="EXTINTO">Extinto (transferência / dissolução do lote)</option>
           </select>
-        </div>
-        <div className="rb-fld">
-          <label>Motivo (opcional)</label>
+        </RebField>
+        <RebField label="Motivo (opcional)">
           <input value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)} placeholder="Ex.: Venda frigorífico Minerva" />
-        </div>
+        </RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </RebModal>
     );
@@ -113,70 +112,59 @@ export function LoteForm({ modo, lote, onFechar, onSalvo }: { modo: "novo" | "ed
       }
     >
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Código*</label>
+        <RebField label="Código*" style={{ flex: 1 }}>
           <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: TER-03" />
-        </div>
-        <div className="rb-fld" style={{ flex: 2 }}>
-          <label>Nome*</label>
+        </RebField>
+        <RebField label="Nome*" style={{ flex: 2 }}>
           <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Terminação F1 · lote 3" />
-        </div>
+        </RebField>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Categoria*</label>
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaLote)}>
+        <RebField label="Categoria*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaLote)}>
             {CATEGORIAS_ORDEM.map((c) => <option key={c} value={c}>{CATEGORIA_LABEL[c]}</option>)}
           </select>
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Fase*</label>
-          <select value={fase} onChange={(e) => setFase(e.target.value as FaseCiclo)}>
+        </RebField>
+        <RebField label="Fase*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={fase} onChange={(e) => setFase(e.target.value as FaseCiclo)}>
             {FASES.map((f) => <option key={f} value={f}>{FASE_LABEL[f]}</option>)}
           </select>
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Raça*</label>
-        <select value={raca} onChange={(e) => setRaca(e.target.value as RacaCorte)}>
+      <RebField label="Raça*">
+        <select className="rb-field-select" value={raca} onChange={(e) => setRaca(e.target.value as RacaCorte)}>
           {RACAS.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
-      </div>
+      </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Cabeças (hoje)*</label>
+        <RebField label="Cabeças (hoje)*" style={{ flex: 1 }}>
           <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Cabeças (entrada)</label>
+        </RebField>
+        <RebField label="Cabeças (entrada)" style={{ flex: 1 }}>
           <input type="number" value={numCabecasEntrada} onChange={(e) => setNumCabecasEntrada(e.target.value)} placeholder="= cabeças hoje" />
-        </div>
-        <div className="rb-fld" style={{ flex: 1 }}>
-          <label>Data de formação*</label>
+        </RebField>
+        <RebField label="Data de formação*" style={{ flex: 1 }}>
           <input type="date" value={dataFormacao} onChange={(e) => setDataFormacao(e.target.value)} max={HOJE} />
-        </div>
+        </RebField>
       </div>
 
-      <div className="rb-fld">
-        <label>Origem</label>
+      <RebField label="Origem">
         <input value={origem} onChange={(e) => setOrigem(e.target.value)} placeholder="Ex.: Nascimento próprio · Compra Boa Esperança" />
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Piquete atual</label>
-        <select value={piqueteAtual} onChange={(e) => setPiqueteAtual(e.target.value)}>
+      <RebField label="Piquete atual">
+        <select className="rb-field-select" value={piqueteAtual} onChange={(e) => setPiqueteAtual(e.target.value)}>
           <option value="">—</option>
           {piquetes.map((p) => <option key={p.id} value={p.codigo}>{p.codigo} · {p.nome}</option>)}
         </select>
-      </div>
+      </RebField>
 
-      <div className="rb-fld">
-        <label>Observação</label>
+      <RebField label="Observação">
         <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-      </div>
+      </RebField>
       {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
     </RebModal>
   );

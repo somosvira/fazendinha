@@ -4,6 +4,7 @@ import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
@@ -99,7 +100,7 @@ export function EstoqueTab() {
             <span className="text-sm text-ink-3">{visiveis.length} de {saldos.length} {saldos.length === 1 ? "produto" : "produtos"}</span>
           </div>
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
-            <input type="search" className="rb-fld max-w-[320px] flex-[1_1_240px]" placeholder="Buscar por nome ou tipo…"
+            <input type="search" className={`${REB_FIELD_BOXED} max-w-[320px] flex-[1_1_240px]`} placeholder="Buscar por nome ou tipo…"
               value={busca} onChange={(e) => setBusca(e.target.value)} />
             <ToolbarSelect
               value={tipoFiltro}
