@@ -3,8 +3,11 @@ import { Loader } from "../../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
+import { RebHeader } from "./RebHeader";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -109,7 +112,7 @@ export function EstoqueTab() {
       <td>{money(s.valor)}</td>
       <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-        <button className="rb-btn" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</button>
+        <RebButton onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</RebButton>
       </td>
     </tr>
   );
@@ -117,7 +120,7 @@ export function EstoqueTab() {
   // exclusão real acontece dentro do modal de confirmação
 
   if (custo.loading && saldos.loading && movimentos.loading) {
-    return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Estoque</h1></div><Loader /></main>;
+    return <main className="rb-main"><RebHeader eyebrow="Rebanho" title="Estoque" /><Loader /></main>;
   }
 
   const c = custo.data;
@@ -125,25 +128,24 @@ export function EstoqueTab() {
 
   return (
     <main className="rb-main">
-      <div className="rb-eyebrow">Rebanho · insumos e consumo</div>
-      <div className="rb-head"><h1>Estoque</h1></div>
+      <RebHeader eyebrow="Rebanho · insumos e consumo" title="Estoque" />
 
       {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
-        <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="lab">Custo vaca/dia</div>
-          <div className="val" style={{ fontSize: 34, color: "var(--cafe)" }}>{custoTxt}</div>
-          <div className="d">{c ? `consumo dos últimos ${c.periodoDias} dias` : "—"}</div>
+      <RebKpiStrip cols={3}>
+        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Custo vaca/dia</div>
+          <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]" style={{ fontSize: 34, color: "var(--cafe)" }}>{custoTxt}</div>
+          <div className="mt-2 text-[15px] font-medium text-ink-2">{c ? `consumo dos últimos ${c.periodoDias} dias` : "—"}</div>
         </div>
-        <div className="rb-k"><div className="lab">Vacas em lactação</div><div className="val">{c?.vacasEmLactacao ?? "—"}</div><div className="d">base do rateio</div></div>
-        <div className="rb-k"><div className="lab">Consumo no período</div><div className="val" style={{ fontSize: 20 }}>{c ? money(c.totalConsumo) : "—"}</div><div className="d">{c ? `${c.periodoDias} dias` : "—"}</div></div>
-      </div>
-      {custo.erro && <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro no custo: {custo.erro}</p>}
+        <RebKpi lab="Vacas em lactação" val={c?.vacasEmLactacao ?? "—"} d="base do rateio" />
+        <RebKpi lab="Consumo no período" val={c ? money(c.totalConsumo) : "—"} valClassName="text-[20px]" d={c ? `${c.periodoDias} dias` : "—"} />
+      </RebKpiStrip>
+      {custo.erro && <p className="mt-[7px] text-sm text-prejuizo">Erro no custo: {custo.erro}</p>}
 
       {/* Saldos */}
-      <div className="rb-listhead" style={{ marginTop: 4 }}>
-        <h2 className="rb-sec-title" style={{ margin: 0 }}>Saldos de estoque</h2>
-        <span className="hint">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
+      <div className="mt-1 mb-2 flex items-baseline justify-between">
+        <h2 className="font-serif text-xl font-medium m-0">Saldos de estoque</h2>
+        <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
       </div>
       {(saldos.data.length > 0 || setorFiltro) && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
@@ -186,11 +188,11 @@ export function EstoqueTab() {
         </div>
       )}
       {saldos.loading ? <Loader />
-        : saldos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {saldos.erro}</p>
+        : saldos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {saldos.erro}</p>
         : saldos.data.length === 0 ? <div className="rb-empty">Nenhum produto estocável cadastrado.</div>
         : saldosVisiveis.length === 0 ? <div className="rb-empty">Nenhum produto bate com a busca.</div>
         : (
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
               <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
@@ -216,19 +218,19 @@ export function EstoqueTab() {
                   </tbody>
                 ))
               : <tbody>{saldosVisiveis.map(renderRow)}</tbody>}
-          </table></div>
+          </RebTable>
         )}
 
       {/* Movimentos */}
-      <div className="rb-listhead" style={{ marginTop: 26 }}>
-        <h3>Movimentos recentes</h3>
-        <button className="rb-btn pri" onClick={() => setForm(true)}>+ Registrar movimento</button>
+      <div className="mb-2 flex items-baseline justify-between" style={{ marginTop: 26 }}>
+        <h3 className="m-0 font-serif text-lg font-medium">Movimentos recentes</h3>
+        <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>
       </div>
       {movimentos.loading ? <Loader />
-        : movimentos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {movimentos.erro}</p>
+        : movimentos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {movimentos.erro}</p>
         : movimentos.data.length === 0 ? <div className="rb-empty">Nenhum movimento registrado ainda.</div>
         : (
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtde</th><th>Valor</th><th>Origem/destino</th><th></th></tr></thead>
             <tbody>{movimentos.data.map((m) => (
               <tr key={m.id}>
@@ -238,10 +240,10 @@ export function EstoqueTab() {
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</button></td>
+                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</RebButton></td>
               </tr>
             ))}</tbody>
-          </table></div>
+          </RebTable>
         )}
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
