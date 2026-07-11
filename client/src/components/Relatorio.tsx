@@ -221,8 +221,8 @@ function SparklineTendencia({
   unidade?: string;
 }) {
   const W = 720;
-  const H = 146;
-  const padL = 58; // espaço para os rótulos do eixo Y (agora com unidade mil/mi)
+  const H = 210; // mais alto para leitura vertical mais folgada
+  const padL = 72; // espaço para os rótulos do eixo Y (largura de "−974 mil"/"−1,4 mi" sem cortar)
   const padR = 16;
   const padT = 26; // espaço para o rótulo de valor acima do ponto
   const padB = 18; // espaço para os ticks de mês
