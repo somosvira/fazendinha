@@ -11,7 +11,7 @@
 
 import { ReactNode, useRef, useState } from "react";
 import R from "../data/rionovo";
-import { fmtMoney } from "./charts";
+import { fmtMoney, fmtBR } from "./charts";
 import type { Tab } from "./Shell";
 import { reclassificarCategoria } from "../api";
 import { cn } from "@/lib/utils";
@@ -125,174 +125,244 @@ function Veredicto({
   pergunta,
   resposta,
   tom = "neutro",
-  contexto,
-  mini,
-  full,
-  children,
+  stats,
+  nota,
+  visual,
 }: {
   pergunta: string;
   resposta: ReactNode;
   tom?: "pos" | "neg" | "neutro";
-  contexto?: ReactNode;
-  mini?: ReactNode;
-  full?: boolean;
-  children?: ReactNode;
+  /* Dado cru e direto sob o número: label à esquerda, valor à direita. A leitura
+   * analítica (o "porquê") vive nos cards de atenção no fim do relatório. */
+  stats?: { label: string; valor: string; forte?: boolean }[];
+  /* Uma linha curta e direta opcional (não é análise em prosa). */
+  nota?: ReactNode;
+  visual?: ReactNode;
 }) {
   return (
     /* `veredicto` fica como marcador puro (sem CSS): o html2pdf lê `.veredicto`
      * no `pagebreak.avoid` para não quebrar o cartão entre páginas. Idem
-     * `.atencao-card`. Preservados como hooks de JS/lib, não como estilo. */
+     * `.atencao-card`. Preservados como hooks de JS/lib, não como estilo.
+     *
+     * Layout split: coluna estreita de info (pergunta + número + contexto) à
+     * esquerda; visual (gráfico/lista) largo à direita. Colapsa para uma coluna
+     * abaixo de 820px (info em cima, gráfico embaixo). */
     <section
       className={cn(
-        "veredicto flex flex-col gap-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-[26px] pt-6 pb-[26px]",
+        "veredicto grid grid-cols-1 items-center gap-4 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-5 py-4",
+        "min-[820px]:grid-cols-[minmax(185px,215px)_1fr] min-[820px]:gap-6",
         "print:break-inside-avoid print:border print:border-[#999] print:bg-white",
-        full && "min-[900px]:col-[1/-1]",
       )}
     >
-      <h2 className="m-0 font-serif text-[22px] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
-        {pergunta}
-      </h2>
-      <div
-        className={cn(
-          "grid grid-cols-[minmax(0,auto)_minmax(220px,1.2fr)] items-center gap-6",
-          "max-[720px]:grid-cols-1 max-[720px]:gap-3",
-          full && "min-[900px]:grid-cols-[minmax(0,auto)_minmax(300px,1.2fr)]",
-        )}
-      >
+      <div className="flex flex-col gap-2 min-[820px]:border-r min-[820px]:border-[color:var(--rule-soft)] min-[820px]:pr-6">
+        <h2 className="m-0 font-serif text-[17px] font-normal leading-[1.25] tracking-[-0.01em] text-ink-2">
+          {pergunta}
+        </h2>
         <div
           className={cn(
-            "whitespace-nowrap font-serif text-[64px] font-medium leading-none tracking-[-0.03em] max-[720px]:whitespace-normal max-[720px]:text-[48px]",
+            "font-serif text-[40px] font-medium leading-none tracking-[-0.03em] max-[720px]:text-[34px]",
             tom === "pos" ? "text-lucro" : tom === "neg" ? "text-prejuizo" : "text-foreground",
           )}
         >
           {resposta}
         </div>
-        {mini ? <div className="self-center">{mini}</div> : null}
+        {stats?.length ? (
+          <dl className="m-0 mt-1 flex flex-col gap-1.5">
+            {stats.map((s) => (
+              <div key={s.label} className="flex items-baseline justify-between gap-3">
+                <dt className="font-sans text-[12px] text-ink-3">{s.label}</dt>
+                <dd
+                  className={cn(
+                    "m-0 mono-nums font-sans text-[13px]",
+                    s.forte ? "font-semibold text-foreground" : "font-medium text-ink-2",
+                  )}
+                >
+                  {s.valor}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {nota ? <div className="m-0 font-sans text-[12px] leading-[1.45] text-ink-3">{nota}</div> : null}
       </div>
-      {contexto ? (
-        <div className="m-0 font-sans text-[13px] leading-[1.5] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
-          {contexto}
-        </div>
-      ) : null}
-      {children}
+      {visual ? <div className="min-w-0">{visual}</div> : null}
     </section>
   );
 }
 
 /* ============ MINI-GRÁFICOS (SVG próprios, sem lib) ============ */
 
-/* Barras assinadas: verde para positivo, vermelho para negativo. Usado no
- * fluxo mensal (mistura sinais) e no saldo operacional do leite (idem). */
-function MiniBarsAssinadas({
+/* Passo "redondo" (…50, 100, 200…) para o eixo Y mirando ~4 divisões. */
+function passoEixo(span: number): number {
+  const alvo = span / 4 || 1;
+  const passos = [25, 50, 100, 150, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+  return passos.find((p) => p >= alvo) ?? passos[passos.length - 1];
+}
+
+/* Sparkline de linha com área suave, eixo Y com grade rotulada e legenda. O mês
+ * em foco ganha um ponto + o valor sobre ele. `assinado` desenha a linha do zero
+ * (fluxo/saldo do leite misturam sinais) e colore o foco por lucro/prejuízo;
+ * séries só positivas (café) usam a cor da atividade. Valores em milhares. */
+function SparklineTendencia({
   data,
   destaqueIdx,
+  cor = "var(--ink-3)",
+  assinado = false,
+  titulo,
+  focoLabel,
+  unidade = "R$ mil",
 }: {
   data: { x: string; y: number }[];
   destaqueIdx?: number;
+  cor?: string;
+  assinado?: boolean;
+  titulo: string;
+  focoLabel?: string;
+  unidade?: string;
 }) {
-  const W = 380;
-  const H = 132;
-  const padL = 4;
-  const padR = 4;
-  const padT = 6;
-  const padB = 20;
+  const W = 720;
+  const H = 210; // mais alto para leitura vertical mais folgada
+  const padL = 72; // espaço para os rótulos do eixo Y (largura de "−974 mil"/"−1,4 mi" sem cortar)
+  const padR = 16;
+  const padT = 26; // espaço para o rótulo de valor acima do ponto
+  const padB = 18; // espaço para os ticks de mês
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const values = data.map((d) => d.y);
-  const maxAbs = Math.max(...values.map((v) => Math.abs(v)), 1);
-  const zeroY = padT + innerH / 2;
-  const scale = (innerH / 2) / maxAbs;
-  const xBand = innerW / data.length;
-  const barW = xBand * 0.68;
+  const rawMax = Math.max(...values, 0);
+  const rawMin = Math.min(...values, 0);
+  const passo = passoEixo(rawMax - rawMin);
+  const domMax = Math.ceil(rawMax / passo) * passo;
+  const domMin = Math.floor(rawMin / passo) * passo;
+  const span = domMax - domMin || 1;
+  const n = data.length;
+  const px = (i: number) => padL + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const py = (v: number) => padT + innerH - ((v - domMin) / span) * innerH;
 
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 480 }}>
-      <line x1={padL} x2={W - padR} y1={zeroY} y2={zeroY} className="chart-axis" />
-      {data.map((d, i) => {
-        const x = padL + i * xBand + (xBand - barW) / 2;
-        const h = Math.abs(d.y) * scale;
-        const y = d.y >= 0 ? zeroY - h : zeroY;
-        const isPos = d.y >= 0;
-        const highlight = destaqueIdx === i;
-        return (
-          <g key={i}>
-            <rect
-              x={x}
-              y={y}
-              width={barW}
-              height={Math.max(h, 1)}
-              fill={isPos ? "var(--lucro)" : "var(--prejuizo)"}
-              opacity={highlight ? 1 : 0.42}
-            />
-            {highlight ? (
-              <rect
-                x={x - 1}
-                y={y - 1}
-                width={barW + 2}
-                height={Math.max(h, 1) + 2}
-                fill="none"
-                stroke="var(--ink)"
-                strokeWidth="1"
-              />
-            ) : null}
-            <text x={x + barW / 2} y={H - 5} textAnchor="middle" className="chart-tick-text">
-              {d.x}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+  const gridTicks: number[] = [];
+  for (let t = domMin; t <= domMax + 1e-6; t += passo) gridTicks.push(t);
+
+  const linePts = data.map((d, i) => `${px(i)},${py(d.y)}`).join(" ");
+  const areaBaseY = py(Math.max(domMin, 0));
+  const areaPts = `${px(0)},${areaBaseY} ${linePts} ${px(n - 1)},${areaBaseY}`;
+
+  const fi = destaqueIdx ?? n - 1;
+  const fx = px(fi);
+  const fy = py(data[fi].y);
+  const focoCor = assinado ? (data[fi].y >= 0 ? "var(--lucro)" : "var(--prejuizo)") : cor;
+  const labelAnchor = fi >= n - 2 ? "end" : fi <= 1 ? "start" : "middle";
+  const labelY = Math.max(fy - 11, 13);
+
+  // Rótulo com unidade: valores estão em milhares → < 1000 = "mil", ≥ 1000 = "mi".
+  const rotuloUnid = (v: number) => {
+    const abs = Math.abs(v);
+    const sinal = v < 0 ? "−" : "";
+    return abs >= 1000
+      ? `${sinal}${(abs / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`
+      : `${sinal}${fmtBR(abs)} mil`;
+  };
+
+  // Pontos de máximo e mínimo da série (marcados além do mês em foco).
+  const maxIdx = values.indexOf(Math.max(...values));
+  const minIdx = values.indexOf(Math.min(...values));
+  const extremos = [maxIdx, minIdx].filter(
+    (idx, k, arr) => idx !== fi && arr.indexOf(idx) === k,
   );
-}
-
-/* Barras positivas simples (usada para receita café — mostra sazonalidade). */
-function MiniBarsPositivas({
-  data,
-  cor = "var(--cafe)",
-  destaqueIdx,
-}: {
-  data: { x: string; y: number }[];
-  cor?: string;
-  destaqueIdx?: number;
-}) {
-  const W = 380;
-  const H = 132;
-  const padL = 4;
-  const padR = 4;
-  const padT = 10;
-  const padB = 20;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const max = Math.max(...data.map((d) => d.y), 1);
-  const scale = innerH / max;
-  const xBand = innerW / data.length;
-  const barW = xBand * 0.68;
+  const tagAnchor = (idx: number) => (idx >= n - 1 ? "end" : idx <= 0 ? "start" : "middle");
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 480 }}>
-      <line x1={padL} x2={W - padR} y1={padT + innerH} y2={padT + innerH} className="chart-axis" />
-      {data.map((d, i) => {
-        const x = padL + i * xBand + (xBand - barW) / 2;
-        const h = d.y * scale;
-        const y = padT + innerH - h;
-        const highlight = destaqueIdx === i;
-        return (
-          <g key={i}>
-            <rect
-              x={x}
-              y={y}
-              width={barW}
-              height={Math.max(h, 1)}
-              fill={cor}
-              opacity={d.y === 0 ? 0.15 : highlight ? 1 : 0.55}
-            />
-            <text x={x + barW / 2} y={H - 5} textAnchor="middle" className="chart-tick-text">
-              {d.x}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
+        {/* grade + rótulos do eixo Y */}
+        {gridTicks.map((t) => {
+          const gy = py(t);
+          const isZero = t === 0;
+          return (
+            <g key={t}>
+              <line
+                x1={padL}
+                x2={W - padR}
+                y1={gy}
+                y2={gy}
+                stroke={isZero ? "var(--border)" : "var(--rule-soft)"}
+                strokeWidth={1}
+              />
+              <text x={padL - 8} y={gy + 3} textAnchor="end" fontSize={12} className="chart-tick-text">
+                {isZero ? "0" : rotuloUnid(t)}
+              </text>
+            </g>
+          );
+        })}
+        {/* área + linha */}
+        <polyline points={areaPts} fill={cor} fillOpacity={0.1} stroke="none" />
+        <polyline
+          points={linePts}
+          fill="none"
+          stroke={cor}
+          strokeOpacity={0.65}
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {/* pontos de máximo e mínimo (discretos, atrás do foco) */}
+        {extremos.map((idx) => {
+          const ex = px(idx);
+          const ey = py(data[idx].y);
+          const acima = idx === maxIdx;
+          const ty = acima ? Math.max(ey - 8, 10) : Math.min(ey + 14, H - padB - 1);
+          const sinalCor = data[idx].y >= 0 ? "var(--lucro)" : "var(--prejuizo)";
+          return (
+            <g key={idx}>
+              <circle cx={ex} cy={ey} r={3} fill={sinalCor} />
+              <text
+                x={ex}
+                y={ty}
+                textAnchor={tagAnchor(idx)}
+                fill={sinalCor}
+                fontSize={13}
+                fontWeight={700}
+                style={{ fontFeatureSettings: '"tnum"' }}
+              >
+                {rotuloUnid(data[idx].y)}
+              </text>
+            </g>
+          );
+        })}
+        {/* ponto em foco + valor */}
+        <circle cx={fx} cy={fy} r={6} fill={focoCor} fillOpacity={0.18} />
+        <circle cx={fx} cy={fy} r={3.5} fill={focoCor} />
+        <text
+          x={fx}
+          y={labelY}
+          textAnchor={labelAnchor}
+          fill={focoCor}
+          fontSize={16}
+          fontWeight={700}
+          style={{ fontFeatureSettings: '"tnum"' }}
+        >
+          {fmtMoney(data[fi].y)}
+        </text>
+        {/* ticks de mês */}
+        {data.map((d, i) => (
+          <text key={i} x={px(i)} y={H - 4} textAnchor="middle" fontSize={11} className="chart-tick-text">
+            {d.x}
+          </text>
+        ))}
+      </svg>
+      {/* legenda */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[11px] text-ink-3">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-[2px] w-4 rounded-full" style={{ background: cor }} />
+          {titulo}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="legend-dot" style={{ background: focoCor }} />
+          {focoLabel ? `${focoLabel} · ` : ""}
+          <span className="mono-nums">{fmtMoney(data[fi].y)}</span>
+        </span>
+        <span className="text-ink-mute">{unidade}</span>
+      </div>
+    </div>
   );
 }
 
@@ -429,20 +499,20 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
     }
   };
 
-  const meses12m = R.MESES_23M.slice(11, 23); // últimos 12 meses (mai/25 → abr/26 + mai/26*)
+  const meses12m = R.MESES_23M.slice(10, 22); // 12 meses completos: mai/25 → abr/26 (exclui mai/26*, mês em aberto)
   // Rótulo do eixo: só a inicial do mês (M · J · J · A …). A barra do mês em
   // foco (destaqueIdx) é quem o identifica de fato — o texto é só orientação,
   // então a ambiguidade (M=Mar/Mai, J=Jan/Jun/Jul) é aceitável na sparkline.
   const inicialMes = (i: number) => meses12m[i].slice(0, 1).toUpperCase();
-  const fluxo12m = R.totalGeral.slice(11, 23).map((v: number, i: number) => ({
+  const fluxo12m = R.totalGeral.slice(10, 22).map((v: number, i: number) => ({
     x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
-  const saldoLeite12m = R.saldoOpLeite.slice(11, 23).map((v: number, i: number) => ({
+  const saldoLeite12m = R.saldoOpLeite.slice(10, 22).map((v: number, i: number) => ({
     x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
-  const receitaCafe12m = R.receitaCafe.slice(11, 23).map((v: number, i: number) => ({
+  const receitaCafe12m = R.receitaCafe.slice(10, 22).map((v: number, i: number) => ({
     x: inicialMes(i),
     y: Math.round(v / 1000),
   }));
@@ -452,9 +522,11 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
   const cafeYtdMargem = R.k2026YTD.receitaCafe - R.k2026YTD.custeioCafe;
   const cafeYtdRec = R.k2026YTD.receitaCafe;
   const investMes = R.investLeite[MES_FECHADO_IDX] + R.investCafe[MES_FECHADO_IDX] + R.animalAquisicao[MES_FECHADO_IDX];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maiorInvest = [...R.investimentoBreakdown].sort((a: any, b: any) => b.value - a.value)[0];
   const altas = categoriasQueSubiram();
 
-  const idxNoUltimo12 = 10; // Abr/26 é o 11º de 12 (índice 10)
+  const idxNoUltimo12 = 11; // Abr/26 é o último dos 12 meses completos (índice 11)
 
   return (
     /* shell-wide (largura) permanece — classe compartilhada em base.css. Padding
@@ -470,21 +542,28 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
     >
       <FechamentoHeader onExportar={exportarPDF} exportando={exportando} oculto={exportando} />
 
-      <div className="grid grid-cols-1 gap-5 min-[900px]:grid-cols-2 print:gap-4">
+      <div className="grid grid-cols-1 gap-4 print:gap-4 min-[1080px]:grid-cols-[minmax(0,1fr)_320px] min-[1080px]:items-start">
+        {/* Coluna principal: os veredictos (métrica + gráfico) --------------- */}
+        <div className="flex min-w-0 flex-col gap-4">
         {/* 1) Fluxo do mês ---------------------------------------------------- */}
         <Veredicto
           pergunta="Sobrou ou faltou em abril?"
           resposta={fmtMoney(Math.round(fluxo.liquido / 1000))}
           tom={fluxo.liquido >= 0 ? "pos" : "neg"}
-          contexto={
-            <>
-              Receita <strong className="mono-nums">{fmtMoney(Math.round(fluxo.receita / 1000), { compact: false })}</strong>{" "}
-              · custeio <strong className="mono-nums">{fmtMoney(Math.round(fluxo.custeio / 1000), { compact: false })}</strong>{" "}
-              · investimento <strong className="mono-nums">{fmtMoney(Math.round(fluxo.invest / 1000), { compact: false })}</strong>.
-              O peso vem do investimento em máquinas e implementos.
-            </>
+          stats={[
+            { label: "Receita", valor: fmtMoney(Math.round(fluxo.receita / 1000), { compact: false }) },
+            { label: "Custeio", valor: fmtMoney(Math.round(fluxo.custeio / 1000), { compact: false }) },
+            { label: "Investimento", valor: fmtMoney(Math.round(fluxo.invest / 1000), { compact: false }), forte: true },
+          ]}
+          visual={
+            <SparklineTendencia
+              data={fluxo12m}
+              destaqueIdx={idxNoUltimo12}
+              assinado
+              titulo="Fluxo líquido"
+              focoLabel={meses12m[idxNoUltimo12]}
+            />
           }
-          mini={<MiniBarsAssinadas data={fluxo12m} destaqueIdx={idxNoUltimo12} />}
         />
 
         {/* 2) Leite paga o leite? -------------------------------------------- */}
@@ -492,15 +571,21 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           pergunta="Leite pagou o leite?"
           resposta={leite.saldo >= 0 ? "SIM" : "NÃO"}
           tom={leite.saldo >= 0 ? "pos" : "neg"}
-          contexto={
-            <>
-              Receita <strong className="mono-nums">{fmtMoney(Math.round(leite.receita / 1000), { compact: false })}</strong>{" "}
-              menos custeio puro <strong className="mono-nums">{fmtMoney(Math.round(leite.custeio / 1000), { compact: false })}</strong>{" "}
-              = <strong className="mono-nums">{fmtMoney(Math.round(leite.saldo / 1000), { compact: false })}</strong>.
-              Preço médio R$ 3,51/L · custo puro R$ 3,10/L.
-            </>
+          stats={[
+            { label: "Receita", valor: fmtMoney(Math.round(leite.receita / 1000), { compact: false }) },
+            { label: "Custeio puro", valor: fmtMoney(Math.round(leite.custeio / 1000), { compact: false }) },
+            { label: "Preço médio", valor: "R$ 3,51/L" },
+            { label: "Custo/L", valor: "R$ 3,10/L", forte: true },
+          ]}
+          visual={
+            <SparklineTendencia
+              data={saldoLeite12m}
+              destaqueIdx={idxNoUltimo12}
+              assinado
+              titulo="Saldo do leite"
+              focoLabel={meses12m[idxNoUltimo12]}
+            />
           }
-          mini={<MiniBarsAssinadas data={saldoLeite12m} destaqueIdx={idxNoUltimo12} />}
         />
 
         {/* 3) Café ------------------------------------------------------------ */}
@@ -508,83 +593,100 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           pergunta="E o café?"
           resposta={cafeYtdMargem >= 0 ? `+${fmtMoney(Math.round(cafeYtdMargem / 1000))}` : fmtMoney(Math.round(cafeYtdMargem / 1000))}
           tom={cafeYtdMargem >= 0 ? "pos" : "neg"}
-          contexto={
-            <>
-              Safra 01/2026 rendeu <strong className="mono-nums">{fmtMoney(Math.round(cafeYtdRec / 1000), { compact: false })}</strong>{" "}
-              em março · 430 sacas · R$ 707/saca. Custeio YTD abaixo, safra única concentra o risco em uma janela.
-            </>
+          stats={[
+            { label: "Receita safra", valor: fmtMoney(Math.round(cafeYtdRec / 1000), { compact: false }) },
+            { label: "Sacas", valor: "430" },
+            { label: "Preço/saca", valor: "R$ 707", forte: true },
+          ]}
+          nota="Safra única (mar/26) concentra o risco."
+          visual={
+            <SparklineTendencia
+              data={receitaCafe12m}
+              cor="var(--cafe)"
+              destaqueIdx={idxNoUltimo12}
+              titulo="Receita do café"
+              focoLabel={meses12m[idxNoUltimo12]}
+            />
           }
-          mini={<MiniBarsPositivas data={receitaCafe12m} cor="var(--cafe)" destaqueIdx={idxNoUltimo12} />}
         />
 
         {/* 4) Onde vazou ------------------------------------------------------ */}
         <Veredicto
           pergunta="Onde vazou este ano?"
           resposta={
-            <span className="font-serif text-[40px] font-medium leading-[1.1] tracking-[-0.02em] text-foreground">
+            <span className="font-serif text-[38px] font-medium leading-[1.1] tracking-[-0.02em] text-foreground">
               3 categorias
             </span>
           }
           tom="neg"
-          contexto={<>Aceleraram acima do restante — comparadas ao mesmo período de 2025.</>}
-        >
-          <ul className="m-0 mt-2 flex list-none flex-col gap-0 p-0">
-            {altas.map((a) => (
-              <li
-                key={a.nome}
-                className="grid grid-cols-[1fr_auto_auto] items-baseline gap-4 border-b border-[color:var(--rule-soft)] py-3 last:border-b-0 max-[720px]:grid-cols-[1fr_auto] max-[720px]:gap-y-1"
+          nota="Aceleração YTD 2026 vs. 2025."
+          visual={
+            <>
+              <ul className="m-0 flex list-none flex-col gap-0 p-0">
+                {altas.map((a) => (
+                  <li
+                    key={a.nome}
+                    className="grid grid-cols-[1fr_auto_auto] items-baseline gap-4 border-b border-[color:var(--rule-soft)] py-3 last:border-b-0 max-[720px]:grid-cols-[1fr_auto] max-[720px]:gap-y-1"
+                  >
+                    <span className="font-sans text-sm text-foreground">{a.nome}</span>
+                    <span className="mono-nums font-serif text-lg text-foreground">R$ {a.valorMil}k</span>
+                    <span className="mono-nums font-sans text-[13px] text-prejuizo max-[720px]:col-start-2">▲ {a.delta}%</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                className="btn-ghost mt-2.5 self-start px-3.5 py-2 text-[13px] font-sans print:hidden"
+                onClick={() => onNav("dashboard")}
               >
-                <span className="font-sans text-sm text-foreground">{a.nome}</span>
-                <span className="mono-nums font-serif text-lg text-foreground">R$ {a.valorMil}k</span>
-                <span className="mono-nums font-sans text-[13px] text-prejuizo max-[720px]:col-start-2">▲ {a.delta}%</span>
-              </li>
-            ))}
-          </ul>
-          <button
-            className="btn-ghost mt-2.5 self-start px-3.5 py-2 text-[13px] font-sans print:hidden"
-            onClick={() => onNav("dashboard")}
-          >
-            Ver detalhe no Dashboard →
-          </button>
-        </Veredicto>
+                Ver detalhe no Dashboard →
+              </button>
+            </>
+          }
+        />
 
         {/* 5) Investimentos --------------------------------------------------- */}
         <Veredicto
-          full
           pergunta="Investimentos do mês"
           resposta={fmtMoney(Math.round(investMes / 1000))}
           tom="neutro"
-          contexto={
-            <>
-              Máquinas e Equipamentos concentraram o mês. No acumulado YTD, matrizes leiteiras lideram — entram em produção em ~6 meses.
-            </>
+          nota={
+            maiorInvest ? (
+              <>
+                Maior peso: <strong className="font-medium text-foreground">{maiorInvest.nome}</strong>{" "}
+                <span className="mono-nums">({fmtMoney(maiorInvest.value, { compact: false })})</span>
+              </>
+            ) : undefined
           }
-        >
-          <StackedBarComposicao
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            itens={R.investimentoBreakdown.map((it: any) => ({
-              nome: it.nome,
-              valorMil: it.value,
-              cor: it.atividade === "leite" ? "var(--leite)" : it.atividade === "cafe" ? "var(--cafe)" : "var(--outros)",
-            }))}
-          />
-        </Veredicto>
+          visual={
+            <StackedBarComposicao
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              itens={R.investimentoBreakdown.map((it: any) => ({
+                nome: it.nome,
+                valorMil: it.value,
+                cor: it.atividade === "leite" ? "var(--leite)" : it.atividade === "cafe" ? "var(--cafe)" : "var(--outros)",
+              }))}
+            />
+          }
+        />
 
-        {/* 6) Atenção --------------------------------------------------------- */}
-        <section className="veredicto flex flex-col gap-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-[26px] pt-6 pb-[26px] min-[900px]:col-[1/-1] print:break-inside-avoid print:border print:border-[#999] print:bg-white">
-          <h2 className="m-0 font-serif text-[22px] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
-            O que precisa da sua atenção?
-          </h2>
-          <p className="m-0 mb-1.5 font-sans text-[13px] leading-[1.5] text-ink-2">
-            Inconsistências que a IA levantou nos lançamentos deste fechamento. Corrigir na origem melhora o próximo mês.
-          </p>
-          <div className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3.5">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {R.inconsistencias.map((it: any) => (
-              <AtencaoCard key={it.id} item={it} onReclassificar={bump} />
-            ))}
+        </div>
+        {/* fecha a coluna principal */}
+
+        {/* 6) Atenção — sidebar secundário à direita dos gráficos ------------- */}
+        <aside className="flex flex-col gap-3 min-[1080px]:sticky min-[1080px]:top-4">
+          <div className="flex flex-col gap-1.5 border-b border-[color:var(--rule-soft)] pb-3">
+            <h2 className="m-0 font-serif text-[17px] font-normal leading-[1.25] tracking-[-0.01em] text-ink-2">
+              O que precisa da sua atenção?
+            </h2>
+            <p className="m-0 font-sans text-[12px] leading-[1.45] text-ink-3">
+              Inconsistências que a IA levantou nos lançamentos deste fechamento. Corrigir na origem melhora o próximo mês.
+            </p>
           </div>
-        </section>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {R.inconsistencias.map((it: any) => (
+            <AtencaoCard key={it.id} item={it} onReclassificar={bump} />
+          ))}
+        </aside>
       </div>
 
       {/* Rodapé ------------------------------------------------------------- */}
