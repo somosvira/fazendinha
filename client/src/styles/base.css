@@ -69,7 +69,10 @@
 
 /* shell único: header fixo no topo, sidebar abaixo do header, main com offset */
 .app { min-height: 100vh; background: var(--bg); color: var(--ink); padding-top: var(--header-h); }
-.app-main { margin-left: var(--side-w); }
+/* padding-bottom reserva o canto inferior direito p/ o botão flutuante do
+   Assistente (ChatWidget, fixed bottom-6 right-6) — rodapés/paginação em fluxo
+   rolam acima dele em vez de ficarem cobertos. */
+.app-main { margin-left: var(--side-w); padding-bottom: 96px; }
 
 /* ============================================================
    APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).

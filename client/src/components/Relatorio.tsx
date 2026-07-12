@@ -9,7 +9,7 @@
  * o estado "gerando-pdf" (antes classe togglada) vira condicional em `exportando`.
  */
 
-import { ReactNode, useRef, useState } from "react";
+import { ReactNode, useId, useRef, useState } from "react";
 import R from "../data/rionovo";
 import { fmtMoney, fmtBR } from "./charts";
 import type { Tab } from "./Shell";
@@ -220,12 +220,13 @@ function SparklineTendencia({
   focoLabel?: string;
   unidade?: string;
 }) {
+  const clipId = useId(); // ids únicos p/ os clips de área verde/vermelha (3 sparklines na página)
   const W = 720;
   const H = 210; // mais alto para leitura vertical mais folgada
-  const padL = 72; // espaço para os rótulos do eixo Y (largura de "−974 mil"/"−1,4 mi" sem cortar)
+  const padL = 88; // espaço p/ rótulos do eixo Y com R$ ("−R$ 1.129 mil"/"−R$ 1,4 mi" sem cortar)
   const padR = 16;
   const padT = 26; // espaço para o rótulo de valor acima do ponto
-  const padB = 18; // espaço para os ticks de mês
+  const padB = 22; // espaço para os ticks + rótulos de mês
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const values = data.map((d) => d.y);
@@ -243,8 +244,11 @@ function SparklineTendencia({
   for (let t = domMin; t <= domMax + 1e-6; t += passo) gridTicks.push(t);
 
   const linePts = data.map((d, i) => `${px(i)},${py(d.y)}`).join(" ");
+  const zeroY = py(Math.min(Math.max(0, domMin), domMax)); // linha do zero (clampeada ao domínio)
   const areaBaseY = py(Math.max(domMin, 0));
   const areaPts = `${px(0)},${areaBaseY} ${linePts} ${px(n - 1)},${areaBaseY}`;
+  const eixoBaseY = padT + innerH; // reta do eixo X (base do plot)
+  const zeroInterno = domMin < 0 && domMax > 0; // zero fica no meio → merece destaque próprio
 
   const fi = destaqueIdx ?? n - 1;
   const fx = px(fi);
@@ -253,13 +257,13 @@ function SparklineTendencia({
   const labelAnchor = fi >= n - 2 ? "end" : fi <= 1 ? "start" : "middle";
   const labelY = Math.max(fy - 11, 13);
 
-  // Rótulo com unidade: valores estão em milhares → < 1000 = "mil", ≥ 1000 = "mi".
+  // Rótulo com moeda + unidade: valores em milhares → < 1000 = "R$ … mil", ≥ 1000 = "R$ … mi".
   const rotuloUnid = (v: number) => {
     const abs = Math.abs(v);
     const sinal = v < 0 ? "−" : "";
     return abs >= 1000
-      ? `${sinal}${(abs / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`
-      : `${sinal}${fmtBR(abs)} mil`;
+      ? `${sinal}R$ ${(abs / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`
+      : `${sinal}R$ ${fmtBR(abs)} mil`;
   };
 
   // Pontos de máximo e mínimo da série (marcados além do mês em foco).
@@ -273,28 +277,56 @@ function SparklineTendencia({
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-        {/* grade + rótulos do eixo Y */}
+        {/* clips p/ colorir a área pelo sinal: acima do zero = verde, abaixo = vermelho */}
+        <defs>
+          <clipPath id={`${clipId}-pos`}>
+            <rect x={0} y={padT} width={W} height={Math.max(0, zeroY - padT)} />
+          </clipPath>
+          <clipPath id={`${clipId}-neg`}>
+            <rect x={0} y={zeroY} width={W} height={Math.max(0, eixoBaseY - zeroY)} />
+          </clipPath>
+        </defs>
+        {/* grade + rótulos do eixo Y (o zero ganha uma reta própria mais forte adiante) */}
         {gridTicks.map((t) => {
           const gy = py(t);
           const isZero = t === 0;
           return (
             <g key={t}>
-              <line
-                x1={padL}
-                x2={W - padR}
-                y1={gy}
-                y2={gy}
-                stroke={isZero ? "var(--border)" : "var(--rule-soft)"}
-                strokeWidth={1}
-              />
+              <line x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--rule-soft)" strokeWidth={1} />
               <text x={padL - 8} y={gy + 3} textAnchor="end" fontSize={12} className="chart-tick-text">
                 {isZero ? "0" : rotuloUnid(t)}
               </text>
             </g>
           );
         })}
-        {/* área + linha */}
-        <polyline points={areaPts} fill={cor} fillOpacity={0.1} stroke="none" />
+        {/* reta do eixo Y (régua vertical à esquerda) + reta do eixo X (base) — pretas */}
+        <line x1={padL} x2={padL} y1={padT} y2={eixoBaseY} stroke="var(--ink)" strokeWidth={1} />
+        <line x1={padL} x2={W - padR} y1={eixoBaseY} y2={eixoBaseY} stroke="var(--ink)" strokeWidth={1} />
+        {/* ticks do eixo X (um por mês) */}
+        {data.map((_, i) => (
+          <line
+            key={`xt-${i}`}
+            x1={px(i)}
+            x2={px(i)}
+            y1={eixoBaseY}
+            y2={eixoBaseY + 4}
+            stroke="var(--rule-soft)"
+            strokeWidth={1}
+          />
+        ))}
+        {/* área colorida pelo sinal (assinado) ou pela cor da atividade (café etc.) */}
+        {assinado ? (
+          <>
+            <polyline points={areaPts} fill="var(--lucro)" fillOpacity={0.14} stroke="none" clipPath={`url(#${clipId}-pos)`} />
+            <polyline points={areaPts} fill="var(--prejuizo)" fillOpacity={0.12} stroke="none" clipPath={`url(#${clipId}-neg)`} />
+          </>
+        ) : (
+          <polyline points={areaPts} fill={cor} fillOpacity={0.1} stroke="none" />
+        )}
+        {/* reta do zero em destaque quando fica no meio do gráfico (referência principal) */}
+        {zeroInterno && (
+          <line x1={padL} x2={W - padR} y1={zeroY} y2={zeroY} stroke="var(--ink-2)" strokeWidth={1.4} />
+        )}
         <polyline
           points={linePts}
           fill="none"

@@ -675,7 +675,7 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
           </div>
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background py-[18px]">
+        <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background py-[18px] pr-[210px] max-[900px]:pr-0">
           <span className="text-xs text-ink-3">
             {photo && uploadStatus === "enviando"
               ? "Aguarde o envio da nota terminar."
@@ -1164,7 +1164,7 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
           </div>
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background py-[18px]">
+        <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background py-[18px] pr-[210px] max-[900px]:pr-0">
           <span className="text-xs text-ink-3">
             {!canSubmit
               ? "Informe cliente, valor, data, atividade e categoria para registrar a entrada."

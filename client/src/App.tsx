@@ -47,6 +47,11 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 // de fato se SHARED_ACCESS_TOKEN estiver setado; em dev, qualquer senha entra.
 const GATE_ATIVO = false;
 
+// Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
+// do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
+// além de colidir com o "Enviar/Perguntar" no canto inferior direito.
+const ABAS_CHAT = new Set<Tab>(["ia", "reb-ia", "pla-ia", "cor-ia"]);
+
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
   if (INTRO_MODE === "always") return true;
@@ -411,7 +416,7 @@ export function App() {
           return canSee(t);
         }}
       />
-      <ChatWidget />
+      {!ABAS_CHAT.has(tab) && <ChatWidget />}
     </div>
     </>
   );
