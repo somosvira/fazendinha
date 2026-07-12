@@ -34,6 +34,12 @@ export async function fetchDashboard(opts?: { from?: string; to?: string }): Pro
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const d: any = await getJson(`/dashboard${q ? `?${q}` : ""}`);
 
+  // saldoOpLeite não vem do backend (derivável): receita − custeio puro do leite.
+  // Derivado aqui p/ todos os consumidores (Relatório Veredicto #2, projeção etc.).
+  if (Array.isArray(d.receitaLeite) && Array.isArray(d.custeioLeitePuro)) {
+    d.saldoOpLeite = d.receitaLeite.map((r: number, i: number) => r - d.custeioLeitePuro[i]);
+  }
+
   const atvLabel: Record<string, string> = {
     leite: "Atv. Leiteira",
     cafe: "Plantio Café",

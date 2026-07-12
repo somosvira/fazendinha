@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchDashboard, reclassificarCategoria, fetchLancamentos, type LancamentoDrill } from "../api";
+import { reconciliarTotais } from "../lib/reconciliacao";
 import { getHoje } from "../lib/hoje";
 import { formatRangeLabel, type DateRange } from "./DateRangePicker";
 import { MonthRangePicker } from "./MonthRangePicker";
@@ -547,21 +548,12 @@ function AtividadeSplit({ R }: { R: R }) {
 /* ========== KPI COCKPIT ========== */
 
 function KpiCockpit({ R }: { R: R }) {
-  const t = R.totals23m;
-  const receita23 = t.receitaLeite + t.receitaCafe;
-  const custeio23 = t.custeioLeitePuro + t.custeioCafe + t.sedeOutros;
-  const investOutros = (R.investimentoReais ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((i: any) => i.atividade === "outros")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .reduce((s: number, i: any) => s + i.total23m, 0);
-  const invest23 = t.investLeite + t.investCafe + t.animalAquisicao + investOutros;
-  // Período selecionado (filtro de data). Sem filtro, cai nos totais 23m.
-  const p = R.periodo;
-  const receita = p ? p.receita : receita23;
-  const custeio = p ? p.custeio : custeio23;
-  const invest = p ? p.investimento : invest23;
-  const fluxo = p ? p.fluxo : t.totalGeral;
+  // totals23m já reflete o PERÍODO quando há filtro (backend troca por periodTotals).
+  // reconciliarTotais garante a identidade: entrada − gasto === fluxo, e o gasto =
+  // custeio + investimento + não-classificado (antes Receita/Custeio/Invest e o
+  // "Fluxo líquido" não fechavam — mesma divergência do Relatório).
+  const rec = reconciliarTotais(R.totals23m);
+  const fluxo = rec.liquido;
 
   const kpis: { lbl: string; val: string; sub: string; tone: string; int?: string; imp?: string }[] = [
     {
@@ -572,22 +564,29 @@ function KpiCockpit({ R }: { R: R }) {
       int: R.caixaHoje.total < 0 ? "Saldo negativo" : "Saldo positivo",
     },
     {
-      lbl: "Receita",
-      val: fmtBRL(receita),
-      sub: "leite + café",
+      lbl: "Entrada",
+      val: fmtBRL(rec.entrada),
+      sub: "todos os créditos",
       tone: "",
-      int: "Entrada do ciclo de caixa",
+      int: "Tudo que entrou no caixa",
+    },
+    {
+      lbl: "Gasto total",
+      val: fmtBRL(rec.gastoTotal),
+      sub: "custeio + invest. + outros",
+      tone: "",
+      int: "Tudo que saiu do caixa",
     },
     {
       lbl: "Custeio",
-      val: fmtBRL(custeio),
+      val: fmtBRL(rec.custeio),
       sub: "operacional puro",
       tone: "",
       int: "Saída sem investimento",
     },
     {
       lbl: "Investimento",
-      val: fmtBRL(invest),
+      val: fmtBRL(rec.investimento),
       sub: "gado, máquina, café",
       tone: "",
       int: "Não entra na conta operacional",
@@ -595,7 +594,7 @@ function KpiCockpit({ R }: { R: R }) {
     {
       lbl: "Fluxo líquido",
       val: fmtBRL(fluxo),
-      sub: "receita − saídas",
+      sub: "entrada − gasto total",
       tone: fluxo < 0 ? "neg" : "",
       int: fluxo < 0 ? "No vermelho (puxado por investimento)" : "Positivo no período",
     },

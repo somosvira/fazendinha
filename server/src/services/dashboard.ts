@@ -177,6 +177,13 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
   const investLeite = zeros();
   const investCafe = zeros();
   const totalGeral = zeros();
+  // Totais lossless por mês: TODO crédito/débito liquidado passa por aqui, então
+  // creditoTotal − debitoTotal === totalGeral por construção. Os baldes acima são
+  // uma classificação editorial *lossy* (créditos "outros" e invest "outros" vazam);
+  // debitoTotal permite fechar o gasto real do mês com uma linha "não classificado".
+  const creditoTotal = zeros();
+  const debitoTotal = zeros();
+  let nLancamentos = 0;
 
   // categoria → { por mês, atividade dominante, grupo, flag }
   type CatAcc = {
@@ -216,13 +223,16 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
       l.centroCusto.ehInvestimento ||
       /investimento/i.test(l.centroCusto.nome);
 
+    nLancamentos++;
     if (l.natureza === "CREDITO") {
       if (atv === "leite") receitaLeite[idx] += v;
       else if (atv === "cafe") receitaCafe[idx] += v;
       totalGeral[idx] += v;
+      creditoTotal[idx] += v;
     } else {
       // DEBITO
       totalGeral[idx] -= v;
+      debitoTotal[idx] += v;
 
       if (misclass) {
         if (catNome === "Animal Aquisição") animalAquisicao[idx] += v;
@@ -280,6 +290,8 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
     investCafe: sumArr(investCafe),
     sedeOutros: sumArr(sedeOutros),
     totalGeral: sumArr(totalGeral),
+    creditoTotal: sumArr(creditoTotal),
+    debitoTotal: sumArr(debitoTotal),
   };
 
   // ----- recortes anuais (DRE) ---------------------------------------------
@@ -368,6 +380,7 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
     const pt = {
       receitaLeite: 0, receitaCafe: 0, custeioLeitePuro: 0, custeioCafe: 0, sedeOutros: 0,
       investLeite: 0, investCafe: 0, animalAquisicao: 0, rnCaminhao: 0, totalGeral: 0,
+      creditoTotal: 0, debitoTotal: 0,
     };
     const pcat = new Map<number, {
       id: number; nome: string; grupo: string; atividade: Atividade; total: number;
@@ -387,9 +400,11 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
       if (l.natureza === "CREDITO") {
         if (atv === "leite") pt.receitaLeite += v; else if (atv === "cafe") pt.receitaCafe += v;
         pt.totalGeral += v;
+        pt.creditoTotal += v;
         continue;
       }
       pt.totalGeral -= v;
+      pt.debitoTotal += v;
       if (misclass) {
         if (isAnimAq) pt.animalAquisicao += v; else pt.rnCaminhao += v;
       } else if (ehInv) {
@@ -427,6 +442,7 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
       rnCaminhao: Math.round(pt.rnCaminhao), investLeite: Math.round(pt.investLeite),
       custeioCafe: Math.round(pt.custeioCafe), investCafe: Math.round(pt.investCafe),
       sedeOutros: Math.round(pt.sedeOutros), totalGeral: Math.round(pt.totalGeral),
+      creditoTotal: Math.round(pt.creditoTotal), debitoTotal: Math.round(pt.debitoTotal),
     };
     periodCategorias = [...pcat.values()].map((c) => {
       const fornsArr = [...c.fornecedores.entries()]
@@ -562,6 +578,9 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
     investCafe,
     sedeOutros,
     totalGeral,
+    creditoTotal,
+    debitoTotal,
+    nLancamentos,
 
     // Com filtro, viram os totais/categorias DO PERÍODO (dashboard mensal coerente).
     totals23m: periodTotals ?? totals23m,
