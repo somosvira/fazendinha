@@ -69,7 +69,11 @@
 
 /* shell único: header fixo no topo, sidebar abaixo do header, main com offset */
 .app { min-height: 100vh; background: var(--bg); color: var(--ink); padding-top: var(--header-h); }
-.app-main { margin-left: var(--side-w); }
+/* overflow-x: clip impede que tabelas densas com colunas de min-width fixo
+   (ex.: linhas mono-nums em grids [64px_1fr_auto]) empurrem scroll horizontal
+   na PÁGINA inteira em telas estreitas. Cada área rolável interna
+   (overflow-x-auto) continua funcionando; clip não cria contexto de scroll. */
+.app-main { margin-left: var(--side-w); overflow-x: clip; }
 
 /* ============================================================
    APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
@@ -164,8 +168,8 @@ a { color: inherit; }
   padding: 0 var(--gutter);
 }
 .shell-wide {
-  max-width: 1520px;
-  margin: 0 auto;
+  /* sem max-width/centralização: o conteúdo preenche a largura do .app-main
+     e encosta na sidebar; só o gutter separa da borda. */
   padding: 0 var(--gutter);
 }
 
