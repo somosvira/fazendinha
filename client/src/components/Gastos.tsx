@@ -28,7 +28,7 @@ export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
 export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
   return (
     <div className={"shell-wide " + (user && !user.flags.includes("verValores") ? "mask-values" : "")}>
-      <ReportHeader subtitle="Gastos — contas a pagar" updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow="Financeiro · Contas a pagar" subtitle="Gastos" updatedAt={R.UPDATED_AT} />
 
       <ContasAVencer />
 

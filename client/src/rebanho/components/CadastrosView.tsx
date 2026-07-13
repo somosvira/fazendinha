@@ -8,6 +8,8 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Package, Users } from "lucide-react";
 
 type Sub = "produtos" | "fornecedores";
 
@@ -33,7 +35,7 @@ export function CadastrosView() {
   const [sub, setSub] = useState<Sub>("produtos");
   return (
     <RebMain>
-      <RebHeader eyebrow="Cadastros · Sítio São Francisco" title="Cadastros" />
+      <RebHeader eyebrow="Cadastros · compartilhado entre propriedades" title="Cadastros" />
       <div className={REB_CHIPS} style={{ marginBottom: 18 }}>
         <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
         <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
@@ -68,7 +70,11 @@ function Produtos() {
 
       {loading ? <Loader />
         : erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>
-        : data.length === 0 ? <p className="mt-[7px] text-sm text-ink-3">Nenhum produto encontrado.</p>
+        : data.length === 0 ? (
+          (tipo || q)
+            ? <EmptyState icon={Package} variant="filtro" titulo="Nenhum produto neste filtro" descricao="Nenhum produto bate com a busca ou o tipo selecionado. Limpe o filtro para ver todos." />
+            : <EmptyState icon={Package} titulo="Nenhum produto cadastrado" descricao="Produtos são os itens que você compra e lança (ração, medicamento, insumo). Cadastre o primeiro para começar." acao={<RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo produto</RebButton>} />
+        )
         : (
           <RebTable>
             <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Custo</th><th>Situação</th><th></th></tr></thead>
@@ -120,7 +126,11 @@ function Fornecedores() {
 
       {loading ? <Loader />
         : erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>
-        : data.length === 0 ? <p className="mt-[7px] text-sm text-ink-3">Nenhum fornecedor encontrado.</p>
+        : data.length === 0 ? (
+          (tipo || q)
+            ? <EmptyState icon={Users} variant="filtro" titulo="Nenhum fornecedor neste filtro" descricao="Nenhum fornecedor bate com a busca ou o tipo selecionado. Limpe o filtro para ver todos." />
+            : <EmptyState icon={Users} titulo="Nenhum fornecedor cadastrado" descricao="Fornecedores e clientes de quem você compra ou para quem vende. Cadastre o primeiro para vinculá-lo aos lançamentos." acao={<RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo fornecedor</RebButton>} />
+        )
         : (
           <RebTable>
             <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Situação</th><th></th></tr></thead>

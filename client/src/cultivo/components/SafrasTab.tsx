@@ -23,6 +23,8 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Sprout } from "lucide-react";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
@@ -73,7 +75,21 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
       ) : loading ? (
         <Loader />
       ) : data.length === 0 ? (
-        <RebEmpty>Nenhuma safra de milho cadastrada ainda.</RebEmpty>
+        filtroFechada !== "" ? (
+          <EmptyState
+            icon={Sprout}
+            variant="filtro"
+            titulo={filtroFechada === "false" ? "Nenhuma safra aberta" : "Nenhuma safra fechada"}
+            descricao="Não há safras neste filtro. Veja “Todas” para conferir o histórico completo."
+          />
+        ) : (
+          <EmptyState
+            icon={Sprout}
+            titulo="Nenhuma safra de milho cadastrada"
+            descricao="Uma safra reúne as áreas plantadas, a produção e o custo de um ciclo. Cadastre a primeira para acompanhar o milho da fazenda."
+            acao={<RebButton variant="pri" onClick={() => setFormNova(true)}>+ Nova safra</RebButton>}
+          />
+        )
       ) : (
         <RebTable>
           <thead>

@@ -411,7 +411,7 @@ export function App() {
           return canSee(t);
         }}
       />
-      <ChatWidget />
+      <ChatWidget oculto={tab === "ia"} />
     </div>
     </>
   );

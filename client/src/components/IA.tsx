@@ -444,7 +444,7 @@ export function IA() {
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle="IA — pergunte sobre seus números" updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow="Financeiro · Pergunte sobre seus números" subtitle="IA financeira" updatedAt={R.UPDATED_AT} />
 
       <div className="mt-[18px] inline-flex border border-border bg-card">
         <button className={MODE_BTN} aria-pressed={iaMode === "conversa"} onClick={() => setIaMode("conversa")}>

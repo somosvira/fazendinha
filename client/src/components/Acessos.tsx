@@ -369,7 +369,7 @@ export function Acessos({
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle="Acessos & Permissões" updatedAt={UPDATED_AT} />
+      <ReportHeader eyebrow="Administração · Pessoas & permissões" subtitle="Acessos" updatedAt={UPDATED_AT} />
 
       <div className="mt-[18px] mb-7 grid grid-cols-[repeat(3,1fr)_auto] items-center border border-[color:var(--rule)] bg-[color:var(--bg-card)] max-[1100px]:grid-cols-2">
         <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
