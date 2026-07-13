@@ -21,6 +21,7 @@ import { COMANDOS, buscar, type Comando, type GrupoComando, type ResultadoBusca 
 import { comPropriedade } from "../propriedadeScope";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { X } from "lucide-react";
 
 type Props = {
   aberto: boolean;
@@ -169,7 +170,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="top-[12vh] flex max-h-[70vh] max-w-[640px] translate-y-0 flex-col gap-0 overflow-hidden p-0"
+        className="top-[12vh] flex max-h-[70vh] max-w-[640px] translate-y-0 flex-col gap-0 overflow-hidden rounded-xl p-0"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           inputRef.current?.focus();
@@ -177,22 +178,22 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
       >
         <DialogTitle className="sr-only">Busca global</DialogTitle>
         <Command shouldFilter={false} vimBindings={false} className="flex h-full max-h-[70vh] flex-col">
-          <div className="relative flex items-center">
+          <div className="relative">
             <CommandInput
               ref={inputRef}
               value={query}
               onValueChange={setQuery}
               placeholder="Pesquisar páginas, ações e recursos…"
-              className="h-auto flex-1 border-0 py-3 pr-16 text-[15px]"
+              className="h-auto w-full border-0 py-3 pr-12 text-[15px]"
             />
             <button
               type="button"
               onClick={onFechar}
               tabIndex={-1}
               aria-label="Fechar busca"
-              className="absolute right-3 shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-semibold tracking-wide text-ink-3"
+              className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-ink-3 transition-colors hover:bg-muted hover:text-foreground"
             >
-              Esc
+              <X className="size-4" />
             </button>
           </div>
 
