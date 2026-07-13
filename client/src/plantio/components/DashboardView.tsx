@@ -17,7 +17,7 @@ export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
   const k = data.k;
   return (
     <RebMain>
-      <RebHeader eyebrow={`Lavoura Rio Novo · ${k.areaTotal} ha · ${k.talhoesAtivos} talhões ativos`} title="Painel da lavoura" />
+      <RebHeader eyebrow={`Plantio · café · ${k.areaTotal} ha · ${k.talhoesAtivos} talhões`} title="Painel da lavoura" />
 
       <RebKpiStrip cols={6}>
         <RebKpi lab="Área" val={k.areaTotal} sufixo="ha" d={`${k.talhoesAtivos} talhões ativos`} />

@@ -25,7 +25,7 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
   const k = data.k;
   return (
     <RebMain>
-      <RebHeader eyebrow={`Atividade Corte · Rio Novo · ${k.totalCabecas} cabeças · ${k.totalAtivos} lotes`} title="Painel da pecuária" />
+      <RebHeader eyebrow={`Gado de corte · ${k.totalCabecas} cabeças · ${k.totalAtivos} lotes`} title="Painel da pecuária" />
 
       <RebKpiStrip cols={6}>
         <RebKpi lab="Plantel" val={<>{k.totalCabecas}<u>cab</u></>} d={`${k.totalAtivos} lotes ativos`} />
