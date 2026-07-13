@@ -1,36 +1,47 @@
 import { Loader } from "../../components/Loading";
-import type { PlantioTab } from "../nav";
-import { insightDaLavoura } from "../mock";
+import type { MilSub } from "../CultivoContent";
+import { insightDoMilho } from "../mock/insight";
 import { IaInsightBand } from "./IaInsight";
 import { useDashboard } from "../api";
-import { FASES_LABEL } from "../lib/fenologia";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
 
-export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
+const money = (n: number) =>
+  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+export function DashboardView({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
   const { data, loading } = useDashboard();
-  const insight = insightDaLavoura("colheita");
+  const insight = insightDoMilho();
+
+  // Loading shell PRECISA conter "Cultivo · milho" (o smoke test SSR só vê este estado).
   if (loading || !data) {
-    return <RebMain><RebHeader title="Lavoura · Painel" /><Loader /></RebMain>;
+    return (
+      <RebMain>
+        <RebHeader eyebrow="Cultivo · milho" title="Painel do milho" />
+        <Loader />
+      </RebMain>
+    );
   }
   const k = data.k;
   return (
     <RebMain>
-      <RebHeader eyebrow={`Plantio · café · ${k.areaTotal} ha · ${k.talhoesAtivos} talhões`} title="Painel da lavoura" />
+      <RebHeader
+        eyebrow={`Cultivo · milho · ${k.safrasAtivas} ${k.safrasAtivas === 1 ? "safra ativa" : "safras ativas"}`}
+        title="Painel do milho"
+      />
 
       <RebKpiStrip cols={6}>
-        <RebKpi lab="Área" val={k.areaTotal} sufixo="ha" d={`${k.talhoesAtivos} talhões ativos`} />
-        <RebKpi lab="Fase predominante" val={FASES_LABEL[k.fase]} valClassName="!text-[24px] pt-1" d="na lavoura toda" />
-        <RebKpi lab="Sacas esperadas" val={k.sacasEsperadas.toLocaleString("pt-BR")} sufixo="sc" d="safra 2026 (estimado)" />
-        <RebKpi lab="Já colhidas" val={k.sacasJaColhidas.toLocaleString("pt-BR")} sufixo="sc" d="benefício parcial" />
-        <RebKpi lab="Produtividade média" val={k.produtividadeMedia} sufixo="sc/ha" d={`${k.variedades} variedades`} />
+        <RebKpi lab="Safras ativas" val={k.safrasAtivas} d={`${k.safrasFechadas} fechadas`} />
+        <RebKpi lab="Área" val={k.areaHa} sufixo="ha" d="em cultivo" />
+        <RebKpi lab="Grão" val={k.producaoGraoSc} sufixo="sc" d={`${k.producaoSilagemTon} t de silagem`} />
+        <RebKpi lab="Custo/saca médio" val={k.custoSacaMedio != null ? money(k.custoSacaMedio) : "—"} d="custeio ÷ grão" />
+        <RebKpi lab="Custeio total" val={money(k.custeioTotal)} d="lançado nas safras" />
         <RebKpi
-          lab="Em alerta fito"
-          val={k.alertaFito}
-          sufixo="talhões"
-          d={k.alertaFito > 0 ? "acima do limiar MIP" : "dentro do limiar"}
-          tom={k.alertaFito > 0 ? "up" : "ok"}
+          lab="Silos"
+          val={k.silosAtivos}
+          sufixo="ativos"
+          d={k.siloOcupacaoPct != null ? `${k.siloOcupacaoPct}% de ocupação` : `${k.siloSaldoTotal} em estoque`}
         />
       </RebKpiStrip>
 
@@ -42,7 +53,7 @@ export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
             <button
               key={d.tab}
               className="cursor-pointer rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5 text-left font-sans hover:bg-[color:var(--bg-card-2)]"
-              onClick={() => onNav(d.tab.replace("pla-", "") as PlantioTab)}
+              onClick={() => onNavMil(d.tab.replace("mil-", "") as MilSub)}
             >
               <h4 className="mb-[9px] mt-0 flex items-baseline justify-between font-serif text-[17px] font-medium">
                 {d.titulo}<span className="text-sm font-semibold text-cafe">ver →</span>
@@ -56,15 +67,15 @@ export function DashboardView({ onNav }: { onNav: (t: PlantioTab) => void }) {
           ))}
         </div>
         <div className="self-start rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5">
-          <h4 className="mb-2 mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Talhões em situação de alerta</h4>
+          <h4 className="mb-2 mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Alertas e oportunidades</h4>
           {data.alertas.map((al) => (
             <button
               key={al.label}
               className="flex w-full cursor-pointer items-center justify-between border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2.5 text-left font-sans text-sm text-ink-2 last:border-b-0"
-              onClick={() => onNav(al.tab.replace("pla-", "") as PlantioTab)}
+              onClick={() => onNavMil(al.tab.replace("mil-", "") as MilSub)}
             >
               <span>{al.label}</span>
-              <span className={"font-serif text-[21px] " + (al.n === 0 ? "text-lucro" : al.tom === "bad" ? "text-prejuizo" : "text-ink-3")}>{al.n}</span>
+              <span className={"font-serif text-[21px] " + (al.n === 0 ? "text-lucro" : "text-prejuizo")}>{al.n}</span>
             </button>
           ))}
         </div>

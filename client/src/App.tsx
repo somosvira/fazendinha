@@ -46,7 +46,7 @@ const GATE_ATIVO = false;
 // Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
 // do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
 // além de colidir com o "Enviar/Perguntar" no canto inferior direito.
-const ABAS_CHAT = new Set<Tab>(["ia", "reb-ia", "pla-ia", "cor-ia"]);
+const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
@@ -118,12 +118,14 @@ const COR: Record<string, CorSub> = {
 };
 
 const EQP: Record<string, EqpSub> = {
+  "eqp-dashboard": "dashboard",
   "eqp-funcionarios": "funcionarios",
   "eqp-ponto": "ponto",
   "eqp-folha": "folha",
 };
 
 const MIL: Record<string, MilSub> = {
+  "mil-dashboard": "dashboard",
   "mil-safras": "safras",
   "mil-custos": "custos",
   "mil-producao": "producao",

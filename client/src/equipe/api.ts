@@ -10,7 +10,7 @@
  * em UPPERCASE.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
 
@@ -243,4 +243,41 @@ export function mesesRecentes(n = 12, base = "2026-05"): string[] {
     out.push(`${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`);
   }
   return out;
+}
+
+// DASHBOARD ---------------------------------------------------------------
+// Espelha DashboardPontoDTO (server/src/services/ponto/dashboard.agg.ts).
+
+export interface DashboardEquipe {
+  k: {
+    mes: string;
+    funcionariosAtivos: number;
+    setores: number;
+    custoMOMes: number;
+    folhaTotalPagar: number;
+    valorExtra: number;
+    totalHoras: number;
+    maiorSetor: { nome: string; total: number; qtd: number } | null;
+  };
+  dominios: { tab: string; titulo: string; linhas: string[] }[];
+  alertas: { label: string; n: number; tom?: "up" | "bad"; tab: string }[];
+}
+
+export const obterDashboard = (mes: string) => req<DashboardEquipe>(`/ponto/dashboard${qs({ mes })}`);
+
+// Usa a mesma âncora dos outros módulos: mesesRecentes(1)[0] = "2026-05".
+export function useDashboard() {
+  const mes = useMemo(() => mesesRecentes(1)[0], []);
+  const [data, setData] = useState<DashboardEquipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelado = false;
+    setLoading(true);
+    obterDashboard(mes)
+      .then((d) => { if (!cancelado) setData(d); })
+      .catch(() => { if (!cancelado) setData(null); })
+      .finally(() => { if (!cancelado) setLoading(false); });
+    return () => { cancelado = true; };
+  }, [mes]);
+  return { data, loading };
 }
