@@ -29,6 +29,8 @@ import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebMain, RebAnm, RebPill, RebEmpty } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Wallet } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -175,7 +177,12 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
-        <RebEmpty>Nenhum movimento neste mês.</RebEmpty>
+        <EmptyState
+          icon={Wallet}
+          titulo="Nenhum movimento neste mês"
+          descricao="A caixinha é o dinheiro físico da fazenda. Registre entradas e saídas em espécie para acompanhar o saldo e conciliar com os lançamentos."
+          acao={<RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>}
+        />
       ) : (
         <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th style={{ textAlign: "right" }}>Valor</th><th /></tr></thead>
