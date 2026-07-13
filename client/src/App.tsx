@@ -12,19 +12,15 @@ import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
-import { Caixinha } from "./financeiro/Caixinha";
-import { PlanoContas } from "./components/PlanoContas";
+import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
-import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
-import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
-import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
@@ -313,21 +309,30 @@ export function App() {
       <>
         {tab === "dashboard" &&
           (canSee("dashboard") ? <Dashboard onNav={setTab} user={effectiveUser} /> : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
-        {tab === "gastos" &&
-          (canSee("gastos") ? <Gastos onNav={setTab} user={effectiveUser} /> : <GatedTab user={effectiveUser} abaLabel="Gastos" />)}
+        {/* Gastos vira hub: Contas + Caixinha (sub-aba dobrada). /caixinha ainda
+            resolve — abre o hub na sub-aba Caixinha. */}
+        {(tab === "gastos" || tab === "caixinha") &&
+          (canSee("gastos") || (tab === "caixinha" && canSee("caixinha"))
+            ? <Gastos onNav={setTab} user={effectiveUser} sub={tab === "caixinha" ? "caixinha" : "contas"} podeCaixinha={canSee("caixinha")} />
+            : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {tab === "relatorio" &&
           (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
         {tab === "lancar" &&
           (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
-        {tab === "caixinha" &&
-          (canSee("caixinha") ? <Caixinha /> : <GatedTab user={effectiveUser} abaLabel="Caixinha" />)}
-        {tab === "plano" &&
-          (canSee("plano") ? <PlanoContas onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Categorias" />)}
-        {tab === "acessos" &&
-          (isAdmin ? <Acessos users={users} setUsers={setUsers} onViewAs={enterViewAs} /> : <GatedTab user={effectiveUser} abaLabel="Acessos" />)}
-        {tab === "config" && <ConfiguracoesView />}
-        {tab === "cadastros" && <CadastrosView />}
+        {/* Configurações vira hub: Geral · Cadastros · Categorias · Acessos.
+            /cadastros, /categorias, /acessos ainda resolvem — abrem a sub-aba. */}
+        {(tab === "config" || tab === "cadastros" || tab === "plano" || tab === "acessos") && (
+          <ConfiguracoesHub
+            tab={tab}
+            onNav={setTab}
+            isAdmin={isAdmin}
+            podeCategorias={canSee("plano")}
+            users={users}
+            setUsers={setUsers}
+            onViewAs={enterViewAs}
+          />
+        )}
       </>
     );
 
@@ -356,14 +361,11 @@ export function App() {
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header
         user={effectiveUser}
-        allUsers={viewAsId ? null : users}
-        onSwitchUser={enterViewAs}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
         onAbrirBusca={() => setBuscaAberta(true)}
+        onPreferencias={() => setTab("config")}
         onSair={onSair}
-        propAtiva={propAtiva}
-        onTrocarProp={trocarPropriedade}
       />
       <AppSidebar
         current={tab}
@@ -373,6 +375,8 @@ export function App() {
         podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        propAtiva={propAtiva}
+        onTrocarProp={trocarPropriedade}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         {viewAsId && (

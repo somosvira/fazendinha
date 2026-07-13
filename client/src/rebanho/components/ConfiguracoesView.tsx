@@ -137,7 +137,7 @@ export function ConfiguracoesView() {
 
   return (
     <RebMain>
-      <RebHeader eyebrow="Configurações · Sítio São Francisco" title="Configurações" />
+      <RebHeader eyebrow="Configurações · compartilhado entre propriedades" title="Configurações" />
 
       <h2 className="mb-3 font-serif text-xl font-medium">Como a fazenda mede o leite?</h2>
       <p className={REB_SEC_SUB}>Define como a produção é registrada e como a média por vaca é calculada. Trocar o modo recalcula todo o rebanho.</p>
@@ -221,7 +221,9 @@ export function ConfiguracoesView() {
                   }}>
                     <div>
                       <div style={{ fontWeight: 500 }}>{p.descricao}</div>
-                      <div className={REB_SUB} style={{ fontSize: 12 }}>{p.chave}{p.unidade ? ` · ${p.unidade}` : ""}</div>
+                      {/* Sublabel só com a unidade (ex.: "dias"); a chave crua
+                          (DESMAME_MODO) era ruído técnico p/ o dono da fazenda. */}
+                      {p.unidade ? <div className={REB_SUB} style={{ fontSize: 12 }}>{p.unidade}</div> : null}
                     </div>
 
                     {desmame ? (

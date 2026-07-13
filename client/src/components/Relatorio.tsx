@@ -9,30 +9,38 @@
  * o estado "gerando-pdf" (antes classe togglada) vira condicional em `exportando`.
  */
 
-import { ReactNode, useId, useRef, useState } from "react";
-import R from "../data/rionovo";
+import { ReactNode, useEffect, useId, useRef, useState } from "react";
+import { fetchDashboard, reclassificarCategoria } from "../api";
+import { reconciliarMes } from "../lib/reconciliacao";
 import { fmtMoney, fmtBR } from "./charts";
 import type { Tab } from "./Shell";
-import { reclassificarCategoria } from "../api";
 import { cn } from "@/lib/utils";
 
-/* ============ CONSTANTES DO MÊS FECHADO ============ */
-/* Mai/2026 no mock tem receita=0 (marcado "Mai/26*" — mês em curso). O último
- * mês fechado é Abril/2026 = índice 21 do vetor de 23 meses. */
-const MES_FECHADO_IDX = 21;
-const MES_FECHADO_LABEL = "Abril 2026";
-const EMITIDO_EM = "04 de maio de 2026";
+/* ============ MÊS FECHADO (derivado do dado real) ============ */
+/* A janela é sempre 23 meses (Jul/2024 → Mai/2026); o último é parcial ("*", mês
+ * em curso), então o último mês FECHADO é o penúltimo índice. */
+const mesFechadoIdx = (R: { MESES_23M: string[] }) => R.MESES_23M.length - 2;
+
+const PT_MONTHS_FULL = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+/* Nome cheio do mês a partir do índice na janela (idx 0 = Jul/2024). */
+function mesNome(idx: number): string {
+  const total = 6 + idx; // julho (0-indexed = 6) é o idx 0
+  return PT_MONTHS_FULL[((total % 12) + 12) % 12];
+}
+function mesLabelFull(idx: number): string {
+  const total = 6 + idx;
+  const y = 2024 + Math.floor(total / 12);
+  return `${mesNome(idx)} ${y}`;
+}
+const fmtInt = (n: number) => Math.round(n).toLocaleString("pt-BR");
 
 /* ============ CÁLCULOS DERIVADOS (funções puras) ============ */
 
-function fluxoDoMes(idx: number) {
-  const receita = R.receitaLeite[idx] + R.receitaCafe[idx];
-  const custeio = R.custeioLeitePuro[idx] + R.custeioCafe[idx] + R.sedeOutros[idx];
-  const invest = R.investLeite[idx] + R.investCafe[idx] + R.animalAquisicao[idx];
-  return { receita, custeio, invest, liquido: receita - custeio - invest };
-}
-
-function saldoLeiteDoMes(idx: number) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function saldoLeiteDoMes(R: any, idx: number) {
   return {
     receita: R.receitaLeite[idx],
     custeio: R.custeioLeitePuro[idx],
@@ -42,11 +50,11 @@ function saldoLeiteDoMes(idx: number) {
 
 type Alta = { nome: string; valorMil: number; delta: number };
 
-function categoriasQueSubiram(): Alta[] {
-  // O mock só tem delta YTD 2026 vs YTD 2025 por categoria. Sem série mensal,
-  // usamos delta anual como proxy honesta de "onde acelerou".
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function categoriasQueSubiram(R: any): Alta[] {
+  // Delta YTD 2026 vs YTD 2025 por categoria como proxy honesta de "onde acelerou".
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cats: any[] = R.categoriasReais;
+  const cats: any[] = R.categoriasReais ?? [];
   return cats
     .filter((c) => c.delta > 0 && c.ytd2026 > 20000)
     .sort((a, b) => b.delta - a.delta)
@@ -64,10 +72,20 @@ function FechamentoHeader({
   onExportar,
   exportando,
   oculto,
+  mesLabel,
+  emitidoEm,
+  escopo,
+  prevMes,
+  nextMes,
 }: {
   onExportar: () => void;
   exportando: boolean;
   oculto: boolean;
+  mesLabel: string;
+  emitidoEm: string;
+  escopo: string;
+  prevMes: string;
+  nextMes: string;
 }) {
   return (
     <div
@@ -80,10 +98,10 @@ function FechamentoHeader({
       <div>
         <span className="eyebrow text-[11px] uppercase tracking-[0.14em] text-ink-3">Fechamento mensal</span>
         <h1 className="m-0 mt-1.5 mb-2 font-serif text-[52px] font-normal leading-[1.05] tracking-[-0.02em] text-foreground max-[720px]:text-[36px]">
-          {MES_FECHADO_LABEL}
+          {mesLabel}
         </h1>
         <p className="m-0 font-sans text-sm text-ink-3">
-          Emitido em {EMITIDO_EM} · {R.iaScope.lancamentos} do BPO
+          Emitido em {emitidoEm} · {escopo}
         </p>
       </div>
       <div className="flex flex-col items-end gap-3 max-[720px]:items-start">
@@ -104,14 +122,14 @@ function FechamentoHeader({
             disabled
             title="Meses anteriores serão liberados quando o backend de fechamento estiver ativo."
           >
-            ◂ Março
+            ◂ {prevMes}
           </button>
           <button
             className="cursor-pointer border-0 bg-transparent px-3 py-1.5 font-sans text-xs text-ink-3 hover:enabled:bg-card hover:enabled:text-foreground disabled:cursor-not-allowed disabled:text-[color:var(--ink-mute)] disabled:opacity-50"
             disabled
-            title="Maio ainda não fechou."
+            title={`${nextMes} ainda não fechou.`}
           >
-            Maio ▸
+            {nextMes} ▸
           </button>
         </div>
       </div>
@@ -493,14 +511,28 @@ function AtencaoCard({
 /* ============ PÁGINA ============ */
 
 export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
-  // reclassificarCategoria só faz sentido plugado no backend. Aqui é um trigger
-  // que força re-render (o mock não muta, mas quando FechamentoMensal existir
-  // no server basta trocar por refetch).
+  // Dado REAL do fechamento — mesmo payload que o Dashboard usa (fetchDashboard).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [data, setData] = useState<any>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  // `tick` reexecuta o fetch (ex.: após reclassificar uma categoria no backend).
   const [tick, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
 
   const printRef = useRef<HTMLDivElement>(null);
   const [exportando, setExportando] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    setData(null);
+    setErro(null);
+    fetchDashboard()
+      .then((d) => vivo && setData(d))
+      .catch((e) => vivo && setErro(e instanceof Error ? e.message : String(e)));
+    return () => {
+      vivo = false;
+    };
+  }, [tick]);
 
   const exportarPDF = async () => {
     if (!printRef.current || exportando) return;
@@ -514,7 +546,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
       await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
-          filename: `Fechamento-${MES_FECHADO_LABEL.replace(/ /g, "-")}.pdf`,
+          filename: `Fechamento-${(data ? mesLabelFull(mesFechadoIdx(data)) : "mes").replace(/ /g, "-")}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#F2EDE2" },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
@@ -531,34 +563,73 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
     }
   };
 
-  const meses12m = R.MESES_23M.slice(10, 22); // 12 meses completos: mai/25 → abr/26 (exclui mai/26*, mês em aberto)
-  // Rótulo do eixo: só a inicial do mês (M · J · J · A …). A barra do mês em
-  // foco (destaqueIdx) é quem o identifica de fato — o texto é só orientação,
-  // então a ambiguidade (M=Mar/Mai, J=Jan/Jun/Jul) é aceitável na sparkline.
-  const inicialMes = (i: number) => meses12m[i].slice(0, 1).toUpperCase();
-  const fluxo12m = R.totalGeral.slice(10, 22).map((v: number, i: number) => ({
-    x: inicialMes(i),
-    y: Math.round(v / 1000),
-  }));
-  const saldoLeite12m = R.saldoOpLeite.slice(10, 22).map((v: number, i: number) => ({
-    x: inicialMes(i),
-    y: Math.round(v / 1000),
-  }));
-  const receitaCafe12m = R.receitaCafe.slice(10, 22).map((v: number, i: number) => ({
-    x: inicialMes(i),
-    y: Math.round(v / 1000),
-  }));
+  if (erro) {
+    return (
+      <div className="shell-wide pb-24">
+        <p className="mt-16 text-center font-sans text-sm text-prejuizo">
+          Falha ao carregar o fechamento: {erro}
+        </p>
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="shell-wide pb-24">
+        <p className="mt-16 text-center font-sans text-sm text-ink-3">Carregando fechamento…</p>
+      </div>
+    );
+  }
+  const R = data;
 
-  const fluxo = fluxoDoMes(MES_FECHADO_IDX);
-  const leite = saldoLeiteDoMes(MES_FECHADO_IDX);
+  const IDX = mesFechadoIdx(R); // último mês fechado (penúltimo da janela)
+  const ini12 = Math.max(0, IDX - 11); // janela de 12 meses completos terminando em IDX
+  const meses12m: string[] = R.MESES_23M.slice(ini12, IDX + 1);
+  const foco12 = meses12m.length - 1; // posição do mês fechado dentro da janela de 12m
+  // Rótulo do eixo: só a inicial do mês (M · J · J · A …). A barra do mês em foco
+  // é quem o identifica; a ambiguidade (M=Mar/Mai, J=Jan/Jun/Jul) é aceitável.
+  const inicialMes = (i: number) => meses12m[i].slice(0, 1).toUpperCase();
+  const serie12 = (arr: number[]) =>
+    arr.slice(ini12, IDX + 1).map((v, i) => ({ x: inicialMes(i), y: Math.round(v / 1000) }));
+  const fluxo12m = serie12(R.totalGeral);
+  const saldoLeite12m = serie12(R.saldoOpLeite);
+  const receitaCafe12m = serie12(R.receitaCafe);
+  // Café é safra única: destaca o mês de maior receita (a colheita), não o último
+  // mês fechado — que em geral é 0 e fazia o ponto do gráfico apontar para nada.
+  const cafeMaxIdx = receitaCafe12m.reduce((best, d, i, a) => (d.y > a[best].y ? i : best), 0);
+  const cafeFocoIdx = receitaCafe12m[cafeMaxIdx].y > 0 ? cafeMaxIdx : foco12;
+
+  // Reconciliação: manchete = líquido (== ponto do gráfico), + gasto total do mês.
+  const recon = reconciliarMes(R, IDX);
+  const leite = saldoLeiteDoMes(R, IDX);
   const cafeYtdMargem = R.k2026YTD.receitaCafe - R.k2026YTD.custeioCafe;
   const cafeYtdRec = R.k2026YTD.receitaCafe;
-  const investMes = R.investLeite[MES_FECHADO_IDX] + R.investCafe[MES_FECHADO_IDX] + R.animalAquisicao[MES_FECHADO_IDX];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const maiorInvest = [...R.investimentoBreakdown].sort((a: any, b: any) => b.value - a.value)[0];
-  const altas = categoriasQueSubiram();
+  // Composição do investimento DO MÊS (bate com a manchete, que é do mês) — antes
+  // usava um breakdown YTD que nem vem no payload real.
+  const investItens = [
+    { nome: "Invest. leite", valorMil: Math.round(R.investLeite[IDX] / 1000), cor: "var(--leite)" },
+    { nome: "Invest. café", valorMil: Math.round(R.investCafe[IDX] / 1000), cor: "var(--cafe)" },
+    { nome: "Animais (aquisição)", valorMil: Math.round(R.animalAquisicao[IDX] / 1000), cor: "var(--leite)" },
+    { nome: "Caminhão / trator", valorMil: Math.round(R.rnCaminhao[IDX] / 1000), cor: "var(--outros)" },
+  ].filter((it) => it.valorMil > 0);
+  const investMes = recon.investimento;
+  const maiorInvest = [...investItens].sort((a, b) => b.valorMil - a.valorMil)[0];
+  const altas = categoriasQueSubiram(R);
 
-  const idxNoUltimo12 = 11; // Abr/26 é o último dos 12 meses completos (índice 11)
+  // Stats do fluxo: líquido é a manchete; entrada − gasto === líquido; o breakdown
+  // do gasto (subordinado com ↳) soma exatamente ao gasto total.
+  const mil = (v: number) => fmtMoney(Math.round(v / 1000), { compact: false });
+  const statsFluxo = [
+    { label: "Entrada", valor: mil(recon.entrada) },
+    { label: "Gasto total", valor: mil(recon.gastoTotal), forte: true },
+    ...recon.breakdown.map((b) => ({ label: `↳ ${b.label}`, valor: mil(b.valor) })),
+  ];
+
+  const mesLabel = mesLabelFull(IDX);
+  const emitidoEm = String(R.UPDATED_AT ?? "").split(",")[0] || String(R.REPORT_DATE_LABEL ?? "");
+  const escopo = `${fmtInt(R.nLancamentos ?? 0)} lançamentos do BPO`;
+  const periodo = `${R.MESES_23M[0]} — ${R.MESES_23M[R.MESES_23M.length - 1]}`;
+  const prevMes = IDX - 1 >= 0 ? mesNome(IDX - 1) : "—";
+  const nextMes = IDX + 1 < R.MESES_23M.length ? mesNome(IDX + 1) : "—";
 
   return (
     /* shell-wide (largura) permanece — classe compartilhada em base.css. Padding
@@ -572,28 +643,34 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
       key={tick}
       ref={printRef}
     >
-      <FechamentoHeader onExportar={exportarPDF} exportando={exportando} oculto={exportando} />
+      <FechamentoHeader
+        onExportar={exportarPDF}
+        exportando={exportando}
+        oculto={exportando}
+        mesLabel={mesLabel}
+        emitidoEm={emitidoEm}
+        escopo={escopo}
+        prevMes={prevMes}
+        nextMes={nextMes}
+      />
 
       <div className="grid grid-cols-1 gap-4 print:gap-4 min-[1080px]:grid-cols-[minmax(0,1fr)_320px] min-[1080px]:items-start">
         {/* Coluna principal: os veredictos (métrica + gráfico) --------------- */}
         <div className="flex min-w-0 flex-col gap-4">
         {/* 1) Fluxo do mês ---------------------------------------------------- */}
         <Veredicto
-          pergunta="Sobrou ou faltou em abril?"
-          resposta={fmtMoney(Math.round(fluxo.liquido / 1000))}
-          tom={fluxo.liquido >= 0 ? "pos" : "neg"}
-          stats={[
-            { label: "Receita", valor: fmtMoney(Math.round(fluxo.receita / 1000), { compact: false }) },
-            { label: "Custeio", valor: fmtMoney(Math.round(fluxo.custeio / 1000), { compact: false }) },
-            { label: "Investimento", valor: fmtMoney(Math.round(fluxo.invest / 1000), { compact: false }), forte: true },
-          ]}
+          pergunta={`Sobrou ou faltou em ${mesNome(IDX).toLowerCase()}?`}
+          resposta={fmtMoney(Math.round(recon.liquido / 1000))}
+          tom={recon.liquido >= 0 ? "pos" : "neg"}
+          stats={statsFluxo}
+          nota={`${escopo} · o gasto total é a soma dos itens acima.`}
           visual={
             <SparklineTendencia
               data={fluxo12m}
-              destaqueIdx={idxNoUltimo12}
+              destaqueIdx={foco12}
               assinado
               titulo="Fluxo líquido"
-              focoLabel={meses12m[idxNoUltimo12]}
+              focoLabel={meses12m[foco12]}
             />
           }
         />
@@ -612,10 +689,10 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           visual={
             <SparklineTendencia
               data={saldoLeite12m}
-              destaqueIdx={idxNoUltimo12}
+              destaqueIdx={foco12}
               assinado
               titulo="Saldo do leite"
-              focoLabel={meses12m[idxNoUltimo12]}
+              focoLabel={meses12m[foco12]}
             />
           }
         />
@@ -635,9 +712,9 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
             <SparklineTendencia
               data={receitaCafe12m}
               cor="var(--cafe)"
-              destaqueIdx={idxNoUltimo12}
+              destaqueIdx={cafeFocoIdx}
               titulo="Receita do café"
-              focoLabel={meses12m[idxNoUltimo12]}
+              focoLabel={meses12m[cafeFocoIdx]}
             />
           }
         />
@@ -685,20 +762,11 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
             maiorInvest ? (
               <>
                 Maior peso: <strong className="font-medium text-foreground">{maiorInvest.nome}</strong>{" "}
-                <span className="mono-nums">({fmtMoney(maiorInvest.value, { compact: false })})</span>
+                <span className="mono-nums">({fmtMoney(maiorInvest.valorMil, { compact: false })})</span>
               </>
             ) : undefined
           }
-          visual={
-            <StackedBarComposicao
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              itens={R.investimentoBreakdown.map((it: any) => ({
-                nome: it.nome,
-                valorMil: it.value,
-                cor: it.atividade === "leite" ? "var(--leite)" : it.atividade === "cafe" ? "var(--cafe)" : "var(--outros)",
-              }))}
-            />
-          }
+          visual={<StackedBarComposicao itens={investItens} />}
         />
 
         </div>
@@ -723,7 +791,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
 
       {/* Rodapé ------------------------------------------------------------- */}
       <footer className="mt-12 flex flex-wrap items-center justify-between gap-6 border-t border-[color:var(--rule-soft)] pt-6 print:justify-start">
-        <span className="caption">Fechamento gerado a partir de {R.iaScope.lancamentos} do BPO ({R.iaScope.periodo}).</span>
+        <span className="caption">Fechamento gerado a partir de {escopo} ({periodo}).</span>
         <div className={cn("flex gap-3 print:hidden", exportando && "hidden")}>
           <button className="btn-ghost font-sans" onClick={exportarPDF} disabled={exportando}>
             {exportando ? "Gerando PDF…" : "⤓ Baixar PDF"}

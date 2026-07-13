@@ -356,7 +356,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle="Plano de Contas" updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow="Financeiro · Plano de contas" subtitle="Categorias" updatedAt={R.UPDATED_AT} />
 
       <div className="flex items-center gap-3 border-b border-border py-[18px]">
         <div className="flex w-[320px] items-center gap-2 border border-border bg-card px-3 py-[7px]">

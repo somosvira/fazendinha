@@ -44,7 +44,7 @@ function Formatado({ texto }: { texto: string }) {
   );
 }
 
-export function ChatWidget() {
+export function ChatWidget({ oculto = false }: { oculto?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const [expandido, setExpandido] = useState(false);
   const [sessao, setSessao] = useState(novaSessao);
@@ -95,6 +95,10 @@ export function ChatWidget() {
   }
 
   const bubbleBase = "rounded-2xl px-[13px] py-[9px] leading-[1.5]";
+
+  // Na aba de IA já existe um chat em tela cheia; esconder o widget flutuante
+  // evita dois assistentes competindo na mesma tela.
+  if (oculto) return null;
 
   return (
     <>

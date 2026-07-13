@@ -8,6 +8,8 @@ import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Users } from "lucide-react";
 
 type Filtro = "ATIVOS" | "TODOS";
 
@@ -64,6 +66,22 @@ export function FuncionariosTab() {
         <p className="text-sm text-prejuizo">Não foi possível carregar: {erro}</p>
       ) : loading ? (
         <Loader />
+      ) : linhas.length === 0 ? (
+        (setorSel || filtro !== "TODOS") ? (
+          <EmptyState
+            icon={Users}
+            variant="filtro"
+            titulo="Nenhum funcionário neste filtro"
+            descricao={setorSel ? `Nenhum funcionário no setor ${setorSel}. Troque o setor ou veja “Todos”.` : "Nenhum funcionário ativo. Veja “Todos” para incluir os baixados."}
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum funcionário cadastrado"
+            descricao="A equipe é a base da folha e do rateio de mão de obra por setor. Cadastre o primeiro funcionário para registrar ponto e apurar a folha."
+            acao={<RebButton variant="pri" onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</RebButton>}
+          />
+        )
       ) : (
         <RebTable>
           <thead>
@@ -80,11 +98,6 @@ export function FuncionariosTab() {
             </tr>
           </thead>
           <tbody>
-            {linhas.length === 0 && (
-              <tr><td colSpan={9} className="text-sm text-ink-3">
-                {setorSel ? `Nenhum funcionário no setor ${setorSel}.` : "Nenhum funcionário. Use “+ Novo funcionário”."}
-              </td></tr>
-            )}
             {linhas.map((fn) => (
               <tr key={fn.id}>
                 <td><RebAnm>{fn.nome}</RebAnm></td>

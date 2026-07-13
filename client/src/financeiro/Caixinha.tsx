@@ -29,6 +29,9 @@ import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebMain, RebAnm, RebPill, RebEmpty } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { Wallet } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -38,6 +41,26 @@ import {
 } from "@/components/ui/select";
 
 const MES_ATUAL = HOJE.slice(0, 7); // "2026-05"
+
+// "2026-05" → "mai/2026" (pt-BR; o <input type=month> nativo mostrava em inglês)
+const MESES_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const mesBR = (mes: string) => {
+  const [y, m] = mes.split("-");
+  const idx = Number(m) - 1;
+  return idx >= 0 && idx < 12 ? `${MESES_ABBR[idx]}/${y}` : mes;
+};
+
+// Últimos 18 meses até o atual, do mais recente ao mais antigo, como "YYYY-MM".
+const OPCOES_MES = (() => {
+  const [ya, ma] = MES_ATUAL.split("-").map(Number);
+  const out: { value: string; label: string }[] = [];
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(ya, ma - 1 - i, 1);
+    const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ value: v, label: mesBR(v) });
+  }
+  return out;
+})();
 
 const TIPO_LABEL: Record<TipoMovimentoCaixinha, string> = { ENTRADA: "Entrada", SAIDA: "Saída" };
 
@@ -51,7 +74,10 @@ const KPI_VAL = "mt-1.5 font-serif text-[26px] font-medium leading-none";
 // "YYYY-MM-DD" → "dd/mm/aaaa" sem passar por Date (evita shift de fuso).
 const dataBR = (iso: string) => iso.split("-").reverse().join("/");
 
-export function Caixinha() {
+/** `embedded`: rende sem a casca `RebMain` e sem o `RebHeader` próprio — usado
+ *  quando a Caixinha é uma sub-aba dentro de Gastos (o título "Gastos" + a aba
+ *  "Caixinha" já dizem onde se está). Sozinha (rota /caixinha), mantém a casca. */
+export function Caixinha({ embedded = false }: { embedded?: boolean } = {}) {
   const { data: caixinhas, loading, erro, recarregar } = useCaixinhas();
   const [caixinhaId, setCaixinhaId] = useState<number | null>(null);
   const [formCaixinha, setFormCaixinha] = useState(false);
@@ -59,9 +85,9 @@ export function Caixinha() {
   const ativa: CaixinhaDTO | null =
     caixinhas.find((c) => c.id === caixinhaId) ?? caixinhas[0] ?? null;
 
-  return (
-    <RebMain>
-      <RebHeader eyebrow="Financeiro" title="Caixinha" />
+  const conteudo = (
+    <>
+      {!embedded && <RebHeader eyebrow="Financeiro" title="Caixinha" />}
 
       {erro ? (
         <p className="text-sm text-prejuizo">Erro ao carregar caixinhas: {erro}</p>
@@ -87,8 +113,10 @@ export function Caixinha() {
           onSalvo={() => { setFormCaixinha(false); recarregar(); }}
         />
       )}
-    </RebMain>
+    </>
   );
+
+  return embedded ? conteudo : <RebMain>{conteudo}</RebMain>;
 }
 
 function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
@@ -164,7 +192,7 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
 
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <RebField label="Mês" style={{ margin: 0 }}>
-          <input type="month" value={mes} max={MES_ATUAL} onChange={(e) => setMes(e.target.value || MES_ATUAL)} />
+          <ToolbarSelect value={mes} onChange={(v) => setMes(v || MES_ATUAL)} options={OPCOES_MES} ariaLabel="Mês" />
         </RebField>
         <div style={{ flex: 1 }} />
         <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar</RebButton>
@@ -175,7 +203,12 @@ function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {
       ) : loading ? (
         <Loader />
       ) : movimentos.length === 0 ? (
-        <RebEmpty>Nenhum movimento neste mês.</RebEmpty>
+        <EmptyState
+          icon={Wallet}
+          titulo="Nenhum movimento neste mês"
+          descricao="A caixinha é o dinheiro físico da fazenda. Registre entradas e saídas em espécie para acompanhar o saldo e conciliar com os lançamentos."
+          acao={<RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>}
+        />
       ) : (
         <RebTable>
           <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th style={{ textAlign: "right" }}>Valor</th><th /></tr></thead>

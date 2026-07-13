@@ -19,56 +19,53 @@ const proprietario: User = {
   flags: [],
 };
 
-const secretaria: User = {
-  id: "u2",
-  nome: "Joana Silva",
-  email: "joana@riovono.com",
-  inicial: "J",
-  papel: "secretaria",
-  status: "ativo",
-  ultimoAcesso: "hoje",
-  abas: [],
-  flags: [],
-};
-
 function baseProps() {
   return {
     user: proprietario,
-    allUsers: [proprietario, secretaria],
-    onSwitchUser: vi.fn(),
     mobileOpen: false,
     onMobileToggle: vi.fn(),
     onAbrirBusca: vi.fn(),
+    onPreferencias: vi.fn(),
     onSair: vi.fn(),
-    propAtiva: null,
-    onTrocarProp: vi.fn(),
   };
 }
 
 describe("Header", () => {
-  it("abre o menu do usuário e troca de perfil ao clicar num item", async () => {
+  it("abre o menu de conta (ações da conta, não troca de usuário)", async () => {
     const props = baseProps();
     render(h(Header, props));
 
-    // trigger renders the current user's first name
-    // Radix DropdownMenuTrigger opens on pointerdown (not click) — jsdom needs
-    // the pointer event fired explicitly to trigger the open state.
-    const trigger = screen.getByText("Marco Antônio".split(" ")[0]);
+    // Radix DropdownMenuTrigger abre no pointerdown (não click) — jsdom precisa
+    // do pointer event explícito para disparar o estado aberto.
+    const trigger = screen.getByLabelText("Menu da conta");
     fireEvent.pointerDown(trigger, { button: 0 });
 
-    // menu portalled: item for the other user appears
-    const item = await screen.findByText("Joana Silva");
-    fireEvent.click(item);
-
-    expect(props.onSwitchUser).toHaveBeenCalledWith("u2");
+    // o menu traz AÇÕES da conta — nunca outro usuário
+    expect(await screen.findByText("Meu perfil")).toBeTruthy();
+    expect(screen.getByText("Central de ajuda")).toBeTruthy();
+    expect(screen.getByText("Sair")).toBeTruthy();
   });
 
-  it("não renderiza dropdown de usuário quando só há 1 usuário e sem onSair", () => {
-    const props = { ...baseProps(), allUsers: [proprietario], onSair: undefined };
+  it("chama onSair ao clicar em Sair", async () => {
+    const props = baseProps();
     render(h(Header, props));
-    // chip renders, but has no aria-haspopup (no menu)
-    const chip = screen.getByText("Marco Antônio".split(" ")[0]).closest("button, div");
-    expect(chip?.getAttribute("aria-haspopup")).toBeNull();
+    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
+    fireEvent.click(await screen.findByText("Sair"));
+    expect(props.onSair).toHaveBeenCalledTimes(1);
+  });
+
+  it("chama onPreferencias ao clicar em Preferências", async () => {
+    const props = baseProps();
+    render(h(Header, props));
+    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
+    fireEvent.click(await screen.findByText("Preferências"));
+    expect(props.onPreferencias).toHaveBeenCalledTimes(1);
+  });
+
+  it("NÃO renderiza mais o seletor de fazenda no header (desceu para a sidebar)", () => {
+    const props = baseProps();
+    render(h(Header, props));
+    expect(screen.queryByRole("button", { name: /Propriedade \/ sítio/i })).toBeNull();
   });
 
   it("chama onAbrirBusca ao clicar no gatilho de busca", () => {
@@ -83,13 +80,5 @@ describe("Header", () => {
     render(h(Header, props));
     fireEvent.click(screen.getByLabelText("Abrir menu"));
     expect(props.onMobileToggle).toHaveBeenCalledWith(true);
-  });
-
-  it("mostra o seletor de propriedade/sítio no header", () => {
-    const props = baseProps();
-    render(h(Header, props));
-    // seletor unificado (antes eram 2: fazenda display-only + sítio no corpo)
-    const farmTrigger = screen.getByRole("button", { name: /Propriedade \/ sítio/i });
-    expect(farmTrigger.textContent).toContain("Rio Novo");
   });
 });
