@@ -100,6 +100,14 @@ R.saldoOpLeite = R.receitaLeite.map(
   (r: number, i: number) => r - R.custeioLeitePuro[i],
 );
 
+/* Totais lossless por mês (paridade com o backend buildDashboard). O mock não tem
+ * lançamento a lançamento, então derivamos de forma que RECONCILIE por construção:
+ * creditoTotal (aprox. = receita conhecida) e debitoTotal = credito − totalGeral.
+ * Assim `creditoTotal − debitoTotal === totalGeral`. Números reais/vivos vêm do
+ * backend; aqui é só referência de forma. */
+R.creditoTotal = R.receitaLeite.map((r: number, i: number) => r + R.receitaCafe[i]);
+R.debitoTotal = R.creditoTotal.map((c: number, i: number) => c - R.totalGeral[i]);
+
 R.idx2024H2 = [0,1,2,3,4,5];
 R.idx2025 = [6,7,8,9,10,11,12,13,14,15,16,17];
 R.idx2026YTD = [18,19,20,21,22];
@@ -223,6 +231,9 @@ R.promptsSugeridos = [
   "Onde está cada real do investimento de R$ 4,9 mi?",
   "Bezerro passou mal — o que dou pra ele?",
 ];
+
+// Contagem numérica (paridade com o payload real; o Relatório usa este número).
+R.nLancamentos = 8412;
 
 R.iaScope = {
   periodo: "Jul/2024 — 04/Mai/2026",
