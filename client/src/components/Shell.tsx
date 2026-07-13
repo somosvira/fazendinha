@@ -5,9 +5,9 @@ import { DateRangePicker, DateRange } from "./DateRangePicker";
 
 export type Tab =
   | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "cadastros"
-  | "reb-dashboard" | "reb-animal" | "reb-reproducao" | "reb-sanidade" | "reb-nutricao" | "reb-producao" | "reb-estoque" | "reb-custo" | "reb-ia"
-  | "pla-dashboard" | "pla-talhao" | "pla-fenologia" | "pla-fitossanidade" | "pla-nutricao" | "pla-colheita" | "pla-planejamento" | "pla-estoque" | "pla-custo" | "pla-ia"
-  | "cor-dashboard" | "cor-lote" | "cor-pesagem" | "cor-pasto" | "cor-sanidade" | "cor-nutricao" | "cor-comercial" | "cor-custo" | "cor-ia"
+  | "reb-dashboard" | "reb-animal" | "reb-reproducao" | "reb-sanidade" | "reb-nutricao" | "reb-producao" | "reb-estoque" | "reb-custo"
+  | "pla-dashboard" | "pla-talhao" | "pla-fenologia" | "pla-fitossanidade" | "pla-nutricao" | "pla-colheita" | "pla-planejamento" | "pla-estoque" | "pla-custo"
+  | "cor-dashboard" | "cor-lote" | "cor-pesagem" | "cor-pasto" | "cor-sanidade" | "cor-nutricao" | "cor-comercial" | "cor-custo"
   | "eqp-funcionarios" | "eqp-ponto" | "eqp-folha"
   | "mil-safras" | "mil-custos" | "mil-producao" | "mil-silos" | "mil-custo";
 

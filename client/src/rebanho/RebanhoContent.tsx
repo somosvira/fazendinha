@@ -10,10 +10,9 @@ import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
-import { IaView } from "./components/IaView";
 import type { Animal } from "./types";
 
-export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "ia";
+export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo";
 
 export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
@@ -70,9 +69,7 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
                     ? <EstoqueTab />
                     : aba === "custo"
                       ? <CustoProducaoTab />
-                      : aba === "dashboard"
-                        ? <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} />
-                        : <IaView />}
+                      : <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} />}
       {form && <AnimalForm modo={form.modo} animal={form.animal} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
         <EventoForm

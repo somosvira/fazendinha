@@ -8,13 +8,12 @@ import { ColheitaTab } from "./components/ColheitaTab";
 import { PlanejamentoTab } from "./components/PlanejamentoTab";
 import { EstoqueTab } from "./components/EstoqueTab";
 import { CustoTab } from "./components/CustoTab";
-import { IaView } from "./components/IaView";
 import { DashboardView } from "./components/DashboardView";
 import { TalhaoForm } from "./components/TalhaoForm";
 import { OperacaoForm } from "./components/OperacaoForm";
 import type { Talhao } from "./types";
 
-export type PlaSub = "dashboard" | "talhao" | "fenologia" | "fitossanidade" | "nutricao" | "colheita" | "planejamento" | "estoque" | "custo" | "ia";
+export type PlaSub = "dashboard" | "talhao" | "fenologia" | "fitossanidade" | "nutricao" | "colheita" | "planejamento" | "estoque" | "custo";
 
 /* Espelho do RebanhoContent: roteia entre as sub-abas do módulo Plantio
  * e gerencia os modais (novo talhão, operação inline). Quando o usuário
@@ -72,9 +71,7 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
                       ? <EstoqueTab />
                       : aba === "custo"
                         ? <CustoTab />
-                        : aba === "dashboard"
-                          ? <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />
-                          : <IaView />}
+                        : <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />}
       {form && <TalhaoForm modo={form.modo} talhao={form.talhao} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
         <OperacaoForm

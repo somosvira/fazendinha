@@ -87,7 +87,6 @@ const REB: Record<string, RebSub> = {
   "reb-producao": "producao",
   "reb-estoque": "estoque",
   "reb-custo": "custo",
-  "reb-ia": "ia",
 };
 
 const PLA: Record<string, PlaSub> = {
@@ -100,7 +99,6 @@ const PLA: Record<string, PlaSub> = {
   "pla-planejamento": "planejamento",
   "pla-estoque": "estoque",
   "pla-custo": "custo",
-  "pla-ia": "ia",
 };
 
 const COR: Record<string, CorSub> = {
@@ -112,7 +110,6 @@ const COR: Record<string, CorSub> = {
   "cor-nutricao": "nutricao",
   "cor-comercial": "comercial",
   "cor-custo": "custo",
-  "cor-ia": "ia",
 };
 
 const EQP: Record<string, EqpSub> = {
