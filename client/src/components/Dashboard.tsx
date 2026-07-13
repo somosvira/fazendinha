@@ -13,12 +13,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchDashboard, reclassificarCategoria, fetchLancamentos, type LancamentoDrill } from "../api";
 import { getHoje } from "../lib/hoje";
-import { formatRangeLabel, type DateRange } from "./DateRangePicker";
+import { type DateRange } from "./DateRangePicker";
 import { MonthRangePicker } from "./MonthRangePicker";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
-import { ContextStrip } from "./ContextStrip";
 import { DashboardSkeleton } from "./Loading";
 import { DashSectionHeader } from "./report/primitives";
 import { cn } from "@/lib/utils";
@@ -296,7 +295,7 @@ function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
         }
       />
 
-      <div className="grid grid-cols-[300px_1fr] items-start gap-10">
+      <div className="grid grid-cols-[300px_1fr] items-start gap-10 max-[1100px]:grid-cols-1 max-[1100px]:gap-6">
         <div className="flex flex-col items-center gap-3.5 pt-1.5">
           <Donut segments={segments} total={total} onSliceClick={toggle} hovered={hovered} setHovered={setHovered} />
           <div className="flex flex-col items-center gap-1">
@@ -310,7 +309,11 @@ function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
           </div>
         </div>
 
-        <div className="border border-border bg-card">
+        {/* Tabela larga (5 col fixas ≈ 250px + nome). Em telas estreitas rola
+            na horizontal dentro do próprio container (min-w garante a forma das
+            colunas) em vez de estourar a largura da página. */}
+        <div className="min-w-0 overflow-x-auto border border-border bg-card">
+          <div className="min-w-[560px]">
           <div className="grid grid-cols-[1fr_120px_64px_40px_26px] gap-2 border-b border-border bg-[var(--bg-card-2)] px-4 py-[11px] text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">
             <span>Categoria</span>
             <span className="text-right">Valor</span>
@@ -353,6 +356,7 @@ function GastoPorCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       </div>
@@ -603,17 +607,20 @@ function KpiCockpit({ R }: { R: R }) {
   ];
 
   return (
-    <div className="border-b border-border pt-[26px]">
-      <div className="mb-[22px]">
-        <span className="eyebrow">Visão operacional</span>
-        <h1 className="mt-1.5 mb-0 font-serif text-[42px] font-medium leading-none tracking-[-0.02em] text-foreground">
-          Dashboard
-        </h1>
-      </div>
-      <div className="grid grid-cols-6 border-t border-border">
+    <div className="pt-[26px]">
+      {/* Grid com gap de 1px sobre fundo régua: as próprias frestas viram as
+          linhas divisórias. Robusto a qualquer nº de colunas / quebra de linha
+          (mesmo padrão do bloco Fôlego de caixa). 2 col (mobile) → 3 → 5. */}
+      <div className="grid grid-cols-2 gap-px border-y border-border bg-[color:var(--rule-soft)] sm:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k, i) => (
           <div
-            className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] pt-[18px] pr-5 pb-5 last:border-r-0 last:pr-0"
+            className={cn(
+              "flex flex-col gap-[5px] bg-background pt-[18px] pr-5 pb-5",
+              // 5 KPIs numa grade de 2/3 col deixam a última célula órfã;
+              // o último KPI ocupa a sobra da linha (2 col no mobile e no sm;
+              // no lg cabem os 5 lado a lado, sem sobra).
+              i === kpis.length - 1 && "col-span-2 sm:col-span-2 lg:col-span-1",
+            )}
             key={i}
           >
             <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">{k.lbl}</span>
@@ -1062,7 +1069,11 @@ function FolegoCaixa({ R }: { R: R }) {
   const xC = (i: number) => padL + (i / (caixas.length - 1)) * innerW;
   const linePts = caixas.map((v, i) => `${xC(i)},${yC(v)}`).join(" ");
   const burnInv = burnTotal - burnOp;
-  const dias = f.folegoDias ?? Math.round((f.caixa / (burnTotal || 1)) * 30);
+  // Fôlego em dias. Sem queima relevante no período (burnTotal ≈ 0) a divisão
+  // explode (ex.: caixa/1*30 ≈ 9 mi de "dias"); nesse caso o caixa dura
+  // indefinidamente e mostramos "—" em vez de um número absurdo.
+  const semQueima = burnTotal < 1;
+  const dias = f.folegoDias ?? (semQueima ? null : Math.round((f.caixa / burnTotal) * 30));
   const capitalConsumido = burnTotal * (fluxo.length || 6);
   const caixaFimPeriodo = fluxo.length ? fluxo[fluxo.length - 1].caixaFim : f.caixa;
   const baseMeses = f.baseMeses ?? 6;
@@ -1083,9 +1094,18 @@ function FolegoCaixa({ R }: { R: R }) {
             <span className="text-[22px] tracking-normal text-ink-3"> /mês</span>
           </div>
           <div className="text-[14px] leading-[1.5] text-ink-2 [&_strong]:text-foreground">
-            O caixa de <strong className="mono-nums">{fmtBRL(f.caixa)}</strong> cobre só{" "}
-            <strong>~{dias} dias</strong> da queima. O negócio roda por <strong>aporte do proprietário</strong>, não por
-            geração própria.
+            {dias == null ? (
+              <>
+                O caixa de <strong className="mono-nums">{fmtBRL(f.caixa)}</strong> não tem queima relevante no período
+                selecionado — sem aporte necessário para manter o ritmo.
+              </>
+            ) : (
+              <>
+                O caixa de <strong className="mono-nums">{fmtBRL(f.caixa)}</strong> cobre só{" "}
+                <strong>~{dias} dias</strong> da queima. O negócio roda por <strong>aporte do proprietário</strong>, não
+                por geração própria.
+              </>
+            )}
           </div>
           <div className="mt-1.5">
             <div className="flex" style={{ height: 12, border: "1px solid var(--rule)" }}>
@@ -1253,19 +1273,11 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <div className="mb-4 mt-1 flex flex-wrap items-center gap-3">
+      <div className="mb-6 mt-1 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Período</span>
         <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
         <span className="text-[12px] italic text-ink-3">mensal · filtra os KPIs por data de liquidação</span>
       </div>
-      <ContextStrip
-        items={[
-          { label: "Período", value: formatRangeLabel(range) },
-          { label: "Atividade", value: "Todas (leite, café, outros)" },
-          { label: "Categoria", value: "Todas" },
-          { label: "Fonte", value: "—" },
-        ]}
-      />
       <KpiCockpit R={data} />
       <FolegoCaixa R={data} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
