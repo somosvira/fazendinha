@@ -179,8 +179,8 @@ a { color: inherit; }
   padding: 0 var(--gutter);
 }
 .shell-wide {
-  max-width: 1520px;
-  margin: 0 auto;
+  /* sem max-width/centralização: o conteúdo preenche a largura do .app-main
+     e encosta na sidebar; só o gutter separa da borda. */
   padding: 0 var(--gutter);
 }
 
