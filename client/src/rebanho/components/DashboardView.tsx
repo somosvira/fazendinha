@@ -16,7 +16,7 @@ export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
   const pctLactacao = k.rebanhoAtivo > 0 ? Math.round((k.emLactacao / k.rebanhoAtivo) * 100) : 0;
   return (
     <RebMain>
-      <RebHeader eyebrow={`Sítio São Francisco · ${k.rebanhoAtivo} animais`} title="Dashboard" />
+      <RebHeader eyebrow={`Rebanho · ${k.rebanhoAtivo} ${k.rebanhoAtivo === 1 ? "animal" : "animais"}`} title="Dashboard" />
       <RebKpiStrip cols={6}>
         <RebKpi lab="Rebanho ativo" val={k.rebanhoAtivo} d="Total da fazenda" />
         <RebKpi lab="Em lactação" val={k.emLactacao} sufixo="vacas" d={`${pctLactacao}% do rebanho`} />
