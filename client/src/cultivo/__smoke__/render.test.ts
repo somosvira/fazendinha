@@ -7,7 +7,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { CultivoContent, type MilSub } from "../CultivoContent";
 
-const ABAS: MilSub[] = ["safras", "custos", "producao", "silos", "custo"];
+const ABAS: MilSub[] = ["dashboard", "safras", "custos", "producao", "silos", "custo"];
 
 describe("cultivo render smoke", () => {
   for (const aba of ABAS) {
