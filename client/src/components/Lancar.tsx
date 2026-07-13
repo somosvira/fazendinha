@@ -1253,7 +1253,7 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle={tipo === "saida" ? "Lançar gasto (saída)" : "Lançar entrada (receita)"} updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow={tipo === "saida" ? "Financeiro · Nova saída" : "Financeiro · Nova entrada"} subtitle="Lançar" updatedAt={R.UPDATED_AT} />
 
       {/* seletor Entrada / Saída */}
       <div className="mb-2 mt-[22px] grid grid-cols-2 gap-3.5 max-[1100px]:grid-cols-1">
