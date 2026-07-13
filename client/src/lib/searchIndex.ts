@@ -63,7 +63,6 @@ export const COMANDOS: Comando[] = [
   { id: "reb-producao", tab: "reb-producao", label: "Produção", grupo: "Rebanho", sinonimos: ["leite", "litros", "ordenha", "tanque", "controle leiteiro"] },
   { id: "reb-estoque", tab: "reb-estoque", label: "Estoque", grupo: "Rebanho", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto"] },
   { id: "reb-custo", tab: "reb-custo", label: "Custo", grupo: "Rebanho", sinonimos: ["custeio", "custo vaca/dia", "rentabilidade", "margem", "despesa", "litro"] },
-  { id: "reb-ia", tab: "reb-ia", label: "IA do rebanho", grupo: "Rebanho", sinonimos: ["ia", "assistente", "inteligência artificial", "perguntar", "chat"] },
 
   // — Plantio · café (MODULOS[plantio].subs) —
   { id: "pla-dashboard", tab: "pla-dashboard", label: "Painel", grupo: "Plantio", sinonimos: ["plantio", "lavoura", "café", "visão geral", "início"], descricao: "Painel da lavoura de café" },
@@ -75,7 +74,6 @@ export const COMANDOS: Comando[] = [
   { id: "pla-planejamento", tab: "pla-planejamento", label: "Planejamento", grupo: "Plantio", sinonimos: ["calendário", "cronograma", "agenda", "operações", "safra"] },
   { id: "pla-estoque", tab: "pla-estoque", label: "Estoque", grupo: "Plantio", sinonimos: ["insumo", "insumos", "saldo", "defensivo", "fertilizante", "almoxarifado"] },
   { id: "pla-custo", tab: "pla-custo", label: "Custo", grupo: "Plantio", sinonimos: ["custeio", "custo por saca", "rentabilidade", "margem", "despesa"] },
-  { id: "pla-ia", tab: "pla-ia", label: "IA da lavoura", grupo: "Plantio", sinonimos: ["ia", "assistente", "inteligência artificial", "perguntar", "chat"] },
 
   // — Gado de corte (MODULOS[corte].subs — módulo "em breve", mas indexado) —
   { id: "cor-dashboard", tab: "cor-dashboard", label: "Painel", grupo: "Gado de corte", sinonimos: ["corte", "plantel", "boi", "engorda", "visão geral", "início"], descricao: "Painel do gado de corte" },
@@ -86,7 +84,6 @@ export const COMANDOS: Comando[] = [
   { id: "cor-nutricao", tab: "cor-nutricao", label: "Nutrição", grupo: "Gado de corte", sinonimos: ["dieta", "ração", "suplemento", "sal mineral", "cocho", "confinamento"] },
   { id: "cor-comercial", tab: "cor-comercial", label: "Comercial", grupo: "Gado de corte", sinonimos: ["venda", "vendas", "abate", "frigorífico", "preço", "arroba", "negócio"] },
   { id: "cor-custo", tab: "cor-custo", label: "Custo", grupo: "Gado de corte", sinonimos: ["custeio", "custo por arroba", "rentabilidade", "margem", "despesa"] },
-  { id: "cor-ia", tab: "cor-ia", label: "IA do plantel", grupo: "Gado de corte", sinonimos: ["ia", "assistente", "inteligência artificial", "perguntar", "chat"] },
 
   // — Milho (MODULOS[cultivo].subs) —
   { id: "mil-safras", tab: "mil-safras", label: "Safras", grupo: "Milho", sinonimos: ["milho", "safra", "safrinha", "cultivo", "lavoura de milho", "custo de safra"], descricao: "Safras de milho — custo de safra" },

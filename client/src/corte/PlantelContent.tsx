@@ -7,7 +7,6 @@ import { SanidadeTab } from "./components/SanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ComercialTab } from "./components/ComercialTab";
 import { CustoTab } from "./components/CustoTab";
-import { IaView } from "./components/IaView";
 import { DashboardView } from "./components/DashboardView";
 import { LoteForm } from "./components/LoteForm";
 import { PesagemForm } from "./components/PesagemForm";
@@ -16,7 +15,7 @@ import { SuplementacaoForm } from "./components/SuplementacaoForm";
 import { OperacaoComercialForm } from "./components/OperacaoComercialForm";
 import type { Lote } from "./types";
 
-export type CorSub = "dashboard" | "lote" | "pesagem" | "pasto" | "sanidade" | "nutricao" | "comercial" | "custo" | "ia";
+export type CorSub = "dashboard" | "lote" | "pesagem" | "pasto" | "sanidade" | "nutricao" | "comercial" | "custo";
 
 /* Espelho do PlantioContent: roteia entre as 9 sub-abas do módulo Corte e
  * gerencia os modais (novo lote, editar/baixa, pesagem, manejo/suplementação/
@@ -78,9 +77,7 @@ export function PlantelContent({ aba, onNavCor, abrirId, onAbriuEntidade }: { ab
                     ? <ComercialTab key={recarga} onRegistrar={(lote) => setEventoDe({ tipo: "comercial", lote })} />
                     : aba === "custo"
                       ? <CustoTab />
-                      : aba === "dashboard"
-                        ? <DashboardView onNav={(t) => onNavCor?.(t as CorSub)} />
-                        : <IaView />}
+                      : <DashboardView onNav={(t) => onNavCor?.(t as CorSub)} />}
       {form && <LoteForm modo={form.modo} lote={form.lote} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {pesagemDe && (
         <PesagemForm
