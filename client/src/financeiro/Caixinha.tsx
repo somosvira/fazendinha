@@ -74,7 +74,10 @@ const KPI_VAL = "mt-1.5 font-serif text-[26px] font-medium leading-none";
 // "YYYY-MM-DD" → "dd/mm/aaaa" sem passar por Date (evita shift de fuso).
 const dataBR = (iso: string) => iso.split("-").reverse().join("/");
 
-export function Caixinha() {
+/** `embedded`: rende sem a casca `RebMain` e sem o `RebHeader` próprio — usado
+ *  quando a Caixinha é uma sub-aba dentro de Gastos (o título "Gastos" + a aba
+ *  "Caixinha" já dizem onde se está). Sozinha (rota /caixinha), mantém a casca. */
+export function Caixinha({ embedded = false }: { embedded?: boolean } = {}) {
   const { data: caixinhas, loading, erro, recarregar } = useCaixinhas();
   const [caixinhaId, setCaixinhaId] = useState<number | null>(null);
   const [formCaixinha, setFormCaixinha] = useState(false);
@@ -82,9 +85,9 @@ export function Caixinha() {
   const ativa: CaixinhaDTO | null =
     caixinhas.find((c) => c.id === caixinhaId) ?? caixinhas[0] ?? null;
 
-  return (
-    <RebMain>
-      <RebHeader eyebrow="Financeiro" title="Caixinha" />
+  const conteudo = (
+    <>
+      {!embedded && <RebHeader eyebrow="Financeiro" title="Caixinha" />}
 
       {erro ? (
         <p className="text-sm text-prejuizo">Erro ao carregar caixinhas: {erro}</p>
@@ -110,8 +113,10 @@ export function Caixinha() {
           onSalvo={() => { setFormCaixinha(false); recarregar(); }}
         />
       )}
-    </RebMain>
+    </>
   );
+
+  return embedded ? conteudo : <RebMain>{conteudo}</RebMain>;
 }
 
 function CaixinhaDetalhe({ caixinha, caixinhas, onTrocar, onSaldoMudou }: {

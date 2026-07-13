@@ -1,13 +1,21 @@
 /* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
+ *
+ * Layout novo (handoff "Shell - sidebar + header"): a marca Terrano e o seletor
+ * de fazenda/sítio vivem no TOPO da sidebar (não mais no header). A navegação em
+ * dois grupos — "Gestão" (financeiro) e "Atividades" (módulos operacionais, em
+ * acordeão) — mais um rodapé "Configurações" ancorado embaixo que agrupa os itens
+ * raros (Cadastros, Categorias, Caixinha, Configurações, Acessos).
+ *
  * DESKTOP: trilho fixo sempre visível; entre 901–1100px vira ícone-only e expande
- * ao passar o mouse/focar (hover/focus-within), reexpressando em Tailwind o que
- * antes era CSS puro em `.rb-side` (rebanho.css). MOBILE (<=900px): drawer via
+ * ao passar o mouse/focar (hover/focus-within). MOBILE (<=900px): drawer via
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
 import { useEffect, useState } from "react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { TerranoSymbol } from "./TerranoLogo";
+import { SidebarFarmPicker } from "./FarmPicker";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -164,43 +172,55 @@ function moduloOfTab(t: Tab): ModuloId | null {
 // escritos por extenso (sem `${...}` template), senão a CSS correspondente
 // nunca é gerada (utilitário "desconhecido", descartado silenciosamente).
 const RAIL_ICON_BTN =
-  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100";
-// item/módulo ativo dentro da faixa colapsada: troca a borda-esquerda por um
-// realce "inset" (não há espaço pra borda com o ícone centralizado).
+  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100";
+// item/módulo ativo dentro da faixa colapsada: mantém só o realce de fundo (sem
+// barrinha ::before, que fica escondida na largura estreita).
 const RAIL_ACTIVE =
-  "min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:bg-[#1a201c] min-[901px]:max-[1100px]:shadow-[inset_3px_0_0_var(--leite)]";
+  "min-[901px]:max-[1100px]:before:hidden min-[901px]:max-[1100px]:bg-[rgba(232,220,196,0.10)]";
 // hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
 const RAIL_LABEL =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline";
-const RAIL_GROUP =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex";
+const RAIL_GROUP =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block";
 const RAIL_BLOCK =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block";
 const RAIL_INLINE_FLEX =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline-flex min-[901px]:max-[1100px]:group-focus-within:inline-flex";
+// chevron `›` dos itens de clique único — some na faixa colapsada.
+const RAIL_HIDE =
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline";
 
-function Item({ id, label, current, onNav, nested }: { id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean }) {
-  const isOn = current === id;
+/** Item de navegação (clique único). `chevron` mostra o `›` do protótipo nos
+ *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
+ *  quando a aba atual é uma das sub-abas dobradas nele (ex.: "Gastos" fica ativo
+ *  em `caixinha`; "Configurações" em `cadastros`/`plano`/`acessos`). */
+function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
+  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
+}) {
+  const isOn = current === id || (activeWhen?.includes(current) ?? false);
   return (
     <button
       type="button"
       onClick={() => onNav(id)}
       title={label}
       aria-label={label}
+      aria-current={isOn ? "page" : undefined}
       className={cn(
-        "relative flex w-full cursor-pointer items-center gap-[11px] border-l-[3px] border-l-transparent bg-transparent px-5 py-[9px] text-left font-sans text-sm text-[var(--mast-ink-2)]",
-        "[&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:flex-none [&_svg]:opacity-85",
-        "hover:bg-[#161b17] hover:text-mast-ink",
+        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
+        "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
+        "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
-        nested && "px-5 py-[7px] pl-3.5 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
-        isOn && "border-l-[var(--leite)] bg-[#171d18] font-semibold text-mast-ink [&_svg]:text-[var(--leite)] [&_svg]:opacity-100",
-        isOn && !nested && RAIL_ACTIVE,
-        // sub-item ativo: some com o fundo/borda e ganha uma barrinha à esquerda (::before)
-        isOn && nested && "border-l-transparent bg-transparent before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-0.5 before:rounded-[0_2px_2px_0] before:bg-leite",
+        nested && "py-[7px] pl-8 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
+        // item ativo: fundo sutil + barrinha brass à esquerda (::before)
+        isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
+        isOn && RAIL_ACTIVE,
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>{ICON[id]}</svg>
-      <span className={RAIL_LABEL}>{label}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>
+      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
+      {chevron && (
+        <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
+      )}
     </button>
   );
 }
@@ -209,8 +229,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2.5 px-5 pb-2 pt-[18px] font-serif text-sm font-medium italic text-[#8a8470]",
-        "after:h-px after:flex-1 after:bg-gradient-to-r after:from-[#23291f] after:to-transparent",
+        "px-2.5 pb-1.5 pt-1 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--side-mute,#8B8672)]",
         RAIL_GROUP,
       )}
     >
@@ -229,20 +248,22 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
       disabled={m.disabled}
       title={m.disabled ? `${m.label} — em breve` : m.label}
       className={cn(
-        "flex w-full items-center gap-[11px] border-l-[3px] border-l-transparent bg-transparent px-5 py-[9px] text-left font-sans text-sm text-[var(--mast-ink-2)]",
-        "[&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:flex-none [&_svg]:opacity-85",
+        "relative flex w-full items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
+        "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
         RAIL_ICON_BTN,
-        m.disabled ? "cursor-not-allowed text-[#6b6b5e] opacity-65 [&_svg]:opacity-60" : "cursor-pointer hover:bg-[#161b17] hover:text-mast-ink",
-        isActive && !m.disabled && "font-semibold text-mast-ink [&_svg]:text-[var(--leite)] [&_svg]:opacity-100",
+        m.disabled ? "cursor-not-allowed text-[var(--side-mute,#8B8672)] opacity-65 [&_svg]:opacity-60" : "cursor-pointer hover:bg-[rgba(232,220,196,0.06)]",
+        isActive && !m.disabled && "font-semibold [&_svg]:opacity-100",
+        // módulo ativo (alguma sub-aba aberta): barrinha brass à esquerda
+        isActive && !m.disabled && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite min-[901px]:max-[1100px]:before:hidden",
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>{m.icon}</svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>{m.icon}</svg>
       <span className={cn("flex-1", RAIL_LABEL)}>{m.label}</span>
       {m.disabled ? (
         <span
           aria-label="em breve"
           className={cn(
-            "inline-flex items-center gap-[5px] rounded-[4px] border border-[#2a3025] bg-[#1c211d] px-[7px] py-[1px] font-serif text-[11px] italic text-[#8a8470]",
+            "inline-flex items-center gap-[5px] rounded-[4px] border border-[var(--side-hair,rgba(232,220,196,0.1))] bg-[rgba(232,220,196,0.05)] px-[7px] py-[1px] font-serif text-[11px] italic text-[var(--side-mute,#8B8672)]",
             RAIL_INLINE_FLEX,
           )}
         >
@@ -256,7 +277,7 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
         <svg
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
           className={cn(
-            "!h-[11px] !w-[11px] !opacity-55 transition-transform duration-150 ease-in-out",
+            "!h-[11px] !w-[11px] flex-none !opacity-55 transition-transform duration-150 ease-in-out",
             isOpen && "rotate-90",
             RAIL_BLOCK,
           )}
@@ -268,12 +289,17 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
   );
 }
 
-export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, mobileOpen, onMobileToggle }: {
+export function AppSidebar({
+  current, onNav, financeiro, isAdmin, podeVerFolha,
+  mobileOpen, onMobileToggle, propAtiva, onTrocarProp,
+}: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
   podeVerFolha: boolean;
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
+  // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
+  propAtiva: number | null; onTrocarProp: (id: number | null) => void;
 }) {
   // Módulos exibidos = MODULOS - equipe se o user não tem verSalarios.
   const modulosVisiveis = podeVerFolha ? MODULOS : MODULOS.filter((m) => m.id !== "equipe");
@@ -312,43 +338,75 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
     return () => mq.removeEventListener("change", onChange);
   }, [mobileOpen, onMobileToggle]);
 
-  // relabel financeiro: "IA" -> "IA financeira"
-  const fin = financeiro.map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
+  // relabel financeiro: "IA" -> "IA financeira". "Caixinha" dobrou dentro de
+  // Gastos (sub-aba) e "Categorias" dentro de Configurações — nenhuma das duas
+  // aparece como item solto na sidebar.
+  const DOBRADAS = new Set<Tab>(["caixinha", "plano"]);
+  const gestao = financeiro
+    .filter((t) => !DOBRADAS.has(t.id))
+    .map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
 
   const toggleModulo = (id: ModuloId) => setOpenModulo((cur) => (cur === id ? null : id));
 
+  // Cabeçalho da sidebar: marca Terrano + seletor de fazenda/sítio.
+  const sideHead = (
+    <div className="flex-none border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2">
+      <div className="ah-brand flex items-center gap-2.5 px-1.5 pb-3 min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:px-0">
+        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
+        <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>
+          Terrano
+        </span>
+      </div>
+      <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+    </div>
+  );
+
   const navBody = (
-    <>
-      <GroupLabel>Visão &amp; gestão</GroupLabel>
-      {fin.map((t) => <Item key={t.id} id={t.id} label={t.label} current={current} onNav={nav} />)}
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2">
+      <div className="flex flex-col gap-px">
+        <GroupLabel>Gestão</GroupLabel>
+        {gestao.map((t) => (
+          <Item
+            key={t.id} id={t.id} label={t.label} current={current} onNav={nav} chevron
+            activeWhen={t.id === "gastos" ? ["caixinha"] : undefined}
+          />
+        ))}
+      </div>
 
-      <GroupLabel>Operações</GroupLabel>
-      {modulosVisiveis.map((m) => {
-        const isOpen = openModulo === m.id && !m.disabled;
-        const isActive = m.subs.some((s) => s.id === current);
-        return (
-          <div key={m.id} className="flex flex-col">
-            <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
-            {isOpen && (
-              <div
-                className={cn("ml-7 border-l border-[#23291f] pb-1.5 pt-0.5", RAIL_BLOCK)}
-              >
-                {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      <div className="mt-4 flex flex-col gap-px">
+        <GroupLabel>Atividades</GroupLabel>
+        {modulosVisiveis.map((m) => {
+          const isOpen = openModulo === m.id && !m.disabled;
+          const isActive = m.subs.some((s) => s.id === current);
+          return (
+            <div key={m.id} className="flex flex-col">
+              <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
+              {isOpen && (
+                <div className={cn("flex flex-col gap-px pb-1", RAIL_BLOCK)}>
+                  {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
-      <div className="flex-1" />
-
-      <GroupLabel>Administração</GroupLabel>
-      <Item id="cadastros" label="Cadastros" current={current} onNav={nav} />
-      <Item id="config" label="Configurações" current={current} onNav={nav} />
-      {isAdmin && <Item id="acessos" label="Acessos" current={current} onNav={nav} />}
-    </>
+  // Rodapé ancorado: um único item "Configurações" que abre o hub de setup/admin
+  // (Geral · Cadastros · Categorias · Acessos como sub-abas lá dentro). Fica ativo
+  // em qualquer uma dessas rotas dobradas.
+  const sideFoot = (
+    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1100px]:px-2">
+      <div className="flex flex-col gap-px">
+        <Item
+          id="config" label="Configurações" current={current} onNav={nav} chevron
+          activeWhen={["cadastros", "plano", ...(isAdmin ? (["acessos"] as Tab[]) : [])]}
+        />
+      </div>
+    </div>
   );
 
   return (
@@ -357,16 +415,17 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
         className={cn(
-          "group fixed inset-y-0 left-0 z-[11] hidden w-[222px] flex-col overflow-y-auto overscroll-contain bg-mast py-[18px] text-mast-ink print:hidden",
-          "[scrollbar-width:thin] [scrollbar-color:#2a3025_transparent]",
+          "group fixed inset-y-0 left-0 z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
           "min-[901px]:flex",
-          "min-[901px]:max-[1100px]:w-[60px] min-[901px]:max-[1100px]:overflow-x-hidden min-[901px]:max-[1100px]:whitespace-nowrap min-[901px]:max-[1100px]:py-3",
+          "min-[901px]:max-[1100px]:w-[64px]",
           "min-[901px]:max-[1100px]:transition-[width,box-shadow] min-[901px]:max-[1100px]:duration-[180ms] min-[901px]:max-[1100px]:ease-in-out",
-          "min-[901px]:max-[1100px]:hover:z-20 min-[901px]:max-[1100px]:hover:w-[232px] min-[901px]:max-[1100px]:hover:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
-          "min-[901px]:max-[1100px]:focus-within:z-20 min-[901px]:max-[1100px]:focus-within:w-[232px] min-[901px]:max-[1100px]:focus-within:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
+          "min-[901px]:max-[1100px]:hover:z-20 min-[901px]:max-[1100px]:hover:w-[240px] min-[901px]:max-[1100px]:hover:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
+          "min-[901px]:max-[1100px]:focus-within:z-20 min-[901px]:max-[1100px]:focus-within:w-[240px] min-[901px]:max-[1100px]:focus-within:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
         )}
       >
+        {sideHead}
         {navBody}
+        {sideFoot}
       </aside>
 
       {/* MOBILE — drawer via shadcn Sheet (Radix Dialog): overlay, clique-fora,
@@ -376,12 +435,14 @@ export function AppSidebar({ current, onNav, financeiro, isAdmin, podeVerFolha, 
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="max-w-none w-[min(280px,86vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
+          className="max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>
-          <div className="flex h-full flex-col overflow-y-auto py-[18px]">
+          <div className="flex h-full flex-col overflow-hidden">
+            {sideHead}
             {navBody}
+            {sideFoot}
           </div>
         </SheetContent>
       </Sheet>

@@ -59,6 +59,8 @@ function baseProps(overrides: Partial<{
   podeVerFolha: boolean;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  propAtiva: number | null;
+  onTrocarProp: (id: number | null) => void;
 }> = {}) {
   return {
     current: "dashboard" as Tab,
@@ -71,6 +73,8 @@ function baseProps(overrides: Partial<{
     podeVerFolha: true,
     mobileOpen: false,
     onMobileToggle: vi.fn(),
+    propAtiva: null,
+    onTrocarProp: vi.fn(),
     ...overrides,
   };
 }
