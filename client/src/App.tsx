@@ -118,12 +118,14 @@ const COR: Record<string, CorSub> = {
 };
 
 const EQP: Record<string, EqpSub> = {
+  "eqp-dashboard": "dashboard",
   "eqp-funcionarios": "funcionarios",
   "eqp-ponto": "ponto",
   "eqp-folha": "folha",
 };
 
 const MIL: Record<string, MilSub> = {
+  "mil-dashboard": "dashboard",
   "mil-safras": "safras",
   "mil-custos": "custos",
   "mil-producao": "producao",

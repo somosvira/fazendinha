@@ -57,12 +57,14 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "cor-comercial": <><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></>,
   "cor-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   // — Milho (cultivo) — ícones simbólicos.
+  "mil-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "mil-safras": <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></>,
   "mil-custos": <><path d="M5 3h14v18l-2-1.5L15 21l-2-1.5L11 21l-2-1.5L7 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/></>,
   "mil-producao": <><path d="M12 21V8"/><path d="M12 12c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 12c2 0 4-1.5 4-4-2 0-4 1.5-4 4zM12 17c-2 0-4-1.5-4-4 2 0 4 1.5 4 4zM12 17c2 0 4-1.5 4-4-2 0-4 1.5-4 4z"/></>,
   "mil-silos": <><path d="M6 21V8a6 6 0 0 1 12 0v13"/><path d="M6 12h12M6 16h12"/><path d="M4 21h16"/></>,
   "mil-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   // — Equipe & Ponto — ícones simbólicos.
+  "eqp-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "eqp-funcionarios": <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
   "eqp-ponto": <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
   "eqp-folha": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
@@ -129,6 +131,7 @@ const MODULOS: Modulo[] = [
     icon: <><path d="M12 22v-5"/><path d="M12 17c-3 0-5.5-2.8-5.5-6.5C6.5 6.5 9 3 12 2c3 1 5.5 4.5 5.5 8.5C17.5 14.2 15 17 12 17z"/><path d="M12 6v11M9 9c1 .8 2 1.2 3 1.2s2-.4 3-1.2M9 13c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/></>,
     // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
     subs: [
+      { id: "mil-dashboard", label: "Painel" },
       { id: "mil-safras", label: "Safras" },
       { id: "mil-custos", label: "Lançar custos" },
       { id: "mil-producao", label: "Produção" },
@@ -142,6 +145,7 @@ const MODULOS: Modulo[] = [
     icon: <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
     // Módulo de RH leve (admin gerencia) — funcionários, ponto e folha.
     subs: [
+      { id: "eqp-dashboard", label: "Painel" },
       { id: "eqp-funcionarios", label: "Funcionários" },
       { id: "eqp-ponto", label: "Ponto" },
       { id: "eqp-folha", label: "Folha" },

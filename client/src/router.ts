@@ -32,14 +32,15 @@ const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
 ) as Record<string, Tab>;
 
 // Prefixo da aba (reb-/pla-/cor-/mil-/eqp-) <-> base do caminho aninhado.
-// `defaultSub` = sub-aba aberta quando a URL é só a base (default "dashboard";
-// milho e equipe não têm painel próprio, então entram pela sub principal).
+// `defaultSub` = sub-aba aberta quando a URL é só a base (default "dashboard").
+// TODOS os módulos operacionais abrem no painel (dashboard) — a URL base
+// /rebanho, /plantio, /corte, /milho, /equipe resolve para o painel.
 const MODULO_BASE: Array<{ prefix: string; base: string; defaultSub?: string }> = [
   { prefix: "reb-", base: "/rebanho" },
   { prefix: "pla-", base: "/plantio" },
   { prefix: "cor-", base: "/corte" },
-  { prefix: "mil-", base: "/milho", defaultSub: "safras" },
-  { prefix: "eqp-", base: "/equipe", defaultSub: "funcionarios" },
+  { prefix: "mil-", base: "/milho" },
+  { prefix: "eqp-", base: "/equipe" },
 ];
 
 export const DEFAULT_TAB: Tab = "dashboard";

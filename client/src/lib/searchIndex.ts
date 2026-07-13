@@ -86,6 +86,7 @@ export const COMANDOS: Comando[] = [
   { id: "cor-custo", tab: "cor-custo", label: "Custo", grupo: "Gado de corte", sinonimos: ["custeio", "custo por arroba", "rentabilidade", "margem", "despesa"] },
 
   // — Milho (MODULOS[cultivo].subs) —
+  { id: "mil-dashboard", tab: "mil-dashboard", label: "Painel", grupo: "Milho", sinonimos: ["milho", "cultivo", "safra", "visão geral", "início", "painel"], descricao: "Painel do milho" },
   { id: "mil-safras", tab: "mil-safras", label: "Safras", grupo: "Milho", sinonimos: ["milho", "safra", "safrinha", "cultivo", "lavoura de milho", "custo de safra"], descricao: "Safras de milho — custo de safra" },
   { id: "mil-custos", tab: "mil-custos", label: "Lançar custos", grupo: "Milho", sinonimos: ["custeio", "adubo", "adubação", "horas de trator", "caminhão", "lançar custo", "despesa da safra", "apontamento"] },
   { id: "mil-producao", tab: "mil-producao", label: "Produção", grupo: "Milho", sinonimos: ["colheita", "saca", "sacas", "silagem", "toneladas", "grão"] },
@@ -93,6 +94,7 @@ export const COMANDOS: Comando[] = [
   { id: "mil-custo", tab: "mil-custo", label: "Custo de produção", grupo: "Milho", sinonimos: ["custo por saca", "custo por tonelada", "custo por hectare", "custeio", "rentabilidade", "margem"] },
 
   // — Administração (rodapé da sidebar) —
+  { id: "eqp-dashboard", tab: "eqp-dashboard", label: "Painel", grupo: "Administração", sinonimos: ["equipe", "ponto", "folha", "rh", "visão geral", "painel"], descricao: "Painel da equipe" },
   { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "raças", "registro"] },
   { id: "adm-config", tab: "config", label: "Configurações", grupo: "Administração", sinonimos: ["config", "ajustes", "preferências", "preço do leite", "setup"] },
   { id: "adm-acessos", tab: "acessos", label: "Acessos", grupo: "Administração", sinonimos: ["permissões", "usuários", "perfis", "convidar", "permissão", "papéis"] },
@@ -120,6 +122,8 @@ const CURADORIA_IDS = [
   "reb-animal",
   "pla-dashboard",
   "cor-dashboard",
+  "mil-dashboard",
+  "eqp-dashboard",
 ];
 
 // ── Normalização ────────────────────────────────────────────────────────────
