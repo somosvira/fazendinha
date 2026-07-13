@@ -90,10 +90,10 @@ export const COMANDOS: Comando[] = [
 
   // — Milho (MODULOS[cultivo].subs) —
   { id: "mil-safras", tab: "mil-safras", label: "Safras", grupo: "Milho", sinonimos: ["milho", "safra", "safrinha", "cultivo", "lavoura de milho", "custo de safra"], descricao: "Safras de milho — custo de safra" },
-  { id: "mil-custos", tab: "mil-custos", label: "Custos", grupo: "Milho", sinonimos: ["custeio", "adubo", "adubação", "horas de trator", "caminhão", "lançar custo", "despesa da safra"] },
+  { id: "mil-custos", tab: "mil-custos", label: "Lançar custos", grupo: "Milho", sinonimos: ["custeio", "adubo", "adubação", "horas de trator", "caminhão", "lançar custo", "despesa da safra", "apontamento"] },
   { id: "mil-producao", tab: "mil-producao", label: "Produção", grupo: "Milho", sinonimos: ["colheita", "saca", "sacas", "silagem", "toneladas", "grão"] },
   { id: "mil-silos", tab: "mil-silos", label: "Silos", grupo: "Milho", sinonimos: ["silo", "estoque", "silagem", "saldo", "armazenagem", "comida de vaca"] },
-  { id: "mil-custo", tab: "mil-custo", label: "Custo", grupo: "Milho", sinonimos: ["custo por saca", "custo por tonelada", "custo por hectare", "custeio", "rentabilidade", "margem"] },
+  { id: "mil-custo", tab: "mil-custo", label: "Custo de produção", grupo: "Milho", sinonimos: ["custo por saca", "custo por tonelada", "custo por hectare", "custeio", "rentabilidade", "margem"] },
 
   // — Administração (rodapé da sidebar) —
   { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "raças", "registro"] },

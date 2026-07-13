@@ -70,7 +70,7 @@ export function CustosTab() {
 
   return (
     <RebMain>
-      <RebHeader eyebrow="Cultivo · milho" title="Custos" />
+      <RebHeader eyebrow="Cultivo · milho" title="Lançar custos" />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <ToolbarSelect

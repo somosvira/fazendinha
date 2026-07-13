@@ -128,10 +128,10 @@ const MODULOS: Modulo[] = [
     // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
     subs: [
       { id: "mil-safras", label: "Safras" },
-      { id: "mil-custos", label: "Custos" },
+      { id: "mil-custos", label: "Lançar custos" },
       { id: "mil-producao", label: "Produção" },
       { id: "mil-silos", label: "Silos" },
-      { id: "mil-custo", label: "Custo" },
+      { id: "mil-custo", label: "Custo de produção" },
     ],
   },
   {

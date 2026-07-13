@@ -35,7 +35,7 @@ export function CadastrosView() {
   const [sub, setSub] = useState<Sub>("produtos");
   return (
     <RebMain>
-      <RebHeader eyebrow="Cadastros · Sítio São Francisco" title="Cadastros" />
+      <RebHeader eyebrow="Cadastros · compartilhado entre propriedades" title="Cadastros" />
       <div className={REB_CHIPS} style={{ marginBottom: 18 }}>
         <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
         <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
