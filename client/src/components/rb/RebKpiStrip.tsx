@@ -55,7 +55,7 @@ export function RebKpi({
   return (
     <div
       className={cn(
-        "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5",
+        "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-2.5 pb-2 first:border-l-0 first:pl-0.5",
         className,
       )}
       {...props}
