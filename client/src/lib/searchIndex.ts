@@ -94,10 +94,10 @@ export const COMANDOS: Comando[] = [
   { id: "mil-custo", tab: "mil-custo", label: "Custo de produção", grupo: "Milho", sinonimos: ["custo por saca", "custo por tonelada", "custo por hectare", "custeio", "rentabilidade", "margem"] },
 
   // — Administração (rodapé da sidebar) —
-  { id: "eqp-dashboard", tab: "eqp-dashboard", label: "Painel", grupo: "Administração", sinonimos: ["equipe", "ponto", "folha", "rh", "visão geral", "painel"], descricao: "Painel da equipe" },
   { id: "adm-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Administração", sinonimos: ["produtos", "fornecedores", "clientes", "raças", "registro"] },
   { id: "adm-config", tab: "config", label: "Configurações", grupo: "Administração", sinonimos: ["config", "ajustes", "preferências", "preço do leite", "setup"] },
   { id: "adm-acessos", tab: "acessos", label: "Acessos", grupo: "Administração", sinonimos: ["permissões", "usuários", "perfis", "convidar", "permissão", "papéis"] },
+  { id: "eqp-dashboard", tab: "eqp-dashboard", label: "Painel", grupo: "Administração", sinonimos: ["equipe", "ponto", "folha", "rh", "visão geral", "painel"], descricao: "Painel da equipe" },
   { id: "eqp-funcionarios", tab: "eqp-funcionarios", label: "Funcionários", grupo: "Administração", sinonimos: ["equipe", "colaboradores", "peão", "empregados", "salário", "cadastro de funcionário"] },
   { id: "eqp-ponto", tab: "eqp-ponto", label: "Ponto", grupo: "Administração", sinonimos: ["jornada", "bater ponto", "entrada", "saída", "horas", "presença", "folha de ponto"] },
   { id: "eqp-folha", tab: "eqp-folha", label: "Folha", grupo: "Administração", sinonimos: ["folha de pagamento", "hora extra", "salário", "pagamento", "extras", "total a pagar"] },
