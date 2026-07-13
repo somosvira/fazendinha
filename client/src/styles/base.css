@@ -60,11 +60,15 @@
   /* spacing */
   --gutter: 32px;
 
-  /* sidebar */
-  --side-w: 222px;
+  /* sidebar (trilho escuro; abriga marca + seletor de fazenda no topo) */
+  --side-w: 256px;
 
-  /* header (faixa preta fixa no topo, full-width) */
-  --header-h: 56px;
+  /* sidebar — tons auxiliares (handoff "Shell"): rótulo apagado + fio interno */
+  --side-mute: #8B8672;
+  --side-hair: rgba(232, 220, 196, 0.10);
+
+  /* header (faixa clara enxuta: só busca + conta; começa após a sidebar) */
+  --header-h: 64px;
 }
 
 /* shell único: header fixo no topo, sidebar abaixo do header, main com offset */
@@ -80,30 +84,19 @@
    Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
    para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
    ============================================================ */
-/* Marca Terrano no header (símbolo + nome). O resto do header foi migrado
-   para Tailwind + shadcn; só a marca continua em CSS pois é o alvo do voo da
-   abertura (TerranoIntro pousa em `.ah-brand .terrano-symbol`). */
-.ah-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+/* Marca Terrano — agora no TOPO da sidebar (não mais no header). O `.ah-brand`
+   e o `.ah-brand-symbol` continuam existindo só como âncora do voo da abertura
+   (TerranoIntro pousa em `.ah-brand .terrano-symbol`); o wordmark "Terrano" é
+   estilizado por Tailwind dentro do AppSidebar. */
 .ah-brand-symbol { display: block; flex: none; }
-.ah-brand-txt { display: flex; flex-direction: column; line-height: 1; min-width: 0; }
-.ah-brand-name {
-  font-family: var(--serif); font-size: 19px; line-height: 0.95; font-weight: 500;
-  letter-spacing: -0.02em; color: var(--mast-ink);
-}
-.ah-brand-sub {
-  font-family: var(--sans); font-size: 8.5px; line-height: 1;
-  letter-spacing: 0.24em; text-transform: uppercase; color: var(--mast-ink-2);
-  margin-top: 3px;
-}
 
 @media (max-width: 900px) {
-  :root { --header-h: 48px; }
-  .ah-brand-txt { display: none; }
+  :root { --header-h: 56px; }
 }
 
 /* viewport realmente pequeno */
 @media (max-width: 560px) {
-  :root { --header-h: 44px; }
+  :root { --header-h: 52px; }
 }
 
 * { box-sizing: border-box; }
@@ -615,6 +608,13 @@ input:focus-visible:not([data-slot="input"]) {
    Drawer (sidebar) já é tratado em rebanho.css; aqui cuidamos
    dos reflows de conteúdo do lado financeiro.
    ============================================================ */
+
+/* faixa 901–1100px: o trilho da sidebar colapsa para ícone-only (64px) e expande
+   por cima do conteúdo no hover/foco (overlay, z-20). O header e o main devem
+   acompanhar a largura COLAPSADA, senão sobra um vão morto de ~192px à esquerda. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  :root { --side-w: 64px; }
+}
 
 @media (max-width: 1100px) {
   /* shells largos passam a respirar com o viewport */

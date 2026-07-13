@@ -1,23 +1,23 @@
-/* Rio Novo — header global.
- * Faixa preta no topo com logo, seletor de fazenda (display-only) e chip do
- * usuário (com dropdown para "ver como" outro perfil). O burger só aparece
- * no mobile e controla o drawer da sidebar.
- * Migrado para o primitivo shadcn `DropdownMenu` (Radix): outside-click,
- * Escape e foco já vêm de graça — não há mais `useClickOutside` manual. */
+/* Rio Novo — header global (enxuto).
+ *
+ * Layout novo (handoff "Shell - sidebar + header"): a marca e o seletor de
+ * fazenda desceram para o TOPO da sidebar. O header ficou com apenas a busca
+ * global + o menu de conta (ações da conta — NUNCA troca de usuário; o "ver como"
+ * do admin vive dentro de Acessos). O burger só aparece no mobile e controla o
+ * drawer da sidebar.
+ *
+ * Usa o primitivo shadcn `DropdownMenu` (Radix): outside-click, Escape e foco de
+ * graça — sem `useClickOutside` manual. */
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PAPEIS, type User } from "../data/acessos";
-import { usePropriedades } from "../rebanho/api";
-import { GerenciarPropriedades } from "../rebanho/components/PropriedadeSelector";
-import { TerranoSymbol } from "./TerranoLogo";
 
 function Chevron({ className }: { className?: string }) {
   return (
@@ -36,201 +36,93 @@ function Chevron({ className }: { className?: string }) {
   );
 }
 
-/** Seletor de propriedade/sítio (fonte única de contexto no header). Lista os
- * sítios REAIS (tabela Propriedade), permite trocar de sítio ou ver Consolidado,
- * e abre o cadastro via "Gerenciar propriedades". Substituiu o antigo seletor
- * de fazenda display-only + o seletor de sítio solto no corpo da página. */
-function FarmPicker({ propAtiva, onTrocarProp }: { propAtiva: number | null; onTrocarProp: (id: number | null) => void }) {
-  const { data: props, loading, recarregar } = usePropriedades();
-  const [gerenciar, setGerenciar] = useState(false);
-  const ativos = props.filter((p) => p.ativo);
-  const sitioAtual = propAtiva != null ? ativos.find((p) => p.id === propAtiva) : null;
-  const rotulo = sitioAtual ? (sitioAtual.apelido || sitioAtual.nome) : (ativos.length >= 2 ? "Consolidado" : "Rio Novo");
+/* ícones do menu de conta (contorno, 17px) */
+const AccIcon = {
+  user: <><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></>,
+  gear: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></>,
+  help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 3.9-1.9c1.6 1 .6 2.9-1 3.4-.5.2-.9.7-.9 1.4M12 17h.01"/></>,
+  out: <><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h11"/></>,
+} as const;
 
+function AcctItem({ icon, children, danger, onSelect }: {
+  icon: JSX.Element; children: React.ReactNode; danger?: boolean; onSelect?: () => void;
+}) {
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            className="group flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-[#2a3025] bg-[var(--mast-bg-2)] py-1.5 pl-2 pr-2.5 font-sans hover:bg-[#1f2521] max-[900px]:gap-2 max-[900px]:py-1 max-[900px]:pl-1.5 max-[900px]:pr-2 max-[560px]:px-1.5"
-            aria-label="Propriedade / sítio ativo"
-          >
-            <span className="text-base leading-none max-[900px]:text-sm" aria-hidden>🥛</span>
-            <span className="flex flex-col items-start leading-[1.05] max-[560px]:hidden">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--mast-ink-2)] max-[900px]:hidden">
-                {sitioAtual ? "Sítio" : "Fazenda"}
-              </span>
-              <span className="max-w-[26vw] overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-mast-ink max-[900px]:text-[13px]">
-                {rotulo}
-              </span>
-            </span>
-            <Chevron />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[280px] max-w-[360px] rounded-[6px] p-0">
-          <DropdownMenuLabel className="border-b border-border bg-[var(--bg-card-2)] px-3.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-            {ativos.length >= 2 ? "Sítios da fazenda" : "Fazenda"}
-          </DropdownMenuLabel>
-          {loading ? (
-            <div className="px-3.5 py-2.5 text-xs italic text-ink-3">Carregando…</div>
-          ) : (
-            <>
-              {ativos.length >= 2 && (
-                <DropdownMenuItem
-                  onSelect={() => onTrocarProp(null)}
-                  className={cn(
-                    "gap-3 rounded-none border-b border-[var(--rule-soft)] px-3.5 py-2.5 font-sans text-foreground last:border-b-0",
-                    propAtiva == null && "bg-[var(--bg-card-2)]",
-                  )}
-                >
-                  <span className="text-base" aria-hidden>◎</span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-semibold text-foreground">Consolidado</span>
-                    <span className="text-[11px] text-ink-3">Todos os sítios juntos</span>
-                  </span>
-                  {propAtiva == null && <span className="font-bold text-lucro" aria-label="atual">✓</span>}
-                </DropdownMenuItem>
-              )}
-              {ativos.map((p) => (
-                <DropdownMenuItem
-                  key={p.id}
-                  onSelect={() => onTrocarProp(p.id)}
-                  className={cn(
-                    "gap-3 rounded-none border-b border-[var(--rule-soft)] px-3.5 py-2.5 font-sans text-foreground last:border-b-0",
-                    p.id === propAtiva && "bg-[var(--bg-card-2)]",
-                  )}
-                >
-                  <span className="text-base" aria-hidden>🥛</span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-sm font-semibold text-foreground">
-                      {p.nome}{p.principal && <span className="text-ink-3"> · principal</span>}
-                    </span>
-                    {(p.cidade || p.uf) && (
-                      <span className="text-[11px] text-ink-3">{[p.cidade, p.uf].filter(Boolean).join(" — ")}</span>
-                    )}
-                  </span>
-                  {p.id === propAtiva && <span className="font-bold text-lucro" aria-label="atual">✓</span>}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                onSelect={() => setGerenciar(true)}
-                className="gap-3 rounded-none px-3.5 py-2.5 font-sans text-ink-2"
-              >
-                <span className="text-base" aria-hidden>＋</span>
-                <span className="text-sm font-medium">Gerenciar propriedades</span>
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {gerenciar && <GerenciarPropriedades propriedades={props} onFechar={() => setGerenciar(false)} onMudou={recarregar} />}
-    </>
+    <DropdownMenuItem
+      onSelect={onSelect}
+      className={cn(
+        "gap-2.5 rounded-[7px] px-2.5 py-2 font-sans text-[13.5px] text-ink-2",
+        danger && "text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]",
+      )}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-[17px] w-[17px] flex-none opacity-70" aria-hidden>
+        {icon}
+      </svg>
+      {children}
+    </DropdownMenuItem>
   );
 }
 
-function UserPicker({ user, allUsers, onSwitchUser, onSair }: {
+/** Menu de conta — AÇÕES da conta (perfil, preferências, ajuda, sair). Nunca
+ *  troca de usuário: o "ver como" do admin mora em Acessos. */
+function UserPicker({ user, onPreferencias, onSair }: {
   user: User;
-  allUsers: User[] | null;
-  onSwitchUser: (id: string) => void;
+  onPreferencias?: () => void;
   onSair?: () => void;
 }) {
   const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
-  // Menu abre se for possível trocar de perfil OU se houver ação de sair (piloto).
-  const canSwitch = !!allUsers && allUsers.length > 1;
-  const abreMenu = canSwitch || !!onSair;
-
-  const chipInner = (
-    <>
-      <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-leite font-serif text-sm font-semibold text-[var(--mast-bg)]">
-        {user.inicial}
-      </span>
-      <span className="flex flex-col items-start leading-[1.1] max-[900px]:hidden">
-        <span className="text-sm font-semibold text-mast-ink">{user.nome.split(" ")[0]}</span>
-        <span className="text-[11px] text-[var(--mast-ink-2)]">{papelNome(user)}</span>
-      </span>
-    </>
-  );
-
-  if (!abreMenu) {
-    return (
-      <div className="flex items-center gap-2.5 rounded-[9px] border border-transparent py-1 pl-1 pr-2 font-sans">
-        {chipInner}
-      </div>
-    );
-  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="group flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-transparent bg-transparent py-1 pl-1 pr-2 font-sans hover:border-[#2a3025] hover:bg-[var(--mast-bg-2)]"
+          className="group flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-transparent bg-transparent py-1 pl-1.5 pr-2 font-sans hover:bg-[var(--bg-card)]"
           aria-haspopup="menu"
+          aria-label="Menu da conta"
         >
-          {chipInner}
-          <Chevron />
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-leite font-sans text-sm font-semibold text-[var(--ink)]">
+            {user.inicial}
+          </span>
+          <span className="flex flex-col items-start leading-[1.15] max-[760px]:hidden">
+            <span className="text-[13.5px] font-semibold text-ink">{user.nome.split(" ")[0]}</span>
+            <span className="text-[11px] text-ink-mute">{papelNome(user)}</span>
+          </span>
+          <Chevron className="text-ink-mute max-[760px]:hidden" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[280px] max-w-[360px] rounded-[6px] p-0">
-        {canSwitch && allUsers && (
-          <>
-            <DropdownMenuLabel className="border-b border-border bg-[var(--bg-card-2)] px-3.5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-              Entrar como (demonstração)
-            </DropdownMenuLabel>
-            {allUsers.map((u) => (
-              <DropdownMenuItem
-                key={u.id}
-                onSelect={() => onSwitchUser(u.id)}
-                className={cn(
-                  "gap-3 rounded-none border-b border-[var(--rule-soft)] px-3.5 py-2.5 font-sans text-foreground last:border-b-0",
-                  u.id === user.id && "bg-[var(--bg-card-2)]",
-                )}
-              >
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--mast-bg)] font-serif text-[15px] text-mast-ink">
-                  {u.inicial}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-sm font-medium text-foreground">{u.nome}</span>
-                  <span className="text-[11px] text-ink-3">{papelNome(u)}</span>
-                </span>
-                {u.id === user.id && <span className="font-bold text-lucro" aria-label="atual">✓</span>}
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
+      <DropdownMenuContent align="end" className="w-[240px] rounded-[11px] p-1.5">
+        <div className="mb-1 border-b border-[var(--rule-soft)] px-2.5 pb-2.5 pt-2">
+          <div className="text-sm font-semibold text-ink">{user.nome}</div>
+          {user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}
+        </div>
+        <AcctItem icon={AccIcon.user}>Meu perfil</AcctItem>
+        <AcctItem icon={AccIcon.gear} onSelect={onPreferencias}>Preferências</AcctItem>
+        <AcctItem icon={AccIcon.help}>Central de ajuda</AcctItem>
         {onSair && (
-          <DropdownMenuItem
-            onSelect={() => onSair()}
-            className="gap-3 rounded-none border-b border-[var(--rule-soft)] px-3.5 py-2.5 font-sans text-foreground last:border-b-0"
-          >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--mast-bg)] font-serif text-[15px] text-mast-ink" aria-hidden>↩</span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-sm font-medium text-foreground">Sair</span>
-              <span className="text-[11px] text-ink-3">Encerrar a sessão neste dispositivo</span>
-            </span>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuSeparator className="my-1 bg-[var(--rule-soft)]" />
+            <AcctItem icon={AccIcon.out} danger onSelect={onSair}>Sair</AcctItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca, onSair, propAtiva, onTrocarProp }: {
+export function Header({ user, mobileOpen, onMobileToggle, onAbrirBusca, onPreferencias, onSair }: {
   user: User;
-  allUsers: User[] | null;
-  onSwitchUser: (id: string) => void;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
   onAbrirBusca?: () => void;
+  onPreferencias?: () => void;
   onSair?: () => void;
-  propAtiva: number | null;
-  onTrocarProp: (id: number | null) => void;
 }) {
   return (
     <header
-      className="fixed left-[var(--side-w)] right-0 top-0 z-10 flex h-[var(--header-h)] items-center gap-3.5 border-b border-[#0B0F0D] bg-mast px-[18px] text-mast-ink print:hidden max-[900px]:left-0 max-[900px]:gap-2.5 max-[900px]:px-3 max-[560px]:gap-2 max-[560px]:px-2.5"
+      className="fixed left-[var(--side-w)] right-0 top-0 z-10 flex h-[var(--header-h)] items-center gap-3.5 border-b border-[var(--rule-soft)] bg-[var(--bg)] px-[22px] text-ink print:hidden max-[900px]:left-0 max-[900px]:gap-2.5 max-[900px]:px-3 max-[560px]:gap-2 max-[560px]:px-2.5"
     >
       <button
-        className="hidden h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[#2a3025] bg-transparent p-0 text-mast-ink max-[900px]:flex max-[900px]:h-[34px] max-[900px]:w-[34px]"
+        className="hidden h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent p-0 text-ink max-[900px]:flex max-[900px]:h-[34px] max-[900px]:w-[34px]"
         aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
         onClick={() => onMobileToggle(!mobileOpen)}
       >
@@ -241,38 +133,28 @@ export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggl
         </svg>
       </button>
 
-      <div className="ah-brand">
-        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol" />
-        <span className="ah-brand-txt">
-          <span className="ah-brand-name">Terrano</span>
-          <span className="ah-brand-sub">Fazenda Rio Novo</span>
-        </span>
-      </div>
-
-      <FarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
-
       {onAbrirBusca && (
         <button
-          className="ml-1.5 flex max-w-[340px] flex-[0_1_340px] cursor-text items-center gap-2.5 rounded-[9px] border border-[#2a3025] bg-[var(--mast-bg-2)] py-1.5 pl-2.5 pr-2 text-left font-sans text-[var(--mast-ink-2)] hover:bg-[#1f2521] max-[760px]:flex-[0_0_auto] max-[760px]:max-w-none max-[760px]:p-1.5"
+          className="flex max-w-[460px] flex-1 cursor-text items-center gap-2.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-left font-sans text-ink-mute hover:border-[var(--ink-mute)] max-[760px]:max-w-none max-[760px]:flex-[0_0_auto] max-[760px]:px-2 max-[760px]:py-1.5"
           onClick={onAbrirBusca}
           aria-label="Pesquisar páginas e recursos"
         >
-          <svg className="h-4 w-4 flex-none opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg className="h-4 w-4 flex-none opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
+            <path d="M20 20l-3.5-3.5" />
           </svg>
-          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] max-[760px]:hidden">
+          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] max-[760px]:hidden">
             Pesquisar páginas e recursos…
           </span>
-          <span className="flex-none rounded-md border border-[#343b30] px-1.5 py-0.5 text-[11px] font-semibold leading-none tracking-[0.02em] text-[var(--mast-ink-2)] max-[760px]:hidden" aria-hidden>
+          <span className="ml-auto flex-none rounded-[4px] border border-[var(--border)] px-1.5 py-0.5 text-[11px] leading-none text-ink-mute max-[760px]:hidden" aria-hidden>
             ⌘K
           </span>
         </button>
       )}
 
-      <div className="flex-1" />
-
-      <UserPicker user={user} allUsers={allUsers} onSwitchUser={onSwitchUser} onSair={onSair} />
+      <div className="ml-auto flex items-center gap-3">
+        <UserPicker user={user} onPreferencias={onPreferencias} onSair={onSair} />
+      </div>
     </header>
   );
 }
