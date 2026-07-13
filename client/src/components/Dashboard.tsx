@@ -611,11 +611,14 @@ function KpiCockpit({ R }: { R: R }) {
       {/* Grid com gap de 1px sobre fundo régua: as próprias frestas viram as
           linhas divisórias. Robusto a qualquer nº de colunas / quebra de linha
           (mesmo padrão do bloco Fôlego de caixa). 2 col (mobile) → 3 → 5. */}
-      <div className="grid grid-cols-2 gap-px border-y border-border bg-[color:var(--rule-soft)] sm:grid-cols-3 lg:grid-cols-5">
+      {/* -mx-5 puxa a grade p/ fora e o px-5 de cada célula devolve o respiro:
+          conteúdo folga de ambos os dividers, mas a 1ª coluna continua alinhada
+          à borda da seção e a última não deixa espaço morto à direita. */}
+      <div className="-mx-5 grid grid-cols-2 gap-px border-y border-border bg-[color:var(--rule-soft)] sm:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k, i) => (
           <div
             className={cn(
-              "flex flex-col gap-[5px] bg-background pt-[18px] pr-5 pb-5",
+              "flex flex-col gap-[5px] bg-background px-5 pt-[18px] pb-5",
               // 5 KPIs numa grade de 2/3 col deixam a última célula órfã;
               // o último KPI ocupa a sobra da linha (2 col no mobile e no sm;
               // no lg cabem os 5 lado a lado, sem sobra).
@@ -1273,7 +1276,7 @@ export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: Use
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <div className="mb-6 mt-1 flex flex-wrap items-center gap-3">
+      <div className="mb-6 mt-6 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Período</span>
         <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
         <span className="text-[12px] italic text-ink-3">mensal · filtra os KPIs por data de liquidação</span>
