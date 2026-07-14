@@ -2,7 +2,7 @@ import { prisma } from "../../db.js";
 import { env } from "../../env.js";
 import { hashSenha, verificarSenha } from "./hash.js";
 import { gerarToken, hashToken, tokenExpirado, expiraConvite, expiraReset } from "./token.js";
-import { criarSessao, revogarSessoesDoUsuario } from "./sessao.js";
+import { revogarSessoesDoUsuario } from "./sessao.js";
 import { usuarioDTO, type UsuarioDTO } from "./usuarios.js";
 
 function montarLink(tipo: "convite" | "senha", raw: string): string {
@@ -37,6 +37,8 @@ export async function autenticar(email: string, senha: string): Promise<UsuarioD
 async function acharTokenValido(rawToken: string, tipo: "CONVITE" | "RESET") {
   const t = await prisma.tokenAcesso.findUnique({ where: { tokenHash: hashToken(rawToken) }, include: { usuario: true } });
   if (!t || t.tipo !== tipo || t.usadoEm || tokenExpirado(t.expiraEm)) return null;
+  // usuário INATIVO (revogado) não pode reativar a própria conta usando um link antigo de convite/reset
+  if (t.usuario.status === "INATIVO") return null;
   return t;
 }
 
