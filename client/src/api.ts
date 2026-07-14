@@ -91,6 +91,10 @@ export async function fetchDashboard(opts?: { from?: string; to?: string }): Pro
   };
   d.projecaoFluxo = { fluxoProj: proj.fluxoProj ?? [] };
 
+  // topSetores: 3 setores (centro de custo) com maior receita no período —
+  // dado REAL do servidor. Alimenta o comparativo "Maiores receitas" do Dashboard.
+  d.topSetores = d.topSetores ?? [];
+
   // Ainda mock (bloqueados): break-even do leite (sem litros) e ruptura DIÁRIA +
   // compromissos (precisa de projeção diária e de contas a vencer). buildRuptura
   // recebe um folego mock só pra não acoplar à forma real.
