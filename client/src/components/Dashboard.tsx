@@ -42,17 +42,43 @@ const SLUG_TO_NOME: Record<string, string> = {
   animalAq: "Animal Aquisição",
 };
 
-// Filtro mensal. Padrão = UM mês (o corrente) — dashboard focada em mês
-// fechado, mais fácil de casar 100% com o chat. Períodos longos ficam p/ outra tela.
-// FILTRO_MIN é a data em que começa a haver dados históricos (jul/2024) — fixa.
-// FILTRO_MAX e DEFAULT_RANGE seguem o mês corrente (via getHoje() = lib/hoje.ts).
+// Filtro mensal. Padrão = UM mês (o mais recente COM dados) — dashboard focada
+// em mês fechado, mais fácil de casar 100% com o chat. Períodos longos ficam p/
+// outra tela. O default NÃO é o mês do calendário: o BPO entrega com ~2 meses de
+// atraso, então o mês corrente costuma estar vazio (zerava a dashboard inteira).
+// O mês é descoberto no 1º fetch (sem filtro) via `ultimoMesComDados`.
+// FILTRO_MIN é a data em que começa a haver dados históricos (jul/2024) — fixa,
+// e serve de âncora do índice mensal (idx 0 = jul/2024, igual ao backend).
+// FILTRO_MAX segue o mês corrente (teto do seletor, via getHoje() = lib/hoje.ts).
 const FILTRO_MIN = new Date(2024, 6, 1);   // jul/2024 — início da série histórica
 const _HOJE = getHoje();
 const FILTRO_MAX = new Date(_HOJE.getFullYear(), _HOJE.getMonth(), 1);
+// Fallback quando o payload não revela nenhum mês com dados (banco vazio): mês corrente.
 const DEFAULT_RANGE: DateRange = {
   start: new Date(_HOJE.getFullYear(), _HOJE.getMonth(), 1),
   end: new Date(_HOJE.getFullYear(), _HOJE.getMonth() + 1, 0),
 };
+
+// Índice mensal (idx 0 = jul/2024) → range daquele mês. Reusa FILTRO_MIN como
+// âncora, então casa com o WINDOW_START do backend sem duplicar a constante.
+function mesRange(idx: number): DateRange {
+  const y = FILTRO_MIN.getFullYear();
+  const mo = FILTRO_MIN.getMonth() + idx;
+  return { start: new Date(y, mo, 1), end: new Date(y, mo + 1, 0) };
+}
+
+// Último mês da janela 23m com QUALQUER movimento de caixa (crédito ou débito).
+// Alimentado pelo payload sem filtro (creditoTotal/debitoTotal são arrays de 23).
+// null = nenhum mês com dado (cai no DEFAULT_RANGE).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ultimoMesComDados(d: any): DateRange | null {
+  const cred: number[] = Array.isArray(d?.creditoTotal) ? d.creditoTotal : [];
+  const deb: number[] = Array.isArray(d?.debitoTotal) ? d.debitoTotal : [];
+  for (let i = Math.max(cred.length, deb.length) - 1; i >= 0; i--) {
+    if ((cred[i] || 0) !== 0 || (deb[i] || 0) !== 0) return mesRange(i);
+  }
+  return null;
+}
 
 // Date → "YYYY-MM-DD" (data local, sem deslocar fuso) para o filtro do servidor.
 const ymd = (d: Date | null): string | undefined =>
@@ -1236,10 +1262,12 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
 
 export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) => void; user?: User; filtrosIniciais?: Record<string, string> }) {
   // Deep-link da IA: /dashboard?mes=YYYY-MM abre o painel já naquele mês.
-  const [range, setRange] = useState<DateRange>(() => {
+  // Sem deep-link → null (não-resolvido): o 1º fetch descobre o último mês com
+  // dados e ancora o filtro nele (evita abrir num mês corrente vazio).
+  const [range, setRange] = useState<DateRange | null>(() => {
     const mes = filtrosIniciais?.mes;
     const m = mes && /^\d{4}-\d{2}$/.test(mes) ? mes.split("-").map(Number) : null;
-    return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : DEFAULT_RANGE;
+    return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : null;
   });
   const [drillCat, setDrillCat] = useState<CatId | null>(null);
   const [data, setData] = useState<R | null>(null);
@@ -1247,8 +1275,19 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
 
   // Refaz a busca sempre que o range muda → o servidor devolve o bloco `periodo`
   // (KPIs do intervalo). Mantém `data` anterior durante o fetch (sem flash).
+  // range null (não-resolvido) → busca a janela cheia p/ mostrar algo já e
+  // descobrir o último mês com dados; setRange então dispara o fetch filtrado.
   const recarregar = useCallback(() => {
-    fetchDashboard({ from: ymd(range.start), to: ymd(range.end) }).then(setData).catch(setError);
+    if (range) {
+      fetchDashboard({ from: ymd(range.start), to: ymd(range.end) }).then(setData).catch(setError);
+    } else {
+      fetchDashboard()
+        .then((d) => {
+          setData(d);
+          setRange(ultimoMesComDados(d) ?? DEFAULT_RANGE);
+        })
+        .catch(setError);
+    }
   }, [range]);
   useEffect(() => { recarregar(); }, [recarregar]);
 
@@ -1282,7 +1321,7 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
       {maskVals && user && <ValueMaskNotice user={user} />}
       <div className="mb-6 mt-6 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Período</span>
-        <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
+        <MonthRangePicker value={range ?? DEFAULT_RANGE} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
         <span className="text-[12px] italic text-ink-3">mensal · filtra os KPIs por data de liquidação</span>
       </div>
       <KpiCockpit R={data} />
