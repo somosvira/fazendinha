@@ -9,17 +9,27 @@ import type {
 } from "openai/resources/chat/completions";
 import { env } from "../../env.js";
 import { toolSpecs, dispatchTool, taxonomiaResumo, esquemaResumo } from "./tools.js";
+import { navegacaoResumo } from "./navegacao.js";
+import type { ContextoConsulta } from "../consulta/tipos.js";
 
 const MAX_ITER = 6;
 
-function systemPrompt(hoje: string, taxonomia: string, esquema: string): string {
+function systemPrompt(hoje: string, taxonomia: string, esquema: string, navegacao: string): string {
   return [
     "Você é o assistente da Fazenda Rio Novo (gado leiteiro + café), atendendo pelo chat/WhatsApp.",
     `Hoje é ${hoje}.`,
     "Responda SEMPRE em PT-BR, de forma curta e direta — é uma conversa de WhatsApp.",
     "Use as ferramentas para buscar dados reais; NUNCA invente ou estime números — todo número vem de ferramenta.",
-    "PRIORIDADE: se existe uma ferramenta curada para o que foi pedido (resumo_financeiro, saldo_contas, fluxo_caixa, gastos_por_categoria, serie_mensal, listar_lancamentos, comparar_periodos, folha_pagamento, producao_leite, buscar_animal, alertas_rebanho, estoque), use-a SEMPRE — é mais rápida, já formatada e confiável. consulta_sql é o ÚLTIMO recurso, só para o que NENHUMA curada cobre.",
-    "DASHBOARD (caixa, receita, custeio, investimento, fluxo líquido, maiores categorias de gasto, e quebra por atividade leite/café/outros): use SEMPRE resumo_financeiro — devolve os MESMOS números da tela (exclui '(Sem centro de custo)', separa custeio/investimento; topCategorias e atividades já vêm prontos). NÃO use fluxo_caixa nem gastos_por_categoria para esses números do Dashboard: eles somam tudo (inclusive transferências) e divergem da tela.",
+    "PROIBIDO fazer aritmética você mesmo (soma, subtração, %, média, razão) sobre números retornados: o motor calcula tudo. Diferença/variação entre períodos ou fatias = parâmetro `comparar` de consulta_financeiro/consulta_rebanho; custo por litro e afins = parâmetro `razao`; estatística = métricas/resumos prontos das ferramentas. Todo número na sua resposta deve ser um campo LITERAL retornado por ferramenta.",
+    "CONSULTA ESTRUTURADA: consulta_financeiro e consulta_rebanho fazem qualquer agregação/filtro/agrupamento/série/comparação validados contra o banco. PREFIRA-as a fluxo_caixa, gastos_por_categoria, serie_mensal, estatisticas_lancamentos, comparar_periodos, contas_a_vencer e producao_leite, e SEMPRE a consulta_sql. Se retornarem { erro }, a mensagem lista os campos válidos — corrija e re-tente.",
+    "Ao dar números, cite o REGIME usado (realizado/a vencer) e o período.",
+    "LINK OBRIGATÓRIO POR PADRÃO: toda resposta que traz dados/números deve TERMINAR com um deep-link interno da seção NAVEGAÇÃO (abaixo), apontando pra tela com aquele recorte (mês, categoria, status, pessoa, animal…). É o padrão — só pule se NENHUMA rota da lista casar, ou se você estiver só pedindo esclarecimento. Veja o formato e as rotas na seção NAVEGAÇÃO.",
+    "PRIORIDADE: se existe uma ferramenta curada para o que foi pedido (resumo_financeiro, saldo_contas, listar_lancamentos, folha_pagamento, buscar_animal, alertas_rebanho, estoque), use-a SEMPRE — é mais rápida, já formatada e confiável. consulta_sql é o ÚLTIMO recurso, só para o que NENHUMA outra cobre.",
+    "DASHBOARD (receita, custeio, investimento, fluxo líquido, maiores categorias de gasto, e quebra por atividade leite/café/outros): use SEMPRE resumo_financeiro — devolve os MESMOS números da tela (exclui '(Sem centro de custo)', separa custeio/investimento; topCategorias e atividades já vêm prontos). NÃO use fluxo_caixa nem gastos_por_categoria para esses números do Dashboard: eles somam tudo (inclusive transferências) e divergem da tela.",
+    "DUAS VISÕES FINANCEIRAS — escolha pela palavra do usuário e NUNCA misture as duas na mesma resposta: 'entradas/saídas TOTAIS', 'movimentação', 'saldo do ano/do período' = visão BRUTA (fluxo_caixa ou consulta_financeiro — incluem transferências/aportes). 'Receita', 'custeio', 'investimento', 'fluxo líquido', 'números do Dashboard/da tela' = visão GERENCIAL (resumo_financeiro). Na dúvida, responda a BRUTA e ofereça a gerencial. SEMPRE nomeie qual visão usou.",
+    "Ao usar resumo_financeiro, a resposta DEVE dizer que os valores EXCLUEM transferências/'(Sem centro de custo)' — a observação já vem no retorno da ferramenta; repita-a. Sem essa ressalva, 'receita/saída total' fica enganoso.",
+    "NATUREZA OBRIGATÓRIA em consulta_financeiro: pergunta sobre 'gastos', 'despesas', 'custos', 'quanto pagamos/saiu' ⇒ SEMPRE filtre natureza=DEBITO; 'recebimentos', 'receitas', 'quanto entrou' ⇒ natureza=CREDITO. Só omita o filtro quando o usuário pedir explicitamente a movimentação completa (entradas E saídas juntas).",
+    "REBANHO — dois recortes que NÃO são a mesma coisa: 'em lactação' = regime em_lactacao de consulta_rebanho (ativas com DEL, mesmo número da tela de Produção); 'vacas ativas' = regime ativos com categoria=VACA. Ranking individual ('vaca mais produtiva', 'top N por CCS') = consulta_rebanho com agruparPor ['animal'] + ordenarPor pela métrica desc + limite N — NUNCA responda um ranking com uma média do rebanho.",
     "Para datas relativas (ex.: 'esse mês', 'ano passado', 'últimos 12 meses') calcule o intervalo YYYY-MM-DD você mesmo.",
     "Seja proativo: se o usuário não der o período, assuma um padrão razoável (mês atual, ou últimos 12 meses para análise de variação) e diga qual usou — não fique perguntando.",
     "Para variação/tendência ou 'por que X varia' use serie_mensal — o resumo já traz média, mesMaiorSaida, mesMenorSaida, o ranking mesesPorSaidaDesc e mesAtualParcial. Para achar 'o mês de maior/menor custo' NÃO use gastos_por_categoria (isso ranqueia categorias, não meses): leia o resumo de serie_mensal.",
@@ -42,6 +52,7 @@ function systemPrompt(hoje: string, taxonomia: string, esquema: string): string 
     "Se uma ferramenta retornar vazio, NÃO conclua que o dado não existe nem contradiga um resultado anterior: provavelmente o filtro estava errado. Tente de novo (ex.: troque `busca` por `pessoa`, amplie o período) antes de responder.",
     `\n\nTAXONOMIA REAL (use estes nomes): ${taxonomia}`,
     `\n\nESQUEMA DO BANCO (para consulta_sql):\n${esquema}`,
+    `\n\nNAVEGAÇÃO — por PADRÃO termine toda resposta com dados com um deep-link interno da lista abaixo (regras e rotas):\n${navegacao}`,
   ].join(" ");
 }
 
@@ -62,6 +73,7 @@ export interface RespostaAgente {
 export async function rodarAgente(
   pergunta: ChatCompletionMessageParam,
   historico: ChatCompletionMessageParam[] = [],
+  ctx: ContextoConsulta = { propriedadeId: null },
 ): Promise<RespostaAgente> {
   if (!env.OPENAI_API_KEY) throw new BotDesligadoError();
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -72,7 +84,7 @@ export async function rodarAgente(
   ]);
 
   const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt(hoje, taxonomia, esquema) },
+    { role: "system", content: systemPrompt(hoje, taxonomia, esquema, navegacaoResumo()) },
     ...historico,
     pergunta,
   ];
@@ -103,7 +115,7 @@ export async function rodarAgente(
         /* args malformado → handler recebe {} e valida */
       }
       toolsUsadas.push(call.function.name);
-      const resultado = await dispatchTool(call.function.name, args);
+      const resultado = await dispatchTool(call.function.name, args, ctx);
       messages.push({
         role: "tool",
         tool_call_id: call.id,
@@ -118,10 +130,11 @@ export async function rodarAgente(
   };
 }
 
-// Atalho para perguntas de texto puro (usado pela rota de teste).
+// Atalho para perguntas de texto puro (usado pela rota de teste e pelo WhatsApp).
 export async function perguntar(
   texto: string,
   historico: ChatCompletionMessageParam[] = [],
+  ctx: ContextoConsulta = { propriedadeId: null },
 ): Promise<RespostaAgente> {
-  return rodarAgente({ role: "user", content: texto }, historico);
+  return rodarAgente({ role: "user", content: texto }, historico, ctx);
 }

@@ -9,10 +9,13 @@ import { prisma } from "../../db.js";
 import { jsonSafe } from "./serialize.js";
 import { rodarSqlReadonly } from "./sql-readonly.js";
 import { buildDashboard } from "../dashboard.js";
+import type { ContextoConsulta } from "../consulta/tipos.js";
+import { toolsConsulta } from "./tools-consulta.js";
 
-type Json = Record<string, unknown>;
-type Handler = (args: Json) => Promise<unknown>;
-interface Tool {
+export type Json = Record<string, unknown>;
+// ctx = escopo resolvido POR FORA da conversa (propriedade ativa); o LLM nunca o escolhe.
+type Handler = (args: Json, ctx: ContextoConsulta) => Promise<unknown>;
+export interface Tool {
   spec: { type: "function"; function: { name: string; description: string; parameters: Json } };
   handler: Handler;
 }
@@ -236,10 +239,10 @@ const resumoFinanceiro: Tool = {
       required: ["de", "ate"],
     },
   ),
-  handler: async (a) => {
+  handler: async (a, ctx) => {
     const de = parseDataObrigatoria(a.de, "de");
     const ate = parseDataObrigatoria(a.ate, "ate");
-    const d = await buildDashboard({ from: de, to: ate });
+    const d = await buildDashboard({ from: de, to: ate, propriedadeId: ctx.propriedadeId });
     const t = d.totals23m; // já é do período quando há filtro
     return {
       de: a.de,
@@ -851,6 +854,10 @@ const consultaSql: Tool = {
 // ============================================================================
 
 const TOOLS: Tool[] = [
+  // Consulta estruturada (motor + registro declarativo) — caminho preferido
+  // para agregação/comparação livre; as curadas específicas abaixo migram
+  // gradualmente para cima dele.
+  ...toolsConsulta,
   resumoFinanceiro,
   fluxoCaixa,
   gastosPorCategoria,
@@ -873,11 +880,15 @@ const byName = new Map(TOOLS.map((t) => [t.spec.function.name, t]));
 
 export const toolSpecs = TOOLS.map((t) => t.spec);
 
-export async function dispatchTool(name: string, args: Json): Promise<unknown> {
+export async function dispatchTool(
+  name: string,
+  args: Json,
+  ctx: ContextoConsulta = { propriedadeId: null },
+): Promise<unknown> {
   const tool = byName.get(name);
   if (!tool) return { erro: `Ferramenta desconhecida: ${name}` };
   try {
-    return await tool.handler(args ?? {});
+    return await tool.handler(args ?? {}, ctx);
   } catch (e) {
     return { erro: e instanceof Error ? e.message : String(e) };
   }
