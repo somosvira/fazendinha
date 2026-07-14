@@ -53,6 +53,11 @@ export async function atualizarUsuario(
 ): Promise<UsuarioDTO> {
   const atual = await prisma.usuario.findUnique({ where: { id } });
   if (!atual) throw new UsuarioError("NAO_ENCONTRADO", "usuário não encontrado");
+  // Espelha a proteção de revogarUsuario: o dono não pode ser desativado nem
+  // por essa rota, senão um admin não-dono poderia trocar o status do
+  // proprietário para INATIVO via PATCH e travar o acesso dele.
+  if (atual.dono && patch.status && patch.status !== "ATIVO")
+    throw new UsuarioError("DONO_IRREVOGAVEL", "o acesso do proprietário não pode ser desativado");
   const u = await prisma.usuario.update({
     where: { id },
     data: {
