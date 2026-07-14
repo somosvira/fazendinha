@@ -14,7 +14,8 @@ export function DashboardView({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
   const { data, loading } = useDashboard();
   const insight = insightDoMilho();
 
-  // Loading shell PRECISA conter "Cultivo · milho" (o smoke test SSR só vê este estado).
+  // No SSR o smoke test só vê este estado de loading (o RebHeader não renderiza
+  // mais título; o teste valida a casca `rb`).
   if (loading || !data) {
     return (
       <RebMain>

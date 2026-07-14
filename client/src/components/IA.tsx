@@ -8,7 +8,6 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import R from "../data/rionovo";
-import { ReportHeader } from "./Shell";
 import { fmtMoney, MiniBarChart } from "./charts";
 import { ActivityPill } from "./Gastos";
 import { Simulador } from "./Simulador";
@@ -485,8 +484,6 @@ export function IA() {
 
   return (
     <div className={cn("shell-wide", iaMode === "conversa" && "flex h-[calc(100vh_-_var(--header-h))] flex-col overflow-hidden")}>
-      <ReportHeader eyebrow="Pergunte sobre seus números" subtitle="IA" updatedAt={R.UPDATED_AT} />
-
       <div className="mt-[18px] inline-flex self-start border border-border bg-card">
         <button className={MODE_BTN} aria-pressed={iaMode === "conversa"} onClick={() => setIaMode("conversa")}>
           Conversa

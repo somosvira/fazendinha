@@ -2,8 +2,6 @@
  * Vira uma página-hub com sub-abas: "Contas" (contas a pagar + vigilância de IA)
  * e "Caixinha" (caixa físico, dobrado aqui em vez de item solto na sidebar). */
 
-import R from "../data/rionovo";
-import { ReportHeader } from "./Shell";
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
 import { AnomaliasStrip } from "./Vigilancia";
@@ -52,12 +50,6 @@ export function Gastos({
 
   return (
     <div className={"shell-wide " + (user && !user.flags.includes("verValores") ? "mask-values" : "")}>
-      <ReportHeader
-        eyebrow={atual === "caixinha" ? "Financeiro · Caixa físico" : "Financeiro · Contas a pagar"}
-        subtitle="Gastos"
-        updatedAt={R.UPDATED_AT}
-      />
-
       {tabs.length > 1 && (
         <SubTabs
           tabs={tabs}
