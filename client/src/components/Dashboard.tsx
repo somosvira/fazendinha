@@ -551,7 +551,7 @@ function AtividadeSplit({ R }: { R: R }) {
 
 /* ========== KPI COCKPIT ========== */
 
-function KpiCockpit({ R }: { R: R }) {
+function KpiCockpit({ R, pilha }: { R: R; pilha: "todos" | "custeio" | "investimento" }) {
   // totals23m já reflete o PERÍODO quando há filtro (backend troca por periodTotals).
   // reconciliarTotais garante a identidade: entrada − gasto === fluxo, e o gasto =
   // custeio + investimento + não-classificado (antes Receita/Custeio/Invest e o
@@ -603,7 +603,10 @@ function KpiCockpit({ R }: { R: R }) {
       int: fluxo < 0 ? "No vermelho (puxado por investimento)" : "Positivo no período",
     },
     // Custo/litro escondido: depende de litros produzidos (dado de rebanho inexistente).
-  ];
+  ].filter((k) =>
+    // Toggle de pilha: "custeio" oculta o card de Investimento e vice-versa.
+    pilha === "todos" ? true : pilha === "custeio" ? k.lbl !== "Investimento" : k.lbl !== "Custeio",
+  );
 
   return (
     <div className="pt-[26px]">
@@ -613,16 +616,10 @@ function KpiCockpit({ R }: { R: R }) {
       {/* -mx-5 puxa a grade p/ fora e o px-5 de cada célula devolve o respiro:
           conteúdo folga de ambos os dividers, mas a 1ª coluna continua alinhada
           à borda da seção e a última não deixa espaço morto à direita. */}
-      <div className="-mx-5 grid grid-cols-2 gap-px border-y border-border bg-[color:var(--rule-soft)] sm:grid-cols-3 lg:grid-cols-5">
+      <div className="-mx-5 grid grid-cols-2 gap-px border-y border-border bg-[color:var(--rule-soft)] sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k, i) => (
           <div
-            className={cn(
-              "flex flex-col gap-[5px] bg-background px-5 pt-[18px] pb-5",
-              // 5 KPIs numa grade de 2/3 col deixam a última célula órfã;
-              // o último KPI ocupa a sobra da linha (2 col no mobile e no sm;
-              // no lg cabem os 5 lado a lado, sem sobra).
-              i === kpis.length - 1 && "col-span-2 sm:col-span-2 lg:col-span-1",
-            )}
+            className="flex flex-col gap-[5px] bg-background px-5 pt-[18px] pb-5"
             key={i}
           >
             <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">{k.lbl}</span>
@@ -1241,6 +1238,7 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
     const m = mes && /^\d{4}-\d{2}$/.test(mes) ? mes.split("-").map(Number) : null;
     return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : DEFAULT_RANGE;
   });
+  const [pilha, setPilha] = useState<"todos" | "custeio" | "investimento">("todos");
   const [drillCat, setDrillCat] = useState<CatId | null>(null);
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -1280,12 +1278,28 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <div className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">Período</span>
-        <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
-        <span className="text-[12px] italic text-ink-3">mensal · filtra os KPIs por data de liquidação</span>
+      <div className="mb-3 mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="grid h-9 w-9 flex-none place-items-center border border-border bg-card text-ink-2"
+            title="Filtra os KPIs por mês (data de liquidação)"
+            aria-hidden="true"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4.5" width="18" height="16" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M8 2.5v4M16 2.5v4" />
+            </svg>
+          </span>
+          <MonthRangePicker value={range} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
+        </div>
+        <div className="period-switch" role="group" aria-label="Filtrar por pilha">
+          <button aria-current={pilha === "todos"} onClick={() => setPilha("todos")}>Todos</button>
+          <button aria-current={pilha === "custeio"} onClick={() => setPilha("custeio")}>Custeio</button>
+          <button aria-current={pilha === "investimento"} onClick={() => setPilha("investimento")}>Investimento</button>
+        </div>
       </div>
-      <KpiCockpit R={data} />
+      <KpiCockpit R={data} pilha={pilha} />
       <FolegoCaixa R={data} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
       <ExplorarCategoria R={data} onDrill={setDrillCat} />

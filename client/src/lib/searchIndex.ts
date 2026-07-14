@@ -42,8 +42,8 @@ export interface ResultadoBusca {
 }
 
 // ── O índice estático ───────────────────────────────────────────────────────
-// Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "ia"→"IA financeira"
-// e "plano"→"Categorias"; replicamos aqui para o usuário achar pelos dois nomes.
+// Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "plano"→"Categorias";
+// replicamos aqui para o usuário achar pelos dois nomes.
 export const COMANDOS: Comando[] = [
   // — Financeiro (grupo "Visão & gestão" / abas do ABAS) —
   { id: "fin-dashboard", tab: "dashboard", label: "Dashboard", grupo: "Financeiro", sinonimos: ["painel", "visão geral", "início", "home", "executivo"], descricao: "Visão executiva, gráficos e números" },
@@ -51,7 +51,7 @@ export const COMANDOS: Comando[] = [
   { id: "fin-lancar", tab: "lancar", label: "Lançar", grupo: "Financeiro", sinonimos: ["lançamento", "registrar", "entrada", "receita", "saída", "nova nota"], descricao: "Registrar entrada (receita) ou saída (gasto)" },
   { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   { id: "fin-plano", tab: "plano", label: "Categorias", grupo: "Financeiro", sinonimos: ["plano de contas", "plano", "categoria", "categorização", "contas", "grupos"], descricao: "Plano de contas e categorização" },
-  { id: "fin-ia", tab: "ia", label: "IA financeira", grupo: "Financeiro", sinonimos: ["ia", "inteligência artificial", "assistente", "perguntar", "chat", "números"], descricao: "Pergunte sobre os números" },
+  { id: "fin-ia", tab: "ia", label: "IA", grupo: "Financeiro", sinonimos: ["ia", "inteligência artificial", "assistente", "perguntar", "chat", "números", "financeira"], descricao: "Pergunte sobre os números" },
   { id: "fin-relatorio", tab: "relatorio", label: "Relatório", grupo: "Financeiro", sinonimos: ["relatório gerencial", "editorial", "executivo", "dre", "fluxo de caixa", "leite paga o leite"], descricao: "Relatório gerencial editorial" },
 
   // — Rebanho leiteiro (MODULOS[rebanho].subs) —
