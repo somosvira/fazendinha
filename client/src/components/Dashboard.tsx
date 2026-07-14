@@ -2007,8 +2007,13 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Dashboard({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
-  const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
+export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) => void; user?: User; filtrosIniciais?: Record<string, string> }) {
+  // Deep-link da IA: /dashboard?mes=YYYY-MM abre o painel já naquele mês.
+  const [range, setRange] = useState<DateRange>(() => {
+    const mes = filtrosIniciais?.mes;
+    const m = mes && /^\d{4}-\d{2}$/.test(mes) ? mes.split("-").map(Number) : null;
+    return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : DEFAULT_RANGE;
+  });
   const [drillCat, setDrillCat] = useState<CatId | null>(null);
   const [monthIdx, setMonthIdx] = useState<number | null>(null);
   const [data, setData] = useState<R | null>(null);

@@ -124,6 +124,20 @@
   border-bottom-left-radius: 4px;
 }
 .chat-line { display: block; min-height: 1px; }
+/* Deep-link da IA renderizado como botão inline com cara de link. */
+.chat-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--leite, #c8a24a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.chat-inline-link:hover { text-decoration: none; }
+.chat-inline-link:focus-visible { outline: 2px solid var(--leite, #c8a24a); outline-offset: 2px; border-radius: 2px; }
 .chat-tools {
   margin-top: 4px;
   font-size: 10.5px;

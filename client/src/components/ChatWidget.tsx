@@ -17,26 +17,41 @@ const SUGESTOES = [
   "Por que meu custo com pessoal varia?",
 ];
 
-// Formata **negrito** de forma segura (sem innerHTML), preservando quebras de linha.
-function Formatado({ texto }: { texto: string }) {
+// Formata **negrito** e deep-links [rótulo](/caminho?filtros) de forma segura (sem
+// innerHTML), preservando quebras de linha. Os links internos viram botões que chamam
+// onNavegar (navegação in-app + filtros) em vez de <a href> (que recarregaria a página).
+const TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\(\/[^)]+\))/g;
+const LINK = /^\[([^\]]+)\]\((\/[^)]+)\)$/;
+
+export function Formatado({ texto, onNavegar }: { texto: string; onNavegar?: (url: string) => void }) {
   return (
     <>
       {texto.split("\n").map((linha, i) => (
         <span key={i} className="chat-line">
-          {linha.split(/(\*\*[^*]+\*\*)/g).map((parte, j) =>
-            parte.startsWith("**") && parte.endsWith("**") ? (
-              <strong key={j}>{parte.slice(2, -2)}</strong>
-            ) : (
-              <span key={j}>{parte}</span>
-            ),
-          )}
+          {linha.split(TOKEN).map((parte, j) => {
+            if (parte.startsWith("**") && parte.endsWith("**")) {
+              return <strong key={j}>{parte.slice(2, -2)}</strong>;
+            }
+            const link = LINK.exec(parte);
+            if (link) {
+              const [, rotulo, url] = link;
+              return onNavegar ? (
+                <button key={j} type="button" className="chat-inline-link" onClick={() => onNavegar(url)}>
+                  {rotulo}
+                </button>
+              ) : (
+                <span key={j}>{rotulo}</span>
+              );
+            }
+            return <span key={j}>{parte}</span>;
+          })}
         </span>
       ))}
     </>
   );
 }
 
-export function ChatWidget() {
+export function ChatWidget({ onNavegar }: { onNavegar?: (url: string) => void } = {}) {
   const [aberto, setAberto] = useState(false);
   const [expandido, setExpandido] = useState(false);
   const [sessao, setSessao] = useState(novaSessao);
@@ -145,7 +160,7 @@ export function ChatWidget() {
             {msgs.map((m, i) => (
               <div key={i} className={`chat-msg ${m.role}`}>
                 <div className="chat-bubble">
-                  <Formatado texto={m.content} />
+                  <Formatado texto={m.content} onNavegar={onNavegar} />
                 </div>
                 {m.tools && m.tools.length > 0 && (
                   <div className="chat-tools">via {Array.from(new Set(m.tools)).join(" · ")}</div>

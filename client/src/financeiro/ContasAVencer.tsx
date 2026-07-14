@@ -189,8 +189,13 @@ function TabButton({
   );
 }
 
-export function ContasAVencer() {
-  const [tab, setTab] = useState<Tab>("aVencer");
+export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<string, string> }) {
+  // Deep-link da IA (via /gastos?status=…&q=…): status → tab; categoria/pessoa/q → busca
+  // universal (que já casa fornecedor + categoria + descrição).
+  const stInicial = filtrosIniciais?.status;
+  const tabInicial: Tab = stInicial === "vencidas" ? "vencidas" : stInicial === "pagas" ? "pagas" : "aVencer";
+  const qInicial = filtrosIniciais?.q ?? filtrosIniciais?.categoria ?? filtrosIniciais?.pessoa ?? "";
+  const [tab, setTab] = useState<Tab>(tabInicial);
   const [pagina, setPagina] = useState(1);
   const [ordem, setOrdem] = useState<{ by: OrdemLancamentos; dir: DirecaoOrdem }>(ORDEM_DEFAULT.aVencer);
   const toast = useToast();
@@ -199,8 +204,8 @@ export function ContasAVencer() {
 
   // Busca universal (fornecedor, categoria, descrição e — se numérico — valor).
   // Debounce leve pra não bater o backend a cada tecla.
-  const [q, setQ] = useState("");
-  const [qDebounced, setQDebounced] = useState("");
+  const [q, setQ] = useState(qInicial);
+  const [qDebounced, setQDebounced] = useState(qInicial);
   useEffect(() => {
     const id = window.setTimeout(() => setQDebounced(q.trim()), 250);
     return () => window.clearTimeout(id);

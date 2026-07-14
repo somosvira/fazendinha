@@ -25,12 +25,20 @@ export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   );
 }
 
-export function Gastos({ onNav, user }: { onNav: (t: Tab) => void; user?: User }) {
+export function Gastos({
+  onNav,
+  user,
+  filtrosIniciais,
+}: {
+  onNav: (t: Tab) => void;
+  user?: User;
+  filtrosIniciais?: Record<string, string>;
+}) {
   return (
     <div className={"shell-wide " + (user && !user.flags.includes("verValores") ? "mask-values" : "")}>
       <ReportHeader subtitle="Gastos — contas a pagar" updatedAt={R.UPDATED_AT} />
 
-      <ContasAVencer />
+      <ContasAVencer filtrosIniciais={filtrosIniciais} />
 
       <AnomaliasStrip R={{ anomalias }} onNav={onNav} />
     </div>

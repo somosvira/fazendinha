@@ -132,6 +132,43 @@ export function App() {
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
 
+  // Deep-link da IA (chat): filtros aplicados numa tela via query string
+  // (ex.: /gastos?status=vencidas). Inicializa da URL no load/reload.
+  const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const sp = new URLSearchParams(window.location.search);
+    if (![...sp.keys()].length) return null;
+    const t = pathToTab(window.location.pathname);
+    return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
+  });
+
+  // Navega a partir de um link da IA ("/caminho?filtros"): troca a aba e guarda os
+  // filtros pra tela consumir na montagem. `id=` em módulo de cockpit (reb/pla/cor)
+  // reaproveita o deepLink do ⌘K; o resto vira filtros de tabela (piloto: /gastos).
+  const navegarDeepLink = (url: string) => {
+    const qi = url.indexOf("?");
+    const path = qi >= 0 ? url.slice(0, qi) : url;
+    const query = qi >= 0 ? url.slice(qi + 1) : "";
+    const t = pathToTab(path);
+    if (!t) return;
+    const filtros = Object.fromEntries(new URLSearchParams(query).entries());
+    const s = String(t);
+    const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+    if (filtros.id && temCockpit) {
+      setDeepLink({ tab: t, id: filtros.id });
+      setDeepLinkFiltros(null);
+    } else {
+      setDeepLink(null);
+      setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
+    }
+    setTab(t);
+    const alvo = tabToPath(t) + (query ? `?${query}` : "");
+    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+  };
+
+  // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
+  const navegarTab = (t: Tab) => { setDeepLinkFiltros(null); setTab(t); };
+
   // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -237,9 +274,23 @@ export function App() {
     : (
       <>
         {tab === "dashboard" &&
-          (canSee("dashboard") ? <Dashboard onNav={setTab} user={effectiveUser} /> : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
+          (canSee("dashboard")
+            ? <Dashboard
+                key={deepLinkFiltros?.tab === "dashboard" ? JSON.stringify(deepLinkFiltros.filtros) : "dashboard"}
+                onNav={setTab}
+                user={effectiveUser}
+                filtrosIniciais={deepLinkFiltros?.tab === "dashboard" ? deepLinkFiltros.filtros : undefined}
+              />
+            : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
         {tab === "gastos" &&
-          (canSee("gastos") ? <Gastos onNav={setTab} user={effectiveUser} /> : <GatedTab user={effectiveUser} abaLabel="Gastos" />)}
+          (canSee("gastos")
+            ? <Gastos
+                key={deepLinkFiltros?.tab === "gastos" ? JSON.stringify(deepLinkFiltros.filtros) : "gastos"}
+                onNav={setTab}
+                user={effectiveUser}
+                filtrosIniciais={deepLinkFiltros?.tab === "gastos" ? deepLinkFiltros.filtros : undefined}
+              />
+            : <GatedTab user={effectiveUser} abaLabel="Gastos" />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {tab === "relatorio" &&
           (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
@@ -270,7 +321,7 @@ export function App() {
       />
       <AppSidebar
         current={tab}
-        onNav={setTab}
+        onNav={navegarTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
         podeVerFolha={canSeeFolha}
@@ -320,7 +371,7 @@ export function App() {
           return canSee(t);
         }}
       />
-      <ChatWidget />
+      <ChatWidget onNavegar={navegarDeepLink} />
     </div>
   );
 }
