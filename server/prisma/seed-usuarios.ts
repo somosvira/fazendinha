@@ -20,7 +20,6 @@ const CONTAS: { nome: string; email: string; papel: string; dono: boolean }[] = 
 ];
 
 async function main() {
-  const senhaHash = hashSenha(SENHA);
   for (const c of CONTAS) {
     const preset = aplicarPreset(c.papel);
     const dados = {
@@ -30,7 +29,7 @@ async function main() {
       flags: preset.flags,
       status: "ATIVO" as const,
       dono: c.dono,
-      senhaHash,
+      senhaHash: hashSenha(SENHA), // hash próprio por conta → salt único (não compartilhado)
     };
     const u = await prisma.usuario.upsert({
       where: { email: c.email },
