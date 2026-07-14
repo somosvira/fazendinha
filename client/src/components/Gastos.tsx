@@ -31,11 +31,18 @@ export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
 
 export type GastosSub = "contas" | "caixinha";
 
-export function Gastos({ onNav, user, sub = "contas", podeCaixinha = true }: {
+export function Gastos({
+  onNav,
+  user,
+  sub = "contas",
+  podeCaixinha = true,
+  filtrosIniciais,
+}: {
   onNav: (t: Tab) => void;
   user?: User;
   sub?: GastosSub;
   podeCaixinha?: boolean;
+  filtrosIniciais?: Record<string, string>;
 }) {
   const tabs: SubTab<GastosSub>[] = [
     { id: "contas", label: "Contas" },
@@ -63,7 +70,7 @@ export function Gastos({ onNav, user, sub = "contas", podeCaixinha = true }: {
         <Caixinha embedded />
       ) : (
         <>
-          <ContasAVencer />
+          <ContasAVencer filtrosIniciais={filtrosIniciais} />
           <AnomaliasStrip R={{ anomalias }} onNav={onNav} />
         </>
       )}

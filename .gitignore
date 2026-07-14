@@ -17,3 +17,5 @@ __pycache__/
 
 # Driver de storage local (STORAGE_DRIVER=local) grava notas aqui em dev.
 .uploads/
+bateria-gabarito.json
+bateria-respostas.json

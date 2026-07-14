@@ -9,6 +9,7 @@
 import { prisma } from "../../db.js";
 import { perguntar, BotDesligadoError } from "../bot/agent.js";
 import { carregarHistorico, registrarTroca } from "../bot/conversa.js";
+import { escopoPadraoLeitura } from "../propriedade.js";
 import { enviarTexto } from "./client.js";
 import type { MensagemRecebida } from "./webhook.js";
 
@@ -36,11 +37,13 @@ export async function processarMensagem(msg: MensagemRecebida): Promise<void> {
     return;
   }
 
-  // 3) agente com memória
+  // 3) agente com memória (WhatsApp não tem header — escopo padrão: 1 sítio =
+  // principal invisível; N sítios = consolidado)
   const historico = await carregarHistorico(from);
   let resposta: string;
   try {
-    resposta = (await perguntar(text, historico)).resposta;
+    const propriedadeId = await escopoPadraoLeitura().catch(() => null);
+    resposta = (await perguntar(text, historico, { propriedadeId })).resposta;
   } catch (e) {
     resposta = e instanceof BotDesligadoError
       ? "Assistente temporariamente indisponível. Tente mais tarde."

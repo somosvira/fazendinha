@@ -25,26 +25,48 @@ const SUGESTOES = [
 const ICON_BTN =
   "grid h-7 w-7 place-items-center rounded-lg border border-[rgba(168,160,137,0.25)] bg-transparent text-sm text-[color:var(--mast-ink-2)] transition-colors hover:border-leite hover:bg-[rgba(184,154,92,0.12)] hover:text-[color:var(--mast-ink)]";
 
-// Formata **negrito** de forma segura (sem innerHTML), preservando quebras de linha.
-function Formatado({ texto }: { texto: string }) {
+// Deep-link inline da IA: botão com cara de link (não é <a href> — recarregaria a página).
+const LINK_INLINE =
+  "cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-[color:var(--leite,#c8a24a)] underline underline-offset-2 hover:no-underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--leite,#c8a24a)]";
+
+// Formata **negrito** e deep-links [rótulo](/caminho?filtros) de forma segura (sem
+// innerHTML), preservando quebras de linha. Links internos viram botões que chamam
+// onNavegar (navegação in-app + filtros).
+const TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\(\/[^)]+\))/g;
+const LINK = /^\[([^\]]+)\]\((\/[^)]+)\)$/;
+
+export function Formatado({ texto, onNavegar }: { texto: string; onNavegar?: (url: string) => void }) {
   return (
     <>
       {texto.split("\n").map((linha, i) => (
         <span key={i} className="block min-h-px">
-          {linha.split(/(\*\*[^*]+\*\*)/g).map((parte, j) =>
-            parte.startsWith("**") && parte.endsWith("**") ? (
-              <strong key={j}>{parte.slice(2, -2)}</strong>
-            ) : (
-              <span key={j}>{parte}</span>
-            ),
-          )}
+          {linha.split(TOKEN).map((parte, j) => {
+            if (parte.startsWith("**") && parte.endsWith("**")) {
+              return <strong key={j}>{parte.slice(2, -2)}</strong>;
+            }
+            const link = LINK.exec(parte);
+            if (link) {
+              const [, rotulo, url] = link;
+              return onNavegar ? (
+                <button key={j} type="button" className={LINK_INLINE} onClick={() => onNavegar(url)}>
+                  {rotulo}
+                </button>
+              ) : (
+                <span key={j}>{rotulo}</span>
+              );
+            }
+            return <span key={j}>{parte}</span>;
+          })}
         </span>
       ))}
     </>
   );
 }
 
-export function ChatWidget({ oculto = false }: { oculto?: boolean }) {
+export function ChatWidget({
+  oculto = false,
+  onNavegar,
+}: { oculto?: boolean; onNavegar?: (url: string) => void } = {}) {
   const [aberto, setAberto] = useState(false);
   const [expandido, setExpandido] = useState(false);
   const [sessao, setSessao] = useState(novaSessao);
@@ -194,7 +216,7 @@ export function ChatWidget({ oculto = false }: { oculto?: boolean }) {
                       : "rounded-bl-[4px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] text-foreground",
                   )}
                 >
-                  <Formatado texto={m.content} />
+                  <Formatado texto={m.content} onNavegar={onNavegar} />
                 </div>
                 {m.tools && m.tools.length > 0 && (
                   <div className="mt-1 text-[10.5px] tracking-[0.02em] text-[color:var(--ink-mute)]">
