@@ -38,9 +38,7 @@ function Chevron({ className }: { className?: string }) {
 
 /* ícones do menu de conta (contorno, 17px) */
 const AccIcon = {
-  user: <><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></>,
   gear: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></>,
-  help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 3.9-1.9c1.6 1 .6 2.9-1 3.4-.5.2-.9.7-.9 1.4M12 17h.01"/></>,
   out: <><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h11"/></>,
 } as const;
 
@@ -95,9 +93,7 @@ function UserPicker({ user, onPreferencias, onSair }: {
           <div className="text-sm font-semibold text-ink">{user.nome}</div>
           {user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}
         </div>
-        <AcctItem icon={AccIcon.user}>Meu perfil</AcctItem>
         <AcctItem icon={AccIcon.gear} onSelect={onPreferencias}>Preferências</AcctItem>
-        <AcctItem icon={AccIcon.help}>Central de ajuda</AcctItem>
         {onSair && (
           <>
             <DropdownMenuSeparator className="my-1 bg-[var(--rule-soft)]" />
