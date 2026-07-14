@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import {
   useSafrasCultivo,
   useSafraCultivo,
@@ -15,10 +16,25 @@ import {
 import type { MilSub } from "../CultivoContent";
 import { ClasseToggle, type Classe } from "../../components/ClasseToggle";
 import { HOJE } from "../HOJE";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Sprout } from "lucide-react";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
 const ha = (n: number | null) => (n == null ? "—" : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha`);
+
+// Reproduz .rb-k para células custom (borda colorida / fonte custom).
+const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
+const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
+const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]";
+const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 
 /* Lista + cadastro de SafraCultivo. Selecionar uma linha abre o detalhe
  * (áreas + resumo) inline — sem cockpit modal, espelha o padrão simples que
@@ -42,27 +58,40 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
   }
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Cultivo · milho</div>
-      <div className="rb-head"><h1>Safras</h1></div>
+    <RebMain>
+      <RebHeader eyebrow="Cultivo · milho" title="Safras" />
 
-      <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
-          <button className="rb-btn" aria-pressed={filtroFechada === "false"} onClick={() => setFiltroFechada("false")}>Abertas</button>
-          <button className="rb-btn" aria-pressed={filtroFechada === "true"} onClick={() => setFiltroFechada("true")}>Fechadas</button>
-          <button className="rb-btn" aria-pressed={filtroFechada === ""} onClick={() => setFiltroFechada("")}>Todas</button>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          <RebButton aria-pressed={filtroFechada === "false"} onClick={() => setFiltroFechada("false")}>Abertas</RebButton>
+          <RebButton aria-pressed={filtroFechada === "true"} onClick={() => setFiltroFechada("true")}>Fechadas</RebButton>
+          <RebButton aria-pressed={filtroFechada === ""} onClick={() => setFiltroFechada("")}>Todas</RebButton>
         </div>
-        <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={() => setFormNova(true)}>+ Nova safra</button>
+        <RebButton variant="pri" style={{ marginLeft: "auto" }} onClick={() => setFormNova(true)}>+ Nova safra</RebButton>
       </div>
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar safras: {erro}</p>
+        <p className="text-sm text-prejuizo">Erro ao carregar safras: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : data.length === 0 ? (
-        <div className="rb-empty">Nenhuma safra de milho cadastrada ainda.</div>
+        filtroFechada !== "" ? (
+          <EmptyState
+            icon={Sprout}
+            variant="filtro"
+            titulo={filtroFechada === "false" ? "Nenhuma safra aberta" : "Nenhuma safra fechada"}
+            descricao="Não há safras neste filtro. Veja “Todas” para conferir o histórico completo."
+          />
+        ) : (
+          <EmptyState
+            icon={Sprout}
+            titulo="Nenhuma safra de milho cadastrada"
+            descricao="Uma safra reúne as áreas plantadas, a produção e o custo de um ciclo. Cadastre a primeira para acompanhar o milho da fazenda."
+            acao={<RebButton variant="pri" onClick={() => setFormNova(true)}>+ Nova safra</RebButton>}
+          />
+        )
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead>
             <tr>
               <th>Safra</th><th>Ano</th><th>Área total</th><th>Custeio</th><th>Custo/ha</th><th>Status</th>
@@ -71,16 +100,16 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
           <tbody>
             {data.map((s) => (
               <tr key={s.id} className="rb-row" onClick={() => setSafraId(s.id)}>
-                <td className="rb-anm">{s.nome}</td>
+                <td><RebAnm>{s.nome}</RebAnm></td>
                 <td>{s.ano}</td>
                 <td>{ha(s.areaHaTotal)}</td>
                 <td>{s.resumo ? moneyN(s.resumo.custeioTotal) : "—"}</td>
                 <td>{s.resumo ? moneyN(s.resumo.custoHa) : "—"}</td>
-                <td><span className={"rb-pill" + (s.fechada ? " bad" : "")}>{s.fechada ? "fechada" : "aberta"}</span></td>
+                <td><RebPill tone={s.fechada ? "bad" : "ok"}>{s.fechada ? "fechada" : "aberta"}</RebPill></td>
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {formNova && (
@@ -90,7 +119,7 @@ export function SafrasTab({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
           onSalvo={() => { setFormNova(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -120,80 +149,63 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
 
   if (loading || !safra) {
     return (
-      <main className="rb-main">
-        <div className="rb-eyebrow">Cultivo · milho</div>
-        <div className="rb-head">
-          <h1>Safra</h1>
-          <button className="rb-btn" onClick={onVoltar}>← Safras</button>
-        </div>
-        {erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p> : <p className="rb-sub">Carregando…</p>}
-      </main>
+      <RebMain>
+        <RebHeader eyebrow="Cultivo · milho" title="Safra" actions={<RebButton onClick={onVoltar}>← Safras</RebButton>} />
+        {erro ? <p className="text-sm text-prejuizo">Erro: {erro}</p> : <Loader />}
+      </RebMain>
     );
   }
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Cultivo · milho · {safra.ano}</div>
-      <div className="rb-head">
-        <h1>{safra.nome}</h1>
-        <button className="rb-btn" onClick={onVoltar}>← Safras</button>
-      </div>
+    <RebMain>
+      <RebHeader eyebrow={`Cultivo · milho · ${safra.ano}`} title={safra.nome} actions={<RebButton onClick={onVoltar}>← Safras</RebButton>} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-        <span className={"rb-pill" + (safra.fechada ? " bad" : "")}>{safra.fechada ? "fechada" : "aberta"}</span>
+        <RebPill tone={safra.fechada ? "bad" : "ok"}>{safra.fechada ? "fechada" : "aberta"}</RebPill>
         <ClasseToggle value={classe} onChange={setClasse} />
-        <button className="rb-btn" style={{ marginLeft: "auto" }} onClick={() => setFormEditar(true)}>Editar</button>
-        <button className="rb-btn" onClick={() => onNavMil("custos")}>Ver custos</button>
-        <button className="rb-btn" onClick={() => onNavMil("producao")}>Ver produção</button>
-        <button className="rb-btn" disabled={processando} onClick={alternarFechamento}>
+        <RebButton style={{ marginLeft: "auto" }} onClick={() => setFormEditar(true)}>Editar</RebButton>
+        <RebButton onClick={() => onNavMil("custos")}>Ver custos</RebButton>
+        <RebButton onClick={() => onNavMil("producao")}>Ver produção</RebButton>
+        <RebButton disabled={processando} onClick={alternarFechamento}>
           {processando ? "Processando…" : safra.fechada ? "Reabrir safra" : "Fechar safra"}
-        </button>
+        </RebButton>
       </div>
-      {erroAcao && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erroAcao}</p>}
+      {erroAcao && <p className="text-[13px] text-prejuizo">{erroAcao}</p>}
 
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-        <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="lab">Total ({classe})</div>
-          <div className="val" style={{ fontSize: 26, color: "var(--cafe)" }}>{resumo ? money(resumo.total) : "—"}</div>
-          <div className="d">{safra.areaHaTotal ? ha(safra.areaHaTotal) : "área não informada"}</div>
+      <RebKpiStrip cols={4}>
+        <div className={RB_K} style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className={RB_K_LAB}>Total ({classe})</div>
+          <div className={RB_K_VAL} style={{ fontSize: 26, color: "var(--cafe)" }}>{resumo ? money(resumo.total) : "—"}</div>
+          <div className={RB_K_D}>{safra.areaHaTotal ? ha(safra.areaHaTotal) : "área não informada"}</div>
         </div>
-        <div className="rb-k">
-          <div className="lab">Custo / ha</div>
-          <div className="val">{resumo ? moneyN(resumo.custoHa) : "—"}</div>
-        </div>
-        <div className="rb-k">
-          <div className="lab">Custo / saca</div>
-          <div className="val">{resumo ? moneyN(resumo.custoSaca) : "—"}</div>
-        </div>
-        <div className="rb-k">
-          <div className="lab">Custo / tonelada</div>
-          <div className="val">{resumo ? moneyN(resumo.custoTonelada) : "—"}</div>
-        </div>
-      </div>
-      {resumo?.nota && <p className="rb-sub">{resumo.nota}</p>}
+        <RebKpi lab="Custo / ha" val={resumo ? moneyN(resumo.custoHa) : "—"} />
+        <RebKpi lab="Custo / saca" val={resumo ? moneyN(resumo.custoSaca) : "—"} />
+        <RebKpi lab="Custo / tonelada" val={resumo ? moneyN(resumo.custoTonelada) : "—"} />
+      </RebKpiStrip>
+      {resumo?.nota && <p className="text-sm text-ink-3">{resumo.nota}</p>}
 
-      <div className="rb-listhead">
-        <h2 className="rb-sec-title" style={{ margin: 0 }}>Áreas</h2>
-        <button className="rb-btn pri" onClick={() => setFormArea(true)}>+ Nova área</button>
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="m-0 font-serif text-xl font-medium">Áreas</h2>
+        <RebButton variant="pri" onClick={() => setFormArea(true)}>+ Nova área</RebButton>
       </div>
 
       {loadingAreas ? (
-        <p className="rb-sub">Carregando áreas…</p>
+        <Loader label="Carregando áreas…" />
       ) : areas.length === 0 ? (
-        <div className="rb-empty">Nenhuma área cadastrada para esta safra ainda.</div>
+        <RebEmpty>Nenhuma área cadastrada para esta safra ainda.</RebEmpty>
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead><tr><th>Código</th><th>Nome</th><th>Área</th></tr></thead>
           <tbody>
             {areas.map((a) => (
               <tr key={a.id}>
-                <td className="rb-anm">{a.codigo}</td>
+                <td><RebAnm>{a.codigo}</RebAnm></td>
                 <td>{a.nome ?? "—"}</td>
                 <td>{ha(a.areaHa)}</td>
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {formArea && (
@@ -212,7 +224,7 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
           onSalvo={() => { setFormEditar(false); recarregar(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -256,53 +268,42 @@ function SafraForm({ modo, safra, onFechar, onSalvo }: {
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>{modo === "novo" ? "Nova safra" : `Editar ${s?.nome}`}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 2 }}>
-              <label>Nome*</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Milho safrinha 2026" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Ano*</label>
-              <input type="number" value={ano} onChange={(e) => setAno(e.target.value)} />
-            </div>
-          </div>
+    <RebModal
+      title={modo === "novo" ? "Nova safra" : `Editar ${s?.nome}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !nome || !ano || !dataInicio} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Nome*" style={{ flex: 2 }}>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Milho safrinha 2026" />
+        </RebField>
+        <RebField label="Ano*" style={{ flex: 1 }}>
+          <input type="number" value={ano} onChange={(e) => setAno(e.target.value)} />
+        </RebField>
+      </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Início*</label>
-              <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Fim (previsto)</label>
-              <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Área total (ha)</label>
-              <input type="number" step="0.1" value={areaHaTotal} onChange={(e) => setAreaHaTotal(e.target.value)} />
-            </div>
-          </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Início*" style={{ flex: 1 }}>
+          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
+        </RebField>
+        <RebField label="Fim (previsto)" style={{ flex: 1 }}>
+          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+        </RebField>
+        <RebField label="Área total (ha)" style={{ flex: 1 }}>
+          <input type="number" step="0.1" value={areaHaTotal} onChange={(e) => setAreaHaTotal(e.target.value)} />
+        </RebField>
+      </div>
 
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !nome || !ano || !dataInicio} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+      <RebField label="Observação">
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </RebField>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }
 
@@ -332,36 +333,28 @@ function AreaForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: numbe
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>Nova área</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Código*</label>
-              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: A1" />
-            </div>
-            <div className="rb-fld" style={{ flex: 2 }}>
-              <label>Nome</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Talhão da represa" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Área (ha)*</label>
-              <input type="number" step="0.1" value={areaHa} onChange={(e) => setAreaHa(e.target.value)} />
-            </div>
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !codigo || !areaHa} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+    <RebModal
+      title="Nova área"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !codigo || !areaHa} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Código*" style={{ flex: 1 }}>
+          <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: A1" />
+        </RebField>
+        <RebField label="Nome" style={{ flex: 2 }}>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Talhão da represa" />
+        </RebField>
+        <RebField label="Área (ha)*" style={{ flex: 1 }}>
+          <input type="number" step="0.1" value={areaHa} onChange={(e) => setAreaHa(e.target.value)} />
+        </RebField>
+      </div>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

@@ -24,18 +24,20 @@ describe("render smoke", () => {
       isAdmin: true,
       podeVerFolha: true,
       mobileOpen: false, onMobileToggle: () => {},
+      propAtiva: null, onTrocarProp: () => {},
     }));
-    // grupos atuais (renomeados em "Sidebar enxuta")
-    expect(html).toContain("Visão");          // "Visão & gestão"
-    expect(html).toContain("Operações");
-    expect(html).toContain("Administração");
+    // grupos atuais (handoff "Shell": Gestão + Atividades; itens raros no rodapé)
+    expect(html).toContain("Gestão");
+    expect(html).toContain("Atividades");
+    expect(html).toContain("Terrano");           // marca no topo da sidebar
     expect(html).toContain("Rebanho leiteiro");
     expect(html).toContain("Painel");
     expect(html).toContain("IA financeira");
-    expect(html).toContain("Acessos");
-    expect(html).toContain("Configurações");
-    expect(html).toContain("Cadastros");
-    expect(html).toContain("Produção");
+    expect(html).toContain("Configurações");     // único item do rodapé (hub)
+    // Cadastros/Categorias/Caixinha/Acessos dobraram para dentro dos hubs
+    // (Configurações/Gastos) — não são mais itens de topo da sidebar.
+    expect(html).not.toContain(">Acessos<");
+    expect(html).toContain("Produção");           // sub-item do rebanho (acordeão aberto)
     expect(html).toContain("Estoque");
     expect(html).toContain("Custo");
   });
@@ -47,8 +49,8 @@ describe("render smoke", () => {
 
   it("App renders the unified sidebar (no top bar)", () => {
     const html = renderToString(h(App));
-    expect(html).toContain("Visão");           // grupo "Visão & gestão"
-    expect(html).toContain("Operações");        // grupo
+    expect(html).toContain("Gestão");           // grupo (handoff "Shell")
+    expect(html).toContain("Atividades");        // grupo
     expect(html).toContain("Rebanho leiteiro"); // módulo operacional
     expect(html).toContain("Painel");           // sub-item rebanho
     expect(html).not.toContain("nav-tabs");     // top bar removida

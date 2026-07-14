@@ -144,6 +144,15 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export type TipoMovimentoCaixinha = "ENTRADA" | "SAIDA";
 
+// Categoria do gasto — espelha o enum Prisma/Zod. Só usada em SAIDA (ENTRADA = null).
+export type CategoriaCaixinha =
+  | "ALIMENTACAO"
+  | "COMBUSTIVEL"
+  | "MERCADO"
+  | "INSUMOS"
+  | "MANUTENCAO"
+  | "OUTROS";
+
 export interface CaixinhaDTO {
   id: number;
   nome: string;
@@ -157,6 +166,7 @@ export interface MovimentoCaixinhaDTO {
   caixinhaId: number;
   data: string; // YYYY-MM-DD
   tipo: TipoMovimentoCaixinha;
+  categoria: CategoriaCaixinha | null; // só em SAIDA
   valor: number; // sempre positivo — sinal vem do tipo
   descricao: string;
   observacao: string | null;
@@ -170,6 +180,7 @@ export interface CaixinhaInput {
 export interface MovimentoCaixinhaInput {
   data: string; // YYYY-MM-DD
   tipo: TipoMovimentoCaixinha;
+  categoria?: CategoriaCaixinha | null; // só em SAIDA; backend normaliza
   valor: number;
   descricao: string;
   observacao?: string | null;

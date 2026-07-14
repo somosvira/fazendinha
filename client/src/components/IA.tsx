@@ -1,4 +1,10 @@
-/* Rio Novo — IA conversacional (chat + voz + memória + simulador) */
+/* Rio Novo — IA conversacional (chat + voz + memória + simulador)
+ *
+ * Fase 4 (IA/Chat) slice B: layout, composer, mic, memória e cards de resposta
+ * migrados p/ Tailwind. Classes ia-/msg/ai-/mic- (base.css) e
+ * ia-mode-/mem- (simulador.css) aposentadas. Valores finais herdados da
+ * typescale (ai-narrative 19, msg p/user 17, ia-input 17, mini-table 15).
+ * Keyframes do mic (mic-pulse/mic-bar/mic-blink) ficam em base.css. */
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import R from "../data/rionovo";
@@ -6,9 +12,16 @@ import { ReportHeader } from "./Shell";
 import { fmtMoney, MiniBarChart } from "./charts";
 import { ActivityPill } from "./Gastos";
 import { Simulador } from "./Simulador";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { buildFolego, buildProjecaoLeite } from "../data/projecao";
 import * as memoria from "../data/memoria";
 import type { Conversa } from "../data/memoria";
+
+const AI_CARD = "flex flex-col gap-4 border border-border bg-card px-6 py-[22px]";
+const AI_CARD_TITLE = "font-serif text-xl tracking-[-0.005em]";
+const AI_SIGNATURE = "flex items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-ink-3";
+const MINI_TABLE = "w-full border-collapse [&_td]:border-b [&_td]:border-[color:var(--rule-soft)] [&_td]:px-2.5 [&_td]:py-2 [&_td]:text-[15px] [&_th]:border-b [&_th]:border-[color:var(--rule-soft)] [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-[0.14em] [&_th]:text-ink-3 [&_td.r]:text-right [&_td.r]:font-serif [&_td.r]:tabular-nums [&_th.r]:text-right";
 
 /* ===== Reconhecimento de voz (Web Speech API, pt-BR) ===== */
 function useSpeechRecognition({ onResult, onFinal }: { onResult?: (t: string) => void; onFinal?: (t: string) => void }) {
@@ -74,9 +87,9 @@ function useSpeechRecognition({ onResult, onFinal }: { onResult?: (t: string) =>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIResponseTopGasto({ resp }: { resp: any }) {
   return (
-    <div className="ai-card">
-      <div className="ai-card-title">{resp.table.title}</div>
-      <table className="ai-mini-table">
+    <div className={AI_CARD}>
+      <div className={AI_CARD_TITLE}>{resp.table.title}</div>
+      <table className={MINI_TABLE}>
         <thead>
           <tr>
             {resp.table.cols.map((c: string, i: number) => (
@@ -114,7 +127,7 @@ function AIResponseTopGasto({ resp }: { resp: any }) {
           ))}
         </tbody>
       </table>
-      {resp.foot && <div className="caption" style={{ fontStyle: "italic" }}>{resp.foot}</div>}
+      {resp.foot && <div className="caption italic">{resp.foot}</div>}
     </div>
   );
 }
@@ -122,32 +135,19 @@ function AIResponseTopGasto({ resp }: { resp: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIResponseKpi({ resp }: { resp: any }) {
   return (
-    <div className="ai-card">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 32, alignItems: "center" }}>
+    <div className={AI_CARD}>
+      <div className="grid grid-cols-[1fr_1.4fr] items-center gap-8">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            {resp.kpi.caption}
-          </div>
-          <div
-            style={{ fontFamily: "var(--serif)", fontSize: 44, lineHeight: 1, letterSpacing: "-0.02em" }}
-            className="mono-nums"
-          >
-            {resp.kpi.value}
-          </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: "var(--neg)" }}>{resp.kpi.delta}</div>
+          <div className="eyebrow mb-2">{resp.kpi.caption}</div>
+          <div className="mono-nums font-serif text-[44px] leading-none tracking-[-0.02em]">{resp.kpi.value}</div>
+          <div className="mt-2.5 text-[13px] text-prejuizo">{resp.kpi.delta}</div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
-            Distribuição mensal
-          </div>
+          <div className="eyebrow mb-1.5">Distribuição mensal</div>
           <MiniBarChart data={resp.chartData} color="var(--cafe)" />
         </div>
       </div>
-      {resp.foot && (
-        <div className="caption" style={{ fontStyle: "italic", marginTop: 8 }}>
-          {resp.foot}
-        </div>
-      )}
+      {resp.foot && <div className="caption mt-2 italic">{resp.foot}</div>}
     </div>
   );
 }
@@ -155,27 +155,16 @@ function AIResponseKpi({ resp }: { resp: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIResponseYesNo({ resp }: { resp: any }) {
   return (
-    <div className="ai-card">
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 24, alignItems: "center" }}>
-        <div style={{ paddingRight: 24, borderRight: "1px solid var(--rule)" }}>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
-            Veredito
-          </div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 56, lineHeight: 1, color: "var(--pos)" }}>
-            {resp.yesno.verdict}
-          </div>
-          <div
-            style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--pos)", marginTop: 8 }}
-            className="mono-nums"
-          >
-            {resp.yesno.folga}
-          </div>
+    <div className={AI_CARD}>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-6">
+        <div className="border-r border-border pr-6">
+          <div className="eyebrow mb-1.5">Veredito</div>
+          <div className="font-serif text-[56px] leading-none text-lucro">{resp.yesno.verdict}</div>
+          <div className="mono-nums mt-2 font-serif text-2xl text-lucro">{resp.yesno.folga}</div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            {resp.yesno.caption}
-          </div>
-          <table className="ai-mini-table">
+          <div className="eyebrow mb-2">{resp.yesno.caption}</div>
+          <table className={MINI_TABLE}>
             <tbody>
               {resp.breakdown.map(([label, val]: [string, number], i: number) => (
                 <tr key={i}>
@@ -204,45 +193,25 @@ function AIResponseYesNo({ resp }: { resp: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIResponseCompare({ resp }: { resp: any }) {
   return (
-    <div className="ai-card">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto", gap: 24, alignItems: "end" }}>
+    <div className={AI_CARD}>
+      <div className="grid grid-cols-[1fr_auto_1fr_auto] items-end gap-6">
         {resp.compare.map(
           (c: { label: string; value: string; sub: string }, i: number) => (
             <Fragment key={i}>
               {i > 0 && (
-                <div
-                  style={{
-                    paddingBottom: 18,
-                    fontFamily: "var(--serif)",
-                    fontStyle: "italic",
-                    color: "var(--ink-mute)",
-                  }}
-                >
-                  →
-                </div>
+                <div className="pb-[18px] font-serif italic text-[color:var(--ink-mute)]">→</div>
               )}
               <div>
-                <div className="eyebrow" style={{ marginBottom: 8 }}>
-                  {c.label}
-                </div>
-                <div
-                  style={{ fontFamily: "var(--serif)", fontSize: 32, lineHeight: 1, letterSpacing: "-0.01em" }}
-                  className="mono-nums"
-                >
-                  {c.value}
-                </div>
-                <div className="caption" style={{ marginTop: 6 }}>
-                  {c.sub}
-                </div>
+                <div className="eyebrow mb-2">{c.label}</div>
+                <div className="mono-nums font-serif text-[32px] leading-none tracking-[-0.01em]">{c.value}</div>
+                <div className="caption mt-1.5">{c.sub}</div>
               </div>
             </Fragment>
           ),
         )}
-        <div style={{ paddingBottom: 4 }}>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            Variação
-          </div>
-          <div style={{ fontFamily: "var(--serif)", fontSize: 26, color: "var(--neg)" }}>{resp.delta}</div>
+        <div className="pb-1">
+          <div className="eyebrow mb-2">Variação</div>
+          <div className="font-serif text-[26px] text-prejuizo">{resp.delta}</div>
         </div>
       </div>
     </div>
@@ -254,37 +223,29 @@ function AIResponseSplit({ resp }: { resp: any }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const total = Math.abs(resp.split.reduce((s: number, x: any) => s + x.value, 0));
   return (
-    <div className="ai-card">
-      <div className="eyebrow" style={{ marginBottom: 14 }}>
-        Fluxo líquido YTD 2026: −R$ 4,00 mi
-      </div>
-      <div style={{ display: "flex", height: 56, border: "1px solid var(--rule)" }}>
+    <div className={AI_CARD}>
+      <div className="eyebrow mb-3.5">Fluxo líquido YTD 2026: −R$ 4,00 mi</div>
+      <div className="flex h-14 border border-border">
         {resp.split.map(
           (s: { share: number; value: number }, i: number) => (
             <div
               key={i}
+              className="relative flex items-center justify-center font-serif text-base text-[color:var(--mast-ink)]"
               style={{
                 width: `${(Math.abs(s.value) / total) * 100}%`,
                 background: i === 0 ? "var(--cafe)" : "var(--outros)",
                 opacity: i === 1 ? 0.6 : 1,
-                color: "var(--mast-ink)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "var(--serif)",
-                fontSize: 16,
-                position: "relative",
               }}
             >
-              <span style={{ color: "var(--mast-ink)", textShadow: "0 1px 1px rgba(0,0,0,0.2)" }}>{s.share}%</span>
+              <span className="text-[color:var(--mast-ink)] [text-shadow:0_1px_1px_rgba(0,0,0,0.2)]">{s.share}%</span>
             </div>
           ),
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 16 }}>
+      <div className="mt-4 grid grid-cols-2 gap-5">
         {resp.split.map((s: { label: string; value: number }, i: number) => (
           <div key={i}>
-            <div className="eyebrow" style={{ marginBottom: 4 }}>
+            <div className="eyebrow mb-1">
               <span
                 className="legend-dot"
                 style={{
@@ -294,9 +255,7 @@ function AIResponseSplit({ resp }: { resp: any }) {
               ></span>
               {s.label}
             </div>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 28 }} className="mono-nums">
-              {fmtMoney(s.value)}
-            </div>
+            <div className="mono-nums font-serif text-[28px]">{fmtMoney(s.value)}</div>
           </div>
         ))}
       </div>
@@ -307,34 +266,31 @@ function AIResponseSplit({ resp }: { resp: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AIResponseVet({ resp }: { resp: any }) {
   return (
-    <div className="col" style={{ gap: 18 }}>
-      <div className="ai-card">
-        <div className="ai-card-title">Protocolo de triagem — bezerro abatido</div>
-        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 15, lineHeight: 1.6, color: "var(--ink)" }}>
+    <div className="flex flex-col gap-[18px]">
+      <div className={AI_CARD}>
+        <div className={AI_CARD_TITLE}>Protocolo de triagem — bezerro abatido</div>
+        <ol className="m-0 list-decimal pl-[18px] text-[15px] leading-[1.6] text-foreground">
           {resp.triagem.map((t: string, i: number) => (
-            <li key={i} style={{ marginBottom: 6 }}>
+            <li key={i} className="mb-1.5">
               {t}
             </li>
           ))}
         </ol>
       </div>
-      <div className="ai-card">
-        <div className="ai-card-title">Conduta por cenário</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className={AI_CARD}>
+        <div className={AI_CARD_TITLE}>Conduta por cenário</div>
+        <div className="flex flex-col gap-3.5">
           {resp.cenarios.map(
             (c: { quando: string; protocolo: string }, i: number) => (
               <div
                 key={i}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "180px 1fr",
-                  gap: 18,
-                  paddingBottom: 14,
-                  borderBottom: i < resp.cenarios.length - 1 ? "1px solid var(--rule-soft)" : "none",
-                }}
+                className={cn(
+                  "grid grid-cols-[180px_1fr] gap-[18px] pb-3.5",
+                  i < resp.cenarios.length - 1 && "border-b border-[color:var(--rule-soft)]",
+                )}
               >
-                <div style={{ fontFamily: "var(--serif)", fontSize: 15, color: "var(--ink)" }}>{c.quando}</div>
-                <div style={{ fontSize: 14, color: "var(--ink-2)", lineHeight: 1.55 }}>{c.protocolo}</div>
+                <div className="font-serif text-[15px] text-foreground">{c.quando}</div>
+                <div className="text-sm leading-[1.55] text-ink-2">{c.protocolo}</div>
               </div>
             ),
           )}
@@ -344,15 +300,19 @@ function AIResponseVet({ resp }: { resp: any }) {
         <div className="stripe"></div>
         <div className="body-col">
           <span className="eyebrow">Estoque consultado</span>
-          <div
-            className="alert-title"
-            style={{ fontSize: 15, fontFamily: "var(--sans)", fontWeight: 400 }}
-          >
-            {resp.estoque}
-          </div>
+          <div className="alert-title font-sans text-[15px] font-normal">{resp.estoque}</div>
         </div>
         <button className="alert-cta">Registrar uso →</button>
       </div>
+    </div>
+  );
+}
+
+function AiSignature({ children, muted }: { children: React.ReactNode; muted?: boolean }) {
+  return (
+    <div className={cn(AI_SIGNATURE, muted && "text-[color:var(--ink-mute)]")}>
+      <span className={cn("h-1.5 w-1.5", muted ? "bg-[color:var(--ink-mute)]" : "bg-lucro")}></span>
+      {children}
     </div>
   );
 }
@@ -361,12 +321,11 @@ function AIResponseVet({ resp }: { resp: any }) {
 function AIResponse({ resp }: { resp: any }) {
   return (
     <>
-      <div className="ai-signature">
-        <span className="dot"></span>
+      <AiSignature>
         <span>Rio Novo · IA analista</span>
-        <span style={{ color: "var(--ink-mute)" }}>· 0,8 s</span>
-      </div>
-      <div className="ai-narrative">{resp.narrative}</div>
+        <span className="text-[color:var(--ink-mute)]">· 0,8 s</span>
+      </AiSignature>
+      <div className="font-serif text-[19px] leading-[1.5] text-foreground">{resp.narrative}</div>
       {resp.kind === "topGasto" && <AIResponseTopGasto resp={resp} />}
       {resp.kind === "kpi" && <AIResponseKpi resp={resp} />}
       {resp.kind === "yesno" && <AIResponseYesNo resp={resp} />}
@@ -383,6 +342,9 @@ type Msg =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   | { role: "ai"; kind: "response"; resp: any }
   | { role: "ai"; kind: "recall"; recall: Conversa };
+
+const MODE_BTN =
+  "cursor-pointer border-0 border-r border-border bg-transparent px-[22px] py-2.5 font-sans text-sm tracking-[0.04em] text-ink-3 last:border-r-0 aria-pressed:bg-mast aria-pressed:text-mast-ink";
 
 export function IA() {
   const [iaMode, setIaMode] = useState<"conversa" | "simulador">("conversa");
@@ -482,13 +444,13 @@ export function IA() {
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle="IA — pergunte sobre seus números" updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow="Financeiro · Pergunte sobre seus números" subtitle="IA financeira" updatedAt={R.UPDATED_AT} />
 
-      <div className="ia-mode-switch">
-        <button className={"ia-mode-btn " + (iaMode === "conversa" ? "active" : "")} onClick={() => setIaMode("conversa")}>
+      <div className="mt-[18px] inline-flex border border-border bg-card">
+        <button className={MODE_BTN} aria-pressed={iaMode === "conversa"} onClick={() => setIaMode("conversa")}>
           Conversa
         </button>
-        <button className={"ia-mode-btn " + (iaMode === "simulador" ? "active" : "")} onClick={() => setIaMode("simulador")}>
+        <button className={MODE_BTN} aria-pressed={iaMode === "simulador"} onClick={() => setIaMode("simulador")}>
           Simulador de cenários
         </button>
       </div>
@@ -496,33 +458,41 @@ export function IA() {
       {iaMode === "simulador" ? (
         <Simulador R={simR} />
       ) : (
-        <div className="ia-layout">
+        <div className="grid min-h-[calc(100vh-130px)] grid-cols-[240px_1fr_280px] border-t border-border max-[900px]:grid-cols-1">
           {/* Esquerda: perguntas frequentes + conversas */}
-          <aside className="ia-sidebar">
-            <h4>Perguntas frequentes</h4>
-            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <aside className="flex flex-col gap-5 border-r border-border bg-card px-5 py-6 max-[900px]:hidden">
+            <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Perguntas frequentes</h4>
+            <div className="flex flex-col">
               {R.promptsSugeridos.map((p: string, i: number) => (
-                <button key={i} className="ia-prompt" onClick={() => ask(p)}>
+                <button
+                  key={i}
+                  className="cursor-pointer border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2.5 text-left font-serif text-[15px] italic leading-[1.4] tracking-[-0.005em] text-ink-2 hover:text-foreground"
+                  onClick={() => ask(p)}
+                >
                   "{p}"
                 </button>
               ))}
             </div>
-            <div style={{ marginTop: "auto" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <h4 style={{ marginBottom: 10 }}>Conversas anteriores</h4>
-                <button className="mem-clear" onClick={limparMemoria} title="Limpar memória">
+            <div className="mt-auto">
+              <div className="flex items-baseline justify-between">
+                <h4 className="m-0 mb-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Conversas anteriores</h4>
+                <button
+                  className="cursor-pointer border-0 bg-transparent font-sans text-[11px] text-[color:var(--ink-mute)] underline underline-offset-2 hover:text-prejuizo"
+                  onClick={limparMemoria}
+                  title="Limpar memória"
+                >
                   limpar
                 </button>
               </div>
-              <div className="mem-convos">
+              <div className="flex flex-col">
                 {mem.current.conversas.slice(0, 5).map((c) => (
                   <button
                     key={c.id}
-                    className="mem-convo"
+                    className="group flex cursor-pointer flex-col gap-px border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2 text-left"
                     onClick={() => c.topicos[0] && ask(`Sobre ${c.topicos[0]}, o que ficou da nossa conversa?`)}
                   >
-                    <span className="mc-data">{c.data}</span>
-                    <span className="mc-titulo">{c.titulo}</span>
+                    <span className="text-[11px] tracking-[0.04em] text-[color:var(--ink-mute)]">{c.data}</span>
+                    <span className="text-[13px] leading-[1.35] text-ink-3 group-hover:text-foreground">{c.titulo}</span>
                   </button>
                 ))}
               </div>
@@ -530,55 +500,51 @@ export function IA() {
           </aside>
 
           {/* Centro: thread */}
-          <div className="ia-main">
-            <div className="ia-thread" ref={threadRef}>
+          <div className="flex flex-col bg-background">
+            <div className="mx-auto flex w-full max-w-[920px] flex-1 flex-col gap-7 overflow-y-auto px-9 py-7 max-[900px]:px-3.5 max-[900px]:py-5" ref={threadRef}>
               {thread.map((m, i) => (
-                <div key={i} className={"msg " + m.role}>
-                  {m.role === "user" && <div className="bubble">{m.content}</div>}
-                  {m.role === "ai" && m.kind === "intro" && (
-                    <>
-                      <div className="ai-signature">
-                        <span className="dot"></span>
-                        <span>Rio Novo · IA analista</span>
-                      </div>
-                      <p>{m.content}</p>
-                    </>
+                <div key={i} className={cn("flex flex-col gap-2.5", m.role === "user" && "items-end")}>
+                  {m.role === "user" && (
+                    <div className="max-w-[520px] bg-mast px-[18px] py-3 text-[17px] text-mast-ink">{m.content}</div>
                   )}
-                  {m.role === "ai" && m.kind === "text" && (
+                  {m.role === "ai" && (m.kind === "intro" || m.kind === "text") && (
                     <>
-                      <div className="ai-signature">
-                        <span className="dot"></span>
+                      <AiSignature>
                         <span>Rio Novo · IA analista</span>
-                      </div>
-                      <p>{m.content}</p>
+                      </AiSignature>
+                      <p className="m-0 text-[17px] leading-[1.55] text-ink-2">{m.content}</p>
                     </>
                   )}
                   {m.role === "ai" && m.kind === "recall" && (
-                    <div className="mem-recall">
-                      <div className="mem-recall-head">
-                        <span className="mem-recall-icon">↺</span>Lembrando de {m.recall.data}
+                    <div className="flex max-w-[560px] flex-col gap-1 border-l-[3px] border-l-leite bg-[color:var(--bg-card-2)] px-4 py-3">
+                      <div className="flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.14em] text-ink-3">
+                        <span className="text-sm text-leite">↺</span>Lembrando de {m.recall.data}
                       </div>
-                      <div className="mem-recall-titulo">{m.recall.titulo}</div>
-                      <div className="mem-recall-resumo">{m.recall.resumo}</div>
+                      <div className="font-serif text-base tracking-[-0.005em] text-foreground">{m.recall.titulo}</div>
+                      <div className="text-sm leading-[1.5] text-ink-2">{m.recall.resumo}</div>
                     </div>
                   )}
                   {m.role === "ai" && m.kind === "response" && <AIResponse resp={m.resp} />}
                 </div>
               ))}
               {typing && (
-                <div className="msg ai">
-                  <div className="ai-signature" style={{ color: "var(--ink-mute)" }}>
-                    <span className="dot" style={{ background: "var(--ink-mute)" }}></span>
+                <div className="flex flex-col gap-2.5">
+                  <AiSignature muted>
                     <span>Cruzando lançamentos…</span>
-                  </div>
+                  </AiSignature>
                 </div>
               )}
             </div>
 
-            <div className="ia-composer">
-              <div className={"ia-composer-inner " + (speech.listening ? "is-listening" : "")}>
-                <textarea
-                  className="ia-input"
+            <div className="border-t border-border bg-background px-9 pb-7 pt-[18px] print:hidden max-[900px]:px-3.5 max-[900px]:pb-[18px] max-[900px]:pt-3">
+              <div
+                className={cn(
+                  "mx-auto flex max-w-[920px] flex-col gap-2.5 border bg-card px-4 py-3.5",
+                  speech.listening ? "border-prejuizo" : "border-border",
+                )}
+              >
+                <Textarea
+                  className="min-h-7 resize-none border-0 bg-transparent p-0 text-base text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 md:text-base"
                   placeholder={speech.listening ? "Ouvindo… pode falar" : "Pergunte sobre os números da fazenda…"}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -590,24 +556,29 @@ export function IA() {
                   }}
                   rows={1}
                 />
-                <div className="ia-composer-row">
-                  <div className="ia-scope-pill">
-                    <span className="dot"></span>
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex items-center gap-2 border border-border px-2.5 py-1 text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                    <span className="h-1.5 w-1.5 bg-lucro"></span>
                     Escopo: tudo · {R.iaScope.periodo}
                   </div>
                   {speech.supported && (
                     <button
-                      className={"ia-mic " + (speech.listening ? "listening" : "")}
+                      className={cn(
+                        "grid h-10 w-10 flex-shrink-0 cursor-pointer place-items-center border transition-colors",
+                        speech.listening
+                          ? "animate-[mic-pulse_1.4s_ease-in-out_infinite] border-prejuizo bg-prejuizo text-mast-ink"
+                          : "border-border bg-card text-ink-2 hover:border-foreground hover:text-foreground",
+                      )}
                       onClick={toggleMic}
                       title={speech.listening ? "Parar de gravar" : "Falar com a IA"}
                       aria-label={speech.listening ? "Parar de gravar" : "Falar com a IA"}
                     >
                       {speech.listening ? (
-                        <span className="mic-eq" aria-hidden="true">
-                          <i></i>
-                          <i></i>
-                          <i></i>
-                          <i></i>
+                        <span className="inline-flex h-[18px] items-center gap-[2px]" aria-hidden="true">
+                          <i className="inline-block h-1.5 w-[2.5px] animate-[mic-bar_0.9s_ease-in-out_infinite] bg-mast-ink"></i>
+                          <i className="inline-block h-1.5 w-[2.5px] animate-[mic-bar_0.9s_ease-in-out_infinite] bg-mast-ink [animation-delay:0.15s]"></i>
+                          <i className="inline-block h-1.5 w-[2.5px] animate-[mic-bar_0.9s_ease-in-out_infinite] bg-mast-ink [animation-delay:0.3s]"></i>
+                          <i className="inline-block h-1.5 w-[2.5px] animate-[mic-bar_0.9s_ease-in-out_infinite] bg-mast-ink [animation-delay:0.45s]"></i>
                         </span>
                       ) : (
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -619,42 +590,50 @@ export function IA() {
                       )}
                     </button>
                   )}
-                  <button className="ia-send" disabled={!input.trim()} onClick={() => input.trim() && ask(input.trim())}>
+                  <button
+                    className="ml-auto cursor-pointer border-0 bg-mast px-[18px] py-2 font-sans text-[13px] uppercase tracking-[0.08em] text-mast-ink disabled:cursor-not-allowed disabled:bg-border disabled:text-[color:var(--ink-mute)]"
+                    disabled={!input.trim()}
+                    onClick={() => input.trim() && ask(input.trim())}
+                  >
                     {speech.listening ? "Ouvindo…" : "Perguntar"}
                   </button>
                 </div>
               </div>
               {speech.listening && (
-                <div className="ia-mic-hint">
-                  <span className="rec-dot"></span> Gravando — falo e a pergunta é enviada quando você parar.
+                <div className="mx-auto mt-2 flex max-w-[920px] items-center gap-2 text-[13px] tracking-[0.01em] text-ink-3">
+                  <span className="h-[9px] w-[9px] animate-[mic-blink_1s_steps(2,start)_infinite] rounded-full bg-prejuizo"></span> Gravando — falo e a pergunta é enviada quando você parar.
                 </div>
               )}
             </div>
           </div>
 
           {/* Direita: memória + escopo de dados */}
-          <aside className="ia-context">
+          <aside className="flex flex-col gap-[22px] border-l border-border bg-card px-[22px] py-6 max-[900px]:hidden">
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <h4>O que a IA lembra de você</h4>
+              <div className="flex items-baseline justify-between">
+                <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">O que a IA lembra de você</h4>
               </div>
-              <div className="mem-fatos">
+              <div className="mt-3 flex flex-col gap-[9px]">
                 {mem.current.fatos.map((f) => (
-                  <div key={f.id} className="mem-fato">
-                    <span className="mf-dot"></span>
-                    <span className="mf-txt">{f.texto}</span>
+                  <div key={f.id} className="flex items-start gap-[9px]">
+                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-lucro"></span>
+                    <span className="text-[13px] leading-[1.45] text-ink-2">{f.texto}</span>
                   </div>
                 ))}
               </div>
               {mem.current.pendencias.length > 0 && (
-                <div className="mem-pend">
-                  <span className="mem-pend-head">Acompanhamentos pendentes</span>
+                <div className="mt-4 flex flex-col gap-2 border-t border-[color:var(--rule-soft)] pt-3.5">
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Acompanhamentos pendentes</span>
                   {mem.current.pendencias.map((p) => (
-                    <button key={p.id} className="mem-pend-item" onClick={() => ask(p.texto)}>
-                      <span className="mp-icon">↻</span>
-                      <span className="mp-txt">
+                    <button
+                      key={p.id}
+                      className="flex cursor-pointer items-start gap-[9px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-[11px] py-[9px] text-left hover:border-ink-3"
+                      onClick={() => ask(p.texto)}
+                    >
+                      <span className="mt-px text-[13px] text-[color:var(--warn)]">↻</span>
+                      <span className="flex flex-col gap-0.5 text-[13px] leading-[1.4] text-foreground">
                         {p.texto}
-                        <small>{p.deOnde}</small>
+                        <small className="text-[11px] text-[color:var(--ink-mute)]">{p.deOnde}</small>
                       </span>
                     </button>
                   ))}
@@ -662,35 +641,27 @@ export function IA() {
               )}
             </div>
 
-            <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 18 }}>
-              <h4>Escopo de dados</h4>
-              <div className="ctx-list" style={{ marginTop: 12 }}>
-                <div className="row">
-                  <span>Período</span>
-                  <span className="v" style={{ marginLeft: "auto" }}>{R.iaScope.periodo}</span>
-                </div>
-                <div className="row">
-                  <span>Lançamentos</span>
-                  <span className="v" style={{ marginLeft: "auto" }}>8.412</span>
-                </div>
-                <div className="row">
-                  <span>Notas fiscais</span>
-                  <span className="v" style={{ marginLeft: "auto" }}>6.130</span>
-                </div>
-                <div className="row">
-                  <span>Categorias</span>
-                  <span className="v" style={{ marginLeft: "auto" }}>184</span>
-                </div>
-                <div className="row">
-                  <span>Fornecedores</span>
-                  <span className="v" style={{ marginLeft: "auto" }}>312</span>
-                </div>
+            <div className="border-t border-border pt-[18px]">
+              <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Escopo de dados</h4>
+              <div className="mt-3 flex flex-col gap-2 text-[13px] text-ink-2">
+                {[
+                  ["Período", R.iaScope.periodo],
+                  ["Lançamentos", "8.412"],
+                  ["Notas fiscais", "6.130"],
+                  ["Categorias", "184"],
+                  ["Fornecedores", "312"],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-baseline justify-between gap-3">
+                    <span>{k}</span>
+                    <span className="ml-auto font-serif tabular-nums">{v}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 18 }}>
-              <h4>Filtros ativos</h4>
-              <div className="row-wrap" style={{ marginTop: 10 }}>
+            <div className="border-t border-border pt-[18px]">
+              <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Filtros ativos</h4>
+              <div className="row-wrap mt-2.5">
                 <span className="filter-chip">
                   <span className="chip-label">Período</span> Tudo
                 </span>
@@ -701,14 +672,14 @@ export function IA() {
                   <span className="chip-label">Pilha</span> Tudo
                 </span>
               </div>
-              <div className="caption" style={{ marginTop: 12, lineHeight: 1.55, fontStyle: "italic" }}>
+              <div className="caption mt-3 italic leading-[1.55]">
                 A IA usa todos os dados visíveis acima. Restringir o escopo aqui afeta as respostas.
               </div>
             </div>
 
-            <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 18 }}>
-              <h4>Conhecimento adicional</h4>
-              <div className="ctx-list" style={{ marginTop: 10, gap: 6 }}>
+            <div className="border-t border-border pt-[18px]">
+              <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Conhecimento adicional</h4>
+              <div className="mt-2.5 flex flex-col gap-1.5 text-[13px] text-ink-2">
                 <div>· Protocolos veterinários (gado leiteiro)</div>
                 <div>· Manejo café arábica</div>
                 <div>· Cotação leite + saca CEPEA</div>

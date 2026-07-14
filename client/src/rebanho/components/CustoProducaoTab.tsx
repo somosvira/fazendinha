@@ -1,4 +1,9 @@
+import { Loader } from "../../components/Loading";
 import { useCustoProducao, useCustoSanidade } from "../api";
+import { RebHeader } from "./RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const litros = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
@@ -11,51 +16,38 @@ export function CustoProducaoTab() {
   const custoLitroTxt = data?.custoLitro != null ? money(data.custoLitro) : "—";
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Rebanho · custo de produção</div>
-      <div className="rb-head"><h1>Custo de Produção</h1></div>
+    <RebMain>
+      <RebHeader eyebrow="Rebanho · custo de produção" title="Custo de Produção" />
 
       {loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (erro || !data) ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar: {erro ?? "sem dados"}</p>
+        <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar: {erro ?? "sem dados"}</p>
       ) : (
         <>
           {/* Headline KPIs — custo/litro (real, herói) + custeio do leite + custo vaca/dia + vacas em lactação */}
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-            <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-              <div className="lab">Custo / litro</div>
-              <div className="val" style={{ fontSize: 30, color: "var(--cafe)" }}>{custoLitroTxt}</div>
-              <div className="d">custeio do leite ÷ litros do período</div>
+          <RebKpiStrip cols={4}>
+            <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
+              <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Custo / litro</div>
+              <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]" style={{ fontSize: 30, color: "var(--cafe)" }}>{custoLitroTxt}</div>
+              <div className="mt-2 text-[15px] font-medium text-ink-2">custeio do leite ÷ litros do período</div>
             </div>
-            <div className="rb-k">
-              <div className="lab">Custeio do leite (real)</div>
-              <div className="val" style={{ fontSize: 22 }}>{money(data.custeioLeiteTotal)}</div>
-              <div className="d">{data.periodoMeses} meses · Atividade Leiteira</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">Custo vaca/dia</div>
-              <div className="val">{custoTxt}</div>
-              <div className="d">consumo de insumo (Estoque)</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">Vacas em lactação</div>
-              <div className="val">{data.vacasEmLactacao}</div>
-              <div className="d">≈ {litros(data.litrosDia)} L/dia</div>
-            </div>
-          </div>
+            <RebKpi lab="Custeio do leite (real)" val={money(data.custeioLeiteTotal)} valClassName="text-[22px]" d={`${data.periodoMeses} meses · Atividade Leiteira`} />
+            <RebKpi lab="Custo vaca/dia" val={custoTxt} d="consumo de insumo (Estoque)" />
+            <RebKpi lab="Vacas em lactação" val={data.vacasEmLactacao} d={<>≈ {litros(data.litrosDia)} L/dia</>} />
+          </RebKpiStrip>
 
           {/* Quebra por componente — categoria · valor · % com barra (largura = pct%) */}
-          <h2 className="rb-sec-title">Quebra por componente</h2>
+          <h2 className="font-serif text-xl font-medium mb-3">Quebra por componente</h2>
           {data.breakdown.length === 0 ? (
-            <div className="rb-empty">Sem custeio do leite no período.</div>
+            <RebEmpty>Sem custeio do leite no período.</RebEmpty>
           ) : (
-            <div className="rb-tbl-wrap"><table className="rb-tbl">
+            <RebTable>
               <thead><tr><th>Categoria</th><th style={{ width: "45%" }}>Participação</th><th>Valor</th><th>%</th></tr></thead>
               <tbody>
                 {data.breakdown.map((l) => (
                   <tr key={l.categoria}>
-                    <td className="rb-anm">{l.categoria}</td>
+                    <td><RebAnm>{l.categoria}</RebAnm></td>
                     <td>
                       <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                         <div style={{ width: `${l.pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -66,67 +58,50 @@ export function CustoProducaoTab() {
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </RebTable>
           )}
 
           {/* Card de transparência — como o custo/litro é calculado */}
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Como calculamos o custo/litro</h3>
-            <p className="rb-sub" style={{ marginTop: 0 }}>{data.nota}</p>
-            <div className="rb-kstrip" style={{ ["--cols" as any]: 3, marginTop: 8 }}>
-              <div className="rb-k">
-                <div className="lab">Custeio (real)</div>
-                <div className="val" style={{ fontSize: 20 }}>{money(data.custeioLeiteTotal)}</div>
-                <div className="d">fazenda inteira · {data.periodoMeses} meses</div>
+            <p className="mt-0 text-sm text-ink-3">{data.nota}</p>
+            <RebKpiStrip cols={3} className="mt-2">
+              <RebKpi lab="Custeio (real)" val={money(data.custeioLeiteTotal)} valClassName="text-[20px]" d={`fazenda inteira · ${data.periodoMeses} meses`} />
+              <RebKpi lab="Litros do período" val={<>{litros(data.litrosPeriodoEstimado)} L</>} valClassName="text-[20px]" d={<>{data.vacasEmLactacao} vacas × ≈ {litros(data.litrosDia)} L/dia</>} />
+              <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
+                <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Custo / litro</div>
+                <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]" style={{ fontSize: 20, color: "var(--cafe)" }}>{custoLitroTxt}</div>
+                <div className="mt-2 text-[15px] font-medium text-ink-2">custeio ÷ litros</div>
               </div>
-              <div className="rb-k">
-                <div className="lab">Litros do período</div>
-                <div className="val" style={{ fontSize: 20 }}>{litros(data.litrosPeriodoEstimado)} L</div>
-                <div className="d">{data.vacasEmLactacao} vacas × ≈ {litros(data.litrosDia)} L/dia</div>
-              </div>
-              <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-                <div className="lab">Custo / litro</div>
-                <div className="val" style={{ fontSize: 20, color: "var(--cafe)" }}>{custoLitroTxt}</div>
-                <div className="d">custeio ÷ litros</div>
-              </div>
-            </div>
-            <p className="rb-sub" style={{ marginBottom: 0 }}>
+            </RebKpiStrip>
+            <p className="mb-0 text-sm text-ink-3">
               Os litros são uma estimativa: a produção média atual das vacas em lactação projetada para o período. À medida que entram novos controles leiteiros, o número se aproxima da produção realizada de fato.
             </p>
-          </div>
+          </RebBox>
         </>
       )}
 
       {/* ── Custo de sanidade (Fatia 18) — sempre visível ───────────────────── */}
-      <h2 className="rb-sec-title">Custo de sanidade (estimado)</h2>
+      <h2 className="font-serif text-xl font-medium mb-3">Custo de sanidade (estimado)</h2>
 
       {sanLoading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
       ) : (sanErro || !san) ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro ao carregar: {sanErro ?? "sem dados"}</p>
+        <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar: {sanErro ?? "sem dados"}</p>
       ) : (
         <>
           {/* KPIs */}
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
-            <div className="rb-k">
-              <div className="lab">Gasto Medicamento (real)</div>
-              <div className="val">{money(san.totalMedicamento)}</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">Aplicações</div>
-              <div className="val">{san.totalAplicacoes.toLocaleString("pt-BR")}</div>
-            </div>
-            <div className="rb-k">
-              <div className="lab">R$ / aplicação</div>
-              <div className="val">{money(san.custoPorAplicacao)}</div>
-            </div>
-          </div>
+          <RebKpiStrip cols={3}>
+            <RebKpi lab="Gasto Medicamento (real)" val={money(san.totalMedicamento)} />
+            <RebKpi lab="Aplicações" val={san.totalAplicacoes.toLocaleString("pt-BR")} />
+            <RebKpi lab="R$ / aplicação" val={money(san.custoPorAplicacao)} />
+          </RebKpiStrip>
 
           {/* Ranking de animais */}
           {san.topAnimais.length > 0 && (
             <>
-              <h2 className="rb-sec-title">Animais com maior custo estimado</h2>
-              <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <h2 className="font-serif text-xl font-medium mb-3">Animais com maior custo estimado</h2>
+              <RebTable>
                 <thead>
                   <tr>
                     <th>Animal</th>
@@ -142,7 +117,7 @@ export function CustoProducaoTab() {
                     const pct = maxCusto > 0 ? (a.custoEstimado / maxCusto) * 100 : 0;
                     return (
                       <tr key={a.numero}>
-                        <td className="rb-anm">{a.nome} #{a.numero}</td>
+                        <td><RebAnm>{a.nome} #{a.numero}</RebAnm></td>
                         <td>
                           <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                             <div style={{ width: `${pct}%`, background: "var(--leite)", height: "100%" }} />
@@ -155,15 +130,15 @@ export function CustoProducaoTab() {
                     );
                   })}
                 </tbody>
-              </table></div>
+              </RebTable>
             </>
           )}
 
           {/* Top produtos */}
           {san.produtos.length > 0 && (
             <>
-              <h2 className="rb-sec-title">Produtos mais aplicados</h2>
-              <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <h2 className="font-serif text-xl font-medium mb-3">Produtos mais aplicados</h2>
+              <RebTable>
                 <thead>
                   <tr>
                     <th>Produto</th>
@@ -182,20 +157,20 @@ export function CustoProducaoTab() {
                     </tr>
                   ))}
                 </tbody>
-              </table></div>
-              <p className="rb-sub">
+              </RebTable>
+              <p className="mt-[7px] text-sm text-ink-3">
                 Custo exato: {money(san.custoExatoTotal)} · {san.produtosPrecificados} de {san.produtosTotais} produtos precificados — defina o custo unitário no Cadastros.
               </p>
             </>
           )}
 
           {/* Card de transparência */}
-          <div className="rb-box" style={{ marginTop: 26 }}>
+          <RebBox style={{ marginTop: 26 }}>
             <h3 style={{ margin: "0 0 6px" }}>Como estimamos</h3>
-            <p className="rb-sub" style={{ marginTop: 0, marginBottom: 0 }}>{san.nota}</p>
-          </div>
+            <p className="mt-0 mb-0 text-sm text-ink-3">{san.nota}</p>
+          </RebBox>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

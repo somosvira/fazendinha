@@ -24,8 +24,8 @@ body            { font-size: 17px; }
 .kpi-cock .val     { font-size: 36px; font-weight: 500; }
 .kpi-cock .sub     { font-size: 15px; }
 
-/* ===== section heads ===== */
-.dash-sec-title { font-size: 30px; font-weight: 500; }
+/* ===== section heads =====
+   .dash-sec-title migrado p/ Tailwind (DashSectionHeader/CategoryDrill, Fase 2 slice 5) */
 
 /* ===== donut legend (gasto por categoria) ===== */
 .donut-legend-head { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
@@ -50,23 +50,12 @@ body            { font-size: 17px; }
 .atv-margem .l     { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
 .atv-margem .v     { font-size: 26px; font-weight: 500; }
 
-/* ===== subcategorias (tipos de X) ===== */
-.drill-subhint     { font-size: 17px; font-weight: 500; }
-.subcat-th         { font-size: 14px; font-weight: 600; }
-.sc-nm-txt         { font-size: 16px; font-weight: 500; }
-.sc-nm-txt small   { font-size: 14px; font-weight: 500; }
-.sc-lanc           { font-size: 15px; font-weight: 500; }
-.sc-val            { font-size: 17px; font-weight: 500; }
-.sc-pct            { font-size: 14px; font-weight: 600; }
+/* ===== subcategorias (tipos de X) — migrados p/ Tailwind em Dashboard.tsx =====
+   .drill-subhint (CategoryDrill) e .subcat-th/.sc-* (SubcatBreakdown), Fase 2 slice 5. */
 
-/* ===== lançamentos + nota ===== */
-.lanc-panel-title          { font-size: 24px; font-weight: 500; }
-.lanc-table thead th       { font-size: 14px; font-weight: 600; }
-.lanc-table tbody td       { font-size: 15px; }
-.ld-val                    { font-size: 16px; font-weight: 500; }
-.ld-nf, .nf-link           { font-size: 14px; font-weight: 600; }
-.drawer-meta-grid .mcell .ml { font-size: 14px; font-weight: 600; }
-.drawer-meta-grid .mcell .mv { font-size: 16px; font-weight: 500; }
+/* ===== lançamentos + nota (migrados p/ Tailwind em Dashboard.tsx, Fase 2 slice 5) =====
+   .lanc-panel-title/.lanc-table/.ld-val/.ld-nf/.nf-link e .drawer-meta-grid .mcell
+   .ml/.mv saíram junto com LancamentosPanel + NotaDrawer. */
 
 /* ===== drill head / stats ===== */
 .drill-head .cat-name    { font-size: 46px; font-weight: 500; }
@@ -101,19 +90,13 @@ body            { font-size: 17px; }
 .gastos-summary .sum .val     { font-size: 30px; font-weight: 500; }
 .filter-chip                  { font-size: 14px; font-weight: 600; }
 
-/* ===== forms (lançar) ===== */
+/* ===== forms =====
+   Lançar migrou p/ Tailwind (Fase 3 slice 2) — form-section-title/cat-chip
+   saíram com ela; field-* fica p/ Acessos e PlanoContas. */
 .field-label         { font-size: 14px; font-weight: 600; }
 .field-input,
 .field-textarea      { font-size: 16px; }
-.form-section-title  { font-size: 14px; font-weight: 600; letter-spacing: 0.10em; }
-.cat-chip            { font-size: 14px; font-weight: 600; }
 .chip-group .chip    { font-size: 14px; font-weight: 600; }
-
-/* ===== plano de contas ===== */
-.tree-cat-head .cnm  { font-size: 16px; font-weight: 600; }
-.tree-sub .snm       { font-size: 15px; }
-.ia-suggestion-card .ttl { font-size: 17px; font-weight: 500; }
-.ia-suggestion-card .det { font-size: 14px; }
 
 /* ===== IA chat ===== */
 .ia-prompt           { font-size: 16px; }
@@ -124,11 +107,7 @@ body            { font-size: 17px; }
 .ai-mini-table th,
 .ai-mini-table td    { font-size: 15px; }
 
-/* ===== date picker ===== */
-.drp-trigger        { font-size: 14px; font-weight: 600; }
-.drp-preset         { font-size: 14px; font-weight: 500; }
-.cal-day            { font-size: 15px; }
-.drp-readout-cell .v { font-size: 19px; font-weight: 500; }
+/* ===== date picker — migrado p/ Tailwind + ui/popover (Fase 3 slice 5) ===== */
 
 /* ===== relatório editorial ===== */
 .section-title    { font-size: 30px; font-weight: 500; }

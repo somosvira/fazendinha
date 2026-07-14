@@ -10,8 +10,7 @@ describe("Formatado — deep-links do chat", () => {
     const html = renderToStaticMarkup(
       h(Formatado, { texto: "As vencidas somam R$ 10. [Ver contas vencidas](/gastos?status=vencidas)", onNavegar: () => {} }),
     );
-    expect(html).toContain("<button");
-    expect(html).toContain("chat-inline-link");
+    expect(html).toContain('<button type="button"');
     expect(html).toContain("Ver contas vencidas"); // rótulo aparece
     expect(html).not.toContain("(/gastos?status=vencidas)"); // a URL crua NÃO vaza como texto
   });

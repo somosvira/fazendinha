@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { TarefaPlanejada, TipoOperacao } from "../types";
 import { criarTarefa, editarTarefa, useTalhoes, useLavouras } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 // Conjunto de tipos de operação — reusa os mesmos rótulos do OperacaoForm,
 // agora num único select (a tarefa não distingue domínio).
@@ -113,137 +116,117 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
   const titulo = modo === "novo" ? "Nova tarefa" : `Realizar — ${t?.descricao ?? "tarefa"}`;
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="tarefa-title">
-        <div className="rb-drawer-head">
-          <h3 id="tarefa-title">{titulo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-
-        <div className="rb-drawer-body">
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || (modo === "novo" && !descricao.trim())} onClick={salvar}>
+            {salvando ? "Salvando…" : modo === "novo" ? "Criar tarefa" : "Salvar realizado"}
+          </RebButton>
+        </>
+      }
+    >
+      <>
           {modo === "novo" ? (
             <>
-              <div className="rb-fld">
-                <label>Descrição*</label>
+              <RebField label="Descrição*">
                 <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: 1ª parcela de N — talhão CAF-12" />
-              </div>
+              </RebField>
 
-              <div className="rb-fld">
-                <label>Tipo de operação</label>
-                <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <RebField label="Tipo de operação">
+                <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value)}>
                   {TIPOS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
                 </select>
-              </div>
+              </RebField>
 
               <div style={{ display: "flex", gap: 10 }}>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>Talhão</label>
-                  <select value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
+                <RebField label="Talhão" style={{ flex: 1 }}>
+                  <select className="rb-field-select" value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
                     <option value="">— (lavoura toda)</option>
                     {talhoes.map((th) => <option key={th.id} value={th.id}>{th.codigo} · {th.nome}</option>)}
                   </select>
-                </div>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>Lavoura</label>
-                  <select value={lavouraId} onChange={(e) => setLavouraId(e.target.value)}>
+                </RebField>
+                <RebField label="Lavoura" style={{ flex: 1 }}>
+                  <select className="rb-field-select" value={lavouraId} onChange={(e) => setLavouraId(e.target.value)}>
                     <option value="">—</option>
                     {lavouras.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
                   </select>
-                </div>
+                </RebField>
               </div>
 
-              <div className="rb-fld">
-                <label>Responsável</label>
+              <RebField label="Responsável">
                 <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem vai executar" />
-              </div>
+              </RebField>
 
               <div style={{ display: "flex", gap: 10 }}>
-                <div className="rb-fld" style={{ flex: 2 }}>
-                  <label>Produto / insumo</label>
+                <RebField label="Produto / insumo" style={{ flex: 2 }}>
                   <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: 20-00-20" />
-                </div>
-                <div className="rb-fld" style={{ flex: 1 }}>
-                  <label>Unidade</label>
+                </RebField>
+                <RebField label="Unidade" style={{ flex: 1 }}>
                   <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="kg/ha" />
-                </div>
+                </RebField>
               </div>
 
               <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: 12, margin: "10px 0" }}>
                 <legend style={{ fontSize: 13, color: "var(--ink-3)", padding: "0 6px" }}>Previsto</legend>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Qtd / ha</label>
+                  <RebField label="Qtd / ha" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={qtdHaPrev} onChange={(e) => setQtdHaPrev(e.target.value)} />
-                  </div>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Qtd total</label>
+                  </RebField>
+                  <RebField label="Qtd total" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={qtdTotalPrev} onChange={(e) => setQtdTotalPrev(e.target.value)} />
-                  </div>
+                  </RebField>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Data prevista</label>
+                  <RebField label="Data prevista" style={{ flex: 1 }}>
                     <input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
-                  </div>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Custo previsto (R$)</label>
+                  </RebField>
+                  <RebField label="Custo previsto (R$)" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={custoPrev} onChange={(e) => setCustoPrev(e.target.value)} />
-                  </div>
+                  </RebField>
                 </div>
               </fieldset>
             </>
           ) : (
             <>
-              <p className="rb-sub" style={{ marginTop: 0 }}>
+              <p className="mt-0 text-sm text-ink-3">
                 Planejado: <b>{t?.descricao}</b>
                 {t?.dataPrevista ? ` · prev. ${t.dataPrevista}` : ""}
                 {t?.custoPrev != null ? ` · R$ ${t.custoPrev.toLocaleString("pt-BR")}` : ""}
               </p>
 
-              <div className="rb-fld">
-                <label>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <RebField label="Status">
+                <select className="rb-field-select" value={status} onChange={(e) => setStatus(e.target.value)}>
                   {STATUS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
                 </select>
-              </div>
+              </RebField>
 
               <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: 12, margin: "10px 0" }}>
                 <legend style={{ fontSize: 13, color: "var(--ink-3)", padding: "0 6px" }}>Realizado</legend>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Qtd / ha</label>
+                  <RebField label="Qtd / ha" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={qtdHaReal} onChange={(e) => setQtdHaReal(e.target.value)} />
-                  </div>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Qtd total</label>
+                  </RebField>
+                  <RebField label="Qtd total" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={qtdTotalReal} onChange={(e) => setQtdTotalReal(e.target.value)} />
-                  </div>
+                  </RebField>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Data realizada</label>
+                  <RebField label="Data realizada" style={{ flex: 1 }}>
                     <input type="date" value={dataRealizada} onChange={(e) => setDataRealizada(e.target.value)} />
-                  </div>
-                  <div className="rb-fld" style={{ flex: 1 }}>
-                    <label>Custo real (R$)</label>
+                  </RebField>
+                  <RebField label="Custo real (R$)" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={custoReal} onChange={(e) => setCustoReal(e.target.value)} />
-                  </div>
+                  </RebField>
                 </div>
               </fieldset>
             </>
           )}
 
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || (modo === "novo" && !descricao.trim())} onClick={salvar}>
-            {salvando ? "Salvando…" : modo === "novo" ? "Criar tarefa" : "Salvar realizado"}
-          </button>
-        </div>
-      </aside>
-    </>
+          {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }

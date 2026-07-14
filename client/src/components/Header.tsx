@@ -1,190 +1,160 @@
-/* Rio Novo — header global.
- * Faixa preta no topo com logo, seletor de fazenda e chip do usuário (com
- * dropdown para "ver como" outro perfil). O burger só aparece no mobile e
- * controla o drawer da sidebar. */
+/* Rio Novo — header global (enxuto).
+ *
+ * Layout novo (handoff "Shell - sidebar + header"): a marca e o seletor de
+ * fazenda desceram para o TOPO da sidebar. O header ficou com apenas a busca
+ * global + o menu de conta (ações da conta — NUNCA troca de usuário; o "ver como"
+ * do admin vive dentro de Acessos). O burger só aparece no mobile e controla o
+ * drawer da sidebar.
+ *
+ * Usa o primitivo shadcn `DropdownMenu` (Radix): outside-click, Escape e foco de
+ * graça — sem `useClickOutside` manual. */
 
-import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PAPEIS, type User } from "../data/acessos";
-import { fazendas, fazendaAtualId, type Fazenda } from "../data/fazendas";
 
-function useClickOutside<T extends HTMLElement>(open: boolean, close: () => void) {
-  const ref = useRef<T | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    document.addEventListener("mousedown", onDoc);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, close]);
-  return ref;
-}
-
-function FarmPicker({ atual }: { atual: Fazenda }) {
-  const [open, setOpen] = useState(false);
-  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
-
+function Chevron({ className }: { className?: string }) {
   return (
-    <div className="ah-farm" ref={ref}>
-      <button className="ah-farm-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="ah-farm-mark" aria-hidden>🥛</span>
-        <span className="ah-farm-txt">
-          <span className="ah-farm-eyebrow">Fazenda</span>
-          <span className="ah-farm-name">{atual.apelido || atual.nome}</span>
-        </span>
-        <svg className={"ah-chev" + (open ? " is-open" : "")} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
-      </button>
-      {open && (
-        <div className="ah-menu ah-farm-menu" role="menu">
-          <div className="ah-menu-head">Fazendas</div>
-          {fazendas.map((f) => (
-            <div key={f.id} className={"ah-farm-opt" + (f.id === atual.id ? " is-current" : "")}>
-              <span className="ah-farm-opt-mark" aria-hidden>🥛</span>
-              <span className="ah-farm-opt-info">
-                <span className="ah-farm-opt-nome">{f.nome}</span>
-                {(f.cidade || f.uf) && (
-                  <span className="ah-farm-opt-sub">
-                    {[f.cidade, f.uf].filter(Boolean).join(" — ")}
-                    {f.papel && <> · {f.papel}</>}
-                  </span>
-                )}
-              </span>
-              {f.id === atual.id && <span className="ah-farm-opt-check" aria-label="atual">✓</span>}
-            </div>
-          ))}
-          {fazendas.length === 1 && (
-            <div className="ah-menu-foot">Você só tem uma fazenda configurada.</div>
-          )}
-        </div>
-      )}
-    </div>
+    <svg
+      className={cn("h-3 w-3 opacity-70 transition-transform group-data-[state=open]:rotate-180", className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
-function UserPicker({ user, allUsers, onSwitchUser, onSair }: {
+/* ícones do menu de conta (contorno, 17px) */
+const AccIcon = {
+  user: <><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></>,
+  gear: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></>,
+  help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 3.9-1.9c1.6 1 .6 2.9-1 3.4-.5.2-.9.7-.9 1.4M12 17h.01"/></>,
+  out: <><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 8l-4 4 4 4M6 12h11"/></>,
+} as const;
+
+function AcctItem({ icon, children, danger, onSelect }: {
+  icon: JSX.Element; children: React.ReactNode; danger?: boolean; onSelect?: () => void;
+}) {
+  return (
+    <DropdownMenuItem
+      onSelect={onSelect}
+      className={cn(
+        "gap-2.5 rounded-[7px] px-2.5 py-2 font-sans text-[13.5px] text-ink-2",
+        danger && "text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]",
+      )}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-[17px] w-[17px] flex-none opacity-70" aria-hidden>
+        {icon}
+      </svg>
+      {children}
+    </DropdownMenuItem>
+  );
+}
+
+/** Menu de conta — AÇÕES da conta (perfil, preferências, ajuda, sair). Nunca
+ *  troca de usuário: o "ver como" do admin mora em Acessos. */
+function UserPicker({ user, onPreferencias, onSair }: {
   user: User;
-  allUsers: User[] | null;
-  onSwitchUser: (id: string) => void;
+  onPreferencias?: () => void;
   onSair?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
   const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
-  // Menu abre se for possível trocar de perfil OU se houver ação de sair (piloto).
-  const canSwitch = !!allUsers && allUsers.length > 1;
-  const abreMenu = canSwitch || !!onSair;
 
   return (
-    <div className="ah-user" ref={ref}>
-      <button
-        className={"ah-user-btn" + (abreMenu ? " has-menu" : "")}
-        onClick={() => abreMenu && setOpen((o) => !o)}
-        aria-expanded={abreMenu ? open : undefined}
-        aria-haspopup={abreMenu ? "menu" : undefined}
-      >
-        <span className="ah-user-av">{user.inicial}</span>
-        <span className="ah-user-txt">
-          <span className="ah-user-nome">{user.nome.split(" ")[0]}</span>
-          <span className="ah-user-papel">{papelNome(user)}</span>
-        </span>
-        {abreMenu && (
-          <svg className={"ah-chev" + (open ? " is-open" : "")} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 9l6 6 6-6"/>
-          </svg>
-        )}
-      </button>
-      {open && abreMenu && (
-        <div className="ah-menu ah-user-menu" role="menu">
-          {canSwitch && allUsers && (
-            <>
-              <div className="ah-menu-head">Entrar como (demonstração)</div>
-              {allUsers.map((u) => (
-                <button
-                  key={u.id}
-                  className={"ah-user-opt" + (u.id === user.id ? " is-current" : "")}
-                  onClick={() => { onSwitchUser(u.id); setOpen(false); }}
-                >
-                  <span className="ah-user-opt-av">{u.inicial}</span>
-                  <span className="ah-user-opt-info">
-                    <span className="ah-user-opt-nome">{u.nome}</span>
-                    <span className="ah-user-opt-papel">{papelNome(u)}</span>
-                  </span>
-                  {u.id === user.id && <span className="ah-user-opt-check" aria-label="atual">✓</span>}
-                </button>
-              ))}
-            </>
-          )}
-          {onSair && (
-            <button
-              className="ah-user-opt"
-              onClick={() => { setOpen(false); onSair(); }}
-            >
-              <span className="ah-user-opt-av" aria-hidden>↩</span>
-              <span className="ah-user-opt-info">
-                <span className="ah-user-opt-nome">Sair</span>
-                <span className="ah-user-opt-papel">Encerrar a sessão neste dispositivo</span>
-              </span>
-            </button>
-          )}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="group flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-transparent bg-transparent py-1 pl-1.5 pr-2 font-sans hover:bg-[var(--bg-card)]"
+          aria-haspopup="menu"
+          aria-label="Menu da conta"
+        >
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-leite font-sans text-sm font-semibold text-[var(--ink)]">
+            {user.inicial}
+          </span>
+          <span className="flex flex-col items-start leading-[1.15] max-[760px]:hidden">
+            <span className="text-[13.5px] font-semibold text-ink">{user.nome.split(" ")[0]}</span>
+            <span className="text-[11px] text-ink-mute">{papelNome(user)}</span>
+          </span>
+          <Chevron className="text-ink-mute max-[760px]:hidden" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[240px] rounded-[11px] p-1.5">
+        <div className="mb-1 border-b border-[var(--rule-soft)] px-2.5 pb-2.5 pt-2">
+          <div className="text-sm font-semibold text-ink">{user.nome}</div>
+          {user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}
         </div>
-      )}
-    </div>
+        <AcctItem icon={AccIcon.user}>Meu perfil</AcctItem>
+        <AcctItem icon={AccIcon.gear} onSelect={onPreferencias}>Preferências</AcctItem>
+        <AcctItem icon={AccIcon.help}>Central de ajuda</AcctItem>
+        {onSair && (
+          <>
+            <DropdownMenuSeparator className="my-1 bg-[var(--rule-soft)]" />
+            <AcctItem icon={AccIcon.out} danger onSelect={onSair}>Sair</AcctItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-export function Header({ user, allUsers, onSwitchUser, mobileOpen, onMobileToggle, onAbrirBusca, onSair }: {
+export function Header({ user, mobileOpen, onMobileToggle, onAbrirBusca, onPreferencias, onSair }: {
   user: User;
-  allUsers: User[] | null;
-  onSwitchUser: (id: string) => void;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
   onAbrirBusca?: () => void;
+  onPreferencias?: () => void;
   onSair?: () => void;
 }) {
-  const atual = fazendas.find((f) => f.id === fazendaAtualId) || fazendas[0];
-
   return (
-    <header className="app-header">
+    <header
+      className="fixed left-[var(--side-w)] right-0 top-0 z-10 flex h-[var(--header-h)] items-center gap-3.5 border-b border-[var(--rule-soft)] bg-[var(--bg)] px-[22px] text-ink print:hidden max-[900px]:left-0 max-[900px]:gap-2.5 max-[900px]:px-3 max-[560px]:gap-2 max-[560px]:px-2.5"
+    >
       <button
-        className="ah-burger"
+        className="hidden h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent p-0 text-ink max-[900px]:flex max-[900px]:h-[34px] max-[900px]:w-[34px]"
         aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
         onClick={() => onMobileToggle(!mobileOpen)}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+        <svg className="h-[18px] w-[18px] max-[900px]:h-4 max-[900px]:w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
           {mobileOpen
             ? <><path d="M6 6l12 12"/><path d="M18 6L6 18"/></>
             : <><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></>}
         </svg>
       </button>
 
-      <div className="ah-brand">
-        <span className="ah-brand-mark" aria-hidden>RN</span>
-        <span className="ah-brand-name">Rio Novo</span>
-      </div>
-
-      <FarmPicker atual={atual} />
-
       {onAbrirBusca && (
-        <button className="ah-search" onClick={onAbrirBusca} aria-label="Pesquisar páginas e recursos">
-          <svg className="ah-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <button
+          className="flex max-w-[460px] flex-1 cursor-text items-center gap-2.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-left font-sans text-ink-mute hover:border-[var(--ink-mute)] max-[760px]:max-w-none max-[760px]:flex-[0_0_auto] max-[760px]:px-2 max-[760px]:py-1.5"
+          onClick={onAbrirBusca}
+          aria-label="Pesquisar páginas e recursos"
+        >
+          <svg className="h-4 w-4 flex-none opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
+            <path d="M20 20l-3.5-3.5" />
           </svg>
-          <span className="ah-search-txt">Pesquisar páginas e recursos…</span>
-          <span className="ah-search-kbd" aria-hidden>⌘K</span>
+          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] max-[760px]:hidden">
+            Pesquisar páginas e recursos…
+          </span>
+          <span className="ml-auto flex-none rounded-[4px] border border-[var(--border)] px-1.5 py-0.5 text-[11px] leading-none text-ink-mute max-[760px]:hidden" aria-hidden>
+            ⌘K
+          </span>
         </button>
       )}
 
-      <div className="ah-spacer" />
-
-      <UserPicker user={user} allUsers={allUsers} onSwitchUser={onSwitchUser} onSair={onSair} />
+      <div className="ml-auto flex items-center gap-3">
+        <UserPicker user={user} onPreferencias={onPreferencias} onSair={onSair} />
+      </div>
     </header>
   );
 }

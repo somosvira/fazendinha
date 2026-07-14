@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { previsaoConsumo, fecharConsumo, listarConsumos, estornarConsumo, type LoteDTO, type PrevisaoConsumoDTO, type ConsumoPeriodoDTO } from "../api";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebField } from "@/components/rb/RebField";
+import { RebAnm } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -52,34 +57,37 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" style={{ maxWidth: 560 }}>
-        <h3>Consumo — {lote.nome}</h3>
-        <p className="rb-sub" style={{ margin: "0 0 12px", fontSize: 12.5 }}>
+    <RebModal
+      title={`Consumo — ${lote.nome}`}
+      onClose={onFechar}
+      className="w-[min(560px,calc(100vw-32px))]"
+      actions={<RebButton onClick={onFechar}>Fechar</RebButton>}
+    >
+      <>
+        <p className="text-ink-3" style={{ margin: "0 0 12px", fontSize: 12.5 }}>
           Baixa do estoque o consumo da dieta {lote.dietaNome ? <b>{lote.dietaNome}</b> : "do lote"} × cabeças ativas × dias. Confira a prévia antes de fechar.
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <label className="rb-fld" style={{ flex: 1 }}>Início<input type="date" value={dataInicio} max={dataFim} onChange={(e) => setDataInicio(e.target.value)} /></label>
-          <label className="rb-fld" style={{ flex: 1 }}>Fim<input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></label>
+          <RebField label="Início" style={{ flex: 1 }}><input type="date" value={dataInicio} max={dataFim} onChange={(e) => setDataInicio(e.target.value)} /></RebField>
+          <RebField label="Fim" style={{ flex: 1 }}><input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></RebField>
         </div>
 
-        {carregando ? <p className="rb-sub">Calculando prévia…</p>
-          : erroPrev ? <p className="rb-sub" style={{ color: "var(--neg)" }}>{erroPrev}</p>
+        {carregando ? <p className="mt-[7px] text-sm text-ink-3">Calculando prévia…</p>
+          : erroPrev ? <p className="mt-[7px] text-sm text-prejuizo">{erroPrev}</p>
           : prev ? (
             <>
-              <div className="rb-tbl-wrap"><table className="rb-tbl">
+              <RebTable>
                 <thead><tr><th>Produto</th><th>Baixa</th><th>Saldo→</th><th>Custo</th></tr></thead>
                 <tbody>{prev.linhas.map((l) => (
                   <tr key={l.produtoId}>
-                    <td className="rb-anm">{l.produtoNome}</td>
+                    <td><RebAnm>{l.produtoNome}</RebAnm></td>
                     <td>{qtd(l.quantidade)} {l.unidade}</td>
                     <td style={{ color: l.insuficiente ? "var(--neg)" : "inherit", fontWeight: l.insuficiente ? 600 : 400 }}>{qtd(l.saldoApos)}{l.insuficiente ? " ⚠" : ""}</td>
                     <td>{money(l.custoTotal)}</td>
                   </tr>
                 ))}</tbody>
-              </table></div>
+              </RebTable>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, margin: "10px 0", fontSize: 13 }}>
                 <span>{prev.numCabecas} cabeça(s) · {prev.dias} dia(s)</span>
                 <span>Total: <b>{money(prev.custoTotal)}</b></span>
@@ -87,7 +95,7 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
               {prev.temInsuficiencia && <p style={{ fontSize: 12.5, color: "var(--neg)", margin: "0 0 8px" }}>⚠ Algum produto ficará com saldo negativo. O fechamento é permitido (o animal consumiu) — regularize o estoque com uma entrada.</p>}
               {prev.numCabecas === 0 && <p style={{ fontSize: 12.5, color: "var(--ink-3)", margin: "0 0 8px" }}>O lote não tem animais ativos — nada será baixado.</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button className="rb-btn pri" disabled={salvando || prev.numCabecas === 0} onClick={fechar}>{salvando ? "Fechando…" : "Fechar consumo do período"}</button>
+                <RebButton variant="pri" disabled={salvando || prev.numCabecas === 0} onClick={fechar}>{salvando ? "Fechando…" : "Fechar consumo do período"}</RebButton>
               </div>
             </>
           ) : null}
@@ -101,17 +109,13 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
               {historico.map((h) => (
                 <div key={h.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <span>{h.dataInicio} → {h.dataFim} · {money(h.custoTotal)} · {h.numMovimentos} baixa(s)</span>
-                  <button className="rb-btn" type="button" disabled={h.mesFechado} title={h.mesFechado ? "Mês fechado contabilmente" : "Estornar"} onClick={() => estornar(h.id)}>{h.mesFechado ? "Mês fechado" : "Estornar"}</button>
+                  <RebButton type="button" disabled={h.mesFechado} title={h.mesFechado ? "Mês fechado contabilmente" : "Estornar"} onClick={() => estornar(h.id)}>{h.mesFechado ? "Mês fechado" : "Estornar"}</RebButton>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        <div className="rb-drawer-actions" style={{ justifyContent: "flex-end", marginTop: 18 }}>
-          <button className="rb-btn" onClick={onFechar}>Fechar</button>
-        </div>
-      </aside>
-    </>
+      </>
+    </RebModal>
   );
 }

@@ -12,25 +12,61 @@ import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
-import { Caixinha } from "./financeiro/Caixinha";
-import { PlanoContas } from "./components/PlanoContas";
+import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
-import { Acessos } from "./components/Acessos";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
-import { PropriedadeSelector } from "./rebanho/components/PropriedadeSelector";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
-import { ConfiguracoesView } from "./rebanho/components/ConfiguracoesView";
-import { CadastrosView } from "./rebanho/components/CadastrosView";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
-import { getToken, clearToken } from "./lib/auth";
+import { getToken, setToken, clearToken } from "./lib/auth";
 import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
+import { BootSplash } from "./components/Loading";
+import { TerranoIntro } from "./components/TerranoIntro";
+
+// Abertura Terrano (marca grande + música no centro, some pro canto).
+//   "always"  → toca em todo load do dashboard (bom pra testar)
+//   "session" → uma vez por sessão do navegador (usar antes do push)
+//   "once"    → uma vez por dispositivo (localStorage)
+// ⚠️ TROCAR PARA "session" ANTES DO PUSH.
+const INTRO_MODE: "always" | "session" | "once" = "session";
+const INTRO_SEEN_KEY = "terrano:intro:seen";
+
+// Gate de acesso. `false` na fase interna (entra direto, sem login). Trocar por
+// `true` religa a tela de senha — e com ela a música da intro ancorada no clique
+// de "Entrar" (ver comentário do token em App). O middleware do server só fecha
+// de fato se SHARED_ACCESS_TOKEN estiver setado; em dev, qualquer senha entra.
+const GATE_ATIVO = false;
+
+// Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
+// do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
+// além de colidir com o "Enviar/Perguntar" no canto inferior direito.
+const ABAS_CHAT = new Set<Tab>(["ia"]);
+
+function deveTocarIntro(tabInicial: Tab): boolean {
+  if (tabInicial !== "dashboard") return false;
+  if (INTRO_MODE === "always") return true;
+  try {
+    const store = INTRO_MODE === "session" ? sessionStorage : localStorage;
+    return !store.getItem(INTRO_SEEN_KEY);
+  } catch {
+    return true;
+  }
+}
+
+function marcarIntroVista() {
+  if (INTRO_MODE === "always") return;
+  try {
+    (INTRO_MODE === "session" ? sessionStorage : localStorage).setItem(INTRO_SEEN_KEY, "1");
+  } catch {
+    /* storage indisponível — ignora */
+  }
+}
 
 function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   return (
@@ -56,7 +92,6 @@ const REB: Record<string, RebSub> = {
   "reb-producao": "producao",
   "reb-estoque": "estoque",
   "reb-custo": "custo",
-  "reb-ia": "ia",
 };
 
 const PLA: Record<string, PlaSub> = {
@@ -69,7 +104,6 @@ const PLA: Record<string, PlaSub> = {
   "pla-planejamento": "planejamento",
   "pla-estoque": "estoque",
   "pla-custo": "custo",
-  "pla-ia": "ia",
 };
 
 const COR: Record<string, CorSub> = {
@@ -81,16 +115,17 @@ const COR: Record<string, CorSub> = {
   "cor-nutricao": "nutricao",
   "cor-comercial": "comercial",
   "cor-custo": "custo",
-  "cor-ia": "ia",
 };
 
 const EQP: Record<string, EqpSub> = {
+  "eqp-dashboard": "dashboard",
   "eqp-funcionarios": "funcionarios",
   "eqp-ponto": "ponto",
   "eqp-folha": "folha",
 };
 
 const MIL: Record<string, MilSub> = {
+  "mil-dashboard": "dashboard",
   "mil-safras": "safras",
   "mil-custos": "custos",
   "mil-producao": "producao",
@@ -99,24 +134,43 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Auth mínima está ENGATILHADA mas NÃO trava o app:
-  //   - lib/auth.ts e Login.tsx continuam no repo prontos pra ser religados
-  //     quando o piloto for pro dono (basta trocar `false` abaixo por
-  //     `!getToken()` e o gate volta a valer)
-  //   - o middleware do server só bloqueia se SHARED_ACCESS_TOKEN estiver setado
-  //     — em dev/homolog, sem env, a API fica aberta
-  //   - o botão Sair no Header só aparece se houver token gravado, então quem
-  //     testar com token continua conseguindo sair.
-  // Motivo do downgrade: durante a fase interna atual não deve travar a entrada
-  // — o dono ainda não está usando; sempre entra como Marco Antônio.
-  const tokenSalvo = getToken();
-  const onSair = tokenSalvo ? () => { clearToken(); window.location.reload(); } : undefined;
+  // Auth mínima (senha compartilhada). Durante a fase interna o gate fica
+  // DESLIGADO (GATE_ATIVO=false) — entra direto como Marco, sem tela de senha.
+  // Ligar GATE_ATIVO religa o Login e, com ele, a música da abertura ancorada no
+  // clique de "Entrar": o login/logout transicionam EM ESTADO, sem
+  // window.location.reload() — um reload mataria a "sticky activation" do
+  // documento e o navegador voltaria a bloquear o áudio da intro.
+  // ⚠️ Com o gate desligado não há clique de login: a intro roda o visual e a
+  // música entra no 1º gesto do usuário (fallback em TerranoIntro).
+  const [token, setTokenState] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : getToken(),
+  );
 
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
   );
+  // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). Com
+  // o gate ligado ela também é (re)disparada no clique de "Entrar" — aí a música
+  // toca junto com a logo, porque o clique libera o áudio.
+  const [showIntro, setShowIntro] = useState<boolean>(() =>
+    typeof window === "undefined"
+      ? false
+      : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
+  );
+  const entrar = (senha: string) => {
+    setToken(senha); // persiste pro comAuth() das próximas requests
+    setTokenState(senha); // transiciona pro app SEM reload (mantém o gesto vivo p/ o áudio)
+    setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
+  };
+  const onSair = token
+    ? () => {
+        clearToken();
+        setTokenState(null);
+        setShowIntro(false);
+      }
+    : undefined;
   const [users, setUsers] = useState<User[]>(usuarios);
   const realUserId = "marco"; // o dono logado
   const [viewAsId, setViewAsId] = useState<string | null>(null);
@@ -168,6 +222,22 @@ export function App() {
 
   // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
   const navegarTab = (t: Tab) => { setDeepLinkFiltros(null); setTab(t); };
+
+  // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
+  // resolverem, com um tempo mínimo pra não piscar. Some com fade-out.
+  const [booting, setBooting] = useState(true);
+  const [bootLeaving, setBootLeaving] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    const minTempo = new Promise<void>((r) => window.setTimeout(r, 750));
+    const fontes = (document as unknown as { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
+    Promise.all([minTempo, fontes]).then(() => {
+      if (!vivo) return;
+      setBootLeaving(true);
+      window.setTimeout(() => { if (vivo) setBooting(false); }, 480);
+    });
+    return () => { vivo = false; };
+  }, []);
 
   // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
   useEffect(() => {
@@ -282,41 +352,69 @@ export function App() {
                 filtrosIniciais={deepLinkFiltros?.tab === "dashboard" ? deepLinkFiltros.filtros : undefined}
               />
             : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
-        {tab === "gastos" &&
-          (canSee("gastos")
+        {/* Gastos vira hub: Contas + Caixinha (sub-aba dobrada). /caixinha ainda
+            resolve — abre o hub na sub-aba Caixinha. */}
+        {(tab === "gastos" || tab === "caixinha") &&
+          (canSee("gastos") || (tab === "caixinha" && canSee("caixinha"))
             ? <Gastos
                 key={deepLinkFiltros?.tab === "gastos" ? JSON.stringify(deepLinkFiltros.filtros) : "gastos"}
                 onNav={setTab}
                 user={effectiveUser}
+                sub={tab === "caixinha" ? "caixinha" : "contas"}
+                podeCaixinha={canSee("caixinha")}
                 filtrosIniciais={deepLinkFiltros?.tab === "gastos" ? deepLinkFiltros.filtros : undefined}
               />
-            : <GatedTab user={effectiveUser} abaLabel="Gastos" />)}
+            : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {tab === "relatorio" &&
           (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
         {tab === "lancar" &&
           (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
-        {tab === "caixinha" &&
-          (canSee("caixinha") ? <Caixinha /> : <GatedTab user={effectiveUser} abaLabel="Caixinha" />)}
-        {tab === "plano" &&
-          (canSee("plano") ? <PlanoContas onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Categorias" />)}
-        {tab === "acessos" &&
-          (isAdmin ? <Acessos users={users} setUsers={setUsers} onViewAs={enterViewAs} /> : <GatedTab user={effectiveUser} abaLabel="Acessos" />)}
-        {tab === "config" && <ConfiguracoesView />}
-        {tab === "cadastros" && <CadastrosView />}
+        {/* Configurações vira hub: Geral · Cadastros · Categorias · Acessos.
+            /cadastros, /categorias, /acessos ainda resolvem — abrem a sub-aba. */}
+        {(tab === "config" || tab === "cadastros" || tab === "plano" || tab === "acessos") && (
+          <ConfiguracoesHub
+            tab={tab}
+            onNav={setTab}
+            isAdmin={isAdmin}
+            podeCategorias={canSee("plano")}
+            users={users}
+            setUsers={setUsers}
+            onViewAs={enterViewAs}
+          />
+        )}
       </>
     );
 
+  // Gate de acesso (ligado por GATE_ATIVO): sem token, só a tela de login.
+  // `entrar` recebe o clique (gesto) e transiciona em estado — a intro monta no
+  // MESMO documento, então o play() da música é liberado. (Todos os hooks acima
+  // já rodaram — early return aqui não viola as Rules of Hooks.)
+  if (GATE_ATIVO && !token) {
+    return <Login onEntrar={entrar} />;
+  }
+
   return (
+    <>
+      {/* Sem BootSplash quando a abertura Terrano vai rodar — o overlay dela já
+          cobre o app (fundo desfocado) e evita dois splashes empilhados. */}
+      {booting && !showIntro && <BootSplash leaving={bootLeaving} />}
+      {showIntro && (
+        <TerranoIntro
+          onDone={() => {
+            marcarIntroVista();
+            setShowIntro(false);
+          }}
+        />
+      )}
     <div className="app">
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header
         user={effectiveUser}
-        allUsers={viewAsId ? null : users}
-        onSwitchUser={enterViewAs}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
         onAbrirBusca={() => setBuscaAberta(true)}
+        onPreferencias={() => setTab("config")}
         onSair={onSair}
       />
       <AppSidebar
@@ -327,6 +425,8 @@ export function App() {
         podeVerFolha={canSeeFolha}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        propAtiva={propAtiva}
+        onTrocarProp={trocarPropriedade}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         {viewAsId && (
@@ -346,7 +446,6 @@ export function App() {
             </button>
           </div>
         )}
-        <PropriedadeSelector value={propAtiva} onChange={trocarPropriedade} />
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
           {conteudo}
         </div>
@@ -371,7 +470,8 @@ export function App() {
           return canSee(t);
         }}
       />
-      <ChatWidget onNavegar={navegarDeepLink} />
+      {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
+    </>
   );
 }

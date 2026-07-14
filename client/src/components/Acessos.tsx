@@ -11,15 +11,24 @@ import { ConfirmDialog } from "./ConfirmDialog";
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+/* status-badge base + tom por status (era .status-badge{.ativo|.pendente|.inativo}) */
+const STATUS_BADGE_BASE =
+  "whitespace-nowrap border border-current px-[9px] py-[3px] text-[11px] tracking-[0.06em]";
 function StatusBadge({ status }: { status: User["status"] }) {
   const map: Record<string, { label: string; cls: string }> = {
-    ativo: { label: "Ativo", cls: "ativo" },
-    pendente: { label: "Convite pendente", cls: "pendente" },
-    inativo: { label: "Inativo", cls: "inativo" },
+    ativo: { label: "Ativo", cls: "text-[color:var(--pos)]" },
+    pendente: { label: "Convite pendente", cls: "text-[color:var(--warn)]" },
+    inativo: { label: "Inativo", cls: "text-[color:var(--ink-mute)]" },
   };
   const s = map[status] || map.ativo;
-  return <span className={"status-badge " + s.cls}>{s.label}</span>;
+  return <span className={STATUS_BADGE_BASE + " " + s.cls}>{s.label}</span>;
 }
+
+/* dono-tag / admin-tag (pequenas etiquetas outline) */
+const DONO_TAG =
+  "border border-leite px-[6px] py-px text-[9px] uppercase tracking-[0.16em] text-leite";
+const ADMIN_TAG =
+  "ml-2 inline-block border border-[color:var(--neg)] px-[5px] py-px align-middle text-[9px] uppercase tracking-[0.14em] text-[color:var(--neg)]";
 
 function InviteModal({
   onClose,
@@ -86,11 +95,21 @@ function InviteModal({
               {Object.entries(PAPEIS)
                 .filter(([k]) => k !== "proprietario")
                 .map(([k, p]) => (
-                  <button key={k} type="button" className={"papel-opt " + (papel === k ? "active" : "")} onClick={() => setPapel(k)}>
-                    <span className="papel-radio">{papel === k ? "●" : "○"}</span>
-                    <span className="papel-txt">
-                      <strong>{p.nome}</strong>
-                      <small>{p.desc}</small>
+                  <button
+                    key={k}
+                    type="button"
+                    className={
+                      "flex w-full cursor-pointer items-start gap-3 border bg-transparent px-4 py-[13px] text-left hover:border-[color:var(--ink-3)] " +
+                      (papel === k
+                        ? "border-[color:var(--ink)] bg-[color:var(--bg-card-2)]"
+                        : "border-[color:var(--rule)]")
+                    }
+                    onClick={() => setPapel(k)}
+                  >
+                    <span className="mt-px text-[14px] text-[color:var(--ink)]">{papel === k ? "●" : "○"}</span>
+                    <span className="flex flex-col gap-0.5">
+                      <strong className="text-[15px] font-bold text-[color:var(--ink)]">{p.nome}</strong>
+                      <small className="text-[12px] leading-[1.4] text-ink-3">{p.desc}</small>
                     </span>
                   </button>
                 ))}
@@ -145,65 +164,86 @@ function PermissionEditor({
 
   const papelNome = user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome || "—";
 
+  /* .perm-row base + estado .on/.admin (transição border+bg 80ms) */
+  const permRow =
+    "flex cursor-pointer items-start gap-3 border bg-transparent px-[14px] py-[13px] text-left transition-[border-color,background] duration-[80ms] hover:border-[color:var(--ink-3)]";
+  const permRowClass = (on: boolean) =>
+    permRow + (on ? " border-[color:var(--rule)] bg-[color:var(--bg-card-2)]" : " border-[color:var(--rule-soft)]");
+  /* .perm-check base; data-on=true → preenche (ink) ou neg quando linha .admin */
+  const permCheck =
+    "mt-px grid h-[18px] w-[18px] flex-none place-items-center border-[1.5px] border-[color:var(--rule)] data-[on=true]:border-[color:var(--ink)] data-[on=true]:bg-[color:var(--ink)]";
+  const permCheckAdmin =
+    permCheck + " data-[on=true]:border-[color:var(--neg)] data-[on=true]:bg-[color:var(--neg)]";
+
   return (
-    <div className="perm-editor">
-      <div className="perm-editor-head">
-        <div className="perm-user">
-          <div className="perm-avatar">{user.inicial}</div>
+    <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
+      <div className="flex items-center justify-between border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
+        <div className="flex items-center gap-[14px]">
+          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{user.inicial}</div>
           <div>
-            <div className="perm-user-nome">
+            <div className="flex items-center gap-2.5 font-serif text-[22px] tracking-[-0.01em]">
               {user.nome}
-              {user.dono && <span className="dono-tag">dono</span>}
+              {user.dono && <span className={DONO_TAG}>dono</span>}
             </div>
-            <div className="perm-user-email">{user.email}</div>
+            <div className="mt-0.5 text-[13px] text-ink-3">{user.email}</div>
           </div>
         </div>
         <StatusBadge status={user.status} />
       </div>
 
       {user.dono ? (
-        <div className="perm-dono-note">
-          <span className="serif" style={{ fontSize: 17 }}>
+        <div className="px-[26px] py-[30px]">
+          <span className="font-serif font-medium" style={{ fontSize: 17 }}>
             Acesso total e irrevogável.
           </span>
-          <p>Como proprietário, Marco vê tudo e é o único que gerencia acessos. Esse papel não pode ser reduzido.</p>
+          <p className="mt-2 max-w-[56ch] text-[15px] leading-[1.6] text-ink-3">Como proprietário, Marco vê tudo e é o único que gerencia acessos. Esse papel não pode ser reduzido.</p>
         </div>
       ) : (
         <>
-          <div className="perm-block">
-            <div className="perm-block-head">
-              <span className="perm-block-title">Papel</span>
-              <span className="perm-papel-atual">{papelNome}</span>
+          <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
+            <div className="mb-[14px] flex items-baseline justify-between">
+              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Papel</span>
+              <span className="font-serif text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
             </div>
-            <div className="papel-chips">
+            <div className="flex flex-wrap gap-2">
               {Object.entries(PAPEIS)
                 .filter(([k]) => k !== "proprietario")
                 .map(([k, p]) => (
-                  <button key={k} className={"papel-chip " + (user.papel === k ? "active" : "")} onClick={() => applyPreset(k)} title={p.desc}>
+                  <button
+                    key={k}
+                    className={
+                      "cursor-pointer border px-[14px] py-2 font-sans text-[13px] tracking-[0.01em] " +
+                      (user.papel === k
+                        ? "border-[color:var(--mast-bg)] bg-mast text-mast-ink"
+                        : "border-[color:var(--rule)] bg-transparent text-ink-2 hover:border-[color:var(--ink-3)] hover:text-[color:var(--ink)]")
+                    }
+                    onClick={() => applyPreset(k)}
+                    title={p.desc}
+                  >
                     {p.nome}
                   </button>
                 ))}
             </div>
           </div>
 
-          <div className="perm-block">
-            <div className="perm-block-head">
-              <span className="perm-block-title">Abas que pode ver</span>
-              <span className="perm-count">
+          <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
+            <div className="mb-[14px] flex items-baseline justify-between">
+              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Abas que pode ver</span>
+              <span className="text-[12px] text-ink-3 tabular-nums">
                 {user.abas.length} de {ABAS.length}
               </span>
             </div>
-            <div className="perm-grid">
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
               {ABAS.map((aba) => {
                 const on = user.abas.includes(aba.id);
                 return (
-                  <button key={aba.id} className={"perm-row " + (on ? "on" : "")} onClick={() => toggleAba(aba.id)}>
-                    <span className="perm-check" data-on={on}>
-                      {on && <span className="tick">✓</span>}
+                  <button key={aba.id} className={permRowClass(on)} onClick={() => toggleAba(aba.id)}>
+                    <span className={permCheck} data-on={on}>
+                      {on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}
                     </span>
-                    <span className="perm-row-txt">
-                      <strong>{aba.label}</strong>
-                      <small>{aba.desc}</small>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">{aba.label}</strong>
+                      <small className="text-[12px] leading-[1.4] text-ink-3">{aba.desc}</small>
                     </span>
                   </button>
                 );
@@ -211,25 +251,25 @@ function PermissionEditor({
             </div>
           </div>
 
-          <div className="perm-block">
-            <div className="perm-block-head">
-              <span className="perm-block-title">Permissões sensíveis</span>
+          <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
+            <div className="mb-[14px] flex items-baseline justify-between">
+              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Permissões sensíveis</span>
             </div>
-            <div className="perm-grid">
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
               {FLAGS.map((flag) => {
                 const on = user.flags.includes(flag.id);
                 const isAdmin = flag.id === "gerenciarAcessos";
                 return (
-                  <button key={flag.id} className={"perm-row " + (on ? "on" : "") + (isAdmin ? " admin" : "")} onClick={() => toggleFlag(flag.id)}>
-                    <span className="perm-check" data-on={on}>
-                      {on && <span className="tick">✓</span>}
+                  <button key={flag.id} className={permRowClass(on)} onClick={() => toggleFlag(flag.id)}>
+                    <span className={isAdmin ? permCheckAdmin : permCheck} data-on={on}>
+                      {on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}
                     </span>
-                    <span className="perm-row-txt">
-                      <strong>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">
                         {flag.label}
-                        {isAdmin && <span className="admin-tag">admin</span>}
+                        {isAdmin && <span className={ADMIN_TAG}>admin</span>}
                       </strong>
-                      <small>{flag.desc}</small>
+                      <small className="text-[12px] leading-[1.4] text-ink-3">{flag.desc}</small>
                     </span>
                   </button>
                 );
@@ -237,11 +277,11 @@ function PermissionEditor({
             </div>
           </div>
 
-          <div className="perm-actions">
+          <div className="flex items-center justify-between gap-4 px-[26px] py-5">
             <button className="btn-secondary" onClick={() => onViewAs(user.id)}>
               Ver o sistema como {user.nome.split(" ")[0]} →
             </button>
-            <div className="perm-actions-r">
+            <div className="flex gap-2.5">
               {user.status === "pendente" && (
                 <button className="btn-ghost" onClick={() => onResendInvite(user)}>
                   Reenviar convite
@@ -329,46 +369,53 @@ export function Acessos({
 
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle="Acessos & Permissões" updatedAt={UPDATED_AT} />
+      <ReportHeader eyebrow="Administração · Pessoas & permissões" subtitle="Acessos" updatedAt={UPDATED_AT} />
 
-      <div className="acessos-summary">
-        <div className="ac-sum">
-          <span className="l">Pessoas com acesso</span>
-          <span className="v mono-nums">{ativos}</span>
+      <div className="mt-[18px] mb-7 grid grid-cols-[repeat(3,1fr)_auto] items-center border border-[color:var(--rule)] bg-[color:var(--bg-card)] max-[1100px]:grid-cols-2">
+        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
+          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Pessoas com acesso</span>
+          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{ativos}</span>
         </div>
-        <div className="ac-sum">
-          <span className="l">Convites pendentes</span>
-          <span className="v mono-nums">{pendentes}</span>
+        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
+          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Convites pendentes</span>
+          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{pendentes}</span>
         </div>
-        <div className="ac-sum">
-          <span className="l">Papéis disponíveis</span>
-          <span className="v mono-nums">{Object.keys(PAPEIS).length}</span>
+        <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-6 py-[18px]">
+          <span className="text-[12px] uppercase tracking-[0.14em] text-ink-3">Papéis disponíveis</span>
+          <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{Object.keys(PAPEIS).length}</span>
         </div>
-        <div className="ac-sum ac-sum-action">
+        <div className="flex flex-col gap-[5px] px-6 py-[18px]">
           <button className="btn-primary" onClick={() => setShowInvite(true)}>
             + Convidar pessoa
           </button>
         </div>
       </div>
 
-      <div className="acessos-grid">
-        <div className="acessos-list">
-          <div className="acessos-list-head">Equipe & convidados</div>
+      <div className="grid grid-cols-[380px_1fr] items-start gap-8 pb-[60px] max-[1100px]:grid-cols-1">
+        <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
+          <div className="border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[18px] py-[14px] text-[11px] uppercase tracking-[0.16em] text-ink-3">Equipe & convidados</div>
           {users.map((u) => (
-            <button key={u.id} className={"acessos-row " + (selId === u.id ? "active" : "")} onClick={() => setSelId(u.id)}>
-              <div className="ar-avatar">{u.inicial}</div>
-              <div className="ar-info">
-                <div className="ar-nome">
+            <button
+              key={u.id}
+              className={
+                "grid w-full cursor-pointer grid-cols-[42px_1fr_auto] items-center gap-[14px] border-0 border-b border-l-[3px] border-b-[color:var(--rule-soft)] bg-transparent px-[18px] py-[14px] pl-[15px] text-left transition-[background] duration-[80ms] last:border-b-0 hover:bg-[color:var(--bg-card-2)] " +
+                (selId === u.id ? "border-l-[color:var(--ink)] bg-[color:var(--bg-card-2)]" : "border-l-transparent")
+              }
+              onClick={() => setSelId(u.id)}
+            >
+              <div className="grid h-[42px] w-[42px] place-items-center rounded-full bg-mast font-serif text-[18px] text-mast-ink">{u.inicial}</div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 font-sans text-[15px] font-medium text-[color:var(--ink)]">
                   {u.nome}
-                  {u.dono && <span className="dono-tag">dono</span>}
+                  {u.dono && <span className={DONO_TAG}>dono</span>}
                 </div>
-                <div className="ar-papel">
+                <div className="mt-0.5 text-[12px] text-ink-3">
                   {u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome} · {u.abas.length} abas
                 </div>
               </div>
-              <div className="ar-meta">
+              <div className="flex flex-col items-end gap-[5px]">
                 <StatusBadge status={u.status} />
-                <span className="ar-acesso">{u.ultimoAcesso}</span>
+                <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{u.ultimoAcesso}</span>
               </div>
             </button>
           ))}

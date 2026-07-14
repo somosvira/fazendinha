@@ -18,6 +18,7 @@ import {
 } from "./api";
 import { fmtMoneyExact } from "../components/charts";
 import { useToast } from "../components/Toast";
+import { Input } from "@/components/ui/input";
 import { HOJE } from "./HOJE";
 
 // "YYYY-MM-DD" → "dd/mm/aaaa" sem passar por Date (evita shift de fuso).
@@ -329,12 +330,13 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
             </TabButton>
           ))}
         </div>
-        <div className="search-box" style={{ marginLeft: "auto" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+        <div className="ml-auto flex w-[280px] items-center gap-2 border border-border bg-card px-3 py-[7px] max-[900px]:ml-0 max-[900px]:w-full">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="text-ink-2">
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="16" y1="16" x2="21" y2="21"></line>
           </svg>
-          <input
+          <Input
+            className="h-auto flex-1 border-0 bg-transparent p-0 text-[15px] font-medium text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 md:text-[15px]"
             placeholder="Buscar fornecedor, categoria ou valor…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -345,10 +347,7 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
               type="button"
               onClick={() => setQ("")}
               aria-label="Limpar busca"
-              style={{
-                background: "none", border: 0, cursor: "pointer",
-                color: "var(--ink-3)", padding: 0, fontSize: 16, lineHeight: 1,
-              }}
+              className="cursor-pointer border-0 bg-transparent p-0 text-base leading-none text-ink-3"
             >
               ×
             </button>

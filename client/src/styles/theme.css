@@ -1,0 +1,171 @@
+/* Rio Novo — camada Tailwind v4 + tokens shadcn (identidade editorial).
+ * Importado ANTES do CSS legado em main.tsx.
+ *
+ * Fase 7 (encerramento da migração): o Preflight do Tailwind está LIGADO, mas
+ * dentro de `@layer base`. As folhas legadas restantes (base/dashboard/cockpit/
+ * forms/typescale/acessos/terrano-intro) são TODAS não-camadas ("unlayered") —
+ * e regras não-camadas VENCEM as camadas no cascade — então o preflight zera
+ * margens/bordas/etc. só onde NÃO há CSS legado (telas migradas + primitivos
+ * shadcn), sem regredir as telas ainda em CSS bespoke. O shim manual de border/
+ * box virou redundante (o preflight já faz) e foi removido. */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+
+:root {
+  --radius: 0rem;
+  /* raio dedicado dos BOTÕES — leve (4px), sem afetar inputs/cards/modais que
+   * seguem --radius: 0 (identidade editorial de cantos retos). Usado por
+   * ui/button + RebButton. Ajuste aqui num único lugar. */
+  --radius-btn: 4px;
+
+  /* superfícies */
+  --background: #F2EDE2;
+  --foreground: #14191A;
+  --card: #FAF6EC;
+  --card-foreground: #14191A;
+  --popover: #FAF6EC;
+  --popover-foreground: #14191A;
+
+  /* ação primária = CTA escuro do masthead */
+  --primary: #0E1311;
+  --primary-foreground: #E8DCC4;
+
+  --secondary: #F6F1E4;
+  --secondary-foreground: #14191A;
+  --muted: #F6F1E4;
+  --muted-foreground: #3A4341;
+  --accent: #F6F1E4;
+  --accent-foreground: #14191A;
+
+  --destructive: #C62828;
+  --destructive-foreground: #F2EDE2;
+
+  --border: #D6CDB8;
+  --input: #D6CDB8;
+  --ring: #14191A;
+
+  /* gráficos: brass / coffee / sage */
+  --chart-1: #B89A5C;
+  --chart-2: #5C3A1E;
+  --chart-3: #6B7A5C;
+  --chart-4: #8A5A30;
+  --chart-5: #93A07F;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* extras editoriais — reaproveitam as variáveis definidas em base.css */
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-leite: var(--leite);
+  --color-cafe: var(--cafe);
+  --color-outros: var(--outros);
+  --color-lucro: var(--lucro);
+  --color-prejuizo: var(--prejuizo);
+  --color-atencao: var(--atencao);
+  --color-info: var(--info);
+  --color-rural: var(--rural);
+  --color-mast: var(--mast-bg);
+  --color-mast-ink: var(--mast-ink);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "Newsreader", "Source Serif 4", Georgia, serif;
+}
+
+/* Complemento do Preflight (convenção shadcn): a cor de borda default é a do
+ * token `--border` — o Preflight zera a LARGURA da borda mas deixa a cor em
+ * currentColor; os primitivos shadcn assumem `--border`. Fica DEPOIS do import
+ * do preflight dentro de @layer base, então vence dentro da camada. Inócuo ao
+ * CSS legado (unlayered, que sempre vence a camada e usa border completo). */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    box-sizing: border-box;
+    border: 0 solid var(--border);
+  }
+}
+
+/* Utilitários que precisam de CSS real (fora do parser de arbitrary-value do
+ * Tailwind). Usados pelos primitivos rb/ (Fase 7 da migração shadcn). */
+@layer components {
+  /* seta customizada do <select> do RebField — reproduz `.rb-fld select` do
+   * rebanho.css (data-URI SVG que o parser de arbitrary-value não engole). */
+  .rb-field-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 22px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%2374705e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 2px center;
+  }
+}
+
+/* Animações dos módulos operacionais — migradas de rebanho.css (Fase 7 PR-3)
+ * para sobreviverem à deleção daquela folha. Usadas por RebModal (fade/modal-in),
+ * AnimalCockpit (tl-card-flash), Timeline (ev-flash) e o success-check dos modais. */
+@keyframes rb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rb-modal-in {
+  from { opacity: 0; transform: translate(-50%, -46%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes rb-tl-card-flash {
+  0% { background: color-mix(in srgb, var(--leite) 22%, transparent); box-shadow: 0 0 0 2px var(--leite), 0 0 0 6px color-mix(in srgb, var(--leite) 30%, transparent); }
+  60% { background: color-mix(in srgb, var(--leite) 10%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--leite) 60%, transparent), 0 0 0 6px transparent; }
+  100% { background: transparent; box-shadow: 0 0 0 2px transparent, 0 0 0 6px transparent; }
+}
+@keyframes rb-ev-flash {
+  0%   { background: color-mix(in srgb, var(--leite) 30%, transparent); box-shadow: inset 3px 0 0 var(--leite); }
+  70%  { background: color-mix(in srgb, var(--leite) 12%, transparent); box-shadow: inset 3px 0 0 var(--leite); }
+  100% { background: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+@keyframes rb-check-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes rb-check-circle { from { stroke-dashoffset: 132; } to { stroke-dashoffset: 0; } }
+@keyframes rb-check-path { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
+
+@layer components {
+  /* RebModal usa estas classes: backdrop e card. As bindings de animation vinham
+   * do `.rb-drawer-bg`/`.rb-drawer` do rebanho.css (que morre no PR-3); aqui viram
+   * regras próprias e passam a animar o RebModal de fato. */
+  .rb-fade-in { animation: rb-fade-in .15s ease; }
+  .rb-modal-in { animation: rb-modal-in .18s ease; }
+  /* .rb-tl-card / .rb-tl-card-flash — destaque ao chegar na ficha após registrar evento */
+  .rb-tl-card { border-radius: 10px; padding: 4px; margin: -4px; }
+  .rb-tl-card-flash { animation: rb-tl-card-flash 1.6s ease-out; }
+  /* .rb-ev-flash — destaque do evento recém-criado na Timeline */
+  .rb-ev-flash { border-radius: 8px; padding: 6px 10px; margin: -6px -10px 14px; animation: rb-ev-flash 3.2s ease-out; }
+}

@@ -1,9 +1,16 @@
 import { useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useLotes } from "../api";
 import { LoteDomainView } from "./LoteDomainView";
 import { DOMAINS } from "../domains";
 import { insightDaFazenda } from "../mock";
 import { arrobasCarcaca } from "../lib/derive";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebField } from "@/components/rb/RebField";
+import { RebMain, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
 import type { ResumoLote, Lote } from "../types";
 
 const PRECO_SPOT_MG = 317;
@@ -21,7 +28,7 @@ export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => voi
   const [aba, setAba] = useState<"painel" | "simulador">("painel");
   const { data, loading } = useLotes({ estado: "ATIVO" });
 
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Corte</div><div className="rb-head"><h1>Comercial</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Comercial" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrar(l); };
 
@@ -36,12 +43,10 @@ export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => voi
       onAbrirLote={abrir}
       dicaLinha="clique num lote pra registrar venda / operação"
       controles={
-        <>
-          <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
-            <button className="rb-btn" aria-pressed onClick={() => setAba("painel")}>Painel</button>
-            <button className="rb-btn" onClick={() => setAba("simulador")}>Simulador de venda</button>
-          </div>
-        </>
+        <div className="flex gap-1.5">
+          <RebButton aria-pressed onClick={() => setAba("painel")}>Painel</RebButton>
+          <RebButton onClick={() => setAba("simulador")}>Simulador de venda</RebButton>
+        </div>
       }
     />
   );
@@ -59,42 +64,41 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
   const receitaHoje = arrobasHoje * PRECO_SPOT_MG;
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Corte · simulador de venda</div>
-      <div className="rb-head">
-        <h1>Simulador de janela comercial</h1>
-        <button className="rb-btn" onClick={onVoltar}>← Painel comercial</button>
-      </div>
+    <RebMain>
+      <RebHeader
+        eyebrow="Corte · simulador de venda"
+        title="Simulador de janela comercial"
+        actions={<RebButton onClick={onVoltar}>← Painel comercial</RebButton>}
+      />
 
-      <div className="rb-fld" style={{ maxWidth: 480 }}>
-        <label>Lote a simular</label>
-        <select value={loteId} onChange={(e) => setLoteId(e.target.value)}>
+      <RebField label="Lote a simular" style={{ maxWidth: 480 }}>
+        <select className="rb-field-select" value={loteId} onChange={(e) => setLoteId(e.target.value)}>
           {lotes.map((l) => {
             const ready = (l.resumo?.pesoMedio ?? 0) >= 480;
             return <option key={l.id} value={l.id}>{l.codigo} — {l.nome} ({l.numCabecas} cab · {l.resumo?.pesoMedio ?? "—"} kg){ready ? " · pronto" : ""}</option>;
           })}
         </select>
-      </div>
+      </RebField>
 
       {lote && resumo && (
         <>
-          <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-            <div className="rb-k"><div className="lab">Cabeças</div><div className="val">{lote.numCabecas}</div></div>
-            <div className="rb-k"><div className="lab">Peso médio</div><div className="val">{resumo.pesoMedio}<u>kg</u></div></div>
-            <div className="rb-k"><div className="lab">GMD atual</div><div className="val">{resumo.gmd?.toFixed(2) ?? "—"}<u>kg/d</u></div></div>
-            <div className="rb-k"><div className="lab">@ no lote hoje</div><div className="val">{arrobasHoje.toFixed(0)}<u>@</u></div></div>
-          </div>
+          <RebKpiStrip cols={4}>
+            <RebKpi lab="Cabeças" val={lote.numCabecas} />
+            <RebKpi lab="Peso médio" val={<>{resumo.pesoMedio}<u>kg</u></>} />
+            <RebKpi lab="GMD atual" val={<>{resumo.gmd?.toFixed(2) ?? "—"}<u>kg/d</u></>} />
+            <RebKpi lab="@ no lote hoje" val={<>{arrobasHoje.toFixed(0)}<u>@</u></>} />
+          </RebKpiStrip>
 
-          <h2 className="rb-sec-title">Cenários</h2>
-          <p className="rb-sec-sub">
+          <h2 className="font-serif text-xl font-medium mb-3">Cenários</h2>
+          <p className={REB_SEC_SUB}>
             Receita estimada por mês de saída. <b>Vender agora:</b> indicador Cepea/Esalq MG @ <b>R$ {PRECO_SPOT_MG}/@</b>.
             <b> Atrasar:</b> indicador futuro B3 (sem desconto de basis frigorífico, custos de manutenção descontados a R$ 1,80/cab/dia).
           </p>
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr><th>Janela</th><th>Preço @</th><th>Peso projetado</th><th>@ projetadas</th><th>Receita bruta</th><th>Custo manutenção</th><th>Diferença vs. hoje</th></tr></thead>
             <tbody>
               <tr>
-                <td className="rb-anm">Hoje (spot)</td>
+                <td><RebAnm>Hoje (spot)</RebAnm></td>
                 <td>R$ {PRECO_SPOT_MG}</td>
                 <td>{resumo.pesoMedio} kg</td>
                 <td>{arrobasHoje.toFixed(0)} @</td>
@@ -112,7 +116,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
                 const diff = liquido - receitaHoje;
                 return (
                   <tr key={c.mes}>
-                    <td className="rb-anm">{c.mes}</td>
+                    <td><RebAnm>{c.mes}</RebAnm></td>
                     <td>R$ {c.preco.toFixed(2)}</td>
                     <td>{pesoProj.toFixed(0)} kg</td>
                     <td>{arrProj.toFixed(0)} @</td>
@@ -125,15 +129,15 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
                 );
               })}
             </tbody>
-          </table></div>
+          </RebTable>
 
-          <p className="rb-sub" style={{ marginTop: 16 }}>
+          <p className="text-sm text-ink-3" style={{ marginTop: 16 }}>
             <b>Observação:</b> a curva B3 não desconta o <i>basis</i> regional Minas (boi gordo MG costuma negociar ~R$ 8-15/@ abaixo
             do indicador São Paulo da Esalq). O custo de manutenção R$ 1,80/cab/dia cobre suplemento mineral + proteinado seca + mão
             de obra alocada. Custos de transporte ao frigorífico (R$ 20-40/cab) não estão incluídos.
           </p>
         </>
       )}
-    </main>
+    </RebMain>
   );
 }

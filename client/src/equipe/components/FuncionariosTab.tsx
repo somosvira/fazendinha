@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useFuncionarios, useCustoMOSetor, money, horasFmt, dateBR } from "../api";
 import type { FuncionarioDTO } from "../types";
 import { FuncionarioForm } from "./FuncionarioForm";
+import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
+import { Users } from "lucide-react";
 
 type Filtro = "ATIVOS" | "TODOS";
 
@@ -33,114 +41,126 @@ export function FuncionariosTab() {
   const aposSalvar = () => { setForm(null); recarregar(); custo.recarregar(); };
 
   const controles = (
-    <div className="rb-toolbar" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", margin: "0 0 18px" }}>
-      <div className="rb-seg" style={{ display: "flex", gap: 6 }}>
-        <button className="rb-btn" aria-pressed={filtro === "ATIVOS"} onClick={() => setFiltro("ATIVOS")}>Ativos</button>
-        <button className="rb-btn" aria-pressed={filtro === "TODOS"} onClick={() => setFiltro("TODOS")}>Todos</button>
+    <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
+      <div className="flex gap-1.5">
+        <RebButton aria-pressed={filtro === "ATIVOS"} onClick={() => setFiltro("ATIVOS")}>Ativos</RebButton>
+        <RebButton aria-pressed={filtro === "TODOS"} onClick={() => setFiltro("TODOS")}>Todos</RebButton>
       </div>
-      <label style={{ fontSize: 13, color: "var(--ink-3)" }}>Setor</label>
-      <select className="rb-select" value={setorSel} onChange={(e) => setSetorSel(e.target.value)}>
-        <option value="">Todos os setores</option>
-        {setores.map((s) => <option key={s} value={s}>{s}</option>)}
-      </select>
-      <button className="rb-btn pri" style={{ marginLeft: "auto" }} onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</button>
+      <label className="text-[13px] text-ink-3">Setor</label>
+      <ToolbarSelect
+        value={setorSel}
+        onChange={setSetorSel}
+        ariaLabel="Filtrar por setor"
+        options={[{ value: "", label: "Todos os setores" }, ...setores.map((s) => ({ value: s, label: s }))]}
+      />
+      <RebButton variant="pri" className="ml-auto" onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</RebButton>
     </div>
   );
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Equipe · Funcionários</div>
-      <div className="rb-head"><h1>Funcionários</h1></div>
+    <RebMain>
+      <RebHeader eyebrow="Equipe · Funcionários" title="Funcionários" />
       {controles}
 
       {erro ? (
-        <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar: {erro}</p>
+        <p className="text-sm text-prejuizo">Não foi possível carregar: {erro}</p>
       ) : loading ? (
-        <p className="rb-sub">Carregando…</p>
+        <Loader />
+      ) : linhas.length === 0 ? (
+        (setorSel || filtro !== "TODOS") ? (
+          <EmptyState
+            icon={Users}
+            variant="filtro"
+            titulo="Nenhum funcionário neste filtro"
+            descricao={setorSel ? `Nenhum funcionário no setor ${setorSel}. Troque o setor ou veja “Todos”.` : "Nenhum funcionário ativo. Veja “Todos” para incluir os baixados."}
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum funcionário cadastrado"
+            descricao="A equipe é a base da folha e do rateio de mão de obra por setor. Cadastre o primeiro funcionário para registrar ponto e apurar a folha."
+            acao={<RebButton variant="pri" onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</RebButton>}
+          />
+        )
       ) : (
-        <div className="rb-tbl-wrap"><table className="rb-tbl">
+        <RebTable>
           <thead>
             <tr>
               <th>Nome</th>
               <th>Cargo</th>
               <th>Setor</th>
-              <th style={{ textAlign: "right" }}>Salário</th>
-              <th style={{ textAlign: "right" }}>Carga/mês</th>
-              <th style={{ textAlign: "right" }}>Jornada</th>
+              <th className="text-right">Salário</th>
+              <th className="text-right">Carga/mês</th>
+              <th className="text-right">Jornada</th>
               <th>Admissão</th>
               <th>Situação</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {linhas.length === 0 && (
-              <tr><td colSpan={9} className="rb-sub">
-                {setorSel ? `Nenhum funcionário no setor ${setorSel}.` : "Nenhum funcionário. Use “+ Novo funcionário”."}
-              </td></tr>
-            )}
             {linhas.map((fn) => (
               <tr key={fn.id}>
-                <td className="rb-anm">{fn.nome}</td>
+                <td><RebAnm>{fn.nome}</RebAnm></td>
                 <td>{fn.cargo ?? "—"}</td>
-                <td><span className="rb-pill">{setorLabel(fn)}</span></td>
-                <td style={{ textAlign: "right" }}>{money(fn.salarioMensal)}</td>
-                <td style={{ textAlign: "right" }}>{horasFmt(fn.cargaMensalHoras)}</td>
-                <td style={{ textAlign: "right" }}>{horasFmt(fn.jornadaDiariaHoras)}</td>
+                <td><RebPill>{setorLabel(fn)}</RebPill></td>
+                <td className="text-right">{money(fn.salarioMensal)}</td>
+                <td className="text-right">{horasFmt(fn.cargaMensalHoras)}</td>
+                <td className="text-right">{horasFmt(fn.jornadaDiariaHoras)}</td>
                 <td>{dateBR(fn.dataAdmissao)}</td>
                 <td>
-                  <span className={"rb-pill" + (fn.ativo ? " ok" : " bad")}>{fn.ativo ? "Ativo" : "Baixado"}</span>
+                  <RebPill tone={fn.ativo ? "ok" : "bad"}>{fn.ativo ? "Ativo" : "Baixado"}</RebPill>
                 </td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <button className="rb-btn" onClick={() => setForm({ modo: "editar", funcionario: fn })}>Editar</button>
+                <td className="whitespace-nowrap">
+                  <RebButton onClick={() => setForm({ modo: "editar", funcionario: fn })}>Editar</RebButton>
                   {fn.ativo && (
-                    <button className="rb-btn" style={{ marginLeft: 6 }} onClick={() => setForm({ modo: "baixa", funcionario: fn })}>Baixar</button>
+                    <RebButton className="ml-1.5" onClick={() => setForm({ modo: "baixa", funcionario: fn })}>Baixar</RebButton>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table></div>
+        </RebTable>
       )}
 
       {/* Custo de mão de obra por setor — só ativos; sem setor → "Geral". Número
           disponível para a gestão; ainda NÃO amarrado ao custo dos módulos. */}
-      <section style={{ marginTop: 28 }}>
-        <div className="rb-head"><h2 style={{ fontSize: 18 }}>Custo de mão de obra por setor</h2></div>
-        <p className="rb-sub" style={{ margin: "2px 0 12px", fontSize: 12 }}>
+      <section className="mt-7">
+        <h2 className="font-serif text-lg font-medium">Custo de mão de obra por setor</h2>
+        <p className="mt-0.5 mb-3 text-xs text-ink-3">
           Soma dos salários mensais dos funcionários ativos, agrupada por setor. Não inclui hora extra.
         </p>
         {custo.erro ? (
-          <p className="rb-sub" style={{ color: "var(--neg)" }}>Não foi possível carregar: {custo.erro}</p>
+          <p className="text-sm text-prejuizo">Não foi possível carregar: {custo.erro}</p>
         ) : custo.loading ? (
-          <p className="rb-sub">Carregando…</p>
+          <Loader />
         ) : custo.data.length === 0 ? (
-          <p className="rb-sub">Nenhum funcionário ativo.</p>
+          <p className="text-sm text-ink-3">Nenhum funcionário ativo.</p>
         ) : (
-          <div className="rb-tbl-wrap" style={{ maxWidth: 520 }}><table className="rb-tbl">
+          <RebTable wrapClassName="max-w-[520px]">
             <thead>
               <tr>
                 <th>Setor</th>
-                <th style={{ textAlign: "right" }}>Funcionários</th>
-                <th style={{ textAlign: "right" }}>Custo mensal</th>
+                <th className="text-right">Funcionários</th>
+                <th className="text-right">Custo mensal</th>
               </tr>
             </thead>
             <tbody>
               {custo.data.map((c) => (
                 <tr key={c.setor}>
-                  <td><span className="rb-pill">{c.setor}</span></td>
-                  <td style={{ textAlign: "right" }}>{c.qtd}</td>
-                  <td style={{ textAlign: "right" }}>{money(c.totalMensal)}</td>
+                  <td><RebPill>{c.setor}</RebPill></td>
+                  <td className="text-right">{c.qtd}</td>
+                  <td className="text-right">{money(c.totalMensal)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ fontWeight: 600 }}>
+              <tr className="font-semibold">
                 <td>Total</td>
-                <td style={{ textAlign: "right" }}>{custo.data.reduce((s, c) => s + c.qtd, 0)}</td>
-                <td style={{ textAlign: "right" }}>{money(custo.data.reduce((s, c) => s + c.totalMensal, 0))}</td>
+                <td className="text-right">{custo.data.reduce((s, c) => s + c.qtd, 0)}</td>
+                <td className="text-right">{money(custo.data.reduce((s, c) => s + c.totalMensal, 0))}</td>
               </tr>
             </tfoot>
-          </table></div>
+          </RebTable>
         )}
       </section>
 
@@ -152,6 +172,6 @@ export function FuncionariosTab() {
           onSalvo={aposSalvar}
         />
       )}
-    </main>
+    </RebMain>
   );
 }

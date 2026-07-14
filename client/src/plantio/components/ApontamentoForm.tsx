@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { criarApontamento, useTalhoes } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const num = (s: string): number | null => {
   const t = s.trim().replace(",", ".");
@@ -57,78 +60,66 @@ export function ApontamentoForm({ safraId, onFechar, onSalvo }: {
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog" aria-labelledby="apt-title">
-        <div className="rb-drawer-head">
-          <h3 id="apt-title">Apontar hora-{tipo === "MAQUINA" ? "máquina" : "homem"}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-
-        <div className="rb-drawer-body">
-          <div className="rb-seg" style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-            <button className="rb-btn" aria-pressed={tipo === "MAQUINA"} onClick={() => setTipo("MAQUINA")}>Hora-máquina</button>
-            <button className="rb-btn" aria-pressed={tipo === "HOMEM"} onClick={() => setTipo("HOMEM")}>Hora-homem</button>
+    <RebModal
+      title={`Apontar hora-${tipo === "MAQUINA" ? "máquina" : "homem"}`}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !recurso.trim() || !horas.trim()} onClick={salvar}>{salvando ? "Salvando…" : "Apontar"}</RebButton>
+        </>
+      }
+    >
+      <>
+          <div className="mb-[18px] flex gap-1.5">
+            <RebButton aria-pressed={tipo === "MAQUINA"} onClick={() => setTipo("MAQUINA")}>Hora-máquina</RebButton>
+            <RebButton aria-pressed={tipo === "HOMEM"} onClick={() => setTipo("HOMEM")}>Hora-homem</RebButton>
           </div>
 
-          <div className="rb-fld">
-            <label>Data</label>
+          <RebField label="Data">
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </div>
+          </RebField>
 
-          <div className="rb-fld">
-            <label>Talhão</label>
-            <select value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
+          <RebField label="Talhão">
+            <select className="rb-field-select" value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
               <option value="">— (geral / lavoura)</option>
               {talhoes.map((th) => <option key={th.id} value={th.id}>{th.codigo} · {th.nome}</option>)}
             </select>
-          </div>
+          </RebField>
 
-          <div className="rb-fld">
-            <label>{tipo === "MAQUINA" ? "Máquina / recurso*" : "Pessoa / equipe*"}</label>
+          <RebField label={tipo === "MAQUINA" ? "Máquina / recurso*" : "Pessoa / equipe*"}>
             <input value={recurso} onChange={(e) => setRecurso(e.target.value)} placeholder={tipo === "MAQUINA" ? "Ex.: Trator MF 4275" : "Ex.: Diarista / turma de colheita"} />
-          </div>
+          </RebField>
 
-          <div className="rb-fld">
-            <label>Operador</label>
+          <RebField label="Operador">
             <input value={operador} onChange={(e) => setOperador(e.target.value)} placeholder="Quem operou" />
-          </div>
+          </RebField>
 
           {tipo === "MAQUINA" && (
-            <div className="rb-fld">
-              <label>Implemento</label>
+            <RebField label="Implemento">
               <input value={implemento} onChange={(e) => setImplemento(e.target.value)} placeholder="Ex.: Distribuidor de calcário" />
-            </div>
+            </RebField>
           )}
 
           <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Horas*</label>
+            <RebField label="Horas*" style={{ flex: 1 }}>
               <input type="number" step="0.1" value={horas} onChange={(e) => setHoras(e.target.value)} placeholder="Ex.: 6,5" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Valor / hora (R$)</label>
+            </RebField>
+            <RebField label="Valor / hora (R$)" style={{ flex: 1 }}>
               <input type="number" step="0.01" value={valorHora} onChange={(e) => setValorHora(e.target.value)} />
-            </div>
+            </RebField>
           </div>
 
           {previa != null && (
-            <p className="rb-sub">Total estimado: <b>{previa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b></p>
+            <p className="text-sm text-ink-3">Total estimado: <b>{previa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b></p>
           )}
 
-          <div className="rb-fld">
-            <label>Observação</label>
+          <RebField label="Observação">
             <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
+          </RebField>
 
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar} disabled={salvando}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !recurso.trim() || !horas.trim()} onClick={salvar}>{salvando ? "Salvando…" : "Apontar"}</button>
-        </div>
-      </aside>
-    </>
+          {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </>
+    </RebModal>
   );
 }

@@ -4,6 +4,9 @@ import { CATEGORIA_LABEL, FASE_LABEL } from "../types";
 import { CATEGORIAS_ORDEM } from "../domains";
 import { criarLote, editarLote, darBaixa, usePiquetes, type LoteInput } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 const FASES: FaseCiclo[] = ["CRIA", "RECRIA", "TERMINACAO", "REPRODUCAO"];
 
@@ -72,119 +75,97 @@ export function LoteForm({ modo, lote, onFechar, onSalvo }: { modo: "novo" | "ed
 
   if (modo === "baixa") {
     return (
-      <>
-        <div className="rb-drawer-bg" onClick={onFechar} />
-        <aside className="rb-drawer" role="dialog">
-          <div className="rb-drawer-head">
-            <h3>Dar baixa em {l?.codigo}</h3>
-            <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-          </div>
-          <div className="rb-drawer-body">
-            <p className="rb-sub">O lote sai do conjunto ativo. Mantém histórico para fins de fechamento da atividade.</p>
-            <div className="rb-fld">
-              <label>Tipo de baixa</label>
-              <select value={estadoBaixa} onChange={(e) => setEstadoBaixa(e.target.value as "VENDIDO" | "EXTINTO")}>
-                <option value="VENDIDO">Vendido (abate / reprodução / descarte)</option>
-                <option value="EXTINTO">Extinto (transferência / dissolução do lote)</option>
-              </select>
-            </div>
-            <div className="rb-fld">
-              <label>Motivo (opcional)</label>
-              <input value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)} placeholder="Ex.: Venda frigorífico Minerva" />
-            </div>
-            {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-          </div>
-          <div className="rb-drawer-actions">
-            <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-            <button className="rb-btn rb-btn-danger" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</button>
-          </div>
-        </aside>
-      </>
+      <RebModal
+        title={`Dar baixa em ${l?.codigo}`}
+        onClose={onFechar}
+        actions={
+          <>
+            <RebButton onClick={onFechar}>Cancelar</RebButton>
+            <RebButton variant="danger" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar baixa"}</RebButton>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-3">O lote sai do conjunto ativo. Mantém histórico para fins de fechamento da atividade.</p>
+        <RebField label="Tipo de baixa">
+          <select className="rb-field-select" value={estadoBaixa} onChange={(e) => setEstadoBaixa(e.target.value as "VENDIDO" | "EXTINTO")}>
+            <option value="VENDIDO">Vendido (abate / reprodução / descarte)</option>
+            <option value="EXTINTO">Extinto (transferência / dissolução do lote)</option>
+          </select>
+        </RebField>
+        <RebField label="Motivo (opcional)">
+          <input value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)} placeholder="Ex.: Venda frigorífico Minerva" />
+        </RebField>
+        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+      </RebModal>
     );
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer" role="dialog">
-        <div className="rb-drawer-head">
-          <h3>{titulo}</h3>
-          <button className="rb-drawer-x" onClick={onFechar} aria-label="Fechar">×</button>
-        </div>
-        <div className="rb-drawer-body">
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Código*</label>
-              <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: TER-03" />
-            </div>
-            <div className="rb-fld" style={{ flex: 2 }}>
-              <label>Nome*</label>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Terminação F1 · lote 3" />
-            </div>
-          </div>
+    <RebModal
+      title={titulo}
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !codigo || !nome || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Código*" style={{ flex: 1 }}>
+          <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex.: TER-03" />
+        </RebField>
+        <RebField label="Nome*" style={{ flex: 2 }}>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Terminação F1 · lote 3" />
+        </RebField>
+      </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Categoria*</label>
-              <select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaLote)}>
-                {CATEGORIAS_ORDEM.map((c) => <option key={c} value={c}>{CATEGORIA_LABEL[c]}</option>)}
-              </select>
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Fase*</label>
-              <select value={fase} onChange={(e) => setFase(e.target.value as FaseCiclo)}>
-                {FASES.map((f) => <option key={f} value={f}>{FASE_LABEL[f]}</option>)}
-              </select>
-            </div>
-          </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Categoria*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaLote)}>
+            {CATEGORIAS_ORDEM.map((c) => <option key={c} value={c}>{CATEGORIA_LABEL[c]}</option>)}
+          </select>
+        </RebField>
+        <RebField label="Fase*" style={{ flex: 1 }}>
+          <select className="rb-field-select" value={fase} onChange={(e) => setFase(e.target.value as FaseCiclo)}>
+            {FASES.map((f) => <option key={f} value={f}>{FASE_LABEL[f]}</option>)}
+          </select>
+        </RebField>
+      </div>
 
-          <div className="rb-fld">
-            <label>Raça*</label>
-            <select value={raca} onChange={(e) => setRaca(e.target.value as RacaCorte)}>
-              {RACAS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
+      <RebField label="Raça*">
+        <select className="rb-field-select" value={raca} onChange={(e) => setRaca(e.target.value as RacaCorte)}>
+          {RACAS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </RebField>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cabeças (hoje)*</label>
-              <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Cabeças (entrada)</label>
-              <input type="number" value={numCabecasEntrada} onChange={(e) => setNumCabecasEntrada(e.target.value)} placeholder="= cabeças hoje" />
-            </div>
-            <div className="rb-fld" style={{ flex: 1 }}>
-              <label>Data de formação*</label>
-              <input type="date" value={dataFormacao} onChange={(e) => setDataFormacao(e.target.value)} max={HOJE} />
-            </div>
-          </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <RebField label="Cabeças (hoje)*" style={{ flex: 1 }}>
+          <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
+        </RebField>
+        <RebField label="Cabeças (entrada)" style={{ flex: 1 }}>
+          <input type="number" value={numCabecasEntrada} onChange={(e) => setNumCabecasEntrada(e.target.value)} placeholder="= cabeças hoje" />
+        </RebField>
+        <RebField label="Data de formação*" style={{ flex: 1 }}>
+          <input type="date" value={dataFormacao} onChange={(e) => setDataFormacao(e.target.value)} max={HOJE} />
+        </RebField>
+      </div>
 
-          <div className="rb-fld">
-            <label>Origem</label>
-            <input value={origem} onChange={(e) => setOrigem(e.target.value)} placeholder="Ex.: Nascimento próprio · Compra Boa Esperança" />
-          </div>
+      <RebField label="Origem">
+        <input value={origem} onChange={(e) => setOrigem(e.target.value)} placeholder="Ex.: Nascimento próprio · Compra Boa Esperança" />
+      </RebField>
 
-          <div className="rb-fld">
-            <label>Piquete atual</label>
-            <select value={piqueteAtual} onChange={(e) => setPiqueteAtual(e.target.value)}>
-              <option value="">—</option>
-              {piquetes.map((p) => <option key={p.id} value={p.codigo}>{p.codigo} · {p.nome}</option>)}
-            </select>
-          </div>
+      <RebField label="Piquete atual">
+        <select className="rb-field-select" value={piqueteAtual} onChange={(e) => setPiqueteAtual(e.target.value)}>
+          <option value="">—</option>
+          {piquetes.map((p) => <option key={p.id} value={p.codigo}>{p.codigo} · {p.nome}</option>)}
+        </select>
+      </RebField>
 
-          <div className="rb-fld">
-            <label>Observação</label>
-            <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
-          </div>
-          {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        </div>
-
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando || !codigo || !nome || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+      <RebField label="Observação">
+        <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={2} />
+      </RebField>
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

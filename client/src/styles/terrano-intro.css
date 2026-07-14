@@ -1,0 +1,174 @@
+/* Terrano — abertura do dashboard (ver components/TerranoIntro.tsx).
+ * Fundo escuro desfocado + marca grande no centro; ao fim da música o lockup
+ * dá zoom pra diminuir e voa até o canto sup. esquerdo (cabeçalho). Tokens da
+ * marca: tinta #0E1311, creme #E8DCC4, latão #B89A5C. */
+
+.terrano-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 24px;
+  /* o overlay em si some no fim; o backdrop desfocado é o ::before */
+  transition: opacity 340ms ease;
+}
+
+/* backdrop desfocado sobre o app (dashboard atrás) */
+.terrano-intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120% 120% at 50% 40%, rgba(23, 30, 27, 0.82), rgba(11, 15, 13, 0.94));
+  -webkit-backdrop-filter: blur(16px) saturate(112%);
+  backdrop-filter: blur(16px) saturate(112%);
+  opacity: 0;
+  transition: opacity 460ms ease;
+}
+.terrano-intro.is-in::before {
+  opacity: 1;
+}
+
+/* ---- animação-assinatura: relevo + sol ---- */
+.ti-stage {
+  width: min(360px, 74vw);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 600ms ease 120ms, transform 600ms ease 120ms;
+}
+.terrano-intro.is-in .ti-stage {
+  opacity: 1;
+  transform: none;
+}
+.ti-hillsvg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.ti-ball {
+  filter: drop-shadow(0 0 10px rgba(184, 154, 92, 0.55));
+}
+
+/* ---- lockup (voa pro canto) ---- */
+.ti-lockup {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  opacity: 0;
+  will-change: transform, opacity;
+  /* entrada por opacidade (sem transform, pra não brigar com o voo inline) */
+  transition:
+    transform 950ms cubic-bezier(0.66, 0, 0.2, 1),
+    opacity 300ms ease;
+}
+.terrano-intro.is-in .ti-lockup {
+  opacity: 1;
+  transition:
+    transform 950ms cubic-bezier(0.66, 0, 0.2, 1),
+    opacity 600ms ease 1050ms; /* surge depois que o relevo se desenha */
+}
+/* ao voar: fade tardio, some só ao pousar sobre a logo idêntica do header */
+.terrano-intro.is-leaving .ti-lockup {
+  opacity: 0;
+  transition:
+    transform 950ms cubic-bezier(0.66, 0, 0.2, 1),
+    opacity 260ms ease 720ms;
+}
+
+.ti-sym {
+  display: inline-flex;
+  flex: none;
+}
+.ti-words {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  gap: 6px;
+}
+.ti-name {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 52px;
+  letter-spacing: -0.025em;
+  color: var(--mast-ink);
+  line-height: 0.9;
+}
+.ti-sub {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--mast-ink-2);
+}
+
+/* ---- legenda "Reunindo os números..." ---- */
+.ti-caption {
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mast-ink-2);
+  opacity: 0;
+  transition: opacity 500ms ease 1400ms;
+}
+.terrano-intro.is-in .ti-caption {
+  opacity: 1;
+}
+.ti-dots span {
+  opacity: 0;
+  animation: ti-dot 1.4s infinite;
+}
+.ti-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.ti-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes ti-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* no fim, tudo que não voa desaparece */
+.terrano-intro.is-leaving .ti-stage,
+.terrano-intro.is-leaving .ti-caption {
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.terrano-intro.is-leaving::before {
+  opacity: 0;
+}
+
+/* ---- movimento reduzido: sem rolagem/voo, só um fade sóbrio ---- */
+@media (prefers-reduced-motion: reduce) {
+  .terrano-intro,
+  .terrano-intro * {
+    transition-duration: 0.001ms !important;
+  }
+  .terrano-intro .ti-dots span {
+    animation: none;
+  }
+}
+.terrano-intro.is-reduced .ti-lockup {
+  transition: opacity 300ms ease;
+}
+
+/* o lockup do centro é maior no desktop; encolhe em telas estreitas */
+@media (max-width: 640px) {
+  .ti-name {
+    font-size: 40px;
+  }
+  .ti-lockup {
+    gap: 14px;
+  }
+}

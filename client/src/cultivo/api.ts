@@ -299,3 +299,39 @@ export function useMovimentosSilo(siloId: number | null) {
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
 }
+
+// DASHBOARD ---------------------------------------------------------------
+// Espelha DashboardCultivoDTO (server/src/services/cultivo/dashboard.agg.ts).
+
+export interface DashboardMilho {
+  k: {
+    safrasAtivas: number;
+    safrasFechadas: number;
+    areaHa: number;
+    producaoGraoSc: number;
+    producaoSilagemTon: number;
+    custeioTotal: number;
+    investimentoTotal: number;
+    custoSacaMedio: number | null;
+    silosAtivos: number;
+    siloSaldoTotal: number;
+    siloOcupacaoPct: number | null;
+  };
+  dominios: { tab: string; titulo: string; linhas: string[] }[];
+  alertas: { label: string; n: number; tom?: "up" | "bad"; tab: string }[];
+}
+
+export const obterDashboard = () => req<DashboardMilho>(`/cultivo/dashboard`);
+
+export function useDashboard() {
+  const [data, setData] = useState<DashboardMilho | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    obterDashboard()
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+  return { data, loading };
+}

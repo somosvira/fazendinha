@@ -7,6 +7,12 @@ import type { Tab } from "./Shell";
 import { useToast } from "./Toast";
 import { fmtMoneyExact } from "./charts";
 import { formatBRDate, getHoje } from "../lib/hoje";
+import { Loader } from "./Loading";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   useCadastros,
   uploadPendenteNF,
@@ -16,6 +22,40 @@ import {
 import type { Cadastros, FornecedorDTO, GrupoDTO, PendenteNF } from "../financeiro/api";
 
 const RASCUNHO_KEY = "rionovo:lancar:rascunho";
+
+/* ─── Classes compartilhadas do formulário (Tailwind) ─────────────────────
+ * Valores finais herdados da typescale pré-migração: label 14/600 (ink-2),
+ * input/textarea 16px, section-title 14/600/0.10em. --pos/--neg de antes
+ * viram lucro/prejuizo (aliases equivalentes em base.css). */
+const FIELD = "flex flex-col gap-1.5";
+const FIELD_LABEL = "gap-0 text-sm font-semibold text-ink-2";
+const INPUT =
+  "h-auto bg-card px-3.5 py-[11px] md:text-base focus-visible:border-foreground focus-visible:ring-0 focus-visible:ring-offset-0";
+const SECTION = "flex flex-col gap-3.5";
+const SECTION_TITLE =
+  "border-b border-[color:var(--rule-soft)] pb-1.5 font-sans text-sm font-semibold uppercase tracking-[0.10em] text-ink-3";
+const BTN_PRIMARY =
+  "h-auto gap-2.5 px-[22px] py-3 text-[13px] font-normal uppercase tracking-[0.08em] disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-border disabled:text-[color:var(--ink-mute)] disabled:opacity-100";
+const BTN_SECONDARY =
+  "h-auto px-5 py-2.5 text-[13px] font-normal uppercase tracking-[0.08em] hover:border-mast hover:bg-mast hover:text-mast-ink";
+const BTN_GHOST = "h-auto px-3 py-1.5 text-xs font-normal tracking-[0.04em] text-ink-2 hover:text-ink-2";
+const CAT_CHIP =
+  "cursor-pointer border border-border bg-transparent px-3 py-[5px] font-sans text-sm font-semibold tracking-[0.02em] text-ink-2 transition-colors hover:border-ink-3 hover:text-foreground aria-pressed:border-mast aria-pressed:bg-mast aria-pressed:text-mast-ink";
+const UPLOAD_ZONE =
+  "flex cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-border bg-card px-7 py-9 text-center transition-colors hover:border-ink-3 hover:bg-accent";
+const UPLOAD_ICON = "grid h-12 w-12 place-items-center border border-ink-3 font-serif text-[28px] text-ink-3";
+const IA_BANNER = "flex items-center gap-3 border-l-[3px] border-l-lucro bg-card px-4 py-3";
+const IA_BANNER_DOT = "h-2 w-2 rounded-full bg-lucro";
+const IA_BANNER_BODY = "flex-1 text-[13px] text-ink-2 [&_strong]:text-foreground";
+const AC_DROPDOWN =
+  "absolute inset-x-0 top-[calc(100%+4px)] z-[8] max-h-[260px] overflow-y-auto border border-ink-3 bg-card shadow-[0_6px_20px_rgba(20,25,26,0.12)]";
+const AC_OPTION =
+  "flex cursor-pointer items-baseline justify-between gap-2.5 border-b border-[color:var(--rule-soft)] px-3.5 py-2.5 last:border-b-0 hover:bg-accent";
+const TOGGLE_ROW = "flex items-center justify-between gap-3 border border-border bg-card px-4 py-3";
+
+function Req() {
+  return <span className="ml-1 text-prejuizo">*</span>;
+}
 
 type RascunhoSaida = {
   fornecedor: string;
@@ -72,15 +112,15 @@ function CategoryCascade({
   const setCategoria = (cid: number) => onChange({ ...value, categoriaId: cid });
 
   return (
-    <div className="cat-cascade">
-      <div className="cat-cascade-row">
-        <span className="lbl">Grupo</span>
-        <div className="opts">
+    <div className="flex flex-col gap-2.5 border border-border bg-card px-4 py-3.5">
+      <div className="grid grid-cols-[86px_1fr] items-center gap-3">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Grupo</span>
+        <div className="flex flex-wrap gap-1.5">
           {grupos.map((g) => (
             <button
               key={g.id}
               type="button"
-              className="cat-chip"
+              className={CAT_CHIP}
               aria-pressed={value.grupoId === g.id}
               onClick={() => setGrupo(g.id)}
             >
@@ -90,14 +130,14 @@ function CategoryCascade({
         </div>
       </div>
       {grupoSel && (
-        <div className="cat-cascade-row">
-          <span className="lbl">Categoria</span>
-          <div className="opts">
+        <div className="grid grid-cols-[86px_1fr] items-center gap-3">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Categoria</span>
+          <div className="flex flex-wrap gap-1.5">
             {grupoSel.categorias.map((c) => (
               <button
                 key={c.id}
                 type="button"
-                className="cat-chip"
+                className={CAT_CHIP}
                 aria-pressed={value.categoriaId === c.id}
                 onClick={() => setCategoria(c.id)}
               >
@@ -132,9 +172,9 @@ function FornecedorAuto({
     value.nome && !lista.find((f) => f.nome.toLowerCase() === value.nome.toLowerCase());
 
   return (
-    <div className="ac-wrapper">
-      <input
-        className="field-input"
+    <div className="relative">
+      <Input
+        className={INPUT}
         value={value.nome}
         placeholder="Digite o nome do fornecedor…"
         onChange={(e) => {
@@ -147,26 +187,26 @@ function FornecedorAuto({
         onBlur={() => setTimeout(() => setOpen(false), 160)}
       />
       {open && (filtered.length > 0 || showCreateNew) && (
-        <div className="ac-dropdown">
+        <div className={AC_DROPDOWN}>
           {filtered.map((f) => (
             <div
               key={f.id}
-              className="ac-option"
+              className={AC_OPTION}
               onMouseDown={() => {
                 onChange({ id: f.id, nome: f.nome });
                 setOpen(false);
               }}
             >
               <div>
-                <div className="ac-nm">{f.nome}</div>
-                {f.documento && <div className="ac-sub">{f.documento}</div>}
+                <div className="text-sm text-foreground">{f.nome}</div>
+                {f.documento && <div className="text-[11px] text-ink-3">{f.documento}</div>}
               </div>
             </div>
           ))}
           {showCreateNew && (
-            <div className="ac-option new" onMouseDown={() => setOpen(false)}>
+            <div className={cn(AC_OPTION, "bg-accent italic")} onMouseDown={() => setOpen(false)}>
               <div>
-                <div className="ac-nm">+ Cadastrar “{value.nome}” como novo fornecedor</div>
+                <div className="text-sm text-ink-2">+ Cadastrar “{value.nome}” como novo fornecedor</div>
               </div>
             </div>
           )}
@@ -395,10 +435,10 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
   );
 
   return (
-    <div className="lancar-shell">
+    <div className="grid grid-cols-[1.1fr_1fr] gap-10 pb-[60px] pt-7">
       <div>
-        <div className="form-section-title" style={{ marginBottom: 14 }}>
-          1 · Anexar nota fiscal <span style={{ color: "var(--ink-3)" }}>(opcional)</span>
+        <div className={cn(SECTION_TITLE, "mb-3.5")}>
+          1 · Anexar nota fiscal <span className="text-ink-3">(opcional)</span>
         </div>
 
         <input
@@ -411,7 +451,7 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
 
         {!photo ? (
           <div
-            className={"upload-zone " + (dragging ? "dragging" : "")}
+            className={cn(UPLOAD_ZONE, dragging && "border-foreground bg-accent")}
             onClick={() => fileInput.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -424,26 +464,28 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
               onPickFile(e.dataTransfer.files[0]);
             }}
           >
-            <div className="upload-icon">↑</div>
-            <div className="upload-title">Arraste a foto da nota fiscal aqui</div>
-            <div className="upload-sub">
-              ou <span style={{ textDecoration: "underline" }}>selecione um arquivo</span> · JPG, PNG ou PDF
+            <div className={UPLOAD_ICON}>↑</div>
+            <div className="font-serif text-[22px] tracking-[-0.005em] text-foreground">Arraste a foto da nota fiscal aqui</div>
+            <div className="text-[13px] text-ink-3">
+              ou <span className="underline">selecione um arquivo</span> · JPG, PNG ou PDF
             </div>
-            <div className="upload-sub" style={{ marginTop: 6, fontStyle: "italic" }}>
+            <div className="mt-1.5 text-[13px] italic text-ink-3">
               Opcional — dá pra lançar o gasto sem foto.
             </div>
           </div>
         ) : (
-          <div className="upload-zone has-file">
-            <div className="nf-preview">
-              <div className="thumb">
-                NF
-                <br />
-                {photo.name}
+          <div className="border-2 border-dashed border-border bg-card p-[18px] transition-colors hover:border-ink-3 hover:bg-accent">
+            <div className="flex items-start gap-4">
+              <div className="flex min-h-[180px] w-[140px] shrink-0 items-end bg-[color:var(--bg-card-2)] p-2.5 text-[10px] text-ink-3 [background-image:repeating-linear-gradient(45deg,var(--rule-soft)_0_8px,transparent_8px_16px)] [font-family:'Courier_New',monospace]">
+                <span>
+                  NF
+                  <br />
+                  {photo.name}
+                </span>
               </div>
-              <div className="nf-meta">
-                <div className="nf-name">{photo.name}</div>
-                <div className="nf-info">
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="font-serif text-lg">{photo.name}</div>
+                <div className="text-xs tabular-nums text-ink-3">
                   {(photo.size / 1024).toFixed(0)} KB ·{" "}
                   {uploadStatus === "enviando"
                     ? "enviando…"
@@ -454,16 +496,20 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
                         : "aguardando"}
                 </div>
                 {pendente && (
-                  <div className="nf-info">
+                  <div className="text-xs tabular-nums text-ink-3">
                     Reservada até{" "}
                     {new Date(pendente.expiraEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}{" "}
                     · confirme o lançamento para efetivar
                   </div>
                 )}
-                <div className="nf-actions">
-                  <button className="btn-ghost danger" onClick={removerFoto}>
+                <div className="mt-auto flex gap-2">
+                  <Button
+                    variant="outline"
+                    className={cn(BTN_GHOST, "hover:border-prejuizo hover:text-prejuizo")}
+                    onClick={removerFoto}
+                  >
                     Remover
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -472,9 +518,8 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
 
         {photo && uploadStatus !== "idle" && (
           <div
-            className="ia-fill-banner"
+            className={cn(IA_BANNER, "mt-3.5")}
             style={{
-              marginTop: 14,
               background:
                 uploadStatus === "erro"
                   ? "color-mix(in srgb, var(--neg) 8%, transparent)"
@@ -483,8 +528,8 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
                     : undefined,
             }}
           >
-            <span className="icon-dot"></span>
-            <div className="body">
+            <span className={IA_BANNER_DOT}></span>
+            <div className={IA_BANNER_BODY}>
               <strong>
                 {uploadStatus === "enviando" && "Enviando nota fiscal…"}
                 {uploadStatus === "ok" && "Nota fiscal recebida."}
@@ -497,37 +542,37 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
 
       </div>
 
-      <div className="form-shell">
-        <div className="form-section-title">2 · Dados do lançamento</div>
+      <div className="flex flex-col gap-[22px]">
+        <div className={SECTION_TITLE}>2 · Dados do lançamento</div>
 
-        <div className="form-section">
-          <div className="field-row-3">
-            <div className="field">
-              <label className="field-label">
-                Fornecedor<span className="req">*</span>
-              </label>
+        <div className={SECTION}>
+          <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-4">
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Fornecedor<Req />
+              </Label>
               <FornecedorAuto lista={cadastros.fornecedores} value={fornecedor} onChange={setFornecedor} />
             </div>
-            <div className="field">
-              <label className="field-label">
-                Valor<span className="req">*</span>
-              </label>
-              <div className="field-money">
-                <span className="prefix">R$</span>
-                <input
-                  className="field-input"
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Valor<Req />
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-sans text-[13px] text-ink-3">R$</span>
+                <Input
+                  className={cn(INPUT, "pl-[38px] font-serif text-lg tabular-nums md:text-lg")}
                   value={valor}
                   onChange={(e) => setValor(e.target.value)}
                   placeholder="0,00"
                 />
               </div>
             </div>
-            <div className="field">
-              <label className="field-label">
-                Data<span className="req">*</span>
-              </label>
-              <input
-                className="field-input"
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Data<Req />
+              </Label>
+              <Input
+                className={INPUT}
                 value={data}
                 onChange={(e) => setData(e.target.value)}
                 placeholder="dd/mm/aaaa"
@@ -535,8 +580,8 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
             </div>
           </div>
 
-          <div className="field">
-            <label className="field-label">Conta bancária</label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>Conta bancária</Label>
             <div className="chip-group">
               {cadastros.contas.map((c) => (
                 <button
@@ -555,22 +600,22 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
             </div>
           </div>
 
-          <div className="toggle-row">
-            <div className="info">
-              <span className="t">Pagamento efetuado</span>
-              <span className="s">Marque desligado se for previsão de pagamento.</span>
+          <div className={TOGGLE_ROW}>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">Pagamento efetuado</span>
+              <span className="text-xs text-ink-3">Marque desligado se for previsão de pagamento.</span>
             </div>
             <div role="button" className="toggle" aria-pressed={pago} onClick={() => setPago(!pago)}></div>
           </div>
         </div>
 
-        <div className="form-section" style={{ marginTop: 12 }}>
-          <div className="form-section-title">3 · Categorização</div>
+        <div className={cn(SECTION, "mt-3")}>
+          <div className={SECTION_TITLE}>3 · Categorização</div>
 
-          <div className="field">
-            <label className="field-label">
-              Atividade (centro de custo)<span className="req">*</span>
-            </label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>
+              Atividade (centro de custo)<Req />
+            </Label>
             <div className="chip-group">
               {cadastros.centrosCusto
                 .filter((cc) => !ehCentroInvestimento(cc))
@@ -590,17 +635,17 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
             </div>
           </div>
 
-          <div className="field">
-            <label className="field-label">
-              Categoria<span className="req">*</span>
-            </label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>
+              Categoria<Req />
+            </Label>
             <CategoryCascade grupos={cadastros.grupos} value={cat} onChange={setCat} />
           </div>
 
-          <div className="toggle-row">
-            <div className="info">
-              <span className="t">É investimento, não custeio</span>
-              <span className="s">
+          <div className={TOGGLE_ROW}>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">É investimento, não custeio</span>
+              <span className="text-xs text-ink-3">
                 Marque para compra de gado, máquinas, plantio novo, benfeitorias — não entra no custeio operacional.
               </span>
             </div>
@@ -613,25 +658,25 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
           </div>
         </div>
 
-        <div className="form-section" style={{ marginTop: 12 }}>
-          <div className="form-section-title">4 · Observações</div>
-          <div className="field">
-            <label className="field-label">Descrição / observação</label>
-            <textarea
-              className="field-textarea"
+        <div className={cn(SECTION, "mt-3")}>
+          <div className={SECTION_TITLE}>4 · Observações</div>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>Descrição / observação</Label>
+            <Textarea
+              className={cn(INPUT, "min-h-[70px] resize-y")}
               value={obs}
               onChange={(e) => setObs(e.target.value)}
               placeholder="Ex.: compra mensal de ração concentrada — entrega via Cooperativa."
             />
           </div>
-          <div className="field">
-            <label className="field-label">Etiquetas (opcional)</label>
-            <input className="field-input" placeholder="ex.: safra-26, talhão-4, rebanho-girolando" />
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>Etiquetas (opcional)</Label>
+            <Input className={INPUT} placeholder="ex.: safra-26, talhão-4, rebanho-girolando" />
           </div>
         </div>
 
-        <div className="form-footer">
-          <span className="help">
+        <div className="sticky bottom-0 flex items-center justify-between gap-4 border-t border-border bg-background py-[18px] pr-[100px] max-[640px]:pr-0 max-[640px]:pb-24">
+          <span className="text-xs text-ink-3">
             {photo && uploadStatus === "enviando"
               ? "Aguarde o envio da nota terminar."
               : photo && uploadStatus === "erro"
@@ -642,11 +687,11 @@ function LancarForm({ cadastros, onSuccess }: { cadastros: Cadastros; onSuccess:
                     ? "Tudo pronto. Ao registrar, o lançamento é criado e a nota amarrada a ele."
                     : "Tudo pronto. O gasto será registrado sem nota fiscal (você pode anexá-la depois)."}
           </span>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-ghost" onClick={handleSalvarRascunho}>Salvar rascunho</button>
-            <button className="btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+          <div className="flex gap-2.5">
+            <Button variant="outline" className={BTN_GHOST} onClick={handleSalvarRascunho}>Salvar rascunho</Button>
+            <Button className={BTN_PRIMARY} disabled={!canSubmit} onClick={handleSubmit}>
               {submitting ? "Registrando…" : "Registrar gasto →"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -666,22 +711,22 @@ function LancadoSucesso({
   onNav: (t: Tab) => void;
 }) {
   return (
-    <div className="lancar-shell" style={{ gridTemplateColumns: "1fr", maxWidth: 640, margin: "0 auto" }}>
-      <div className="lancado-card">
-        <div className="checkmark">✓</div>
-        <div className="h">Gasto registrado · #{lancamentoId}</div>
-        <div className="v mono-nums">{valor}</div>
-        <div className="body-s" style={{ color: "var(--ink-3)" }}>
+    <div className="mx-auto grid w-full max-w-[640px] grid-cols-1 gap-10 pb-[60px] pt-7">
+      <div className="flex flex-col items-center gap-3.5 border border-border bg-card px-8 py-9 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-lucro font-serif text-[30px] text-lucro">✓</div>
+        <div className="font-serif text-[26px] tracking-[-0.01em]">Gasto registrado · #{lancamentoId}</div>
+        <div className="mono-nums font-serif text-[32px] tabular-nums tracking-[-0.015em]">{valor}</div>
+        <div className="body-s text-ink-3">
           {fornecedor} · {categoria}
         </div>
         <div className="caption">Aparece no Dashboard e na aba Gastos em até 30 segundos.</div>
-        <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
-          <button className="btn-secondary" onClick={() => onNav("gastos")}>
+        <div className="mt-3.5 flex gap-3">
+          <Button variant="secondary" className={BTN_SECONDARY} onClick={() => onNav("gastos")}>
             Ver na aba Gastos
-          </button>
-          <button className="btn-primary" onClick={onNew}>
+          </Button>
+          <Button className={BTN_PRIMARY} onClick={onNew}>
             Registrar outro
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -742,9 +787,9 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
   const showNew = value && !fontes.find((f) => f.toLowerCase() === value.toLowerCase());
 
   return (
-    <div className="ac-wrapper">
-      <input
-        className="field-input"
+    <div className="relative">
+      <Input
+        className={INPUT}
         value={value}
         placeholder="Quem comprou / pagou…"
         onChange={(e) => {
@@ -755,25 +800,25 @@ function CompradorAuto({ value, onChange, fontes }: { value: string; onChange: (
         onBlur={() => setTimeout(() => setOpen(false), 160)}
       />
       {open && (filtered.length > 0 || showNew) && (
-        <div className="ac-dropdown">
+        <div className={AC_DROPDOWN}>
           {filtered.map((f) => (
             <div
               key={f}
-              className="ac-option"
+              className={AC_OPTION}
               onMouseDown={() => {
                 onChange(f);
                 setOpen(false);
               }}
             >
               <div>
-                <div className="ac-nm">{f}</div>
+                <div className="text-sm text-foreground">{f}</div>
               </div>
             </div>
           ))}
           {showNew && (
-            <div className="ac-option new" onMouseDown={() => setOpen(false)}>
+            <div className={cn(AC_OPTION, "bg-accent italic")} onMouseDown={() => setOpen(false)}>
               <div>
-                <div className="ac-nm">+ Cadastrar "{value}" como novo cliente</div>
+                <div className="text-sm text-ink-2">+ Cadastrar "{value}" como novo cliente</div>
               </div>
             </div>
           )}
@@ -820,7 +865,6 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
   const [centroCustoId, setCentroCustoId] = useState<number | null>(centroCustoDefault(cadastros, "leite"));
 
   const pickTipo = (id: string) => {
-    const t = TIPOS_RECEITA.find((x) => x.id === id) as TipoReceita;
     setTipoId(id);
     setComprador("");
     setQtd("");
@@ -881,84 +925,103 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
   };
 
   return (
-    <div className="lancar-shell">
+    <div className="grid grid-cols-[1.1fr_1fr] gap-10 pb-[60px] pt-7">
       {/* esquerda: tipo + contexto */}
       <div>
-        <div className="form-section-title" style={{ marginBottom: 14 }}>
+        <div className={cn(SECTION_TITLE, "mb-3.5")}>
           1 · Tipo de receita
         </div>
-        <div className="receita-tipos">
+        <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
           {TIPOS_RECEITA.map((t) => (
-            <button key={t.id} type="button" className={"receita-tipo " + (tipoId === t.id ? "active" : "")} onClick={() => pickTipo(t.id)}>
-              <span className="rt-sw" style={{ background: t.cor }}></span>
-              <span className="rt-nm">{t.nome}</span>
+            <button
+              key={t.id}
+              type="button"
+              className={cn(
+                "flex cursor-pointer items-center gap-3 border bg-card px-4 py-3.5 font-sans transition-colors",
+                tipoId === t.id ? "border-foreground bg-accent" : "border-border hover:border-ink-3",
+              )}
+              onClick={() => pickTipo(t.id)}
+            >
+              <span className="h-3.5 w-3.5 shrink-0" style={{ background: t.cor }}></span>
+              <span className="text-[15px] text-foreground">{t.nome}</span>
             </button>
           ))}
         </div>
 
-        <div className="receita-context">
-          <div className="rc-head">
-            <span className="rc-icon" style={{ background: tipo.cor }}></span>
-            <span className="rc-title">{tipo.nome}</span>
+        <div className="mt-[18px] border border-border bg-card px-[22px] py-5">
+          <div className="mb-2.5 flex items-center gap-2.5">
+            <span className="h-3.5 w-3.5" style={{ background: tipo.cor }}></span>
+            <span className="font-serif text-xl tracking-[-0.005em]">{tipo.nome}</span>
           </div>
           {tipoId === "leite" && (
-            <p className="rc-body">
+            <p className="m-0 text-sm leading-[1.6] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
               A receita do leite normalmente chega pelo <strong>extrato quinzenal da Embaré</strong>. Você pode importar o extrato
               direto ou lançar manualmente o valor e o volume entregue. O sistema calcula o <strong>R$ por litro</strong>{" "}
               automaticamente.
             </p>
           )}
           {tipoId === "cafe" && (
-            <p className="rc-body">
+            <p className="m-0 text-sm leading-[1.6] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
               Venda de café é <strong>safra única</strong> — registre cada nota da cooperativa/exportadora com o número de sacas. O
               sistema calcula o <strong>R$ por saca</strong> e isola a margem da safra.
             </p>
           )}
           {tipoId === "animais" && (
-            <p className="rc-body">
+            <p className="m-0 text-sm leading-[1.6] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
               Venda de descarte (vacas) e bezerros. Informe o número de cabeças — entra como receita da atividade Leite, já que reduz o
               rebanho leiteiro.
             </p>
           )}
           {tipoId === "outros" && (
-            <p className="rc-body">Arrendamento, venda de esterco, reembolsos. Receitas que não pertencem direto a leite ou café.</p>
+            <p className="m-0 text-sm leading-[1.6] text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
+              Arrendamento, venda de esterco, reembolsos. Receitas que não pertencem direto a leite ou café.
+            </p>
           )}
 
           {tipoId === "leite" && (
-            <button className="btn-ia" style={{ marginTop: 14 }}>
-              <span className="dot"></span>Importar extrato da Embaré
-            </button>
+            <Button
+              variant="secondary"
+              className="mt-3.5 h-auto gap-2 px-4 py-2.5 text-xs font-normal tracking-[0.04em] hover:border-mast hover:bg-mast hover:text-mast-ink"
+            >
+              <span className="h-1.5 w-1.5 bg-lucro"></span>Importar extrato da Embaré
+            </Button>
           )}
         </div>
 
         <input ref={docInput} type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => onPickDoc(e.target.files?.[0])} />
-        <div style={{ marginTop: 22 }}>
-          <div className="form-section-title" style={{ marginBottom: 12 }}>
-            Comprovante / nota de venda <span style={{ color: "var(--ink-3)" }}>(opcional)</span>
+        <div className="mt-[22px]">
+          <div className={cn(SECTION_TITLE, "mb-3")}>
+            Comprovante / nota de venda <span className="text-ink-3">(opcional)</span>
           </div>
           {!doc ? (
-            <div className="upload-zone" style={{ padding: "26px 20px" }} onClick={() => docInput.current?.click()}>
-              <div className="upload-icon">↑</div>
-              <div className="upload-title" style={{ fontSize: 18 }}>
+            <div className={cn(UPLOAD_ZONE, "px-5 py-[26px]")} onClick={() => docInput.current?.click()}>
+              <div className={UPLOAD_ICON}>↑</div>
+              <div className="font-serif text-lg tracking-[-0.005em] text-foreground">
                 Anexar comprovante
               </div>
-              <div className="upload-sub">extrato da Embaré, nota de venda, recibo — JPG, PNG ou PDF</div>
+              <div className="text-[13px] text-ink-3">extrato da Embaré, nota de venda, recibo — JPG, PNG ou PDF</div>
             </div>
           ) : (
-            <div className="upload-zone has-file">
-              <div className="nf-preview">
-                <div className="thumb">
-                  DOC
-                  <br />
-                  {doc.name}
+            <div className="border-2 border-dashed border-border bg-card p-[18px] transition-colors hover:border-ink-3 hover:bg-accent">
+              <div className="flex items-start gap-4">
+                <div className="flex min-h-[180px] w-[140px] shrink-0 items-end bg-[color:var(--bg-card-2)] p-2.5 text-[10px] text-ink-3 [background-image:repeating-linear-gradient(45deg,var(--rule-soft)_0_8px,transparent_8px_16px)] [font-family:'Courier_New',monospace]">
+                  <span>
+                    DOC
+                    <br />
+                    {doc.name}
+                  </span>
                 </div>
-                <div className="nf-meta">
-                  <div className="nf-name">{doc.name}</div>
-                  <div className="nf-info">{(doc.size / 1024).toFixed(0)} KB · enviado agora</div>
-                  <div className="nf-actions">
-                    <button className="btn-ghost danger" onClick={() => setDoc(null)}>
+                <div className="flex flex-1 flex-col gap-2">
+                  <div className="font-serif text-lg">{doc.name}</div>
+                  <div className="text-xs tabular-nums text-ink-3">{(doc.size / 1024).toFixed(0)} KB · enviado agora</div>
+                  <div className="mt-auto flex gap-2">
+                    <Button
+                      variant="outline"
+                      className={cn(BTN_GHOST, "hover:border-prejuizo hover:text-prejuizo")}
+                      onClick={() => setDoc(null)}
+                    >
                       Remover
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -968,64 +1031,69 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
       </div>
 
       {/* direita: formulário */}
-      <div className="form-shell">
-        <div className="form-section-title">2 · Dados da entrada</div>
+      <div className="flex flex-col gap-[22px]">
+        <div className={SECTION_TITLE}>2 · Dados da entrada</div>
 
-        <div className="form-section">
-          <div className="field">
-            <label className="field-label">
-              Cliente / comprador<span className="req">*</span>
-            </label>
+        <div className={SECTION}>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>
+              Cliente / comprador<Req />
+            </Label>
             <CompradorAuto value={comprador} onChange={setComprador} fontes={tipo.fontes} />
           </div>
 
-          <div className="field-row-3">
-            <div className="field">
-              <label className="field-label">
-                Valor recebido<span className="req">*</span>
-              </label>
-              <div className="field-money">
-                <span className="prefix">R$</span>
-                <input className="field-input" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
+          <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-4">
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Valor recebido<Req />
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-sans text-[13px] text-ink-3">R$</span>
+                <Input
+                  className={cn(INPUT, "pl-[38px] font-serif text-lg tabular-nums md:text-lg")}
+                  value={valor}
+                  onChange={(e) => setValor(e.target.value)}
+                  placeholder="0,00"
+                />
               </div>
             </div>
-            <div className="field">
-              <label className="field-label">
-                Quantidade {tipo.unidade !== "—" && <span style={{ color: "var(--ink-3)" }}>({tipo.unidade})</span>}
-              </label>
-              <input
-                className="field-input"
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Quantidade {tipo.unidade !== "—" && <span className="ml-1 text-ink-3">({tipo.unidade})</span>}
+              </Label>
+              <Input
+                className={INPUT}
                 value={qtd}
                 onChange={(e) => setQtd(e.target.value)}
                 placeholder={tipo.unidade === "litros" ? "ex.: 25380" : tipo.unidade === "sacas" ? "ex.: 430" : tipo.unidade === "cabeças" ? "ex.: 9" : "—"}
                 disabled={tipo.unidade === "—"}
               />
             </div>
-            <div className="field">
-              <label className="field-label">
-                Data<span className="req">*</span>
-              </label>
-              <input className="field-input" value={data} onChange={(e) => setData(e.target.value)} placeholder="dd/mm/aaaa" />
+            <div className={FIELD}>
+              <Label className={FIELD_LABEL}>
+                Data<Req />
+              </Label>
+              <Input className={INPUT} value={data} onChange={(e) => setData(e.target.value)} placeholder="dd/mm/aaaa" />
             </div>
           </div>
 
           {precoUnit && tipo.unidade !== "—" && (
-            <div className="ia-fill-banner">
-              <span className="icon-dot"></span>
-              <div className="body">
+            <div className={IA_BANNER}>
+              <span className={IA_BANNER_DOT}></span>
+              <div className={IA_BANNER_BODY}>
                 Preço implícito: <strong>R$ {precoUnit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {tipo.unidade.replace(/s$/, "")}</strong>.
                 {tipo.precoRef > 0 &&
                   (precoUnit >= tipo.precoRef ? (
-                    <span style={{ color: "var(--pos)" }}> Acima da referência (R$ {tipo.precoRef.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}).</span>
+                    <span className="text-lucro"> Acima da referência (R$ {tipo.precoRef.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}).</span>
                   ) : (
-                    <span style={{ color: "var(--neg)" }}> Abaixo da referência (R$ {tipo.precoRef.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}).</span>
+                    <span className="text-prejuizo"> Abaixo da referência (R$ {tipo.precoRef.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}).</span>
                   ))}
               </div>
             </div>
           )}
 
-          <div className="field">
-            <label className="field-label">Conta de recebimento</label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>Conta de recebimento</Label>
             <div className="chip-group">
               {contas.map((c) => (
                 <button key={c.id} type="button" className="chip" aria-pressed={conta === c.id} onClick={() => setConta(c.id)}>
@@ -1040,22 +1108,22 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
             </div>
           </div>
 
-          <div className="toggle-row">
-            <div className="info">
-              <span className="t">Valor já recebido</span>
-              <span className="s">Desligue se for uma venda a prazo / a receber.</span>
+          <div className={TOGGLE_ROW}>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm text-foreground">Valor já recebido</span>
+              <span className="text-xs text-ink-3">Desligue se for uma venda a prazo / a receber.</span>
             </div>
             <div role="button" className="toggle" aria-pressed={recebido} onClick={() => setRecebido(!recebido)}></div>
           </div>
         </div>
 
-        <div className="form-section" style={{ marginTop: 12 }}>
-          <div className="form-section-title">3 · Categorização</div>
+        <div className={cn(SECTION, "mt-3")}>
+          <div className={SECTION_TITLE}>3 · Categorização</div>
 
-          <div className="field">
-            <label className="field-label">
-              Atividade (centro de custo)<span className="req">*</span>
-            </label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>
+              Atividade (centro de custo)<Req />
+            </Label>
             <div className="chip-group">
               {cadastros.centrosCusto
                 .filter((cc) => !ehCentroInvestimento(cc))
@@ -1075,31 +1143,37 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
             </div>
           </div>
 
-          <div className="field">
-            <label className="field-label">
-              Categoria<span className="req">*</span>
-            </label>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>
+              Categoria<Req />
+            </Label>
             <CategoryCascade grupos={cadastros.grupos} value={cat} onChange={setCat} />
           </div>
         </div>
 
-        <div className="form-section" style={{ marginTop: 12 }}>
-          <div className="form-section-title">4 · Observações</div>
-          <div className="field">
-            <label className="field-label">Descrição / observação</label>
-            <textarea className="field-textarea" value={obs} onChange={(e) => setObs(e.target.value)} placeholder={tipo.obsPlaceholder} />
+        <div className={cn(SECTION, "mt-3")}>
+          <div className={SECTION_TITLE}>4 · Observações</div>
+          <div className={FIELD}>
+            <Label className={FIELD_LABEL}>Descrição / observação</Label>
+            <Textarea
+              className={cn(INPUT, "min-h-[70px] resize-y")}
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+              placeholder={tipo.obsPlaceholder}
+            />
           </div>
         </div>
 
-        <div className="form-footer">
-          <span className="help">
+        <div className="sticky bottom-0 flex items-center justify-between gap-4 border-t border-border bg-background py-[18px] pr-[100px] max-[640px]:pr-0 max-[640px]:pb-24">
+          <span className="text-xs text-ink-3">
             {!canSubmit
               ? "Informe cliente, valor, data, atividade e categoria para registrar a entrada."
               : "Tudo pronto. A entrada aparecerá no Dashboard e melhora o fluxo do mês."}
           </span>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              className="btn-ghost"
+          <div className="flex gap-2.5">
+            <Button
+              variant="outline"
+              className={BTN_GHOST}
               onClick={() => {
                 if (!comprador && !valor && !obs) {
                   toast.warn("Nada para salvar", "Preencha pelo menos um campo antes de salvar o rascunho.");
@@ -1109,14 +1183,14 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
               }}
             >
               Salvar rascunho
-            </button>
-            <button
-              className="btn-primary entrada-btn"
+            </Button>
+            <Button
+              className={cn(BTN_PRIMARY, "bg-lucro hover:bg-lucro")}
               disabled={!canSubmit}
               onClick={handleSubmit}
             >
               {submitting ? "Registrando…" : "Registrar entrada →"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1126,25 +1200,25 @@ function EntradaForm({ cadastros, onSuccess }: { cadastros: Cadastros; onNav: (t
 
 function EntradaSucesso({ onNew, onNav, valor, tipo, comprador, qtd }: EntradaPayload & { onNew: () => void; onNav: (t: Tab) => void }) {
   return (
-    <div className="lancar-shell" style={{ gridTemplateColumns: "1fr", maxWidth: 640, margin: "0 auto" }}>
-      <div className="lancado-card entrada">
-        <div className="checkmark entrada">↑</div>
-        <div className="h">Entrada registrada</div>
-        <div className="v mono-nums" style={{ color: "var(--pos)" }}>
+    <div className="mx-auto grid w-full max-w-[640px] grid-cols-1 gap-10 pb-[60px] pt-7">
+      <div className="flex flex-col items-center gap-3.5 border border-border bg-card px-8 py-9 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-lucro font-serif text-[30px] text-lucro">↑</div>
+        <div className="font-serif text-[26px] tracking-[-0.01em]">Entrada registrada</div>
+        <div className="mono-nums font-serif text-[32px] tabular-nums tracking-[-0.015em] text-lucro">
           {valor}
         </div>
-        <div className="body-s" style={{ color: "var(--ink-3)" }}>
+        <div className="body-s text-ink-3">
           {tipo} · {comprador}
           {qtd ? ` · ${qtd}` : ""}
         </div>
         <div className="caption">Entra no fluxo do mês e no comparativo por atividade.</div>
-        <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
-          <button className="btn-secondary" onClick={() => onNav("dashboard")}>
+        <div className="mt-3.5 flex gap-3">
+          <Button variant="secondary" className={BTN_SECONDARY} onClick={() => onNav("dashboard")}>
             Ver no Dashboard
-          </button>
-          <button className="btn-primary" onClick={onNew}>
+          </Button>
+          <Button className={BTN_PRIMARY} onClick={onNew}>
             Registrar outra
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -1173,24 +1247,34 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
     try { localStorage.setItem(TIPO_KEY, t); } catch { /* storage cheio */ }
   };
 
+  const esBtn =
+    "flex cursor-pointer items-center gap-4 border border-border bg-card px-[22px] py-[18px] text-left font-sans transition-colors hover:border-ink-3";
+  const esArrow = "grid h-[42px] w-[42px] shrink-0 place-items-center border border-border font-serif text-2xl";
+
   return (
     <div className="shell-wide">
-      <ReportHeader subtitle={tipo === "saida" ? "Lançar gasto (saída)" : "Lançar entrada (receita)"} updatedAt={R.UPDATED_AT} />
+      <ReportHeader eyebrow={tipo === "saida" ? "Financeiro · Nova saída" : "Financeiro · Nova entrada"} subtitle="Lançar" updatedAt={R.UPDATED_AT} />
 
       {/* seletor Entrada / Saída */}
-      <div className="es-toggle">
-        <button className={"es-btn saida " + (tipo === "saida" ? "active" : "")} onClick={() => switchTipo("saida")}>
-          <span className="es-arrow">↓</span>
-          <span className="es-txt">
-            <strong>Saída</strong>
-            <small>Gasto · compra · pagamento</small>
+      <div className="mb-2 mt-[22px] grid grid-cols-2 gap-3.5 max-[1100px]:grid-cols-1">
+        <button
+          className={cn(esBtn, tipo === "saida" && "border-prejuizo shadow-[inset_3px_0_0_var(--prejuizo)]")}
+          onClick={() => switchTipo("saida")}
+        >
+          <span className={cn(esArrow, tipo === "saida" && "border-prejuizo text-prejuizo")}>↓</span>
+          <span className="flex flex-col gap-0.5">
+            <strong className="font-serif text-[22px] font-normal tracking-[-0.01em] text-foreground">Saída</strong>
+            <small className="text-[13px] text-ink-3">Gasto · compra · pagamento</small>
           </span>
         </button>
-        <button className={"es-btn entrada " + (tipo === "entrada" ? "active" : "")} onClick={() => switchTipo("entrada")}>
-          <span className="es-arrow">↑</span>
-          <span className="es-txt">
-            <strong>Entrada</strong>
-            <small>Receita · venda · recebimento</small>
+        <button
+          className={cn(esBtn, tipo === "entrada" && "border-lucro shadow-[inset_3px_0_0_var(--lucro)]")}
+          onClick={() => switchTipo("entrada")}
+        >
+          <span className={cn(esArrow, tipo === "entrada" && "border-lucro text-lucro")}>↑</span>
+          <span className="flex flex-col gap-0.5">
+            <strong className="font-serif text-[22px] font-normal tracking-[-0.01em] text-foreground">Entrada</strong>
+            <small className="text-[13px] text-ink-3">Receita · venda · recebimento</small>
           </span>
         </button>
       </div>
@@ -1198,16 +1282,16 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
       {tipo === "saida" && (
         <>
           {cadastrosErro && (
-            <div className="ia-fill-banner" style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
-              <span className="icon-dot"></span>
-              <div className="body">
+            <div className={IA_BANNER} style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
+              <span className={IA_BANNER_DOT}></span>
+              <div className={IA_BANNER_BODY}>
                 <strong>Não consegui carregar os cadastros.</strong> {cadastrosErro}{" "}
-                <button className="btn-ghost" onClick={recarregar}>Tentar de novo</button>
+                <Button variant="outline" className={BTN_GHOST} onClick={recarregar}>Tentar de novo</Button>
               </div>
             </div>
           )}
           {cadastrosLoading && !cadastros && (
-            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+            <Loader label="Carregando cadastros…" />
           )}
 
           {view === "form" && cadastros && (
@@ -1227,16 +1311,16 @@ export function Lancar({ onNav }: { onNav: (t: Tab) => void }) {
       {tipo === "entrada" && (
         <>
           {cadastrosErro && (
-            <div className="ia-fill-banner" style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
-              <span className="icon-dot"></span>
-              <div className="body">
+            <div className={IA_BANNER} style={{ background: "color-mix(in srgb, var(--neg) 8%, transparent)" }}>
+              <span className={IA_BANNER_DOT}></span>
+              <div className={IA_BANNER_BODY}>
                 <strong>Não consegui carregar os cadastros.</strong> {cadastrosErro}{" "}
-                <button className="btn-ghost" onClick={recarregar}>Tentar de novo</button>
+                <Button variant="outline" className={BTN_GHOST} onClick={recarregar}>Tentar de novo</Button>
               </div>
             </div>
           )}
           {cadastrosLoading && !cadastros && (
-            <div className="caption" style={{ padding: 24 }}>Carregando cadastros…</div>
+            <Loader label="Carregando cadastros…" />
           )}
 
           {view === "form" && cadastros && (

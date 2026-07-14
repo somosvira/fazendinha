@@ -1,5 +1,9 @@
+import { Loader } from "../../components/Loading";
 import { useAnimais, useParametros, useTaxaConcepcao, type TaxaConcepcaoMetodo } from "../api";
 import { HerdDomainView } from "./HerdDomainView";
+import { RebHeader } from "./RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebMain } from "@/components/rb/RebPrimitives";
 import { DOMAINS, worklistDesmame } from "../domains";
 import { aDesmamar, criterioDesmame } from "../lib/worklists";
 import { HOJE } from "../HOJE";
@@ -12,29 +16,30 @@ function TaxaConcepcaoStrip() {
   const { data, loading } = useTaxaConcepcao();
   if (loading) return null;
   return (
-    <div className="rb-kstrip" style={{ ["--cols" as any]: 2, marginBottom: 18 }}>
+    <RebKpiStrip cols={2} className="mb-[18px]">
       {data.map((m) => {
         const pct = m.taxa == null ? null : Math.round(m.taxa * 100);
-        const tom = pct == null ? "" : pct >= 35 ? " rb-ok" : pct >= 25 ? "" : " rb-up";
+        const tom = pct == null ? undefined : pct >= 35 ? "ok" : pct >= 25 ? undefined : "up";
         return (
-          <div className="rb-k" key={m.metodo}>
-            <div className="lab">Taxa de concepção · {METODO_LABEL[m.metodo]}</div>
-            <div className="val">{pct == null ? "—" : pct}{pct != null && <small style={{ fontSize: 13 }}>%</small>}</div>
-            <div className={"d" + tom}>
-              {m.coberturas === 0 ? "sem coberturas registradas" : `${m.prenhes}/${m.coberturas} coberturas · meta 35%`}
-            </div>
-          </div>
+          <RebKpi
+            key={m.metodo}
+            lab={`Taxa de concepção · ${METODO_LABEL[m.metodo]}`}
+            val={pct == null ? "—" : pct}
+            sufixo={pct != null ? "%" : undefined}
+            d={m.coberturas === 0 ? "sem coberturas registradas" : `${m.prenhes}/${m.coberturas} coberturas · meta 35%`}
+            tom={tom as "up" | "ok" | undefined}
+          />
         );
       })}
-    </div>
+    </RebKpiStrip>
   );
 }
 
 export function ReproducaoTab({ onRegistrarEvento }: { onRegistrarEvento: (animal: Animal) => void }) {
   const { data, loading, erro } = useAnimais({ status: "ATIVO" });
   const params = useParametros(); // critério do desmame (DESMAME_MODO/DIAS/PESO_KG); enquanto carrega, usa o default Embrapa
-  if (loading) return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Reprodução</h1></div><p className="rb-sub">Carregando…</p></main>;
-  if (erro) return <main className="rb-main"><div className="rb-head"><h1>Reprodução</h1></div><p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {erro}</p></main>;
+  if (loading) return <RebMain><RebHeader eyebrow="Rebanho" title="Reprodução" /><Loader /></RebMain>;
+  if (erro) return <RebMain><RebHeader title="Reprodução" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
   // Enriquece o resumo com categoria/nascimento/último peso do Animal — insumos
   // da work-list "A desmamar" (não vêm no read-model ResumoAnimal do servidor).
   const resumos: ResumoAnimal[] = data.map((a) => ({

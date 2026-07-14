@@ -1,5 +1,10 @@
+import { Loader } from "../../components/Loading";
 import { usePiquetes, useLotes } from "../api";
 import { toUA } from "../lib/derive";
+import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const ESTADO_LABEL: Record<string, string> = {
   OCUPADO: "Ocupado",
@@ -17,7 +22,7 @@ export function PastoTab() {
   const { data: piquetes } = usePiquetes();
   const { data: lotes, loading: loadingLotes } = useLotes({ estado: "ATIVO" });
 
-  if (loadingLotes) return <main className="rb-main"><div className="rb-eyebrow">Corte · pasto</div><div className="rb-head"><h1>Pasto & piquetes</h1></div><p className="rb-sub">Carregando…</p></main>;
+  if (loadingLotes) return <RebMain><RebHeader eyebrow="Corte · pasto" title="Pasto & piquetes" /><Loader /></RebMain>;
 
   const ocupados = piquetes.filter((p) => p.estado === "OCUPADO");
   const areaAtiva = ocupados.reduce((a, p) => a + p.areaHa, 0);
@@ -25,37 +30,27 @@ export function PastoTab() {
   const uaPorHa = areaAtiva > 0 ? uaTotal / areaAtiva : 0;
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Corte · gestão de pasto</div>
-      <div className="rb-head"><h1>Pasto & piquetes</h1></div>
+    <RebMain>
+      <RebHeader eyebrow="Corte · gestão de pasto" title="Pasto & piquetes" />
 
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 4 }}>
-        <div className="rb-k">
-          <div className="lab">Piquetes</div>
-          <div className="val">{piquetes.length}</div>
-          <div className="d">{ocupados.length} ocupados · {piquetes.filter((p) => p.estado === "DESCANSO").length} em descanso</div>
-        </div>
-        <div className="rb-k">
-          <div className="lab">Área ocupada</div>
-          <div className="val">{areaAtiva.toFixed(1)}<u>ha</u></div>
-          <div className="d">de {piquetes.reduce((a, p) => a + p.areaHa, 0).toFixed(1)} ha total</div>
-        </div>
-        <div className="rb-k">
-          <div className="lab">UA total</div>
-          <div className="val">{uaTotal.toFixed(1)}</div>
-          <div className="d">1 UA = 450 kg</div>
-        </div>
-        <div className="rb-k">
-          <div className="lab">Lotação média</div>
-          <div className="val">{uaPorHa.toFixed(2)}<u>UA/ha</u></div>
-          <div className={"d " + (uaPorHa > 1.5 ? "rb-up" : uaPorHa < 0.8 ? "" : "rb-ok")}>
-            {uaPorHa > 1.5 ? "acima da capacidade recomendada" : uaPorHa < 0.8 ? "sub-utilizado" : "dentro do recomendado Embrapa"}
-          </div>
-        </div>
-      </div>
+      <RebKpiStrip cols={4}>
+        <RebKpi
+          lab="Piquetes"
+          val={piquetes.length}
+          d={`${ocupados.length} ocupados · ${piquetes.filter((p) => p.estado === "DESCANSO").length} em descanso`}
+        />
+        <RebKpi lab="Área ocupada" val={<>{areaAtiva.toFixed(1)}<u>ha</u></>} d={`de ${piquetes.reduce((a, p) => a + p.areaHa, 0).toFixed(1)} ha total`} />
+        <RebKpi lab="UA total" val={uaTotal.toFixed(1)} d="1 UA = 450 kg" />
+        <RebKpi
+          lab="Lotação média"
+          val={<>{uaPorHa.toFixed(2)}<u>UA/ha</u></>}
+          d={uaPorHa > 1.5 ? "acima da capacidade recomendada" : uaPorHa < 0.8 ? "sub-utilizado" : "dentro do recomendado Embrapa"}
+          tom={uaPorHa > 1.5 ? "up" : uaPorHa < 0.8 ? undefined : "ok"}
+        />
+      </RebKpiStrip>
 
-      <h2 className="rb-sec-title">Piquetes</h2>
-      <div className="rb-tbl-wrap"><table className="rb-tbl">
+      <h2 className="font-serif text-xl font-medium mb-3">Piquetes</h2>
+      <RebTable>
         <thead><tr>
           <th>Código</th><th>Nome</th><th>Capim</th><th>Área</th>
           <th>Lotação máx</th><th>Estado</th><th>Lote atual</th>
@@ -67,12 +62,12 @@ export function PastoTab() {
             const uaHa = ua / p.areaHa;
             return (
               <tr key={p.id}>
-                <td className="rb-anm">{p.codigo}</td>
+                <td><RebAnm>{p.codigo}</RebAnm></td>
                 <td>{p.nome}</td>
                 <td style={{ fontStyle: "italic" }}>{p.capim}</td>
                 <td>{p.areaHa.toFixed(1)} ha</td>
                 <td>{p.lotacaoMaxUA} UA</td>
-                <td><span className={"rb-pill" + (ESTADO_TOM[p.estado] ? " " + ESTADO_TOM[p.estado] : "")}>{ESTADO_LABEL[p.estado]}</span></td>
+                <td><RebPill tone={ESTADO_TOM[p.estado]}>{ESTADO_LABEL[p.estado]}</RebPill></td>
                 <td>
                   {lote
                     ? <>{lote.nome} <small style={{ color: "var(--ink-2)" }}>· {ua.toFixed(1)} UA ({uaHa.toFixed(2)}/ha)</small></>
@@ -82,7 +77,7 @@ export function PastoTab() {
             );
           })}
         </tbody>
-      </table></div>
-    </main>
+      </RebTable>
+    </RebMain>
   );
 }

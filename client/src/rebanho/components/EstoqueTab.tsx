@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Loader } from "../../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
+import { RebHeader } from "./RebHeader";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { RebTable } from "@/components/rb/RebTable";
+import { REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -11,10 +19,10 @@ const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAI
 const setorCor = (s: string) => (s === "LEITE" ? "var(--leite)" : s === "CAFE" ? "var(--cafe)" : s === "GERAL" ? "var(--ink-mute)" : "var(--outros)");
 function SetorChip({ setor }: { setor: string }) {
   return (
-    <span className="rb-pill" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+    <RebPill style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: setorCor(setor), flex: "0 0 auto" }} />
       {setorLabel(setor)}
-    </span>
+    </RebPill>
   );
 }
 
@@ -99,14 +107,14 @@ export function EstoqueTab() {
 
   const renderRow = (s: SaldoDTO) => (
     <tr key={s.produtoId}>
-      <td className="rb-anm">{s.nome} {s.abaixoMinimo && <span className="rb-pill bad">⚠ abaixo do mínimo</span>}</td>
+      <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
       <td>{s.tipo}</td>
       <td><SetorChip setor={s.setor} /></td>
       <td>{qtd(s.saldo)} {s.unidade}</td>
       <td>{money(s.valor)}</td>
       <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-        <button className="rb-btn" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</button>
+        <RebButton onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</RebButton>
       </td>
     </tr>
   );
@@ -114,46 +122,45 @@ export function EstoqueTab() {
   // exclusão real acontece dentro do modal de confirmação
 
   if (custo.loading && saldos.loading && movimentos.loading) {
-    return <main className="rb-main"><div className="rb-eyebrow">Rebanho</div><div className="rb-head"><h1>Estoque</h1></div><p className="rb-sub">Carregando…</p></main>;
+    return <RebMain><RebHeader eyebrow="Rebanho" title="Estoque" /><Loader /></RebMain>;
   }
 
   const c = custo.data;
   const custoTxt = c && c.custoVacaDia != null ? money(c.custoVacaDia) : "—";
 
   return (
-    <main className="rb-main">
-      <div className="rb-eyebrow">Rebanho · insumos e consumo</div>
-      <div className="rb-head"><h1>Estoque</h1></div>
+    <RebMain>
+      <RebHeader eyebrow="Rebanho · insumos e consumo" title="Estoque" />
 
       {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
-      <div className="rb-kstrip" style={{ ["--cols" as any]: 3 }}>
-        <div className="rb-k" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="lab">Custo vaca/dia</div>
-          <div className="val" style={{ fontSize: 34, color: "var(--cafe)" }}>{custoTxt}</div>
-          <div className="d">{c ? `consumo dos últimos ${c.periodoDias} dias` : "—"}</div>
+      <RebKpiStrip cols={3}>
+        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
+          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Custo vaca/dia</div>
+          <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]" style={{ fontSize: 34, color: "var(--cafe)" }}>{custoTxt}</div>
+          <div className="mt-2 text-[15px] font-medium text-ink-2">{c ? `consumo dos últimos ${c.periodoDias} dias` : "—"}</div>
         </div>
-        <div className="rb-k"><div className="lab">Vacas em lactação</div><div className="val">{c?.vacasEmLactacao ?? "—"}</div><div className="d">base do rateio</div></div>
-        <div className="rb-k"><div className="lab">Consumo no período</div><div className="val" style={{ fontSize: 20 }}>{c ? money(c.totalConsumo) : "—"}</div><div className="d">{c ? `${c.periodoDias} dias` : "—"}</div></div>
-      </div>
-      {custo.erro && <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro no custo: {custo.erro}</p>}
+        <RebKpi lab="Vacas em lactação" val={c?.vacasEmLactacao ?? "—"} d="base do rateio" />
+        <RebKpi lab="Consumo no período" val={c ? money(c.totalConsumo) : "—"} valClassName="text-[20px]" d={c ? `${c.periodoDias} dias` : "—"} />
+      </RebKpiStrip>
+      {custo.erro && <p className="mt-[7px] text-sm text-prejuizo">Erro no custo: {custo.erro}</p>}
 
       {/* Saldos */}
-      <div className="rb-listhead" style={{ marginTop: 4 }}>
-        <h2 className="rb-sec-title" style={{ margin: 0 }}>Saldos de estoque</h2>
-        <span className="hint">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
+      <div className="mt-1 mb-2 flex items-baseline justify-between">
+        <h2 className="font-serif text-xl font-medium m-0">Saldos de estoque</h2>
+        <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
       </div>
       {(saldos.data.length > 0 || setorFiltro) && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
           <input
             type="search"
-            className="rb-fld"
+            className={REB_FIELD_BOXED}
             placeholder="Buscar por nome ou tipo…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             style={{ flex: "1 1 240px", maxWidth: 360 }}
           />
           <select
-            className="rb-fld"
+            className={`${REB_FIELD_BOXED} rb-field-select`}
             value={setorFiltro}
             onChange={(e) => setSetorFiltro(e.target.value)}
             style={{ flex: "0 1 180px" }}
@@ -164,7 +171,7 @@ export function EstoqueTab() {
           </select>
           <button
             type="button"
-            className={"rb-chip-q" + (agrupar ? " on" : "")}
+            className={REB_CHIP_Q}
             onClick={() => setAgrupar((v) => !v)}
             style={agrupar ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}
           >
@@ -173,7 +180,7 @@ export function EstoqueTab() {
           {nAbaixoMin > 0 && (
             <button
               type="button"
-              className={"rb-chip-q" + (soAbaixoMin ? " on" : "")}
+              className={REB_CHIP_Q}
               onClick={() => setSoAbaixoMin((v) => !v)}
               style={soAbaixoMin ? { borderColor: "var(--neg)", color: "var(--neg)" } : undefined}
             >
@@ -182,12 +189,12 @@ export function EstoqueTab() {
           )}
         </div>
       )}
-      {saldos.loading ? <p className="rb-sub">Carregando…</p>
-        : saldos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {saldos.erro}</p>
-        : saldos.data.length === 0 ? <div className="rb-empty">Nenhum produto estocável cadastrado.</div>
-        : saldosVisiveis.length === 0 ? <div className="rb-empty">Nenhum produto bate com a busca.</div>
+      {saldos.loading ? <Loader />
+        : saldos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {saldos.erro}</p>
+        : saldos.data.length === 0 ? <RebEmpty>Nenhum produto estocável cadastrado.</RebEmpty>
+        : saldosVisiveis.length === 0 ? <RebEmpty>Nenhum produto bate com a busca.</RebEmpty>
         : (
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
               <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
@@ -213,32 +220,32 @@ export function EstoqueTab() {
                   </tbody>
                 ))
               : <tbody>{saldosVisiveis.map(renderRow)}</tbody>}
-          </table></div>
+          </RebTable>
         )}
 
       {/* Movimentos */}
-      <div className="rb-listhead" style={{ marginTop: 26 }}>
-        <h3>Movimentos recentes</h3>
-        <button className="rb-btn pri" onClick={() => setForm(true)}>+ Registrar movimento</button>
+      <div className="mb-2 flex items-baseline justify-between" style={{ marginTop: 26 }}>
+        <h3 className="m-0 font-serif text-lg font-medium">Movimentos recentes</h3>
+        <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>
       </div>
-      {movimentos.loading ? <p className="rb-sub">Carregando…</p>
-        : movimentos.erro ? <p className="rb-sub" style={{ color: "var(--neg)" }}>Erro: {movimentos.erro}</p>
-        : movimentos.data.length === 0 ? <div className="rb-empty">Nenhum movimento registrado ainda.</div>
+      {movimentos.loading ? <Loader />
+        : movimentos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {movimentos.erro}</p>
+        : movimentos.data.length === 0 ? <RebEmpty>Nenhum movimento registrado ainda.</RebEmpty>
         : (
-          <div className="rb-tbl-wrap"><table className="rb-tbl">
+          <RebTable>
             <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtde</th><th>Valor</th><th>Origem/destino</th><th></th></tr></thead>
             <tbody>{movimentos.data.map((m) => (
               <tr key={m.id}>
                 <td>{m.data}</td>
-                <td className="rb-anm">{m.produto}</td>
-                <td><span className={"rb-pill" + (m.tipo === "SAIDA" ? " warn" : "")}>{TIPO_MOV[m.tipo]}</span>{m.origem === "NUTRICAO" && <span className="rb-pill" style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</span>}</td>
+                <td><RebAnm>{m.produto}</RebAnm></td>
+                <td><RebPill tone={m.tipo === "SAIDA" ? "warn" : "ok"}>{TIPO_MOV[m.tipo]}</RebPill>{m.origem === "NUTRICAO" && <RebPill style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</RebPill>}</td>
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><button className="rb-btn" onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</button></td>
+                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</RebButton></td>
               </tr>
             ))}</tbody>
-          </table></div>
+          </RebTable>
         )}
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
@@ -250,7 +257,7 @@ export function EstoqueTab() {
           onConfirmado={() => { setExcluindo(null); recarregarTudo(); }}
         />
       )}
-    </main>
+    </RebMain>
   );
 }
 
@@ -273,52 +280,55 @@ function ConfirmarExclusao({ movimento, onCancelar, onConfirmado }: { movimento:
   const dataFmt = new Date(movimento.data).toLocaleDateString("pt-BR");
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={excluindo ? undefined : onCancelar} />
-      <aside className="rb-drawer rb-confirm" role="alertdialog" aria-labelledby="rb-confirm-title">
-        <div className="rb-confirm-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </div>
-        <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
-        <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
-          Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
-        </p>
-
-        <div className="rb-confirm-recibo">
-          <div className="rb-kv"><span>Data</span><b>{dataFmt}</b></div>
-          <div className="rb-kv"><span>Produto</span><b>{movimento.produto}</b></div>
-          <div className="rb-kv"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></div>
-          <div className="rb-kv"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></div>
-          <div className="rb-kv"><span>Valor</span><b>{money(movimento.valorTotal)}</b></div>
-        </div>
-
-        <div className="rb-confirm-warn">
-          <span>⚠</span>
-          <div>
-            <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
-            Movimentos em mês fechado não podem ser excluídos.
-          </div>
-        </div>
-
-        <label className="rb-confirm-ack">
-          <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
-          Entendo que esta exclusão é permanente.
-        </label>
-
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
-
-        <div className="rb-drawer-actions" style={{ justifyContent: "space-between", marginTop: 18 }}>
-          <button className="rb-btn" onClick={onCancelar} disabled={excluindo}>Cancelar</button>
-          <button className="rb-btn rb-btn-danger" onClick={confirmar} disabled={!aceito || excluindo}>
+    <RebModal
+      title=""
+      onClose={excluindo ? () => {} : onCancelar}
+      showClose={false}
+      className="max-w-[460px]"
+      actions={
+        <div className="flex w-full justify-between">
+          <RebButton onClick={onCancelar} disabled={excluindo}>Cancelar</RebButton>
+          <RebButton variant="danger" onClick={confirmar} disabled={!aceito || excluindo}>
             {excluindo ? "Excluindo…" : "Excluir definitivamente"}
-          </button>
+          </RebButton>
         </div>
-      </aside>
-    </>
+      }
+    >
+      <div className="mt-0.5 flex justify-center [&>svg]:h-11 [&>svg]:w-11 [&>svg]:text-prejuizo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
+      <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
+        Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
+      </p>
+
+      <div className="mb-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3">
+        <RebKv className="py-1.5"><span>Data</span><b>{dataFmt}</b></RebKv>
+        <RebKv className="py-1.5"><span>Produto</span><b>{movimento.produto}</b></RebKv>
+        <RebKv className="py-1.5"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></RebKv>
+        <RebKv className="py-1.5"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></RebKv>
+        <RebKv className="py-1.5"><span>Valor</span><b>{money(movimento.valorTotal)}</b></RebKv>
+      </div>
+
+      <div className="mb-4 flex items-start gap-3 rounded-md border-l-[3px] border-prejuizo bg-[color-mix(in_srgb,var(--prejuizo)_8%,transparent)] px-3.5 py-3 text-sm leading-[1.45] text-ink-2 [&>span]:flex-none [&>span]:text-base [&>span]:leading-none [&>span]:text-prejuizo [&_b]:font-semibold [&_b]:text-foreground">
+        <span>⚠</span>
+        <div>
+          <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
+          Movimentos em mês fechado não podem ser excluídos.
+        </div>
+      </div>
+
+      <label className="flex cursor-pointer select-none items-start gap-2.5 py-2.5 font-sans text-sm text-ink-2 [&_input]:mt-px [&_input]:h-[18px] [&_input]:w-[18px] [&_input]:flex-none [&_input]:cursor-pointer [&_input]:accent-[color:var(--prejuizo)]">
+        <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
+        Entendo que esta exclusão é permanente.
+      </label>
+
+      {erro && <p className="text-prejuizo" style={{ fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
+    </RebModal>
   );
 }
 

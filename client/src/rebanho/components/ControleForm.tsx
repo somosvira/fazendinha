@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { registrarControle, type ModoProducao, type ControlePayload } from "../api";
 import { HOJE } from "../HOJE";
+import { RebModal } from "@/components/rb/RebModal";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebField } from "@/components/rb/RebField";
 
 export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   animalId: string;
@@ -27,26 +30,27 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   }
 
   return (
-    <>
-      <div className="rb-drawer-bg" onClick={onFechar} />
-      <aside className="rb-drawer">
-        <h3>Registrar controle leiteiro</h3>
-        <label className="rb-fld">Data*<input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
-        {modo === "ORDENHA" ? (
-          <>
-            <label className="rb-fld">1ª ordenha (manhã) · L<input type="number" min={0} step="0.1" value={f.peso1} onChange={(e) => set("peso1", e.target.value)} /></label>
-            <label className="rb-fld">2ª ordenha (tarde) · L<input type="number" min={0} step="0.1" value={f.peso2} onChange={(e) => set("peso2", e.target.value)} /></label>
-            <label className="rb-fld">3ª ordenha (noite) · L<input type="number" min={0} step="0.1" value={f.peso3} onChange={(e) => set("peso3", e.target.value)} /></label>
-          </>
-        ) : (
-          <label className="rb-fld">Total do dia · L*<input type="number" min={0} step="0.1" value={f.pesoTotal} onChange={(e) => set("pesoTotal", e.target.value)} /></label>
-        )}
-        {erro && <p style={{ color: "var(--neg)", fontSize: 13 }}>{erro}</p>}
-        <div className="rb-drawer-actions">
-          <button className="rb-btn" onClick={onFechar}>Cancelar</button>
-          <button className="rb-btn pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</button>
-        </div>
-      </aside>
-    </>
+    <RebModal
+      title="Registrar controle leiteiro"
+      onClose={onFechar}
+      actions={
+        <>
+          <RebButton onClick={onFechar}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+        </>
+      }
+    >
+      <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
+      {modo === "ORDENHA" ? (
+        <>
+          <RebField label="1ª ordenha (manhã) · L"><input type="number" min={0} step="0.1" value={f.peso1} onChange={(e) => set("peso1", e.target.value)} /></RebField>
+          <RebField label="2ª ordenha (tarde) · L"><input type="number" min={0} step="0.1" value={f.peso2} onChange={(e) => set("peso2", e.target.value)} /></RebField>
+          <RebField label="3ª ordenha (noite) · L"><input type="number" min={0} step="0.1" value={f.peso3} onChange={(e) => set("peso3", e.target.value)} /></RebField>
+        </>
+      ) : (
+        <RebField label="Total do dia · L*"><input type="number" min={0} step="0.1" value={f.pesoTotal} onChange={(e) => set("pesoTotal", e.target.value)} /></RebField>
+      )}
+      {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
+    </RebModal>
   );
 }

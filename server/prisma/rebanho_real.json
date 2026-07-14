@@ -1,5 +1,5 @@
 {
-  "geradoEm": "2026-06-17",
+  "geradoEm": "2026-07-13",
   "animais": [
     {
       "numero": "030",
@@ -89,7 +89,7 @@
       "paiNome": "BARTOLOMEU",
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 138,
+        "del": 164,
         "ordemLactacao": 1,
         "producaoMediaDia": 37.75,
         "producao305": 9143,
@@ -99,7 +99,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.5,
-        "diasGestacao": 39,
+        "diasGestacao": 65,
         "previsaoSecagem": "2026-12-18",
         "lactacaoAberta": {
           "dtInicio": "2026-01-30"
@@ -170,7 +170,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.3,
-        "diasGestacao": 277,
+        "diasGestacao": null,
         "previsaoSecagem": null
       }
     },
@@ -193,8 +193,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 44,
+        "statusReprodutivo": "VAZIA",
+        "del": 70,
         "ordemLactacao": 4,
         "producaoMediaDia": 32.7,
         "producao305": 6477,
@@ -265,7 +265,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 160,
+        "del": 186,
         "ordemLactacao": 2,
         "producaoMediaDia": 22.68,
         "producao305": 5917,
@@ -275,7 +275,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.1,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": "2026-10-16",
         "lactacaoAberta": {
           "dtInicio": "2026-01-08"
@@ -336,7 +336,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 83,
+        "del": 109,
         "ordemLactacao": 3,
         "producaoMediaDia": 22.15,
         "producao305": 5313,
@@ -577,7 +577,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 13,
+        "del": 39,
         "ordemLactacao": 3,
         "producaoMediaDia": null,
         "producao305": 0,
@@ -614,7 +614,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 222,
+        "del": 248,
         "ordemLactacao": 2,
         "producaoMediaDia": 31.77,
         "producao305": 8835,
@@ -661,7 +661,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 17.7,
-        "diasGestacao": 277,
+        "diasGestacao": null,
         "previsaoSecagem": null
       }
     },
@@ -685,7 +685,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 317,
+        "del": 343,
         "ordemLactacao": 3,
         "producaoMediaDia": 35.64,
         "producao305": 11085,
@@ -695,7 +695,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 14.2,
-        "diasGestacao": 165,
+        "diasGestacao": 191,
         "previsaoSecagem": "2026-08-14",
         "lactacaoAberta": {
           "dtInicio": "2025-08-04"
@@ -721,8 +721,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 45,
+        "statusReprodutivo": "VAZIA",
+        "del": 71,
         "ordemLactacao": 3,
         "producaoMediaDia": 30,
         "producao305": 6127,
@@ -793,7 +793,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 288,
+        "del": 314,
         "ordemLactacao": 2,
         "producaoMediaDia": 28.06,
         "producao305": 8239,
@@ -803,7 +803,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 228,
+        "diasGestacao": 254,
         "previsaoSecagem": "2026-06-12",
         "lactacaoAberta": {
           "dtInicio": "2025-09-02"
@@ -830,7 +830,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 247,
+        "del": 273,
         "ordemLactacao": 2,
         "producaoMediaDia": 22.76,
         "producao305": 6285,
@@ -840,7 +840,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": "2026-07-24",
         "lactacaoAberta": {
           "dtInicio": "2025-10-13"
@@ -969,7 +969,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 9,
+        "del": 35,
         "ordemLactacao": 2,
         "producaoMediaDia": null,
         "producao305": 0,
@@ -1040,7 +1040,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 251,
+        "del": 277,
         "ordemLactacao": 2,
         "producaoMediaDia": 25.85,
         "producao305": 7341,
@@ -1077,7 +1077,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 173,
+        "del": 199,
         "ordemLactacao": 2,
         "producaoMediaDia": 36.04,
         "producao305": 9545,
@@ -1114,7 +1114,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 533,
+        "del": 559,
         "ordemLactacao": 1,
         "producaoMediaDia": 24.46,
         "producao305": 8880,
@@ -1124,7 +1124,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 19.2,
-        "diasGestacao": 228,
+        "diasGestacao": 254,
         "previsaoSecagem": "2026-06-12",
         "lactacaoAberta": {
           "dtInicio": "2024-12-31"
@@ -1151,7 +1151,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 269,
+        "del": 295,
         "ordemLactacao": 3,
         "producaoMediaDia": 36.94,
         "producao305": 10369,
@@ -1198,7 +1198,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 235,
+        "diasGestacao": 261,
         "previsaoSecagem": null
       }
     },
@@ -1222,7 +1222,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 657,
+        "del": 683,
         "ordemLactacao": 1,
         "producaoMediaDia": 22.53,
         "producao305": 5983,
@@ -1232,7 +1232,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 24.9,
-        "diasGestacao": 179,
+        "diasGestacao": 205,
         "previsaoSecagem": "2026-07-31",
         "lactacaoAberta": {
           "dtInicio": "2024-08-29"
@@ -1327,7 +1327,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 175,
+        "del": 201,
         "ordemLactacao": 2,
         "producaoMediaDia": 42.86,
         "producao305": 11058,
@@ -1337,7 +1337,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 116,
+        "diasGestacao": 142,
         "previsaoSecagem": "2026-10-02",
         "lactacaoAberta": {
           "dtInicio": "2025-12-24"
@@ -1398,7 +1398,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 406,
+        "del": 432,
         "ordemLactacao": 2,
         "producaoMediaDia": 23.58,
         "producao305": 8342,
@@ -1408,7 +1408,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 19.7,
-        "diasGestacao": 88,
+        "diasGestacao": 114,
         "previsaoSecagem": "2026-10-30",
         "lactacaoAberta": {
           "dtInicio": "2025-05-07"
@@ -1435,7 +1435,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 259,
+        "del": 285,
         "ordemLactacao": 2,
         "producaoMediaDia": 32.13,
         "producao305": 9163,
@@ -1445,7 +1445,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.1,
-        "diasGestacao": 171,
+        "diasGestacao": 197,
         "previsaoSecagem": "2026-08-08",
         "lactacaoAberta": {
           "dtInicio": "2025-10-01"
@@ -1506,7 +1506,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 28,
+        "del": 54,
         "ordemLactacao": 3,
         "producaoMediaDia": 40,
         "producao305": 0,
@@ -1542,8 +1542,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 41,
+        "statusReprodutivo": "VAZIA",
+        "del": 67,
         "ordemLactacao": 4,
         "producaoMediaDia": 23.3,
         "producao305": 4871,
@@ -1624,7 +1624,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 13.1,
-        "diasGestacao": 277,
+        "diasGestacao": null,
         "previsaoSecagem": null
       }
     },
@@ -1682,7 +1682,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 207,
+        "del": 233,
         "ordemLactacao": 3,
         "producaoMediaDia": 33.43,
         "producao305": 8861,
@@ -1692,7 +1692,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.7,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": "2026-10-16",
         "lactacaoAberta": {
           "dtInicio": "2025-11-22"
@@ -1889,7 +1889,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 416,
+        "del": 442,
         "ordemLactacao": 3,
         "producaoMediaDia": 21.28,
         "producao305": 7805,
@@ -1899,7 +1899,7 @@
         "ultimoDgData": "2026-03-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 17.9,
-        "diasGestacao": 151,
+        "diasGestacao": 177,
         "previsaoSecagem": "2026-08-28",
         "lactacaoAberta": {
           "dtInicio": "2025-04-27"
@@ -1926,7 +1926,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 357,
+        "del": 383,
         "ordemLactacao": 2,
         "producaoMediaDia": 22.61,
         "producao305": 7077,
@@ -1936,7 +1936,7 @@
         "ultimoDgData": "2026-04-02",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.2,
-        "diasGestacao": 144,
+        "diasGestacao": 170,
         "previsaoSecagem": "2026-09-04",
         "lactacaoAberta": {
           "dtInicio": "2025-06-25"
@@ -1963,7 +1963,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 89,
+        "del": 115,
         "ordemLactacao": 4,
         "producaoMediaDia": 38.45,
         "producao305": 7941,
@@ -2102,7 +2102,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 280,
+        "del": 306,
         "ordemLactacao": 3,
         "producaoMediaDia": 30.16,
         "producao305": 9184,
@@ -2112,7 +2112,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.3,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": "2026-07-24",
         "lactacaoAberta": {
           "dtInicio": "2025-09-10"
@@ -2149,7 +2149,7 @@
         "ultimoDgData": "2025-11-20",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.4,
-        "diasGestacao": 245,
+        "diasGestacao": 271,
         "previsaoSecagem": null
       }
     },
@@ -2207,7 +2207,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 268,
+        "del": 294,
         "ordemLactacao": 3,
         "producaoMediaDia": 30.63,
         "producao305": 8810,
@@ -2217,7 +2217,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 207,
+        "diasGestacao": 233,
         "previsaoSecagem": "2026-07-03",
         "lactacaoAberta": {
           "dtInicio": "2025-09-22"
@@ -2244,7 +2244,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 138,
+        "del": 164,
         "ordemLactacao": 3,
         "producaoMediaDia": 43.55,
         "producao305": 10583,
@@ -2254,7 +2254,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.5,
-        "diasGestacao": 39,
+        "diasGestacao": 65,
         "previsaoSecagem": "2026-12-18",
         "lactacaoAberta": {
           "dtInicio": "2026-01-30"
@@ -2281,7 +2281,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 317,
+        "del": 343,
         "ordemLactacao": 3,
         "producaoMediaDia": 32.17,
         "producao305": 9773,
@@ -2291,7 +2291,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 14.2,
-        "diasGestacao": 165,
+        "diasGestacao": 191,
         "previsaoSecagem": "2026-08-14",
         "lactacaoAberta": {
           "dtInicio": "2025-08-04"
@@ -2328,7 +2328,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 256,
+        "diasGestacao": 282,
         "previsaoSecagem": null
       }
     },
@@ -2352,7 +2352,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 206,
+        "del": 232,
         "ordemLactacao": 3,
         "producaoMediaDia": 37.88,
         "producao305": 9624,
@@ -2362,7 +2362,7 @@
         "ultimoDgData": "2026-04-02",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.3,
-        "diasGestacao": 144,
+        "diasGestacao": 170,
         "previsaoSecagem": "2026-09-04",
         "lactacaoAberta": {
           "dtInicio": "2025-11-23"
@@ -2389,7 +2389,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 82,
+        "del": 108,
         "ordemLactacao": 3,
         "producaoMediaDia": 30.45,
         "producao305": 5928,
@@ -2470,7 +2470,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.9,
-        "diasGestacao": 277,
+        "diasGestacao": null,
         "previsaoSecagem": null
       }
     },
@@ -2562,7 +2562,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 312,
+        "del": 338,
         "ordemLactacao": 3,
         "producaoMediaDia": 37.78,
         "producao305": 11368,
@@ -2572,7 +2572,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 14,
-        "diasGestacao": 165,
+        "diasGestacao": 191,
         "previsaoSecagem": "2026-08-14",
         "lactacaoAberta": {
           "dtInicio": "2025-08-09"
@@ -2599,7 +2599,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 381,
+        "del": 407,
         "ordemLactacao": 4,
         "producaoMediaDia": 26.95,
         "producao305": 8181,
@@ -2609,7 +2609,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 19.3,
-        "diasGestacao": 74,
+        "diasGestacao": 100,
         "previsaoSecagem": "2026-11-13",
         "lactacaoAberta": {
           "dtInicio": "2025-06-01"
@@ -2670,7 +2670,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 295,
+        "del": 321,
         "ordemLactacao": 4,
         "producaoMediaDia": 22.42,
         "producao305": 6916,
@@ -2707,7 +2707,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 144,
+        "del": 170,
         "ordemLactacao": 5,
         "producaoMediaDia": 19.3,
         "producao305": 4063,
@@ -2777,8 +2777,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 40,
+        "statusReprodutivo": "VAZIA",
+        "del": 66,
         "ordemLactacao": 5,
         "producaoMediaDia": 30.35,
         "producao305": 5905,
@@ -2849,7 +2849,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 113,
+        "del": 139,
         "ordemLactacao": 4,
         "producaoMediaDia": 28.5,
         "producao305": 6224,
@@ -2964,7 +2964,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.3,
-        "diasGestacao": 262,
+        "diasGestacao": 288,
         "previsaoSecagem": null
       }
     },
@@ -2998,7 +2998,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16,
-        "diasGestacao": 270,
+        "diasGestacao": 296,
         "previsaoSecagem": null
       }
     },
@@ -3021,8 +3021,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 51,
+        "statusReprodutivo": "VAZIA",
+        "del": 77,
         "ordemLactacao": 2,
         "producaoMediaDia": 37.25,
         "producao305": 8536,
@@ -3069,7 +3069,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.1,
-        "diasGestacao": 116,
+        "diasGestacao": 142,
         "previsaoSecagem": null
       }
     },
@@ -3127,7 +3127,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 117,
+        "del": 143,
         "ordemLactacao": 2,
         "producaoMediaDia": 38.57,
         "producao305": 8359,
@@ -3164,7 +3164,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 445,
+        "del": 471,
         "ordemLactacao": 1,
         "producaoMediaDia": 28.13,
         "producao305": 8719,
@@ -3174,7 +3174,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 10.5,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": "2026-09-11",
         "lactacaoAberta": {
           "dtInicio": "2025-03-29"
@@ -3279,7 +3279,7 @@
         "ultimoDgData": "2025-11-06",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.1,
-        "diasGestacao": 259,
+        "diasGestacao": 285,
         "previsaoSecagem": null
       }
     },
@@ -3371,7 +3371,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 161,
+        "del": 187,
         "ordemLactacao": 2,
         "producaoMediaDia": 27.96,
         "producao305": 6754,
@@ -3381,7 +3381,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": "2026-10-16",
         "lactacaoAberta": {
           "dtInicio": "2026-01-07"
@@ -3408,7 +3408,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 159,
+        "del": 185,
         "ordemLactacao": 2,
         "producaoMediaDia": 28.08,
         "producao305": 7370,
@@ -3418,7 +3418,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.5,
-        "diasGestacao": 60,
+        "diasGestacao": 86,
         "previsaoSecagem": "2026-11-27",
         "lactacaoAberta": {
           "dtInicio": "2026-01-09"
@@ -3445,7 +3445,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 530,
+        "del": 556,
         "ordemLactacao": 1,
         "producaoMediaDia": 28.05,
         "producao305": 6771,
@@ -3455,7 +3455,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 19.1,
-        "diasGestacao": 228,
+        "diasGestacao": 254,
         "previsaoSecagem": "2026-06-12",
         "lactacaoAberta": {
           "dtInicio": "2025-01-03"
@@ -3492,7 +3492,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 14.6,
-        "diasGestacao": 253,
+        "diasGestacao": 279,
         "previsaoSecagem": null
       }
     },
@@ -3516,7 +3516,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 133,
+        "del": 159,
         "ordemLactacao": 3,
         "producaoMediaDia": 35.05,
         "producao305": 8662,
@@ -3526,7 +3526,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 74,
+        "diasGestacao": 100,
         "previsaoSecagem": "2026-11-13",
         "lactacaoAberta": {
           "dtInicio": "2026-02-04"
@@ -3553,7 +3553,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 318,
+        "del": 344,
         "ordemLactacao": 2,
         "producaoMediaDia": 23.92,
         "producao305": 7624,
@@ -3563,7 +3563,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.3,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": "2026-10-16",
         "lactacaoAberta": {
           "dtInicio": "2025-08-03"
@@ -3657,8 +3657,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 52,
+        "statusReprodutivo": "VAZIA",
+        "del": 78,
         "ordemLactacao": 3,
         "producaoMediaDia": 19.4,
         "producao305": 4327,
@@ -3695,7 +3695,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 114,
+        "del": 140,
         "ordemLactacao": 2,
         "producaoMediaDia": 36.8,
         "producao305": 8665,
@@ -3766,7 +3766,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 182,
+        "del": 208,
         "ordemLactacao": 2,
         "producaoMediaDia": 27.98,
         "producao305": 7280,
@@ -3776,7 +3776,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.1,
-        "diasGestacao": 95,
+        "diasGestacao": 121,
         "previsaoSecagem": "2026-10-23",
         "lactacaoAberta": {
           "dtInicio": "2025-12-17"
@@ -3802,8 +3802,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 50,
+        "statusReprodutivo": "VAZIA",
+        "del": 76,
         "ordemLactacao": 2,
         "producaoMediaDia": 20.95,
         "producao305": 5090,
@@ -3850,7 +3850,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 13.5,
-        "diasGestacao": 130,
+        "diasGestacao": 156,
         "previsaoSecagem": null
       }
     },
@@ -3942,7 +3942,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 63,
+        "del": 89,
         "ordemLactacao": 2,
         "producaoMediaDia": 11.15,
         "producao305": 2072,
@@ -4047,7 +4047,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 179,
+        "del": 205,
         "ordemLactacao": 2,
         "producaoMediaDia": 29,
         "producao305": 7043,
@@ -4057,7 +4057,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.3,
-        "diasGestacao": 116,
+        "diasGestacao": 142,
         "previsaoSecagem": "2026-10-02",
         "lactacaoAberta": {
           "dtInicio": "2025-12-20"
@@ -4118,7 +4118,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 131,
+        "del": 157,
         "ordemLactacao": 2,
         "producaoMediaDia": 26.82,
         "producao305": 6746,
@@ -4222,8 +4222,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 40,
+        "statusReprodutivo": "VAZIA",
+        "del": 66,
         "ordemLactacao": 3,
         "producaoMediaDia": 37.6,
         "producao305": 7523,
@@ -4293,8 +4293,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 36,
+        "statusReprodutivo": "VAZIA",
+        "del": 62,
         "ordemLactacao": 3,
         "producaoMediaDia": 33.7,
         "producao305": 8219,
@@ -4364,8 +4364,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 36,
+        "statusReprodutivo": "VAZIA",
+        "del": 62,
         "ordemLactacao": 2,
         "producaoMediaDia": 14.05,
         "producao305": 2080,
@@ -4436,7 +4436,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 424,
+        "del": 450,
         "ordemLactacao": 2,
         "producaoMediaDia": 21.41,
         "producao305": 7338,
@@ -4446,7 +4446,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 21.9,
-        "diasGestacao": 39,
+        "diasGestacao": 65,
         "previsaoSecagem": "2026-12-18",
         "lactacaoAberta": {
           "dtInicio": "2025-04-19"
@@ -4473,7 +4473,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 274,
+        "del": 300,
         "ordemLactacao": 2,
         "producaoMediaDia": 32.48,
         "producao305": 9395,
@@ -4483,7 +4483,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 214,
+        "diasGestacao": 240,
         "previsaoSecagem": "2026-06-26",
         "lactacaoAberta": {
           "dtInicio": "2025-09-16"
@@ -4510,7 +4510,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 153,
+        "del": 179,
         "ordemLactacao": 2,
         "producaoMediaDia": 37.82,
         "producao305": 9090,
@@ -4581,7 +4581,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 21,
+        "del": 47,
         "ordemLactacao": 3,
         "producaoMediaDia": 18.4,
         "producao305": 0,
@@ -4628,7 +4628,7 @@
         "ultimoDgData": "2026-02-19",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 18.5,
-        "diasGestacao": 154,
+        "diasGestacao": 180,
         "previsaoSecagem": null
       }
     },
@@ -4686,7 +4686,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 111,
+        "del": 137,
         "ordemLactacao": 3,
         "producaoMediaDia": 27.63,
         "producao305": 7075,
@@ -4696,7 +4696,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.1,
-        "diasGestacao": 53,
+        "diasGestacao": 79,
         "previsaoSecagem": "2026-12-04",
         "lactacaoAberta": {
           "dtInicio": "2026-02-26"
@@ -4722,8 +4722,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 41,
+        "statusReprodutivo": "VAZIA",
+        "del": 67,
         "ordemLactacao": 3,
         "producaoMediaDia": 20.15,
         "producao305": 3873,
@@ -4770,7 +4770,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.3,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
@@ -4828,7 +4828,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 93,
+        "del": 119,
         "ordemLactacao": 2,
         "producaoMediaDia": 16.13,
         "producao305": 4195,
@@ -4865,7 +4865,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 323,
+        "del": 349,
         "ordemLactacao": 2,
         "producaoMediaDia": 23.37,
         "producao305": 7361,
@@ -4875,7 +4875,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.7,
-        "diasGestacao": 95,
+        "diasGestacao": 121,
         "previsaoSecagem": "2026-10-23",
         "lactacaoAberta": {
           "dtInicio": "2025-07-29"
@@ -4936,7 +4936,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 134,
+        "del": 160,
         "ordemLactacao": 2,
         "producaoMediaDia": 30.2,
         "producao305": 7406,
@@ -4973,7 +4973,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 355,
+        "del": 381,
         "ordemLactacao": 2,
         "producaoMediaDia": 20.64,
         "producao305": 6687,
@@ -4983,7 +4983,7 @@
         "ultimoDgData": "2026-06-05",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 15.9,
-        "diasGestacao": 151,
+        "diasGestacao": 177,
         "previsaoSecagem": "2026-08-28",
         "lactacaoAberta": {
           "dtInicio": "2025-06-27"
@@ -5020,7 +5020,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 13.6,
-        "diasGestacao": 277,
+        "diasGestacao": null,
         "previsaoSecagem": null
       }
     },
@@ -5054,7 +5054,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.5,
-        "diasGestacao": 262,
+        "diasGestacao": 288,
         "previsaoSecagem": null
       }
     },
@@ -5088,7 +5088,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.4,
-        "diasGestacao": 235,
+        "diasGestacao": 261,
         "previsaoSecagem": null
       }
     },
@@ -5112,7 +5112,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 314,
+        "del": 340,
         "ordemLactacao": 2,
         "producaoMediaDia": 26.18,
         "producao305": 7889,
@@ -5149,7 +5149,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 367,
+        "del": 393,
         "ordemLactacao": 2,
         "producaoMediaDia": 25.42,
         "producao305": 7800,
@@ -5159,7 +5159,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.8,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": "2026-09-11",
         "lactacaoAberta": {
           "dtInicio": "2025-06-15"
@@ -5220,7 +5220,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 268,
+        "del": 294,
         "ordemLactacao": 2,
         "producaoMediaDia": 26.51,
         "producao305": 7624,
@@ -5230,7 +5230,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 207,
+        "diasGestacao": 233,
         "previsaoSecagem": "2026-07-03",
         "lactacaoAberta": {
           "dtInicio": "2025-09-22"
@@ -5257,7 +5257,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 272,
+        "del": 298,
         "ordemLactacao": 1,
         "producaoMediaDia": 26.14,
         "producao305": 7319,
@@ -5430,7 +5430,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 33,
+        "del": 59,
         "ordemLactacao": 3,
         "producaoMediaDia": 31,
         "producao305": 6243,
@@ -5535,7 +5535,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 411,
+        "del": 437,
         "ordemLactacao": 2,
         "producaoMediaDia": 22.26,
         "producao305": 6602,
@@ -5545,7 +5545,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 18.9,
-        "diasGestacao": 116,
+        "diasGestacao": 142,
         "previsaoSecagem": "2026-10-02",
         "lactacaoAberta": {
           "dtInicio": "2025-05-02"
@@ -5640,7 +5640,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 409,
+        "del": 435,
         "ordemLactacao": 1,
         "producaoMediaDia": 21.55,
         "producao305": 6892,
@@ -5650,7 +5650,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 16.3,
-        "diasGestacao": 193,
+        "diasGestacao": 219,
         "previsaoSecagem": "2026-07-17",
         "lactacaoAberta": {
           "dtInicio": "2025-05-04"
@@ -5676,8 +5676,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 38,
+        "statusReprodutivo": "VAZIA",
+        "del": 64,
         "ordemLactacao": 2,
         "producaoMediaDia": 28.6,
         "producao305": 6025,
@@ -5724,7 +5724,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 14.6,
-        "diasGestacao": 235,
+        "diasGestacao": 261,
         "previsaoSecagem": null
       }
     },
@@ -5748,7 +5748,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 67,
+        "del": 93,
         "ordemLactacao": 2,
         "producaoMediaDia": 27.25,
         "producao305": 5663,
@@ -5819,7 +5819,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 205,
+        "del": 231,
         "ordemLactacao": 2,
         "producaoMediaDia": 24.88,
         "producao305": 6961,
@@ -5829,7 +5829,7 @@
         "ultimoDgData": "2026-04-02",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 144,
+        "diasGestacao": 170,
         "previsaoSecagem": "2026-09-04",
         "lactacaoAberta": {
           "dtInicio": "2025-11-24"
@@ -5856,7 +5856,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 112,
+        "del": 138,
         "ordemLactacao": 2,
         "producaoMediaDia": 26.7,
         "producao305": 6028,
@@ -5994,8 +5994,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 47,
+        "statusReprodutivo": "VAZIA",
+        "del": 73,
         "ordemLactacao": 3,
         "producaoMediaDia": 35.1,
         "producao305": 6875,
@@ -6031,8 +6031,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 46,
+        "statusReprodutivo": "VAZIA",
+        "del": 72,
         "ordemLactacao": 3,
         "producaoMediaDia": 38.7,
         "producao305": 8712,
@@ -6079,7 +6079,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 17.9,
-        "diasGestacao": 214,
+        "diasGestacao": 240,
         "previsaoSecagem": null
       }
     },
@@ -6113,7 +6113,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 17.9,
-        "diasGestacao": 270,
+        "diasGestacao": 296,
         "previsaoSecagem": null
       }
     },
@@ -6137,7 +6137,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 287,
+        "del": 313,
         "ordemLactacao": 1,
         "producaoMediaDia": 30.35,
         "producao305": 9787,
@@ -6147,7 +6147,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 228,
+        "diasGestacao": 254,
         "previsaoSecagem": "2026-06-12",
         "lactacaoAberta": {
           "dtInicio": "2025-09-03"
@@ -6174,7 +6174,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 267,
+        "del": 293,
         "ordemLactacao": 1,
         "producaoMediaDia": 32.49,
         "producao305": 9769,
@@ -6211,7 +6211,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 216,
+        "del": 242,
         "ordemLactacao": 1,
         "producaoMediaDia": 30.23,
         "producao305": 8292,
@@ -6221,7 +6221,7 @@
         "ultimoDgData": "2026-04-30",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 12.5,
-        "diasGestacao": 116,
+        "diasGestacao": 142,
         "previsaoSecagem": "2026-10-02",
         "lactacaoAberta": {
           "dtInicio": "2025-11-13"
@@ -7006,7 +7006,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 141,
+        "diasGestacao": 167,
         "previsaoSecagem": null
       }
     },
@@ -7040,7 +7040,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 88,
+        "diasGestacao": 114,
         "previsaoSecagem": null
       }
     },
@@ -7312,7 +7312,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 67,
+        "diasGestacao": 93,
         "previsaoSecagem": null
       }
     },
@@ -7448,7 +7448,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 141,
+        "diasGestacao": 167,
         "previsaoSecagem": null
       }
     },
@@ -7618,7 +7618,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 67,
+        "diasGestacao": 93,
         "previsaoSecagem": null
       }
     },
@@ -7754,7 +7754,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 130,
+        "diasGestacao": 156,
         "previsaoSecagem": null
       }
     },
@@ -7924,7 +7924,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 130,
+        "diasGestacao": 156,
         "previsaoSecagem": null
       }
     },
@@ -8094,7 +8094,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 67,
+        "diasGestacao": 93,
         "previsaoSecagem": null
       }
     },
@@ -9488,7 +9488,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 67,
+        "diasGestacao": 93,
         "previsaoSecagem": null
       }
     },
@@ -12956,7 +12956,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 171,
+        "diasGestacao": 197,
         "previsaoSecagem": null
       }
     },
@@ -12990,7 +12990,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 67,
+        "diasGestacao": 93,
         "previsaoSecagem": null
       }
     },
@@ -15394,7 +15394,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 69,
+        "del": 95,
         "ordemLactacao": 2,
         "producaoMediaDia": 15.35,
         "producao305": 3350,
@@ -17107,7 +17107,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 249,
+        "diasGestacao": 275,
         "previsaoSecagem": null
       }
     },
@@ -17199,7 +17199,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 272,
+        "del": 298,
         "ordemLactacao": 1,
         "producaoMediaDia": 34.12,
         "producao305": 10089,
@@ -17209,7 +17209,7 @@
         "ultimoDgData": "2026-04-09",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 13.7,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": "2026-09-11",
         "lactacaoAberta": {
           "dtInicio": "2025-09-18"
@@ -17270,7 +17270,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 147,
+        "del": 173,
         "ordemLactacao": 1,
         "producaoMediaDia": 40.6,
         "producao305": 10069,
@@ -17280,7 +17280,7 @@
         "ultimoDgData": "2026-05-21",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 11.2,
-        "diasGestacao": 88,
+        "diasGestacao": 114,
         "previsaoSecagem": "2026-10-30",
         "lactacaoAberta": {
           "dtInicio": "2026-01-21"
@@ -17341,7 +17341,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 33,
+        "del": 59,
         "ordemLactacao": 1,
         "producaoMediaDia": 15.5,
         "producao305": 5437,
@@ -17378,7 +17378,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 14,
+        "del": 40,
         "ordemLactacao": 1,
         "producaoMediaDia": null,
         "producao305": 0,
@@ -17414,8 +17414,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 35,
+        "statusReprodutivo": "VAZIA",
+        "del": 61,
         "ordemLactacao": 1,
         "producaoMediaDia": 31.2,
         "producao305": 7561,
@@ -17496,7 +17496,7 @@
         "ultimoDgData": "2025-12-18",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 273,
+        "diasGestacao": 299,
         "previsaoSecagem": null
       }
     },
@@ -17530,7 +17530,7 @@
         "ultimoDgData": "2025-12-18",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 273,
+        "diasGestacao": 299,
         "previsaoSecagem": null
       }
     },
@@ -17564,7 +17564,7 @@
         "ultimoDgData": "2025-12-18",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 221,
+        "diasGestacao": 247,
         "previsaoSecagem": null
       }
     },
@@ -17598,7 +17598,7 @@
         "ultimoDgData": "2025-12-18",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 270,
+        "diasGestacao": 296,
         "previsaoSecagem": null
       }
     },
@@ -17700,7 +17700,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": null
       }
     },
@@ -17734,7 +17734,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 207,
+        "diasGestacao": 233,
         "previsaoSecagem": null
       }
     },
@@ -17768,7 +17768,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 207,
+        "diasGestacao": 233,
         "previsaoSecagem": null
       }
     },
@@ -17802,7 +17802,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 249,
+        "diasGestacao": 275,
         "previsaoSecagem": null
       }
     },
@@ -17826,7 +17826,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PEV",
-        "del": 10,
+        "del": 36,
         "ordemLactacao": 2,
         "producaoMediaDia": null,
         "producao305": 0,
@@ -17873,7 +17873,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 60,
+        "diasGestacao": 86,
         "previsaoSecagem": null
       }
     },
@@ -17897,7 +17897,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 131,
+        "del": 157,
         "ordemLactacao": 1,
         "producaoMediaDia": 29.08,
         "producao305": 7317,
@@ -17968,7 +17968,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 128,
+        "del": 154,
         "ordemLactacao": 1,
         "producaoMediaDia": 36.82,
         "producao305": 9658,
@@ -18039,7 +18039,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 120,
+        "del": 146,
         "ordemLactacao": 1,
         "producaoMediaDia": 32.45,
         "producao305": 8682,
@@ -18076,7 +18076,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 120,
+        "del": 146,
         "ordemLactacao": 1,
         "producaoMediaDia": 34.43,
         "producao305": 8281,
@@ -18113,7 +18113,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 112,
+        "del": 138,
         "ordemLactacao": 1,
         "producaoMediaDia": 30.2,
         "producao305": 7345,
@@ -18150,7 +18150,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 111,
+        "del": 137,
         "ordemLactacao": 1,
         "producaoMediaDia": 29.23,
         "producao305": 7061,
@@ -18221,7 +18221,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 98,
+        "del": 124,
         "ordemLactacao": 1,
         "producaoMediaDia": 25.43,
         "producao305": 5830,
@@ -18258,7 +18258,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 88,
+        "del": 114,
         "ordemLactacao": 1,
         "producaoMediaDia": 27.95,
         "producao305": 5647,
@@ -18329,7 +18329,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 80,
+        "del": 106,
         "ordemLactacao": 1,
         "producaoMediaDia": 31.35,
         "producao305": 7637,
@@ -18366,7 +18366,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 76,
+        "del": 102,
         "ordemLactacao": 1,
         "producaoMediaDia": 19.45,
         "producao305": 4701,
@@ -18403,7 +18403,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "VAZIA",
-        "del": 69,
+        "del": 95,
         "ordemLactacao": 1,
         "producaoMediaDia": 26.2,
         "producao305": 6157,
@@ -18439,8 +18439,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 44,
+        "statusReprodutivo": "VAZIA",
+        "del": 70,
         "ordemLactacao": 1,
         "producaoMediaDia": 20.45,
         "producao305": 5083,
@@ -18476,8 +18476,8 @@
       "maeNumero": null,
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 40,
+        "statusReprodutivo": "VAZIA",
+        "del": 66,
         "ordemLactacao": 1,
         "producaoMediaDia": 24,
         "producao305": 5655,
@@ -19238,7 +19238,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": null
       }
     },
@@ -19272,7 +19272,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 196,
+        "diasGestacao": 222,
         "previsaoSecagem": null
       }
     },
@@ -19306,7 +19306,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
@@ -19340,7 +19340,7 @@
         "ultimoDgData": "2026-04-02",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": null
       }
     },
@@ -19408,7 +19408,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 60,
+        "diasGestacao": 86,
         "previsaoSecagem": null
       }
     },
@@ -19476,7 +19476,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": null
       }
     },
@@ -19510,7 +19510,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": null
       }
     },
@@ -19714,7 +19714,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": null
       }
     },
@@ -19738,7 +19738,7 @@
       "paiNome": null,
       "resumo": {
         "statusReprodutivo": "PRENHE",
-        "del": 219,
+        "del": 245,
         "ordemLactacao": 1,
         "producaoMediaDia": 35.98,
         "producao305": 9539,
@@ -19748,7 +19748,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": 13.8,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": "2026-11-06",
         "lactacaoAberta": {
           "dtInicio": "2025-11-10"
@@ -19785,7 +19785,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 95,
+        "diasGestacao": 121,
         "previsaoSecagem": null
       }
     },
@@ -19819,7 +19819,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
@@ -19887,7 +19887,7 @@
         "ultimoDgData": "2026-01-29",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": null
       }
     },
@@ -19989,7 +19989,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": null
       }
     },
@@ -20023,7 +20023,7 @@
         "ultimoDgData": "2026-02-26",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 137,
+        "diasGestacao": 163,
         "previsaoSecagem": null
       }
     },
@@ -20057,7 +20057,7 @@
         "ultimoDgData": "2026-02-19",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 144,
+        "diasGestacao": 170,
         "previsaoSecagem": null
       }
     },
@@ -20159,7 +20159,7 @@
         "ultimoDgData": "2026-05-07",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 144,
+        "diasGestacao": 170,
         "previsaoSecagem": null
       }
     },
@@ -20261,7 +20261,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": null
       }
     },
@@ -20329,7 +20329,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": null
       }
     },
@@ -20397,7 +20397,7 @@
         "ultimoDgData": "2026-04-23",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 102,
+        "diasGestacao": 128,
         "previsaoSecagem": null
       }
     },
@@ -20431,7 +20431,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 207,
+        "diasGestacao": 233,
         "previsaoSecagem": null
       }
     },
@@ -20465,7 +20465,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
@@ -20737,7 +20737,7 @@
         "ultimoDgData": "2026-01-08",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 186,
+        "diasGestacao": 212,
         "previsaoSecagem": null
       }
     },
@@ -20805,7 +20805,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
@@ -20862,8 +20862,8 @@
       "maeNumero": "1068",
       "paiNome": null,
       "resumo": {
-        "statusReprodutivo": "PEV",
-        "del": 39,
+        "statusReprodutivo": "VAZIA",
+        "del": 65,
         "ordemLactacao": 1,
         "producaoMediaDia": 24.9,
         "producao305": 4989,
@@ -20910,7 +20910,7 @@
         "ultimoDgData": "2026-06-04",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 39,
+        "diasGestacao": 65,
         "previsaoSecagem": null
       }
     },
@@ -20978,7 +20978,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 60,
+        "diasGestacao": 86,
         "previsaoSecagem": null
       }
     },
@@ -21012,7 +21012,7 @@
         "ultimoDgData": "2026-05-14",
         "ultimoDgResultado": "positivo",
         "iepProjetado": null,
-        "diasGestacao": 81,
+        "diasGestacao": 107,
         "previsaoSecagem": null
       }
     },
