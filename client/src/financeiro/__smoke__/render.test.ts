@@ -12,8 +12,9 @@ import { ContasAVencer } from "../ContasAVencer";
 describe("financeiro render smoke", () => {
   it("Caixinha renderiza o shell da view", () => {
     const html = renderToString(h(ToastProvider, null, h(Caixinha)));
-    expect(html).toContain("Caixinha");
-    expect(html).toContain("Financeiro");
+    // Sem título de topo (removido do produto); no SSR o hook fica em loading,
+    // então a view renderiza o shell de carregando.
+    expect(html).toContain("Carregando");
   });
 
   it("ContasAVencer renderiza o card (shell de carregando no SSR)", () => {

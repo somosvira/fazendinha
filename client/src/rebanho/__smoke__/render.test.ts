@@ -58,13 +58,12 @@ describe("render smoke", () => {
 
   it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {
     const html = renderToString(h(ConfiguracoesView));
-    expect(html).toContain("Configurações");
-    expect(html).toContain("Carregando");
+    expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
   it("CadastrosView renders sub-abas and the loading shell (fetches /rebanho/produtos)", () => {
     const html = renderToString(h(CadastrosView));
-    expect(html).toContain("Cadastros");     // título
+    // (título de topo removido do produto)
     expect(html).toContain("Produtos");       // sub-aba
     expect(html).toContain("Fornecedores");   // sub-aba
     expect(html).toContain("Carregando");     // shell de loading (sem fetch no SSR)
@@ -72,29 +71,25 @@ describe("render smoke", () => {
 
   it("ProducaoTab renders the loading shell (fetches /rebanho/producao)", () => {
     const html = renderToString(h(ProducaoTab));
-    expect(html).toContain("Produção");
-    expect(html).toContain("Carregando");
+    expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
   it("EstoqueTab renders the loading shell (fetches /rebanho/estoque/*)", () => {
     const html = renderToString(h(EstoqueTab));
-    expect(html).toContain("Estoque");
-    expect(html).toContain("Carregando");
+    expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
   it("CustoProducaoTab renders the loading shell (fetches /rebanho/custo-producao)", () => {
     const html = renderToString(h(CustoProducaoTab));
-    expect(html).toContain("Custo de Produção");
-    expect(html).toContain("Carregando");
-    expect(html).toContain("Custo de sanidade");
+    expect(html).toContain("Carregando");           // shell de loading (título de topo removido)
+    expect(html).toContain("Custo de sanidade");    // seção sempre visível
   });
 
   it("DashboardView renders the loading shell (it now fetches live)", () => {
     // A view agora busca /rebanho/dashboard via useDashboard; em SSR (sem fetch)
     // renderiza o shell de carregamento sem lançar.
     const html = renderToString(h(DashboardView, { onNav: () => {} }));
-    expect(html).toContain("Dashboard");
-    expect(html).toContain("Carregando");
+    expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
   it("IaView renders chat, suggestions and the insights feed safely", () => {
@@ -109,8 +104,7 @@ describe("render smoke", () => {
 
   it("NutricaoTab renders Lotes e Dietas (fetches live)", () => {
     const html = renderToString(h(NutricaoTab));
-    expect(html).toContain("Nutrição");
-    expect(html).toContain("Lotes");
+    expect(html).toContain("Lotes"); // título de topo removido; seções Lotes/Dietas permanecem
     expect(html).toContain("Dietas");
   });
 

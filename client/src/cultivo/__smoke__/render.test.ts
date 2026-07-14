@@ -13,7 +13,9 @@ describe("cultivo render smoke", () => {
   for (const aba of ABAS) {
     it(`CultivoContent renderiza a sub-aba ${aba}`, () => {
       const html = renderToString(h(CultivoContent, { aba, onNavMil: () => {} }));
-      expect(html).toContain("Cultivo · milho");
+      // Título de topo removido do produto — a casca `rb` prova que renderizou
+      // sem lançar (renderToString propaga qualquer throw dos filhos).
+      expect(html).toContain('class="rb"');
     });
   }
 });
