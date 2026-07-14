@@ -51,6 +51,7 @@ export interface UsuarioSessao {
   flags: string[];
   status: string;
   dono: boolean;
+  ultimoAcesso?: string | null;
 }
 
 export function getUsuario(): UsuarioSessao | null {
