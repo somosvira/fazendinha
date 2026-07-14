@@ -529,14 +529,21 @@ model EventoReprodutivo {
 }
 
 model Lactacao {
-  id       Int       @id @default(autoincrement())
-  animal   Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId Int
-  numero   Int
-  dtInicio DateTime  @db.Date
-  dtFim    DateTime? @db.Date
+  id              Int       @id @default(autoincrement())
+  animal          Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId        Int
+  numero          Int       // ordem da lactação (ORDEMLACTACAO ou cronológica)
+  dtInicio        DateTime  @db.Date
+  dtFim           DateTime? @db.Date   // null = em curso
+  motivoSecagem   String?               // MOTIVOSECAGEM.DESCRICAO
+  tipoAleitamento String?               // TIPOALEITAMENTO ('A'…)
+  induzida        Boolean   @default(false)
+  producaoTotal   Decimal?  @db.Decimal(10, 2)  // litros no ciclo (só última hoje)
+  producao305     Decimal?  @db.Decimal(10, 2)
+  duracaoDias     Int?
+  propriedadeId   Int?
 
-  @@index([animalId])
+  @@index([animalId, numero])
 }
 
 // Pesagens corporais (Ideagri PESO) — peso e ganho médio diário (GMD) por data.
