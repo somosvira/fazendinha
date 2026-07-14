@@ -169,24 +169,27 @@ function moduloOfTab(t: Tab): ModuloId | null {
 // JS) — por isso estas constantes precisam conter os nomes de classe já
 // escritos por extenso (sem `${...}` template), senão a CSS correspondente
 // nunca é gerada (utilitário "desconhecido", descartado silenciosamente).
+// Cada constante do trilho tem DUAS gatilhos: a faixa 901–1100px (media query,
+// auto) E o colapso MANUAL (.side-collapsed no .app, via toggle no header). O
+// colapso manual não tem hover-expand — fica ícone-only até o toggle reverter.
 const RAIL_ICON_BTN =
-  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100";
+  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100 [.side-collapsed_&]:justify-center [.side-collapsed_&]:gap-0 [.side-collapsed_&]:px-2 [.side-collapsed_&]:py-2.5";
 // item/módulo ativo dentro da faixa colapsada: mantém só o realce de fundo (sem
 // barrinha ::before, que fica escondida na largura estreita).
 const RAIL_ACTIVE =
-  "min-[901px]:max-[1100px]:before:hidden min-[901px]:max-[1100px]:bg-[rgba(232,220,196,0.10)]";
+  "min-[901px]:max-[1100px]:before:hidden min-[901px]:max-[1100px]:bg-[rgba(232,220,196,0.10)] [.side-collapsed_&]:before:hidden [.side-collapsed_&]:bg-[rgba(232,220,196,0.10)]";
 // hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
 const RAIL_LABEL =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex";
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex [.side-collapsed_&]:hidden";
 const RAIL_GROUP =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block";
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
 const RAIL_BLOCK =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block";
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
 const RAIL_INLINE_FLEX =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline-flex min-[901px]:max-[1100px]:group-focus-within:inline-flex";
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline-flex min-[901px]:max-[1100px]:group-focus-within:inline-flex [.side-collapsed_&]:hidden";
 // chevron `›` dos itens de clique único — some na faixa colapsada.
 const RAIL_HIDE =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline";
+  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline [.side-collapsed_&]:hidden";
 
 /** Item de navegação (clique único). `chevron` mostra o `›` do protótipo nos
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
@@ -336,13 +339,10 @@ export function AppSidebar({
     return () => mq.removeEventListener("change", onChange);
   }, [mobileOpen, onMobileToggle]);
 
-  // relabel financeiro: "IA" -> "IA financeira". "Caixinha" dobrou dentro de
-  // Gastos (sub-aba) e "Categorias" dentro de Configurações — nenhuma das duas
-  // aparece como item solto na sidebar.
+  // "Caixinha" dobrou dentro de Gastos (sub-aba) e "Categorias" dentro de
+  // Configurações — nenhuma das duas aparece como item solto na sidebar.
   const DOBRADAS = new Set<Tab>(["caixinha", "plano"]);
-  const gestao = financeiro
-    .filter((t) => !DOBRADAS.has(t.id))
-    .map((t) => (t.id === "ia" ? { ...t, label: "IA financeira" } : t));
+  const gestao = financeiro.filter((t) => !DOBRADAS.has(t.id));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
 
@@ -350,8 +350,8 @@ export function AppSidebar({
 
   // Cabeçalho da sidebar: marca Terrano + seletor de fazenda/sítio.
   const sideHead = (
-    <div className="flex-none border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2">
-      <div className="ah-brand flex items-center gap-2.5 px-1.5 pb-3 min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:px-0">
+    <div className="flex-none border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+      <div className="ah-brand flex items-center gap-2.5 px-1.5 pb-3 min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:justify-center [.side-collapsed_&]:px-0">
         <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
         <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>
           Terrano
@@ -362,7 +362,7 @@ export function AppSidebar({
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
         <GroupLabel>Gestão</GroupLabel>
         {gestao.map((t) => (
@@ -397,7 +397,7 @@ export function AppSidebar({
   // (Geral · Cadastros · Categorias · Acessos como sub-abas lá dentro). Fica ativo
   // em qualquer uma dessas rotas dobradas.
   const sideFoot = (
-    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1100px]:px-2">
+    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
         <Item
           id="config" label="Configurações" current={current} onNav={nav} chevron

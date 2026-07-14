@@ -176,6 +176,16 @@ export function App() {
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
+  const [sideColapsada, setSideColapsada] = useState<boolean>(() => {
+    try { return localStorage.getItem("side-collapsed") === "1"; } catch { return false; }
+  });
+  const toggleSidebar = () =>
+    setSideColapsada((v) => {
+      const n = !v;
+      try { localStorage.setItem("side-collapsed", n ? "1" : "0"); } catch { /* noop */ }
+      return n;
+    });
   // Sítio ativo (multi-propriedade) — governa TODO o app (rebanho, financeiro,
   // dashboard). Trocar grava no escopo compartilhado (header X-Propriedade-Id) e
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
@@ -356,12 +366,14 @@ export function App() {
           }}
         />
       )}
-    <div className="app">
+    <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <Header
         user={effectiveUser}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        colapsada={sideColapsada}
+        onToggleColapsar={toggleSidebar}
         onAbrirBusca={() => setBuscaAberta(true)}
         onPreferencias={() => setTab("config")}
         onSair={onSair}
