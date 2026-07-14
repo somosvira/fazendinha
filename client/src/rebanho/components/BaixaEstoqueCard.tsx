@@ -10,6 +10,7 @@ import type { Animal } from "../types";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebPill } from "@/components/rb/RebPrimitives";
 
 interface Props {
@@ -155,10 +156,9 @@ export function BaixaEstoqueCard({
         </dl>
 
         <RebField label="Produto do estoque a abater">
-          <select
-            className="rb-field-select"
+          <RebSelect
             value={produtoId ?? ""}
-            onChange={(e) => setProdutoId(e.target.value ? Number(e.target.value) : null)}
+            onChange={(v) => setProdutoId(v ? Number(v) : null)}
             disabled={carregando}
           >
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>
@@ -167,7 +167,7 @@ export function BaixaEstoqueCard({
                 {p.nome} ({p.tipo.toLowerCase()} · {p.unidade})
               </option>
             ))}
-          </select>
+          </RebSelect>
         </RebField>
 
         {produtoSel && (

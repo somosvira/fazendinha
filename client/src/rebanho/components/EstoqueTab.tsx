@@ -9,6 +9,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -159,16 +160,15 @@ export function EstoqueTab() {
             onChange={(e) => setBusca(e.target.value)}
             style={{ flex: "1 1 240px", maxWidth: 360 }}
           />
-          <select
-            className={`${REB_FIELD_BOXED} rb-field-select`}
+          <RebSelect
+            className={`${REB_FIELD_BOXED} basis-[180px] grow-0 shrink`}
             value={setorFiltro}
-            onChange={(e) => setSetorFiltro(e.target.value)}
-            style={{ flex: "0 1 180px" }}
+            onChange={(v) => setSetorFiltro(v)}
             aria-label="Filtrar por setor"
           >
             <option value="">Todos os setores</option>
             {SETORES_ESTOQUE.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
+          </RebSelect>
           <button
             type="button"
             className={REB_CHIP_Q}
