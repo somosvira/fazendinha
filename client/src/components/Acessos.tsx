@@ -1,25 +1,46 @@
 /* Rio Novo — Acessos (controle de permissões, admin).
- * Port de src/components/Acessos.jsx. Lê PAPEIS/ABAS/FLAGS de data/acessos.
- */
+ * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
+ * mudança via PATCH. Convite/reset devolvem um LINK copiável (não há e-mail
+ * automático) — o dono envia por WhatsApp ou como preferir.
+ * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
-import { useState } from "react";
-import { ABAS, FLAGS, PAPEIS, type User } from "../data/acessos";
+import { useEffect, useState } from "react";
+import { ABAS, FLAGS, PAPEIS } from "../data/acessos";
+import {
+  listarUsuarios,
+  criarUsuario,
+  atualizarUsuario,
+  revogarUsuario,
+  gerarConvite,
+} from "../api/auth";
+import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/* status-badge base + tom por status (era .status-badge{.ativo|.pendente|.inativo}) */
+/* inicial derivada do nome (o DTO real não traz `inicial`) */
+const inicialDe = (nome: string) => nome.trim()[0]?.toUpperCase() ?? "?";
+
+/* último acesso: ISO string ou null → data pt-BR ou travessão */
+function fmtUltimoAcesso(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+/* status-badge base + tom por status (o DTO usa MAIÚSCULAS) */
 const STATUS_BADGE_BASE =
   "whitespace-nowrap border border-current px-[9px] py-[3px] text-[11px] tracking-[0.06em]";
-function StatusBadge({ status }: { status: User["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    ativo: { label: "Ativo", cls: "text-[color:var(--pos)]" },
-    pendente: { label: "Convite pendente", cls: "text-[color:var(--warn)]" },
-    inativo: { label: "Inativo", cls: "text-[color:var(--ink-mute)]" },
+    ATIVO: { label: "Ativo", cls: "text-[color:var(--pos)]" },
+    PENDENTE: { label: "Convite pendente", cls: "text-[color:var(--warn)]" },
+    INATIVO: { label: "Inativo", cls: "text-[color:var(--ink-mute)]" },
   };
-  const s = map[status] || map.ativo;
+  const s = map[status] || map.ATIVO;
   return <span className={STATUS_BADGE_BASE + " " + s.cls}>{s.label}</span>;
 }
 
@@ -115,7 +136,7 @@ function InviteModal({
             </div>
           </div>
           <div className="caption" style={{ fontStyle: "italic" }}>
-            A pessoa recebe um e-mail com link de acesso. Você pode ajustar exatamente o que ela vê depois de convidar.
+            Você vai receber um link para enviar à pessoa. Você pode ajustar exatamente o que ela vê depois de convidar.
           </div>
         </div>
         <div className="modal-foot">
@@ -127,7 +148,7 @@ function InviteModal({
             disabled={!podeEnviar}
             onClick={() => { setTouched(true); if (podeEnviar) onInvite({ nome: nome.trim(), email: emailNorm, papel }); }}
           >
-            Enviar convite →
+            Criar convite →
           </button>
         </div>
       </div>
@@ -138,15 +159,13 @@ function InviteModal({
 function PermissionEditor({
   user,
   onChange,
-  onViewAs,
   onResendInvite,
   onRevoke,
 }: {
-  user: User;
-  onChange: (u: User) => void;
-  onViewAs: (id: string) => void;
-  onResendInvite: (u: User) => void;
-  onRevoke: (u: User) => void;
+  user: UsuarioSessao;
+  onChange: (u: UsuarioSessao) => void;
+  onResendInvite: (u: UsuarioSessao) => void;
+  onRevoke: (u: UsuarioSessao) => void;
 }) {
   const applyPreset = (papelId: string) => {
     const preset = PAPEIS[papelId];
@@ -178,7 +197,7 @@ function PermissionEditor({
     <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
       <div className="flex items-center justify-between border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
         <div className="flex items-center gap-[14px]">
-          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{user.inicial}</div>
+          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
           <div>
             <div className="flex items-center gap-2.5 font-serif text-[22px] tracking-[-0.01em]">
               {user.nome}
@@ -195,7 +214,9 @@ function PermissionEditor({
           <span className="font-serif font-medium" style={{ fontSize: 17 }}>
             Acesso total e irrevogável.
           </span>
-          <p className="mt-2 max-w-[56ch] text-[15px] leading-[1.6] text-ink-3">Como proprietário, Marco vê tudo e é o único que gerencia acessos. Esse papel não pode ser reduzido.</p>
+          <p className="mt-2 max-w-[56ch] text-[15px] leading-[1.6] text-ink-3">
+            Como proprietário, {user.nome.split(" ")[0]} vê tudo e é o único que gerencia acessos. Esse papel não pode ser reduzido.
+          </p>
         </div>
       ) : (
         <>
@@ -276,20 +297,15 @@ function PermissionEditor({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-4 px-[26px] py-5">
-            <button className="btn-secondary" onClick={() => onViewAs(user.id)}>
-              Ver o sistema como {user.nome.split(" ")[0]} →
-            </button>
-            <div className="flex gap-2.5">
-              {user.status === "pendente" && (
-                <button className="btn-ghost" onClick={() => onResendInvite(user)}>
-                  Reenviar convite
-                </button>
-              )}
-              <button className="btn-ghost danger" onClick={() => onRevoke(user)}>
-                Revogar acesso
+          <div className="flex items-center justify-end gap-2.5 px-[26px] py-5">
+            {user.status === "PENDENTE" && (
+              <button className="btn-ghost" onClick={() => onResendInvite(user)}>
+                Gerar novo link
               </button>
-            </div>
+            )}
+            <button className="btn-ghost danger" onClick={() => onRevoke(user)}>
+              Revogar acesso
+            </button>
           </div>
         </>
       )}
@@ -297,51 +313,63 @@ function PermissionEditor({
   );
 }
 
-export function Acessos({
-  users,
-  setUsers,
-  onViewAs,
-}: {
-  users: User[];
-  setUsers: (u: User[]) => void;
-  onViewAs: (id: string) => void;
-}) {
+export function Acessos() {
   const toast = useToast();
-  const [selId, setSelId] = useState(users[0].id);
+  const [users, setUsers] = useState<UsuarioSessao[]>([]);
+  const [selId, setSelId] = useState<number | null>(null);
   const [showInvite, setShowInvite] = useState(false);
-  const [revoking, setRevoking] = useState<User | null>(null);
+  const [revoking, setRevoking] = useState<UsuarioSessao | null>(null);
+  const [conviteLink, setConviteLink] = useState<string | null>(null);
 
-  const sel = users.find((u) => u.id === selId) || users[0];
-  const ativos = users.filter((u) => u.status === "ativo").length;
-  const pendentes = users.filter((u) => u.status === "pendente").length;
+  useEffect(() => {
+    listarUsuarios()
+      .then((us) => {
+        setUsers(us);
+        setSelId((cur) => cur ?? us[0]?.id ?? null);
+      })
+      .catch((e) => toast.error("Não foi possível carregar os acessos", e instanceof Error ? e.message : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const updateUser = (next: User) => setUsers(users.map((u) => (u.id === next.id ? next : u)));
-  const invite = ({ nome, email, papel }: { nome: string; email: string; papel: string }) => {
-    const preset = PAPEIS[papel];
-    const id = "u" + users.length + "-" + nome.trim().toLowerCase().replace(/\s+/g, "");
-    const novo: User = {
-      id,
-      nome,
-      email,
-      inicial: nome.trim()[0]?.toUpperCase() || "?",
-      papel,
-      status: "pendente",
-      ultimoAcesso: "convite enviado agora",
-      abas: [...preset.abas],
-      flags: [...preset.flags],
-    };
-    setUsers([...users, novo]);
-    setSelId(id);
-    setShowInvite(false);
-    toast.success("Convite enviado", `${nome.split(" ")[0]} recebeu o link em ${email}.`);
+  const sel = users.find((u) => u.id === selId) ?? users[0] ?? null;
+  const ativos = users.filter((u) => u.status === "ATIVO").length;
+  const pendentes = users.filter((u) => u.status === "PENDENTE").length;
+
+  const updateUser = async (next: UsuarioSessao) => {
+    // otimista: reflete na UI e persiste; em erro, avisa (a próxima carga corrige).
+    setUsers((us) => us.map((u) => (u.id === next.id ? next : u)));
+    try {
+      const salvo = await atualizarUsuario(next.id, { papel: next.papel, abas: next.abas, flags: next.flags });
+      setUsers((us) => us.map((u) => (u.id === salvo.id ? salvo : u)));
+    } catch (e) {
+      toast.error("Não foi possível salvar", e instanceof Error ? e.message : "");
+    }
   };
 
-  const resendInvite = (u: User) => {
-    setUsers(users.map((x) => (x.id === u.id ? { ...x, ultimoAcesso: "convite reenviado agora" } : x)));
-    toast.info("Convite reenviado", `Novo link foi enviado para ${u.email}.`);
+  const invite = async ({ nome, email, papel }: { nome: string; email: string; papel: string }) => {
+    try {
+      const { usuario, conviteLink: link } = await criarUsuario(nome, email, papel);
+      setUsers((us) => [...us, usuario]);
+      setSelId(usuario.id);
+      setShowInvite(false);
+      setConviteLink(link);
+      toast.success("Convite criado", "Copie o link e envie para a pessoa.");
+    } catch (e) {
+      toast.error("Não foi possível convidar", e instanceof Error ? e.message : "");
+    }
   };
 
-  const confirmRevoke = (u: User) => {
+  const resendInvite = async (u: UsuarioSessao) => {
+    try {
+      const link = await gerarConvite(u.id);
+      setConviteLink(link);
+      toast.info("Novo link gerado", "Copie e reenvie para a pessoa.");
+    } catch (e) {
+      toast.error("Falha ao gerar link", e instanceof Error ? e.message : "");
+    }
+  };
+
+  const confirmRevoke = (u: UsuarioSessao) => {
     if (u.dono) {
       toast.error("Não é possível revogar", "O acesso do proprietário é irrevogável.");
       return;
@@ -349,19 +377,18 @@ export function Acessos({
     setRevoking(u);
   };
 
-  const doRevoke = () => {
+  const doRevoke = async () => {
     if (!revoking) return;
-    const u = revoking;
-    const sobra = users.filter((x) => x.id !== u.id);
-    setUsers(sobra);
-    if (selId === u.id) setSelId(sobra[0]?.id || "");
-    setRevoking(null);
-    toast.success("Acesso revogado", `${u.nome.split(" ")[0]} não tem mais acesso à fazenda.`, {
-      action: {
-        label: "Desfazer",
-        onClick: () => setUsers([...sobra, u]),
-      },
-    });
+    const alvo = revoking;
+    try {
+      await revogarUsuario(alvo.id);
+      setUsers((us) => us.map((u) => (u.id === alvo.id ? { ...u, status: "INATIVO" } : u)));
+      setRevoking(null);
+      toast.success("Acesso revogado", `${alvo.nome.split(" ")[0]} não tem mais acesso à fazenda.`);
+    } catch (e) {
+      toast.error("Não foi possível revogar", e instanceof Error ? e.message : "");
+      setRevoking(null);
+    }
   };
 
   const existingEmails = users.map((u) => u.email.trim().toLowerCase()).filter(Boolean);
@@ -388,9 +415,38 @@ export function Acessos({
         </div>
       </div>
 
+      {conviteLink && (
+        <div className="mb-7 border border-[color:var(--rule)] bg-[color:var(--bg-card-2)] p-4">
+          <div className="mb-2 text-[12px] uppercase tracking-[0.14em] text-ink-3">Link de acesso</div>
+          <div className="flex gap-2">
+            <input
+              readOnly
+              value={conviteLink}
+              className="field-input flex-1 text-[13px]"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                void navigator.clipboard?.writeText(conviteLink);
+                toast.info("Link copiado", "");
+              }}
+            >
+              Copiar
+            </button>
+          </div>
+          <div className="caption mt-2" style={{ fontStyle: "italic" }}>
+            Envie por WhatsApp ou como preferir. Válido por 7 dias.
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-[380px_1fr] items-start gap-8 pb-[60px] max-[1100px]:grid-cols-1">
         <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
           <div className="border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[18px] py-[14px] text-[11px] uppercase tracking-[0.16em] text-ink-3">Equipe & convidados</div>
+          {users.length === 0 && (
+            <div className="px-[18px] py-[22px] text-[13px] text-ink-3">Ninguém por aqui ainda. Convide a primeira pessoa.</div>
+          )}
           {users.map((u) => (
             <button
               key={u.id}
@@ -400,7 +456,7 @@ export function Acessos({
               }
               onClick={() => setSelId(u.id)}
             >
-              <div className="grid h-[42px] w-[42px] place-items-center rounded-full bg-mast font-serif text-[18px] text-mast-ink">{u.inicial}</div>
+              <div className="grid h-[42px] w-[42px] place-items-center rounded-full bg-mast font-serif text-[18px] text-mast-ink">{inicialDe(u.nome)}</div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 font-sans text-[15px] font-medium text-[color:var(--ink)]">
                   {u.nome}
@@ -412,19 +468,24 @@ export function Acessos({
               </div>
               <div className="flex flex-col items-end gap-[5px]">
                 <StatusBadge status={u.status} />
-                <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{u.ultimoAcesso}</span>
+                <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{fmtUltimoAcesso(u.ultimoAcesso)}</span>
               </div>
             </button>
           ))}
         </div>
 
-        <PermissionEditor
-          user={sel}
-          onChange={updateUser}
-          onViewAs={onViewAs}
-          onResendInvite={resendInvite}
-          onRevoke={confirmRevoke}
-        />
+        {sel ? (
+          <PermissionEditor
+            user={sel}
+            onChange={updateUser}
+            onResendInvite={resendInvite}
+            onRevoke={confirmRevoke}
+          />
+        ) : (
+          <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)] px-[26px] py-[30px] text-[15px] text-ink-3">
+            Selecione uma pessoa para editar as permissões.
+          </div>
+        )}
       </div>
 
       {showInvite && (
