@@ -52,10 +52,16 @@ export const usuariosRouter = new Hono()
     }
   })
   .post("/usuarios/:id/convite", async (c) => {
-    const conviteLink = await gerarLinkConvite(Number(c.req.param("id")));
-    return c.json({ conviteLink });
+    try {
+      return c.json({ conviteLink: await gerarLinkConvite(Number(c.req.param("id"))) });
+    } catch {
+      return c.json({ error: "não foi possível gerar o link — usuário inválido" }, 422);
+    }
   })
   .post("/usuarios/:id/reset", async (c) => {
-    const resetLink = await gerarLinkReset(Number(c.req.param("id")));
-    return c.json({ resetLink });
+    try {
+      return c.json({ resetLink: await gerarLinkReset(Number(c.req.param("id"))) });
+    } catch {
+      return c.json({ error: "não foi possível gerar o link — usuário inválido" }, 422);
+    }
   });
