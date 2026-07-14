@@ -38,6 +38,13 @@ export async function propriedadePrincipalId(): Promise<number> {
   return p.id;
 }
 
+// Escopo default de leitura quando NÃO há request HTTP para consultar (ex.:
+// mensagens do WhatsApp): 1 sítio → a principal (invisível); N → consolidado.
+export async function escopoPadraoLeitura(): Promise<number | null> {
+  const total = await prisma.propriedade.count({ where: { ativo: true } });
+  return total <= 1 ? propriedadePrincipalId() : null;
+}
+
 // Escopo de LEITURA a partir do request (header X-Propriedade-Id ou ?propriedadeId=):
 //   explícito            → aquele id
 //   ausente + 1 sítio    → a principal (invisível)
@@ -48,8 +55,7 @@ export async function resolverEscopoLeitura(c: Context): Promise<number | null> 
     const id = Number(raw);
     if (Number.isInteger(id)) return id;
   }
-  const total = await prisma.propriedade.count({ where: { ativo: true } });
-  return total <= 1 ? propriedadePrincipalId() : null;
+  return escopoPadraoLeitura();
 }
 
 // Garante a fundação em runtime, IDEMPOTENTE. Necessário porque prod aplica o

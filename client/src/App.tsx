@@ -186,6 +186,43 @@ export function App() {
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
 
+  // Deep-link da IA (chat): filtros aplicados numa tela via query string
+  // (ex.: /gastos?status=vencidas). Inicializa da URL no load/reload.
+  const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const sp = new URLSearchParams(window.location.search);
+    if (![...sp.keys()].length) return null;
+    const t = pathToTab(window.location.pathname);
+    return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
+  });
+
+  // Navega a partir de um link da IA ("/caminho?filtros"): troca a aba e guarda os
+  // filtros pra tela consumir na montagem. `id=` em módulo de cockpit (reb/pla/cor)
+  // reaproveita o deepLink do ⌘K; o resto vira filtros de tabela (piloto: /gastos).
+  const navegarDeepLink = (url: string) => {
+    const qi = url.indexOf("?");
+    const path = qi >= 0 ? url.slice(0, qi) : url;
+    const query = qi >= 0 ? url.slice(qi + 1) : "";
+    const t = pathToTab(path);
+    if (!t) return;
+    const filtros = Object.fromEntries(new URLSearchParams(query).entries());
+    const s = String(t);
+    const temCockpit = s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-");
+    if (filtros.id && temCockpit) {
+      setDeepLink({ tab: t, id: filtros.id });
+      setDeepLinkFiltros(null);
+    } else {
+      setDeepLink(null);
+      setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
+    }
+    setTab(t);
+    const alvo = tabToPath(t) + (query ? `?${query}` : "");
+    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+  };
+
+  // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
+  const navegarTab = (t: Tab) => { setDeepLinkFiltros(null); setTab(t); };
+
   // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
   // resolverem, com um tempo mínimo pra não piscar. Some com fade-out.
   const [booting, setBooting] = useState(true);
@@ -307,12 +344,26 @@ export function App() {
     : (
       <>
         {tab === "dashboard" &&
-          (canSee("dashboard") ? <Dashboard onNav={setTab} user={effectiveUser} /> : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
+          (canSee("dashboard")
+            ? <Dashboard
+                key={deepLinkFiltros?.tab === "dashboard" ? JSON.stringify(deepLinkFiltros.filtros) : "dashboard"}
+                onNav={setTab}
+                user={effectiveUser}
+                filtrosIniciais={deepLinkFiltros?.tab === "dashboard" ? deepLinkFiltros.filtros : undefined}
+              />
+            : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
         {/* Gastos vira hub: Contas + Caixinha (sub-aba dobrada). /caixinha ainda
             resolve — abre o hub na sub-aba Caixinha. */}
         {(tab === "gastos" || tab === "caixinha") &&
           (canSee("gastos") || (tab === "caixinha" && canSee("caixinha"))
-            ? <Gastos onNav={setTab} user={effectiveUser} sub={tab === "caixinha" ? "caixinha" : "contas"} podeCaixinha={canSee("caixinha")} />
+            ? <Gastos
+                key={deepLinkFiltros?.tab === "gastos" ? JSON.stringify(deepLinkFiltros.filtros) : "gastos"}
+                onNav={setTab}
+                user={effectiveUser}
+                sub={tab === "caixinha" ? "caixinha" : "contas"}
+                podeCaixinha={canSee("caixinha")}
+                filtrosIniciais={deepLinkFiltros?.tab === "gastos" ? deepLinkFiltros.filtros : undefined}
+              />
             : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {tab === "relatorio" &&
@@ -368,7 +419,7 @@ export function App() {
       />
       <AppSidebar
         current={tab}
-        onNav={setTab}
+        onNav={navegarTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
         podeVerFolha={canSeeFolha}
@@ -419,7 +470,7 @@ export function App() {
           return canSee(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <ChatWidget />}
+      {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
     </>
   );

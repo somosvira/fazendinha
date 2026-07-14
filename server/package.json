@@ -24,6 +24,8 @@
     "import": "tsx --env-file=.env prisma/import.ts",
     "import:rebanho": "tsx --env-file=.env prisma/import-rebanho.ts",
     "seed:all": "tsx --env-file=.env prisma/seed-all.ts",
+    "bateria:gabarito": "tsx --env-file=.env scripts/bateria-ia.gabarito.ts",
+    "bateria:run": "tsx scripts/bateria-ia.run.ts",
     "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts"
   },
   "prisma": {

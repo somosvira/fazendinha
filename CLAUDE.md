@@ -76,7 +76,7 @@ Não há target `test` na raiz — rodar por workspace via `--filter`.
 - `SHARED_ACCESS_TOKEN` — senha compartilhada de porta de entrada (piloto, ≥16 chars). Se setado, todas as rotas exceto `/api/health` e `/api/whatsapp/*` exigem `Authorization: Bearer <token>`. Vazio = porta aberta (dev). **Não** é sistema de usuários — é auth mínima até escalar.
 - `OPENAI_API_KEY` (+ `OPENAI_MODEL`, default `gpt-4o`) — cérebro do bot e da IA do rebanho. Sem a chave: bot desligado (503) e IA em modo demonstração (regras locais).
 - `WHATSAPP_*` (`VERIFY_TOKEN`, `ACCESS_TOKEN`, `PHONE_NUMBER_ID`, `APP_SECRET`) — canal Meta Cloud API; todos necessários p/ o webhook.
-- `DATABASE_URL_READONLY` — role só-leitura p/ a ferramenta `consulta_sql` do bot. Sem ela o escape hatch de SQL fica desligado.
+- (removida) `DATABASE_URL_READONLY`/`consulta_sql` não existem mais — o bot consulta via motor estruturado (`server/src/services/consulta/`), sem SQL gerado pelo LLM.
 - `STORAGE_DRIVER` (`local`|`r2`) — anexos de nota fiscal. `r2` exige `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NOTAS` (validado por `superRefine`). `local` guarda em `LOCAL_STORAGE_DIR` (`.uploads/`).
 - `OCR_ENABLED` — Tesseract; deixe `false` em dev p/ boot rápido (evita baixar ~70MB de dados de português).
 - `DASHBOARD_MESES_QUEIMA` — meses na média da "queima mensal" do fôlego de caixa (default 6).
