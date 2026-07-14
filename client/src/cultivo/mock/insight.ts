@@ -5,10 +5,8 @@ export interface IaInsight {
   acoes?: { label: string }[];
 }
 
-export function insightDoMilho(): IaInsight {
-  return {
-    texto:
-      "A <b>safrinha</b> está com o custeio adiantado, mas <b>sem produção de grão lançada</b> ainda — assim que a colheita entrar, o custo por saca fecha sozinho. Os silos de silagem seguem com folga pro trato da seca.",
-    acoes: [{ label: "Ver custo de produção" }],
-  };
+// Banda de insight de IA ocultada até haver IA real — o texto era fabricado (mock).
+// Reversível: restaurar o objeto retornado religa a banda.
+export function insightDoMilho(): IaInsight | undefined {
+  return undefined;
 }

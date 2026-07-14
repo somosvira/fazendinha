@@ -50,8 +50,8 @@ export const COMANDOS: Comando[] = [
   { id: "fin-gastos", tab: "gastos", label: "Gastos", grupo: "Financeiro", sinonimos: ["despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Tabela de lançamentos e notas fiscais" },
   { id: "fin-lancar", tab: "lancar", label: "Lançar", grupo: "Financeiro", sinonimos: ["lançamento", "registrar", "entrada", "receita", "saída", "nova nota"], descricao: "Registrar entrada (receita) ou saída (gasto)" },
   { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
-  { id: "fin-plano", tab: "plano", label: "Categorias", grupo: "Financeiro", sinonimos: ["plano de contas", "plano", "categoria", "categorização", "contas", "grupos"], descricao: "Plano de contas e categorização" },
-  { id: "fin-ia", tab: "ia", label: "IA", grupo: "Financeiro", sinonimos: ["ia", "inteligência artificial", "assistente", "perguntar", "chat", "números", "financeira"], descricao: "Pergunte sobre os números" },
+  // "fin-plano"/"fin-ia" removidos: abas Categorias e IA financeira ocultas até
+  // terem backend real (ver data/acessos.ts).
   { id: "fin-relatorio", tab: "relatorio", label: "Relatório", grupo: "Financeiro", sinonimos: ["relatório gerencial", "editorial", "executivo", "dre", "fluxo de caixa", "leite paga o leite"], descricao: "Relatório gerencial editorial" },
 
   // — Rebanho leiteiro (MODULOS[rebanho].subs) —
@@ -104,7 +104,6 @@ export const COMANDOS: Comando[] = [
 
   // — Ações (atalhos para a aba certa) —
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
-  { id: "acao-plano-contas", tab: "plano", label: "Plano de contas", grupo: "Ações", acao: true, sinonimos: ["categorias", "categorizar", "grupos", "contas"], descricao: "Abrir o plano de contas" },
   { id: "acao-novo-talhao", tab: "pla-talhao", label: "Novo talhão", grupo: "Ações", acao: true, sinonimos: ["cadastrar talhão", "nova lavoura", "nova gleba", "novo plantio", "nova área"], descricao: "Cadastrar um novo talhão" },
   { id: "acao-novo-animal", tab: "reb-animal", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal" },
   { id: "acao-relatorio", tab: "relatorio", label: "Relatório executivo", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "exportar relatório", "dre", "fluxo de caixa"], descricao: "Abrir o relatório gerencial" },

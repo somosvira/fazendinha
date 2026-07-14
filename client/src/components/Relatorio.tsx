@@ -12,7 +12,7 @@
 import { ReactNode, useEffect, useId, useRef, useState } from "react";
 import { fetchDashboard, reclassificarCategoria } from "../api";
 import { reconciliarMes } from "../lib/reconciliacao";
-import { fmtMoney, fmtBR } from "./charts";
+import { fmtMoney, fmtBR, fmtBRL } from "./charts";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 
@@ -490,7 +490,7 @@ function AtencaoCard({
         >
           {sevLabel}
         </span>
-        <span className="mono-nums font-serif text-lg text-foreground">R$ {(item.valor / 1000).toFixed(0)}k</span>
+        <span className="mono-nums font-serif text-lg text-foreground">{fmtBRL(item.valor)}</span>
       </div>
       <div className="font-sans text-[13px] font-medium leading-[1.35] text-foreground">{item.titulo}</div>
       <div className="font-sans text-xs leading-[1.45] text-ink-3">{item.impacto}</div>
@@ -682,9 +682,9 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           tom={leite.saldo >= 0 ? "pos" : "neg"}
           stats={[
             { label: "Receita", valor: fmtMoney(Math.round(leite.receita / 1000), { compact: false }) },
-            { label: "Custeio puro", valor: fmtMoney(Math.round(leite.custeio / 1000), { compact: false }) },
-            { label: "Preço médio", valor: "R$ 3,51/L" },
-            { label: "Custo/L", valor: "R$ 3,10/L", forte: true },
+            { label: "Custeio puro", valor: fmtMoney(Math.round(leite.custeio / 1000), { compact: false }), forte: true },
+            // Preço médio (R$/L) e Custo/L omitidos: dependem do volume de leite,
+            // que o backend financeiro ainda não modela. Reexibir só com dado real.
           ]}
           visual={
             <SparklineTendencia
@@ -703,9 +703,9 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
           resposta={cafeYtdMargem >= 0 ? `+${fmtMoney(Math.round(cafeYtdMargem / 1000))}` : fmtMoney(Math.round(cafeYtdMargem / 1000))}
           tom={cafeYtdMargem >= 0 ? "pos" : "neg"}
           stats={[
-            { label: "Receita safra", valor: fmtMoney(Math.round(cafeYtdRec / 1000), { compact: false }) },
-            { label: "Sacas", valor: "430" },
-            { label: "Preço/saca", valor: "R$ 707", forte: true },
+            { label: "Receita safra", valor: fmtMoney(Math.round(cafeYtdRec / 1000), { compact: false }), forte: true },
+            // Sacas e Preço/saca omitidos: dependem do volume colhido, que o backend
+            // financeiro ainda não modela. Reexibir só com dado real.
           ]}
           nota="Safra única (mar/26) concentra o risco."
           visual={

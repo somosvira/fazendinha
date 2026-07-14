@@ -21,6 +21,7 @@ import type { User } from "../data/acessos";
 import { PAPEIS } from "../data/acessos";
 import { DashboardSkeleton } from "./Loading";
 import { DashSectionHeader } from "./report/primitives";
+import { fmtBRL } from "./charts";
 import { cn } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,34 +86,15 @@ const ymd = (d: Date | null): string | undefined =>
   d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : undefined;
 
 /* ========== FORMAT ========== */
+// fmtBRL é o formatador canônico de reais brutos — vive em ./charts e é
+// compartilhado com o Relatório para a mesma cifra bater nas duas telas.
 
-function fmtBRL(n: number, opts: { compact?: boolean; decimals?: number } = {}): string {
-  const { compact = true, decimals } = opts;
-  if (n === 0) return "R$ 0";
-  const abs = Math.abs(n);
-  const sign = n < 0 ? "−" : "";
-  if (compact && abs >= 1_000_000) {
-    return `${sign}R$ ${(abs / 1_000_000).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} mi`;
-  }
-  if (compact && abs >= 10_000) {
-    return `${sign}R$ ${(abs / 1_000).toLocaleString("pt-BR", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })} mil`;
-  }
-  return `${sign}R$ ${abs.toLocaleString("pt-BR", {
-    minimumFractionDigits: decimals ?? 0,
-    maximumFractionDigits: decimals ?? 0,
-  })}`;
-}
-
-export { fmtBRL };
-
+// Paleta categórica dos gráficos (segmentos por categoria/subcategoria). As três
+// primeiras ancoram na paleta de marca (--leite/--cafe/--outros — base.css); as
+// demais são um ramp categórico derivado. Fonte única de cor de gráfico: não
+// hardcodar hex de segmento fora daqui. Aplicada só como fill/background/stroke.
 const CAT_PALETTE = [
-  "#B89A5C", "#5C3A1E", "#6B7A5C", "#D4BC85", "#8A5A30", "#93A07F",
+  "var(--leite)", "var(--cafe)", "var(--outros)", "#D4BC85", "#8A5A30", "#93A07F",
   "#A8543A", "#C9B98F", "#3D5A3D", "#8A6A20", "#6B7370", "#A8A089",
   "#7A3328", "#4A5240", "#C2A878", "#3A4341", "#9B6B43", "#7E8C6A",
   "#5F4B32", "#B0B7A0",
@@ -519,11 +501,11 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
 
 function AtividadeSplit({ R }: { R: R }) {
   const t = R.totals23m;
-  const investOutros = (R.investimentoReais ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((i: any) => i.atividade === "outros")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .reduce((s: number, i: any) => s + i.total23m, 0);
+  // Investimento de "Outros" = RN-Caminhão (imobilizado estrutural, fora de Leite/Café).
+  // Usa o MESMO campo real do payload que o KPI "Investimento" do cockpit soma
+  // (reconciliacao.ts), para que a soma dos 3 cards feche com aquele card. Antes vinha
+  // de `R.investimentoReais` (mock-only, zerava em produção) e divergia por rnCaminhao.
+  const investOutros = t.rnCaminhao;
 
   const cards = [
     { key: "leite", nome: "Leite", cor: "var(--leite)", receita: t.receitaLeite, custeio: t.custeioLeitePuro, invest: t.investLeite + t.animalAquisicao },
