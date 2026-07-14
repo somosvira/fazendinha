@@ -40,9 +40,9 @@ describe("Header", () => {
     const trigger = screen.getByLabelText("Menu da conta");
     fireEvent.pointerDown(trigger, { button: 0 });
 
-    // o menu traz AÇÕES da conta — nunca outro usuário
-    expect(await screen.findByText("Meu perfil")).toBeTruthy();
-    expect(screen.getByText("Central de ajuda")).toBeTruthy();
+    // o menu traz só AÇÕES funcionais da conta — nunca outro usuário
+    // (Meu perfil / Central de ajuda eram mock e foram removidos)
+    expect(await screen.findByText("Preferências")).toBeTruthy();
     expect(screen.getByText("Sair")).toBeTruthy();
   });
 
