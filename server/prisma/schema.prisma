@@ -1847,3 +1847,57 @@ model MovimentoCaixinha {
 
   @@index([caixinhaId, data])
 }
+
+enum StatusUsuario {
+  PENDENTE
+  ATIVO
+  INATIVO
+}
+
+enum TipoToken {
+  CONVITE
+  RESET
+}
+
+model Usuario {
+  id           Int           @id @default(autoincrement())
+  nome         String
+  email        String        @unique
+  senhaHash    String?
+  papel        String
+  abas         String[]
+  flags        String[]
+  status       StatusUsuario @default(PENDENTE)
+  dono         Boolean       @default(false)
+  ultimoAcesso DateTime?
+  sessoes      Sessao[]
+  tokens       TokenAcesso[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Sessao {
+  id        String   @id @default(cuid())
+  usuarioId Int
+  tokenHash String   @unique
+  expiraEm  DateTime
+  ultimoUso DateTime @default(now())
+  userAgent String?
+  criadaEm  DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
+
+model TokenAcesso {
+  id        String    @id @default(cuid())
+  usuarioId Int
+  tipo      TipoToken
+  tokenHash String    @unique
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
