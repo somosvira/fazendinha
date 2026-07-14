@@ -1,20 +1,12 @@
-// Middleware de auth mínima (piloto): valida `Authorization: Bearer <token>`
-// contra `env.SHARED_ACCESS_TOKEN`. Objetivo é fechar a porta durante a fase
-// de teste com o dono da fazenda — NÃO é sistema de usuários/roles/JWT.
-//
-// - Se `SHARED_ACCESS_TOKEN` não estiver setado, o middleware libera acesso
-//   (usado em dev local; simplifica o fluxo até o Bloco 5 do sprint pré-teste).
-// - Comparação com `crypto.timingSafeEqual` para evitar timing attack.
-// - Rotas isentas (health, webhook do WhatsApp) devem ser montadas ANTES do
-//   `app.use("/api/*", authMiddleware)` no `index.ts`.
-
+// Auth por sessão: resolve `Authorization: Bearer <token>` → Sessao → Usuario e
+// injeta em c.set("usuario"). Rotas isentas (health, whatsapp, auth públicas)
+// são montadas ANTES deste middleware no index.ts.
 import type { MiddlewareHandler } from "hono";
 import crypto from "node:crypto";
 import { env } from "../env.js";
-
-// Rotas que devem passar sem token: healthcheck do Render e webhook da Meta
-// (que valida por outra via — assinatura HMAC em services/whatsapp/verify.ts).
-const ISENTAS = [/^\/api\/health(?:\/|$)/, /^\/api\/whatsapp(?:\/|$)/];
+import { prisma } from "../db.js";
+import { resolverSessao, type UsuarioContexto } from "../services/auth/sessao.js";
+import { aplicarPreset } from "../services/auth/papeis.js";
 
 function bearer(header: string | undefined): string | null {
   if (!header) return null;
@@ -28,14 +20,38 @@ function timingSafeMatch(a: string, b: string): boolean {
   return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
 }
 
+// Dono sintético para a ponte da senha compartilhada (rollout). Acesso total.
+function donoSintetico(): UsuarioContexto {
+  const preset = aplicarPreset("proprietario");
+  return { id: 0, nome: "Proprietário", email: "", papel: "proprietario", abas: preset.abas, flags: preset.flags, status: "ATIVO", dono: true };
+}
+
 export const authMiddleware: MiddlewareHandler = async (c, next) => {
-  const esperado = env.SHARED_ACCESS_TOKEN;
-  if (!esperado) return next(); // dev local: porta aberta
-  const path = new URL(c.req.url).pathname;
-  if (ISENTAS.some((re) => re.test(path))) return next();
   const recebido = bearer(c.req.header("authorization"));
-  if (!recebido || !timingSafeMatch(recebido, esperado)) {
-    return c.json({ error: "não autenticado" }, 401);
+
+  // Ponte de transição: enquanto SHARED_ACCESS_TOKEN estiver setado, ele vale
+  // como acesso de dono. Remover quando as contas reais estiverem de pé.
+  if (env.SHARED_ACCESS_TOKEN && recebido && timingSafeMatch(recebido, env.SHARED_ACCESS_TOKEN)) {
+    c.set("usuario", donoSintetico());
+    return next();
   }
-  return next();
+
+  if (recebido) {
+    const usuario = await resolverSessao(recebido);
+    if (usuario) {
+      c.set("usuario", usuario);
+      return next();
+    }
+  }
+
+  // Dev local porta aberta: sem SHARED_ACCESS_TOKEN e sem nenhum usuário no banco.
+  if (!env.SHARED_ACCESS_TOKEN) {
+    const total = await prisma.usuario.count();
+    if (total === 0) {
+      c.set("usuario", donoSintetico());
+      return next();
+    }
+  }
+
+  return c.json({ error: "não autenticado" }, 401);
 };
