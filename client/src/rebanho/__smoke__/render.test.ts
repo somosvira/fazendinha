@@ -47,12 +47,15 @@ describe("render smoke", () => {
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
-  it("App renders the unified sidebar (no top bar)", () => {
+  it("App gates on login when there is no session (email + senha)", () => {
+    // Gate real de acesso: sem sessão (token + usuário), o App renderiza a tela
+    // de Login por e-mail+senha em vez do shell. A casca da sidebar continua
+    // coberta pelo smoke de AppSidebar acima. (localStorage indisponível no SSR
+    // ⇒ getToken/getUsuario = null ⇒ gate.)
     const html = renderToString(h(App));
-    expect(html).toContain("Gestão");           // grupo (handoff "Shell")
-    expect(html).toContain("Atividades");        // grupo
-    expect(html).toContain("Rebanho leiteiro"); // módulo operacional
-    expect(html).toContain("Painel");           // sub-item rebanho
+    expect(html).toContain("Fazenda Rio Novo"); // marca da tela de Login
+    expect(html).toContain("E-mail");           // campo de e-mail
+    expect(html).toContain("Senha");            // campo de senha
     expect(html).not.toContain("nav-tabs");     // top bar removida
   });
 

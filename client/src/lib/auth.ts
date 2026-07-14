@@ -39,3 +39,44 @@ export function comAuth(headers: Record<string, string> = {}): Record<string, st
   const t = getToken();
   return t ? { ...headers, authorization: `Bearer ${t}` } : headers;
 }
+
+const CHAVE_USER = "rionovo:usuario";
+
+export interface UsuarioSessao {
+  id: number;
+  nome: string;
+  email: string;
+  papel: string;
+  abas: string[];
+  flags: string[];
+  status: string;
+  dono: boolean;
+  ultimoAcesso?: string | null;
+}
+
+export function getUsuario(): UsuarioSessao | null {
+  try {
+    const raw = localStorage.getItem(CHAVE_USER);
+    return raw ? (JSON.parse(raw) as UsuarioSessao) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSessao(token: string, u: UsuarioSessao): void {
+  setToken(token);
+  try {
+    localStorage.setItem(CHAVE_USER, JSON.stringify(u));
+  } catch {
+    /* storage cheio */
+  }
+}
+
+export function clearSessao(): void {
+  clearToken();
+  try {
+    localStorage.removeItem(CHAVE_USER);
+  } catch {
+    /* ignore */
+  }
+}

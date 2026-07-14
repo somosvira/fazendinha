@@ -6,6 +6,7 @@ import { custoMOPorSetor } from "../../services/ponto/custoMOSetor.js";
 import { apurarFolha } from "../../services/ponto/folha.service.js";
 import { FuncionarioError } from "../../services/ponto/funcionarios.js";
 import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
+import { exigePermissao } from "../../middleware/permissao.js";
 import {
   criarFuncionarioSchema,
   editarFuncionarioSchema,
@@ -124,7 +125,7 @@ export const pontoRouter = new Hono()
     }
   })
   // ── Folha ─────────────────────────────────────────────────────────────────
-  .get("/ponto/folha", zValidator("query", folhaMesSchema), async (c) => {
+  .get("/ponto/folha", exigePermissao("verSalarios"), zValidator("query", folhaMesSchema), async (c) => {
     try {
       return c.json(await apurarFolha(c.req.valid("query").mes, await resolverEscopoLeitura(c)));
     } catch (e) {

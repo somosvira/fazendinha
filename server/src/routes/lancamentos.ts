@@ -13,6 +13,7 @@ import {
 import { montarDadosLancamento } from "../services/lancamentos/montar.js";
 import { listarLancamentos } from "../services/lancamentos-list.js";
 import { resolverEscopoEscrita, resolverEscopoLeitura } from "../services/propriedade.js";
+import { exigePermissao } from "../middleware/permissao.js";
 
 const schema = z.object({
   // Opcional: presente → cria o Lancamento amarrando a NF pendente; ausente →
@@ -90,6 +91,7 @@ function parseDataBR(raw: string): Date | null {
 
 export const lancamentosRouter = new Hono().post(
   "/lancamentos",
+  exigePermissao("lancar"),
   zValidator("json", schema),
   async (c) => {
     const body = c.req.valid("json");

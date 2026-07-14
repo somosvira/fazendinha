@@ -10,7 +10,6 @@
 
 import { cn } from "@/lib/utils";
 import type { Tab } from "./Shell";
-import type { User } from "../data/acessos";
 import { SubTabs, type SubTab } from "./SubTabs";
 import { ConfiguracoesView } from "../rebanho/components/ConfiguracoesView";
 import { CadastrosView } from "../rebanho/components/CadastrosView";
@@ -33,15 +32,12 @@ const SUB_BY_TAB: Partial<Record<Tab, ConfSub>> = {
   acessos: "acessos",
 };
 
-export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, users, setUsers, onViewAs }: {
+export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true }: {
   tab: Tab;
   onNav: (t: Tab) => void;
   isAdmin: boolean;
   // Categorias (plano de contas) segue o gate de permissão financeira do perfil.
   podeCategorias?: boolean;
-  users: User[];
-  setUsers: (u: User[]) => void;
-  onViewAs: (id: string) => void;
 }) {
   const tabs: SubTab<ConfSub>[] = [
     { id: "geral", label: "Geral" },
@@ -73,7 +69,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, u
       {atual === "geral" && <ConfiguracoesView />}
       {atual === "cadastros" && <CadastrosView />}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
-      {atual === "acessos" && isAdmin && <Acessos users={users} setUsers={setUsers} onViewAs={onViewAs} />}
+      {atual === "acessos" && isAdmin && <Acessos />}
     </>
   );
 }
