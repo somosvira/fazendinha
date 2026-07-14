@@ -4,6 +4,7 @@
 
 import { Hono } from "hono";
 import { listarContasAVencer, liquidarConta } from "../services/vencimentos.js";
+import { exigePermissao } from "../middleware/permissao.js";
 
 const parseDiaUTC = (s: string) => new Date(`${s}T00:00:00.000Z`);
 
@@ -25,7 +26,7 @@ export const vencimentosRouter = new Hono()
     return c.json(await listarContasAVencer(hoje));
   })
   // Marcar como paga direto do card. Body { data?: "YYYY-MM-DD" } (default agora).
-  .post("/vencimentos/:id/liquidar", async (c) => {
+  .post("/vencimentos/:id/liquidar", exigePermissao("lancar"), async (c) => {
     const id = Number(c.req.param("id"));
     if (!Number.isInteger(id) || id <= 0) return c.json({ error: "id inválido" }, 400);
     let dataLiq = new Date();
