@@ -8,7 +8,7 @@
 
 import type { Prisma } from "@prisma/client";
 
-export type OperadorFiltro = "igual" | "diferente" | "contem" | "em";
+export type OperadorFiltro = "igual" | "diferente" | "contem" | "nao_contem" | "em";
 export type LinhaBase = Record<string, unknown>;
 
 // Dimensão = coluna filtrável e/ou agrupável de uma entidade. `where` e `rotulo`
@@ -28,7 +28,15 @@ export interface DimensaoDef {
 
 export interface MetricaDef {
   descricao: string;
-  agregacao: "soma" | "media" | "contagem" | "contagem_distinta" | "min" | "max";
+  agregacao:
+    | "soma"
+    | "media"
+    | "mediana"
+    | "desvio_padrao" // populacional, mesma convenção da antiga estatisticas_lancamentos
+    | "contagem"
+    | "contagem_distinta"
+    | "min"
+    | "max";
   select?: Record<string, unknown>; // colunas que o findMany precisa trazer
   // Extrai o valor da linha crua (null = ignora a linha nesta métrica).
   // Para contagem_distinta pode devolver string (a chave de distinção).
@@ -50,6 +58,10 @@ export interface EntidadeDef {
   modelo: string; // delegate Prisma: "lancamento", "producaoLote", "animal"…
   regimes: Record<string, RegimeDef>;
   regimeDefault: string;
+  // Regra dura: métricas destes formatos EXIGEM a dimensão citada em filtros,
+  // agruparPor ou comparar.fatias — a validação rejeita e ensina (ex.: R$ sem
+  // natureza somaria créditos e débitos num número que parece "gasto").
+  exigeDimensao?: { dimensao: string; formatos: readonly string[]; mensagem: string };
   // null = entidade não particionada por sítio (o motor avisa em `observacoes`).
   escopoPropriedade: ((propriedadeId: number) => Record<string, unknown>) | null;
   dimensoes: Record<string, DimensaoDef>;
@@ -134,6 +146,16 @@ export interface GrupoResultado {
   chaves: Record<string, string>; // { categoria: "Pessoal - Salário", ... }
   tempo?: string; // "2026-03" | "2026"
   metricas: Record<string, number | null>;
+}
+
+// Estatística sobre os BUCKETS temporais de uma série (só métricas aditivas):
+// "média mensal", "mês de maior/menor saída" saem daqui, prontos.
+export interface ResumoTempoMetrica {
+  buckets: number;
+  media: number | null;
+  mediana: number | null;
+  maior: { tempo: string; valor: number } | null;
+  menor: { tempo: string; valor: number } | null;
 }
 
 export interface ComparacaoGrupo {

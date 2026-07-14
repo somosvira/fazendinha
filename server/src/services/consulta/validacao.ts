@@ -20,7 +20,7 @@ const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const LIMITE_DEFAULT = 20;
 export const LIMITE_TETO = 100;
 
-const OPERADORES: readonly OperadorFiltro[] = ["igual", "diferente", "contem", "em"];
+const OPERADORES: readonly OperadorFiltro[] = ["igual", "diferente", "contem", "nao_contem", "em"];
 
 // Shape estrutural (o semântico — nomes válidos por entidade — vem depois,
 // em código, para controlar as mensagens de erro).
@@ -211,6 +211,16 @@ export function validarConsulta(
 
   if (c.ordenarPor && !c.metricas!.includes(c.ordenarPor.alvo))
     falha(`ordenarPor.alvo deve ser uma das métricas pedidas (${listar(c.metricas!)}).`);
+
+  // Regra dura de dimensão obrigatória (ex.: R$ sem natureza mistura crédito e débito).
+  const ex = def!.exigeDimensao;
+  if (ex && c.metricas!.some((m) => ex.formatos.includes(def!.metricas[m].formato))) {
+    const presente =
+      (c.filtros ?? []).some((f) => f.dimensao === ex.dimensao) ||
+      agruparPor.includes(ex.dimensao) ||
+      (c.comparar?.tipo === "fatias" && c.comparar.dimensao === ex.dimensao);
+    if (!presente) falha(ex.mensagem);
+  }
 
   const out: ConsultaEntidade = {
     tipo: "entidade",

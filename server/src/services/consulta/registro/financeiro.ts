@@ -19,6 +19,8 @@ const condTexto = (op: OperadorFiltro, valor: string | string[]): Record<string,
       return { not: { equals: valor as string }, mode: "insensitive" };
     case "contem":
       return { contains: valor as string, mode: "insensitive" };
+    case "nao_contem": // "sem X" / "tirando X" — exclusão por termo
+      return { not: { contains: valor as string }, mode: "insensitive" };
     case "em":
       return { in: valor as string[], mode: "insensitive" };
   }
@@ -45,7 +47,8 @@ const asValor = (l: LinhaBase) => (l.valor as Prisma.Decimal | null) ?? null;
 
 export const financeiro: DominioDef = {
   nome: "financeiro",
-  descricao: "Lançamentos financeiros da fazenda (regime de caixa).",
+  descricao:
+    "Lançamentos financeiros da fazenda (regime de caixa). REGRA DE NATUREZA: perguntas de gasto/despesa/custo/SAÍDA exigem filtro natureza=DEBITO; recebimento/receita/ENTRADA exigem natureza=CREDITO — NUNCA some as duas naturezas num total chamado de 'gasto' ou 'saída'. Entradas × saídas × saldo juntos = comparar {tipo:'fatias', dimensao:'natureza', valorA:'CREDITO', valorB:'DEBITO'} (delta=saldo).",
   entidades: {
     lancamento: {
       descricao:
@@ -64,6 +67,12 @@ export const financeiro: DominioDef = {
         },
       },
       regimeDefault: "realizado",
+      exigeDimensao: {
+        dimensao: "natureza",
+        formatos: ["reais"],
+        mensagem:
+          "Métricas em R$ de 'lancamento' exigem a dimensão 'natureza': FILTRE natureza=DEBITO (gastos/saídas) ou CREDITO (receitas/entradas); OU agrupe por 'natureza' (movimentação completa, um total por lado); OU compare fatias CREDITO×DEBITO (delta = saldo). Sem isso o total somaria créditos e débitos.",
+      },
       escopoPropriedade: (propriedadeId) => ({ propriedadeId }),
       dimensoes: {
         natureza: {
@@ -78,10 +87,11 @@ export const financeiro: DominioDef = {
           rotulo: (l) => String(l.natureza),
         },
         categoria: {
-          descricao: "Categoria do plano de contas (ex.: 'Pessoal - Salário')",
+          descricao:
+            "Categoria do plano de contas (ex.: 'Pessoal - Salário'). PREFIRA operador 'contem' — grafia/acentos variam ('Ração' com ç) e 'igual' exige o nome exato.",
           tipo: "texto",
           cardinalidade: "baixa",
-          operadores: ["igual", "diferente", "contem", "em"],
+          operadores: ["igual", "diferente", "contem", "nao_contem", "em"],
           agrupavel: true,
           where: (op, v) => ({ categoria: { nome: condTexto(op, v) } }),
           select: { categoria: { select: { nome: true } } },
@@ -91,7 +101,7 @@ export const financeiro: DominioDef = {
           descricao: "Grupo do plano de contas (nível acima da categoria)",
           tipo: "texto",
           cardinalidade: "baixa",
-          operadores: ["igual", "diferente", "contem", "em"],
+          operadores: ["igual", "diferente", "contem", "nao_contem", "em"],
           agrupavel: true,
           where: (op, v) => ({ categoria: { grupoCategoria: { nome: condTexto(op, v) } } }),
           select: { categoria: { select: { grupoCategoria: { select: { nome: true } } } } },
@@ -102,7 +112,7 @@ export const financeiro: DominioDef = {
           descricao: "Centro de custo / atividade (ex.: 'Leiteira', 'Café')",
           tipo: "texto",
           cardinalidade: "baixa",
-          operadores: ["igual", "diferente", "contem", "em"],
+          operadores: ["igual", "diferente", "contem", "nao_contem", "em"],
           agrupavel: true,
           where: (op, v) => ({ centroCusto: { nome: condTexto(op, v) } }),
           select: { centroCusto: { select: { nome: true } } },
@@ -112,7 +122,7 @@ export const financeiro: DominioDef = {
           descricao: "Conta bancária do lançamento",
           tipo: "texto",
           cardinalidade: "baixa",
-          operadores: ["igual", "diferente", "contem", "em"],
+          operadores: ["igual", "diferente", "contem", "nao_contem", "em"],
           agrupavel: true,
           where: (op, v) => ({ contaBancaria: { nome: condTexto(op, v) } }),
           select: { contaBancaria: { select: { nome: true } } },
@@ -122,49 +132,55 @@ export const financeiro: DominioDef = {
           descricao: "Cliente/fornecedor/funcionário do lançamento (muitos valores — agrupamento sai top-N)",
           tipo: "texto",
           cardinalidade: "alta",
-          operadores: ["igual", "diferente", "contem", "em"],
+          operadores: ["igual", "diferente", "contem", "nao_contem", "em"],
           agrupavel: true,
           where: (op, v) => ({ clienteFornecedor: { nome: condTexto(op, v) } }),
           select: { clienteFornecedor: { select: { nome: true } } },
           rotulo: (l) => nomeDe(l.clienteFornecedor as Rel, "(sem fornecedor)"),
         },
         descricao: {
-          descricao: "Texto livre do lançamento (só filtro 'contem')",
+          descricao: "Texto livre do lançamento (só filtro)",
           tipo: "texto",
           cardinalidade: "alta",
-          operadores: ["contem"],
+          operadores: ["contem", "nao_contem"],
           agrupavel: false,
           where: (op, v) => ({ descricao: condTexto(op, v) }),
         },
         // Virtuais só-filtro — mesma semântica OR tolerante das ferramentas curadas.
         busca: {
           descricao:
-            "Busca tolerante por ÁREA/assunto (ex.: 'pessoal', 'ração'): casa em categoria OU grupo OU centro de custo. Use quando não souber o nome exato.",
+            "Busca tolerante por ÁREA/assunto (ex.: 'pessoal', 'ração'): casa em categoria OU grupo OU centro de custo. Use quando não souber o nome exato. 'nao_contem' EXCLUI o que casa o termo ('sem a rescisão' = busca nao_contem 'rescisão').",
           tipo: "texto",
           cardinalidade: "alta",
-          operadores: ["contem"],
+          operadores: ["contem", "nao_contem"],
           agrupavel: false,
-          where: (_op, v) => ({
-            OR: [
-              { categoria: { nome: { contains: v as string, mode: "insensitive" } } },
-              { categoria: { grupoCategoria: { nome: { contains: v as string, mode: "insensitive" } } } },
-              { centroCusto: { nome: { contains: v as string, mode: "insensitive" } } },
-            ],
-          }),
+          where: (op, v) => {
+            const casa = {
+              OR: [
+                { categoria: { nome: { contains: v as string, mode: "insensitive" } } },
+                { categoria: { grupoCategoria: { nome: { contains: v as string, mode: "insensitive" } } } },
+                { centroCusto: { nome: { contains: v as string, mode: "insensitive" } } },
+              ],
+            };
+            return op === "nao_contem" ? { NOT: casa } : casa;
+          },
         },
         pessoa: {
           descricao:
-            "Filtro por pessoa (funcionário/fornecedor, parte do nome): casa no cliente/fornecedor OU na descrição. NÃO use 'busca' para nomes de pessoa.",
+            "Filtro por pessoa (funcionário/fornecedor, parte do nome): casa no cliente/fornecedor OU na descrição. NÃO use 'busca' para nomes de pessoa. 'nao_contem' exclui a pessoa.",
           tipo: "texto",
           cardinalidade: "alta",
-          operadores: ["contem"],
+          operadores: ["contem", "nao_contem"],
           agrupavel: false,
-          where: (_op, v) => ({
-            OR: [
-              { clienteFornecedor: { nome: { contains: v as string, mode: "insensitive" } } },
-              { descricao: { contains: v as string, mode: "insensitive" } },
-            ],
-          }),
+          where: (op, v) => {
+            const casa = {
+              OR: [
+                { clienteFornecedor: { nome: { contains: v as string, mode: "insensitive" } } },
+                { descricao: { contains: v as string, mode: "insensitive" } },
+              ],
+            };
+            return op === "nao_contem" ? { NOT: casa } : casa;
+          },
         },
       },
       metricas: {
@@ -183,6 +199,20 @@ export const financeiro: DominioDef = {
         valorMedio: {
           descricao: "Valor médio POR LANÇAMENTO (R$)",
           agregacao: "media",
+          select: { valor: true },
+          valor: asValor,
+          formato: "reais",
+        },
+        valorMediano: {
+          descricao: "Mediana dos valores POR LANÇAMENTO (R$)",
+          agregacao: "mediana",
+          select: { valor: true },
+          valor: asValor,
+          formato: "reais",
+        },
+        valorDesvioPadrao: {
+          descricao: "Desvio padrão (populacional) dos valores POR LANÇAMENTO (R$)",
+          agregacao: "desvio_padrao",
           select: { valor: true },
           valor: asValor,
           formato: "reais",

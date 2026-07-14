@@ -19,6 +19,8 @@ const condTexto = (op: OperadorFiltro, valor: string | string[]): Record<string,
       return { not: { equals: valor as string }, mode: "insensitive" };
     case "contem":
       return { contains: valor as string, mode: "insensitive" };
+    case "nao_contem":
+      return { not: { contains: valor as string }, mode: "insensitive" };
     case "em":
       return { in: valor as string[], mode: "insensitive" };
   }
@@ -197,21 +199,24 @@ export const rebanho: DominioDef = {
           formato: "numero",
         },
         mediaCcs: {
-          descricao: "CCS média (mil céls/mL; ignora animais sem medição)",
+          descricao:
+            "CCS média, JÁ em mil células/mL (ex.: 852.6 = '852,6 mil céls/mL') — NÃO multiplique por mil; ignora animais sem medição",
           agregacao: "media",
           select: { resumo: { select: { ccs: true } } },
           valor: (l) => resumoDe(l)?.ccs ?? null,
           formato: "numero",
         },
         mediaProducaoDia: {
-          descricao: "Produção média diária por animal (L/dia, do resumo)",
+          descricao:
+            "Média DIÁRIA de produção da(s) vaca(s) do recorte (L/dia). Agrupado por 'animal', é a produção média diária daquela vaca — diga 'faz X L/dia em média', não 'produção máxima'.",
           agregacao: "media",
           select: { resumo: { select: { producaoMediaDia: true } } },
           valor: (l) => resumoDe(l)?.producaoMediaDia ?? null,
           formato: "litros",
         },
         maxProducaoDia: {
-          descricao: "MAIOR produção diária individual do recorte (L/dia, do resumo)",
+          descricao:
+            "A MAIOR média diária individual do recorte (L/dia) — é uma média por vaca, não um pico de um dia",
           agregacao: "max",
           select: { resumo: { select: { producaoMediaDia: true } } },
           valor: (l) => resumoDe(l)?.producaoMediaDia ?? null,

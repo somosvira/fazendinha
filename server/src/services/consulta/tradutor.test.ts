@@ -11,25 +11,27 @@ const consulta = (input: unknown): ConsultaEntidade =>
 
 describe("traduzir", () => {
   it("regime default aplica o regime de caixa implícito (LIQUIDADO + estornado=false)", () => {
-    const plano = traduzir(lancamento, consulta({ entidade: "lancamento", metricas: ["valorTotal"] }), {
-      propriedadeId: null,
-    });
-    expect(plano.whereBase).toEqual({ situacao: "LIQUIDADO", estornado: false });
+    const plano = traduzir(
+      lancamento,
+      consulta({ entidade: "lancamento", metricas: ["valorTotal"], filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }] }),
+      { propriedadeId: null },
+    );
+    expect(plano.whereBase).toEqual({ situacao: "LIQUIDADO", estornado: false, AND: [{ natureza: "DEBITO" }] });
     expect(plano.campoData).toBe("dataLiquidacao");
   });
 
   it("regime a_vencer troca para ABERTO por dataVencimento", () => {
     const plano = traduzir(
       lancamento,
-      consulta({ entidade: "lancamento", regime: "a_vencer", metricas: ["valorTotal"] }),
+      consulta({ entidade: "lancamento", regime: "a_vencer", metricas: ["valorTotal"], filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }] }),
       { propriedadeId: null },
     );
-    expect(plano.whereBase).toEqual({ situacao: "ABERTO", estornado: false });
+    expect(plano.whereBase).toEqual({ situacao: "ABERTO", estornado: false, AND: [{ natureza: "DEBITO" }] });
     expect(plano.campoData).toBe("dataVencimento");
   });
 
   it("propriedadeId entra pelo CONTEXTO, nunca pelo input", () => {
-    const c = consulta({ entidade: "lancamento", metricas: ["valorTotal"] });
+    const c = consulta({ entidade: "lancamento", metricas: ["valorTotal"], filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }] });
     const plano = traduzir(lancamento, c, { propriedadeId: 3 });
     expect(plano.whereBase).toMatchObject({ propriedadeId: 3 });
     // sem escopo no ctx, não há filtro de propriedade
@@ -60,20 +62,36 @@ describe("traduzir", () => {
     });
   });
 
+  it("operador nao_contem vira exclusão por termo ('sem a rescisão')", () => {
+    const plano = traduzir(
+      lancamento,
+      consulta({
+        entidade: "lancamento",
+        metricas: ["valorTotal"],
+        filtros: [
+          { dimensao: "natureza", operador: "igual", valor: "DEBITO" },
+          { dimensao: "busca", operador: "nao_contem", valor: "rescisão" },
+        ],
+      }),
+      { propriedadeId: null },
+    );
+    const and = plano.whereBase.AND as Record<string, unknown>[];
+    expect(and[1]).toHaveProperty("NOT");
+    const not = (and[1] as { NOT: { OR: unknown[] } }).NOT;
+    expect(not.OR).toHaveLength(3); // categoria OU grupo OU centro de custo
+  });
+
   it("select é o mínimo: dimensões agrupadas + métricas (deep-merge em 2 saltos)", () => {
     const plano = traduzir(
       lancamento,
       consulta({
         entidade: "lancamento",
         metricas: ["valorTotal"],
-        agruparPor: ["categoria", "grupoCategoria"],
+        agruparPor: ["natureza", "categoria"],
       }),
       { propriedadeId: null },
     );
-    expect(plano.select).toEqual({
-      categoria: { select: { nome: true, grupoCategoria: { select: { nome: true } } } },
-      valor: true,
-    });
+    expect(plano.select).toEqual({ natureza: true, categoria: { select: { nome: true } }, valor: true });
   });
 
   it("contagem pura sem dimensões seleciona só o id", () => {
@@ -88,7 +106,12 @@ describe("traduzir", () => {
   it("granularidadeTempo inclui o campo de data no select", () => {
     const plano = traduzir(
       lancamento,
-      consulta({ entidade: "lancamento", metricas: ["valorTotal"], granularidadeTempo: "mes" }),
+      consulta({
+        entidade: "lancamento",
+        metricas: ["valorTotal"],
+        filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }],
+        granularidadeTempo: "mes",
+      }),
       { propriedadeId: null },
     );
     expect(plano.select).toMatchObject({ dataLiquidacao: true });
@@ -97,9 +120,11 @@ describe("traduzir", () => {
 
 describe("whereComPeriodo", () => {
   it("aplica o período em UTC sobre o campo de data do regime", () => {
-    const plano = traduzir(lancamento, consulta({ entidade: "lancamento", metricas: ["valorTotal"] }), {
-      propriedadeId: null,
-    });
+    const plano = traduzir(
+      lancamento,
+      consulta({ entidade: "lancamento", metricas: ["valorTotal"], filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }] }),
+      { propriedadeId: null },
+    );
     const where = whereComPeriodo(plano, "2026-01-01", "2026-06-30");
     expect(where.dataLiquidacao).toEqual({
       gte: new Date("2026-01-01T00:00:00.000Z"),

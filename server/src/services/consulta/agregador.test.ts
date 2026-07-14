@@ -125,6 +125,52 @@ describe("agregar", () => {
   });
 });
 
+describe("mediana e desvio padrão (paridade com estatisticas_lancamentos)", () => {
+  const medianaDef: MetricaDef = { ...soma, agregacao: "mediana" };
+  const desvioDef: MetricaDef = { ...soma, agregacao: "desvio_padrao" };
+
+  it("mediana com n ímpar e n par", () => {
+    const impar = agregar([linha("A", "10"), linha("A", "30"), linha("A", "20")], params({ metricas: [{ nome: "med", def: medianaDef }] }));
+    expect(impar.grupos[0].metricas.med).toBe(20);
+    const par = agregar([linha("A", "10"), linha("A", "20"), linha("A", "30"), linha("A", "40")], params({ metricas: [{ nome: "med", def: medianaDef }] }));
+    expect(par.grupos[0].metricas.med).toBe(25);
+  });
+
+  it("desvio padrão POPULACIONAL (mesma convenção da tool antiga)", () => {
+    const ag = agregar([linha("A", "10"), linha("A", "20")], params({ metricas: [{ nome: "dp", def: desvioDef }] }));
+    expect(ag.grupos[0].metricas.dp).toBe(5); // populacional: sqrt(((10-15)²+(20-15)²)/2) = 5
+  });
+});
+
+describe("resumo dos buckets temporais (porTempo)", () => {
+  it("média mensal, mediana e maior/menor mês calculados antes do top-N", () => {
+    const linhas = [
+      linha("A", "100", "2026-01-10"),
+      linha("B", "50", "2026-01-20"), // jan = 150 (soma entre grupos)
+      linha("A", "300", "2026-02-05"), // fev = 300
+      linha("A", "60", "2026-03-01"), // mar = 60
+    ];
+    const ag = agregar(linhas, params({ granularidadeTempo: "mes", limite: 1 })); // top-N agressivo
+    expect(ag.porTempo!.valorTotal).toEqual({
+      buckets: 3,
+      media: 170, // (150+300+60)/3
+      mediana: 150,
+      maior: { tempo: "2026-02", valor: 300 },
+      menor: { tempo: "2026-03", valor: 60 },
+    });
+  });
+
+  it("ausente sem granularidadeTempo e para métricas não aditivas", () => {
+    const semSerie = agregar([linha("A", "1")], params());
+    expect(semSerie.porTempo).toBeUndefined();
+    const comMedia = agregar(
+      [linha("A", "1", "2026-01-01")],
+      params({ granularidadeTempo: "mes", metricas: [{ nome: "m", def: media }] }),
+    );
+    expect(comMedia.porTempo).toEqual({});
+  });
+});
+
 describe("compararAgregados", () => {
   const metricas = [{ nome: "valorTotal", def: soma }];
   it("delta e deltaPct calculados; base 0 → deltaPct null; ausente aditivo = 0", () => {

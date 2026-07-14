@@ -29,10 +29,6 @@ const envSchema = z
     WHATSAPP_PHONE_NUMBER_ID: z.string().optional(), // ID do número que envia
     WHATSAPP_APP_SECRET: z.string().optional(), // p/ validar X-Hub-Signature-256
 
-    // Conexão somente-leitura (role com GRANT SELECT) para a ferramenta consulta_sql.
-    // Sem ela, o escape hatch de SQL fica desabilitado (ferramentas curadas seguem funcionando).
-    DATABASE_URL_READONLY: z.string().url().optional(),
-
     // Dashboard — quantos meses COMPLETOS entram na média da "queima mensal"
     // (fôlego/ruptura de caixa). Default 6.
     DASHBOARD_MESES_QUEIMA: z.coerce.number().int().positive().default(6),

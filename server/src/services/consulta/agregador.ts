@@ -11,6 +11,7 @@ import type {
   GrupoResultado,
   LinhaBase,
   MetricaDef,
+  ResumoTempoMetrica,
 } from "./tipos.js";
 
 export interface ParamsAgregacao {
@@ -28,7 +29,14 @@ export interface Agregado {
   truncado: boolean;
   numGrupos: number;
   numLinhas: number;
+  // Presente quando há granularidadeTempo: estatística dos buckets temporais
+  // (métricas aditivas), calculada sobre TODOS os grupos, antes do top-N.
+  porTempo?: Record<string, ResumoTempoMetrica>;
 }
+
+// Métricas cujo lado ausente numa comparação vale 0 e que podem ser somadas
+// por bucket temporal (as demais — médias, min/max — não são aditivas).
+const ADITIVAS = new Set(["soma", "contagem", "contagem_distinta"]);
 
 const D = Prisma.Decimal;
 type Dec = InstanceType<typeof D>;
@@ -52,15 +60,17 @@ interface Acumulador {
   min: Dec | null;
   max: Dec | null;
   distintos: Set<string>;
+  valores: number[] | null; // só mediana/desvio_padrao precisam guardar tudo
 }
 
-const novoAcc = (): Acumulador => ({
+const novoAcc = (def: MetricaDef): Acumulador => ({
   soma: new D(0),
   n: 0,
   nLinhas: 0,
   min: null,
   max: null,
   distintos: new Set(),
+  valores: def.agregacao === "mediana" || def.agregacao === "desvio_padrao" ? [] : null,
 });
 
 function acumular(acc: Acumulador, def: MetricaDef, linha: LinhaBase) {
@@ -77,6 +87,22 @@ function acumular(acc: Acumulador, def: MetricaDef, linha: LinhaBase) {
   acc.soma = acc.soma.add(v);
   if (acc.min == null || v.lessThan(acc.min)) acc.min = v;
   if (acc.max == null || v.greaterThan(acc.max)) acc.max = v;
+  if (acc.valores) acc.valores.push(v.toNumber());
+}
+
+// Mediana e desvio populacional — mesmas convenções da antiga estatisticas_lancamentos.
+const round2 = (x: number) => Math.round(x * 100) / 100;
+function mediana(vals: number[]): number | null {
+  const n = vals.length;
+  if (!n) return null;
+  const ord = [...vals].sort((a, b) => a - b);
+  return round2(n % 2 ? ord[(n - 1) / 2] : (ord[n / 2 - 1] + ord[n / 2]) / 2);
+}
+function desvioPadrao(vals: number[]): number | null {
+  const n = vals.length;
+  if (!n) return null;
+  const media = vals.reduce((s, x) => s + x, 0) / n;
+  return round2(Math.sqrt(vals.reduce((s, x) => s + (x - media) ** 2, 0) / n));
 }
 
 function finalizar(acc: Acumulador, def: MetricaDef): number | null {
@@ -85,6 +111,10 @@ function finalizar(acc: Acumulador, def: MetricaDef): number | null {
       return arred2(acc.soma);
     case "media":
       return acc.n ? arred2(acc.soma.div(acc.n)) : null;
+    case "mediana":
+      return mediana(acc.valores ?? []);
+    case "desvio_padrao":
+      return desvioPadrao(acc.valores ?? []);
     case "contagem":
       return acc.nLinhas;
     case "contagem_distinta":
@@ -112,7 +142,7 @@ export function agregar(linhas: LinhaBase[], p: ParamsAgregacao): Agregado {
     accs: Map<string, Acumulador>;
   }
   const grupos = new Map<string, Grupo>();
-  const totais = new Map<string, Acumulador>(p.metricas.map((m) => [m.nome, novoAcc()]));
+  const totais = new Map<string, Acumulador>(p.metricas.map((m) => [m.nome, novoAcc(m.def)]));
 
   for (const linha of linhas) {
     const chaves: Record<string, string> = {};
@@ -125,7 +155,7 @@ export function agregar(linhas: LinhaBase[], p: ParamsAgregacao): Agregado {
 
     let g = grupos.get(key);
     if (!g) {
-      g = { chaves, tempo, accs: new Map(p.metricas.map((m) => [m.nome, novoAcc()])) };
+      g = { chaves, tempo, accs: new Map(p.metricas.map((m) => [m.nome, novoAcc(m.def)])) };
       grupos.set(key, g);
     }
     for (const m of p.metricas) {
@@ -157,6 +187,34 @@ export function agregar(linhas: LinhaBase[], p: ParamsAgregacao): Agregado {
   }
 
   const numGrupos = lista.length;
+
+  // Estatística dos buckets temporais ANTES do top-N ("média mensal",
+  // "mês de maior/menor X" saem prontos daqui — o LLM só transcreve).
+  let porTempo: Record<string, ResumoTempoMetrica> | undefined;
+  if (p.granularidadeTempo) {
+    porTempo = {};
+    for (const m of p.metricas) {
+      if (!ADITIVAS.has(m.def.agregacao)) continue;
+      const porBucket = new Map<string, Dec>();
+      for (const g of lista) {
+        const v = g.metricas[m.nome];
+        if (v == null || g.tempo == null) continue;
+        porBucket.set(g.tempo, (porBucket.get(g.tempo) ?? new D(0)).add(v));
+      }
+      const buckets = [...porBucket.entries()]
+        .map(([tempo, dec]) => ({ tempo, valor: arred2(dec) }))
+        .sort((a, b) => a.valor - b.valor);
+      const soma = [...porBucket.values()].reduce((s, d) => s.add(d), new D(0));
+      porTempo[m.nome] = {
+        buckets: buckets.length,
+        media: buckets.length ? arred2(soma.div(buckets.length)) : null,
+        mediana: mediana(buckets.map((b) => b.valor)),
+        maior: buckets[buckets.length - 1] ?? null,
+        menor: buckets[0] ?? null,
+      };
+    }
+  }
+
   const truncado = numGrupos > p.limite;
   if (truncado) lista = lista.slice(0, p.limite);
 
@@ -167,14 +225,13 @@ export function agregar(linhas: LinhaBase[], p: ParamsAgregacao): Agregado {
     truncado,
     numGrupos,
     numLinhas: linhas.length,
+    ...(porTempo ? { porTempo } : {}),
   };
 }
 
 // ── Comparação A/B (períodos ou fatias) ──────────────────────────────────────
 // delta e deltaPct calculados aqui — o LLM só transcreve. Para métricas aditivas
 // (soma/contagem) o lado ausente vale 0; para media/min/max fica null.
-
-const ADITIVAS = new Set(["soma", "contagem", "contagem_distinta"]);
 
 function celula(
   def: MetricaDef,

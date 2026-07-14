@@ -57,7 +57,9 @@ function observacoesComuns(
   if (campoData && (!c.ate || c.ate.slice(0, 7) >= mesAtual()))
     obs.push(`O mês corrente (${mesAtual()}) está INCOMPLETO — não o compare com meses fechados.`);
   if (ctx.propriedadeId != null && !def.escopoPropriedade)
-    obs.push(`A entidade '${entidade}' não é particionada por propriedade — números da fazenda inteira.`);
+    obs.push(
+      `Informativo (não é erro): '${entidade}' não é separada por propriedade — os números cobrem a fazenda inteira.`,
+    );
   return obs;
 }
 
@@ -78,12 +80,22 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
   const maxLinhas = def.maxLinhasBase ?? MAX_LINHAS_DEFAULT;
   const observacoes = observacoesComuns(def, c.entidade, c, plano.campoData, ctx);
 
+  // Guard-rail de narração: sem filtro de natureza, o total soma créditos E
+  // débitos — o modelo NÃO pode chamar isso de "gasto"/"saída"/"receita".
+  if (def.dimensoes.natureza && !c.filtros.some((f) => f.dimensao === "natureza"))
+    observacoes.push(
+      "SEM filtro de natureza: os valores somam CRÉDITOS + DÉBITOS. Não descreva como 'gasto', 'saída' ou 'receita' — para isso refaça com o filtro natureza.",
+    );
+
   const base = {
     dominio: dom.nome,
     entidade: c.entidade,
     regime: c.regime,
     regimeDescricao: def.regimes[c.regime].descricao,
     periodo: c.de || c.ate ? { de: c.de ?? null, ate: c.ate ?? null } : null,
+    // Eco da consulta efetivamente executada — confira antes de narrar: se a
+    // pergunta cita um termo/categoria e o eco não tem esse filtro, refaça.
+    filtrosAplicados: c.filtros.map((f) => `${f.dimensao} ${f.operador} '${String(f.valor)}'`),
   };
 
   // ── Comparação A/B ─────────────────────────────────────────────────────────
@@ -94,6 +106,8 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
     let agA: Agregado;
     let agB: Agregado;
     let rotuloComparacao: Record<string, unknown>;
+    let labelA: string;
+    let labelB: string;
 
     if (c.comparar.tipo === "periodos") {
       const [linhasA, linhasB] = await Promise.all([
@@ -107,6 +121,8 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
         periodoA: { de: c.de, ate: c.ate },
         periodoB: { de: c.comparar.deB, ate: c.comparar.ateB },
       };
+      labelA = `A (${c.de} a ${c.ate})`;
+      labelB = `B (${c.comparar.deB} a ${c.comparar.ateB})`;
     } else {
       const { dimensao, valorA, valorB } = c.comparar;
       const op = def.dimensoes[dimensao].operadores.includes("contem") ? ("contem" as const) : ("igual" as const);
@@ -122,9 +138,17 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
       agA = agregar(linhasA, params);
       agB = agregar(linhasB, params);
       rotuloComparacao = { tipo: "fatias", dimensao, fatiaA: valorA, fatiaB: valorB };
+      labelA = `'${valorA}'`;
+      labelB = `'${valorB}'`;
     }
 
     const comp = compararAgregados(agA, agB, params.metricas);
+    // Leitura pré-renderizada dos totais — o modelo deve NARRAR A PARTIR DAQUI,
+    // sem transformar delta/deltaPct (evita "100 − 21,97 = aumento de 78%").
+    const leitura = Object.entries(comp.totais).map(([m, cel]) => {
+      const pct = cel.deltaPct != null ? ` (${cel.deltaPct}%)` : "";
+      return `${m}: ${labelA} = ${cel.valorA} vs ${labelB} = ${cel.valorB} → diferença A−B = ${cel.delta}${pct}`;
+    });
     const truncado = comp.porGrupo.length > c.limite;
     if (truncado)
       observacoes.push(
@@ -134,6 +158,7 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
       ...base,
       comparacao: {
         ...rotuloComparacao,
+        leitura,
         totais: comp.totais,
         porGrupo: comp.porGrupo.slice(0, c.limite),
         somenteA: comp.somenteA,
@@ -155,6 +180,8 @@ async function executarEntidade(dom: DominioDef, c: ConsultaEntidade, ctx: Conte
     totais: ag.totais,
     numGrupos: ag.numGrupos,
     truncado: ag.truncado,
+    // Estatística dos buckets da série ("média mensal", maior/menor mês) — pronta.
+    ...(ag.porTempo ? { resumoTempo: ag.porTempo } : {}),
     observacoes,
   });
 }
@@ -211,7 +238,7 @@ async function executarRazao(dom: DominioDef, c: ConsultaRazao, ctx: ContextoCon
     observacoes.push(`Sem denominador em: ${buracos.join(", ")} — razão nula nesses buckets.`);
   if (ctx.propriedadeId != null && (!num.def.escopoPropriedade || !den.def.escopoPropriedade))
     observacoes.push(
-      "Um dos lados da razão não é particionado por propriedade — o valor considera a fazenda inteira nesse lado.",
+      "Informativo (não é erro, não impede o cálculo): um dos lados da razão cobre a fazenda inteira (não é separado por propriedade).",
     );
 
   return jsonSafe({

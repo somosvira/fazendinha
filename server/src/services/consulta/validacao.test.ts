@@ -8,7 +8,11 @@ const valida = (input: unknown) => validarConsulta(financeiro, input, obterDomin
 
 describe("validarConsulta — entidade", () => {
   it("aplica defaults: regime realizado e limite 20", () => {
-    const c = valida({ entidade: "lancamento", metricas: ["valorTotal"] });
+    const c = valida({
+      entidade: "lancamento",
+      metricas: ["valorTotal"],
+      filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }],
+    });
     expect(c).toMatchObject({ tipo: "entidade", regime: "realizado", limite: 20 });
   });
 
@@ -87,6 +91,7 @@ describe("validarConsulta — entidade", () => {
       valida({
         entidade: "lancamento",
         metricas: ["valorTotal"],
+        filtros: [{ dimensao: "natureza", operador: "igual", valor: "DEBITO" }],
         ordenarPor: { alvo: "valorMedio", direcao: "desc" },
       }),
     ).toThrowError(/ordenarPor/);
@@ -116,6 +121,36 @@ describe("validarConsulta — entidade", () => {
       metricas: ["numAnimais"],
       comparar: { tipo: "fatias", dimensao: "raca", valorA: "Girolando", valorB: "Holandês" },
     });
+    expect(c.tipo).toBe("entidade");
+  });
+});
+
+describe("validarConsulta — dimensão obrigatória (natureza em métricas R$)", () => {
+  it("métrica em R$ sem natureza é rejeitada com mensagem que ensina", () => {
+    expect(() => valida({ entidade: "lancamento", metricas: ["valorTotal"] })).toThrowError(/natureza/);
+  });
+
+  it("passa com filtro, com agruparPor ou com comparar fatias de natureza", () => {
+    const filtro = valida({
+      entidade: "lancamento",
+      metricas: ["valorTotal"],
+      filtros: [{ dimensao: "natureza", operador: "igual", valor: "CREDITO" }],
+    });
+    expect(filtro.tipo).toBe("entidade");
+    const agrupado = valida({ entidade: "lancamento", metricas: ["valorTotal"], agruparPor: ["natureza"] });
+    expect(agrupado.tipo).toBe("entidade");
+    const fatias = valida({
+      entidade: "lancamento",
+      metricas: ["valorTotal"],
+      de: "2025-01-01",
+      ate: "2025-12-31",
+      comparar: { tipo: "fatias", dimensao: "natureza", valorA: "CREDITO", valorB: "DEBITO" },
+    });
+    expect(fatias.tipo).toBe("entidade");
+  });
+
+  it("métricas não monetárias (contagem) não exigem natureza", () => {
+    const c = valida({ entidade: "lancamento", metricas: ["numLancamentos"] });
     expect(c.tipo).toBe("entidade");
   });
 });

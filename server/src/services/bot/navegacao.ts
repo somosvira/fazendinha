@@ -6,7 +6,7 @@
 // forma estática, as rotas do app e os filtros de deep-link de cada uma. É consumido
 // em dois lugares:
 //   1) `navegacaoResumo()` → bloco NAVEGAÇÃO injetado no system prompt do bot
-//      (agent.ts), do mesmo jeito que taxonomiaResumo()/esquemaResumo().
+//      (agent.ts), do mesmo jeito que taxonomiaResumo().
 //   2) `gerarDocMarkdown()` → o script scripts/gen-nav-doc.ts escreve docs/NAVEGACAO.md.
 //
 // Formato do link que a IA emite: markdown `[rótulo curto](/caminho?param=valor)`.

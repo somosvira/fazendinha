@@ -1,13 +1,14 @@
-// Ferramentas curadas do bot (caminho quente, formatado e seguro) + o escape
-// hatch consulta_sql. Cada ferramenta tem um `spec` (formato function-calling da
-// OpenAI) e um `handler(args)` que roda Prisma e devolve JSON limpo (Decimal→Number).
+// Ferramentas curadas do bot (casos com regra de negócio própria: Dashboard,
+// saldo com saldoInicial, fichas, alertas, folha). A agregação/consulta LIVRE
+// vive no motor de consulta (../consulta) via tools-consulta.ts — SQL gerado
+// pelo LLM foi aposentado. Cada ferramenta tem `spec` (function-calling OpenAI)
+// e `handler(args, ctx)` que roda Prisma e devolve JSON limpo (Decimal→Number).
 //
 // Regime de CAIXA: agregações financeiras usam situacao=LIQUIDADO, estornado=false,
 // filtrando por dataLiquidacao (ver CLAUDE.md).
 
 import { prisma } from "../../db.js";
 import { jsonSafe } from "./serialize.js";
-import { rodarSqlReadonly } from "./sql-readonly.js";
 import { buildDashboard } from "../dashboard.js";
 import type { ContextoConsulta } from "../consulta/tipos.js";
 import { toolsConsulta } from "./tools-consulta.js";
@@ -24,25 +25,6 @@ export interface Tool {
 const num = (d: unknown) =>
   d == null ? 0 : typeof d === "number" ? d : Number((d as { toString(): string }).toString());
 const round2 = (x: number) => Math.round(x * 100) / 100;
-
-// Estatística determinística sobre uma lista de valores (desvio padrão POPULACIONAL).
-// Usada para que "média/desvio padrão mensal" dê SEMPRE o mesmo número.
-function estatisticas(vals: number[]) {
-  const n = vals.length;
-  if (!n) return { n: 0, media: 0, desvioPadrao: 0, mediana: 0, min: 0, max: 0 };
-  const media = vals.reduce((s, x) => s + x, 0) / n;
-  const variancia = vals.reduce((s, x) => s + (x - media) ** 2, 0) / n;
-  const ord = [...vals].sort((a, b) => a - b);
-  const mediana = n % 2 ? ord[(n - 1) / 2] : (ord[n / 2 - 1] + ord[n / 2]) / 2;
-  return {
-    n,
-    media: round2(media),
-    desvioPadrao: round2(Math.sqrt(variancia)),
-    mediana: round2(mediana),
-    min: round2(ord[0]),
-    max: round2(ord[n - 1]),
-  };
-}
 
 function parseDataObrigatoria(s: unknown, campo: string): Date {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s))
@@ -124,48 +106,6 @@ function whereLancamento(a: Json) {
   const ate = parseDataOpcional(a.ate);
   if (de || ate) where.dataLiquidacao = { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) };
   return aplicarDimensoes(where, a);
-}
-
-// A vencer (projeção): situacao=ABERTO, filtra por dataVencimento.
-function whereAberto(a: Json) {
-  const where: Record<string, unknown> = { situacao: "ABERTO", estornado: false };
-  const de = parseDataOpcional(a.de);
-  const ate = parseDataOpcional(a.ate);
-  if (de || ate) where.dataVencimento = { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) };
-  return aplicarDimensoes(where, a);
-}
-
-// Esquema real do banco (tabelas + colunas) lido do information_schema, para o
-// system prompt — dá ao modelo confiança para escrever SELECTs corretos no
-// consulta_sql em vez de chutar tabelas/colunas. Memoizado (schema raramente muda).
-let _esquemaCache: string | null = null;
-const abreviaTipo = (t: string): string => {
-  if (t === "integer" || t === "smallint" || t === "bigint") return "int";
-  if (t === "character varying" || t === "text" || t === "character") return "text";
-  if (t === "numeric") return "num";
-  if (t === "boolean") return "bool";
-  if (t === "date") return "date";
-  if (t.startsWith("timestamp")) return "ts";
-  if (t === "USER-DEFINED") return "enum";
-  if (t === "jsonb" || t === "json") return "json";
-  return t;
-};
-export async function esquemaResumo(): Promise<string> {
-  if (_esquemaCache) return _esquemaCache;
-  const rows = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string; data_type: string }[]>(
-    `SELECT table_name, column_name, data_type
-     FROM information_schema.columns
-     WHERE table_schema = 'public' AND table_name NOT LIKE '\\_prisma%'
-     ORDER BY table_name, ordinal_position`,
-  );
-  const byTable = new Map<string, string[]>();
-  for (const r of rows) {
-    const arr = byTable.get(r.table_name) ?? [];
-    arr.push(`${r.column_name} ${abreviaTipo(r.data_type)}`);
-    byTable.set(r.table_name, arr);
-  }
-  _esquemaCache = [...byTable.entries()].map(([t, cols]) => `"${t}"(${cols.join(", ")})`).join("\n");
-  return _esquemaCache;
 }
 
 // Resumo da taxonomia real (grupos + centros de custo) para o system prompt —
@@ -264,73 +204,6 @@ const resumoFinanceiro: Tool = {
   },
 };
 
-const fluxoCaixa: Tool = {
-  spec: fn(
-    "fluxo_caixa",
-    "Entradas, saídas e saldo do período (regime de caixa: lançamentos LIQUIDADOS por data de liquidação).",
-    {
-      type: "object",
-      properties: {
-        de: { type: "string", description: "Data inicial YYYY-MM-DD" },
-        ate: { type: "string", description: "Data final YYYY-MM-DD" },
-      },
-      required: ["de", "ate"],
-    },
-  ),
-  handler: async (a) => {
-    const de = parseDataObrigatoria(a.de, "de");
-    const ate = parseDataObrigatoria(a.ate, "ate");
-    const where = {
-      situacao: "LIQUIDADO" as const,
-      estornado: false,
-      dataLiquidacao: { gte: de, lte: ate },
-    };
-    const [cred, deb] = await Promise.all([
-      prisma.lancamento.aggregate({ _sum: { valor: true }, where: { ...where, natureza: "CREDITO" } }),
-      prisma.lancamento.aggregate({ _sum: { valor: true }, where: { ...where, natureza: "DEBITO" } }),
-    ]);
-    const entradas = num(cred._sum.valor);
-    const saidas = num(deb._sum.valor);
-    return { de: a.de, ate: a.ate, entradas, saidas, saldo: entradas - saidas };
-  },
-};
-
-const gastosPorCategoria: Tool = {
-  spec: fn(
-    "gastos_por_categoria",
-    "Maiores despesas agrupadas por categoria no período (débitos liquidados). " +
-      "Pode filtrar por grupo do plano de contas e/ou centro de custo.",
-    {
-      type: "object",
-      properties: {
-        ...PROPS_FILTRO,
-        limite: { type: "integer", description: "Quantas categorias retornar (default 10)" },
-      },
-      required: ["de", "ate"],
-    },
-  ),
-  handler: async (a) => {
-    const take = typeof a.limite === "number" ? a.limite : 10;
-    // Exclui o balde "(Sem centro de custo)" (transferências/ajustes) p/ casar com
-    // o Dashboard — mas só se o usuário NÃO filtrou por um centro específico.
-    const where: Record<string, unknown> = { ...whereLancamento({ ...a, natureza: "DEBITO" }) };
-    if (!where.centroCusto) where.centroCusto = { nome: { not: "(Sem centro de custo)" } };
-    const grupos = await prisma.lancamento.groupBy({
-      by: ["categoriaId"],
-      _sum: { valor: true },
-      where,
-      orderBy: { _sum: { valor: "desc" } },
-      take,
-    });
-    const cats = await prisma.categoria.findMany({
-      where: { id: { in: grupos.map((g) => g.categoriaId) } },
-      select: { id: true, nome: true },
-    });
-    const nome = new Map(cats.map((c) => [c.id, c.nome]));
-    return grupos.map((g) => ({ categoria: nome.get(g.categoriaId) ?? `#${g.categoriaId}`, total: num(g._sum.valor) }));
-  },
-};
-
 const saldoContas: Tool = {
   spec: fn("saldo_contas", "Saldo atual de cada conta bancária (saldo inicial + créditos - débitos liquidados).", {
     type: "object",
@@ -353,64 +226,6 @@ const saldoContas: Tool = {
       out.push({ conta: c.nome, saldo: num(c.saldoInicial) + num(cred._sum.valor) - num(deb._sum.valor) });
     }
     return out;
-  },
-};
-
-const serieMensal: Tool = {
-  spec: fn(
-    "serie_mensal",
-    "Série temporal: total de entradas e saídas mês a mês no período (liquidados). Use para variação/tendência E para " +
-      "ESTATÍSTICA mensal — resumo.estatisticas traz média, desvioPadrao, mediana, min e max (sobre os meses com movimento), " +
-      "de forma determinística. Aceita filtros: busca, pessoa, grupo, categoria, centroCusto.",
-    {
-      type: "object",
-      properties: { ...PROPS_FILTRO },
-      required: ["de", "ate"],
-    },
-  ),
-  handler: async (a) => {
-    parseDataObrigatoria(a.de, "de");
-    parseDataObrigatoria(a.ate, "ate");
-    const lancs = await prisma.lancamento.findMany({
-      where: whereLancamento(a),
-      select: { dataLiquidacao: true, valor: true, natureza: true },
-    });
-    const buckets = new Map<string, { entradas: number; saidas: number }>();
-    for (const l of lancs) {
-      if (!l.dataLiquidacao) continue;
-      const mes = l.dataLiquidacao.toISOString().slice(0, 7); // YYYY-MM
-      const b = buckets.get(mes) ?? { entradas: 0, saidas: 0 };
-      if (l.natureza === "CREDITO") b.entradas += num(l.valor);
-      else b.saidas += num(l.valor);
-      buckets.set(mes, b);
-    }
-    const meses = [...buckets.entries()]
-      .sort((x, y) => x[0].localeCompare(y[0]))
-      .map(([mes, b]) => ({ mes, entradas: round2(b.entradas), saidas: round2(b.saidas), saldo: round2(b.entradas - b.saidas) }));
-    // resumo já calculado — evita o modelo errar média/argmax/argmin.
-    const n = meses.length;
-    const mediaSaidas = n ? round2(meses.reduce((s, m) => s + m.saidas, 0) / n) : 0;
-    const mediaEntradas = n ? round2(meses.reduce((s, m) => s + m.entradas, 0) / n) : 0;
-    const porSaidaDesc = [...meses].sort((x, y) => y.saidas - x.saidas).map((m) => ({ mes: m.mes, saidas: m.saidas }));
-    const mesAtualParcial = new Date().toISOString().slice(0, 7); // YYYY-MM em curso
-    return {
-      meses,
-      resumo: {
-        numMeses: n, // meses COM movimento no período (a média/estatística é sobre eles)
-        mediaSaidas,
-        mediaEntradas,
-        // Estatística determinística sobre os totais mensais — use ISTO para
-        // média/desvio padrão/mediana, nunca calcule via SQL ad-hoc.
-        estatisticas: {
-          saidas: estatisticas(meses.map((m) => m.saidas)),
-          entradas: estatisticas(meses.map((m) => m.entradas)),
-        },
-        mesMaiorSaida: porSaidaDesc[0] ?? null,
-        mesMenorSaida: porSaidaDesc[porSaidaDesc.length - 1] ?? null,
-        mesesPorSaidaDesc: porSaidaDesc, // ranking p/ "2º maior/menor" sem recalcular
-        mesAtualParcial, // ESTE mês está incompleto — excluir ao pegar "menor"/comparar meses fechados
-      },
-    };
   },
 };
 
@@ -472,115 +287,6 @@ const listarLancamentos: Tool = {
   },
 };
 
-const estatisticasLancamentos: Tool = {
-  spec: fn(
-    "estatisticas_lancamentos",
-    "Resumo DETERMINÍSTICO dos lançamentos que batem nos filtros: quantidade, TOTAL (soma) e estatística POR PAGAMENTO " +
-      "(média, mediana, desvioPadrao, min, max sobre os valores individuais). Use para 'quanto X recebeu/gastou no total' " +
-      "e para 'média/mediana/desvio dos pagamentos'. (Para média MENSAL use serie_mensal.) Sem período = todo o histórico.",
-    {
-      type: "object",
-      properties: {
-        de: { type: "string", description: "Data inicial YYYY-MM-DD (opcional)" },
-        ate: { type: "string", description: "Data final YYYY-MM-DD (opcional)" },
-        busca: PROPS_FILTRO.busca,
-        pessoa: PROPS_FILTRO.pessoa,
-        excluir: PROPS_FILTRO.excluir,
-        grupo: PROPS_FILTRO.grupo,
-        categoria: PROPS_FILTRO.categoria,
-        centroCusto: PROPS_FILTRO.centroCusto,
-        natureza: { type: "string", enum: ["CREDITO", "DEBITO"], description: "Filtra entradas ou saídas" },
-      },
-    },
-  ),
-  handler: async (a) => {
-    const lancs = await prisma.lancamento.findMany({ where: whereLancamento(a), select: { valor: true } });
-    const vals = lancs.map((l) => num(l.valor));
-    const total = round2(vals.reduce((s, x) => s + x, 0));
-    return { numLancamentos: vals.length, total, porPagamento: estatisticas(vals) };
-  },
-};
-
-const compararPeriodos: Tool = {
-  spec: fn(
-    "comparar_periodos",
-    "Compara DOIS períodos pagamento a pagamento, alinhando por fornecedor/funcionário + categoria. " +
-      "Devolve o total de cada período, a diferença total, a diferença por item, e o que apareceu SÓ em um dos " +
-      "períodos (somenteA / somenteB). Use para 'compare o mês X com o mês Y', diferença de folha entre meses, etc. " +
-      "Não trunca — pega todos os lançamentos. Aceita os mesmos filtros (busca/grupo/categoria/centroCusto).",
-    {
-      type: "object",
-      properties: {
-        deA: { type: "string", description: "Início do período A (YYYY-MM-DD)" },
-        ateA: { type: "string", description: "Fim do período A (YYYY-MM-DD)" },
-        deB: { type: "string", description: "Início do período B (YYYY-MM-DD)" },
-        ateB: { type: "string", description: "Fim do período B (YYYY-MM-DD)" },
-        busca: PROPS_FILTRO.busca,
-        pessoa: PROPS_FILTRO.pessoa,
-        excluir: PROPS_FILTRO.excluir,
-        grupo: PROPS_FILTRO.grupo,
-        categoria: PROPS_FILTRO.categoria,
-        centroCusto: PROPS_FILTRO.centroCusto,
-        natureza: { type: "string", enum: ["CREDITO", "DEBITO"], description: "Filtra entradas ou saídas" },
-      },
-      required: ["deA", "ateA", "deB", "ateB"],
-    },
-  ),
-  handler: async (a) => {
-    const filtro = { busca: a.busca, pessoa: a.pessoa, excluir: a.excluir, grupo: a.grupo, categoria: a.categoria, centroCusto: a.centroCusto, natureza: a.natureza };
-    const sel = {
-      select: {
-        valor: true,
-        categoria: { select: { nome: true } },
-        clienteFornecedor: { select: { nome: true } },
-        descricao: true,
-      },
-    } as const;
-    const [la, lb] = await Promise.all([
-      prisma.lancamento.findMany({ where: whereLancamento({ ...filtro, de: a.deA, ate: a.ateA }), ...sel }),
-      prisma.lancamento.findMany({ where: whereLancamento({ ...filtro, de: a.deB, ate: a.ateB }), ...sel }),
-    ]);
-
-    type Linha = { valor: unknown; categoria: { nome: string } | null; clienteFornecedor: { nome: string } | null; descricao: string | null };
-    const agrupar = (rows: Linha[]) => {
-      const m = new Map<string, { item: string; categoria: string; valor: number }>();
-      let total = 0;
-      for (const r of rows) {
-        const categoria = r.categoria?.nome ?? "(sem categoria)";
-        const item = r.clienteFornecedor?.nome ?? r.descricao ?? "(sem identificação)";
-        const key = `${categoria}||${item}`;
-        const cur = m.get(key) ?? { item, categoria, valor: 0 };
-        cur.valor += num(r.valor);
-        m.set(key, cur);
-        total += num(r.valor);
-      }
-      return { m, total: round2(total) };
-    };
-
-    const A = agrupar(la);
-    const B = agrupar(lb);
-    const keys = new Set([...A.m.keys(), ...B.m.keys()]);
-    const itens = [...keys].map((k) => {
-      const ia = A.m.get(k);
-      const ib = B.m.get(k);
-      const base = (ia ?? ib)!;
-      const valorA = round2(ia?.valor ?? 0);
-      const valorB = round2(ib?.valor ?? 0);
-      return { item: base.item, categoria: base.categoria, valorA, valorB, diff: round2(valorA - valorB) };
-    });
-    itens.sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff));
-
-    return {
-      periodoA: { de: a.deA, ate: a.ateA, total: A.total, numItens: A.m.size },
-      periodoB: { de: a.deB, ate: a.ateB, total: B.total, numItens: B.m.size },
-      diferencaTotal: round2(A.total - B.total),
-      somenteA: itens.filter((i) => i.valorB === 0).map((i) => ({ item: i.item, categoria: i.categoria, valor: i.valorA })),
-      somenteB: itens.filter((i) => i.valorA === 0).map((i) => ({ item: i.item, categoria: i.categoria, valor: i.valorB })),
-      itens: itens.slice(0, 200),
-    };
-  },
-};
-
 const folhaPagamento: Tool = {
   spec: fn(
     "folha_pagamento",
@@ -626,55 +332,6 @@ const folhaPagamento: Tool = {
   },
 };
 
-const contasAVencer: Tool = {
-  spec: fn(
-    "contas_a_vencer",
-    "Contas A VENCER / projeção: lançamentos ABERTO (ainda NÃO liquidados), por data de VENCIMENTO. " +
-      "Use para 'quanto tenho a pagar', 'o que vence em julho', projeção de caixa. As outras ferramentas só veem o " +
-      "REALIZADO (liquidado); esta é a única que enxerga o que está a vencer. Para 'a pagar' passe natureza=DEBITO.",
-    {
-      type: "object",
-      properties: {
-        de: { type: "string", description: "Vencimento inicial YYYY-MM-DD (opcional)" },
-        ate: { type: "string", description: "Vencimento final YYYY-MM-DD (opcional)" },
-        natureza: { type: "string", enum: ["CREDITO", "DEBITO"], description: "DEBITO = a pagar, CREDITO = a receber" },
-        busca: PROPS_FILTRO.busca,
-        pessoa: PROPS_FILTRO.pessoa,
-        excluir: PROPS_FILTRO.excluir,
-        grupo: PROPS_FILTRO.grupo,
-        categoria: PROPS_FILTRO.categoria,
-        centroCusto: PROPS_FILTRO.centroCusto,
-      },
-    },
-  ),
-  handler: async (a) => {
-    const lancs = await prisma.lancamento.findMany({
-      where: whereAberto(a),
-      select: { valor: true, dataVencimento: true, descricao: true, categoria: { select: { nome: true } }, clienteFornecedor: { select: { nome: true } } },
-    });
-    let total = 0;
-    const buckets = new Map<string, number>();
-    for (const l of lancs) {
-      const v = num(l.valor);
-      total += v;
-      const mes = l.dataVencimento.toISOString().slice(0, 7);
-      buckets.set(mes, (buckets.get(mes) ?? 0) + v);
-    }
-    const porMes = [...buckets.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([mes, t]) => ({ mes, total: round2(t) }));
-    const proximos = [...lancs]
-      .sort((x, y) => x.dataVencimento.getTime() - y.dataVencimento.getTime())
-      .slice(0, 20)
-      .map((l) => ({
-        vencimento: l.dataVencimento.toISOString().slice(0, 10),
-        valor: num(l.valor),
-        categoria: l.categoria?.nome ?? null,
-        fornecedor: l.clienteFornecedor?.nome ?? null,
-        descricao: l.descricao,
-      }));
-    return { numLancamentos: lancs.length, total: round2(total), porMes, proximos };
-  },
-};
-
 const buscarPessoa: Tool = {
   spec: fn(
     "buscar_pessoa",
@@ -708,33 +365,6 @@ const buscarPessoa: Tool = {
 // ============================================================================
 // Rebanho
 // ============================================================================
-
-const producaoLeite: Tool = {
-  spec: fn("producao_leite", "Produção de leite (litros) no período, a partir dos lançamentos de produção por lote/tanque.", {
-    type: "object",
-    properties: {
-      de: { type: "string", description: "Data inicial YYYY-MM-DD" },
-      ate: { type: "string", description: "Data final YYYY-MM-DD" },
-    },
-    required: ["de", "ate"],
-  }),
-  handler: async (a) => {
-    const de = parseDataObrigatoria(a.de, "de");
-    const ate = parseDataObrigatoria(a.ate, "ate");
-    const agg = await prisma.producaoLote.aggregate({
-      _sum: { litros: true },
-      _count: true,
-      where: { data: { gte: de, lte: ate } },
-    });
-    const dias = new Set(
-      (await prisma.producaoLote.findMany({ where: { data: { gte: de, lte: ate } }, select: { data: true } })).map(
-        (r) => r.data.toISOString().slice(0, 10),
-      ),
-    ).size;
-    const total = num(agg._sum.litros);
-    return { de: a.de, ate: a.ate, totalLitros: total, dias, mediaDia: dias ? Math.round((total / dias) * 10) / 10 : 0 };
-  },
-};
 
 const buscarAnimal: Tool = {
   spec: fn("buscar_animal", "Ficha de um animal pelo número (exato) ou parte do nome.", {
@@ -827,29 +457,6 @@ const estoque: Tool = {
 };
 
 // ============================================================================
-// Escape hatch: SQL read-only
-// ============================================================================
-
-const consultaSql: Tool = {
-  spec: fn(
-    "consulta_sql",
-    "Escape hatch para perguntas não cobertas pelas outras ferramentas. Gere UM SELECT Postgres (read-only) " +
-      "usando o schema da fazenda (tabelas: Lancamento, Categoria, GrupoCategoria, CentroCusto, ContaBancaria, " +
-      "ClienteFornecedor, Animal, ResumoAnimal, Grupo, ProducaoLote, ControleLeiteiro, EventoReprodutivo, " +
-      "EventoSanitario, Produto, MovimentoEstoque, FechamentoMensal). Nomes de tabela/coluna são case-sensitive " +
-      "(use aspas duplas). Só leitura — nada de INSERT/UPDATE/DELETE. " +
-      "CONVENÇÃO OBRIGATÓRIA: sempre filtre l.estornado = false (há ~1.240 estornos); para valores REALIZADOS use " +
-      "l.situacao='LIQUIDADO' (por dataLiquidacao); para A VENCER use l.situacao='ABERTO' (por dataVencimento).",
-    {
-      type: "object",
-      properties: { sql: { type: "string", description: "Um único comando SELECT (ou WITH ... SELECT)." } },
-      required: ["sql"],
-    },
-  ),
-  handler: async (a) => rodarSqlReadonly(String(a.sql ?? "")),
-};
-
-// ============================================================================
 // Registro
 // ============================================================================
 
@@ -859,21 +466,13 @@ const TOOLS: Tool[] = [
   // gradualmente para cima dele.
   ...toolsConsulta,
   resumoFinanceiro,
-  fluxoCaixa,
-  gastosPorCategoria,
-  serieMensal,
   listarLancamentos,
-  estatisticasLancamentos,
-  compararPeriodos,
   folhaPagamento,
-  contasAVencer,
   buscarPessoa,
   saldoContas,
-  producaoLeite,
   buscarAnimal,
   alertasRebanho,
   estoque,
-  consultaSql,
 ];
 
 const byName = new Map(TOOLS.map((t) => [t.spec.function.name, t]));
@@ -890,6 +489,10 @@ export async function dispatchTool(
   try {
     return await tool.handler(args ?? {}, ctx);
   } catch (e) {
-    return { erro: e instanceof Error ? e.message : String(e) };
+    const erro = e instanceof Error ? e.message : String(e);
+    // Log de operação: mostra o que o modelo pediu e por que foi rejeitado
+    // (essencial para diagnosticar quando o bot "não consegue" responder).
+    console.error(`[bot] ${name} erro: ${erro} | args: ${JSON.stringify(args)}`);
+    return { erro };
   }
 }

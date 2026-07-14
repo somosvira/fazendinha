@@ -24,6 +24,21 @@ Os 2 erros (A7 e C4) são o **mesmo padrão**: pergunta sobre "gastos" e o LLM c
 
 ---
 
+## Fatia 5 — aposentadoria do SQL livre (14/07, à tarde)
+
+`consulta_sql` (SELECT gerado pelo LLM) e as 7 tools substituíveis (`fluxo_caixa`, `gastos_por_categoria`, `serie_mensal`, `estatisticas_lancamentos`, `comparar_periodos`, `contas_a_vencer`, `producao_leite`) foram **removidas**; o system prompt foi reescrito sem o esquema SQL e sem o "seja engenhoso". Paridade adicionada ao motor: métricas `valorMediano`/`valorDesvioPadrao`, operador `nao_contem` ("sem a rescisão"), `resumoTempo` na série (média mensal, maior/menor mês prontos).
+
+A bateria foi re-rodada 3× nessa transição e pegou um padrão novo: sem as tools antigas, o gpt-4o às vezes **esquecia o filtro de natureza** (D1 respondeu "maior saída: dez/2025 R$ 3.066.498,73" = créditos+débitos) ou **transformava o delta** (100−21,97 = "aumento de 78%"). A resposta foi tornar as defesas **estruturais, no motor**, em vez de só prompt:
+
+1. **Regra dura**: métrica em R$ de `lancamento` sem a dimensão `natureza` (em filtro, `agruparPor` ou `comparar.fatias`) é REJEITADA na validação com mensagem que ensina as três formas corretas. Número monetário misturando créditos e débitos ficou estruturalmente impossível.
+2. **Eco da consulta** (`filtrosAplicados`) em toda resposta + instrução de conferir o eco antes de narrar.
+3. **Leitura pré-renderizada** nas comparações (valores A, B e diferença em frase pronta) — o modelo copia, não recalcula.
+4. Regra de persistência no prompt (erro de validação ⇒ corrigir e re-tentar, nunca "problema técnico") e log de erros de ferramenta no servidor (`[bot] <tool> erro: ...`).
+
+Resultado final: bateria completa verde (spot-checks das perguntas instáveis repetidos 3–4× cada, incluindo instância instrumentada com zero erros de ferramenta). **Limite honesto**: o LLM continua não-determinístico — o que a arquitetura garante é que *número errado não passa* (vira erro de validação ou recusa); uma resposta ocasional "não consegui consultar" ainda pode acontecer e é o comportamento desejado nesse caso. A bateria vive em `server/scripts/bateria-ia.{gabarito,run}.ts` (`pnpm bateria:gabarito` / `bateria:run`) para regressões futuras.
+
+---
+
 ## A. Financeiro — realizado (regime de caixa)
 
 ### A1. "Quais foram as entradas e saídas totais de 2025, e o saldo do ano?" — ✅ · `fluxo_caixa`
