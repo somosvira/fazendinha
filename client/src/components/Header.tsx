@@ -109,10 +109,12 @@ function UserPicker({ user, onPreferencias, onSair }: {
   );
 }
 
-export function Header({ user, mobileOpen, onMobileToggle, onAbrirBusca, onPreferencias, onSair }: {
+export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleColapsar, onAbrirBusca, onPreferencias, onSair }: {
   user: User;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  colapsada?: boolean;
+  onToggleColapsar?: () => void;
   onAbrirBusca?: () => void;
   onPreferencias?: () => void;
   onSair?: () => void;
@@ -132,6 +134,21 @@ export function Header({ user, mobileOpen, onMobileToggle, onAbrirBusca, onPrefe
             : <><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></>}
         </svg>
       </button>
+
+      {onToggleColapsar && (
+        <button
+          className="hidden h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent p-0 text-ink hover:border-[var(--ink-mute)] min-[901px]:inline-flex"
+          aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"}
+          aria-pressed={!!colapsada}
+          title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"}
+          onClick={onToggleColapsar}
+        >
+          <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+          </svg>
+        </button>
+      )}
 
       {onAbrirBusca && (
         <button

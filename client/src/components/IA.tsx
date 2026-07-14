@@ -23,19 +23,33 @@ const AI_CARD_TITLE = "font-serif text-xl tracking-[-0.005em]";
 const AI_SIGNATURE = "flex items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-ink-3";
 const MINI_TABLE = "w-full border-collapse [&_td]:border-b [&_td]:border-[color:var(--rule-soft)] [&_td]:px-2.5 [&_td]:py-2 [&_td]:text-[15px] [&_th]:border-b [&_th]:border-[color:var(--rule-soft)] [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-[0.14em] [&_th]:text-ink-3 [&_td.r]:text-right [&_td.r]:font-serif [&_td.r]:tabular-nums [&_th.r]:text-right";
 
-/* ===== Reconhecimento de voz (Web Speech API, pt-BR) ===== */
+/* ===== Reconhecimento de voz (Web Speech API, pt-BR) =====
+ * continuous=true + religa no onend enquanto o usuário não clicar em parar:
+ * o motor encerra sozinho após uma pausa curta (era isso que "parava em ~1s").
+ * Erros fatais (rede/permissão — ex.: Brave desliga a Web Speech API) deixam
+ * de ser engolidos: viram uma mensagem para o usuário em vez de silêncio. */
 function useSpeechRecognition({ onResult, onFinal }: { onResult?: (t: string) => void; onFinal?: (t: string) => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const SR = typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   const supported = !!SR;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null);
+  const wantOnRef = useRef(false); // usuário ainda quer ouvir (só false ao parar/erro fatal)
+  const finalRef = useRef(""); // transcrição final acumulada na sessão atual
   const [listening, setListening] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const finalizar = () => {
+    setListening(false);
+    const t = finalRef.current.trim();
+    if (t) onFinal && onFinal(t);
+  };
 
   const start = () => {
     if (!supported) return;
     if (recRef.current) {
       try {
+        recRef.current.onend = null; // evita religar a sessão antiga
         recRef.current.stop();
       } catch {
         /* noop */
@@ -44,36 +58,63 @@ function useSpeechRecognition({ onResult, onFinal }: { onResult?: (t: string) =>
     const rec = new SR();
     rec.lang = "pt-BR";
     rec.interimResults = true;
-    rec.continuous = false;
-    let finalText = "";
+    rec.continuous = true;
+    finalRef.current = "";
+    wantOnRef.current = true;
+    setErro(null);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
+      let finalTxt = "";
       let interim = "";
-      finalText = "";
       for (let i = 0; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += t;
+        if (e.results[i].isFinal) finalTxt += t;
         else interim += t;
       }
-      onResult && onResult((finalText + " " + interim).trim());
+      finalRef.current = finalTxt;
+      onResult && onResult((finalTxt + " " + interim).trim());
     };
-    rec.onerror = () => setListening(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
+      const code = e && e.error;
+      // no-speech/aborted são transitórios → deixa o onend religar.
+      if (code === "no-speech" || code === "aborted") return;
+      wantOnRef.current = false; // erro fatal: não religar
+      setErro(
+        code === "not-allowed" || code === "service-not-allowed"
+          ? "Permita o acesso ao microfone para falar com a IA."
+          : "Reconhecimento de voz indisponível neste navegador (funciona no Chrome). Digite sua pergunta.",
+      );
+    };
     rec.onend = () => {
-      setListening(false);
-      if (finalText.trim()) onFinal && onFinal(finalText.trim());
+      // O motor encerra após silêncio; se o usuário ainda quer ouvir e não houve
+      // erro fatal, religa para manter a escuta contínua.
+      if (wantOnRef.current) {
+        try {
+          rec.start();
+          return;
+        } catch {
+          /* cai para finalizar */
+        }
+      }
+      finalizar();
     };
     recRef.current = rec;
     try {
       rec.start();
       setListening(true);
     } catch {
+      wantOnRef.current = false;
       setListening(false);
     }
   };
+
   const stop = () => {
+    wantOnRef.current = false; // sinaliza que NÃO deve religar
     if (recRef.current) {
       try {
-        recRef.current.stop();
+        recRef.current.stop(); // dispara onend → finalizar() → onFinal
       } catch {
         /* noop */
       }
@@ -81,7 +122,7 @@ function useSpeechRecognition({ onResult, onFinal }: { onResult?: (t: string) =>
     setListening(false);
   };
 
-  return { supported, listening, start, stop };
+  return { supported, listening, erro, start, stop };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -443,10 +484,10 @@ export function IA() {
   };
 
   return (
-    <div className="shell-wide">
-      <ReportHeader eyebrow="Financeiro · Pergunte sobre seus números" subtitle="IA financeira" updatedAt={R.UPDATED_AT} />
+    <div className={cn("shell-wide", iaMode === "conversa" && "flex h-[calc(100vh_-_var(--header-h))] flex-col overflow-hidden")}>
+      <ReportHeader eyebrow="Pergunte sobre seus números" subtitle="IA" updatedAt={R.UPDATED_AT} />
 
-      <div className="mt-[18px] inline-flex border border-border bg-card">
+      <div className="mt-[18px] inline-flex self-start border border-border bg-card">
         <button className={MODE_BTN} aria-pressed={iaMode === "conversa"} onClick={() => setIaMode("conversa")}>
           Conversa
         </button>
@@ -458,9 +499,9 @@ export function IA() {
       {iaMode === "simulador" ? (
         <Simulador R={simR} />
       ) : (
-        <div className="grid min-h-[calc(100vh-130px)] grid-cols-[240px_1fr_280px] border-t border-border max-[900px]:grid-cols-1">
+        <div className="grid min-h-0 flex-1 grid-cols-[240px_1fr_280px] overflow-hidden border-t border-border max-[900px]:grid-cols-1">
           {/* Esquerda: perguntas frequentes + conversas */}
-          <aside className="flex flex-col gap-5 border-r border-border bg-card px-5 py-6 max-[900px]:hidden">
+          <aside className="flex flex-col gap-5 overflow-y-auto border-r border-border bg-card px-5 py-6 max-[900px]:hidden">
             <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">Perguntas frequentes</h4>
             <div className="flex flex-col">
               {R.promptsSugeridos.map((p: string, i: number) => (
@@ -500,8 +541,8 @@ export function IA() {
           </aside>
 
           {/* Centro: thread */}
-          <div className="flex flex-col bg-background">
-            <div className="mx-auto flex w-full max-w-[920px] flex-1 flex-col gap-7 overflow-y-auto px-9 py-7 max-[900px]:px-3.5 max-[900px]:py-5" ref={threadRef}>
+          <div className="flex min-h-0 flex-col overflow-hidden bg-background">
+            <div className="mx-auto flex min-h-0 w-full max-w-[920px] flex-1 flex-col gap-7 overflow-y-auto px-9 py-7 max-[900px]:px-3.5 max-[900px]:py-5" ref={threadRef}>
               {thread.map((m, i) => (
                 <div key={i} className={cn("flex flex-col gap-2.5", m.role === "user" && "items-end")}>
                   {m.role === "user" && (
@@ -601,14 +642,19 @@ export function IA() {
               </div>
               {speech.listening && (
                 <div className="mx-auto mt-2 flex max-w-[920px] items-center gap-2 text-[13px] tracking-[0.01em] text-ink-3">
-                  <span className="h-[9px] w-[9px] animate-[mic-blink_1s_steps(2,start)_infinite] rounded-full bg-prejuizo"></span> Gravando — falo e a pergunta é enviada quando você parar.
+                  <span className="h-[9px] w-[9px] animate-[mic-blink_1s_steps(2,start)_infinite] rounded-full bg-prejuizo"></span> Gravando — fale e a pergunta é enviada quando você parar (clique no microfone para encerrar).
+                </div>
+              )}
+              {speech.erro && !speech.listening && (
+                <div className="mx-auto mt-2 flex max-w-[920px] items-center gap-2 text-[13px] tracking-[0.01em] text-prejuizo">
+                  <span aria-hidden="true">⚠</span> {speech.erro}
                 </div>
               )}
             </div>
           </div>
 
           {/* Direita: memória + escopo de dados */}
-          <aside className="flex flex-col gap-[22px] border-l border-border bg-card px-[22px] py-6 max-[900px]:hidden">
+          <aside className="flex flex-col gap-[22px] overflow-y-auto border-l border-border bg-card px-[22px] py-6 max-[900px]:hidden">
             <div>
               <div className="flex items-baseline justify-between">
                 <h4 className="m-0 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">O que a IA lembra de você</h4>

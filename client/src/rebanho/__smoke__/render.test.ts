@@ -32,7 +32,7 @@ describe("render smoke", () => {
     expect(html).toContain("Terrano");           // marca no topo da sidebar
     expect(html).toContain("Rebanho leiteiro");
     expect(html).toContain("Painel");
-    expect(html).toContain("IA financeira");
+    expect(html).toContain(">IA<");
     expect(html).toContain("Configurações");     // único item do rodapé (hub)
     // Cadastros/Categorias/Caixinha/Acessos dobraram para dentro dos hubs
     // (Configurações/Gastos) — não são mais itens de topo da sidebar.
