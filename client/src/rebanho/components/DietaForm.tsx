@@ -4,6 +4,7 @@ import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta,
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { REB_SUB } from "@/components/rb/RebPrimitives";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -182,10 +183,10 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
 
           {disponiveis.length > 0 && (
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <select value={novoProduto} onChange={(e) => setNovoProduto(e.target.value)} style={{ flex: 1 }}>
+              <RebSelect value={novoProduto} onChange={(v) => setNovoProduto(v)} className="flex-1">
                 <option value="">+ Adicionar produto…</option>
                 {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
-              </select>
+              </RebSelect>
               <RebButton type="button" disabled={!novoProduto} onClick={adicionar}>Adicionar</RebButton>
             </div>
           )}
