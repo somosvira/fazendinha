@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
-  parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem,
+  parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem, parseLactacao,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -169,4 +169,28 @@ test("parsePesagem → peso + gmd", () => {
   assert.equal(p.gmd, 0.85);
   // gmd vazio → null
   assert.equal(parsePesagem("42~|~2025-01-01~|~300~|~").gmd, null);
+});
+
+test("parseLactacao — lactação encerrada com produção (corrente)", () => {
+  const l = parseLactacao("1001~|~3~|~2023-08-29~|~2024-12-13~|~Rotina~|~A~|~0~|~9820.5~|~9105.0~|~471");
+  assert.equal(l.numero, "1001");
+  assert.equal(l.ordem, 3);
+  assert.equal(l.dtInicio, "2023-08-29");
+  assert.equal(l.dtFim, "2024-12-13");
+  assert.equal(l.motivoSecagem, "Rotina");
+  assert.equal(l.tipoAleitamento, "A");
+  assert.equal(l.induzida, false);
+  assert.equal(l.producaoTotal, 9820.5);
+  assert.equal(l.producao305, 9105.0);
+  assert.equal(l.duracaoDias, 471);
+});
+
+test("parseLactacao — lactação anterior sem produção, campos vazios → null", () => {
+  const l = parseLactacao("1001~|~~|~2022-01-10~|~2022-11-01~|~Baixa produção~|~A~|~1~|~~|~~|~");
+  assert.equal(l.ordem, null);
+  assert.equal(l.dtFim, "2022-11-01");
+  assert.equal(l.induzida, true);
+  assert.equal(l.producaoTotal, null);
+  assert.equal(l.producao305, null);
+  assert.equal(l.duracaoDias, null);
 });

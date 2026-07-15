@@ -5,7 +5,7 @@
 // lactação, 1.621 controles) e substitui o rebanho de demonstração pelo real da fazenda.
 //
 // Espelha o pipeline do financeiro (extração → JSON → importador): aqui só lemos o JSON
-// commitado e populamos Animal + ResumoAnimal + Lactacao (aberta) + ControleLeiteiro,
+// commitado e populamos Animal + ResumoAnimal + Lactacao (histórico completo) + ControleLeiteiro,
 // com upsert de Raca/Grupo por nome.
 //
 // Ordem recomendada de execução (worktree/dev):
@@ -100,6 +100,18 @@ interface PesagemJson {
   peso: number;
   gmd: number | null;
 }
+interface LactacaoJson {
+  numero: string;
+  ordem: number | null;
+  dtInicio: string;
+  dtFim: string | null;
+  motivoSecagem: string | null;
+  tipoAleitamento: string | null;
+  induzida: boolean;
+  producaoTotal: number | null;
+  producao305: number | null;
+  duracaoDias: number | null;
+}
 interface RebanhoJson {
   geradoEm: string;
   animais: AnimalJson[];
@@ -107,6 +119,7 @@ interface RebanhoJson {
   eventos: EventoJson[];
   eventosSanitarios: EventoSanitarioJson[];
   pesagens: PesagemJson[];
+  lactacoes?: LactacaoJson[];
 }
 
 // datas vêm como "YYYY-MM-DD" (campos @db.Date) — fixar em UTC para não escorregar de dia
@@ -224,16 +237,42 @@ async function main() {
   await prisma.resumoAnimal.createMany({ data: resumoRows });
   console.log(`Resumos inseridos: ${resumoRows.length}.`);
 
-  // --- Lactação aberta (createMany) — só para quem está em lactação ---------
-  const lactacaoRows = dados.animais
-    .filter((a) => a.resumo.lactacaoAberta)
-    .map((a) => ({
-      animalId: idByNumero.get(a.numero)!,
-      numero: a.resumo.ordemLactacao ?? 1,
-      dtInicio: d(a.resumo.lactacaoAberta!.dtInicio)!,
-      dtFim: null,
-    }));
+  // --- Lactações (createMany) — histórico completo do Ideagri (LACTACAO) -----
+  // Substitui a antiga "lactação aberta" derivada do resumo: agora vem o histórico
+  // inteiro. Número = ORDEMLACTACAO quando presente; senão, ordem cronológica por
+  // animal (1ª, 2ª…). Produção só existe na lactação corrente.
+  const lactPorAnimal = new Map<string, LactacaoJson[]>();
+  for (const l of dados.lactacoes ?? []) {
+    if (!idByNumero.has(l.numero)) continue;
+    const arr = lactPorAnimal.get(l.numero);
+    if (arr) arr.push(l);
+    else lactPorAnimal.set(l.numero, [l]);
+  }
+  const lactacaoRows: {
+    animalId: number; numero: number; dtInicio: Date; dtFim: Date | null;
+    motivoSecagem: string | null; tipoAleitamento: string | null; induzida: boolean;
+    producaoTotal: number | null; producao305: number | null; duracaoDias: number | null;
+  }[] = [];
+  for (const [numero, lacts] of lactPorAnimal) {
+    const animalId = idByNumero.get(numero)!;
+    const ordenadas = [...lacts].sort((x, y) => x.dtInicio.localeCompare(y.dtInicio));
+    ordenadas.forEach((l, i) => {
+      lactacaoRows.push({
+        animalId,
+        numero: l.ordem ?? i + 1,
+        dtInicio: d(l.dtInicio)!,
+        dtFim: d(l.dtFim),
+        motivoSecagem: l.motivoSecagem ?? null,
+        tipoAleitamento: l.tipoAleitamento ?? null,
+        induzida: l.induzida ?? false,
+        producaoTotal: l.producaoTotal ?? null,
+        producao305: l.producao305 ?? null,
+        duracaoDias: l.duracaoDias ?? null,
+      });
+    });
+  }
   await prisma.lactacao.createMany({ data: lactacaoRows });
+  console.log(`Lactações inseridas: ${lactacaoRows.length}.`);
 
   // --- Controles leiteiros (createMany em lotes) ----------------------------
   const controleRows = dados.controles
@@ -322,7 +361,7 @@ async function main() {
   }
 
   const emLactacao = resumoRows.filter((r) => r.del != null).length;
-  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles (${lactacaoRows.length} lactações abertas), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários, ${pesagensInseridas} pesagens, ${produtosAplicados.size} produtos aplicados (Cadastros).`);
+  console.log(`Import rebanho real: ${animaisRows.length} animais, ${emLactacao} em lactação, ${controlesInseridos} controles, ${lactacaoRows.length} lactações (histórico), ${eventosInseridos} eventos reprodutivos, ${sanitariosInseridos} sanitários, ${pesagensInseridas} pesagens, ${produtosAplicados.size} produtos aplicados (Cadastros).`);
 }
 
 main()
