@@ -34,9 +34,9 @@ export const animaisRouter = new Hono()
     return dto ? c.json(dto) : c.json({ error: "animal não encontrado" }, 404);
   })
   .get("/rebanho/animais/:id/lactacoes", async (c) => {
+    // Detalhe por id do animal — escopo vem do próprio id (como GET /:id e /:id/insights).
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
-    await resolverEscopoLeitura(c);
     return c.json(await listarLactacoes(id));
   })
   .post("/rebanho/animais", zValidator("json", criarAnimalSchema), async (c) => {

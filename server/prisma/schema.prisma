@@ -538,10 +538,10 @@ model Lactacao {
   motivoSecagem   String?               // MOTIVOSECAGEM.DESCRICAO
   tipoAleitamento String?               // TIPOALEITAMENTO ('A'…)
   induzida        Boolean   @default(false)
-  producaoTotal   Decimal?  @db.Decimal(10, 2)  // litros no ciclo (só última hoje)
+  producaoTotal   Decimal?  @db.Decimal(10, 2)  // litros no ciclo — só a última lactação do animal (aberta ou seca) traz produção
   producao305     Decimal?  @db.Decimal(10, 2)
-  duracaoDias     Int?
-  propriedadeId   Int?
+  duracaoDias     Int?      // DEL do Ideagri (hoje sempre null; a duração exibida é recalculada)
+  // Sem propriedadeId: como ControleLeiteiro/Pesagem, é fato-filho de Animal e herda o escopo do animal.
 
   @@index([animalId, numero])
 }

@@ -19,7 +19,8 @@ export interface LactacaoDTO {
 export async function listarLactacoes(animalId: number, hoje: Date = new Date()) {
   const rows = await prisma.lactacao.findMany({
     where: { animalId },
-    orderBy: { numero: "desc" },
+    // desempate por dtInicio p/ ordem determinística caso 2 lactações tenham o mesmo numero
+    orderBy: [{ numero: "desc" }, { dtInicio: "desc" }],
   });
   const resumo = resumoLactacoes(rows as unknown as LactacaoRow[], hoje);
   const lactacoes: LactacaoDTO[] = rows.map((l) => ({
