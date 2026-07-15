@@ -31,3 +31,34 @@ export function toTimelineControle(c: any): EventoTimelineDTO {
     marcador: undefined,
   };
 }
+
+const ordinal = (n: number) => `${n}ª`;
+
+// Início de lactação → timeline (domínio produção).
+export function toTimelineLactacaoInicio(l: any): EventoTimelineDTO {
+  return {
+    id: `lactacao-inicio-${l.id}`,
+    animalId: String(l.animalId),
+    data: iso(l.dtInicio),
+    dominio: "producao",
+    titulo: `Início da ${ordinal(l.numero)} lactação`,
+    detalhe: l.induzida ? "induzida" : undefined,
+    alerta: false,
+    marcador: undefined,
+  };
+}
+
+// Secagem → timeline; null quando a lactação ainda está aberta.
+export function toTimelineLactacaoSecagem(l: any): EventoTimelineDTO | null {
+  if (l.dtFim == null) return null;
+  return {
+    id: `lactacao-secagem-${l.id}`,
+    animalId: String(l.animalId),
+    data: iso(l.dtFim),
+    dominio: "producao",
+    titulo: "Secagem",
+    detalhe: l.motivoSecagem ?? undefined,
+    alerta: false,
+    marcador: undefined,
+  };
+}
