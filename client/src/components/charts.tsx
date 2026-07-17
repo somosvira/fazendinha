@@ -45,6 +45,32 @@ export const fmtMoneyExact = (val: number): string => {
   })}`;
 };
 
+/** Reais BRUTOS, compacto: exato < R$ 10 mil, "mil" ≥ 10 mil, "mi" ≥ 1 mi.
+ *  Formatador canônico do Dashboard e do Relatório — passe sempre o valor em
+ *  reais (não em milhares) para a MESMA cifra aparecer igual nas duas telas. */
+export function fmtBRL(n: number, opts: { compact?: boolean; decimals?: number } = {}): string {
+  const { compact = true, decimals } = opts;
+  if (n === 0) return "R$ 0";
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "−" : "";
+  if (compact && abs >= 1_000_000) {
+    return `${sign}R$ ${(abs / 1_000_000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} mi`;
+  }
+  if (compact && abs >= 10_000) {
+    return `${sign}R$ ${(abs / 1_000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })} mil`;
+  }
+  return `${sign}R$ ${abs.toLocaleString("pt-BR", {
+    minimumFractionDigits: decimals ?? 0,
+    maximumFractionDigits: decimals ?? 0,
+  })}`;
+}
+
 type FluxoMensal = {
   mes: string;
   receitaLeite: number;

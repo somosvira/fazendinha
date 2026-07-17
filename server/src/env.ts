@@ -47,6 +47,17 @@ const envSchema = z
     // OCR via Tesseract.js (gratuito, roda em Node). Em dev/teste deixe "false" para
     // boot mais rápido (sem download dos ~70MB de language data português).
     OCR_ENABLED: z.coerce.boolean().default(false),
+
+    // --- Contas / login (Fatia auth) ---
+    // Se setado e a tabela Usuario estiver vazia, o boot cria o dono com este
+    // e-mail (status PENDENTE) e loga um link de definir-senha uma vez.
+    AUTH_BOOTSTRAP_EMAIL: z.string().email().optional(),
+    AUTH_BOOTSTRAP_NOME: z.string().default("Proprietário"),
+    // Base absoluta para montar links de convite/reset (ex.: https://rionovo.com.br).
+    // Vazio → link relativo "/convite/<token>" (o dono prefixa o domínio).
+    APP_BASE_URL: z.string().default(""),
+    // Validade da sessão em dias (sliding).
+    AUTH_SESSAO_DIAS: z.coerce.number().int().positive().default(30),
   })
   .superRefine((v, ctx) => {
     if (v.STORAGE_DRIVER === "r2") {

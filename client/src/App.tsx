@@ -24,8 +24,10 @@ import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
-import { getToken, setToken, clearToken } from "./lib/auth";
-import { ABAS, PAPEIS, usuarios, type User } from "./data/acessos";
+import { DefinirSenha } from "./components/DefinirSenha";
+import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
+import { fetchMe, logout } from "./api/auth";
+import { ABAS, type User } from "./data/acessos";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 
@@ -36,12 +38,6 @@ import { TerranoIntro } from "./components/TerranoIntro";
 // ⚠️ TROCAR PARA "session" ANTES DO PUSH.
 const INTRO_MODE: "always" | "session" | "once" = "session";
 const INTRO_SEEN_KEY = "terrano:intro:seen";
-
-// Gate de acesso. `false` na fase interna (entra direto, sem login). Trocar por
-// `true` religa a tela de senha — e com ela a música da intro ancorada no clique
-// de "Entrar" (ver comentário do token em App). O middleware do server só fecha
-// de fato se SHARED_ACCESS_TOKEN estiver setado; em dev, qualquer senha entra.
-const GATE_ATIVO = false;
 
 // Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
 // do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
@@ -134,16 +130,24 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Auth mínima (senha compartilhada). Durante a fase interna o gate fica
-  // DESLIGADO (GATE_ATIVO=false) — entra direto como Marco, sem tela de senha.
-  // Ligar GATE_ATIVO religa o Login e, com ele, a música da abertura ancorada no
-  // clique de "Entrar": o login/logout transicionam EM ESTADO, sem
-  // window.location.reload() — um reload mataria a "sticky activation" do
-  // documento e o navegador voltaria a bloquear o áudio da intro.
-  // ⚠️ Com o gate desligado não há clique de login: a intro roda o visual e a
-  // música entra no 1º gesto do usuário (fallback em TerranoIntro).
+  // Deep-link de convite/reset: /convite/<token> ou /senha/<token>. Renderiza a
+  // tela de definir senha independentemente do gate de login (ver render abaixo).
+  const rotaSenha = (() => {
+    if (typeof window === "undefined") return null;
+    const m = /^\/(convite|senha)\/(.+)$/.exec(window.location.pathname);
+    if (!m) return null;
+    return { modo: (m[1] === "convite" ? "convite" : "senha") as "convite" | "senha", token: m[2] };
+  })();
+
+  // Sessão real (usuários do backend). O login por e-mail+senha grava token +
+  // usuário e transiciona EM ESTADO — sem window.location.reload(). Um reload
+  // mataria a "sticky activation" do documento e o navegador voltaria a bloquear
+  // o áudio da abertura Terrano, ancorado no clique de "Entrar".
   const [token, setTokenState] = useState<string | null>(() =>
     typeof window === "undefined" ? null : getToken(),
+  );
+  const [usuario, setUsuario] = useState<UsuarioSessao | null>(() =>
+    typeof window === "undefined" ? null : getUsuario(),
   );
 
   // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
@@ -151,29 +155,29 @@ export function App() {
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
   );
-  // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). Com
-  // o gate ligado ela também é (re)disparada no clique de "Entrar" — aí a música
-  // toca junto com a logo, porque o clique libera o áudio.
+  // Abertura Terrano: no boot quando abre já no dashboard (ver INTRO_MODE). No
+  // clique de "Entrar" ela também é (re)disparada — aí a música toca junto com a
+  // logo, porque o clique libera o áudio.
   const [showIntro, setShowIntro] = useState<boolean>(() =>
     typeof window === "undefined"
       ? false
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
-  const entrar = (senha: string) => {
-    setToken(senha); // persiste pro comAuth() das próximas requests
-    setTokenState(senha); // transiciona pro app SEM reload (mantém o gesto vivo p/ o áudio)
+  const entrar = (novoToken: string, u: UsuarioSessao) => {
+    setSessao(novoToken, u); // persiste token + usuário pras próximas requests
+    setTokenState(novoToken); // transiciona pro app SEM reload (gesto vivo p/ o áudio)
+    setUsuario(u);
     setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
   };
   const onSair = token
     ? () => {
-        clearToken();
+        void logout();
+        clearSessao();
         setTokenState(null);
+        setUsuario(null);
         setShowIntro(false);
       }
     : undefined;
-  const [users, setUsers] = useState<User[]>(usuarios);
-  const realUserId = "marco"; // o dono logado
-  const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
@@ -293,19 +297,55 @@ export function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const effectiveUser = useMemo(() => {
-    const id = viewAsId || realUserId;
-    return users.find((u) => u.id === id) || users[0];
-  }, [users, viewAsId]);
+  // Revalida a sessão no backend quando há token: se caiu (revogado/expirado),
+  // desloga; se ainda vale, refresca o usuário guardado.
+  useEffect(() => {
+    if (!token) return;
+    fetchMe()
+      .then((u) => {
+        if (u) {
+          setUsuario(u);
+          setSessao(token, u);
+        } else {
+          clearSessao();
+          setTokenState(null);
+          setUsuario(null);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
-  const isAdmin = effectiveUser.flags.includes("gerenciarAcessos");
+  // Adaptador: o backend entrega `UsuarioSessao` (id numérico, status MAIÚSCULO,
+  // sem `inicial`); as telas apresentacionais (Header/Dashboard/Gastos/GatedTab)
+  // consomem o shape `User` do mock. Derivamos um `User` a partir da sessão real.
+  const effectiveUser = useMemo<User | null>(
+    () =>
+      usuario
+        ? {
+            id: String(usuario.id),
+            nome: usuario.nome,
+            email: usuario.email,
+            inicial: usuario.nome.trim()[0]?.toUpperCase() ?? "?",
+            papel: usuario.papel,
+            status: usuario.status.toLowerCase() as User["status"],
+            ultimoAcesso: "",
+            abas: usuario.abas,
+            flags: usuario.flags,
+            dono: usuario.dono,
+          }
+        : null,
+    [usuario],
+  );
+
+  const isAdmin = !!effectiveUser?.flags.includes("gerenciarAcessos") || !!effectiveUser?.dono;
   // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
   // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
-  const canSeeFolha = effectiveUser.flags.includes("verSalarios");
+  const canSeeFolha = !!effectiveUser?.flags.includes("verSalarios") || !!effectiveUser?.dono;
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
   const visibleTabs = useMemo<NavTab[]>(() => {
+    if (!effectiveUser) return [];
     return ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
       id: a.id as Tab,
       label: a.label,
@@ -328,10 +368,27 @@ export function App() {
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
-  const enterViewAs = (id: string) => {
-    setViewAsId(id === realUserId ? null : id);
-    setTab("dashboard");
-  };
+  // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
+  // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
+  // rodaram — os early returns aqui não violam as Rules of Hooks.
+  if (rotaSenha) {
+    return (
+      <DefinirSenha
+        modo={rotaSenha.modo}
+        token={rotaSenha.token}
+        onPronto={(t, u) => {
+          entrar(t, u);
+          window.history.replaceState(null, "", "/dashboard");
+        }}
+      />
+    );
+  }
+  // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
+  // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
+  // liberando o play() da música da abertura.
+  if (!token || !usuario || !effectiveUser) {
+    return <Login onEntrar={entrar} />;
+  }
 
   const conteudo = String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)}
@@ -388,21 +445,10 @@ export function App() {
             onNav={setTab}
             isAdmin={isAdmin}
             podeCategorias={canSee("plano")}
-            users={users}
-            setUsers={setUsers}
-            onViewAs={enterViewAs}
           />
         )}
       </>
     );
-
-  // Gate de acesso (ligado por GATE_ATIVO): sem token, só a tela de login.
-  // `entrar` recebe o clique (gesto) e transiciona em estado — a intro monta no
-  // MESMO documento, então o play() da música é liberado. (Todos os hooks acima
-  // já rodaram — early return aqui não viola as Rules of Hooks.)
-  if (GATE_ATIVO && !token) {
-    return <Login onEntrar={entrar} />;
-  }
 
   return (
     <>
@@ -441,23 +487,6 @@ export function App() {
         onTrocarProp={trocarPropriedade}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        {viewAsId && (
-          <div className="viewas-banner">
-            <span className="eye">👁</span>
-            <span>
-              Você está vendo o sistema como <strong>{effectiveUser.nome}</strong> —{" "}
-              {effectiveUser.papel === "personalizado" ? "Personalizado" : PAPEIS[effectiveUser.papel]?.nome}
-            </span>
-            <button
-              onClick={() => {
-                setViewAsId(null);
-                setTab("dashboard");
-              }}
-            >
-              Voltar para Marco (admin)
-            </button>
-          </div>
-        )}
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
           {conteudo}
         </div>

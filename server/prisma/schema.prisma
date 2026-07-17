@@ -529,14 +529,21 @@ model EventoReprodutivo {
 }
 
 model Lactacao {
-  id       Int       @id @default(autoincrement())
-  animal   Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId Int
-  numero   Int
-  dtInicio DateTime  @db.Date
-  dtFim    DateTime? @db.Date
+  id              Int       @id @default(autoincrement())
+  animal          Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId        Int
+  numero          Int       // ordem da lactação (ORDEMLACTACAO ou cronológica)
+  dtInicio        DateTime  @db.Date
+  dtFim           DateTime? @db.Date   // null = em curso
+  motivoSecagem   String?               // MOTIVOSECAGEM.DESCRICAO
+  tipoAleitamento String?               // TIPOALEITAMENTO ('A'…)
+  induzida        Boolean   @default(false)
+  producaoTotal   Decimal?  @db.Decimal(10, 2)  // litros no ciclo — só a última lactação do animal (aberta ou seca) traz produção
+  producao305     Decimal?  @db.Decimal(10, 2)
+  duracaoDias     Int?      // DEL do Ideagri (hoje sempre null; a duração exibida é recalculada)
+  // Sem propriedadeId: como ControleLeiteiro/Pesagem, é fato-filho de Animal e herda o escopo do animal.
 
-  @@index([animalId])
+  @@index([animalId, numero])
 }
 
 // Pesagens corporais (Ideagri PESO) — peso e ganho médio diário (GMD) por data.
@@ -1846,4 +1853,58 @@ model MovimentoCaixinha {
   updatedAt  DateTime              @updatedAt
 
   @@index([caixinhaId, data])
+}
+
+enum StatusUsuario {
+  PENDENTE
+  ATIVO
+  INATIVO
+}
+
+enum TipoToken {
+  CONVITE
+  RESET
+}
+
+model Usuario {
+  id           Int           @id @default(autoincrement())
+  nome         String
+  email        String        @unique
+  senhaHash    String?
+  papel        String
+  abas         String[]
+  flags        String[]
+  status       StatusUsuario @default(PENDENTE)
+  dono         Boolean       @default(false)
+  ultimoAcesso DateTime?
+  sessoes      Sessao[]
+  tokens       TokenAcesso[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Sessao {
+  id        String   @id @default(cuid())
+  usuarioId Int
+  tokenHash String   @unique
+  expiraEm  DateTime
+  ultimoUso DateTime @default(now())
+  userAgent String?
+  criadaEm  DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
+
+model TokenAcesso {
+  id        String    @id @default(cuid())
+  usuarioId Int
+  tipo      TipoToken
+  tokenHash String    @unique
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
 }

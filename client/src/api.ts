@@ -3,10 +3,6 @@
  */
 
 import { buildVolumeLeite } from "./data/cockpitSupplements";
-import { buildFolego, buildProjecaoLeite } from "./data/projecao";
-import { orcamento, buildProdutividade } from "./data/gestao";
-import { buildCompromissos, buildRuptura } from "./data/ruptura";
-import { anomalias, historicoPreco, analisePreco } from "./data/anomalias";
 import { comPropriedade } from "./propriedadeScope";
 
 async function getJson<T>(path: string): Promise<T> {
@@ -94,22 +90,6 @@ export async function fetchDashboard(opts?: { from?: string; to?: string }): Pro
   // topSetores: 3 setores (centro de custo) com maior receita no período —
   // dado REAL do servidor. Alimenta o comparativo "Maiores receitas" do Dashboard.
   d.topSetores = d.topSetores ?? [];
-
-  // Ainda mock (bloqueados): break-even do leite (sem litros) e ruptura DIÁRIA +
-  // compromissos (precisa de projeção diária e de contas a vencer). buildRuptura
-  // recebe um folego mock só pra não acoplar à forma real.
-  d.projecaoLeite = buildProjecaoLeite(d);
-  d.compromissos = buildCompromissos();
-  d.rupturaCaixa = buildRuptura(d, buildFolego(d));
-
-  // Gestão (orçado×realizado, produtividade do rebanho) — definidos fora do BPO.
-  d.orcamento = orcamento;
-  d.produtividade = buildProdutividade();
-
-  // Vigilância da IA (anomalias + histórico de preço por insumo).
-  d.anomalias = anomalias;
-  d.historicoPreco = historicoPreco;
-  d.analisePreco = analisePreco;
 
   return d;
 }

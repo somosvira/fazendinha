@@ -7,6 +7,9 @@ import { authMiddleware } from "./middleware/auth.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { categoriasRouter } from "./routes/categorias.js";
 import { healthRouter } from "./routes/health.js";
+import { authPublicoRouter, authPrivadoRouter } from "./routes/auth.js";
+import { usuariosRouter } from "./routes/usuarios.js";
+import { garantirDonoBootstrap } from "./services/auth/usuarios.js";
 import { animaisRouter } from "./routes/rebanho/animais.js";
 import { eventosRouter } from "./routes/rebanho/eventos.js";
 import { sanidadeRouter } from "./routes/rebanho/sanidade.js";
@@ -74,9 +77,17 @@ app.use(
     origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
   })
 );
+// Isentos de sessão (montados ANTES do gate): health, whatsapp (valida por HMAC
+// próprio) e as rotas públicas de auth (login/convite/reset).
+app.route("/api", healthRouter);
+app.route("/api", whatsappRouter);
+app.route("/api", authPublicoRouter);
+
 app.use("/api/*", authMiddleware);
 
-app.route("/api", healthRouter);
+// Protegidos (exigem sessão resolvida pelo authMiddleware):
+app.route("/api", authPrivadoRouter);
+app.route("/api", usuariosRouter);
 app.route("/api", propriedadeRouter);
 app.route("/api", dashboardRouter);
 app.route("/api", categoriasRouter);
@@ -120,7 +131,6 @@ app.route("/api", pontoDashboardRouter);
 app.route("/api", caixinhaRouter);
 app.route("/api", buscaRouter);
 app.route("/api", botRouter);
-app.route("/api", whatsappRouter);
 app.route("/api", cadastrosFinanceiroRouter);
 app.route("/api", lancamentosRouter);
 app.route("/api", notaFiscalRouter);
@@ -135,3 +145,6 @@ iniciarCleanupPendentes();
 // Fundação multi-propriedade: cria a principal e backfilla escopos nulos.
 // Idempotente e à prova de `db push` (que não roda o seed/backfill da migration).
 garantirFundacaoPropriedade().catch((e) => console.error("[propriedade] falha ao garantir fundação:", e));
+
+// Cria o dono no primeiro boot (tabela Usuario vazia + AUTH_BOOTSTRAP_EMAIL).
+garantirDonoBootstrap().catch((e) => console.error("[auth] falha no bootstrap do dono:", e));

@@ -27,8 +27,8 @@ export const ABAS: Aba[] = [
   { id: "gastos", label: "Gastos", desc: "Tabela de lançamentos e notas fiscais" },
   { id: "lancar", label: "Lançar", desc: "Registrar entrada (receita) ou saída (gasto)" },
   { id: "caixinha", label: "Caixinha", desc: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
-  { id: "plano", label: "Categorias", desc: "Plano de contas e categorização" },
-  { id: "ia", label: "IA", desc: "Pergunte sobre os números" },
+  // "plano" (Categorias) e "ia" (IA financeira) ocultos até terem backend real —
+  // as telas ainda usam dados mock. Reversível: reinserir aqui religa a aba.
   { id: "relatorio", label: "Relatório", desc: "Relatório gerencial editorial" },
 ];
 

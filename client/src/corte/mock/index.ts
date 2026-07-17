@@ -12,8 +12,10 @@ export function getLote(id: string): Lote | undefined {
 export function getResumo(id: string): ResumoLote | undefined {
   return resumos.find((r) => r.loteId === id);
 }
-export function insightDaFazenda(dominio: Dominio): IaInsight | undefined {
-  return insights.find((i) => i.escopo === "fazenda" && i.dominio === dominio);
+// Banda de insight de IA ocultada até haver IA real — o texto era fabricado (mock).
+// Reversível: restaurar o corpo `insights.find(...)` religa a banda.
+export function insightDaFazenda(_dominio: Dominio): IaInsight | undefined {
+  return undefined;
 }
 export function insightDoLote(loteId: string): IaInsight | undefined {
   return insights.find((i) => i.escopo === "lote" && i.loteId === loteId);

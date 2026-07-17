@@ -12,8 +12,10 @@ export function getTalhao(id: string): Talhao | undefined {
 export function getResumo(id: string): ResumoTalhao | undefined {
   return resumos.find((r) => r.talhaoId === id);
 }
-export function insightDaLavoura(dominio: Dominio): IaInsight | undefined {
-  return insights.find((i) => i.escopo === "lavoura" && i.dominio === dominio);
+// Banda de insight de IA ocultada até haver IA real — o texto era fabricado (mock).
+// Reversível: restaurar o corpo `insights.find(...)` religa a banda.
+export function insightDaLavoura(_dominio: Dominio): IaInsight | undefined {
+  return undefined;
 }
 export function insightDoTalhao(talhaoId: string): IaInsight | undefined {
   return insights.find((i) => i.escopo === "talhao" && i.talhaoId === talhaoId);

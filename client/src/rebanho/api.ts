@@ -132,6 +132,43 @@ export function useTimeline(id: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+export interface LactacaoDTO {
+  id: number;
+  numero: number;
+  dtInicio: string;
+  dtFim: string | null;
+  duracaoDias: number | null;
+  motivoSecagem: string | null;
+  producaoTotal: number | null; // medida (Ideagri) — só a última lactação
+  producao305: number | null;
+  producaoControles: number | null; // estimada dos controles (TIM) quando não há valor medido
+  nControles: number;
+  emCurso: boolean;
+}
+export interface ResumoLactacoesDTO {
+  total: number;
+  emCurso: boolean;
+  delAtual: number | null;
+  vidaProdutivaDias: number;
+  producaoMediaCiclo: number | null;
+}
+export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; }
+
+export const listarLactacoes = (id: string) => req<LactacoesResp>(`/rebanho/animais/${id}/lactacoes`);
+
+export function useLactacoes(id: string | null) {
+  const [data, setData] = useState<LactacoesResp | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!id) { setData(null); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarLactacoes(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [id]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export function useAnimal(id: string | null) {
   const [data, setData] = useState<Animal | null>(null);
   const [loading, setLoading] = useState(true);

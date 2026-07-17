@@ -5,10 +5,8 @@ export interface IaInsight {
   acoes?: { label: string }[];
 }
 
-export function insightDaEquipe(): IaInsight {
-  return {
-    texto:
-      "A folha do mês fechou com <b>horas extras concentradas em poucos setores</b> — vale revisar a escala antes que o extra vire recorrente. A maioria do quadro já está com <b>ponto lançado</b>, mas confira os que ainda estão sem apuração.",
-    acoes: [{ label: "Abrir folha do mês" }],
-  };
+// Banda de insight de IA ocultada até haver IA real — o texto era fabricado (mock).
+// Reversível: restaurar o objeto retornado religa a banda.
+export function insightDaEquipe(): IaInsight | undefined {
+  return undefined;
 }

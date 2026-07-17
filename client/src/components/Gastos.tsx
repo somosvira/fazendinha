@@ -4,8 +4,6 @@
 
 import type { Tab } from "./Shell";
 import type { User } from "../data/acessos";
-import { AnomaliasStrip } from "./Vigilancia";
-import { anomalias } from "./../data/anomalias";
 import { ContasAVencer } from "../financeiro/ContasAVencer";
 import { Caixinha } from "../financeiro/Caixinha";
 import { SubTabs, type SubTab } from "./SubTabs";
@@ -61,10 +59,7 @@ export function Gastos({
       {atual === "caixinha" ? (
         <Caixinha embedded />
       ) : (
-        <>
-          <ContasAVencer filtrosIniciais={filtrosIniciais} />
-          <AnomaliasStrip R={{ anomalias }} onNav={onNav} />
-        </>
+        <ContasAVencer filtrosIniciais={filtrosIniciais} />
       )}
     </div>
   );

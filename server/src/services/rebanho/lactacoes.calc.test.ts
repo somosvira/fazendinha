@@ -1,0 +1,107 @@
+import { describe, it, expect } from "vitest";
+import { duracaoLactacao, resumoLactacoes, producaoCiclo, normalizarData } from "./lactacoes.calc.js";
+
+const D = (s: string) => new Date(`${s}T00:00:00Z`);
+const hoje = D("2026-05-28");
+const ctrl = (data: string, pesoTotal: number) => ({ data: D(data), pesoTotal });
+
+describe("normalizarData", () => {
+  it("remove a hora mantendo a data civil da fazenda", () => {
+    expect(normalizarData(new Date("2026-05-28T15:00:00-03:00"))).toEqual(D("2026-05-28"));
+  });
+
+  it("não avança o dia na fronteira Brasil/UTC", () => {
+    expect(normalizarData(new Date("2026-05-29T01:00:00Z"))).toEqual(D("2026-05-28"));
+  });
+});
+
+describe("duracaoLactacao", () => {
+  it("encerrada: dias entre início e fim", () => {
+    expect(duracaoLactacao({ dtInicio: D("2023-08-29"), dtFim: D("2024-12-13") } as any, hoje)).toBe(472);
+  });
+  it("aberta: dias entre início e hoje", () => {
+    expect(duracaoLactacao({ dtInicio: D("2026-05-01"), dtFim: null } as any, hoje)).toBe(27);
+  });
+});
+
+describe("resumoLactacoes", () => {
+  it("agrega total, vida produtiva, DEL da aberta e média das que têm produção", () => {
+    const r = resumoLactacoes(
+      [
+        { numero: 1, dtInicio: D("2022-01-01"), dtFim: D("2022-11-01"), producaoTotal: 8000, producao305: 7000, duracaoDias: 304, motivoSecagem: "Rotina" },
+        { numero: 2, dtInicio: D("2023-01-01"), dtFim: D("2023-11-01"), producaoTotal: null, producao305: null, duracaoDias: null, motivoSecagem: "Baixa produção" },
+        { numero: 3, dtInicio: D("2026-05-01"), dtFim: null, producaoTotal: null, producao305: null, duracaoDias: null, motivoSecagem: null },
+      ] as any,
+      hoje,
+    );
+    expect(r.total).toBe(3);
+    expect(r.emCurso).toBe(true);
+    expect(r.delAtual).toBe(27);
+    // vida produtiva = 304 (enc.1) + 304 (enc.2: 2023-01-01→2023-11-01) + 27 (aberta) = 635
+    expect(r.vidaProdutivaDias).toBe(635);
+    expect(r.producaoMediaCiclo).toBe(8000); // só a lactação 1 tem produção
+  });
+
+  it("sem produção em nenhuma → producaoMediaCiclo null", () => {
+    const r = resumoLactacoes(
+      [{ numero: 1, dtInicio: D("2022-01-01"), dtFim: D("2022-11-01"), producaoTotal: null, producao305: null, duracaoDias: null, motivoSecagem: null }] as any,
+      hoje,
+    );
+    expect(r.producaoMediaCiclo).toBeNull();
+    expect(r.emCurso).toBe(false);
+    expect(r.delAtual).toBeNull();
+  });
+
+  it("média/ciclo usa produção estimada dos controles quando o Ideagri não traz total", () => {
+    const r = resumoLactacoes(
+      [
+        // sem valor do Ideagri, mas com estimativa dos controles → entra na média
+        { numero: 1, dtInicio: D("2022-01-01"), dtFim: D("2022-11-01"), producaoTotal: null, producao305: null, duracaoDias: null, motivoSecagem: null, producaoControles: 6000 },
+        // valor do Ideagri tem precedência sobre a estimativa
+        { numero: 2, dtInicio: D("2023-01-01"), dtFim: D("2023-11-01"), producaoTotal: 8000, producao305: 7000, duracaoDias: null, motivoSecagem: null, producaoControles: 9999 },
+      ] as any,
+      hoje,
+    );
+    expect(r.producaoMediaCiclo).toBe(7000); // (6000 estimada + 8000 medida) / 2
+  });
+});
+
+describe("producaoCiclo (Test Interval Method)", () => {
+  it("sem controle na janela → null", () => {
+    expect(producaoCiclo([ctrl("2020-01-01", 25)], D("2023-01-01"), D("2023-11-01"))).toEqual({ litros: null, nControles: 0 });
+  });
+
+  it("intervalo invertido → null, nunca produção negativa", () => {
+    expect(producaoCiclo([ctrl("2023-05-01", 25)], D("2023-11-01"), D("2023-01-01"))).toEqual({ litros: null, nControles: 0 });
+  });
+
+  it("inclui controle exatamente nas duas fronteiras da janela", () => {
+    expect(producaoCiclo([ctrl("2023-01-01", 30), ctrl("2023-01-11", 20)], D("2023-01-01"), D("2023-01-11"))).toEqual({ litros: 250, nControles: 2 });
+  });
+
+  it("um só controle colapsa em média × duração", () => {
+    // janela 2023-01-01→2023-11-01 = 304 dias; controle único de 25 L → 304 × 25 = 7600
+    expect(producaoCiclo([ctrl("2023-05-01", 25)], D("2023-01-01"), D("2023-11-01"))).toEqual({ litros: 7600, nControles: 1 });
+  });
+
+  it("vários controles: bordas flat + trapézios no interior", () => {
+    // 31×30 (parto→1º) + 89×25 + 92×15 (interior) + 92×10 (último→fim) = 930+2225+1380+920 = 5455
+    const r = producaoCiclo([ctrl("2023-02-01", 30), ctrl("2023-05-01", 20), ctrl("2023-08-01", 10)], D("2023-01-01"), D("2023-11-01"));
+    expect(r).toEqual({ litros: 5455, nControles: 3 });
+  });
+
+  it("lactação em curso: borda final flat até hoje", () => {
+    // 9×40 (parto→1º) + 10×35 (interior) + 8×30 (último→hoje) = 360+350+240 = 950
+    const r = producaoCiclo([ctrl("2026-05-10", 40), ctrl("2026-05-20", 30)], D("2026-05-01"), hoje);
+    expect(r).toEqual({ litros: 950, nControles: 2 });
+  });
+
+  it("ignora controles fora da janela e ordena", () => {
+    const r = producaoCiclo(
+      [ctrl("2023-08-01", 10), ctrl("2022-06-01", 99), ctrl("2023-02-01", 30), ctrl("2024-01-01", 99), ctrl("2023-05-01", 20)],
+      D("2023-01-01"),
+      D("2023-11-01"),
+    );
+    expect(r).toEqual({ litros: 5455, nControles: 3 });
+  });
+});

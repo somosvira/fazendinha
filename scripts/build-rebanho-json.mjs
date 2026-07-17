@@ -208,6 +208,23 @@ export function parseMamite(linha) {
   };
 }
 
+// @Y@ LACTACAO → histórico de lactação. Produção só na corrente (via ANIMALINFO_PRODUCAO).
+export function parseLactacao(linha) {
+  const f = linha.split(SEP);
+  return {
+    numero: f[0],
+    ordem: n(f[1]),
+    dtInicio: s(f[2]),
+    dtFim: s(f[3]),
+    motivoSecagem: s(f[4]),
+    tipoAleitamento: s(f[5]),
+    induzida: f[6] === "1",
+    producaoTotal: n(f[7]),
+    producao305: n(f[8]),
+    duracaoDias: n(f[9]),
+  };
+}
+
 function diasGestacao(repro, hoje) {
   if (!repro || repro.ultimoDgResultado !== "positivo" || !repro.dtPrevParto) return null;
   const faltam = diasEntre(hoje, repro.dtPrevParto); // pode ser negativo
@@ -251,6 +268,7 @@ function main() {
   const eventos = [];
   const eventosSanitarios = [];
   const pesagens = [];
+  const lactacoes = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -263,6 +281,7 @@ function main() {
     else if (l.startsWith("@Q@")) eventosSanitarios.push(parseAnalise(l.slice(3)));
     else if (l.startsWith("@M@")) eventosSanitarios.push(parseMamite(l.slice(3)));
     else if (l.startsWith("@W@")) pesagens.push(parsePesagem(l.slice(3)));
+    else if (l.startsWith("@Y@")) lactacoes.push(parseLactacao(l.slice(3)));
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
@@ -271,7 +290,7 @@ function main() {
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles, eventos, eventosSanitarios, pesagens };
+  const out = { geradoEm, animais, controles, eventos, eventosSanitarios, pesagens, lactacoes };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -284,6 +303,7 @@ function main() {
   console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
   console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
   console.error(`  pesagens=${pesagens.length}`);
+  console.error(`  lactações=${lactacoes.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)
