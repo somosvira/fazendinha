@@ -396,7 +396,7 @@ function adaptarWorklist(a: DashboardApiDTO["alertas"][number]): WorklistRebanho
 }
 export const obterWorklist = (chave: ChaveWorklistRebanho, signal?: AbortSignal) => req<WorklistApiDTO>(`/rebanho/worklists/${chave}`, { signal }).then((r) => adaptarWorklist(r.worklist));
 export function useWorklist(chave?: ChaveWorklistRebanho, snapshotInicial?: WorklistRebanho) {
-  const [data, setData] = useState<WorklistRebanho | null>(() => snapshotInicial?.chave === chave ? snapshotInicial : null);
+  const [data, setData] = useState<WorklistRebanho | null>(() => snapshotInicial && snapshotInicial.chave === chave ? snapshotInicial : null);
   const [loading, setLoading] = useState(Boolean(chave && !data));
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);

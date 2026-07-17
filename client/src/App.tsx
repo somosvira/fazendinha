@@ -439,7 +439,7 @@ export function App() {
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
         onAbrirWorklist={abrirWorklist}
         worklistChave={rotaWorklist?.chave}
-        worklistSnapshot={worklistSnapshot?.chave === rotaWorklist?.chave ? worklistSnapshot : undefined}
+        worklistSnapshot={worklistSnapshot && worklistSnapshot.chave === rotaWorklist?.chave ? worklistSnapshot : undefined}
         abrirId={deepLink && deepLink.tab.startsWith("reb-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("pla-")
