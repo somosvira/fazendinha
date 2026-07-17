@@ -42,11 +42,28 @@ export function MonthRangePicker({ value, onChange, min, max }: {
 
   const irPara = (mo: Mes) => onChange({ start: startOfMonth(mo.y, mo.m), end: endOfMonth(mo.y, mo.m) });
 
+  // Segmented control coeso: ícone · ‹ · mês · ›, tudo dentro de uma moldura só
+  // com divisores internos (mesma linguagem dos cards do dashboard). Antes eram
+  // peças soltas (ícone quadrado + setas arredondadas + trigger) desalinhadas.
+  const navBtn =
+    "grid h-9 w-8 flex-none place-items-center border-l border-border text-[17px] leading-none text-ink-2 transition-colors hover:bg-[color:var(--rule-soft)] disabled:pointer-events-none disabled:opacity-35";
+
   return (
-    <div className="mrp">
+    <div className="inline-flex items-stretch overflow-hidden border border-border bg-card">
+      <span
+        className="grid h-9 w-9 flex-none place-items-center text-ink-2"
+        title="Filtra os KPIs por mês (data de liquidação)"
+        aria-hidden="true"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4.5" width="18" height="16" rx="2" />
+          <path d="M3 9h18" />
+          <path d="M8 2.5v4M16 2.5v4" />
+        </svg>
+      </span>
       <button
         type="button"
-        className="mrp-nav"
+        className={navBtn}
         onClick={() => idx > 0 && irPara(meses[idx - 1])}
         disabled={idx <= 0}
         aria-label="Mês anterior"
@@ -62,7 +79,10 @@ export function MonthRangePicker({ value, onChange, min, max }: {
           if (mo) irPara(mo);
         }}
       >
-        <SelectTrigger aria-label="Mês" className="tabular-nums">
+        <SelectTrigger
+          aria-label="Mês"
+          className="h-9 min-w-[104px] justify-center gap-2.5 rounded-none border-0 border-l border-border px-3.5 font-serif text-[15px] font-medium tabular-nums"
+        >
           <SelectValue>{cur.label}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -71,7 +91,7 @@ export function MonthRangePicker({ value, onChange, min, max }: {
       </Select>
       <button
         type="button"
-        className="mrp-nav"
+        className={navBtn}
         onClick={() => idx < meses.length - 1 && irPara(meses[idx + 1])}
         disabled={idx >= meses.length - 1}
         aria-label="Próximo mês"

@@ -193,28 +193,3 @@
   font-size: 18px;
 }
 .cat-real-row:hover .arr { color: var(--ink); }
-
-
-/* MonthRangePicker (mês único): dropdown migrou p/ o primitivo shadcn Select
-   (ui/select.tsx) — .mrp-sel aposentada. Ficam o wrapper .mrp e as setas
-   .mrp-nav (‹ ›), agora com tokens reais (a versão anterior usava
-   --surface/--line, variáveis inexistentes que caíam em fallback genérico). */
-.mrp { display: inline-flex; align-items: center; gap: 8px; }
-.mrp-nav {
-  font-family: var(--sans);
-  font-size: 18px;
-  line-height: 1;
-  color: var(--ink);
-  background: var(--bg-card);
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  width: 30px;
-  height: 34px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.mrp-nav:hover:not(:disabled) { border-color: var(--ink-3); }
-.mrp-nav:disabled { opacity: 0.35; cursor: default; }
-.mrp-nav:focus-visible { outline: 2px solid var(--leite); outline-offset: 1px; }
