@@ -123,7 +123,9 @@ Esta fatia deve tornar a recomputação **não destrutiva** antes de expor “Re
 - ao registrar `PARTO`, criar/garantir apenas o novo ciclo correspondente;
 - ao registrar `SECAGEM`, encerrar somente a lactação aberta mais recente (`dtFim = data do evento`) e salvar `motivoSecagem` nesse mesmo registro;
 - não sobrescrever produção, flags ou metadados importados;
-- ao excluir um evento reprodutivo, recomputar datas sem perder os campos enriquecidos que não pertencem ao evento;
+- ao excluir `SECAGEM`, reabrir somente o ciclo que foi encerrado por esse evento, limpando `dtFim` e `motivoSecagem` sem tocar nos demais campos;
+- ao excluir `PARTO`, **preservar a lactação correspondente** nesta fatia: sem FK/proveniência não é seguro distinguir um ciclo histórico importado de um ciclo criado pelo app; apagar seria risco de perda de produção e metadados reais;
+- ao excluir outros eventos reprodutivos, não alterar lactações;
 - executar a mutação do evento + atualização das lactações + resumo em transação, para não deixar evento e read-model divergentes em caso de falha.
 
 A correspondência entre ciclo derivado e persistido usa `dtInicio` como identidade natural dentro do animal, com `numero` como verificação/ordenação. Se houver dado legado ambíguo (mais de uma lactação com o mesmo início), a operação deve falhar com erro explícito em vez de apagar ou mesclar silenciosamente.
@@ -151,7 +153,7 @@ Testes de regressão precisam provar que uma lactação com produção e flags p
 - cobrir preservação de produção/metadados;
 - cobrir secagem da lactação aberta correta;
 - cobrir idempotência e ambiguidade;
-- cobrir exclusão de evento sem perda dos dados importados.
+- cobrir exclusão de `SECAGEM` (reabre ciclo), exclusão de `PARTO` (preserva ciclo) e demais eventos sem perda dos dados importados.
 
 ### Cálculo puro da work-list
 
