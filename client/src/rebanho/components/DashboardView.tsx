@@ -3,7 +3,7 @@ import { Loader } from "../../components/Loading";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebEmpty, RebMain } from "@/components/rb/RebPrimitives";
 import type { RebanhoTab } from "../nav";
-import { type PeriodoDashboard, useDashboard } from "../api";
+import { type PeriodoDashboard, type WorklistRebanho, useDashboard } from "../api";
 import { DashboardHeroKpis } from "./dashboard/DashboardHeroKpis";
 import { Alertas, EstadoReprodutivo, Grupos, Indicadores } from "./dashboard/DashboardSections";
 import { baixarDashboardCsv } from "./dashboard/dashboardExport";
@@ -21,7 +21,7 @@ function formatarAtualizacao(iso: string | null) {
   return `dados até ${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
 }
 
-export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
+export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTab) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void }) {
   const [periodo, setPeriodo] = useState<PeriodoDashboard>("7d");
   const { data, loading, atualizando, erro, recarregar } = useDashboard(periodo);
 
@@ -48,7 +48,7 @@ export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
         <DashboardHeroKpis data={data} />
         <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(300px,1fr)] items-start gap-[22px] max-[1080px]:grid-cols-1">
           <div className="grid gap-[22px]"><EstadoReprodutivo data={data} onNav={onNav} /><Indicadores data={data} /></div>
-          <div className="grid gap-[22px]"><Alertas data={data} onNav={onNav} /><Grupos data={data} onNav={onNav} /></div>
+          <div className="grid gap-[22px]"><Alertas data={data} onNav={onNav} onAbrirWorklist={onAbrirWorklist} /><Grupos data={data} onNav={onNav} /></div>
         </div>
       </div>
     </RebMain>

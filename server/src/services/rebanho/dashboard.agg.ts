@@ -1,14 +1,6 @@
 import { calcularTaxaConcepcao } from "./reproducao.concepcao.js";
-import {
-  ehCcsAlto,
-  ehDgPendente,
-  ehElegivelPrenhez,
-  ehPartoProximo,
-  ehSecagemAtrasada,
-  ehVaziaAtrasada,
-} from "./regras-manejo.js";
+import { construirWorklists, ehElegivelPrenhez } from "./regras-manejo.js";
 import type {
-  AnimalDashboardIn,
   DashboardDTO,
   DashboardRebanhoInput,
   HeroDTO,
@@ -197,15 +189,7 @@ export function agregarDashboard(input: DashboardRebanhoInput): DashboardDTO {
     ] },
   ];
 
-  const { pevDias, gestacaoDias, ccsAlto } = input.parametros;
-  const conta = (fn: (a: AnimalDashboardIn) => boolean) => input.animais.filter(fn).length;
-  const alertas: DashboardDTO["alertas"] = [
-    { chave: "secagem-atrasada", titulo: "Secagens atrasadas", quantidade: conta((a) => ehSecagemAtrasada(a.resumo?.statusReprodutivo, a.resumo?.previsaoSecagem, input.hoje)), explicacao: "Vacas prenhes cuja previsão de secagem já venceu.", severidade: "alta", tab: "reproducao" },
-    { chave: "vazia-pos-pev", titulo: "Vazias após o PEV", quantidade: conta((a) => ehVaziaAtrasada(a.resumo?.statusReprodutivo, a.resumo?.del, pevDias)), explicacao: `Vacas vazias com DEL acima do PEV configurado (${pevDias} dias).`, severidade: "alta", tab: "reproducao" },
-    { chave: "ccs-alta", titulo: "CCS alta", quantidade: conta((a) => ehCcsAlto(a.resumo?.ccs, ccsAlto)), explicacao: `Animais com CCS ≥ ${ccsAlto} mil/mL.`, severidade: "alta", tab: "sanidade" },
-    { chave: "dg-pendente", titulo: "Diagnóstico pendente", quantidade: conta((a) => ehDgPendente(a.resumo?.statusReprodutivo, a.resumo?.ultimoDgData)), explicacao: "Fêmeas inseminadas sem diagnóstico registrado.", severidade: "media", tab: "reproducao" },
-    { chave: "parto-proximo", titulo: "Partos previstos em até 30 dias", quantidade: conta((a) => ehPartoProximo(a.resumo?.statusReprodutivo, a.resumo?.diasGestacao, gestacaoDias)), explicacao: "Vacas prenhes no último mês esperado de gestação.", severidade: "baixa", tab: "reproducao" },
-  ];
+  const alertas = construirWorklists(input.animais, input.eventosConcepcao, input.hoje, input.parametros);
 
   const gruposMap = new Map<number | null, { nome: string; quantidade: number }>();
   for (const a of input.animais) {

@@ -45,6 +45,42 @@ const MODULO_BASE: Array<{ prefix: string; base: string; defaultSub?: string }> 
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+export const REBANHO_WORKLISTS = {
+  "secagem-atrasada": "reproducao",
+  "vazia-pos-pev": "reproducao",
+  "dg-pendente": "reproducao",
+  "parto-proximo": "reproducao",
+  "ccs-alta": "sanidade",
+} as const;
+
+export type RebanhoWorklistChave = keyof typeof REBANHO_WORKLISTS;
+export type RebanhoWorklistTab = (typeof REBANHO_WORKLISTS)[RebanhoWorklistChave];
+
+export interface RotaWorklistRebanho {
+  chave: RebanhoWorklistChave;
+  tab: RebanhoWorklistTab;
+}
+
+export function isRebanhoWorklistChave(chave: string): chave is RebanhoWorklistChave {
+  return Object.prototype.hasOwnProperty.call(REBANHO_WORKLISTS, chave);
+}
+
+/** Lê somente combinações canônicas de aba + chave; parâmetros extras são ignorados. */
+export function parseRotaWorklistRebanho(pathname: string, search = ""): RotaWorklistRebanho | null {
+  const tab = pathToTab(pathname);
+  if (tab !== "reb-reproducao" && tab !== "reb-sanidade") return null;
+  const chave = new URLSearchParams(search).get("worklist");
+  if (!chave || !isRebanhoWorklistChave(chave)) return null;
+  const worklistTab = REBANHO_WORKLISTS[chave];
+  return tab === `reb-${worklistTab}` ? { chave, tab: worklistTab } : null;
+}
+
+/** Monta a URL canônica e impede que uma chave seja publicada na aba errada. */
+export function buildRotaWorklistRebanho(chave: RebanhoWorklistChave, tab: RebanhoWorklistTab = REBANHO_WORKLISTS[chave]): string | null {
+  if (REBANHO_WORKLISTS[chave] !== tab) return null;
+  return `/rebanho/${tab}?worklist=${encodeURIComponent(chave)}`;
+}
+
 /** Aba ativa -> pathname canônico para a barra de endereço. */
 export function tabToPath(tab: Tab): string {
   const fixed = PATH_BY_TAB[tab];
