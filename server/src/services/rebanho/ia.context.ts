@@ -2,6 +2,8 @@
 // Recebe animais ATIVOS já mapeados (Decimal→Number, datas→ISO YYYY-MM-DD) e os
 // lotes, e produz um snapshot do rebanho + um texto PT-BR usado como system prompt.
 
+import { ehCcsAlto, ehElegivelPrenhez, ehPartoProximo, ehVaziaAtrasada } from "./regras-manejo.js";
+
 export interface AnimalCtx {
   numero: string; nome: string | null; categoria: string;
   statusReprodutivo: string | null; del: number | null;
@@ -25,8 +27,6 @@ const VAZIA_ATRASADA_DEL = 90;
 const A_SECAR_JANELA_DIAS = 30;
 const PARTO_PROXIMO_DIAS_GESTACAO = 253;
 
-const ELEGIVEIS_PRENHEZ = new Set(["PRENHE", "VAZIA", "INSEMINADA", "PEV"]);
-
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
 // "hoje" (ISO YYYY-MM-DD) + dias → ISO YYYY-MM-DD
@@ -46,16 +46,16 @@ export function montarContexto(animais: AnimalCtx[], lotes: LoteCtx[], hoje: str
   const prods = animais.filter((a) => a.del != null && a.producaoMediaDia != null).map((a) => a.producaoMediaDia as number);
   const producaoMediaRebanho = prods.length ? round1(prods.reduce((s, x) => s + x, 0) / prods.length) : null;
 
-  const elegiveis = animais.filter((a) => a.statusReprodutivo != null && ELEGIVEIS_PRENHEZ.has(a.statusReprodutivo)).length;
+  const elegiveis = animais.filter((a) => ehElegivelPrenhez(a.statusReprodutivo)).length;
   const prenhezPct = elegiveis ? Math.round((100 * gestantes) / elegiveis) : null;
 
   const ccsAlto = animais
-    .filter((a) => a.ccs != null && a.ccs >= CCS_ALTO)
+    .filter((a) => ehCcsAlto(a.ccs, CCS_ALTO))
     .sort((x, y) => (y.ccs as number) - (x.ccs as number))
     .map((a) => ({ numero: a.numero, nome: a.nome, ccs: a.ccs as number, tendencia: a.ccsTendencia }));
 
   const vaziasAtrasadas = animais
-    .filter((a) => a.statusReprodutivo === "VAZIA" && a.del != null && a.del > VAZIA_ATRASADA_DEL)
+    .filter((a) => ehVaziaAtrasada(a.statusReprodutivo, a.del, VAZIA_ATRASADA_DEL))
     .map((a) => ({ numero: a.numero, nome: a.nome, del: a.del }));
 
   const limiteSecagem = somarDias(hoje, A_SECAR_JANELA_DIAS);
@@ -65,7 +65,7 @@ export function montarContexto(animais: AnimalCtx[], lotes: LoteCtx[], hoje: str
     .map((a) => ({ numero: a.numero, nome: a.nome, previsaoSecagem: a.previsaoSecagem as string, diasGestacao: a.diasGestacao }));
 
   const partosPrevistos = animais
-    .filter((a) => a.statusReprodutivo === "PRENHE" && a.diasGestacao != null && a.diasGestacao >= PARTO_PROXIMO_DIAS_GESTACAO)
+    .filter((a) => ehPartoProximo(a.statusReprodutivo, a.diasGestacao, PARTO_PROXIMO_DIAS_GESTACAO + 30))
     .sort((x, y) => (y.diasGestacao as number) - (x.diasGestacao as number))
     .map((a) => ({ numero: a.numero, nome: a.nome, diasGestacao: a.diasGestacao }));
 
