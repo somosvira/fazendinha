@@ -196,6 +196,12 @@ export function App() {
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
+  // Worklist persistente vem da URL; o snapshot é transitório e só existe quando
+  // o clique parte do dashboard já carregado.
+  const [rotaWorklist, setRotaWorklist] = useState<RotaWorklistRebanho | null>(() =>
+    typeof window === "undefined" ? null : parseRotaWorklistRebanho(window.location.pathname, window.location.search),
+  );
+  const [worklistSnapshot, setWorklistSnapshot] = useState<WorklistRebanho | null>(null);
   const trocarPropriedade = (id: number | null) => {
     setPropriedadeAtiva(id);
     setPropAtiva(id);
@@ -204,12 +210,6 @@ export function App() {
   // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
-  // Worklist persistente vem da URL; o snapshot é transitório e só existe quando
-  // o clique parte do dashboard já carregado.
-  const [rotaWorklist, setRotaWorklist] = useState<RotaWorklistRebanho | null>(() =>
-    typeof window === "undefined" ? null : parseRotaWorklistRebanho(window.location.pathname, window.location.search),
-  );
-  const [worklistSnapshot, setWorklistSnapshot] = useState<WorklistRebanho | null>(null);
 
   // Deep-link da IA (chat): filtros aplicados numa tela via query string
   // (ex.: /gastos?status=vencidas). Inicializa da URL no load/reload.
