@@ -139,8 +139,10 @@ export interface LactacaoDTO {
   dtFim: string | null;
   duracaoDias: number | null;
   motivoSecagem: string | null;
-  producaoTotal: number | null;
+  producaoTotal: number | null; // medida (Ideagri) — só a última lactação
   producao305: number | null;
+  producaoControles: number | null; // estimada dos controles (TIM) quando não há valor medido
+  nControles: number;
   emCurso: boolean;
 }
 export interface ResumoLactacoesDTO {

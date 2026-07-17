@@ -37,11 +37,25 @@ export function LactacoesSection({ animalId }: { animalId: string }) {
               {fmtData(l.dtInicio)} → {l.dtFim ? fmtData(l.dtFim) : "hoje"} · {fmtDias(l.duracaoDias)}
               {l.motivoSecagem ? ` · ${l.motivoSecagem}` : ""}
             </span>
-            <span className="shrink-0 text-right text-ink-2">
-              {l.producaoTotal != null
-                ? `${fmtL(l.producaoTotal)}${l.producao305 != null ? ` · 305d ${fmtL(l.producao305)}` : ""}`
-                : "—"}
-            </span>
+            {l.producaoTotal != null ? (
+              <span className="shrink-0 text-right text-ink-2">
+                {fmtL(l.producaoTotal)}
+                {l.producao305 != null ? ` · 305d ${fmtL(l.producao305)}` : ""}
+              </span>
+            ) : l.producaoControles != null ? (
+              // estimado dos controles leiteiros do ciclo (não medido pelo Ideagri)
+              <span
+                className="shrink-0 text-right text-ink-3"
+                title={`estimado de ${l.nControles} controle${l.nControles === 1 ? "" : "s"} leiteiro${l.nControles === 1 ? "" : "s"}`}
+              >
+                ~{fmtL(l.producaoControles)}
+                <span className="sr-only">
+                  {` — estimativa baseada em ${l.nControles} controle${l.nControles === 1 ? "" : "s"} leiteiro${l.nControles === 1 ? "" : "s"}`}
+                </span>
+              </span>
+            ) : (
+              <span className="shrink-0 text-right text-ink-2">—</span>
+            )}
           </div>
         ))}
       </div>
