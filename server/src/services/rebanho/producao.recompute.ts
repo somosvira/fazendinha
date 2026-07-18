@@ -13,6 +13,13 @@ export function producao305De(mediaDia: number | null, temLactacaoAberta: boolea
   return null;
 }
 
+// Correção 305 oficial > estimativa: o valor zootécnico corrigido do Ideagri (importado na
+// lactação corrente) é a fonte de verdade; a projeção linear só cobre quem não tem o oficial.
+// Ex.: uma lactação seca com 305 oficial passa a exibir o número real, que a estimativa zerava.
+export function selecionarProducao305(oficial: number | null | undefined, estimativa: number | null): number | null {
+  return oficial != null ? oficial : estimativa;
+}
+
 // rateio do tanque/lote para o animal
 export function ratearProducao(litros: number, vacasEmLactacao: number): number | null {
   if (vacasEmLactacao > 0) return round1(litros / vacasEmLactacao);

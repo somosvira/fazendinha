@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recomputarProducaoAnimal, ratearProducao, producao305De } from "./producao.recompute.js";
+import { recomputarProducaoAnimal, ratearProducao, producao305De, selecionarProducao305 } from "./producao.recompute.js";
 
 describe("recomputarProducaoAnimal", () => {
   it("sem controles → tudo null", () => {
@@ -52,5 +52,21 @@ describe("producao305De", () => {
   });
   it("media null → null", () => {
     expect(producao305De(null, true)).toBeNull();
+  });
+});
+
+describe("selecionarProducao305", () => {
+  it("oficial presente vence a estimativa", () => {
+    expect(selecionarProducao305(9954, 8540)).toBe(9954);
+  });
+  it("oficial ausente cai na estimativa", () => {
+    expect(selecionarProducao305(null, 8540)).toBe(8540);
+    expect(selecionarProducao305(undefined, 8540)).toBe(8540);
+  });
+  it("oficial zero é um valor válido e vence (não confundir com ausência)", () => {
+    expect(selecionarProducao305(0, 8540)).toBe(0);
+  });
+  it("sem oficial nem estimativa → null", () => {
+    expect(selecionarProducao305(null, null)).toBeNull();
   });
 });
