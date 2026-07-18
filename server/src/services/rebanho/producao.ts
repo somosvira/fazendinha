@@ -1,10 +1,19 @@
 import { prisma } from "../../db.js";
 import { obterConfig } from "./config.js";
-import { recomputarProducaoAnimal, ratearProducao, producao305De, type ControleIn } from "./producao.recompute.js";
+import { recomputarProducaoAnimal, ratearProducao, producao305De, selecionarProducao305, type ControleIn } from "./producao.recompute.js";
 import { type ControleInput, type ProducaoLoteInput } from "./producao.schemas.js";
 import { toTimelineControle } from "./producao.mappers.js";
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
+
+// Correção 305 oficial da lactação corrente: a aberta, ou — se todas secas — a mais recente
+// por dtInicio (é a que carrega produção, conforme o schema). Retorna o valor importado do
+// Ideagri para preferir sobre a estimativa linear; null quando o animal não tem esse dado.
+function producao305Oficial(lactacoes: { dtInicio: Date; dtFim: Date | null; producao305: unknown }[]): number | null {
+  const aberta = lactacoes.find((l) => l.dtFim == null);
+  const corrente = aberta ?? lactacoes.slice().sort((a, b) => b.dtInicio.getTime() - a.dtInicio.getTime())[0];
+  return corrente?.producao305 != null ? Number(corrente.producao305) : null;
+}
 
 export class ProducaoError extends Error {
   constructor(public code: "NAO_ENCONTRADO", m: string) { super(m); }
@@ -14,6 +23,7 @@ export async function recomputarProducaoDoAnimal(animalId: number): Promise<void
   const animal = await prisma.animal.findUnique({ where: { id: animalId }, include: { lactacoes: true } });
   if (!animal) return;
   const temLact = animal.lactacoes.some((l) => l.dtFim == null);
+  const oficial305 = producao305Oficial(animal.lactacoes);
   const { producaoModo } = await obterConfig();
   let r: { producaoMediaDia: number | null; producao305: number | null; producaoTendencia: string | null };
   if (producaoModo === "TANQUE_LOTE") {
@@ -32,6 +42,8 @@ export async function recomputarProducaoDoAnimal(animalId: number): Promise<void
     const arr: ControleIn[] = ctrls.map((c) => ({ data: iso(c.data), pesoTotal: Number(c.pesoTotal) }));
     r = recomputarProducaoAnimal(arr, temLact);
   }
+  // A Correção 305 oficial (importada do Ideagri) prevalece sobre a projeção linear.
+  r.producao305 = selecionarProducao305(oficial305, r.producao305);
   await prisma.resumoAnimal.upsert({
     where: { animalId },
     create: { animalId, producaoMediaDia: r.producaoMediaDia, producao305: r.producao305, producaoTendencia: r.producaoTendencia },
