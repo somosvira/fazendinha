@@ -1,68 +1,54 @@
+import { useState } from "react";
 import { Loader } from "../../components/Loading";
+import { RebButton } from "@/components/rb/RebButton";
+import { RebEmpty, RebMain } from "@/components/rb/RebPrimitives";
 import type { RebanhoTab } from "../nav";
-import { insightDoRebanho } from "../mock";
-import { IaInsightBand } from "./IaInsight";
-import { useDashboard } from "../api";
-import { RebHeader } from "./RebHeader";
-import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
-import { RebMain } from "@/components/rb/RebPrimitives";
+import { type PeriodoDashboard, type WorklistRebanho, useDashboard } from "../api";
+import { DashboardHeroKpis } from "./dashboard/DashboardHeroKpis";
+import { Alertas, EstadoReprodutivo, Grupos, Indicadores } from "./dashboard/DashboardSections";
+import { baixarDashboardCsv } from "./dashboard/dashboardExport";
 
-export function DashboardView({ onNav }: { onNav: (t: RebanhoTab) => void }) {
-  const { data, loading, erro } = useDashboard();
-  const insight = insightDoRebanho("reproducao");
-  if (loading) return <RebMain><RebHeader title="Dashboard" /><Loader /></RebMain>;
-  if (erro || !data) return <RebMain><RebHeader title="Dashboard" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
-  const k = data.kpis;
-  const pctLactacao = k.rebanhoAtivo > 0 ? Math.round((k.emLactacao / k.rebanhoAtivo) * 100) : 0;
+const PERIODOS: { chave: PeriodoDashboard; label: string }[] = [
+  { chave: "hoje", label: "Hoje" },
+  { chave: "7d", label: "7 dias" },
+  { chave: "30d", label: "30 dias" },
+];
+
+function formatarAtualizacao(iso: string | null) {
+  if (!iso) return "sem produção registrada no período";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return `dados até ${iso}`;
+  return `dados até ${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
+}
+
+export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTab) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void }) {
+  const [periodo, setPeriodo] = useState<PeriodoDashboard>("7d");
+  const { data, loading, atualizando, erro, recarregar } = useDashboard(periodo);
+
+  if (loading && !data) return <RebMain><Loader /></RebMain>;
+  if (!data) return <RebMain><RebEmpty className="flex items-center justify-between gap-4"><span>Não foi possível carregar o painel{erro ? `: ${erro}` : "."}</span><RebButton onClick={recarregar}>Tentar novamente</RebButton></RebEmpty></RebMain>;
+  if (data.atualizacao.animaisAtivos === 0) return <RebMain><RebEmpty><h1 className="mb-2 font-serif text-2xl text-foreground">Seu rebanho começa aqui</h1><p>Cadastre o primeiro animal para acompanhar produção, reprodução e alertas.</p><RebButton className="mt-4" variant="pri" onClick={() => onNav("animal")}>Cadastrar animal</RebButton></RebEmpty></RebMain>;
+
   return (
     <RebMain>
-      <RebHeader eyebrow={`Rebanho · ${k.rebanhoAtivo} ${k.rebanhoAtivo === 1 ? "animal" : "animais"}`} title="Dashboard" />
-      <RebKpiStrip cols={6}>
-        <RebKpi lab="Rebanho ativo" val={k.rebanhoAtivo} d="Total da fazenda" />
-        <RebKpi lab="Em lactação" val={k.emLactacao} sufixo="vacas" d={`${pctLactacao}% do rebanho`} />
-        <RebKpi lab="Secas" val={k.secas} sufixo="vacas" d="Em preparo para o próximo parto" />
-        <RebKpi lab="Produção média" val={k.producaoMedia ?? "—"} sufixo="L/vaca·dia" d="Média do rebanho em lactação" />
-        <RebKpi lab="Gestantes" val={k.gestantes} sufixo="prenhes" d="Próximos partos no calendário" />
-        <RebKpi
-          lab="Prenhez"
-          val={k.prenhez}
-          sufixo="%"
-          d={k.prenhez >= 35 ? "Acima da meta" : k.prenhez >= 25 ? "Dentro do esperado" : "Abaixo da meta"}
-          tom={k.prenhez >= 35 ? "ok" : k.prenhez >= 25 ? undefined : "up"}
-        />
-      </RebKpiStrip>
-      {insight && <IaInsightBand insight={insight} />}
-      <div className="mt-1.5 grid grid-cols-[1fr_320px] gap-5 max-[1100px]:grid-cols-1">
-        <div className="grid grid-cols-2 gap-3 content-start max-[900px]:grid-cols-1">
-          {data.dominios.map((d) => (
-            <button
-              key={d.tab}
-              className="cursor-pointer rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5 text-left font-sans hover:bg-[color:var(--bg-card-2)]"
-              onClick={() => onNav(d.tab as RebanhoTab)}
-            >
-              <h4 className="mb-[9px] mt-0 flex items-baseline justify-between font-serif text-[17px] font-medium">
-                {d.titulo}<span className="text-sm font-semibold text-cafe">ver →</span>
-              </h4>
-              <ul className="m-0 list-none p-0">
-                {d.linhas.map((l, i) => (
-                  <li key={i} className="border-b border-dashed border-[color:var(--rule-soft)] py-1 text-sm text-ink-2 last:border-0">{l}</li>
-                ))}
-              </ul>
-            </button>
-          ))}
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-5 border-b border-[color:var(--rule-soft)] pb-[18px]">
+        <div>
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-[.14em] text-leite">Atividades · Rebanho leiteiro</p>
+          <h1 className="mb-0 mt-1.5 font-serif text-[clamp(29px,3vw,35px)] font-medium tracking-[-.02em] text-foreground">Painel do rebanho</h1>
+          <p className="mb-0 mt-1.5 text-sm text-ink-3">{formatarAtualizacao(data.atualizacao.dadoMaisRecenteEm)} · {data.atualizacao.animaisAtivos} animais ativos</p>
         </div>
-        <div className="self-start rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3.5">
-          <h4 className="mb-2 mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Animais em situação de alerta</h4>
-          {data.alertas.map((al) => (
-            <button
-              key={al.label}
-              className="flex w-full cursor-pointer items-center justify-between border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2.5 text-left font-sans text-sm text-ink-2 last:border-b-0"
-              onClick={() => onNav(al.tab as RebanhoTab)}
-            >
-              <span>{al.label}</span>
-              <span className={"font-serif text-[21px] " + (al.n === 0 ? "text-lucro" : al.tom === "ok" ? "text-lucro" : "text-prejuizo")}>{al.n}</span>
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="inline-flex overflow-hidden rounded-lg border border-border bg-card" aria-label="Período do painel">{PERIODOS.map((p) => <button key={p.chave} aria-pressed={periodo === p.chave} onClick={() => setPeriodo(p.chave)} className="border-0 border-l border-[color:var(--rule-soft)] bg-transparent px-[13px] py-2 text-xs text-ink-3 first:border-l-0 aria-pressed:bg-mast aria-pressed:font-semibold aria-pressed:text-mast-ink">{p.label}</button>)}</div>
+          <RebButton onClick={() => baixarDashboardCsv(data)}>↓ Exportar</RebButton>
+        </div>
+      </header>
+
+      {(erro || data.atualizacao.avisos.length > 0) && <div className="mb-4 rounded-lg border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-4 py-2 text-xs text-ink-3">{erro ? <>Não foi possível atualizar: {erro}. <button className="font-semibold text-cafe" onClick={recarregar}>Tentar novamente</button></> : data.atualizacao.avisos.join(" · ")}</div>}
+      <div className={atualizando ? "opacity-70 transition-opacity" : "transition-opacity"} aria-busy={atualizando}>
+        <DashboardHeroKpis data={data} />
+        <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(300px,1fr)] items-start gap-[22px] max-[1080px]:grid-cols-1">
+          <div className="grid gap-[22px]"><EstadoReprodutivo data={data} onNav={onNav} /><Indicadores data={data} /></div>
+          <div className="grid gap-[22px]"><Alertas data={data} onNav={onNav} onAbrirWorklist={onAbrirWorklist} /><Grupos data={data} onNav={onNav} /></div>
         </div>
       </div>
     </RebMain>

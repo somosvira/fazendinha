@@ -12,6 +12,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
+import { litrosDiaAtual, sacasColhidasPeriodo } from "./volumes.js";
+import { estimarLitros, porUnidade } from "./volumes.calc.js";
 
 // Janela: Jul/2024 (idx 0) → Mai/2026 (idx 22)
 const WINDOW_START_YEAR = 2024;
@@ -43,6 +45,21 @@ function mesLabel(idx: number): string {
   const m = ((total % 12) + 12) % 12;
   const star = PARTIAL_LAST && idx === WINDOW_LEN - 1 ? "*" : "";
   return `${PT_MONTHS_SHORT[m]}/${String(y).slice(-2)}${star}`;
+}
+
+// Data (UTC) do 1º dia / último dia do mês de um índice da janela — p/ recortar
+// volume físico (litros/sacas) no mesmo período dos recortes financeiros.
+function mesInicioDate(idx: number): Date {
+  const total = WINDOW_START_MONTH + idx;
+  const y = WINDOW_START_YEAR + Math.floor(total / 12);
+  const m = ((total % 12) + 12) % 12;
+  return new Date(Date.UTC(y, m, 1));
+}
+function mesFimDate(idx: number): Date {
+  const total = WINDOW_START_MONTH + idx;
+  const y = WINDOW_START_YEAR + Math.floor(total / 12);
+  const m = ((total % 12) + 12) % 12;
+  return new Date(Date.UTC(y, m + 1, 0, 23, 59, 59)); // dia 0 do mês seguinte = último dia
 }
 
 function atividadeDe(centroNome: string): Atividade {
@@ -558,6 +575,27 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
       : { rompe: false },
   };
 
+  // ----- volumes físicos (leite/café) p/ os KPIs de R$/L e R$/saca ----------
+  // Recorte YTD 2026 (mesma janela do k2026YTD). Leite: estimativa taxa×dias
+  // (sem série histórica de litros); café: sacas reais das passadas do período.
+  const ytdFrom = mesInicioDate(idx2026YTD[0]);
+  const ytdTo = mesFimDate(idx2026YTD[idx2026YTD.length - 1]);
+  // ytdTo já é o fim do último dia (23:59:59) → o round da divisão já dá a
+  // contagem inclusiva de dias (Jan–Mai = 151), sem +1.
+  const diasYTD = Math.round((ytdTo.getTime() - ytdFrom.getTime()) / 86_400_000);
+  const litrosDia = await litrosDiaAtual(propriedadeId);
+  const litrosLeiteYTD = estimarLitros(litrosDia, diasYTD);
+  const sacasCafeYTD = await sacasColhidasPeriodo(ytdFrom, ytdTo, propriedadeId);
+  const volumes = {
+    litrosDia,
+    litrosLeiteYTD,
+    sacasCafeYTD,
+    // KPIs derivados (null → o Relatório esconde o card em vez de exibir NaN/∞).
+    precoMedioLeiteYTD: porUnidade(k2026YTD.receitaLeite, litrosLeiteYTD),
+    custoLitroLeiteYTD: porUnidade(k2026YTD.custeioLeitePuro, litrosLeiteYTD),
+    precoSacaCafeYTD: porUnidade(k2026YTD.receitaCafe, sacasCafeYTD),
+  };
+
   return {
     UPDATED_AT: "04/mai/2026, recebido do BPO",
     periodo,
@@ -592,6 +630,7 @@ export async function buildDashboard(opts: { from?: Date; to?: Date; propriedade
     k2026YTD,
 
     categoriasReais: periodCategorias ?? categoriasReais,
+    volumes,
     caixaHoje,
     inconsistencias,
   };

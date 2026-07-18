@@ -87,6 +87,10 @@ export async function fetchDashboard(opts?: { from?: string; to?: string }): Pro
   };
   d.projecaoFluxo = { fluxoProj: proj.fluxoProj ?? [] };
 
+  // topSetores: 3 setores (centro de custo) com maior receita no período —
+  // dado REAL do servidor. Alimenta o comparativo "Maiores receitas" do Dashboard.
+  d.topSetores = d.topSetores ?? [];
+
   return d;
 }
 

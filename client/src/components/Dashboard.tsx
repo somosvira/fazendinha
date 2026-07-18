@@ -466,7 +466,7 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
       <div className="mb-6 grid grid-cols-5 border border-border bg-card">
         <div className="flex flex-col gap-1 border-r border-[color:var(--rule-soft)] px-5 py-4 last:border-r-0">
           <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Total no período</span>
-          <span className="mono-nums font-serif text-[28px] font-medium tracking-[-0.015em]">{fmtBRL(total)}</span>
+          <span className="mono-nums font-serif text-[24px] font-medium tracking-[-0.015em]">{fmtBRL(total)}</span>
         </div>
         <div className="flex flex-col gap-1 border-r border-[color:var(--rule-soft)] px-5 py-4 last:border-r-0">
           <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Grupo</span>
@@ -499,25 +499,37 @@ function ExplorarCategoria({ R, onDrill }: { R: R; onDrill: (id: CatId) => void 
 
 /* ========== SECTION 3 — ATIVIDADE SPLIT ========== */
 
-function AtividadeSplit({ R }: { R: R }) {
-  const t = R.totals23m;
-  // Investimento de "Outros" = RN-Caminhão (imobilizado estrutural, fora de Leite/Café).
-  // Usa o MESMO campo real do payload que o KPI "Investimento" do cockpit soma
-  // (reconciliacao.ts), para que a soma dos 3 cards feche com aquele card. Antes vinha
-  // de `R.investimentoReais` (mock-only, zerava em produção) e divergia por rnCaminhao.
-  const investOutros = t.rnCaminhao;
+// Cor por setor: os conhecidos herdam o token de atividade; o resto cai num
+// neutro. Baseado em substring do nome do centro de custo (mesma heurística do
+// backend), tolerante a variações ("Atv. Leiteira", "Plantio Café", etc.).
+function corSetor(nome: string): string {
+  const n = nome.toLowerCase();
+  if (/leit/.test(n)) return "var(--leite)";
+  if (/caf[eé]/.test(n)) return "var(--cafe)";
+  return "var(--outros)";
+}
 
-  const cards = [
-    { key: "leite", nome: "Leite", cor: "var(--leite)", receita: t.receitaLeite, custeio: t.custeioLeitePuro, invest: t.investLeite + t.animalAquisicao },
-    { key: "cafe", nome: "Café", cor: "var(--cafe)", receita: t.receitaCafe, custeio: t.custeioCafe, invest: t.investCafe },
-    { key: "outros", nome: "Outros / Sede", cor: "var(--outros)", receita: 0, custeio: t.sedeOutros, invest: investOutros },
-  ];
+type Setor = { nome: string; receita: number; custeio: number; invest: number };
+
+function AtividadeSplit({ R }: { R: R }) {
+  // topSetores = 3 setores com maior receita real no período (backend). Antes os
+  // cards eram fixos em Leite/Café/Outros (Outros com receita hardcoded em 0).
+  const cards = ((R.topSetores ?? []) as Setor[]).map((s) => ({
+    key: s.nome,
+    nome: s.nome,
+    cor: corSetor(s.nome),
+    receita: s.receita,
+    custeio: s.custeio,
+    invest: s.invest,
+  }));
   const maxBar = Math.max(...cards.flatMap((c) => [c.receita, c.custeio, c.invest]), 1);
+
+  if (cards.length === 0) return null;
 
   return (
     <section className="border-b border-border pt-[34px] pb-[30px]">
-      <DashSectionHeader eyebrow="Comparativo · período" title="Leite × Café × Outros" />
-      <div className="grid grid-cols-3 gap-px border border-border bg-border">
+      <DashSectionHeader eyebrow="Comparativo · período" title="Maiores receitas por setor" />
+      <div className="grid gap-px border border-border bg-border" style={{ gridTemplateColumns: `repeat(${cards.length}, minmax(0, 1fr))` }}>
         {cards.map((c) => {
           const margem = c.receita - c.custeio;
           return (
@@ -527,25 +539,25 @@ function AtividadeSplit({ R }: { R: R }) {
                 <span className="font-serif text-[24px] font-medium tracking-[-0.005em]">{c.nome}</span>
               </div>
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-[64px_1fr_auto] items-center gap-3">
-                  <span className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Receita</span>
+                <div className="grid grid-cols-[92px_1fr_auto] items-center gap-3">
+                  <span className="whitespace-nowrap text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Receita</span>
                   <div className="relative h-3 bg-[var(--rule-soft)]"><div className="absolute inset-y-0 left-0 h-full" style={{ width: `${(c.receita / maxBar) * 100}%`, background: c.cor }}></div></div>
                   <span className="mono-nums min-w-[86px] text-right font-serif text-[16px] font-medium">{fmtBRL(c.receita)}</span>
                 </div>
-                <div className="grid grid-cols-[64px_1fr_auto] items-center gap-3">
-                  <span className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Custeio</span>
+                <div className="grid grid-cols-[92px_1fr_auto] items-center gap-3">
+                  <span className="whitespace-nowrap text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Custeio</span>
                   <div className="relative h-3 bg-[var(--rule-soft)]"><div className="absolute inset-y-0 left-0 h-full" style={{ width: `${(c.custeio / maxBar) * 100}%`, background: "var(--cafe)", opacity: 0.7 }}></div></div>
                   <span className="mono-nums min-w-[86px] text-right font-serif text-[16px] font-medium">−{fmtBRL(c.custeio)}</span>
                 </div>
-                <div className="grid grid-cols-[64px_1fr_auto] items-center gap-3">
-                  <span className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Investim.</span>
+                <div className="grid grid-cols-[92px_1fr_auto] items-center gap-3">
+                  <span className="whitespace-nowrap text-[14px] font-semibold uppercase tracking-[0.08em] text-ink-3">Investimento</span>
                   <div className="relative h-3 bg-[var(--rule-soft)]"><div className="absolute inset-y-0 left-0 h-full" style={{ width: `${(c.invest / maxBar) * 100}%`, background: "repeating-linear-gradient(45deg, var(--outros) 0 2px, transparent 2px 5px), rgba(107,122,92,0.18)", border: "1px dashed var(--outros)" }}></div></div>
                   <span className="mono-nums min-w-[86px] text-right font-serif text-[16px] font-medium">−{fmtBRL(c.invest)}</span>
                 </div>
               </div>
               <div className="flex items-baseline justify-between border-t border-[color:var(--rule-soft)] pt-3.5">
                 <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">Margem operacional</span>
-                <span className="mono-nums whitespace-nowrap font-serif text-[26px] font-medium tracking-[-0.01em]" style={{ color: margem >= 0 ? "var(--lucro)" : "var(--prejuizo)" }}>
+                <span className="mono-nums whitespace-nowrap font-serif text-[22px] font-medium tracking-[-0.01em]" style={{ color: margem >= 0 ? "var(--lucro)" : "var(--prejuizo)" }}>
                   {margem >= 0 ? "+" : "−"}{fmtBRL(Math.abs(margem))}
                 </span>
               </div>
@@ -559,7 +571,7 @@ function AtividadeSplit({ R }: { R: R }) {
 
 /* ========== KPI COCKPIT ========== */
 
-function KpiCockpit({ R, pilha }: { R: R; pilha: "todos" | "custeio" | "investimento" }) {
+function KpiCockpit({ R }: { R: R }) {
   // totals23m já reflete o PERÍODO quando há filtro (backend troca por periodTotals).
   // reconciliarTotais garante a identidade: entrada − gasto === fluxo, e o gasto =
   // custeio + investimento + não-classificado (antes Receita/Custeio/Invest e o
@@ -611,10 +623,7 @@ function KpiCockpit({ R, pilha }: { R: R; pilha: "todos" | "custeio" | "investim
       int: fluxo < 0 ? "No vermelho (puxado por investimento)" : "Positivo no período",
     },
     // Custo/litro escondido: depende de litros produzidos (dado de rebanho inexistente).
-  ].filter((k) =>
-    // Toggle de pilha: "custeio" oculta o card de Investimento e vice-versa.
-    pilha === "todos" ? true : pilha === "custeio" ? k.lbl !== "Investimento" : k.lbl !== "Custeio",
-  );
+  ];
 
   return (
     <div className="pt-[26px]">
@@ -633,7 +642,7 @@ function KpiCockpit({ R, pilha }: { R: R; pilha: "todos" | "custeio" | "investim
             <span className="text-[14px] font-semibold uppercase tracking-[0.10em] text-ink-3">{k.lbl}</span>
             <span
               className={cn(
-                "mono-nums font-serif text-[36px] font-medium leading-none tracking-[-0.02em]",
+                "mono-nums font-serif text-[28px] font-medium leading-none tracking-[-0.02em]",
                 k.tone === "neg" ? "text-prejuizo" : "text-foreground",
               )}
             >
@@ -1096,9 +1105,9 @@ function FolegoCaixa({ R }: { R: R }) {
       <div className="grid grid-cols-[1.15fr_1fr_1.2fr] gap-px border border-border bg-border max-[1100px]:grid-cols-1">
         <div className="flex flex-col gap-2.5 bg-card px-6 py-[22px] shadow-[inset_4px_0_0_var(--atencao)]">
           <span className="text-[14px] uppercase tracking-[0.14em] text-ink-3">Aporte mensal para manter o ritmo atual</span>
-          <div className="mono-nums font-serif text-[56px] leading-none tracking-[-0.025em] text-prejuizo">
+          <div className="mono-nums font-serif text-[40px] leading-none tracking-[-0.025em] text-prejuizo">
             {fmtBRL(burnTotal)}
-            <span className="text-[22px] tracking-normal text-ink-3"> /mês</span>
+            <span className="text-[16px] tracking-normal text-ink-3"> /mês</span>
           </div>
           <div className="text-[14px] leading-[1.5] text-ink-2 [&_strong]:text-foreground">
             {dias == null ? (
@@ -1132,9 +1141,9 @@ function FolegoCaixa({ R }: { R: R }) {
 
         <div className="flex flex-col gap-2.5 bg-card px-6 py-[22px]">
           <span className="text-[14px] uppercase tracking-[0.14em] text-ink-3">Se pausar o investimento em rebanho</span>
-          <div className="mono-nums font-serif text-[44px] leading-none tracking-[-0.02em] text-lucro">
+          <div className="mono-nums font-serif text-[32px] leading-none tracking-[-0.02em] text-lucro">
             {fmtBRL(burnOp)}
-            <span className="text-[18px] tracking-normal text-ink-3"> /mês</span>
+            <span className="text-[16px] tracking-normal text-ink-3"> /mês</span>
           </div>
           <div className="text-[14px] leading-[1.5] text-ink-2 [&_strong]:text-foreground">
             O aporte cai <strong className="mono-nums">~{fmtBRL(burnInv)}</strong> — de {fmtBRL(burnTotal)} para {fmtBRL(burnOp)}/mês.
@@ -1248,7 +1257,6 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
     const m = mes && /^\d{4}-\d{2}$/.test(mes) ? mes.split("-").map(Number) : null;
     return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : null;
   });
-  const [pilha, setPilha] = useState<"todos" | "custeio" | "investimento">("todos");
   const [drillCat, setDrillCat] = useState<CatId | null>(null);
   const [data, setData] = useState<R | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -1299,28 +1307,10 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <div className="mb-3 mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span
-            className="grid h-9 w-9 flex-none place-items-center border border-border bg-card text-ink-2"
-            title="Filtra os KPIs por mês (data de liquidação)"
-            aria-hidden="true"
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4.5" width="18" height="16" rx="2" />
-              <path d="M3 9h18" />
-              <path d="M8 2.5v4M16 2.5v4" />
-            </svg>
-          </span>
-          <MonthRangePicker value={range ?? DEFAULT_RANGE} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
-        </div>
-        <div className="period-switch" role="group" aria-label="Filtrar por pilha">
-          <button aria-current={pilha === "todos"} onClick={() => setPilha("todos")}>Todos</button>
-          <button aria-current={pilha === "custeio"} onClick={() => setPilha("custeio")}>Custeio</button>
-          <button aria-current={pilha === "investimento"} onClick={() => setPilha("investimento")}>Investimento</button>
-        </div>
+      <div className="mb-3 mt-5 flex flex-wrap items-center gap-3">
+        <MonthRangePicker value={range ?? DEFAULT_RANGE} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
       </div>
-      <KpiCockpit R={data} pilha={pilha} />
+      <KpiCockpit R={data} />
       <FolegoCaixa R={data} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
       <ExplorarCategoria R={data} onDrill={setDrillCat} />

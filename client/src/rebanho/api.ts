@@ -297,12 +297,140 @@ export const fecharConsumo = (grupoId: number, body: { dataInicio: string; dataF
 export const listarConsumos = (grupoId: number) => req<ConsumoPeriodoDTO[]>(`/rebanho/lotes/${grupoId}/consumo`);
 export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consumo/${id}`, { method: "DELETE" });
 
-export interface DashboardData { kpis: { rebanhoAtivo: number; emLactacao: number; secas: number; producaoMedia: number | null; gestantes: number; prenhez: number }; dominios: { tab: string; titulo: string; linhas: string[] }[]; alertas: { label: string; n: number; tab: string; tom: "bad" | "ok" }[]; }
-export const obterDashboard = () => req<DashboardData>(`/rebanho/dashboard`);
-export function useDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterDashboard().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { recarregar(); }, [recarregar]); return { data, loading, erro };
+export type PeriodoDashboard = "hoje" | "7d" | "30d";
+export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo";
+export type AcaoWorklistRebanho =
+  | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" }
+  | { dominio: "sanidade"; tipoEvento: "EXAME" };
+interface AcaoWorklistApi { tipo: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" | "EXAME"; rotulo: string; }
+export interface WorklistItemRebanho {
+  animalId: string | number;
+  numero: string;
+  nome: string | null;
+  categoria?: string | null;
+  grupo?: string | null;
+  setor?: string | null;
+  motivo: string;
+  valor?: number | null;
+  unidade?: string | null;
+  dataReferencia?: string | null;
+  ccs?: number | null;
+  ccsTendencia?: string | null;
+  del?: number | null;
+  diasGestacao?: number | null;
+  previsaoSecagem?: string | null;
+}
+export interface WorklistRebanho {
+  chave: ChaveWorklistRebanho;
+  label: string;
+  quantidade: number;
+  detalhe: string;
+  severidade: "critico" | "atencao" | "informativo";
+  tab: "reproducao" | "sanidade";
+  acao: AcaoWorklistRebanho;
+  itens: WorklistItemRebanho[];
+}
+export interface PontoSerieDashboard { data: string; valor: number | null; }
+export interface IndicadorHeroDashboard {
+  valor: number | null; unidade: string; anterior: number | null;
+  variacaoAbsoluta: number | null; variacaoPercentual: number | null;
+  comparavel: boolean; serie: PontoSerieDashboard[]; motivoIndisponivel?: string | null;
+}
+export interface IndicadorDashboard {
+  chave: string; label: string; valor: number | null; unidade: string | null;
+  detalhe?: string | null; qualidade: "disponivel" | "parcial" | "indisponivel";
+}
+export interface DashboardData {
+  periodo: { chave: PeriodoDashboard; inicio: string; fim: string; rotuloComparacao: string };
+  atualizacao: { geradoEm: string; dadoMaisRecenteEm: string | null; animaisAtivos: number; diasComProducao: number; diasEsperados: number; producaoParcial: boolean; avisos: string[] };
+  herois: { vacasEmLactacao: IndicadorHeroDashboard; producaoMediaVaca: IndicadorHeroDashboard; producaoTotalDia: IndicadorHeroDashboard; percentualVacasLactacao: IndicadorHeroDashboard };
+  estadosReprodutivos: { totalElegiveis: number; segmentos: { chave: string; label: string; quantidade: number; percentual: number | null }[] };
+  indicadores: { producao: IndicadorDashboard[]; reproducao: IndicadorDashboard[]; rebanho: IndicadorDashboard[] };
+  alertas: WorklistRebanho[];
+  grupos: { grupoId: number | null; nome: string; animaisAtivos: number; vacas: number | null; emLactacao: number | null; percentualDoRebanho: number | null }[];
+}
+interface DashboardApiDTO {
+  meta: { periodo: PeriodoDashboard; inicio: string; fim: string; geradoEm: string; dadoMaisRecente: string | null; cobertura: { diasEsperados: number; diasComProducao: number; producaoParcial: boolean; motivo: string | null } };
+  totais: { rebanhoAtivo: number; vacasAtivas: number };
+  herois: { chave: "vacasLactacao" | "mediaVacaDia" | "producaoTotalDia" | "pctVacasLactacao"; valor: number | null; unidade: string; valorAnterior: number | null; variacaoPct: number | null; indisponivelMotivo: string | null; serie: PontoSerieDashboard[] }[];
+  estadosReprodutivos: { estado: string; quantidade: number; percentual: number | null }[];
+  indicadores: { grupo: "producao" | "reproducao" | "rebanho"; itens: { chave: string; titulo: string; valor: number | null; unidade: string; amostra: number; indisponivelMotivo: string | null }[] }[];
+  alertas: { chave: string; titulo: string; quantidade: number; explicacao: string; severidade: "alta" | "media" | "baixa"; tab: AbaAlertaDashboard; acao?: AcaoWorklistApi; itens?: WorklistItemRebanho[] }[];
+  grupos: { id: number | null; nome: string; quantidade: number; percentual: number | null }[];
+  qualidadeDados: { quantidade: number; explicacao: string }[];
+}
+const rotulosEstado: Record<string, string> = { PEV: "Aptas / PEV", VAZIA: "Vazias", INSEMINADA: "Inseminadas", PRENHE: "Prenhes" };
+const acaoPorWorklist: Record<ChaveWorklistRebanho, AcaoWorklistRebanho> = {
+  "secagem-atrasada": { dominio: "reproducao", tipoEvento: "SECAGEM" },
+  "vazia-pos-pev": { dominio: "reproducao", tipoEvento: "INSEMINACAO" },
+  "dg-pendente": { dominio: "reproducao", tipoEvento: "DIAGNOSTICO" },
+  "parto-proximo": { dominio: "reproducao", tipoEvento: "PARTO" },
+  "ccs-alta": { dominio: "sanidade", tipoEvento: "EXAME" },
+};
+function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return chave in acaoPorWorklist; }
+function adaptarDashboard(d: DashboardApiDTO): DashboardData {
+  const heroi = (chave: DashboardApiDTO["herois"][number]["chave"]): IndicadorHeroDashboard => {
+    const h = d.herois.find((x) => x.chave === chave)!;
+    return { valor: h.valor, unidade: h.unidade, anterior: h.valorAnterior, variacaoAbsoluta: h.valor != null && h.valorAnterior != null ? h.valor - h.valorAnterior : null, variacaoPercentual: h.variacaoPct, comparavel: h.valorAnterior != null, serie: h.serie, motivoIndisponivel: h.indisponivelMotivo };
+  };
+  const itens = (grupo: DashboardApiDTO["indicadores"][number]["grupo"]): IndicadorDashboard[] => (d.indicadores.find((x) => x.grupo === grupo)?.itens ?? []).map((i) => ({ chave: i.chave, label: i.titulo, valor: i.valor, unidade: i.unidade || null, detalhe: i.indisponivelMotivo, qualidade: i.valor == null ? "indisponivel" : i.indisponivelMotivo ? "parcial" : "disponivel" }));
+  return {
+    periodo: { chave: d.meta.periodo, inicio: d.meta.inicio, fim: d.meta.fim, rotuloComparacao: "período anterior" },
+    atualizacao: { geradoEm: d.meta.geradoEm, dadoMaisRecenteEm: d.meta.dadoMaisRecente, animaisAtivos: d.totais.rebanhoAtivo, diasComProducao: d.meta.cobertura.diasComProducao, diasEsperados: d.meta.cobertura.diasEsperados, producaoParcial: d.meta.cobertura.producaoParcial, avisos: [d.meta.cobertura.motivo, ...d.qualidadeDados.filter((q) => q.quantidade > 0).map((q) => `${q.quantidade}: ${q.explicacao}`)].filter((x): x is string => Boolean(x)) },
+    herois: { vacasEmLactacao: heroi("vacasLactacao"), producaoMediaVaca: heroi("mediaVacaDia"), producaoTotalDia: heroi("producaoTotalDia"), percentualVacasLactacao: heroi("pctVacasLactacao") },
+    estadosReprodutivos: { totalElegiveis: d.estadosReprodutivos.reduce((s, x) => s + x.quantidade, 0), segmentos: d.estadosReprodutivos.map((x) => ({ chave: x.estado, label: rotulosEstado[x.estado] ?? x.estado, quantidade: x.quantidade, percentual: x.percentual })) },
+    indicadores: { producao: itens("producao"), reproducao: itens("reproducao"), rebanho: itens("rebanho") },
+    alertas: d.alertas.flatMap((a): WorklistRebanho[] => {
+      if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade")) return [];
+      return [{ chave: a.chave, label: a.titulo, quantidade: a.quantidade, severidade: a.severidade === "alta" ? "critico" : a.severidade === "media" ? "atencao" : "informativo", tab: a.tab, detalhe: a.explicacao, acao: acaoPorWorklist[a.chave], itens: a.itens ?? [] }];
+    }),
+    grupos: d.grupos.map((g) => ({ grupoId: g.id, nome: g.nome, animaisAtivos: g.quantidade, vacas: null, emLactacao: null, percentualDoRebanho: g.percentual })),
+  };
+}
+export const obterDashboard = (periodo: PeriodoDashboard, signal?: AbortSignal) => req<DashboardApiDTO>(`/rebanho/dashboard?periodo=${periodo}`, { signal }).then(adaptarDashboard);
+interface WorklistApiDTO { meta: { geradoEm: string; escopo: { propriedadeId: number | null; consolidado: boolean } }; worklist: DashboardApiDTO["alertas"][number] }
+function adaptarWorklist(a: DashboardApiDTO["alertas"][number]): WorklistRebanho {
+  if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade")) throw new Error("worklist inválida");
+  return { chave: a.chave, label: a.titulo, quantidade: a.quantidade, severidade: a.severidade === "alta" ? "critico" : a.severidade === "media" ? "atencao" : "informativo", tab: a.tab, detalhe: a.explicacao, acao: acaoPorWorklist[a.chave], itens: a.itens ?? [] };
+}
+export const obterWorklist = (chave: ChaveWorklistRebanho, signal?: AbortSignal) => req<WorklistApiDTO>(`/rebanho/worklists/${chave}`, { signal }).then((r) => adaptarWorklist(r.worklist));
+export function useWorklist(chave?: ChaveWorklistRebanho, snapshotInicial?: WorklistRebanho) {
+  const [data, setData] = useState<WorklistRebanho | null>(() => snapshotInicial && snapshotInicial.chave === chave ? snapshotInicial : null);
+  const [loading, setLoading] = useState(Boolean(chave && !data));
+  const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
+  useEffect(() => {
+    if (!chave) { setData(null); setLoading(false); return; }
+    if (snapshotInicial?.chave === chave && tentativa === 0) { setData(snapshotInicial); setLoading(false); return; }
+    const ctrl = new AbortController(); setLoading(true); setErro(null);
+    obterWorklist(chave, ctrl.signal).then(setData).catch((e) => { if (e?.name !== "AbortError") setErro(e.message); }).finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+    return () => ctrl.abort();
+  }, [chave, snapshotInicial, tentativa]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useDashboard(periodo: PeriodoDashboard = "7d") {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setErro(null);
+    if (data) setAtualizando(true); else setLoading(true);
+    obterDashboard(periodo, ctrl.signal)
+      .then(setData)
+      .catch((e) => { if (e?.name !== "AbortError") setErro(e instanceof Error ? e.message : "Falha ao carregar o painel."); })
+      .finally(() => { if (!ctrl.signal.aborted) { setLoading(false); setAtualizando(false); } });
+    return () => ctrl.abort();
+    // Preserva o último resultado sem transformar `data` em gatilho de refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo, tentativa]);
+  return { data, loading, atualizando, erro, recarregar };
 }
 
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }

@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { tabToPath, pathToTab, DEFAULT_TAB } from "./router";
+import { buildRotaWorklistRebanho, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
@@ -16,6 +16,7 @@ import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { Relatorio } from "./components/Relatorio";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
+import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
@@ -195,7 +196,17 @@ export function App() {
   // remonta o conteúdo via `key` abaixo, forçando refetch no escopo novo. null =
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(getPropriedadeAtiva());
-  const trocarPropriedade = (id: number | null) => { setPropriedadeAtiva(id); setPropAtiva(id); };
+  // Worklist persistente vem da URL; o snapshot é transitório e só existe quando
+  // o clique parte do dashboard já carregado.
+  const [rotaWorklist, setRotaWorklist] = useState<RotaWorklistRebanho | null>(() =>
+    typeof window === "undefined" ? null : parseRotaWorklistRebanho(window.location.pathname, window.location.search),
+  );
+  const [worklistSnapshot, setWorklistSnapshot] = useState<WorklistRebanho | null>(null);
+  const trocarPropriedade = (id: number | null) => {
+    setPropriedadeAtiva(id);
+    setPropAtiva(id);
+    setWorklistSnapshot(null);
+  };
   // Deep-link do ⌘K: ao escolher uma entidade real, guardamos {tab, id} e o
   // módulo dono consome (abre o cockpit) via `abrirId` + `onAbriuEntidade`.
   const [deepLink, setDeepLink] = useState<{ tab: Tab; id: string } | null>(null);
@@ -205,7 +216,7 @@ export function App() {
   const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
     if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    if (![...sp.keys()].length) return null;
+    if (![...sp.keys()].length || sp.has("worklist")) return null;
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
@@ -229,13 +240,34 @@ export function App() {
       setDeepLink(null);
       setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
     }
+    setRotaWorklist(null);
+    setWorklistSnapshot(null);
     setTab(t);
     const alvo = tabToPath(t) + (query ? `?${query}` : "");
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
   };
 
   // Navegação MANUAL (sidebar/conteúdo) — limpa filtros de deep-link p/ não reaplicar stale.
-  const navegarTab = (t: Tab) => { setDeepLinkFiltros(null); setTab(t); };
+  const navegarTab = (t: Tab) => {
+    setDeepLinkFiltros(null);
+    setRotaWorklist(null);
+    setWorklistSnapshot(null);
+    setTab(t);
+    const alvo = tabToPath(t);
+    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+  };
+
+  const abrirWorklist = (worklist: WorklistRebanho) => {
+    const alvo = buildRotaWorklistRebanho(worklist.chave, worklist.tab);
+    if (!alvo) return;
+    const rota = { chave: worklist.chave, tab: worklist.tab } as RotaWorklistRebanho;
+    setDeepLink(null);
+    setDeepLinkFiltros(null);
+    setRotaWorklist(rota);
+    setWorklistSnapshot(worklist);
+    setTab(`reb-${worklist.tab}` as Tab);
+    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+  };
 
   // Splash de abertura — cobre o primeiro paint até as fontes (Newsreader/DM Sans)
   // resolverem, com um tempo mínimo pra não piscar. Some com fade-out.
@@ -282,17 +314,30 @@ export function App() {
   // para o botão "voltar" do navegador funcionar.
   const firstSync = useRef(true);
   useEffect(() => {
-    const path = tabToPath(tab);
-    if (window.location.pathname !== path) {
-      if (firstSync.current) window.history.replaceState(null, "", path);
-      else window.history.pushState(null, "", path);
+    const worklistUrl = rotaWorklist && tab === `reb-${rotaWorklist.tab}`
+      ? buildRotaWorklistRebanho(rotaWorklist.chave, rotaWorklist.tab)
+      : null;
+    const filtrosUrl = deepLinkFiltros?.tab === tab
+      ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
+      : null;
+    const alvo = worklistUrl ?? filtrosUrl ?? tabToPath(tab);
+    if (window.location.pathname + window.location.search !== alvo) {
+      if (firstSync.current) window.history.replaceState(null, "", alvo);
+      else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab]);
+  }, [tab, rotaWorklist, deepLinkFiltros]);
 
-  // Botões voltar/avançar do navegador → atualiza a aba a partir da URL.
+  // Botões voltar/avançar restauram pathname + worklist como uma única rota.
   useEffect(() => {
-    const onPop = () => setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+    const onPop = () => {
+      setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+      setRotaWorklist(parseRotaWorklistRebanho(window.location.pathname, window.location.search));
+      setWorklistSnapshot(null);
+      const sp = new URLSearchParams(window.location.search);
+      const t = pathToTab(window.location.pathname);
+      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -391,7 +436,10 @@ export function App() {
   }
 
   const conteudo = String(tab).startsWith("reb-")
-    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => setTab(("reb-" + s) as Tab)}
+    ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
+        onAbrirWorklist={abrirWorklist}
+        worklistChave={rotaWorklist?.chave}
+        worklistSnapshot={worklistSnapshot && worklistSnapshot.chave === rotaWorklist?.chave ? worklistSnapshot : undefined}
         abrirId={deepLink && deepLink.tab.startsWith("reb-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
     : String(tab).startsWith("pla-")
@@ -495,6 +543,9 @@ export function App() {
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, entidadeId) => {
+          setRotaWorklist(null);
+          setWorklistSnapshot(null);
+          setDeepLinkFiltros(null);
           setTab(t);
           // Só entidades de cockpit (reb-*/pla-*/cor-*) precisam de deep-link;
           // categoria/fornecedor apenas navegam para a aba.

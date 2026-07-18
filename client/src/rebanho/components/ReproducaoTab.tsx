@@ -1,6 +1,7 @@
 import { Loader } from "../../components/Loading";
-import { useAnimais, useParametros, useTaxaConcepcao, type TaxaConcepcaoMetodo } from "../api";
+import { useAnimais, useParametros, useTaxaConcepcao, type ChaveWorklistRebanho, type TaxaConcepcaoMetodo, type WorklistRebanho } from "../api";
 import { HerdDomainView } from "./HerdDomainView";
+import { WorklistCanonica, type AcaoItemWorklist } from "./WorklistCanonica";
 import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -35,9 +36,10 @@ function TaxaConcepcaoStrip() {
   );
 }
 
-export function ReproducaoTab({ onRegistrarEvento }: { onRegistrarEvento: (animal: Animal) => void }) {
+export function ReproducaoTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirFicha, worklistChave, worklistSnapshot }: { onRegistrarEvento: (animal: Animal) => void; onRegistrarWorklist: (acao: AcaoItemWorklist) => void; onAbrirFicha: (id: string) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho }) {
   const { data, loading, erro } = useAnimais({ status: "ATIVO" });
   const params = useParametros(); // critério do desmame (DESMAME_MODO/DIAS/PESO_KG); enquanto carrega, usa o default Embrapa
+  if (worklistChave && worklistChave !== "ccs-alta") return <WorklistCanonica chave={worklistChave} snapshot={worklistSnapshot} onAcao={onRegistrarWorklist} onAbrirFicha={onAbrirFicha} />;
   if (loading) return <RebMain><RebHeader eyebrow="Rebanho" title="Reprodução" /><Loader /></RebMain>;
   if (erro) return <RebMain><RebHeader title="Reprodução" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
   // Enriquece o resumo com categoria/nascimento/último peso do Animal — insumos
