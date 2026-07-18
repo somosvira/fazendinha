@@ -52,7 +52,7 @@ type TipoInicialEvento =
 
 type AnimalEvento = Pick<Animal, "id" | "numero" | "nome" | "categoria">;
 
-export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, onFechar, onSalvo }: { animalId: string; animal?: AnimalEvento; dominioFixo?: "reproducao" | "sanidade"; tipoInicial?: TipoInicialEvento; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
+export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataInicial, onFechar, onSalvo }: { animalId: string; animal?: AnimalEvento; dominioFixo?: "reproducao" | "sanidade"; tipoInicial?: TipoInicialEvento; dataInicial?: string; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
   const dominioInicial = tipoInicial?.dominio ?? dominioFixo ?? "reproducao";
   const [dominio, setDominio] = useState<"reproducao" | "sanidade">(dominioInicial);
   const [tipo, setTipo] = useState<EventoPayload["tipo"]>(() => tipoInicial?.dominio === "reproducao" ? tipoInicial.tipo : "INSEMINACAO");
@@ -60,7 +60,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, onFecha
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]); // catálogo p/ escolher a doadora na TE
   const [f, setF] = useState<any>({
-    data: "",
+    data: dataInicial ?? "",
     // Reprodutor estruturado (raça + grau de sangue).
     racaReprodutorId: "", fracaoReprodutor: "8/8", racaSecReprodutorId: "",
     protocolo: PROTOCOLOS[0], protocoloOutro: "",
