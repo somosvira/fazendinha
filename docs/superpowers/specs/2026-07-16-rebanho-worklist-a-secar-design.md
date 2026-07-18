@@ -24,6 +24,17 @@ Transformar “A secar” numa fila operacional diária que:
 4. abra o formulário já preparado para registrar `SECAGEM` no animal selecionado;
 5. após salvar, recarregue a aba Reprodução e mantenha a work-list selecionada, removendo da fila a vaca cujo resumo foi recomputado.
 
+## Limite desta entrega
+
+Este PR fecha somente a work-list “A secar” e as salvaguardas necessárias para operá-la com segurança. Entram no escopo:
+
+- regra canônica da fila, endpoint multi-propriedade e metadados específicos;
+- sincronização transacional e não destrutiva de lactações;
+- formulário preparado, retorno à mesma fila e deep link persistente;
+- testes automatizados e verificação do fluxo real em ambiente local isolado.
+
+Ficam fora deste PR o redesign amplo do Dashboard do Rebanho, as outras work-lists, os cálculos financeiros de volumes físicos e as próximas features do catálogo do Ideagri. Alterações locais paralelas serão preservadas fora dos commits desta fatia e retomadas em branches próprias; não serão descartadas nem publicadas junto por conveniência.
+
 ## Regra de negócio
 
 ### Elegibilidade
@@ -111,7 +122,7 @@ O registro iniciado pela work-list usa retorno **“permanecer na lista”**:
 
 O fluxo genérico iniciado por outras work-lists continua podendo navegar ao cockpit após salvar. O estado de registro inline precisa carregar a intenção de retorno (`"lista" | "cockpit"`) e o tipo inicial, evitando inferência por texto ou nome da aba.
 
-Se a API falhar, o modal permanece aberto e exibe o erro existente; a lista não é alterada otimisticamente.
+Se a API falhar, o modal permanece aberto, preserva os dados digitados e exibe uma mensagem em PT-BR; a lista não é alterada otimisticamente. Se o evento for salvo, mas a recarga posterior da fila falhar, a interface informa que o registro foi concluído e oferece nova tentativa de atualização, sem reenviar nem desfazer o evento.
 
 ## Salvaguarda obrigatória do histórico de lactações
 
@@ -128,11 +139,27 @@ Esta fatia deve tornar a recomputação **não destrutiva** antes de expor “Re
 - ao excluir outros eventos reprodutivos, não alterar lactações;
 - executar a mutação do evento + atualização das lactações + resumo em transação, para não deixar evento e read-model divergentes em caso de falha.
 
-A correspondência entre ciclo derivado e persistido usa `dtInicio` como identidade natural dentro do animal, com `numero` como verificação/ordenação. Se houver dado legado ambíguo (mais de uma lactação com o mesmo início), a operação deve falhar com erro explícito em vez de apagar ou mesclar silenciosamente.
+A correspondência entre ciclo derivado e persistido usa `dtInicio` como identidade natural dentro do animal, com `numero` como verificação/ordenação. Se houver dado legado ambíguo (mais de uma lactação com o mesmo início), a operação deve falhar com erro de domínio explícito, traduzido pela rota para HTTP 409, em vez de apagar, mesclar silenciosamente ou responder 500.
+
+A criação/exclusão do evento, as operações pontuais nas lactações e a recomputação do resumo pertencem à mesma transação Prisma. Qualquer falha aborta a mutação inteira, impedindo evento, histórico e read-model de divergirem.
 
 Testes de regressão precisam provar que uma lactação com produção e flags preenchidas mantém esses valores após registrar uma secagem e após registrar outro evento reprodutivo.
 
 ## Arquitetura e arquivos
+
+### Backend — regra canônica e endpoint
+
+`server/src/services/rebanho/regras-manejo.ts`
+
+- concentrar a elegibilidade, a ordenação e a urgência de “A secar” em uma função pura;
+- usar a mesma saída no endpoint operacional e na contagem apresentada pelo Dashboard;
+- não manter cópias divergentes da regra no frontend nem no contexto da IA.
+
+`server/src/routes/rebanho/worklists.ts`
+
+- expor a fila sob o escopo retornado por `resolverEscopoLeitura(c)`;
+- manter compatibilidade de leitura com o slug legado `secagem-atrasada`, caso existam links salvos;
+- retornar um DTO específico suficiente para a tabela, sem obrigar o frontend a reconstruir a regra.
 
 ### Backend — recomputação não destrutiva
 
@@ -214,11 +241,12 @@ A extensão do contrato deve ser pequena e declarativa (metadados opcionais na `
 
 ### Automatizados
 
-1. Vitest puro de `aSecar` e do estado de urgência, cobrindo fronteiras, `del != null` e ordenação.
-2. Testes puros e de service da sincronização não destrutiva: registrar secagem encerra o ciclo aberto e preserva produção/flags; outro evento reprodutivo não altera lactações; exclusão recompõe datas sem apagar metadados.
-3. Teste de componente do `EventoForm` ou da integração mais estreita disponível comprovando que `tipoInicial="SECAGEM"` e `dataInicial=HOJE` preenchem o formulário sem alterar o default genérico.
-4. Testes existentes de server e client passam.
-5. Typecheck e build dos dois workspaces passam.
+1. Vitest puro da regra canônica “A secar” e do estado de urgência, cobrindo atrasada, hoje, `+30`, `+31`, `del != null`, data civil inválida, ordenação e desempate.
+2. Testes puros e de service da sincronização não destrutiva: registrar secagem encerra o ciclo aberto e preserva produção/flags; outro evento reprodutivo não altera lactações; exclusão recompõe datas sem apagar metadados; falha provoca rollback integral.
+3. Teste de rota cobrindo DTO, alias legado, isolamento entre propriedades e tradução de conflito estrutural para HTTP 409.
+4. Teste de componente do `EventoForm` e do fluxo da lista comprovando defaults, payload, permanência em erro, retorno à fila, recarga e remoção do item tratado.
+5. Testes focados passam antes da revisão; depois, as suítes completas de server e client passam.
+6. Typecheck e build dos dois workspaces passam.
 
 ### Runtime / navegador
 
@@ -233,6 +261,21 @@ Com banco local e rebanho real importado:
 7. provocar erro de validação/API e confirmar que o modal não fecha.
 
 Como o passo 4 escreve dados, a verificação deve ocorrer apenas no PostgreSQL local isolado, nunca no Neon de produção.
+
+## Ciclo de entrega
+
+A feature segue o mesmo flow das próximas fatias do catálogo:
+
+1. revisar o diff restrito à fatia e corrigir os achados confirmados;
+2. verificar o fluxo ponta a ponta;
+3. commitar e publicar a branch;
+4. abrir ou atualizar o PR e acompanhar os checks no GitHub;
+5. corrigir e publicar novamente enquanto houver check vermelho;
+6. com CI verde, fazer merge sem ignorar proteções da branch;
+7. atualizar a documentação e o catálogo, marcando a feature como concluída somente depois do merge;
+8. criar uma branch limpa para a próxima fatia pequena do catálogo e repetir o ciclo.
+
+A autorização para esse ciclo não inclui overrides de proteção, resolução destrutiva de conflitos nem deploy manual em produção. Se um desses casos aparecer, a execução pausa para decisão explícita.
 
 ## Não-objetivos
 
