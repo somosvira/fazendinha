@@ -77,6 +77,12 @@ export interface ResumoLactacoes {
   delAtual: number | null;
   vidaProdutivaDias: number;
   producaoMediaCiclo: number | null;
+  // Correção 305 oficial (Ideagri) agregada entre ciclos — comparável entre lactações de
+  // durações diferentes. Ortogonal a producaoMediaCiclo (que mistura medido + estimado TIM).
+  media305: number | null;      // média dos 305 oficiais > 0; null se nenhum ciclo tem 305
+  n305: number;                 // ciclos com 305 oficial > 0 (transparência da amostra)
+  melhor305: number | null;     // teto produtivo 305 do animal; null se nenhum
+  melhor305Numero: number | null; // ordem do ciclo campeão
 }
 
 export function resumoLactacoes(lacts: LactacaoRow[], hoje: Date): ResumoLactacoes {
@@ -87,11 +93,26 @@ export function resumoLactacoes(lacts: LactacaoRow[], hoje: Date): ResumoLactaco
   const producaoMediaCiclo = comProducao.length
     ? Math.round(comProducao.reduce((s, v) => s + v, 0) / comProducao.length)
     : null;
+
+  // Agregado 305 oficial: `> 0` descarta null E o sentinela 0 do Ideagri (305 ainda não
+  // calculado em ciclo curto/incompleto — não é produção real de 0 L).
+  const com305 = lacts
+    .map((l) => ({ numero: l.numero, v: num(l.producao305) }))
+    .filter((x): x is { numero: number; v: number } => x.v != null && x.v > 0);
+  const n305 = com305.length;
+  const media305 = n305 ? Math.round(com305.reduce((s, x) => s + x.v, 0) / n305) : null;
+  // empate → menor numero (a cria mais antiga a atingir o teto); reduce é ordem-agnóstico
+  const campeao = n305 ? com305.reduce((best, x) => (x.v > best.v || (x.v === best.v && x.numero < best.numero) ? x : best)) : null;
+
   return {
     total: lacts.length,
     emCurso: aberta != null,
     delAtual: aberta ? duracaoLactacao(aberta, hoje) : null,
     vidaProdutivaDias,
     producaoMediaCiclo,
+    media305,
+    n305,
+    melhor305: campeao?.v ?? null,
+    melhor305Numero: campeao?.numero ?? null,
   };
 }

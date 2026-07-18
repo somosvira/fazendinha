@@ -18,6 +18,15 @@ export function LactacoesSection({ animalId }: { animalId: string }) {
         <span><b className="font-semibold text-[color:var(--ink)]">{r.total}</b> lactações</span>
         <span>vida produtiva <b className="font-semibold text-[color:var(--ink)]">{fmtDias(r.vidaProdutivaDias)}</b></span>
         <span>média/ciclo <b className="font-semibold text-[color:var(--ink)]">{fmtL(r.producaoMediaCiclo)}</b></span>
+        {r.media305 != null && (
+          <span title="produção padronizada a 305 dias (Ideagri) — comparável entre ciclos">
+            média 305 <b className="font-semibold text-[color:var(--ink)]">{fmtL(r.media305)}</b>
+            <span className="text-ink-3"> · em {r.n305} de {r.total} {r.total === 1 ? "ciclo" : "ciclos"}</span>
+          </span>
+        )}
+        {r.melhor305 != null && (
+          <span>melhor <b className="font-semibold text-[color:var(--ink)]">{r.melhor305Numero}ª · {fmtL(r.melhor305)}</b></span>
+        )}
         {r.emCurso && (
           <span className="rounded-[13px] border border-[#E0CF9E] bg-[color:var(--leite-soft)] px-[9px] py-[2px] text-sm font-semibold text-[#6e5a26]">
             em curso · DEL {fmtDias(r.delAtual)}

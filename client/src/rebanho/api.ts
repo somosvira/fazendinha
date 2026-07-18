@@ -151,6 +151,11 @@ export interface ResumoLactacoesDTO {
   delAtual: number | null;
   vidaProdutivaDias: number;
   producaoMediaCiclo: number | null;
+  // Correção 305 oficial agregada (espelha ResumoLactacoes do server).
+  media305: number | null;
+  n305: number;
+  melhor305: number | null;
+  melhor305Numero: number | null;
 }
 export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; }
 
