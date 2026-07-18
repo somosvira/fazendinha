@@ -1,8 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { reconstruirLactacoes, recomputarResumoReproducao } from "./reproducao.recompute.js";
+import {
+  reconstruirLactacoes,
+  recomputarResumoReproducao,
+  planejarSincronizacaoLactacoes,
+  ConflitoLactacaoError,
+  type LactacaoEstrutural,
+} from "./reproducao.recompute.js";
 
 const HOJE = "2026-06-16";
 const ev = (tipo: any, data: string, extra: any = {}) => ({ tipo, data, ...extra });
+const lact = (over: Partial<LactacaoEstrutural> = {}): LactacaoEstrutural => ({
+  id: 10,
+  numero: 2,
+  dtInicio: "2025-01-10",
+  dtFim: null,
+  motivoSecagem: null,
+  ...over,
+});
+const evento = (id: number, tipo: any, data: string, extra: any = {}) => ({ id, tipo, data, ...extra });
 
 describe("reconstruirLactacoes", () => {
   it("parto abre, secagem fecha, numero parte de numPartosEntrada", () => {
@@ -14,6 +29,51 @@ describe("reconstruirLactacoes", () => {
   it("parto seguido de secagem fecha a lactação", () => {
     const ls = reconstruirLactacoes([ev("PARTO", "2024-01-10"), ev("SECAGEM", "2024-11-10"), ev("PARTO", "2025-02-01")], 0);
     expect(ls.map((l) => [l.numero, l.dtFim])).toEqual([[1, "2024-11-10"], [2, null]]);
+  });
+});
+
+describe("planejarSincronizacaoLactacoes", () => {
+  it("evento alheio à lactação não produz operação", () => {
+    expect(planejarSincronizacaoLactacoes([lact()], { tipo: "CRIACAO", evento: evento(1, "DIAGNOSTICO", "2026-06-01") })).toEqual([]);
+  });
+
+  it("PARTO com início já persistido é idempotente e preserva o ciclo", () => {
+    expect(planejarSincronizacaoLactacoes([lact()], { tipo: "CRIACAO", evento: evento(2, "PARTO", "2025-01-10") })).toEqual([]);
+  });
+
+  it("PARTO novo cria só um ciclo com número após o maior persistido/entrada", () => {
+    expect(planejarSincronizacaoLactacoes([lact({ numero: 4 })], { tipo: "CRIACAO", evento: evento(3, "PARTO", "2026-02-01") }, 2)).toEqual([
+      { tipo: "CRIAR", numero: 5, dtInicio: "2026-02-01" },
+    ]);
+  });
+
+  it("SECAGEM encerra a lactação aberta mais recente e carrega o motivo", () => {
+    const rows = [lact({ id: 1, numero: 1, dtInicio: "2024-01-01" }), lact({ id: 2, numero: 2, dtInicio: "2025-01-01" })];
+    expect(planejarSincronizacaoLactacoes(rows, { tipo: "CRIACAO", evento: evento(4, "SECAGEM", "2025-11-01", { motivoSecagem: "Rotina" }) })).toEqual([
+      { tipo: "ENCERRAR", lactacaoId: 2, dtFim: "2025-11-01", motivoSecagem: "Rotina" },
+    ]);
+  });
+
+  it("SECAGEM sem ciclo aberto gera conflito explícito", () => {
+    expect(() => planejarSincronizacaoLactacoes([lact({ dtFim: "2025-10-01" })], { tipo: "CRIACAO", evento: evento(5, "SECAGEM", "2025-11-01") }))
+      .toThrowError(expect.objectContaining({ code: "SEM_LACTACAO_ABERTA" }));
+  });
+
+  it("excluir SECAGEM reabre o ciclo fechado por aquela data", () => {
+    const rows = [lact({ id: 7, dtFim: "2025-11-01", motivoSecagem: "Rotina" })];
+    expect(planejarSincronizacaoLactacoes(rows, { tipo: "EXCLUSAO", evento: evento(6, "SECAGEM", "2025-11-01") })).toEqual([
+      { tipo: "REABRIR", lactacaoId: 7 },
+    ]);
+  });
+
+  it("excluir PARTO preserva a lactação histórica", () => {
+    expect(planejarSincronizacaoLactacoes([lact()], { tipo: "EXCLUSAO", evento: evento(7, "PARTO", "2025-01-10") })).toEqual([]);
+  });
+
+  it("recusa duas lactações com o mesmo início", () => {
+    const rows = [lact({ id: 1 }), lact({ id: 2 })];
+    expect(() => planejarSincronizacaoLactacoes(rows, { tipo: "CRIACAO", evento: evento(8, "CIO", "2026-01-01") }))
+      .toThrowError(expect.objectContaining({ code: "AMBIGUIDADE" }));
   });
 });
 

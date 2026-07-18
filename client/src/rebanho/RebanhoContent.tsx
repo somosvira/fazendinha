@@ -13,6 +13,7 @@ import { DashboardView } from "./components/DashboardView";
 import type { Animal } from "./types";
 import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, WorklistRebanho } from "./api";
 import type { AcaoItemWorklist } from "./components/WorklistCanonica";
+import { HOJE } from "./HOJE";
 
 export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo";
 
@@ -23,6 +24,10 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     animal: Animal | Pick<Animal, "id" | "numero" | "nome" | "categoria">;
     dominio: "reproducao" | "sanidade";
     tipoInicial?: { dominio: "reproducao"; tipo: EventoPayload["tipo"] } | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
+    dataInicial?: string;
+    // Para onde ir após salvar: "lista" mantém a fila (registro vindo de worklist),
+    // "cockpit" abre a ficha do animal (registro genérico). Ausente = "cockpit".
+    retorno?: "lista" | "cockpit";
   } | null>(null);
   const [flashEventoId, setFlashEventoId] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
@@ -62,7 +67,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     const tipoInicial = worklist.acao.dominio === "reproducao"
       ? { dominio: "reproducao" as const, tipo: worklist.acao.tipoEvento as EventoPayload["tipo"] }
       : { dominio: "sanidade" as const, tipo: worklist.acao.tipoEvento as EventoSanidadePayload["tipo"] };
-    setRegistroInline({ animal, dominio: worklist.acao.dominio, tipoInicial });
+    // Secagem já abre com a data de hoje pra a pessoa só confirmar o motivo.
+    const dataInicial = worklist.acao.tipoEvento === "SECAGEM" ? HOJE : undefined;
+    setRegistroInline({ animal, dominio: worklist.acao.dominio, tipoInicial, dataInicial, retorno: "lista" });
   };
 
   return (
@@ -72,9 +79,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
         : aba === "animal"
           ? <AnimalTab key={recarga} onAbrirAnimal={setAnimalId} onNovo={() => setForm({ modo: "novo" })} />
           : aba === "reproducao"
-            ? <ReproducaoTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
+            ? <ReproducaoTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
             : aba === "sanidade"
-              ? <SanidadeTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
+              ? <SanidadeTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
               : aba === "nutricao"
                 ? <NutricaoTab />
                 : aba === "producao"
@@ -91,10 +98,18 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
           animal={registroInline.animal}
           dominioFixo={registroInline.dominio}
           tipoInicial={registroInline.tipoInicial}
+          dataInicial={registroInline.dataInicial}
           onFechar={() => setRegistroInline(null)}
           onSalvo={(evento) => {
             const idAnimal = registroInline.animal.id;
+            const retorno = registroInline.retorno ?? "cockpit";
             setRegistroInline(null);
+            if (retorno === "lista") {
+              // Permanece na fila; remontar a aba (via key=recarga) refaz o fetch da worklist,
+              // e o animal recém-tratado sai da lista porque o resumo não satisfaz mais a regra.
+              setRecarga((n) => n + 1);
+              return;
+            }
             setFlashEventoId(evento?.id ?? null);
             setFlashKey((n) => n + 1);
             proximoAnimalRef.current = idAnimal;

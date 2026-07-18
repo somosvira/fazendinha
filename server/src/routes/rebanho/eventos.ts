@@ -3,8 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { criarEventoSchema } from "../../services/rebanho/eventos.schemas.js";
 import * as svc from "../../services/rebanho/eventos.js";
 
-function fail(e: unknown): { status: 404 | 500; body: { error: string } } {
+function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
   if (e instanceof svc.EventoError) return { status: 404, body: { error: e.message } };
+  if (e instanceof svc.ConflitoLactacaoError) return { status: 409, body: { error: e.message } };
   console.error("[eventos]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }
