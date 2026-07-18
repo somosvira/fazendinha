@@ -66,6 +66,66 @@ describe("resumoLactacoes", () => {
   });
 });
 
+describe("resumoLactacoes — Correção 305 agregada", () => {
+  const R = (over: any) => ({ dtInicio: D("2020-01-01"), dtFim: D("2020-11-01"), producaoTotal: null, producaoControles: null, duracaoDias: null, motivoSecagem: null, ...over });
+
+  it("média só sobre ciclos com 305 > 0; null é ignorado (não vira 0)", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: 7000 }), R({ numero: 2, producao305: null }), R({ numero: 3, producao305: 8000 })] as any, hoje);
+    expect(r).toMatchObject({ media305: 7500, n305: 2, melhor305: 8000, melhor305Numero: 3 });
+  });
+
+  it("producao305 == 0 é sentinela (ausência), não valor", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: 0 }), R({ numero: 2, producao305: 6000 })] as any, hoje);
+    expect(r).toMatchObject({ media305: 6000, n305: 1, melhor305: 6000, melhor305Numero: 2 });
+  });
+
+  it("todos os ciclos com 305 == 0 → agregados null, sem 'melhor 305 = 0 L'", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: 0 }), R({ numero: 2, producao305: 0 })] as any, hoje);
+    expect(r).toMatchObject({ media305: null, n305: 0, melhor305: null, melhor305Numero: null });
+  });
+
+  it("nenhum ciclo com 305 (todos null) → tudo null, sem NaN", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: null }), R({ numero: 2, producao305: null })] as any, hoje);
+    expect(r).toMatchObject({ media305: null, n305: 0, melhor305: null, melhor305Numero: null });
+  });
+
+  it("melhor305 pega o máximo e o número do ciclo", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: 7000 }), R({ numero: 2, producao305: 9000 }), R({ numero: 3, producao305: 5000 })] as any, hoje);
+    expect(r).toMatchObject({ melhor305: 9000, melhor305Numero: 2 });
+  });
+
+  it("empate no máximo desempata pelo MENOR numero, independente da ordem do array", () => {
+    const r = resumoLactacoes([R({ numero: 2, producao305: 8000 }), R({ numero: 1, producao305: 8000 })] as any, hoje);
+    expect(r).toMatchObject({ melhor305: 8000, melhor305Numero: 1 });
+  });
+
+  it("arredondamento Math.round na média", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: 7000 }), R({ numero: 2, producao305: 7001 })] as any, hoje);
+    expect(r).toMatchObject({ media305: 7001, n305: 2 });
+  });
+
+  it("Decimal/string coercível via Number (não concatena)", () => {
+    const r = resumoLactacoes([R({ numero: 1, producao305: "7000" }), R({ numero: 2, producao305: "8000" })] as any, hoje);
+    expect(r).toMatchObject({ media305: 7500, melhor305: 8000 });
+  });
+
+  it("ortogonalidade: 305 não altera producaoMediaCiclo nem os campos antigos", () => {
+    const r = resumoLactacoes(
+      [
+        R({ numero: 1, producao305: null, producaoControles: 6000 }),
+        R({ numero: 2, producao305: 7000, producaoTotal: 8000 }),
+        R({ numero: 3, dtFim: null, producao305: null }),
+      ] as any,
+      hoje,
+    );
+    expect(r.media305).toBe(7000);
+    expect(r.n305).toBe(1);
+    // métrica antiga intacta: média de (6000 estimada, 8000 medida) = 7000
+    expect(r.producaoMediaCiclo).toBe(7000);
+    expect(r.emCurso).toBe(true);
+  });
+});
+
 describe("producaoCiclo (Test Interval Method)", () => {
   it("sem controle na janela → null", () => {
     expect(producaoCiclo([ctrl("2020-01-01", 25)], D("2023-01-01"), D("2023-11-01"))).toEqual({ litros: null, nControles: 0 });
