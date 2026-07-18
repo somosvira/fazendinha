@@ -1,4 +1,4 @@
-import type { DashboardData, IndicadorDashboard } from "../../api";
+import type { DashboardData, IndicadorDashboard, WorklistRebanho } from "../../api";
 import type { RebanhoTab } from "../../nav";
 
 // Paleta categórica validada (CVD) para os quatro estados; rótulos diretos
@@ -30,13 +30,13 @@ export function Indicadores({ data }: { data: DashboardData }) {
   return <CardPainel titulo="Indicadores"><GrupoIndicadores titulo="Produção" itens={data.indicadores.producao} /><GrupoIndicadores titulo="Reprodução" itens={data.indicadores.reproducao} /><GrupoIndicadores titulo="Rebanho" itens={data.indicadores.rebanho} /></CardPainel>;
 }
 
-export function Alertas({ data, onNav }: { data: DashboardData; onNav: (t: RebanhoTab) => void }) {
+export function Alertas({ data, onNav, onAbrirWorklist }: { data: DashboardData; onNav: (t: RebanhoTab) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void }) {
   const ordem = { critico: 0, atencao: 1, informativo: 2 };
   const ativos = data.alertas.filter((a) => a.quantidade > 0).sort((a, b) => ordem[a.severidade] - ordem[b.severidade] || b.quantidade - a.quantidade);
   const visiveis = ativos.slice(0, 4);
   return <CardPainel titulo="Precisa de atenção">
     <p className="-mt-2 mb-4 text-xs text-ink-3">{ativos.length ? `${ativos.length} situações abertas, por prioridade.` : "Nenhuma ação urgente no momento."}</p>
-    <div className="flex flex-col gap-2">{visiveis.map((a) => <button key={a.chave} onClick={() => onNav(a.tab as RebanhoTab)} className="flex w-full items-center gap-3 rounded-[9px] border border-[color:var(--rule-soft)] border-l-[3px] border-l-prejuizo bg-[color:var(--bg)] px-[15px] py-3 text-left hover:border-cafe"><strong className="w-10 text-center font-serif text-[26px] font-medium tabular-nums text-prejuizo">{a.quantidade}</strong><span className="flex-1"><span className="block text-sm font-semibold text-foreground">{a.label}</span><span className="mt-0.5 block text-xs text-ink-3">{a.detalhe}</span></span><span aria-hidden className="text-ink-3">→</span></button>)}</div>
+    <div className="flex flex-col gap-2">{visiveis.map((a) => <button key={a.chave} onClick={() => onAbrirWorklist ? onAbrirWorklist(a) : onNav(a.tab as RebanhoTab)} className="flex w-full items-center gap-3 rounded-[9px] border border-[color:var(--rule-soft)] border-l-[3px] border-l-prejuizo bg-[color:var(--bg)] px-[15px] py-3 text-left hover:border-cafe"><strong className="w-10 text-center font-serif text-[26px] font-medium tabular-nums text-prejuizo">{a.quantidade}</strong><span className="flex-1"><span className="block text-sm font-semibold text-foreground">{a.label}</span><span className="mt-0.5 block text-xs text-ink-3">{a.detalhe}</span></span><span aria-hidden className="text-ink-3">→</span></button>)}</div>
     {ativos.length > 4 && <p className="mt-3 text-xs text-ink-3">Mais {ativos.length - 4} {ativos.length - 4 === 1 ? "situação" : "situações"} no módulo.</p>}
     {!ativos.length && <div className="rounded-[9px] border border-dashed border-[color:var(--rule-soft)] bg-[color:var(--bg)] px-4 py-3 text-sm text-ink-2">✓ Indicadores operacionais em dia.</div>}
   </CardPainel>;

@@ -15,7 +15,7 @@ import { RebPill } from "@/components/rb/RebPrimitives";
 
 interface Props {
   animalId: string;
-  animal?: Animal;
+  animal?: Pick<Animal, "numero" | "nome">;
   produtoDigitado: string;
   dose?: string;
   loteProduto?: string;

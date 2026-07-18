@@ -11,13 +11,19 @@ import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
 import type { Animal } from "./types";
+import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, WorklistRebanho } from "./api";
+import type { AcaoItemWorklist } from "./components/WorklistCanonica";
 
 export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo";
 
-export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; abrirId?: string; onAbriuEntidade?: () => void }) {
+export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, worklistSnapshot, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; animal?: Animal } | null>(null);
-  const [registroInline, setRegistroInline] = useState<{ animal: Animal; dominio: "reproducao" | "sanidade" } | null>(null);
+  const [registroInline, setRegistroInline] = useState<{
+    animal: Animal | Pick<Animal, "id" | "numero" | "nome" | "categoria">;
+    dominio: "reproducao" | "sanidade";
+    tipoInicial?: { dominio: "reproducao"; tipo: EventoPayload["tipo"] } | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
+  } | null>(null);
   const [flashEventoId, setFlashEventoId] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
@@ -51,6 +57,14 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrirId]);
 
+  const registrarDaWorklist = ({ item, worklist }: AcaoItemWorklist) => {
+    const animal = { id: String(item.animalId), numero: item.numero, nome: item.nome ?? "", categoria: (item.categoria ?? "VACA") as Animal["categoria"] };
+    const tipoInicial = worklist.acao.dominio === "reproducao"
+      ? { dominio: "reproducao" as const, tipo: worklist.acao.tipoEvento as EventoPayload["tipo"] }
+      : { dominio: "sanidade" as const, tipo: worklist.acao.tipoEvento as EventoSanidadePayload["tipo"] };
+    setRegistroInline({ animal, dominio: worklist.acao.dominio, tipoInicial });
+  };
+
   return (
     <div className="rb">
       {animalId
@@ -58,9 +72,9 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
         : aba === "animal"
           ? <AnimalTab key={recarga} onAbrirAnimal={setAnimalId} onNovo={() => setForm({ modo: "novo" })} />
           : aba === "reproducao"
-            ? <ReproducaoTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao" })} />
+            ? <ReproducaoTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
             : aba === "sanidade"
-              ? <SanidadeTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade" })} />
+              ? <SanidadeTab onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
               : aba === "nutricao"
                 ? <NutricaoTab />
                 : aba === "producao"
@@ -69,13 +83,14 @@ export function RebanhoContent({ aba, onNavReb, abrirId, onAbriuEntidade }: { ab
                     ? <EstoqueTab />
                     : aba === "custo"
                       ? <CustoProducaoTab />
-                      : <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} />}
+                      : <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} onAbrirWorklist={onAbrirWorklist} />}
       {form && <AnimalForm modo={form.modo} animal={form.animal} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
         <EventoForm
           animalId={registroInline.animal.id}
           animal={registroInline.animal}
           dominioFixo={registroInline.dominio}
+          tipoInicial={registroInline.tipoInicial}
           onFechar={() => setRegistroInline(null)}
           onSalvo={(evento) => {
             const idAnimal = registroInline.animal.id;

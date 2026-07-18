@@ -2,6 +2,8 @@ import { prisma } from "../../db.js";
 import { obterConfig } from "./config.js";
 import { agregarDashboard, type DashboardDTO, type PeriodoDashboard } from "./dashboard.agg.js";
 import { getParametros } from "./parametros.js";
+import type { ChaveWorklistRebanho } from "./dashboard.types.js";
+import { obterWorklist } from "./regras-manejo.js";
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 const isoOrNull = (x: Date | null) => x ? iso(x) : null;
@@ -33,9 +35,9 @@ export async function buildRebanhoDashboard(
     prisma.animal.findMany({
       where: animalWhere,
       select: {
-        id: true, categoria: true, sexo: true, grupoId: true,
+        id: true, numero: true, nome: true, categoria: true, sexo: true, grupoId: true, setor: true,
         grupo: { select: { nome: true } },
-        resumo: { select: { statusReprodutivo: true, del: true, producaoMediaDia: true, ccs: true, iepProjetado: true, diasGestacao: true, previsaoSecagem: true, ultimoDgData: true } },
+        resumo: { select: { statusReprodutivo: true, del: true, producaoMediaDia: true, ccs: true, ccsTendencia: true, iepProjetado: true, diasGestacao: true, previsaoSecagem: true, ultimoDgData: true } },
       },
     }),
     prisma.lactacao.findMany({
@@ -59,8 +61,9 @@ export async function buildRebanhoDashboard(
     obterConfig(),
   ]);
 
-  const parametros = new Map(parametrosRaw.map((p) => [p.chave, p.valorNumero]));
-  const numero = (chave: "PEV_DIAS" | "GESTACAO_DIAS" | "SECAGEM_ANTEC" | "META_CCS", fallback: number) => parametros.get(chave) ?? fallback;
+  const parametros = new Map(parametrosRaw.map((p) => [p.chave, p]));
+  const numero = (chave: "PEV_DIAS" | "GESTACAO_DIAS" | "SECAGEM_ANTEC", fallback: number) => parametros.get(chave)?.valorNumero ?? fallback;
+  const ccsAceitavel = parametros.get("META_CCS")?.valorNumeroAceitavel ?? 400;
 
   return agregarDashboard({
     hoje,
@@ -70,15 +73,19 @@ export async function buildRebanhoDashboard(
     escopoPropriedadeId: propriedadeId,
     animais: animaisRaw.map((a) => ({
       id: a.id,
+      numero: a.numero,
+      nome: a.nome,
       categoria: a.categoria,
       sexo: a.sexo,
       grupoId: a.grupoId,
       grupoNome: a.grupo?.nome ?? null,
+      setor: a.setor,
       resumo: a.resumo ? {
         statusReprodutivo: a.resumo.statusReprodutivo,
         del: a.resumo.del,
         producaoMediaDia: a.resumo.producaoMediaDia == null ? null : Number(a.resumo.producaoMediaDia),
         ccs: a.resumo.ccs,
+        ccsTendencia: a.resumo.ccsTendencia,
         iepProjetado: a.resumo.iepProjetado,
         diasGestacao: a.resumo.diasGestacao,
         previsaoSecagem: isoOrNull(a.resumo.previsaoSecagem),
@@ -93,7 +100,22 @@ export async function buildRebanhoDashboard(
       pevDias: numero("PEV_DIAS", 60),
       gestacaoDias: numero("GESTACAO_DIAS", 283),
       secagemAntec: numero("SECAGEM_ANTEC", 60),
-      ccsAlto: numero("META_CCS", 400),
+      ccsAlto: ccsAceitavel,
     },
   });
+}
+
+export async function buildRebanhoWorklist(
+  chave: ChaveWorklistRebanho,
+  propriedadeId: number | null = null,
+  agora = new Date(),
+) {
+  const dashboard = await buildRebanhoDashboard("7d", propriedadeId, agora);
+  return {
+    meta: {
+      geradoEm: dashboard.meta.geradoEm,
+      escopo: dashboard.meta.escopo,
+    },
+    worklist: obterWorklist(dashboard.alertas, chave),
+  };
 }

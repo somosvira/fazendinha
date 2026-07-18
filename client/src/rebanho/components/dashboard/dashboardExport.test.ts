@@ -9,7 +9,7 @@ const data: DashboardData = {
   herois: { vacasEmLactacao: { ...hero, valor: 1, unidade: "vacas" }, producaoMediaVaca: { ...hero, unidade: "L/vaca/dia" }, producaoTotalDia: hero, percentualVacasLactacao: { ...hero, valor: 50, unidade: "%" } },
   estadosReprodutivos: { totalElegiveis: 1, segmentos: [{ chave: "PRENHE", label: "Prenhes", quantidade: 1, percentual: 100 }] },
   indicadores: { producao: [{ chave: "p", label: "Produção", valor: null, unidade: "L", qualidade: "indisponivel" }], reproducao: [], rebanho: [] },
-  alertas: [{ chave: "ccs", label: "CCS alta", quantidade: 0, severidade: "critico", tab: "sanidade", detalhe: "Sem casos" }],
+  alertas: [{ chave: "ccs-alta", label: "CCS alta", quantidade: 0, severidade: "critico", tab: "sanidade", detalhe: "Sem casos", acao: { dominio: "sanidade", tipoEvento: "EXAME" }, itens: [] }],
   grupos: [{ grupoId: null, nome: "Sem grupo", animaisAtivos: 2, vacas: 1, emLactacao: 1, percentualDoRebanho: 100 }],
 };
 

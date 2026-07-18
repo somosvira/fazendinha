@@ -46,10 +46,17 @@ const QUARTOS_UBERE = ["AD", "AE", "PD", "PE"]; // anterior/posterior · direito
 
 const SEVERIDADES_MASTITE = ["Subclínica", "Clínica leve", "Clínica moderada", "Clínica grave"];
 
-export function EventoForm({ animalId, animal, dominioFixo, onFechar, onSalvo }: { animalId: string; animal?: Animal; dominioFixo?: "reproducao" | "sanidade"; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
-  const [dominio, setDominio] = useState<"reproducao" | "sanidade">(dominioFixo ?? "reproducao");
-  const [tipo, setTipo] = useState<EventoPayload["tipo"]>("INSEMINACAO");
-  const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>("EXAME");
+type TipoInicialEvento =
+  | { dominio: "reproducao"; tipo: EventoPayload["tipo"] }
+  | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
+
+type AnimalEvento = Pick<Animal, "id" | "numero" | "nome" | "categoria">;
+
+export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, onFechar, onSalvo }: { animalId: string; animal?: AnimalEvento; dominioFixo?: "reproducao" | "sanidade"; tipoInicial?: TipoInicialEvento; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
+  const dominioInicial = tipoInicial?.dominio ?? dominioFixo ?? "reproducao";
+  const [dominio, setDominio] = useState<"reproducao" | "sanidade">(dominioInicial);
+  const [tipo, setTipo] = useState<EventoPayload["tipo"]>(() => tipoInicial?.dominio === "reproducao" ? tipoInicial.tipo : "INSEMINACAO");
+  const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>(() => tipoInicial?.dominio === "sanidade" ? tipoInicial.tipo : "EXAME");
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]); // catálogo p/ escolher a doadora na TE
   const [f, setF] = useState<any>({
