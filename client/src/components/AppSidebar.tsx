@@ -37,6 +37,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-producao": <><path d="M8 3h8l-1 4H9z"/><path d="M9 7l-2 4v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-8l-2-4"/><path d="M7 13h10"/></>,
   "reb-estoque": <><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M3 8l9 5 9-5"/></>,
   "reb-custo": <><path d="M12 2v20"/><path d="M17 6.5a4 4 0 0 0-4-2.5h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
+  "reb-carteira": <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
   // — Plantio — ícones simbólicos para cada sub-aba.
   "pla-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "pla-talhao": <><path d="M3 12h18M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></>,
@@ -91,6 +92,7 @@ const MODULOS: Modulo[] = [
       { id: "reb-producao", label: "Produção" },
       { id: "reb-estoque", label: "Estoque" },
       { id: "reb-custo", label: "Custo" },
+      { id: "reb-carteira", label: "Carteira" },
     ],
   },
   {
