@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { resumoLactacoes, duracaoLactacao, producaoCiclo, normalizarData, type LactacaoRow, type ControleLeite } from "./lactacoes.calc.js";
+import { resumoLactacoes, duracaoLactacao, producaoCiclo, normalizarData, curvaCicloCorrente, type LactacaoRow, type ControleLeite, type CurvaCiclo } from "./lactacoes.calc.js";
 
 const iso = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -36,6 +36,8 @@ export async function listarLactacoes(animalId: number, hoje: Date = new Date())
   // resumo usa a produção efetiva (medida ?? estimada) na média/ciclo
   const rowsComEstimativa = rows.map((l, i) => ({ ...(l as unknown as LactacaoRow), producaoControles: derivadas[i].litros }));
   const resumo = resumoLactacoes(rowsComEstimativa, dataHoje);
+  // Curva do ciclo corrente: os controles crus (data × pesoTotal) da lactação em curso.
+  const curva: CurvaCiclo = curvaCicloCorrente(rows, controles, dataHoje);
 
   const lactacoes: LactacaoDTO[] = rows.map((l, i) => ({
     id: l.id,
@@ -51,5 +53,5 @@ export async function listarLactacoes(animalId: number, hoje: Date = new Date())
     nControles: derivadas[i].nControles,
     emCurso: l.dtFim == null,
   }));
-  return { lactacoes, resumo };
+  return { lactacoes, resumo, curva };
 }

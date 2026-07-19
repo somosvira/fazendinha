@@ -157,7 +157,9 @@ export interface ResumoLactacoesDTO {
   melhor305: number | null;
   melhor305Numero: number | null;
 }
-export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; }
+export interface PontoCurvaDTO { data: string; del: number; pesoTotal: number }
+export interface CurvaCicloDTO { numero: number | null; dtInicio: string | null; pontos: PontoCurvaDTO[] }
+export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; curva: CurvaCicloDTO; }
 
 export const listarLactacoes = (id: string) => req<LactacoesResp>(`/rebanho/animais/${id}/lactacoes`);
 

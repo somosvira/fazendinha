@@ -85,6 +85,46 @@ export interface ResumoLactacoes {
   melhor305Numero: number | null; // ordem do ciclo campeão
 }
 
+// ── Curva de lactação (série de pontos do ciclo corrente) ────────────────────
+
+const isoData = (d: Date) => d.toISOString().slice(0, 10);
+
+export interface PontoCurva {
+  data: string;     // ISO YYYY-MM-DD do controle
+  del: number;      // dias em lactação no dia do controle (eixo X natural da curva)
+  pesoTotal: number; // litros do dia (eixo Y)
+}
+
+export interface CurvaCiclo {
+  numero: number | null;   // ordem da lactação do ciclo corrente; null se o animal não tem lactação
+  dtInicio: string | null; // início do ciclo corrente (ISO)
+  pontos: PontoCurva[];    // controles do ciclo, ordenados por data
+}
+
+/**
+ * Curva de lactação do CICLO CORRENTE: a lactação aberta (`dtFim == null`), ou — se todas secas —
+ * a mais recente por `dtInicio`. Filtra os controles que caem na janela [dtInicio, dtFim ?? hoje],
+ * ordena por data e projeta {data, DEL, pesoTotal}. Sem lactação → série vazia; sem controle na
+ * janela → identifica o ciclo mas com `pontos: []` (nunca inventa pontos).
+ */
+export function curvaCicloCorrente(
+  lacts: Pick<LactacaoRow, "numero" | "dtInicio" | "dtFim">[],
+  controles: ControleLeite[],
+  hoje: Date,
+): CurvaCiclo {
+  if (lacts.length === 0) return { numero: null, dtInicio: null, pontos: [] };
+  const aberta = lacts.find((l) => l.dtFim == null);
+  const corrente = aberta ?? lacts.slice().sort((a, b) => b.dtInicio.getTime() - a.dtInicio.getTime())[0];
+  const fim = corrente.dtFim ?? hoje;
+
+  const pontos = controles
+    .filter((c) => c.data.getTime() >= corrente.dtInicio.getTime() && c.data.getTime() <= fim.getTime())
+    .sort((a, b) => a.data.getTime() - b.data.getTime())
+    .map((c) => ({ data: isoData(c.data), del: dias(corrente.dtInicio, c.data), pesoTotal: c.pesoTotal }));
+
+  return { numero: corrente.numero, dtInicio: isoData(corrente.dtInicio), pontos };
+}
+
 export function resumoLactacoes(lacts: LactacaoRow[], hoje: Date): ResumoLactacoes {
   const aberta = lacts.find((l) => l.dtFim == null) ?? null;
   const vidaProdutivaDias = lacts.reduce((s, l) => s + duracaoLactacao(l, hoje), 0);
