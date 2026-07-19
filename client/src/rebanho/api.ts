@@ -158,7 +158,14 @@ export interface ResumoLactacoesDTO {
   melhor305Numero: number | null;
 }
 export interface PontoCurvaDTO { data: string; del: number; pesoTotal: number }
-export interface CurvaCicloDTO { numero: number | null; dtInicio: string | null; pontos: PontoCurvaDTO[] }
+export interface CurvaCicloDTO {
+  numero: number | null;
+  dtInicio: string | null;
+  pontos: PontoCurvaDTO[];
+  // Indicadores Embrapa do ciclo corrente (espelham CurvaCiclo do server).
+  pico: number | null;         // maior produção diária na janela DEL 15-90 (L)
+  persistencia: number | null; // avg(DEL 60-120) ÷ pico × 100; meta Embrapa ≥ 90%
+}
 export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; curva: CurvaCicloDTO; }
 
 export const listarLactacoes = (id: string) => req<LactacoesResp>(`/rebanho/animais/${id}/lactacoes`);

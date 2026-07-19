@@ -99,6 +99,30 @@ export interface CurvaCiclo {
   numero: number | null;   // ordem da lactação do ciclo corrente; null se o animal não tem lactação
   dtInicio: string | null; // início do ciclo corrente (ISO)
   pontos: PontoCurva[];    // controles do ciclo, ordenados por data
+  // Indicadores Embrapa do ciclo corrente derivados dos pontos (null quando amostra insuficiente).
+  pico: number | null;         // maior produção diária na janela DEL 15-90 (L)
+  persistencia: number | null; // avg(DEL 60-120) ÷ pico × 100; meta Embrapa ≥ 90%
+}
+
+// Janelas Embrapa (mesmas de persistenciaLactacao em indicadores-embrapa.ts): pico entre DEL 15-90;
+// média pós-pico entre DEL 60-120 (a sobreposição 60-90 é intencional). Persistência exige ≥ 4
+// controles p/ ter significado; o pico basta 1 ponto na janela.
+const avgN = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+const round1n = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Pico e persistência da lactação do ciclo corrente, calculados sobre os pontos da curva (DEL ×
+ * pesoTotal). Porta a fórmula do indicador Embrapa (antes só agregada por rebanho) para o nível do
+ * animal. Pico = maior peso na janela DEL 15-90 (descarta colostro inicial e cauda tardia).
+ * Persistência = média(DEL 60-120) ÷ pico × 100, só com ≥ 4 controles. Sem janela/amostra → null.
+ */
+export function picoPersistenciaCurva(pontos: PontoCurva[]): { pico: number | null; persistencia: number | null } {
+  const naJanelaPico = pontos.filter((p) => p.del >= 15 && p.del <= 90).map((p) => p.pesoTotal);
+  const pico = naJanelaPico.length ? Math.max(...naJanelaPico) : null;
+  if (pico == null || pico === 0 || pontos.length < 4) return { pico, persistencia: null };
+  const pos = pontos.filter((p) => p.del >= 60 && p.del <= 120).map((p) => p.pesoTotal);
+  const persistencia = pos.length ? round1n((avgN(pos) / pico) * 100) : null;
+  return { pico, persistencia };
 }
 
 /**
@@ -112,7 +136,7 @@ export function curvaCicloCorrente(
   controles: ControleLeite[],
   hoje: Date,
 ): CurvaCiclo {
-  if (lacts.length === 0) return { numero: null, dtInicio: null, pontos: [] };
+  if (lacts.length === 0) return { numero: null, dtInicio: null, pontos: [], pico: null, persistencia: null };
   const aberta = lacts.find((l) => l.dtFim == null);
   const corrente = aberta ?? lacts.slice().sort((a, b) => b.dtInicio.getTime() - a.dtInicio.getTime())[0];
   const fim = corrente.dtFim ?? hoje;
@@ -122,7 +146,8 @@ export function curvaCicloCorrente(
     .sort((a, b) => a.data.getTime() - b.data.getTime())
     .map((c) => ({ data: isoData(c.data), del: dias(corrente.dtInicio, c.data), pesoTotal: c.pesoTotal }));
 
-  return { numero: corrente.numero, dtInicio: isoData(corrente.dtInicio), pontos };
+  const { pico, persistencia } = picoPersistenciaCurva(pontos);
+  return { numero: corrente.numero, dtInicio: isoData(corrente.dtInicio), pontos, pico, persistencia };
 }
 
 export function resumoLactacoes(lacts: LactacaoRow[], hoje: Date): ResumoLactacoes {
