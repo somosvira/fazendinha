@@ -509,6 +509,61 @@ export function useVacinas(animalId: string | null) {
   return { data, loading, recarregar };
 }
 
+// ── IATF: catálogo de protocolos configurável (D0/D7/D9/D11…) ────────────────
+export interface EtapaProtocoloDTO { dia: number; acao: string; hormonio: string | null; ordem: number }
+export interface EtapaAgendadaDTO extends EtapaProtocoloDTO { rotulo: string; data: string }
+export interface ProtocoloIatfDTO {
+  id: number; nome: string; descricao: string | null; hormonioBase: string | null; ativo: boolean;
+  etapas: EtapaProtocoloDTO[];
+}
+export interface AplicacaoIatfDTO {
+  id: number; animalId: number; protocoloId: number; protocoloNome: string;
+  dataInicio: string; observacao: string | null; etapas: EtapaAgendadaDTO[];
+}
+export interface ProtocoloIatfInput {
+  nome: string; descricao?: string | null; hormonioBase?: string | null; ativo?: boolean;
+  etapas: { dia: number; acao: string; hormonio?: string | null; ordem?: number }[];
+}
+
+export const listarProtocolosIatf = (incluirInativos = false) =>
+  req<ProtocoloIatfDTO[]>(`/rebanho/iatf/protocolos${incluirInativos ? "?inativos=1" : ""}`);
+export const criarProtocoloIatf = (body: ProtocoloIatfInput) =>
+  req<ProtocoloIatfDTO>(`/rebanho/iatf/protocolos`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarProtocoloIatf = (id: number, body: Partial<ProtocoloIatfInput>) =>
+  req<ProtocoloIatfDTO>(`/rebanho/iatf/protocolos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirProtocoloIatf = (id: number) =>
+  req<{ ok: true }>(`/rebanho/iatf/protocolos/${id}`, { method: "DELETE" });
+
+export const listarAplicacoesIatf = (animalId: string) =>
+  req<AplicacaoIatfDTO[]>(`/rebanho/animais/${animalId}/iatf`);
+export const aplicarProtocoloIatf = (animalId: string, body: { protocoloId: number; dataInicio: string; observacao?: string }) =>
+  req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
+export const excluirAplicacaoIatf = (id: number) =>
+  req<{ ok: true }>(`/rebanho/iatf/aplicacoes/${id}`, { method: "DELETE" });
+
+export function useProtocolosIatf(incluirInativos = false) {
+  const [data, setData] = useState<ProtocoloIatfDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    listarProtocolosIatf(incluirInativos).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [incluirInativos]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
+export function useAplicacoesIatf(animalId: string | null) {
+  const [data, setData] = useState<AplicacaoIatfDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = () => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    listarAplicacoesIatf(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  };
+  useEffect(recarregar, [animalId]);
+  return { data, loading, recarregar };
+}
+
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
 export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
 
