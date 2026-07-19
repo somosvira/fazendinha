@@ -34,7 +34,7 @@
 
 ## 2. Onde estamos hoje (status snapshot)
 
-**Data:** 2026-06-26.
+**Data:** 2026-07-19.
 
 ### Em produção (Fazenda Rio Novo)
 
@@ -51,21 +51,26 @@
 - ✅ Configuração de modo de produção (ORDENHA / TOTAL_DIARIO / TANQUE_LOTE) e preço do leite.
 - ✅ IA conversacional "Rúmi" sobre o rebanho (Claude).
 - ✅ Recepção de NF por WhatsApp com confirmação assistida (em estabilização).
+- ✅ Worklists reprodutivas finalizadas (aInseminar, dgPendente, aSecar, partosPrevistos).
+- ✅ Painel "Hoje" (Cockpit do Dia) — 5 ações do dia cross-domínio + saldo + fechar o dia (#155, #157, #162).
+- ✅ Carência de leite ativa na produção (#153) e curva de lactação por animal (#154, #158).
+- ✅ Vacinação com lembrete por data (#160) e queda de produção acionável (#159).
+- ✅ APLICACAO/VACINA em sanidade → SAÍDA automática de estoque (#161).
+- ✅ Protocolos IATF como catálogo configurável (D0/D7/D9/D11) (#163).
+- ✅ Simulações financeiras read-only (preço do leite ±X%, troca de ração → custo vaca/dia) (#164).
+- ✅ Recompute automático de `ResumoAnimal` na criação de evento.
 
-### Em desenvolvimento (junho/26)
+### Em desenvolvimento (julho/26)
 
-- 🔄 Worklists reprodutivas finalizadas (aInseminar, dgPendente, aSecar, partosPrevistos).
-- 🔄 Painel "Hoje" — agregando as ações do dia (cross-domínio).
 - 🔄 Estabilização do fluxo NF→WhatsApp→Lancamento.
-- 🔄 Recompute automático de `ResumoAnimal` na criação de evento.
+- 🔄 Migração das telas restantes de mock (`R`) para chamadas reais.
 
 ### Conhecidos abertos
 
-- Backend Hono cobre maior parte do rebanho; restam endpoints de simulação financeira.
-- Frontend ainda mistura mocks (`R`) com chamadas reais; transição em andamento.
-- Sem autenticação real ainda.
+- Frontend ainda mistura mocks (`R`) com chamadas reais em telas pontuais; transição em andamento.
+- Sem autenticação real ainda (porta de entrada por `SHARED_ACCESS_TOKEN`).
 - Sem suite de testes E2E.
-- Multi-tenant ainda não implementado.
+- Multi-propriedade implementado; multi-tenant/SaaS (cobrança, isolamento por conta) ainda não.
 
 ---
 
@@ -97,38 +102,42 @@ Objetivo: substituir o relatório Excel mensal do BPO + colocar a base do rebanh
 
 **Tema:** "tudo o que o produtor faz no dia a dia cabe no Fazendinha".
 
+**Status:** núcleo acionável ✅ entregue (jul/26). Restam só itens de captura/entrada: NF por foto no WhatsApp, CMT via tablet, histórico de mastite por quarto.
+
 ### Objetivos
 
-1. **Painel "Hoje"** unificado:
-   - 5 ações de manejo do dia.
-   - Saldo financeiro do dia / mês.
-   - Alertas críticos (CCS, secagem, estoque mínimo).
-   - Fechamento com 0 itens pendentes.
+1. **Painel "Hoje"** unificado — ✅ #155 / #157 / #162:
+   - ✅ 5 ações de manejo do dia.
+   - ✅ Saldo financeiro do dia / mês (por atividade).
+   - ✅ Alertas críticos (CCS, secagem, estoque mínimo, vacina).
+   - ✅ Fechamento com 0 itens pendentes.
 
 2. **Reprodução completa**:
-   - Worklists finalizadas com volumes e impacto em R$.
-   - Registro de cio, IA, DG, parto, secagem em **3 cliques cada**.
-   - Protocolos IATF como **catálogo configurável** (D0, D7, D9, D11 padrão).
+   - ✅ Worklists finalizadas com volumes e impacto em R$.
+   - ✅ Registro de cio, IA, DG, parto, secagem em **3 cliques cada**.
+   - ✅ Protocolos IATF como **catálogo configurável** (D0, D7, D9, D11 padrão) — #163.
 
-3. **Sanidade completa**:
-   - Histórico de mastite por quarto.
-   - Carência ativa visível na produção (não vender o leite dessa vaca).
-   - Vacinação obrigatória com lembrete por data.
-   - CMT como entrada rápida via tablet.
+3. **Sanidade**:
+   - ⬜ Histórico de mastite por quarto.
+   - ✅ Carência ativa visível na produção (não vender o leite dessa vaca) — #153.
+   - ✅ Vacinação obrigatória com lembrete por data — #160.
+   - ⬜ CMT como entrada rápida via tablet.
 
 4. **Produção**:
-   - Tela de lançamento rápido (modos ORDENHA, TOTAL_DIARIO, TANQUE_LOTE).
-   - Curva de lactação por animal com pontos reais.
-   - Ranking de produção e queda recente.
+   - ✅ Tela de lançamento rápido (modos ORDENHA, TOTAL_DIARIO, TANQUE_LOTE).
+   - ✅ Curva de lactação por animal com pontos reais — #154 / #158.
+   - ✅ Ranking de produção e queda recente — #159.
 
 5. **Estoque amarrado ao manejo**:
-   - APLICACAO em sanidade → SAIDA automática de estoque do medicamento.
-   - Alertas de mínimo no painel "Hoje".
-   - Ponte automática compra → financeiro (já existe; refinar UX).
+   - ✅ APLICACAO/VACINA em sanidade → SAIDA automática de estoque do medicamento — #161.
+   - ✅ Alertas de mínimo no painel "Hoje".
+   - ✅ Ponte automática compra → financeiro.
 
 6. **WhatsApp como interface secundária**:
-   - Lançar nota fiscal por foto (já existe; reduzir fricção).
-   - Consulta rápida do tipo "como tá o caixa?" "qual vaca devo inseminar?".
+   - ⬜ Lançar nota fiscal por foto (adiado — priorizado depois do núcleo do V1).
+   - ✅ Consulta rápida do tipo "como tá o caixa?" "qual vaca devo inseminar?".
+
+> **Bônus adiantado do V2:** as simulações financeiras read-only (preço do leite ±X% → DRE/fluxo; troca de ração → custo vaca/dia) já entraram em #164 — ver §5.4.
 
 ### Métricas de sucesso V1
 
@@ -166,10 +175,10 @@ Objetivo: substituir o relatório Excel mensal do BPO + colocar a base do rebanh
    - **Queda de produção** detectada antes do produtor (DEL, dieta, idade, sanidade).
    - **Descarte sugerido** com simulação de payback de reposição.
 
-4. **Simulações financeiras**:
-   - Cenário "preço do leite cai R$ 0,20/L" → impacto no DRE projetado.
-   - Cenário "troca de fornecedor de ração" → custo vaca/dia simulado.
-   - Cenário "aumento de 10% no rebanho em lactação" → receita e infra necessária.
+4. **Simulações financeiras** — parcialmente adiantado para o V1 (#164, read-only sobre o realizado):
+   - ✅ Cenário "preço do leite ±X%" → impacto no DRE/fluxo projetado.
+   - ✅ Cenário "troca de fornecedor de ração" → custo vaca/dia simulado.
+   - ⬜ Cenário "aumento de 10% no rebanho em lactação" → receita e infra necessária.
 
 5. **WhatsApp como interface primária**:
    - Resumo diário automático ("ontem você produziu X L, tem Y a inseminar, alerta Z").
