@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { duracaoLactacao, resumoLactacoes, producaoCiclo, normalizarData, curvaCicloCorrente } from "./lactacoes.calc.js";
+import { duracaoLactacao, resumoLactacoes, producaoCiclo, normalizarData, curvaCicloCorrente, picoPersistenciaCurva } from "./lactacoes.calc.js";
+import type { PontoCurva } from "./lactacoes.calc.js";
 
 const D = (s: string) => new Date(`${s}T00:00:00Z`);
 const hoje = D("2026-05-28");
@@ -171,7 +172,7 @@ describe("curvaCicloCorrente", () => {
     ({ numero, dtInicio: D(dtInicio), dtFim: dtFim ? D(dtFim) : null }) as any;
 
   it("sem lactações → série vazia", () => {
-    expect(curvaCicloCorrente([], [ctrl("2026-05-01", 30)], hoje)).toEqual({ numero: null, dtInicio: null, pontos: [] });
+    expect(curvaCicloCorrente([], [ctrl("2026-05-01", 30)], hoje)).toEqual({ numero: null, dtInicio: null, pontos: [], pico: null, persistencia: null });
   });
 
   it("usa a lactação aberta como ciclo corrente e só os controles dentro da janela", () => {
@@ -211,11 +212,65 @@ describe("curvaCicloCorrente", () => {
 
   it("ciclo corrente sem nenhum controle na janela → pontos vazios mas identifica o ciclo", () => {
     const r = curvaCicloCorrente([lact(3, "2026-05-01", null)], [ctrl("2020-01-01", 25)], hoje);
-    expect(r).toEqual({ numero: 3, dtInicio: "2026-05-01", pontos: [] });
+    expect(r).toEqual({ numero: 3, dtInicio: "2026-05-01", pontos: [], pico: null, persistencia: null });
   });
 
   it("inclui controle exatamente no início do ciclo (borda inclusiva)", () => {
     const r = curvaCicloCorrente([lact(1, "2026-05-01", null)], [ctrl("2026-05-01", 27)], hoje);
     expect(r.pontos).toEqual([{ data: "2026-05-01", del: 0, pesoTotal: 27 }]);
+  });
+
+  it("expõe pico e persistência do ciclo corrente (derivados dos pontos)", () => {
+    // 4 controles DEL 30/48/70/89 (pico 32 em del=48; pós-pico avg(30,28)) → persistência 90.6
+    const lacts = [lact(1, "2026-01-21", null)];
+    const controles = [ctrl("2026-02-20", 25), ctrl("2026-03-10", 32), ctrl("2026-04-01", 30), ctrl("2026-04-20", 28)];
+    const r = curvaCicloCorrente(lacts, controles, D("2026-04-21"));
+    expect(r.pico).toBe(32);
+    expect(r.persistencia).toBeCloseTo(90.6, 1);
+  });
+
+  it("sem controles no ciclo → pico e persistência null", () => {
+    const r = curvaCicloCorrente([lact(3, "2026-05-01", null)], [ctrl("2020-01-01", 25)], hoje);
+    expect(r.pico).toBeNull();
+    expect(r.persistencia).toBeNull();
+  });
+});
+
+describe("picoPersistenciaCurva", () => {
+  const P = (del: number, pesoTotal: number): PontoCurva => ({ data: "2026-01-01", del, pesoTotal });
+
+  it("pico = maior peso na janela DEL 15-90; persistência = avg(DEL 60-120)/pico × 100", () => {
+    // mesmo caso canônico do indicador Embrapa agregado (indicadores-embrapa.test)
+    const r = picoPersistenciaCurva([P(30, 25), P(48, 32), P(70, 30), P(89, 28)]);
+    expect(r.pico).toBe(32);
+    expect(r.persistencia).toBeCloseTo(90.6, 1); // avg(30,28)=29 → 29/32×100
+  });
+
+  it("persistência null com menos de 4 controles (amostra insuficiente), mas pico ainda sai", () => {
+    const r = picoPersistenciaCurva([P(20, 30), P(45, 34), P(80, 31)]);
+    expect(r.pico).toBe(34);          // pico só precisa de 1 ponto na janela
+    expect(r.persistencia).toBeNull(); // persistência exige ≥ 4 controles
+  });
+
+  it("pico ignora pontos fora da janela DEL 15-90 (leite colostral inicial e cauda tardia)", () => {
+    // del=5 (35 L, muito cedo) e del=200 (5 L, muito tarde) não contam para o pico
+    const r = picoPersistenciaCurva([P(5, 35), P(30, 28), P(48, 30), P(70, 27), P(89, 26)]);
+    expect(r.pico).toBe(30); // não 35 (del=5 fora da janela)
+  });
+
+  it("sem nenhum ponto na janela do pico → pico e persistência null (nunca inventa)", () => {
+    const r = picoPersistenciaCurva([P(5, 30), P(200, 20)]);
+    expect(r.pico).toBeNull();
+    expect(r.persistencia).toBeNull();
+  });
+
+  it("sem pontos pós-pico (DEL 60-120) → persistência null mesmo com ≥4 controles", () => {
+    const r = picoPersistenciaCurva([P(16, 30), P(20, 31), P(30, 32), P(45, 29)]);
+    expect(r.pico).toBe(32);
+    expect(r.persistencia).toBeNull();
+  });
+
+  it("curva vazia → tudo null", () => {
+    expect(picoPersistenciaCurva([])).toEqual({ pico: null, persistencia: null });
   });
 });
