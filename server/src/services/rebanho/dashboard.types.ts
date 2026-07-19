@@ -2,7 +2,7 @@ export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type TabRebanho = "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
 export type SeveridadeAlerta = "alta" | "media" | "baixa";
 export type StatusReprodutivoDashboard = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente";
 export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO";
 
 // Entrada já resolvida de carência de leite ativa (o carenciaAtiva roda no I/O, onde há Date).
@@ -13,6 +13,17 @@ export interface CarenciaWorklistIn {
   fim: string;            // ISO 8601 do fim da carência
   horasRestantes: number;
   diasRestantes: number;
+}
+
+// Vacina agendada pendente (vencida ou próxima) já resolvida — o statusVacina roda no I/O.
+// Worklist de visualização/ação leve (marcar aplicada), sem registrar evento reprodutivo.
+export interface VacinaWorklistIn {
+  animalId: number;
+  vacinaId: number;
+  vacina: string;
+  dataPrevista: string;   // ISO YYYY-MM-DD
+  status: "vencida" | "proxima";
+  diasParaData: number;   // negativo = dias de atraso; positivo = dias até vencer
 }
 
 export interface AcaoWorklistDTO {
@@ -124,6 +135,7 @@ export interface DashboardRebanhoInput {
   producoesLote: ProducaoLoteDashboardIn[];
   eventosConcepcao: EventoConcepcaoDashboardIn[];
   carencias: CarenciaWorklistIn[];
+  vacinasPendentes: VacinaWorklistIn[];
   parametros: ParametrosDashboard;
 }
 

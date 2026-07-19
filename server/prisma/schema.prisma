@@ -389,6 +389,7 @@ model Propriedade {
   safrasCultivo SafraCultivo[]
   silos     Silo[]
   caixinhas Caixinha[]
+  vacinasAgendadas VacinaAgendada[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -465,6 +466,7 @@ model Animal {
   // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
   embrioesDoados      EventoReprodutivo[] @relation("Doadora")
   eventosSanitarios   EventoSanitario[]
+  vacinasAgendadas    VacinaAgendada[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
@@ -590,6 +592,28 @@ model EventoSanitario {
   updatedAt        DateTime            @updatedAt
 
   @@index([animalId, data])
+}
+
+// Vacinação AGENDADA (lembrete por data). Distinta do evento VACINA (histórico do que foi feito):
+// aqui é o que está por vir. Quando aplicadaEm != null, a vacina saiu do lembrete (foi aplicada);
+// o evento sanitário VACINA correspondente pode ser registrado à parte. Escopo de propriedade
+// nullable (multi-propriedade) — fazenda de 1 sítio não percebe a camada.
+model VacinaAgendada {
+  id            Int          @id @default(autoincrement())
+  animal        Animal       @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId      Int
+  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  vacina        String // nome/tipo da vacina (ex.: "Aftosa", "Brucelose B19")
+  dataPrevista  DateTime     @db.Date
+  aplicadaEm    DateTime?    @db.Date // null enquanto pendente; preenchido ao marcar aplicada
+  observacao    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([animalId])
+  @@index([propriedadeId])
+  @@index([dataPrevista])
 }
 
 enum TipoMovimento {

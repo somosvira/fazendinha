@@ -315,7 +315,7 @@ export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consu
 
 export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente";
 export type AcaoWorklistRebanho =
   | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" }
   | { dominio: "sanidade"; tipoEvento: "EXAME" };
@@ -385,7 +385,7 @@ const acaoPorWorklist: Partial<Record<ChaveWorklistRebanho, AcaoWorklistRebanho>
   "parto-proximo": { dominio: "reproducao", tipoEvento: "PARTO" },
   "ccs-alta": { dominio: "sanidade", tipoEvento: "EXAME" },
 };
-const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia", "producao-caindo"];
+const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia", "producao-caindo", "vacina-pendente"];
 function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return (CHAVES_WORKLIST as readonly string[]).includes(chave); }
 function adaptarDashboard(d: DashboardApiDTO): DashboardData {
   const heroi = (chave: DashboardApiDTO["herois"][number]["chave"]): IndicadorHeroDashboard => {
@@ -479,6 +479,30 @@ export function useCockpitHoje() {
     return () => ctrl.abort();
   }, []);
   return { data, erro };
+}
+
+// ── Vacinas agendadas (lembrete por data) ────────────────────────────────────
+export type StatusVacina = "aplicada" | "vencida" | "proxima" | "emdia";
+export interface VacinaAgendadaDTO {
+  id: number; animalId: number; vacina: string;
+  dataPrevista: string; aplicadaEm: string | null; observacao: string | null; status: StatusVacina;
+}
+export const listarVacinas = (animalId: string) => req<VacinaAgendadaDTO[]>(`/rebanho/animais/${animalId}/vacinas`);
+export const agendarVacina = (animalId: string, body: { vacina: string; dataPrevista: string; observacao?: string }) =>
+  req<VacinaAgendadaDTO>(`/rebanho/animais/${animalId}/vacinas`, { method: "POST", body: JSON.stringify(body) });
+export const marcarVacinaAplicada = (vacinaId: number, aplicadaEm?: string) =>
+  req<VacinaAgendadaDTO>(`/rebanho/vacinas/${vacinaId}/aplicada`, { method: "PATCH", body: JSON.stringify(aplicadaEm ? { aplicadaEm } : {}) });
+export const excluirVacina = (vacinaId: number) => req<{ ok: true }>(`/rebanho/vacinas/${vacinaId}`, { method: "DELETE" });
+export function useVacinas(animalId: string | null) {
+  const [data, setData] = useState<VacinaAgendadaDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = () => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    listarVacinas(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  };
+  useEffect(recarregar, [animalId]);
+  return { data, loading, recarregar };
 }
 
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }

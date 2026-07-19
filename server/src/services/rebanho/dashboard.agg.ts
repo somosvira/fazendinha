@@ -189,7 +189,7 @@ export function agregarDashboard(input: DashboardRebanhoInput): DashboardDTO {
     ] },
   ];
 
-  const alertas = construirWorklists(input.animais, input.eventosConcepcao, input.hoje, input.parametros, input.carencias);
+  const alertas = construirWorklists(input.animais, input.eventosConcepcao, input.hoje, input.parametros, input.carencias, input.vacinasPendentes);
 
   const gruposMap = new Map<number | null, { nome: string; quantidade: number }>();
   for (const a of input.animais) {
