@@ -6,6 +6,7 @@ import { prisma } from "../../db.js";
 import type { Animal, ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "./estoque.calc.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
+import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
 
 const FALLBACK_PRECO_LEITE = 2.4; // R$/L quando Configuracao.precoLeite é NULL
 // Que chave de ParametroManejo carrega a meta de produção pra cada categoria.
@@ -92,6 +93,13 @@ export interface GenealogiaDTO {
   avoMaterno: string | null; // mae.paiNome (texto)
 }
 
+// Carência de leite ativa (resíduo de medicamento): enquanto presente, não vender o leite.
+export interface CarenciaAtivaDTO {
+  fim: string;            // ISO 8601 do fim da carência (data + carência horas)
+  horasRestantes: number;
+  diasRestantes: number;
+}
+
 export interface AnimalInsightsDTO {
   score: ScoreDTO;
   financeiro: FinanceiroDTO;
@@ -102,6 +110,7 @@ export interface AnimalInsightsDTO {
   eficiencia: EficienciaDTO;
   projecoes: ProjecoesDTO;
   genealogia: GenealogiaDTO;
+  carenciaAtiva: CarenciaAtivaDTO | null; // null quando não há carência em vigor
   timelineInterpretacao: Record<string, string>;
 }
 
@@ -356,17 +365,20 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   if (resumo?.del != null && resumo.del > 150 && resumo.statusReprodutivo === "VAZIA") {
     insights.push({ tipo: "warn", titulo: `Vazia há ${resumo.del} dias. Revisar protocolo reprodutivo.` });
   }
-  // Próxima carência → próxima vacina/dose esperada
-  const ultimaAplic = await prisma.eventoSanitario.findFirst({
-    where: { animalId, tipo: { in: ["APLICACAO", "VACINA"] }, carencia: { not: null } },
+  // Carência de leite ativa (resíduo de medicamento): APLICACAO com carência em HORAS ainda em
+  // vigor. Usa o calc puro (carencia.calc) — a mesma coluna `carencia` é horas, não dias.
+  const aplicsCarencia = await prisma.eventoSanitario.findMany({
+    where: { animalId, tipo: "APLICACAO", carencia: { gt: 0 } },
+    select: { data: true, carencia: true },
     orderBy: { data: "desc" },
   });
-  if (ultimaAplic && ultimaAplic.carencia != null) {
-    const fim = new Date(ultimaAplic.data); fim.setDate(fim.getDate() + ultimaAplic.carencia);
-    const diasRestantes = Math.ceil((fim.getTime() - hoje.getTime()) / (24 * 3600 * 1000));
-    if (diasRestantes > 0 && diasRestantes <= 14) {
-      insights.push({ tipo: "warn", titulo: `Carência termina em ${diasRestantes} dias.` });
-    }
+  const carencia = calcCarenciaAtiva(aplicsCarencia, hoje);
+  const carenciaAtivaDTO: CarenciaAtivaDTO | null = carencia
+    ? { fim: carencia.fim.toISOString(), horasRestantes: carencia.horasRestantes, diasRestantes: carencia.diasRestantes }
+    : null;
+  if (carencia) {
+    const rest = carencia.horasRestantes >= 24 ? `${carencia.diasRestantes} dia(s)` : `${carencia.horasRestantes}h`;
+    insights.push({ tipo: "warn", titulo: `Leite em carência: não vender por mais ${rest}.` });
   }
   if (resumo?.producaoTendencia === "subindo" && meta != null && minhaProd >= meta) {
     insights.push({ tipo: "ok", titulo: "Excelente persistência de lactação." });
@@ -430,7 +442,7 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   // ── Interpretação da timeline ─────────────────────────────────────────
   const timelineInterpretacao = await interpretarTimeline(animalId);
 
-  return { score, financeiro, tendencias, insights, percentis, producaoFinanceira, eficiencia, projecoes, genealogia, timelineInterpretacao };
+  return { score, financeiro, tendencias, insights, percentis, producaoFinanceira, eficiencia, projecoes, genealogia, carenciaAtiva: carenciaAtivaDTO, timelineInterpretacao };
 }
 
 // Gera string por evento usando regras simples comparativas.

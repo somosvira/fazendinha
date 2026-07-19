@@ -3,6 +3,7 @@ import { obterConfig } from "./config.js";
 import { recomputarProducaoAnimal, ratearProducao, producao305De, selecionarProducao305, type ControleIn } from "./producao.recompute.js";
 import { type ControleInput, type ProducaoLoteInput } from "./producao.schemas.js";
 import { toTimelineControle } from "./producao.mappers.js";
+import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 
@@ -106,8 +107,32 @@ export async function agregarProducao() {
     );
     return { modo: producaoModo, totalDia, emLactacao: emLact.length, lotes };
   }
+  // Carência de leite ativa por animal em lactação (uma query só, agregada por animalId —
+  // evita N+1). O leite dessas vacas não deve ser vendido enquanto a janela estiver aberta.
+  const agora = new Date();
+  const idsLact = emLact.map((a) => a.id);
+  const aplicsCarencia = idsLact.length
+    ? await prisma.eventoSanitario.findMany({
+        where: { animalId: { in: idsLact }, tipo: "APLICACAO", carencia: { gt: 0 } },
+        select: { animalId: true, data: true, carencia: true },
+      })
+    : [];
+  const porAnimal = new Map<number, { data: Date; carencia: number | null }[]>();
+  for (const e of aplicsCarencia) {
+    const lista = porAnimal.get(e.animalId) ?? [];
+    lista.push({ data: e.data, carencia: e.carencia });
+    porAnimal.set(e.animalId, lista);
+  }
   const ranking = emLact
-    .map((a) => ({ numero: a.numero, nome: a.nome, litros: a.resumo?.producaoMediaDia != null ? Number(a.resumo.producaoMediaDia) : 0 }))
+    .map((a) => {
+      const c = calcCarenciaAtiva(porAnimal.get(a.id) ?? [], agora);
+      return {
+        numero: a.numero,
+        nome: a.nome,
+        litros: a.resumo?.producaoMediaDia != null ? Number(a.resumo.producaoMediaDia) : 0,
+        carencia: c ? { fim: c.fim.toISOString(), horasRestantes: c.horasRestantes, diasRestantes: c.diasRestantes } : null,
+      };
+    })
     .sort((x, y) => y.litros - x.litros);
   return { modo: producaoModo, totalDia, mediaVaca, emLactacao: emLact.length, ranking };
 }

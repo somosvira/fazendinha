@@ -218,12 +218,14 @@ export interface GenealogiaDTO {
   avoMaterna: { id: string; nome: string | null; numero: string } | null;
   avoMaterno: string | null;
 }
+export interface CarenciaAtivaDTO { fim: string; horasRestantes: number; diasRestantes: number }
 export interface AnimalInsightsDTO {
   score: ScoreDTO; financeiro: FinanceiroDTO;
   tendencias: TendenciaDTO[]; insights: InsightDTO[];
   percentis: PercentisDTO; producaoFinanceira: ProducaoFinanceiraDTO;
   eficiencia: EficienciaDTO; projecoes: ProjecoesDTO;
-  genealogia: GenealogiaDTO; timelineInterpretacao: Record<string, string>;
+  genealogia: GenealogiaDTO; carenciaAtiva: CarenciaAtivaDTO | null;
+  timelineInterpretacao: Record<string, string>;
 }
 export const obterInsights = (id: string) => req<AnimalInsightsDTO>(`/rebanho/animais/${id}/insights`);
 
@@ -530,7 +532,7 @@ export interface ProducaoAgg {
   totalDia: number;
   mediaVaca?: number | null;
   emLactacao: number;
-  ranking?: { numero: string; nome: string | null; litros: number }[];
+  ranking?: { numero: string; nome: string | null; litros: number; carencia?: CarenciaAtivaDTO | null }[];
   lotes?: { grupo: string; litros: number | null; vacas: number; rateio: number | null }[];
 }
 export const obterProducao = () => req<ProducaoAgg>(`/rebanho/producao`);
