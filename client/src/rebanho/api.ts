@@ -308,7 +308,7 @@ export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consu
 
 export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia";
 export type AcaoWorklistRebanho =
   | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" }
   | { dominio: "sanidade"; tipoEvento: "EXAME" };
@@ -337,7 +337,7 @@ export interface WorklistRebanho {
   detalhe: string;
   severidade: "critico" | "atencao" | "informativo";
   tab: "reproducao" | "sanidade";
-  acao: AcaoWorklistRebanho;
+  acao?: AcaoWorklistRebanho; // ausente em worklists de só visualização (ex.: carência)
   itens: WorklistItemRebanho[];
 }
 export interface PontoSerieDashboard { data: string; valor: number | null; }
@@ -370,14 +370,16 @@ interface DashboardApiDTO {
   qualidadeDados: { quantidade: number; explicacao: string }[];
 }
 const rotulosEstado: Record<string, string> = { PEV: "Aptas / PEV", VAZIA: "Vazias", INSEMINADA: "Inseminadas", PRENHE: "Prenhes" };
-const acaoPorWorklist: Record<ChaveWorklistRebanho, AcaoWorklistRebanho> = {
+// Só as worklists que têm ação de registrar evento. A carência é de visualização (sem ação).
+const acaoPorWorklist: Partial<Record<ChaveWorklistRebanho, AcaoWorklistRebanho>> = {
   "secagem-atrasada": { dominio: "reproducao", tipoEvento: "SECAGEM" },
   "vazia-pos-pev": { dominio: "reproducao", tipoEvento: "INSEMINACAO" },
   "dg-pendente": { dominio: "reproducao", tipoEvento: "DIAGNOSTICO" },
   "parto-proximo": { dominio: "reproducao", tipoEvento: "PARTO" },
   "ccs-alta": { dominio: "sanidade", tipoEvento: "EXAME" },
 };
-function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return chave in acaoPorWorklist; }
+const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia"];
+function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return (CHAVES_WORKLIST as readonly string[]).includes(chave); }
 function adaptarDashboard(d: DashboardApiDTO): DashboardData {
   const heroi = (chave: DashboardApiDTO["herois"][number]["chave"]): IndicadorHeroDashboard => {
     const h = d.herois.find((x) => x.chave === chave)!;

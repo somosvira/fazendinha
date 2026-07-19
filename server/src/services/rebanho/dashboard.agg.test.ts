@@ -9,7 +9,7 @@ const resumo = (statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE", ex
 function base(periodo: PeriodoDashboard = "7d"): DashboardRebanhoInput {
   return {
     hoje: "2026-06-16", geradoEm: "2026-06-16T12:00:00.000Z", periodo,
-    modoProducao: "ORDENHA", escopoPropriedadeId: 1,
+    modoProducao: "ORDENHA", escopoPropriedadeId: 1, carencias: [],
     animais: [
       { id: 1, numero: "1", nome: "A", setor: "Leite", categoria: "VACA", sexo: "F", grupoId: 10, grupoNome: "Alta", resumo: resumo("PRENHE", { del: 145, ccs: 512, iepProjetado: 396, diasGestacao: 260, previsaoSecagem: "2026-06-01" }) },
       { id: 2, numero: "2", nome: "B", setor: null, categoria: "VACA", sexo: "F", grupoId: 10, grupoNome: "Alta", resumo: resumo("VAZIA", { del: 80, ccs: 300 }) },
@@ -69,7 +69,7 @@ const hero = (d: ReturnType<typeof agregarDashboard>, chave: string) => d.herois
     expect(d.alertas.find((x) => x.chave === "parto-proximo")?.quantidade).toBe(1);
     expect(d.grupos.map((g) => [g.nome, g.quantidade])).toEqual([["Alta", 2], ["Sem grupo", 2]]);
     for (const alerta of d.alertas) expect(alerta.quantidade).toBe(alerta.itens.length);
-    expect(d.alertas.find((x) => x.chave === "ccs-alta")?.acao.tipo).toBe("EXAME");
+    expect(d.alertas.find((x) => x.chave === "ccs-alta")?.acao?.tipo).toBe("EXAME");
   });
 
   it("no tanque consolidado prefere tanque global à soma dos grupos", () => {

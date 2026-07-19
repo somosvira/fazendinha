@@ -2,8 +2,18 @@ export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type TabRebanho = "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
 export type SeveridadeAlerta = "alta" | "media" | "baixa";
 export type StatusReprodutivoDashboard = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia";
 export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO";
+
+// Entrada já resolvida de carência de leite ativa (o carenciaAtiva roda no I/O, onde há Date).
+// A worklist "carencia" é de visualização — sem ação de registrar evento.
+export interface CarenciaWorklistIn {
+  animalId: number;
+  produto: string | null;
+  fim: string;            // ISO 8601 do fim da carência
+  horasRestantes: number;
+  diasRestantes: number;
+}
 
 export interface AcaoWorklistDTO {
   tipo: TipoAcaoWorklist;
@@ -37,7 +47,7 @@ export interface WorklistRebanhoDTO {
   explicacao: string;
   severidade: SeveridadeAlerta;
   tab: TabRebanho;
-  acao: AcaoWorklistDTO;
+  acao?: AcaoWorklistDTO; // ausente em worklists de só visualização (ex.: carência)
   itens: ItemWorklistDTO[];
 }
 
@@ -112,6 +122,7 @@ export interface DashboardRebanhoInput {
   controles: ControleDashboardIn[];
   producoesLote: ProducaoLoteDashboardIn[];
   eventosConcepcao: EventoConcepcaoDashboardIn[];
+  carencias: CarenciaWorklistIn[];
   parametros: ParametrosDashboard;
 }
 

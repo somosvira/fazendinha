@@ -51,6 +51,7 @@ export const REBANHO_WORKLISTS = {
   "dg-pendente": "reproducao",
   "parto-proximo": "reproducao",
   "ccs-alta": "sanidade",
+  "carencia": "sanidade",
 } as const;
 
 export type RebanhoWorklistChave = keyof typeof REBANHO_WORKLISTS;

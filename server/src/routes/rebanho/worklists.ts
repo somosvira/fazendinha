@@ -10,6 +10,7 @@ export const chaveWorklistSchema = z.enum([
   "ccs-alta",
   "dg-pendente",
   "parto-proximo",
+  "carencia",
 ]);
 
 const paramSchema = z.object({ chave: chaveWorklistSchema });
