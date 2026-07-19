@@ -34,6 +34,7 @@ export interface AnimalSugestao {
   del: number | null;
   margemDiaEstimada: number | null; // R$/dia (Carteira)
   mastites12m: number;
+  quartoCronico?: { quarto: string } | null; // quarto reincidente (ExameQuarto); refina a sugestão de mastite
 }
 
 export interface SugestaoAcao { label: string; tab: string; worklistChave?: string }
@@ -101,12 +102,22 @@ export function avaliarReproducao(a: AnimalSugestao, cfg: SugestoesConfig): Suge
   };
 }
 
-// MASTITE subclínica recorrente: CCS alta E subindo E mastites12m >= 2.
+// MASTITE recorrente. Sinal fino preferido: um quarto crônico (ExameQuarto) — sugere secar/tratar
+// aquele quarto. Fallback (sem dados por quarto): CCS alta E subindo E mastites12m >= 2.
 // Impacto ≈ fração da receita/dia em risco.
 export function avaliarMastite(a: AnimalSugestao, cfg: SugestoesConfig): SugestaoDTO | null {
+  const impacto = round(receitaDia(a, cfg.precoLeite) * FRACAO_PERDA_CCS);
+  if (a.quartoCronico) {
+    return {
+      tipo: "MASTITE", animalId: a.animalId, numero: a.numero, nome: a.nome,
+      titulo: `Secar/tratar quarto ${a.quartoCronico.quarto} de ${rotulo(a)}`,
+      motivo: `Quarto ${a.quartoCronico.quarto} crônico — mastite reincidente não sara`,
+      impactoDiaEstimado: impacto, prazoDias: null,
+      acao: { label: "Registrar exame do quarto", tab: "sanidade", worklistChave: "ccs-alta" },
+    };
+  }
   const gatilho = a.ccs != null && a.ccs > CCS_LIMITE && a.ccsTendencia === "subindo" && a.mastites12m >= 2;
   if (!gatilho) return null;
-  const impacto = round(receitaDia(a, cfg.precoLeite) * FRACAO_PERDA_CCS);
   return {
     tipo: "MASTITE", animalId: a.animalId, numero: a.numero, nome: a.nome,
     titulo: `Mastite recorrente em ${rotulo(a)}`,

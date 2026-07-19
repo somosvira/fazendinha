@@ -3,6 +3,7 @@ import { prisma } from "../../db.js";
 import { toTimeline, type EventoTimelineDTO } from "./eventos-sanidade.mappers.js";
 import type { CriarEventoSanitarioInput } from "./eventos-sanidade.schemas.js";
 import { recomputarResumoSanidade, type EvtSan } from "./sanidade.recompute.js";
+import { recomputarQuartos } from "./quarto.recompute.js";
 import { planejarBaixaSanidade } from "./sanidade-estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
@@ -13,10 +14,17 @@ export async function recomputarSanidade(animalId: number): Promise<void> {
   const exs = await prisma.eventoSanitario.findMany({ where: { animalId } });
   const evs: EvtSan[] = exs.map((e) => ({ tipo: e.tipo, data: iso(e.data)!, ccs: e.ccs }));
   const r = recomputarResumoSanidade(evs);
+  // Saúde por quarto: agrega cronicidade/perdidos dos ExameQuarto (fato próprio) → ResumoAnimal.
+  const eqs = await prisma.exameQuarto.findMany({ where: { animalId } });
+  const q = recomputarQuartos(
+    eqs.map((e) => ({ quarto: e.quarto, data: iso(e.data)!, scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, perdido: e.perdido })),
+    iso(new Date())!,
+  );
+  const dados = { ccs: r.ccs, ccsTendencia: r.ccsTendencia, quartosCronicos: q.quartosCronicos, quartosPerdidos: q.quartosPerdidos };
   await prisma.resumoAnimal.upsert({
     where: { animalId },
-    create: { animalId, ccs: r.ccs, ccsTendencia: r.ccsTendencia },
-    update: { ccs: r.ccs, ccsTendencia: r.ccsTendencia },
+    create: { animalId, ...dados },
+    update: dados,
   });
 }
 export async function listarSanidade(animalId: number): Promise<EventoTimelineDTO[]> {

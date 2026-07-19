@@ -897,4 +897,50 @@ export function useSugestoes() {
   return { data, loading, erro, recarregar };
 }
 
+// ── Saúde de úbere por quarto (mastite/CMT por teta) ─────────────────────────
+export type Quarto = "AE" | "AD" | "PE" | "PD";
+export type ScoreCmt = "NEGATIVO" | "TRACOS" | "UMA_CRUZ" | "DUAS_CRUZES" | "TRES_CRUZES";
+export type EstadoQuarto = "SADIO" | "ATIVO" | "CRONICO" | "PERDIDO";
+
+export interface QuartoInput {
+  quarto: Quarto;
+  scoreCmt?: ScoreCmt;
+  ccs?: number;
+  clinica?: boolean;
+  severidade?: string;
+  resultadoCultivo?: string;
+  perdido?: boolean;
+  observacao?: string;
+}
+export interface RegistrarExameQuartoInput { data: string; quartos: QuartoInput[] }
+
+export interface ExameQuartoDTO {
+  id: number; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
+  clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; observacao: string | null;
+}
+export interface EstadoPorQuarto { estado: EstadoQuarto; positivos12m: number; clinicas12m: number; ultimoPositivo: string | null }
+export interface SaudeUbereDTO {
+  exames: ExameQuartoDTO[];
+  porQuarto: Record<Quarto, EstadoPorQuarto>;
+  quartosCronicos: number;
+  quartosPerdidos: number;
+}
+
+export const obterSaudeUbere = (animalId: string) => req<SaudeUbereDTO>(`/rebanho/animais/${animalId}/exames-quarto`);
+export const registrarExameQuarto = (animalId: string, input: RegistrarExameQuartoInput) =>
+  req<SaudeUbereDTO>(`/rebanho/animais/${animalId}/exames-quarto`, { method: "POST", body: JSON.stringify(input) });
+
+export function useSaudeUbere(animalId: string | null) {
+  const [data, setData] = useState<SaudeUbereDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    obterSaudeUbere(animalId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [animalId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export type { ResumoAnimal };

@@ -9,6 +9,7 @@ import { ControleForm } from "./ControleForm";
 import { LactacoesSection } from "./LactacoesSection";
 import { VacinasSection } from "./VacinasSection";
 import { IatfSection } from "./IatfSection";
+import { SaudeUbereSection } from "./SaudeUbereSection";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -254,6 +255,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           {insights && <Projecoes p={insights.projecoes} fontePreco={insights.financeiro.fontePreco} />}
           {insights && <Genealogia g={insights.genealogia} onAbrirAnimal={onAbrirAnimal} />}
           <LactacoesSection animalId={animalId} />
+          <SaudeUbereSection animalId={animalId} />
           <VacinasSection animalId={animalId} />
           <IatfSection animalId={animalId} />
         </div>
