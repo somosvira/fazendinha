@@ -14,6 +14,7 @@ import { ProducaoTab } from "../components/ProducaoTab";
 import { EstoqueTab } from "../components/EstoqueTab";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { CarteiraTab } from "../components/CarteiraTab";
+import { SugestoesTab } from "../components/SugestoesTab";
 import { AnimalTab } from "../components/AnimalTab";
 import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
@@ -91,6 +92,11 @@ describe("render smoke", () => {
 
   it("CarteiraTab renders the loading shell (fetches /rebanho/carteira)", () => {
     const html = renderToString(h(CarteiraTab, { onAbrirFicha: () => {} }));
+    expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
+  });
+
+  it("SugestoesTab renders the loading shell (fetches /rebanho/sugestoes)", () => {
+    const html = renderToString(h(SugestoesTab, { onNav: () => {}, onAbrirFicha: () => {} }));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
