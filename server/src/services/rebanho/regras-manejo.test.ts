@@ -5,7 +5,7 @@ import { construirWorklists, ESPERA_DG_DIAS } from "./regras-manejo.js";
 const parametros = { pevDias: 60, gestacaoDias: 283, secagemAntec: 60, ccsAlto: 400 };
 const animal = (id: number, status: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE", extra: Record<string, unknown> = {}): AnimalDashboardIn => ({
   id, numero: String(id), nome: `Animal ${id}`, categoria: "VACA", sexo: "F", grupoId: 1, grupoNome: "Alta", setor: "Leite",
-  resumo: { statusReprodutivo: status, del: null, producaoMediaDia: null, ccs: null, ccsTendencia: null, iepProjetado: null, diasGestacao: null, previsaoSecagem: null, ultimoDgData: null, ...extra },
+  resumo: { statusReprodutivo: status, del: null, producaoMediaDia: null, producaoTendencia: null, ccs: null, ccsTendencia: null, iepProjetado: null, diasGestacao: null, previsaoSecagem: null, ultimoDgData: null, ...extra },
 });
 const evento = (animalId: number, tipo: string, data: string): EventoConcepcaoDashboardIn => ({ animalId, tipo, data, resultado: null });
 const listas = (animais: AnimalDashboardIn[], eventos: EventoConcepcaoDashboardIn[] = [], carencias: CarenciaWorklistIn[] = []) => construirWorklists(animais, eventos, "2026-06-30", parametros, carencias);
@@ -51,7 +51,7 @@ describe("worklists canônicas de manejo", () => {
     expect(worklists.find((x) => x.chave === "parto-proximo")!.itens.map((x) => x.animalId)).toEqual([2, 10]);
     for (const worklist of worklists) expect(worklist.quantidade).toBe(worklist.itens.length);
     expect(worklists.map((x) => [x.chave, x.acao?.tipo ?? null])).toEqual([
-      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null],
+      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null], ["producao-caindo", null],
     ]);
   });
 });
@@ -101,5 +101,41 @@ describe("worklist de carência de leite", () => {
     const carencias: CarenciaWorklistIn[] = [{ animalId: 99, produto: "X", fim: "2026-07-02T00:00:00.000Z", horasRestantes: 10, diasRestantes: 1 }];
     const wl = listas([emLact(1)], [], carencias).find((x) => x.chave === "carencia")!;
     expect(wl.quantidade).toBe(0);
+  });
+});
+
+describe("worklist producao-caindo", () => {
+  // Só vacas em lactação (del != null) com tendência de produção "descendo" (materialidade já
+  // aplicada no recompute). Worklist de visualização — sem ação de registrar evento.
+  const emLact = (id: number, del: number, tendencia: string | null, media: number | null = 20) =>
+    animal(id, "PEV", { del, producaoTendencia: tendencia, producaoMediaDia: media });
+  const wl = (animais: AnimalDashboardIn[]) => listas(animais).find((x) => x.chave === "producao-caindo")!;
+
+  it("lista só as vacas em lactação com tendência 'descendo'", () => {
+    const animais = [
+      emLact(1, 120, "descendo", 18),
+      emLact(2, 80, "subindo", 30),
+      emLact(3, 200, "estavel", 22),
+      emLact(4, 150, "descendo", 15),
+    ];
+    expect(wl(animais).itens.map((i) => i.animalId).sort()).toEqual([1, 4]);
+  });
+
+  it("ignora animal sem lactação (del null) mesmo marcado 'descendo'", () => {
+    const seca = animal(9, "PEV", { del: null, producaoTendencia: "descendo", producaoMediaDia: 0 });
+    expect(wl([seca]).quantidade).toBe(0);
+  });
+
+  it("é worklist de visualização (sem ação) e aponta para a aba de produção", () => {
+    const w = wl([emLact(1, 120, "descendo")]);
+    expect(w.acao).toBeUndefined();
+    expect(w.tab).toBe("producao");
+    expect(w.itens[0].valor).toBe(20); // leva a produção média do dia como valor
+    expect(w.itens[0].unidade).toBe("L/dia");
+  });
+
+  it("ordena da maior para a menor produção (quem ainda produz mais, mais urgente investigar)", () => {
+    const animais = [emLact(1, 120, "descendo", 12), emLact(2, 120, "descendo", 28), emLact(3, 120, "descendo", 20)];
+    expect(wl(animais).itens.map((i) => i.animalId)).toEqual([2, 3, 1]);
   });
 });

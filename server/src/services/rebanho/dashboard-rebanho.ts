@@ -42,7 +42,7 @@ export async function buildRebanhoDashboard(
       select: {
         id: true, numero: true, nome: true, categoria: true, sexo: true, grupoId: true, setor: true,
         grupo: { select: { nome: true } },
-        resumo: { select: { statusReprodutivo: true, del: true, producaoMediaDia: true, ccs: true, ccsTendencia: true, iepProjetado: true, diasGestacao: true, previsaoSecagem: true, ultimoDgData: true } },
+        resumo: { select: { statusReprodutivo: true, del: true, producaoMediaDia: true, producaoTendencia: true, ccs: true, ccsTendencia: true, iepProjetado: true, diasGestacao: true, previsaoSecagem: true, ultimoDgData: true } },
       },
     }),
     prisma.lactacao.findMany({
@@ -111,6 +111,7 @@ export async function buildRebanhoDashboard(
         statusReprodutivo: a.resumo.statusReprodutivo,
         del: a.resumo.del,
         producaoMediaDia: a.resumo.producaoMediaDia == null ? null : Number(a.resumo.producaoMediaDia),
+        producaoTendencia: a.resumo.producaoTendencia,
         ccs: a.resumo.ccs,
         ccsTendencia: a.resumo.ccsTendencia,
         iepProjetado: a.resumo.iepProjetado,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { agregarDashboard, type DashboardRebanhoInput, type PeriodoDashboard } from "./dashboard.agg.js";
 
 const resumo = (statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE", extra: Record<string, unknown> = {}) => ({
-  statusReprodutivo, del: null, producaoMediaDia: null, ccs: null, ccsTendencia: null, iepProjetado: null,
+  statusReprodutivo, del: null, producaoMediaDia: null, producaoTendencia: null, ccs: null, ccsTendencia: null, iepProjetado: null,
   diasGestacao: null, previsaoSecagem: null, ultimoDgData: null, ...extra,
 });
 

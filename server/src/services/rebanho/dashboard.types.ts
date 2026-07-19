@@ -2,7 +2,7 @@ export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type TabRebanho = "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
 export type SeveridadeAlerta = "alta" | "media" | "baixa";
 export type StatusReprodutivoDashboard = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo";
 export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO";
 
 // Entrada já resolvida de carência de leite ativa (o carenciaAtiva roda no I/O, onde há Date).
@@ -55,6 +55,7 @@ export interface ResumoDashboardIn {
   statusReprodutivo: StatusReprodutivoDashboard;
   del: number | null;
   producaoMediaDia: number | null;
+  producaoTendencia: string | null; // "subindo" | "descendo" | "estavel" | null (materialidade na queda)
   ccs: number | null;
   ccsTendencia: string | null;
   iepProjetado: number | null;
