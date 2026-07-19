@@ -113,6 +113,8 @@ export interface EventoSanidadePayload {
   data: string; observacao?: string;
   doenca?: string; diasTratamento?: number;
   produto?: string; dose?: string; carencia?: number; loteProduto?: string;
+  // Vínculo com o estoque: produtoId + quantidadeUsada geram baixa (SAIDA) automática no backend.
+  produtoId?: number; quantidadeUsada?: number;
   ccs?: number; gordura?: number; proteina?: number;
   quarto?: string; severidade?: string; resultadoCultivo?: string;
 }

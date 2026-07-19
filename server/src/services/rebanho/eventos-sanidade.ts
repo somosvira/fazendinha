@@ -1,7 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { toTimeline, type EventoTimelineDTO } from "./eventos-sanidade.mappers.js";
 import type { CriarEventoSanitarioInput } from "./eventos-sanidade.schemas.js";
 import { recomputarResumoSanidade, type EvtSan } from "./sanidade.recompute.js";
+import { planejarBaixaSanidade } from "./sanidade-estoque.calc.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 
 export class EventoSanError extends Error { constructor(public code: "NAO_ENCONTRADO", message: string) { super(message); } }
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
@@ -20,14 +23,54 @@ export async function listarSanidade(animalId: number): Promise<EventoTimelineDT
   return (await prisma.eventoSanitario.findMany({ where: { animalId }, orderBy: { data: "desc" } })).map(toTimeline);
 }
 export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput): Promise<EventoTimelineDTO> {
-  if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
-  const e = await prisma.eventoSanitario.create({ data: { animalId, ...(input as any), data: new Date(input.data), dtFim: (input as any).dtFim ? new Date((input as any).dtFim) : undefined } });
+  const animal = await prisma.animal.findUnique({ where: { id: animalId }, select: { id: true, propriedadeId: true } });
+  if (!animal) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
+  const produtoId = (input as any).produtoId ?? null;
+  const quantidadeUsada = (input as any).quantidadeUsada ?? null;
+
+  // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado.
+  // O produto precisa existir; custo unitário vem do cadastro (0 se desconhecido).
+  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, custoUnitario: true } }) : null;
+  if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  const plano = planejarBaixaSanidade({ tipo: input.tipo, produtoId, quantidadeUsada, custoUnitario: produto?.custoUnitario != null ? Number(produto.custoUnitario) : null });
+  const propriedadeId = animal.propriedadeId ?? (await propriedadePrincipalId());
+  const data = new Date(input.data);
+
+  // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
+  const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
+
+  const e = await prisma.$transaction(async (tx) => {
+    // SAIDA de consumo NÃO gera Lancamento (a compra ENTRADA já lançou no financeiro).
+    const mov = plano
+      ? await tx.movimentoEstoque.create({
+          data: {
+            produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
+            quantidade: new Prisma.Decimal(plano.quantidade),
+            custoUnitario: new Prisma.Decimal(plano.custoUnitario),
+            valorTotal: new Prisma.Decimal(plano.valorTotal),
+            propriedadeId, observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${animalId})`,
+          },
+        })
+      : null;
+    return tx.eventoSanitario.create({
+      data: {
+        animalId, ...resto, data,
+        dtFim: dtFim ? new Date(dtFim) : undefined,
+        produtoId, quantidadeUsada: quantidadeUsada != null ? new Prisma.Decimal(quantidadeUsada) : undefined,
+        movimentoEstoqueId: mov?.id ?? undefined,
+      },
+    });
+  });
   await recomputarSanidade(animalId);
   return toTimeline(e);
 }
 export async function excluirSanidade(eventoId: number): Promise<void> {
   const e = await prisma.eventoSanitario.findUnique({ where: { id: eventoId } });
   if (!e) throw new EventoSanError("NAO_ENCONTRADO", "evento não encontrado");
-  await prisma.eventoSanitario.delete({ where: { id: eventoId } });
+  // Reverte a baixa de estoque automática junto com o evento (nunca deixa SAIDA órfã).
+  await prisma.$transaction(async (tx) => {
+    await tx.eventoSanitario.delete({ where: { id: eventoId } });
+    if (e.movimentoEstoqueId != null) await tx.movimentoEstoque.delete({ where: { id: e.movimentoEstoqueId } });
+  });
   await recomputarSanidade(e.animalId);
 }

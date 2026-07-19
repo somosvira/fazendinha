@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
+import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, useProdutos, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
@@ -73,6 +73,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     observacao: "",
     // Sanidade.
     doenca: "", diasTratamento: "", produto: "", dose: "", carencia: "", loteProduto: "",
+    // Vínculo opcional com o estoque (baixa automática): produto cadastrado + quantidade usada.
+    estoqueProdutoId: "", estoqueQtd: "",
     ccs: "", gordura: "", proteina: "",
     quarto: QUARTOS_UBERE[0], severidade: SEVERIDADES_MASTITE[0], resultadoCultivo: "",
   });
@@ -88,6 +90,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   } | null>(null);
   const set = (k: string, v: string) => setF((s: any) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
+  // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
+  const { data: produtosEstoque } = useProdutos({ ativo: true });
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   // Só carrega o catálogo de animais quando a TE for selecionada (evita fetch à toa).
@@ -142,8 +146,12 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipoSan === "OCORRENCIA") { p.doenca = f.doenca; p.diasTratamento = num(f.diasTratamento); }
         if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
         if (tipoSan === "VACINA") p.produto = f.produto;
+        // Vínculo de estoque (baixa automática): só quando produto cadastrado + quantidade informados.
+        const usaEstoque = (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.estoqueProdutoId && num(f.estoqueQtd);
+        if (usaEstoque) { p.produtoId = Number(f.estoqueProdutoId); p.quantidadeUsada = num(f.estoqueQtd); }
         criado = await registrarEventoSanidade(animalId, p);
-        if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {
+        // Se a baixa foi automática (produtoId), NÃO abre o card manual (evita baixa dupla).
+        if (!usaEstoque && (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {
           setBaixaCtx({
             criado,
             produto: f.produto,
@@ -288,6 +296,13 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             <RebField label="Dose"><input value={f.dose} onChange={(e) => set("dose", e.target.value)} placeholder="1 bisnaga" /></RebField>
             <RebField label="Carência (h)"><input type="number" min={0} value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
             <RebField label="Lote do produto"><input value={f.loteProduto} onChange={(e) => set("loteProduto", e.target.value)} placeholder="MAST-2231" /></RebField>
+            <RebField label="Baixar do estoque">
+              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => set("estoqueProdutoId", e.target.value)}>
+                <option value="">— não baixar —</option>
+                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
+              </select>
+            </RebField>
+            {f.estoqueProdutoId && <RebField label="Qtd. usada"><input type="number" min={0} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
           </>}
           {tipoSan === "OCORRENCIA" && <>
             <RebField label="Doença*"><input value={f.doenca} onChange={(e) => set("doenca", e.target.value)} placeholder="Mastite clínica" /></RebField>
@@ -306,7 +321,16 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             </RebField>
             <RebField label="Resultado do cultivo"><input value={f.resultadoCultivo} onChange={(e) => set("resultadoCultivo", e.target.value)} placeholder="ex.: Staphylococcus aureus" /></RebField>
           </>}
-          {tipoSan === "VACINA" && <RebField label="Produto*"><input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></RebField>}
+          {tipoSan === "VACINA" && <>
+            <RebField label="Produto*"><input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></RebField>
+            <RebField label="Baixar do estoque">
+              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => set("estoqueProdutoId", e.target.value)}>
+                <option value="">— não baixar —</option>
+                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
+              </select>
+            </RebField>
+            {f.estoqueProdutoId && <RebField label="Qtd. usada"><input type="number" min={0} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
+          </>}
         </>}
         <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
