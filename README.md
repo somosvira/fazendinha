@@ -215,9 +215,9 @@ Esses cinco princípios estão acima de qualquer feature. Eles são detalhados e
 
 Resumo (detalhe em [`ROADMAP.md`](./ROADMAP.md)):
 
-- **MVP (atual)** — financeiro do BPO + cadastro de animais + ficha individual + painel executivo.
-- **V1** — produção integrada (3 modos), reprodução completa (IATF, DG, partos), sanidade (CCS, mastite, carência).
-- **V2** — IA preditiva (descarte, prenhez, mastite subclínica), simulações financeiras, WhatsApp como interface principal de lançamento.
+- **MVP** ✅ — financeiro do BPO + cadastro de animais + ficha individual + painel executivo.
+- **V1 (atual)** — núcleo entregue: produção integrada (3 modos), reprodução completa (IATF configurável, DG, partos), sanidade (carência, vacinação com lembrete), painel "Hoje", estoque↔sanidade, simulações financeiras read-only. Restam NF por foto no WhatsApp, CMT via tablet, mastite por quarto.
+- **V2** — IA preditiva (descarte, prenhez, mastite subclínica), WhatsApp como interface principal de lançamento.
 - **V3** — integrações IoT (ordenhadeira, balanças, colares), marketplace de insumos, benchmarking entre fazendas.
 - **Longo prazo** — aplicativo nativo, BI próprio, score de crédito rural derivado da operação.
 
