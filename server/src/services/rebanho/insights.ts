@@ -3,10 +3,12 @@
 // Reusa cálculos puros existentes (custoVacaDia, ratearCustoSanidade).
 
 import { prisma } from "../../db.js";
-import type { Animal, ResumoAnimal } from "@prisma/client";
+import type { ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "./estoque.calc.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
+import { scoreDoResumo } from "./score.calc.js";
+import type { ScoreClassificacao, ScoreFatorDTO, ScoreDTO } from "./score.calc.js";
 
 const FALLBACK_PRECO_LEITE = 2.4; // R$/L quando Configuracao.precoLeite é NULL
 // Que chave de ParametroManejo carrega a meta de produção pra cada categoria.
@@ -27,14 +29,9 @@ const PRIME_CAPRINO_DEFAULT = { min: 2, max: 5 };
 
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
-export type ScoreClassificacao = "ELITE" | "MUITO_BOA" | "BOA" | "ATENCAO" | "DESCARTE";
-export interface ScoreFatorDTO { nome: string; pontos: number; peso: number }
-export interface ScoreDTO {
-  valor: number; // 0-100
-  classificacao: ScoreClassificacao;
-  estrelas: 1 | 2 | 3 | 4 | 5;
-  fatores: ScoreFatorDTO[];
-}
+// Score (tipos + cálculo) mora em score.calc.ts — reexportado aqui p/ compat de
+// quem já importava ScoreDTO/ScoreClassificacao/ScoreFatorDTO do insights.
+export type { ScoreClassificacao, ScoreFatorDTO, ScoreDTO };
 
 export interface FinanceiroDTO {
   precoLeite: number;
@@ -129,58 +126,6 @@ function percentil(valores: number[], alvo: number): number {
   if (valores.length === 0) return 50;
   const menores = valores.filter((v) => v < alvo).length;
   return Math.round((menores / valores.length) * 100);
-}
-
-// ── Score ──────────────────────────────────────────────────────────────────
-
-function pontosProducao(produzido: number | null, meta: number | null): number {
-  if (produzido == null || meta == null || meta === 0) return 50;
-  return Math.min(120, Math.round((produzido / meta) * 100));
-}
-
-function pontosCCS(ccs: number | null): number {
-  if (ccs == null) return 50;
-  if (ccs <= 200) return 100;
-  if (ccs <= 400) return 70;
-  if (ccs <= 750) return 40;
-  return 10;
-}
-
-function pontosFertilidade(statusReprod: string | null, iep: number | null): number {
-  if (statusReprod === "PRENHE") return 90;
-  if (iep == null) return 60;
-  if (iep <= 380) return 100;
-  if (iep <= 420) return 75;
-  return 40;
-}
-
-function pontosIdade(idade: number | null, prime: { min: number; max: number }): number {
-  if (idade == null) return 60;
-  if (idade >= prime.min && idade <= prime.max) return 100;
-  if (idade < prime.min) return 80;
-  if (idade <= prime.max + 2) return 75;
-  return 50;
-}
-
-function pontosSaude(ocorrenciasRecentes: number): number {
-  if (ocorrenciasRecentes === 0) return 100;
-  return Math.max(20, 80 - ocorrenciasRecentes * 15);
-}
-
-function pontosRentab(margem: number | null): number {
-  if (margem == null) return 50;
-  if (margem >= 0.30) return 100;
-  if (margem >= 0.15) return 75;
-  if (margem >= 0) return 50;
-  return 20;
-}
-
-function classificar(valor: number): { classificacao: ScoreClassificacao; estrelas: 1 | 2 | 3 | 4 | 5 } {
-  if (valor >= 85) return { classificacao: "ELITE", estrelas: 5 };
-  if (valor >= 70) return { classificacao: "MUITO_BOA", estrelas: 4 };
-  if (valor >= 55) return { classificacao: "BOA", estrelas: 3 };
-  if (valor >= 40) return { classificacao: "ATENCAO", estrelas: 2 };
-  return { classificacao: "DESCARTE", estrelas: 1 };
 }
 
 // ── Service ────────────────────────────────────────────────────────────────
@@ -292,18 +237,18 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
     tom: tomFinanceiro,
   };
 
-  // ── Score ──────────────────────────────────────────────────────────────
-  const fatores: ScoreFatorDTO[] = [
-    { nome: "Produção",     pontos: pontosProducao(toNum(resumo?.producaoMediaDia), meta), peso: 30 },
-    { nome: "CCS",          pontos: pontosCCS(resumo?.ccs ?? null), peso: 20 },
-    { nome: "Fertilidade",  pontos: pontosFertilidade(resumo?.statusReprodutivo ?? null, resumo?.iepProjetado ?? null), peso: 20 },
-    { nome: "Idade",        pontos: pontosIdade(idade, prime), peso: 10 },
-    { nome: "Saúde",        pontos: pontosSaude(ocorrencias6m), peso: 10 },
-    { nome: "Rentabilidade", pontos: pontosRentab(receitaLactacao > 0 ? margem : null), peso: 10 },
-  ];
-  const valorScore = round(fatores.reduce((s, f) => s + (f.pontos * f.peso) / 100, 0), 0);
-  const cls = classificar(valorScore);
-  const score: ScoreDTO = { valor: Math.min(100, valorScore), ...cls, fatores };
+  // ── Score (motor puro em score.calc; mesmos insumos de antes) ──────────
+  const score: ScoreDTO = scoreDoResumo({
+    producaoMediaDia: toNum(resumo?.producaoMediaDia),
+    metaProducao: meta,
+    ccs: resumo?.ccs ?? null,
+    statusReprodutivo: resumo?.statusReprodutivo ?? null,
+    iepProjetado: resumo?.iepProjetado ?? null,
+    idadeAnos: idade,
+    prime,
+    ocorrenciasRecentes: ocorrencias6m,
+    margem: receitaLactacao > 0 ? margem : null,
+  });
 
   // ── Percentis (apenas animais em lactação ativa, da mesma espécie) ─────
   const pool = await prisma.animal.findMany({

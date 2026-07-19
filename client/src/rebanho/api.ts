@@ -825,4 +825,43 @@ export function usePropriedades() {
   return { data, loading, recarregar };
 }
 
+// ── Carteira do rebanho (Score como portfólio) — V2 §5.2 ────────────────────
+export type ClassificacaoScore = "ELITE" | "MUITO_BOA" | "BOA" | "ATENCAO" | "DESCARTE";
+export interface AnimalCarteiraDTO {
+  animalId: number; numero: string; nome: string | null;
+  score: number; classificacao: ClassificacaoScore;
+  producaoDia: number | null; ccs: number | null; margemDiaEstimada: number | null;
+}
+export interface CarteiraDTO {
+  totalAnimais: number;
+  scoreMedio: number;
+  distribuicao: { classificacao: ClassificacaoScore; cabecas: number; pctRebanho: number }[];
+  margemDiaTotal: number;
+  ranking: { melhores: AnimalCarteiraDTO[]; piores: AnimalCarteiraDTO[] };
+  animais: AnimalCarteiraDTO[];
+  precoLeite: number;
+  fontePreco: "config" | "fallback";
+  custoVacaDia: number | null;
+}
+export interface SimulacaoDescarteDTO {
+  n: number; cabecas: number; litrosDiaSai: number;
+  margemDiaAntes: number; margemDiaDepois: number; margemDiaDelta: number;
+  ccsMedioAntes: number | null; ccsMedioDepois: number | null; scoreMedioDepois: number;
+}
+export const obterCarteira = () => req<CarteiraDTO>(`/rebanho/carteira`);
+export const simularDescarte = (n: number) =>
+  req<SimulacaoDescarteDTO>(`/rebanho/carteira/simular-descarte${qs({ n })}`);
+
+export function useCarteira() {
+  const [data, setData] = useState<CarteiraDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    obterCarteira().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 export type { ResumoAnimal };

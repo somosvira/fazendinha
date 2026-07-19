@@ -89,6 +89,7 @@ const REB: Record<string, RebSub> = {
   "reb-producao": "producao",
   "reb-estoque": "estoque",
   "reb-custo": "custo",
+  "reb-carteira": "carteira",
 };
 
 const PLA: Record<string, PlaSub> = {
