@@ -391,6 +391,8 @@ model Propriedade {
   silos     Silo[]
   caixinhas Caixinha[]
   vacinasAgendadas VacinaAgendada[]
+  protocolosIATF   ProtocoloIATF[]
+  aplicacoesIATF   AplicacaoProtocoloIATF[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -468,6 +470,7 @@ model Animal {
   embrioesDoados      EventoReprodutivo[] @relation("Doadora")
   eventosSanitarios   EventoSanitario[]
   vacinasAgendadas    VacinaAgendada[]
+  aplicacoesIATF      AplicacaoProtocoloIATF[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
@@ -624,6 +627,61 @@ model VacinaAgendada {
   @@index([animalId])
   @@index([propriedadeId])
   @@index([dataPrevista])
+}
+
+// Catálogo de protocolos IATF (inseminação artificial em tempo fixo). Antes o
+// protocolo era só texto livre em EventoReprodutivo.protocolo; agora é um catálogo
+// configurável de etapas (D0/D7/D9/D11…) que se aplica a um animal com uma data de
+// início, gerando a agenda (calc puro em iatf.calc.ts).
+model ProtocoloIATF {
+  id            Int                      @id @default(autoincrement())
+  nome          String // rótulo do protocolo (ex.: "IATF 11 dias — P4 + ECP")
+  descricao     String?
+  hormonioBase  String? // hormônio-base/linha do protocolo (ex.: "P4 + ECP")
+  ativo         Boolean                  @default(true) // catálogo: inativar em vez de apagar
+  propriedade   Propriedade?             @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  etapas        EtapaProtocoloIATF[]
+  aplicacoes    AplicacaoProtocoloIATF[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([propriedadeId])
+  @@index([ativo])
+}
+
+// Uma etapa do protocolo: o que fazer no dia `dia` (offset a partir do D0).
+model EtapaProtocoloIATF {
+  id          Int           @id @default(autoincrement())
+  protocolo   ProtocoloIATF @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  protocoloId Int
+  dia         Int // offset em dias a partir do D0 (0, 7, 9, 11…)
+  acao        String // o que fazer nessa etapa
+  hormonio    String? // hormônio/fármaco aplicado, quando houver
+  ordem       Int           @default(0) // desempate quando duas etapas caem no mesmo dia
+
+  @@index([protocoloId])
+}
+
+// Aplicação de um protocolo a um animal, a partir de uma data de início (o D0).
+// A agenda de cada etapa é derivada (dataInicio + etapa.dia) — não é materializada.
+model AplicacaoProtocoloIATF {
+  id            Int           @id @default(autoincrement())
+  animal        Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId      Int
+  protocolo     ProtocoloIATF @relation(fields: [protocoloId], references: [id])
+  protocoloId   Int
+  dataInicio    DateTime      @db.Date // D0 da aplicação neste animal
+  observacao    String?
+  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([animalId])
+  @@index([protocoloId])
+  @@index([propriedadeId])
+  @@index([dataInicio])
 }
 
 enum TipoMovimento {
