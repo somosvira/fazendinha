@@ -470,6 +470,9 @@ export interface CockpitDTO {
   saldoLeite: number;
   saldoCafe: number;
   saldoOutros: number;
+  // Sugestões do "Hoje" preditivo (V2 §5.1): top-3 por impacto R$/dia + total em aberto.
+  sugestoesTop3?: SugestaoDTO[];
+  impactoDiaSugestoes?: number;
 }
 export const obterCockpitHoje = (signal?: AbortSignal) => req<CockpitDTO>(`/rebanho/hoje`, { signal });
 export function useCockpitHoje() {
@@ -859,6 +862,36 @@ export function useCarteira() {
   const recarregar = useCallback(() => {
     setLoading(true); setErro(null);
     obterCarteira().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+// ── Sugestões (Painel "Hoje" preditivo) — V2 §5.1 ───────────────────────────
+export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
+export interface SugestaoDTO {
+  tipo: TipoSugestao;
+  animalId: number; numero: string; nome: string | null;
+  titulo: string; motivo: string;
+  impactoDiaEstimado: number; prazoDias: number | null;
+  acao: { label: string; tab: string; worklistChave?: string };
+}
+export interface SugestoesDTO {
+  sugestoes: SugestaoDTO[];
+  totalPorTipo: Record<TipoSugestao, number>;
+  impactoDiaTotal: number;
+  precoLeite: number;
+  custoVacaDia: number | null;
+}
+export const obterSugestoes = () => req<SugestoesDTO>(`/rebanho/sugestoes`);
+
+export function useSugestoes() {
+  const [data, setData] = useState<SugestoesDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    obterSugestoes().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };

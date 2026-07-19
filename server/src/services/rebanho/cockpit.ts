@@ -4,6 +4,7 @@ import { listarSaldos } from "./estoque.js";
 import { buildDashboard } from "../dashboard.js";
 import { carenciaAtiva } from "./carencia.calc.js";
 import { resumirCockpit, type AlertaResumo, type CockpitDTO } from "./cockpit.calc.js";
+import { obterSugestoes } from "./sugestoes.js";
 
 // Primeiro dia do mês da data civil informada, como Date (UTC 00:00).
 function inicioDoMes(agora: Date): Date {
@@ -61,5 +62,10 @@ export async function montarCockpitHoje(propriedadeId: number | null, agora: Dat
     totalGeral: t.totalGeral,
   };
 
-  return resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, vacinaPendenteCount, fluxoDia, fluxoMes, mesPorAtividade });
+  const dto = resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, vacinaPendenteCount, fluxoDia, fluxoMes, mesPorAtividade });
+
+  // 5) Sugestões preditivas (V2 §5.1): top-3 por impacto R$/dia. Recomputa a mesma
+  // base do pool (aceitável — Hoje e aba raramente carregam juntos).
+  const sug = await obterSugestoes(propriedadeId);
+  return { ...dto, sugestoesTop3: sug.sugestoes.slice(0, 3), impactoDiaSugestoes: sug.impactoDiaTotal };
 }

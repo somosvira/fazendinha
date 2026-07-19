@@ -8,6 +8,7 @@ import { ProducaoTab } from "./components/ProducaoTab";
 import { EstoqueTab } from "./components/EstoqueTab";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
+import { SugestoesTab } from "./components/SugestoesTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
@@ -16,7 +17,7 @@ import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, Workli
 import type { AcaoItemWorklist } from "./components/WorklistCanonica";
 import { HOJE } from "./HOJE";
 
-export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira";
+export type RebSub = "dashboard" | "animal" | "reproducao" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
 
 export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, worklistSnapshot, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
@@ -94,6 +95,8 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                       ? <CustoProducaoTab />
                       : aba === "carteira"
                         ? <CarteiraTab onAbrirFicha={(id) => setAnimalId(String(id))} />
+                        : aba === "sugestoes"
+                          ? <SugestoesTab onNav={(t) => onNavReb?.(t as RebSub)} onAbrirFicha={(id) => setAnimalId(String(id))} />
                         : <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} onAbrirWorklist={onAbrirWorklist} />}
       {form && <AnimalForm modo={form.modo} animal={form.animal} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (

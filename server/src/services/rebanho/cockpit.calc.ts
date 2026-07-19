@@ -2,6 +2,7 @@
 // carência de leite, estoque) e os saldos financeiros num único DTO. Sem I/O: recebe os números já
 // coletados pelo service e só soma/prioriza. Reusa os tipos canônicos de dashboard.types.
 import type { ChaveWorklistRebanho, SeveridadeAlerta, TabRebanho } from "./dashboard.types.js";
+import type { SugestaoDTO } from "./sugestoes.calc.js";
 
 // Chaves reprodutivas cuja quantidade soma no contador "repro" — em ordem canônica (o desempate de
 // severidade escolhe a primeira desta lista).
@@ -56,6 +57,11 @@ export interface CockpitDTO {
   saldoLeite: number;
   saldoCafe: number;
   saldoOutros: number;
+  // Sugestões do "Hoje" preditivo (V2 §5.1): top-3 decisões por impacto R$/dia +
+  // o impacto total em aberto. Preenchidas pelo service (cockpit.ts); ausentes no
+  // modo demo/sem backend. O feed completo mora na aba reb-sugestoes.
+  sugestoesTop3?: SugestaoDTO[];
+  impactoDiaSugestoes?: number;
 }
 
 /** Escolhe a chave de deep-link do bloco repro: maior severidade entre as presentes com quantidade

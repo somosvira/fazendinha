@@ -90,6 +90,26 @@ export function CockpitDia({ alertas, onNav, onAbrirWorklist }: {
           </span>
         ))}
       </div>
+
+      {/* Sugestões do "Hoje" preditivo (V2 §5.1): top-3 por impacto R$/dia. Só aparece quando há. */}
+      {data.sugestoesTop3 && data.sugestoesTop3.length > 0 && (
+        <div className="mt-3 border-t border-dashed border-[color:var(--rule-soft)] pt-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-[.1em] text-ink-3">
+              Sugestões do dia{data.impactoDiaSugestoes ? ` · ${fmtBRL(data.impactoDiaSugestoes, { compact: true })}/dia em jogo` : ""}
+            </span>
+            <button className="text-xs font-semibold text-ink-2 hover:underline" onClick={() => onNav("sugestoes")}>ver todas →</button>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {data.sugestoesTop3.map((s) => (
+              <li key={`${s.tipo}-${s.animalId}`} className="flex items-center justify-between gap-3 text-sm">
+                <button className="truncate text-left hover:underline" onClick={() => onNav("sugestoes")}>{s.titulo}</button>
+                <span className="shrink-0 font-medium tabular-nums text-ink-2">{fmtBRL(s.impactoDiaEstimado, { compact: true })}/dia</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
