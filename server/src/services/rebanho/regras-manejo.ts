@@ -6,6 +6,7 @@ import type {
   ParametrosDashboard,
   WorklistRebanhoDTO,
 } from "./dashboard.types.js";
+import { LIMIAR_QUEDA_PCT } from "./producao.recompute.js";
 
 export const ESTADOS_ELEGIVEIS_PRENHEZ = new Set(["PEV", "VAZIA", "INSEMINADA", "PRENHE"]);
 export const ESPERA_DG_DIAS = 28;
@@ -147,6 +148,15 @@ export function construirWorklists(
       return item(a, `Leite em carência (${oQue}) — não vender até ${c.fim.slice(0, 10)}.`, restante, unidade, c.fim);
     });
 
+  // Produção caindo: vacas em lactação (del != null) cuja tendência é "descendo" — a materialidade
+  // da queda já foi aplicada no recompute (LIMIAR_QUEDA_PCT). Visualização (sem ação de registrar):
+  // o produtor abre a ficha para investigar (dieta/sanidade/cio). Ordena da maior produção para a
+  // menor (quem ainda rende mais é mais urgente segurar). Valor = produção média do dia.
+  const producaoCaindo = animais
+    .filter((a) => a.resumo?.del != null && a.resumo?.producaoTendencia === "descendo")
+    .sort((a, b) => (b.resumo?.producaoMediaDia ?? 0) - (a.resumo?.producaoMediaDia ?? 0) || compararAnimal(a, b))
+    .map((a) => item(a, `Produção em queda (DEL ${a.resumo!.del}). Investigar dieta, cio ou sanidade.`, a.resumo?.producaoMediaDia ?? null, "L/dia", null));
+
   const montar = (base: Omit<WorklistRebanhoDTO, "quantidade" | "itens">, itens: WorklistRebanhoDTO["itens"]): WorklistRebanhoDTO => ({ ...base, quantidade: itens.length, itens });
   return [
     montar({ chave: "secagem-atrasada", titulo: "Secagens atrasadas", explicacao: "Vacas prenhes cuja previsão de secagem já venceu.", severidade: "alta", tab: "reproducao", acao: { tipo: "SECAGEM", rotulo: "Registrar secagem" } }, secagem),
@@ -155,6 +165,7 @@ export function construirWorklists(
     montar({ chave: "dg-pendente", titulo: "Diagnóstico pendente", explicacao: `Fêmeas com cobertura há pelo menos ${ESPERA_DG_DIAS} dias e sem DG posterior.`, severidade: "media", tab: "reproducao", acao: { tipo: "DIAGNOSTICO", rotulo: "Registrar DG" } }, dg),
     montar({ chave: "parto-proximo", titulo: "Partos previstos em até 30 dias", explicacao: "Vacas prenhes no último mês esperado de gestação.", severidade: "baixa", tab: "reproducao", acao: { tipo: "PARTO", rotulo: "Registrar parto" } }, partos),
     montar({ chave: "carencia", titulo: "Leite em carência", explicacao: "Vacas cujo leite não deve ser vendido enquanto durar a carência do medicamento.", severidade: "alta", tab: "sanidade" }, carenciaItens),
+    montar({ chave: "producao-caindo", titulo: "Produção em queda", explicacao: `Vacas em lactação com queda de produção acima de ${LIMIAR_QUEDA_PCT}% entre os controles recentes.`, severidade: "media", tab: "producao" }, producaoCaindo),
   ];
 }
 

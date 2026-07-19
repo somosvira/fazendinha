@@ -315,7 +315,7 @@ export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consu
 
 export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo";
 export type AcaoWorklistRebanho =
   | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" }
   | { dominio: "sanidade"; tipoEvento: "EXAME" };
@@ -343,8 +343,8 @@ export interface WorklistRebanho {
   quantidade: number;
   detalhe: string;
   severidade: "critico" | "atencao" | "informativo";
-  tab: "reproducao" | "sanidade";
-  acao?: AcaoWorklistRebanho; // ausente em worklists de só visualização (ex.: carência)
+  tab: "reproducao" | "sanidade" | "producao";
+  acao?: AcaoWorklistRebanho; // ausente em worklists de só visualização (ex.: carência, produção caindo)
   itens: WorklistItemRebanho[];
 }
 export interface PontoSerieDashboard { data: string; valor: number | null; }
@@ -385,7 +385,7 @@ const acaoPorWorklist: Partial<Record<ChaveWorklistRebanho, AcaoWorklistRebanho>
   "parto-proximo": { dominio: "reproducao", tipoEvento: "PARTO" },
   "ccs-alta": { dominio: "sanidade", tipoEvento: "EXAME" },
 };
-const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia"];
+const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia", "producao-caindo"];
 function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return (CHAVES_WORKLIST as readonly string[]).includes(chave); }
 function adaptarDashboard(d: DashboardApiDTO): DashboardData {
   const heroi = (chave: DashboardApiDTO["herois"][number]["chave"]): IndicadorHeroDashboard => {
@@ -400,7 +400,7 @@ function adaptarDashboard(d: DashboardApiDTO): DashboardData {
     estadosReprodutivos: { totalElegiveis: d.estadosReprodutivos.reduce((s, x) => s + x.quantidade, 0), segmentos: d.estadosReprodutivos.map((x) => ({ chave: x.estado, label: rotulosEstado[x.estado] ?? x.estado, quantidade: x.quantidade, percentual: x.percentual })) },
     indicadores: { producao: itens("producao"), reproducao: itens("reproducao"), rebanho: itens("rebanho") },
     alertas: d.alertas.flatMap((a): WorklistRebanho[] => {
-      if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade")) return [];
+      if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade" && a.tab !== "producao")) return [];
       return [{ chave: a.chave, label: a.titulo, quantidade: a.quantidade, severidade: a.severidade === "alta" ? "critico" : a.severidade === "media" ? "atencao" : "informativo", tab: a.tab, detalhe: a.explicacao, acao: acaoPorWorklist[a.chave], itens: a.itens ?? [] }];
     }),
     grupos: d.grupos.map((g) => ({ grupoId: g.id, nome: g.nome, animaisAtivos: g.quantidade, vacas: null, emLactacao: null, percentualDoRebanho: g.percentual })),
@@ -409,7 +409,7 @@ function adaptarDashboard(d: DashboardApiDTO): DashboardData {
 export const obterDashboard = (periodo: PeriodoDashboard, signal?: AbortSignal) => req<DashboardApiDTO>(`/rebanho/dashboard?periodo=${periodo}`, { signal }).then(adaptarDashboard);
 interface WorklistApiDTO { meta: { geradoEm: string; escopo: { propriedadeId: number | null; consolidado: boolean } }; worklist: DashboardApiDTO["alertas"][number] }
 function adaptarWorklist(a: DashboardApiDTO["alertas"][number]): WorklistRebanho {
-  if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade")) throw new Error("worklist inválida");
+  if (!ehChaveWorklist(a.chave) || (a.tab !== "reproducao" && a.tab !== "sanidade" && a.tab !== "producao")) throw new Error("worklist inválida");
   return { chave: a.chave, label: a.titulo, quantidade: a.quantidade, severidade: a.severidade === "alta" ? "critico" : a.severidade === "media" ? "atencao" : "informativo", tab: a.tab, detalhe: a.explicacao, acao: acaoPorWorklist[a.chave], itens: a.itens ?? [] };
 }
 export const obterWorklist = (chave: ChaveWorklistRebanho, signal?: AbortSignal) => req<WorklistApiDTO>(`/rebanho/worklists/${chave}`, { signal }).then((r) => adaptarWorklist(r.worklist));

@@ -52,6 +52,7 @@ export const REBANHO_WORKLISTS = {
   "parto-proximo": "reproducao",
   "ccs-alta": "sanidade",
   "carencia": "sanidade",
+  "producao-caindo": "producao",
 } as const;
 
 export type RebanhoWorklistChave = keyof typeof REBANHO_WORKLISTS;
@@ -69,7 +70,7 @@ export function isRebanhoWorklistChave(chave: string): chave is RebanhoWorklistC
 /** Lê somente combinações canônicas de aba + chave; parâmetros extras são ignorados. */
 export function parseRotaWorklistRebanho(pathname: string, search = ""): RotaWorklistRebanho | null {
   const tab = pathToTab(pathname);
-  if (tab !== "reb-reproducao" && tab !== "reb-sanidade") return null;
+  if (tab !== "reb-reproducao" && tab !== "reb-sanidade" && tab !== "reb-producao") return null;
   const chave = new URLSearchParams(search).get("worklist");
   if (!chave || !isRebanhoWorklistChave(chave)) return null;
   const worklistTab = REBANHO_WORKLISTS[chave];
