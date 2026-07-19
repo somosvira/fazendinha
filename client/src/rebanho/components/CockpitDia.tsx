@@ -1,5 +1,6 @@
 import { useCockpitHoje, type CockpitContadorDTO, type WorklistRebanho } from "../api";
 import { fmtBRL } from "@/components/charts";
+import { ActivityPill } from "@/components/Gastos";
 import type { RebanhoTab } from "../nav";
 
 const LABEL: Record<CockpitContadorDTO["categoria"], string> = {
@@ -35,6 +36,13 @@ export function CockpitDia({ alertas, onNav, onAbrirWorklist }: {
 
   const saldoCls = (v: number) => (v < 0 ? "text-prejuizo" : "text-foreground");
 
+  // Quebra do saldo do mês por atividade (Σ == saldoMes). Leite e café puros; outros = residual.
+  const porAtividade: { atv: "leite" | "cafe" | "outros"; valor: number }[] = [
+    { atv: "leite", valor: data.saldoLeite },
+    { atv: "cafe", valor: data.saldoCafe },
+    { atv: "outros", valor: data.saldoOutros },
+  ];
+
   return (
     <section className="mb-5 rounded-xl border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3" aria-label="Resumo do dia">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Resumo do dia</div>
@@ -60,6 +68,16 @@ export function CockpitDia({ alertas, onNav, onAbrirWorklist }: {
           <p className="min-h-8 text-xs leading-[1.3] text-ink-3">Saldo no mês</p>
           <p className={`mt-1.5 font-serif text-2xl font-medium tabular-nums ${saldoCls(data.saldoMes)}`}>{fmtBRL(data.saldoMes, { compact: true })}</p>
         </div>
+      </div>
+      {/* Quebra do saldo do mês por atividade (leite/café/outros) — Σ == saldo no mês. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5" aria-label="Saldo do mês por atividade">
+        <span className="text-[11px] uppercase tracking-[.1em] text-ink-3">No mês por atividade</span>
+        {porAtividade.map(({ atv, valor }) => (
+          <span key={atv} className="inline-flex items-center gap-1.5">
+            <ActivityPill atv={atv} />
+            <span className={`text-sm font-medium tabular-nums ${saldoCls(valor)}`}>{fmtBRL(valor, { compact: true })}</span>
+          </span>
+        ))}
       </div>
     </section>
   );

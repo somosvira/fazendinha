@@ -14,12 +14,25 @@ export interface AlertaResumo {
   severidade: SeveridadeAlerta;
 }
 
+// Totais financeiros do mês por atividade — recorte já agregado por buildDashboard({from,to}).
+// Só os campos que o Cockpit precisa p/ quebrar o saldo do mês em leite/café/outros.
+export interface MesPorAtividade {
+  receitaLeite: number;
+  custeioLeitePuro: number;
+  investLeite: number;
+  receitaCafe: number;
+  custeioCafe: number;
+  investCafe: number;
+  totalGeral: number; // fluxo líquido do mês (== fluxoMes); outros = totalGeral − leite − café
+}
+
 export interface CockpitInput {
   alertas: AlertaResumo[];       // worklists canônicas do dashboard do rebanho
   estoqueAbaixoMinimo: number;   // nº de produtos abaixo do mínimo (já contado no service)
   carenciaAtivaCount: number;    // nº de vacas em lactação com carência de leite ativa
   fluxoDia: number;              // fluxo financeiro líquido de hoje (sinal preservado)
   fluxoMes: number;              // fluxo financeiro líquido do mês corrente
+  mesPorAtividade?: MesPorAtividade; // quebra do mês por atividade (ausente = modo demo/sem backend)
 }
 
 export interface CockpitContador {
@@ -33,6 +46,11 @@ export interface CockpitDTO {
   contadores: CockpitContador[];
   saldoDia: number;
   saldoMes: number;
+  // Quebra do saldo do mês por atividade — leite e café derivados dos totais; outros é o
+  // residual (absorve aquisição de animal, RN-caminhão e arredondamento). Σ == saldoMes.
+  saldoLeite: number;
+  saldoCafe: number;
+  saldoOutros: number;
 }
 
 /** Escolhe a chave de deep-link do bloco repro: maior severidade entre as presentes com quantidade
@@ -65,5 +83,13 @@ export function resumirCockpit(input: CockpitInput): CockpitDTO {
     { categoria: "estoque", quantidade: input.estoqueAbaixoMinimo, chave: null, tab: "nutricao" },
   ];
 
-  return { contadores, saldoDia: input.fluxoDia, saldoMes: input.fluxoMes };
+  // Quebra do saldo do mês por atividade. Leite e café são saldos "puros" (receita − custeio −
+  // investimento da atividade); outros = totalGeral − leite − café, absorvendo o residual
+  // (aquisição de animal, RN-caminhão, arredondamento) para manter Σ == saldoMes por construção.
+  const m = input.mesPorAtividade;
+  const saldoLeite = m ? m.receitaLeite - m.custeioLeitePuro - m.investLeite : 0;
+  const saldoCafe = m ? m.receitaCafe - m.custeioCafe - m.investCafe : 0;
+  const saldoOutros = m ? m.totalGeral - saldoLeite - saldoCafe : 0;
+
+  return { contadores, saldoDia: input.fluxoDia, saldoMes: input.fluxoMes, saldoLeite, saldoCafe, saldoOutros };
 }

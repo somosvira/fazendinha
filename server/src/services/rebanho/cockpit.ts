@@ -51,6 +51,13 @@ export async function montarCockpitHoje(propriedadeId: number | null, agora: Dat
   ]);
   const fluxoDia = dashDia.periodo?.fluxo ?? 0;
   const fluxoMes = dashMes.periodo?.fluxo ?? 0;
+  // Quebra do mês por atividade: com from/to setados, dashMes.totals23m já é o periodTotals do mês.
+  const t = dashMes.totals23m;
+  const mesPorAtividade = {
+    receitaLeite: t.receitaLeite, custeioLeitePuro: t.custeioLeitePuro, investLeite: t.investLeite,
+    receitaCafe: t.receitaCafe, custeioCafe: t.custeioCafe, investCafe: t.investCafe,
+    totalGeral: t.totalGeral,
+  };
 
-  return resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, fluxoDia, fluxoMes });
+  return resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, fluxoDia, fluxoMes, mesPorAtividade });
 }
