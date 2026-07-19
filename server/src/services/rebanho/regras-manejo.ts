@@ -4,6 +4,7 @@ import type {
   ChaveWorklistRebanho,
   EventoConcepcaoDashboardIn,
   ParametrosDashboard,
+  VacinaWorklistIn,
   WorklistRebanhoDTO,
 } from "./dashboard.types.js";
 import { LIMIAR_QUEDA_PCT } from "./producao.recompute.js";
@@ -66,6 +67,7 @@ export function construirWorklists(
   hoje: string,
   parametros: ParametrosDashboard,
   carencias: CarenciaWorklistIn[] = [],
+  vacinasPendentes: VacinaWorklistIn[] = [],
 ): WorklistRebanhoDTO[] {
   const eventosPorAnimal = new Map<number, EventoConcepcaoDashboardIn[]>();
   for (const evento of eventos) {
@@ -157,6 +159,22 @@ export function construirWorklists(
     .sort((a, b) => (b.resumo?.producaoMediaDia ?? 0) - (a.resumo?.producaoMediaDia ?? 0) || compararAnimal(a, b))
     .map((a) => item(a, `Produção em queda (DEL ${a.resumo!.del}). Investigar dieta, cio ou sanidade.`, a.resumo?.producaoMediaDia ?? null, "L/dia", null));
 
+  // Vacinas agendadas pendentes (vencidas + próximas), já resolvidas no I/O via statusVacina.
+  // Ordena vencidas antes de próximas; dentro de cada grupo, pela data prevista (mais antiga antes).
+  // Ação leve = marcar aplicada (tratada no client); aqui é worklist de visualização.
+  const rankStatus = (s: "vencida" | "proxima") => (s === "vencida" ? 0 : 1);
+  const vacinaItens = vacinasPendentes
+    .filter((v) => animalPorId.has(v.animalId))
+    .slice()
+    .sort((a, b) => rankStatus(a.status) - rankStatus(b.status) || a.dataPrevista.localeCompare(b.dataPrevista))
+    .map((v) => {
+      const a = animalPorId.get(v.animalId)!;
+      const motivo = v.status === "vencida"
+        ? `Vacina ${v.vacina} vencida (prevista ${v.dataPrevista}, ${Math.abs(v.diasParaData)} dias de atraso).`
+        : `Vacina ${v.vacina} prevista para ${v.dataPrevista} (em ${v.diasParaData} dias).`;
+      return item(a, motivo, v.diasParaData, "dias", v.dataPrevista);
+    });
+
   const montar = (base: Omit<WorklistRebanhoDTO, "quantidade" | "itens">, itens: WorklistRebanhoDTO["itens"]): WorklistRebanhoDTO => ({ ...base, quantidade: itens.length, itens });
   return [
     montar({ chave: "secagem-atrasada", titulo: "Secagens atrasadas", explicacao: "Vacas prenhes cuja previsão de secagem já venceu.", severidade: "alta", tab: "reproducao", acao: { tipo: "SECAGEM", rotulo: "Registrar secagem" } }, secagem),
@@ -166,6 +184,7 @@ export function construirWorklists(
     montar({ chave: "parto-proximo", titulo: "Partos previstos em até 30 dias", explicacao: "Vacas prenhes no último mês esperado de gestação.", severidade: "baixa", tab: "reproducao", acao: { tipo: "PARTO", rotulo: "Registrar parto" } }, partos),
     montar({ chave: "carencia", titulo: "Leite em carência", explicacao: "Vacas cujo leite não deve ser vendido enquanto durar a carência do medicamento.", severidade: "alta", tab: "sanidade" }, carenciaItens),
     montar({ chave: "producao-caindo", titulo: "Produção em queda", explicacao: `Vacas em lactação com queda de produção acima de ${LIMIAR_QUEDA_PCT}% entre os controles recentes.`, severidade: "media", tab: "producao" }, producaoCaindo),
+    montar({ chave: "vacina-pendente", titulo: "Vacinas pendentes", explicacao: "Vacinas agendadas vencidas ou a vencer nos próximos dias.", severidade: "media", tab: "sanidade" }, vacinaItens),
   ];
 }
 

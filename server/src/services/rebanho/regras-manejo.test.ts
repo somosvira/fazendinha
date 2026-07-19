@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AnimalDashboardIn, EventoConcepcaoDashboardIn, CarenciaWorklistIn } from "./dashboard.types.js";
+import type { AnimalDashboardIn, EventoConcepcaoDashboardIn, CarenciaWorklistIn, VacinaWorklistIn } from "./dashboard.types.js";
 import { construirWorklists, ESPERA_DG_DIAS } from "./regras-manejo.js";
 
 const parametros = { pevDias: 60, gestacaoDias: 283, secagemAntec: 60, ccsAlto: 400 };
@@ -51,7 +51,7 @@ describe("worklists canônicas de manejo", () => {
     expect(worklists.find((x) => x.chave === "parto-proximo")!.itens.map((x) => x.animalId)).toEqual([2, 10]);
     for (const worklist of worklists) expect(worklist.quantidade).toBe(worklist.itens.length);
     expect(worklists.map((x) => [x.chave, x.acao?.tipo ?? null])).toEqual([
-      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null], ["producao-caindo", null],
+      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null], ["producao-caindo", null], ["vacina-pendente", null],
     ]);
   });
 });
@@ -137,5 +137,46 @@ describe("worklist producao-caindo", () => {
   it("ordena da maior para a menor produção (quem ainda produz mais, mais urgente investigar)", () => {
     const animais = [emLact(1, 120, "descendo", 12), emLact(2, 120, "descendo", 28), emLact(3, 120, "descendo", 20)];
     expect(wl(animais).itens.map((i) => i.animalId)).toEqual([2, 3, 1]);
+  });
+});
+
+describe("worklist vacina-pendente", () => {
+  const listasV = (animais: AnimalDashboardIn[], vacinas: VacinaWorklistIn[]) =>
+    construirWorklists(animais, [], "2026-06-30", parametros, [], vacinas);
+  const wl = (animais: AnimalDashboardIn[], vacinas: VacinaWorklistIn[]) => listasV(animais, vacinas).find((x) => x.chave === "vacina-pendente")!;
+  const vac = (animalId: number, vacinaId: number, status: "vencida" | "proxima", dataPrevista: string, diasParaData: number): VacinaWorklistIn =>
+    ({ animalId, vacinaId, vacina: "Aftosa", status, dataPrevista, diasParaData });
+
+  it("lista as vacinas pendentes (vencidas antes de próximas)", () => {
+    const animais = [animal(1, "PEV"), animal(2, "PEV")];
+    const vacinas = [
+      vac(1, 10, "proxima", "2026-07-05", 5),
+      vac(2, 20, "vencida", "2026-06-20", -10),
+    ];
+    const w = wl(animais, vacinas);
+    expect(w.quantidade).toBe(2);
+    expect(w.itens.map((i) => i.animalId)).toEqual([2, 1]); // vencida (animal 2) antes de próxima (animal 1)
+  });
+
+  it("dentro do mesmo status, ordena pela data prevista (mais antiga primeiro)", () => {
+    const animais = [animal(1, "PEV"), animal(2, "PEV")];
+    const vacinas = [vac(1, 10, "vencida", "2026-06-25", -5), vac(2, 20, "vencida", "2026-06-10", -20)];
+    expect(wl(animais, vacinas).itens.map((i) => i.animalId)).toEqual([2, 1]);
+  });
+
+  it("ignora vacina de animal fora do dashboard", () => {
+    const vacinas = [vac(99, 10, "vencida", "2026-06-20", -10)];
+    expect(wl([animal(1, "PEV")], vacinas).quantidade).toBe(0);
+  });
+
+  it("é worklist de visualização (sem ação de registrar evento), aba sanidade", () => {
+    const w = wl([animal(1, "PEV")], [vac(1, 10, "vencida", "2026-06-20", -10)]);
+    expect(w.acao).toBeUndefined();
+    expect(w.tab).toBe("sanidade");
+    expect(w.itens[0].motivo).toContain("vencida");
+  });
+
+  it("sem vacinas pendentes → worklist vazia", () => {
+    expect(wl([animal(1, "PEV")], []).quantidade).toBe(0);
   });
 });

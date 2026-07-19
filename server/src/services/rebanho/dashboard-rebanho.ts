@@ -2,9 +2,10 @@ import { prisma } from "../../db.js";
 import { obterConfig } from "./config.js";
 import { agregarDashboard, type DashboardDTO, type PeriodoDashboard } from "./dashboard.agg.js";
 import { getParametros } from "./parametros.js";
-import type { ChaveWorklistRebanho, CarenciaWorklistIn } from "./dashboard.types.js";
+import type { ChaveWorklistRebanho, CarenciaWorklistIn, VacinaWorklistIn } from "./dashboard.types.js";
 import { obterWorklist } from "./regras-manejo.js";
 import { carenciaAtiva } from "./carencia.calc.js";
+import { statusVacina, vacinaPendente } from "./vacina.calc.js";
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 const isoOrNull = (x: Date | null) => x ? iso(x) : null;
@@ -88,6 +89,21 @@ export async function buildRebanhoDashboard(
     carencias.push({ animalId, produto: doFim?.produto ?? null, fim: ativa.fim.toISOString(), horasRestantes: ativa.horasRestantes, diasRestantes: ativa.diasRestantes });
   }
 
+  // Vacinas agendadas ainda não aplicadas (aplicadaEm null), dos animais no escopo. O status
+  // (vencida/proxima/emdia) é resolvido pelo calc puro; só as pendentes entram na worklist.
+  const vacinasRaw = await prisma.vacinaAgendada.findMany({
+    where: { aplicadaEm: null, animal: animalWhere },
+    select: { id: true, animalId: true, vacina: true, dataPrevista: true },
+  });
+  const vacinasPendentes: VacinaWorklistIn[] = [];
+  for (const v of vacinasRaw) {
+    const prev = iso(v.dataPrevista);
+    const st = statusVacina(prev, null, hoje);
+    if (!vacinaPendente(st)) continue;
+    const diasParaData = Math.round((Date.parse(`${prev}T00:00:00Z`) - Date.parse(`${hoje}T00:00:00Z`)) / 86_400_000);
+    vacinasPendentes.push({ animalId: v.animalId, vacinaId: v.id, vacina: v.vacina, dataPrevista: prev, status: st as "vencida" | "proxima", diasParaData });
+  }
+
   const parametros = new Map(parametrosRaw.map((p) => [p.chave, p]));
   const numero = (chave: "PEV_DIAS" | "GESTACAO_DIAS" | "SECAGEM_ANTEC", fallback: number) => parametros.get(chave)?.valorNumero ?? fallback;
   const ccsAceitavel = parametros.get("META_CCS")?.valorNumeroAceitavel ?? 400;
@@ -125,6 +141,7 @@ export async function buildRebanhoDashboard(
     producoesLote: producoesLoteRaw.map((p) => ({ id: p.id, grupoId: p.grupoId, data: iso(p.data), litros: Number(p.litros), atualizadoEm: p.updatedAt.toISOString() })),
     eventosConcepcao: eventosRaw.map((e) => ({ animalId: e.animalId, tipo: e.tipo, data: iso(e.data), resultado: e.resultado })),
     carencias,
+    vacinasPendentes,
     parametros: {
       pevDias: numero("PEV_DIAS", 60),
       gestacaoDias: numero("GESTACAO_DIAS", 283),
