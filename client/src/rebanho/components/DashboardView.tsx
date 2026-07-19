@@ -6,6 +6,7 @@ import type { RebanhoTab } from "../nav";
 import { type PeriodoDashboard, type WorklistRebanho, useDashboard } from "../api";
 import { DashboardHeroKpis } from "./dashboard/DashboardHeroKpis";
 import { Alertas, EstadoReprodutivo, Grupos, Indicadores } from "./dashboard/DashboardSections";
+import { CockpitDia } from "./CockpitDia";
 import { baixarDashboardCsv } from "./dashboard/dashboardExport";
 
 const PERIODOS: { chave: PeriodoDashboard; label: string }[] = [
@@ -44,6 +45,7 @@ export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTa
       </header>
 
       {(erro || data.atualizacao.avisos.length > 0) && <div className="mb-4 rounded-lg border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-4 py-2 text-xs text-ink-3">{erro ? <>Não foi possível atualizar: {erro}. <button className="font-semibold text-cafe" onClick={recarregar}>Tentar novamente</button></> : data.atualizacao.avisos.join(" · ")}</div>}
+      <CockpitDia alertas={data.alertas} onNav={onNav} onAbrirWorklist={onAbrirWorklist} />
       <div className={atualizando ? "opacity-70 transition-opacity" : "transition-opacity"} aria-busy={atualizando}>
         <DashboardHeroKpis data={data} />
         <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(300px,1fr)] items-start gap-[22px] max-[1080px]:grid-cols-1">

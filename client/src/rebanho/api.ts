@@ -442,6 +442,28 @@ export function useDashboard(periodo: PeriodoDashboard = "7d") {
   return { data, loading, atualizando, erro, recarregar };
 }
 
+// ── Cockpit do Dia (Painel "Hoje") ───────────────────────────────────────────
+export interface CockpitContadorDTO {
+  categoria: "repro" | "sanidade" | "carencia" | "estoque";
+  quantidade: number;
+  chave: ChaveWorklistRebanho | null; // deep-link p/ worklist; null p/ carência/estoque
+  tab: string;
+}
+export interface CockpitDTO { contadores: CockpitContadorDTO[]; saldoDia: number; saldoMes: number; }
+export const obterCockpitHoje = (signal?: AbortSignal) => req<CockpitDTO>(`/rebanho/hoje`, { signal });
+export function useCockpitHoje() {
+  const [data, setData] = useState<CockpitDTO | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    obterCockpitHoje(ctrl.signal)
+      .then(setData)
+      .catch((e) => { if (e?.name !== "AbortError") setErro(e instanceof Error ? e.message : "Falha ao carregar o resumo do dia."); });
+    return () => ctrl.abort();
+  }, []);
+  return { data, erro };
+}
+
 export interface IaResposta { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
 export const perguntarIA = (pergunta: string) => req<IaResposta>(`/rebanho/ia`, { method: "POST", body: JSON.stringify({ pergunta }) });
 
