@@ -1,4 +1,5 @@
 import { useLactacoes } from "../api";
+import { CurvaLactacao } from "./CurvaLactacao";
 
 const fmtL = (v: number | null) => (v == null ? "—" : `${v.toLocaleString("pt-BR")} L`);
 const fmtDias = (v: number | null) => (v == null ? "—" : `${v} d`);
@@ -33,6 +34,7 @@ export function LactacoesSection({ animalId }: { animalId: string }) {
           </span>
         )}
       </div>
+      {data!.curva && <CurvaLactacao curva={data!.curva} />}
       <div className="flex flex-col">
         {lacts.map((l) => (
           <div

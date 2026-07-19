@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { duracaoLactacao, resumoLactacoes, producaoCiclo, normalizarData } from "./lactacoes.calc.js";
+import { duracaoLactacao, resumoLactacoes, producaoCiclo, normalizarData, curvaCicloCorrente } from "./lactacoes.calc.js";
 
 const D = (s: string) => new Date(`${s}T00:00:00Z`);
 const hoje = D("2026-05-28");
@@ -163,5 +163,59 @@ describe("producaoCiclo (Test Interval Method)", () => {
       D("2023-11-01"),
     );
     expect(r).toEqual({ litros: 5455, nControles: 3 });
+  });
+});
+
+describe("curvaCicloCorrente", () => {
+  const lact = (numero: number, dtInicio: string, dtFim: string | null) =>
+    ({ numero, dtInicio: D(dtInicio), dtFim: dtFim ? D(dtFim) : null }) as any;
+
+  it("sem lactações → série vazia", () => {
+    expect(curvaCicloCorrente([], [ctrl("2026-05-01", 30)], hoje)).toEqual({ numero: null, dtInicio: null, pontos: [] });
+  });
+
+  it("usa a lactação aberta como ciclo corrente e só os controles dentro da janela", () => {
+    const lacts = [lact(1, "2024-01-01", "2024-11-01"), lact(2, "2026-05-01", null)];
+    const controles = [
+      ctrl("2024-06-01", 40), // ciclo anterior — fora
+      ctrl("2026-05-10", 28),
+      ctrl("2026-05-20", 32),
+      ctrl("2026-06-01", 25), // depois de hoje (2026-05-28) — fora
+    ];
+    const r = curvaCicloCorrente(lacts, controles, hoje);
+    expect(r.numero).toBe(2);
+    expect(r.dtInicio).toBe("2026-05-01");
+    expect(r.pontos).toEqual([
+      { data: "2026-05-10", del: 9, pesoTotal: 28 },
+      { data: "2026-05-20", del: 19, pesoTotal: 32 },
+    ]);
+  });
+
+  it("sem lactação aberta → usa a mais recente por dtInicio", () => {
+    const lacts = [lact(1, "2022-01-01", "2022-11-01"), lact(2, "2023-01-01", "2023-11-01")];
+    const controles = [ctrl("2023-03-01", 35), ctrl("2022-03-01", 20)];
+    const r = curvaCicloCorrente(lacts, controles, hoje);
+    expect(r.numero).toBe(2);
+    expect(r.dtInicio).toBe("2023-01-01");
+    // só o controle da 2ª lactação (janela 2023-01-01→2023-11-01)
+    expect(r.pontos.map((p) => p.pesoTotal)).toEqual([35]);
+  });
+
+  it("ordena pontos por data ainda que os controles venham fora de ordem", () => {
+    const lacts = [lact(1, "2026-05-01", null)];
+    const controles = [ctrl("2026-05-20", 32), ctrl("2026-05-05", 30), ctrl("2026-05-12", 31)];
+    const r = curvaCicloCorrente(lacts, controles, hoje);
+    expect(r.pontos.map((p) => p.data)).toEqual(["2026-05-05", "2026-05-12", "2026-05-20"]);
+    expect(r.pontos.map((p) => p.del)).toEqual([4, 11, 19]);
+  });
+
+  it("ciclo corrente sem nenhum controle na janela → pontos vazios mas identifica o ciclo", () => {
+    const r = curvaCicloCorrente([lact(3, "2026-05-01", null)], [ctrl("2020-01-01", 25)], hoje);
+    expect(r).toEqual({ numero: 3, dtInicio: "2026-05-01", pontos: [] });
+  });
+
+  it("inclui controle exatamente no início do ciclo (borda inclusiva)", () => {
+    const r = curvaCicloCorrente([lact(1, "2026-05-01", null)], [ctrl("2026-05-01", 27)], hoje);
+    expect(r.pontos).toEqual([{ data: "2026-05-01", del: 0, pesoTotal: 27 }]);
   });
 });
