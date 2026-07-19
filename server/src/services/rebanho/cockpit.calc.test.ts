@@ -5,18 +5,41 @@ const base: CockpitInput = {
   alertas: [],
   estoqueAbaixoMinimo: 0,
   carenciaAtivaCount: 0,
+  vacinaPendenteCount: 0,
   fluxoDia: 0,
   fluxoMes: 0,
 };
 const contador = (r: ReturnType<typeof resumirCockpit>, cat: string) => r.contadores.find((c) => c.categoria === cat)!;
 
 describe("resumirCockpit", () => {
-  it("rebanho zerado → 4 contadores com quantidade 0 e saldos 0", () => {
+  it("rebanho zerado → 5 contadores com quantidade 0, saldos 0 e dia fechado", () => {
     const r = resumirCockpit(base);
-    expect(r.contadores.map((c) => c.categoria)).toEqual(["repro", "sanidade", "carencia", "estoque"]);
+    expect(r.contadores.map((c) => c.categoria)).toEqual(["repro", "sanidade", "vacina", "carencia", "estoque"]);
     expect(r.contadores.every((c) => c.quantidade === 0)).toBe(true);
     expect(r.saldoDia).toBe(0);
     expect(r.saldoMes).toBe(0);
+    expect(r.pendenciasTotal).toBe(0);
+    expect(r.diaFechado).toBe(true);
+  });
+
+  it("5º contador é vacina (pendentes), tab sanidade, sem chave de deep-link própria", () => {
+    const r = resumirCockpit({ ...base, vacinaPendenteCount: 4 });
+    const vac = contador(r, "vacina");
+    expect(vac.quantidade).toBe(4);
+    expect(vac.tab).toBe("sanidade");
+    expect(vac.chave).toBe("vacina-pendente");
+  });
+
+  it("pendenciasTotal soma todos os contadores; diaFechado só quando tudo zero", () => {
+    const r = resumirCockpit({ ...base, carenciaAtivaCount: 2, estoqueAbaixoMinimo: 1, vacinaPendenteCount: 3 });
+    expect(r.pendenciasTotal).toBe(6);
+    expect(r.diaFechado).toBe(false);
+  });
+
+  it("uma única pendência (repro) já abre o dia", () => {
+    const r = resumirCockpit({ ...base, alertas: [{ chave: "dg-pendente", quantidade: 1, severidade: "media" }] });
+    expect(r.pendenciasTotal).toBe(1);
+    expect(r.diaFechado).toBe(false);
   });
 
   it("repro soma as 4 chaves reprodutivas e escolhe deep-link da maior severidade", () => {

@@ -30,13 +30,14 @@ export interface CockpitInput {
   alertas: AlertaResumo[];       // worklists canônicas do dashboard do rebanho
   estoqueAbaixoMinimo: number;   // nº de produtos abaixo do mínimo (já contado no service)
   carenciaAtivaCount: number;    // nº de vacas em lactação com carência de leite ativa
+  vacinaPendenteCount: number;   // nº de vacinas agendadas pendentes (vencidas + próximas)
   fluxoDia: number;              // fluxo financeiro líquido de hoje (sinal preservado)
   fluxoMes: number;              // fluxo financeiro líquido do mês corrente
   mesPorAtividade?: MesPorAtividade; // quebra do mês por atividade (ausente = modo demo/sem backend)
 }
 
 export interface CockpitContador {
-  categoria: "repro" | "sanidade" | "carencia" | "estoque";
+  categoria: "repro" | "sanidade" | "vacina" | "carencia" | "estoque";
   quantidade: number;
   chave: ChaveWorklistRebanho | null; // deep-link p/ worklist canônica; null p/ carência/estoque
   tab: TabRebanho;                     // fallback/alvo de navegação
@@ -44,6 +45,10 @@ export interface CockpitContador {
 
 export interface CockpitDTO {
   contadores: CockpitContador[];
+  // Fechamento do dia: total de pendências (soma dos contadores) e se o dia está "fechado"
+  // (nada pendente). Fecha o objetivo do ROADMAP §4.1 "fechamento com 0 itens pendentes".
+  pendenciasTotal: number;
+  diaFechado: boolean;
   saldoDia: number;
   saldoMes: number;
   // Quebra do saldo do mês por atividade — leite e café derivados dos totais; outros é o
@@ -79,9 +84,11 @@ export function resumirCockpit(input: CockpitInput): CockpitDTO {
   const contadores: CockpitContador[] = [
     { categoria: "repro", quantidade: qtdRepro, chave: chaveReproPrioritaria(input.alertas), tab: "reproducao" },
     { categoria: "sanidade", quantidade: qtd("ccs-alta"), chave: qtd("ccs-alta") > 0 ? "ccs-alta" : null, tab: "sanidade" },
+    { categoria: "vacina", quantidade: input.vacinaPendenteCount, chave: input.vacinaPendenteCount > 0 ? "vacina-pendente" : null, tab: "sanidade" },
     { categoria: "carencia", quantidade: input.carenciaAtivaCount, chave: null, tab: "producao" },
     { categoria: "estoque", quantidade: input.estoqueAbaixoMinimo, chave: null, tab: "nutricao" },
   ];
+  const pendenciasTotal = contadores.reduce((s, c) => s + c.quantidade, 0);
 
   // Quebra do saldo do mês por atividade. Leite e café são saldos "puros" (receita − custeio −
   // investimento da atividade); outros = totalGeral − leite − café, absorvendo o residual
@@ -91,5 +98,5 @@ export function resumirCockpit(input: CockpitInput): CockpitDTO {
   const saldoCafe = m ? m.receitaCafe - m.custeioCafe - m.investCafe : 0;
   const saldoOutros = m ? m.totalGeral - saldoLeite - saldoCafe : 0;
 
-  return { contadores, saldoDia: input.fluxoDia, saldoMes: input.fluxoMes, saldoLeite, saldoCafe, saldoOutros };
+  return { contadores, pendenciasTotal, diaFechado: pendenciasTotal === 0, saldoDia: input.fluxoDia, saldoMes: input.fluxoMes, saldoLeite, saldoCafe, saldoOutros };
 }

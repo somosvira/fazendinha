@@ -6,6 +6,7 @@ import type { RebanhoTab } from "../nav";
 const LABEL: Record<CockpitContadorDTO["categoria"], string> = {
   repro: "Reprodução",
   sanidade: "Sanidade",
+  vacina: "Vacinas",
   carencia: "Carência de leite",
   estoque: "Estoque baixo",
 };
@@ -13,6 +14,7 @@ const LABEL: Record<CockpitContadorDTO["categoria"], string> = {
 const TAB_ALVO: Record<CockpitContadorDTO["categoria"], RebanhoTab> = {
   repro: "reproducao",
   sanidade: "sanidade",
+  vacina: "sanidade",
   carencia: "producao",
   estoque: "estoque",
 };
@@ -45,8 +47,17 @@ export function CockpitDia({ alertas, onNav, onAbrirWorklist }: {
 
   return (
     <section className="mb-5 rounded-xl border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-3" aria-label="Resumo do dia">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Resumo do dia</div>
-      <div className="grid grid-cols-6 gap-px overflow-hidden rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--rule-soft)] max-[900px]:grid-cols-2 max-[520px]:grid-cols-1">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Resumo do dia</span>
+        {data.diaFechado ? (
+          <span className="rounded-[13px] border border-[color:var(--rule-soft)] bg-[color:var(--leite-soft)] px-[9px] py-[2px] text-sm font-semibold text-lucro">
+            ✓ dia fechado · 0 pendências
+          </span>
+        ) : (
+          <span className="text-sm font-semibold text-prejuizo">{data.pendenciasTotal} pendência{data.pendenciasTotal === 1 ? "" : "s"} hoje</span>
+        )}
+      </div>
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--rule-soft)] max-[900px]:grid-cols-2 max-[520px]:grid-cols-1">
         {data.contadores.map((c) => (
           <button
             key={c.categoria}
