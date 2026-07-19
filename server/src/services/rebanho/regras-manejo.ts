@@ -1,5 +1,6 @@
 import type {
   AnimalDashboardIn,
+  CarenciaWorklistIn,
   ChaveWorklistRebanho,
   EventoConcepcaoDashboardIn,
   ParametrosDashboard,
@@ -63,6 +64,7 @@ export function construirWorklists(
   eventos: EventoConcepcaoDashboardIn[],
   hoje: string,
   parametros: ParametrosDashboard,
+  carencias: CarenciaWorklistIn[] = [],
 ): WorklistRebanhoDTO[] {
   const eventosPorAnimal = new Map<number, EventoConcepcaoDashboardIn[]>();
   for (const evento of eventos) {
@@ -128,6 +130,23 @@ export function construirWorklists(
       return item(a, `Gestação com ${a.resumo!.diasGestacao} dias; parto esperado em ${restantes} dias.`, restantes, "dias até parto", null);
     });
 
+  // Carência de leite: uma linha por vaca com carência ativa. É worklist de VISUALIZAÇÃO
+  // ("não vender o leite" / "abrir ficha") — sem ação de registrar evento. Ordena da que
+  // termina mais tarde para a mais cedo (a mais restritiva primeiro). O item é animal-cêntrico:
+  // produto → motivo, fim da carência → dataReferencia, restante → valor + unidade.
+  const animalPorId = new Map(animais.map((a) => [a.id, a]));
+  const carenciaItens = carencias
+    .filter((c) => animalPorId.has(c.animalId))
+    .sort((a, b) => b.fim.localeCompare(a.fim))
+    .map((c) => {
+      const a = animalPorId.get(c.animalId)!;
+      const emDias = c.horasRestantes >= 24;
+      const restante = emDias ? c.diasRestantes : c.horasRestantes;
+      const unidade = emDias ? "dias restantes" : "h restantes";
+      const oQue = c.produto ? c.produto : "medicamento";
+      return item(a, `Leite em carência (${oQue}) — não vender até ${c.fim.slice(0, 10)}.`, restante, unidade, c.fim);
+    });
+
   const montar = (base: Omit<WorklistRebanhoDTO, "quantidade" | "itens">, itens: WorklistRebanhoDTO["itens"]): WorklistRebanhoDTO => ({ ...base, quantidade: itens.length, itens });
   return [
     montar({ chave: "secagem-atrasada", titulo: "Secagens atrasadas", explicacao: "Vacas prenhes cuja previsão de secagem já venceu.", severidade: "alta", tab: "reproducao", acao: { tipo: "SECAGEM", rotulo: "Registrar secagem" } }, secagem),
@@ -135,6 +154,7 @@ export function construirWorklists(
     montar({ chave: "ccs-alta", titulo: "CCS alta", explicacao: `Animais com CCS ≥ ${parametros.ccsAlto} mil/mL.`, severidade: "alta", tab: "sanidade", acao: { tipo: "EXAME", rotulo: "Registrar exame" } }, ccsAlta),
     montar({ chave: "dg-pendente", titulo: "Diagnóstico pendente", explicacao: `Fêmeas com cobertura há pelo menos ${ESPERA_DG_DIAS} dias e sem DG posterior.`, severidade: "media", tab: "reproducao", acao: { tipo: "DIAGNOSTICO", rotulo: "Registrar DG" } }, dg),
     montar({ chave: "parto-proximo", titulo: "Partos previstos em até 30 dias", explicacao: "Vacas prenhes no último mês esperado de gestação.", severidade: "baixa", tab: "reproducao", acao: { tipo: "PARTO", rotulo: "Registrar parto" } }, partos),
+    montar({ chave: "carencia", titulo: "Leite em carência", explicacao: "Vacas cujo leite não deve ser vendido enquanto durar a carência do medicamento.", severidade: "alta", tab: "sanidade" }, carenciaItens),
   ];
 }
 

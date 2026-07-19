@@ -2,8 +2,9 @@ import { prisma } from "../../db.js";
 import { obterConfig } from "./config.js";
 import { agregarDashboard, type DashboardDTO, type PeriodoDashboard } from "./dashboard.agg.js";
 import { getParametros } from "./parametros.js";
-import type { ChaveWorklistRebanho } from "./dashboard.types.js";
+import type { ChaveWorklistRebanho, CarenciaWorklistIn } from "./dashboard.types.js";
 import { obterWorklist } from "./regras-manejo.js";
+import { carenciaAtiva } from "./carencia.calc.js";
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 const isoOrNull = (x: Date | null) => x ? iso(x) : null;
@@ -31,7 +32,11 @@ export async function buildRebanhoDashboard(
     ? { data: { gte: inicioConsulta, lte: fimConsulta } }
     : { data: { gte: inicioConsulta, lte: fimConsulta }, OR: [{ grupoId: null }, { grupo: { propriedadeId } }] };
 
-  const [animaisRaw, lactacoesRaw, controlesRaw, producoesLoteRaw, eventosRaw, parametrosRaw, config] = await Promise.all([
+  // Aplicações com carência ativa das vacas em lactação (batch, sem N+1 — como agregarProducao).
+  const vacasLactacao = await prisma.animal.findMany({ where: { ...animalWhere, resumo: { del: { not: null } } }, select: { id: true } });
+  const idsLact = vacasLactacao.map((a) => a.id);
+
+  const [animaisRaw, lactacoesRaw, controlesRaw, producoesLoteRaw, eventosRaw, parametrosRaw, config, aplicsCarencia] = await Promise.all([
     prisma.animal.findMany({
       where: animalWhere,
       select: {
@@ -59,7 +64,29 @@ export async function buildRebanhoDashboard(
     }),
     getParametros(),
     obterConfig(),
+    idsLact.length
+      ? prisma.eventoSanitario.findMany({
+          where: { animalId: { in: idsLact }, tipo: "APLICACAO", carencia: { gt: 0 } },
+          select: { animalId: true, data: true, carencia: true, produto: true },
+        })
+      : Promise.resolve([] as { animalId: number; data: Date; carencia: number | null; produto: string | null }[]),
   ]);
+
+  // Resolve a carência ativa por animal (a janela que termina mais tarde) e o produto mais recente.
+  const aplicsPorAnimal = new Map<number, { data: Date; carencia: number | null; produto: string | null }[]>();
+  for (const e of aplicsCarencia) {
+    const lista = aplicsPorAnimal.get(e.animalId) ?? [];
+    lista.push({ data: e.data, carencia: e.carencia, produto: e.produto });
+    aplicsPorAnimal.set(e.animalId, lista);
+  }
+  const carencias: CarenciaWorklistIn[] = [];
+  for (const [animalId, aplics] of aplicsPorAnimal) {
+    const ativa = carenciaAtiva(aplics, agora);
+    if (!ativa) continue;
+    // produto da aplicação cuja janela é a que está em vigor (a que termina no `fim`); fallback: a mais recente.
+    const doFim = aplics.find((a) => a.carencia != null && a.carencia > 0 && new Date(a.data.getTime() + a.carencia * 3_600_000).getTime() === ativa.fim.getTime());
+    carencias.push({ animalId, produto: doFim?.produto ?? null, fim: ativa.fim.toISOString(), horasRestantes: ativa.horasRestantes, diasRestantes: ativa.diasRestantes });
+  }
 
   const parametros = new Map(parametrosRaw.map((p) => [p.chave, p]));
   const numero = (chave: "PEV_DIAS" | "GESTACAO_DIAS" | "SECAGEM_ANTEC", fallback: number) => parametros.get(chave)?.valorNumero ?? fallback;
@@ -96,6 +123,7 @@ export async function buildRebanhoDashboard(
     controles: controlesRaw.map((c) => ({ id: c.id, animalId: c.animalId, data: iso(c.data), pesoTotal: Number(c.pesoTotal), atualizadoEm: c.updatedAt.toISOString() })),
     producoesLote: producoesLoteRaw.map((p) => ({ id: p.id, grupoId: p.grupoId, data: iso(p.data), litros: Number(p.litros), atualizadoEm: p.updatedAt.toISOString() })),
     eventosConcepcao: eventosRaw.map((e) => ({ animalId: e.animalId, tipo: e.tipo, data: iso(e.data), resultado: e.resultado })),
+    carencias,
     parametros: {
       pevDias: numero("PEV_DIAS", 60),
       gestacaoDias: numero("GESTACAO_DIAS", 283),

@@ -63,6 +63,7 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   }, [abrirId]);
 
   const registrarDaWorklist = ({ item, worklist }: AcaoItemWorklist) => {
+    if (!worklist.acao) return; // worklist de só visualização (ex.: carência) não registra evento
     const animal = { id: String(item.animalId), numero: item.numero, nome: item.nome ?? "", categoria: (item.categoria ?? "VACA") as Animal["categoria"] };
     const tipoInicial = worklist.acao.dominio === "reproducao"
       ? { dominio: "reproducao" as const, tipo: worklist.acao.tipoEvento as EventoPayload["tipo"] }

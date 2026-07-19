@@ -10,7 +10,7 @@ import type { Animal, ResumoAnimal } from "../types";
 
 export function SanidadeTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirFicha, worklistChave, worklistSnapshot }: { onRegistrarEvento: (animal: Animal) => void; onRegistrarWorklist: (acao: AcaoItemWorklist) => void; onAbrirFicha: (id: string) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho }) {
   const { data, loading, erro } = useAnimais({ status: "ATIVO" });
-  if (worklistChave === "ccs-alta") return <WorklistCanonica chave={worklistChave} snapshot={worklistSnapshot} onAcao={onRegistrarWorklist} onAbrirFicha={onAbrirFicha} />;
+  if (worklistChave === "ccs-alta" || worklistChave === "carencia") return <WorklistCanonica chave={worklistChave} snapshot={worklistSnapshot} onAcao={onRegistrarWorklist} onAbrirFicha={onAbrirFicha} />;
   if (loading) return <RebMain><RebHeader eyebrow="Rebanho" title="Sanidade" /><Loader /></RebMain>;
   if (erro) return <RebMain><RebHeader title="Sanidade" /><p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p></RebMain>;
   const resumos: ResumoAnimal[] = data.map((a) => ({ ...(a.resumo ?? { statusReprodutivo: "VAZIA" }), animalId: a.id }) as ResumoAnimal);
