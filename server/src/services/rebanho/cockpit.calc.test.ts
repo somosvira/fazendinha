@@ -66,6 +66,48 @@ describe("resumirCockpit", () => {
     expect(r.saldoMes).toBe(8900);
   });
 
+  it("saldo por atividade do mês: leite/café derivados; outros absorve o residual (Σ == saldoMes)", () => {
+    const r = resumirCockpit({
+      ...base,
+      fluxoMes: 15000,
+      mesPorAtividade: {
+        receitaLeite: 30000, custeioLeitePuro: 18000, investLeite: 2000, // saldoLeite = 10000
+        receitaCafe: 8000, custeioCafe: 3000, investCafe: 1000,          // saldoCafe = 4000
+        totalGeral: 15000,                                               // saldoOutros = 1000 (residual)
+      },
+    });
+    expect(r.saldoLeite).toBe(10000);
+    expect(r.saldoCafe).toBe(4000);
+    expect(r.saldoOutros).toBe(1000);
+    // invariante: a soma das três atividades reconstitui exatamente o saldo do mês.
+    expect(r.saldoLeite + r.saldoCafe + r.saldoOutros).toBe(r.saldoMes);
+  });
+
+  it("saldo por atividade: outros absorve resíduo de aquisição/rn/arredondamento (Σ == saldoMes preservado)", () => {
+    // totalGeral inclui animalAquisicao/rnCaminhao que não entram em leite/café puros:
+    // outros = totalGeral − saldoLeite − saldoCafe deve fechar mesmo assim.
+    const r = resumirCockpit({
+      ...base,
+      fluxoMes: -5000,
+      mesPorAtividade: {
+        receitaLeite: 10000, custeioLeitePuro: 12000, investLeite: 3000, // saldoLeite = -5000
+        receitaCafe: 0, custeioCafe: 0, investCafe: 0,                    // saldoCafe = 0
+        totalGeral: -5000,                                               // saldoOutros = 0
+      },
+    });
+    expect(r.saldoLeite).toBe(-5000);
+    expect(r.saldoCafe).toBe(0);
+    expect(r.saldoOutros).toBe(0);
+    expect(r.saldoLeite + r.saldoCafe + r.saldoOutros).toBe(r.saldoMes);
+  });
+
+  it("sem mesPorAtividade → saldos por atividade zerados (fallback demo/sem backend)", () => {
+    const r = resumirCockpit({ ...base, fluxoMes: 999 });
+    expect(r.saldoLeite).toBe(0);
+    expect(r.saldoCafe).toBe(0);
+    expect(r.saldoOutros).toBe(0);
+  });
+
   it("empate de severidade em repro → determinístico pela ordem canônica das chaves", () => {
     const r = resumirCockpit({
       ...base,

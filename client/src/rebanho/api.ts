@@ -451,7 +451,15 @@ export interface CockpitContadorDTO {
   chave: ChaveWorklistRebanho | null; // deep-link p/ worklist; null p/ carência/estoque
   tab: string;
 }
-export interface CockpitDTO { contadores: CockpitContadorDTO[]; saldoDia: number; saldoMes: number; }
+export interface CockpitDTO {
+  contadores: CockpitContadorDTO[];
+  saldoDia: number;
+  saldoMes: number;
+  // Quebra do saldo do mês por atividade (Σ == saldoMes). Espelha cockpit.calc do server.
+  saldoLeite: number;
+  saldoCafe: number;
+  saldoOutros: number;
+}
 export const obterCockpitHoje = (signal?: AbortSignal) => req<CockpitDTO>(`/rebanho/hoje`, { signal });
 export function useCockpitHoje() {
   const [data, setData] = useState<CockpitDTO | null>(null);
