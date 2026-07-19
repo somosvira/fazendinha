@@ -23,6 +23,13 @@ function fmtPrevSecagem(iso?: string | null) {
   return `${d.getDate().toString().padStart(2, "0")}/${meses[d.getMonth()]}`;
 }
 
+// "DD/MM HH:mm" no fuso local — fim da carência (leite liberado a partir daí).
+function fmtDataHora(iso: string) {
+  const d = new Date(iso);
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function diasAte(iso?: string | null): number | null {
   if (!iso) return null;
   const alvo = new Date(iso).getTime();
@@ -126,6 +133,24 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           )}
         </div>
       </div>
+
+      {/* Carência de leite ativa: aviso destacado — o leite desta vaca não deve ser vendido. */}
+      {insights?.carenciaAtiva && (
+        <div
+          role="alert"
+          className="mb-[18px] flex items-center gap-3 rounded-xl border border-[#E4B7B0] bg-[#FBEDEB] px-4 py-3 text-[color:var(--prejuizo,#9A3B2E)]"
+        >
+          <span className="text-lg" aria-hidden>⚠️</span>
+          <div className="text-sm font-semibold leading-snug">
+            Leite em carência — não vender até {fmtDataHora(insights.carenciaAtiva.fim)}
+            <span className="ml-1 font-medium opacity-80">
+              (faltam {insights.carenciaAtiva.horasRestantes >= 24
+                ? `${insights.carenciaAtiva.diasRestantes} dia(s)`
+                : `${insights.carenciaAtiva.horasRestantes}h`})
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* I — KPI strip: rentabilidade primeiro, depois operacionais.
               Cada KPI responde 3 perguntas (o quê + significado + ação/impacto) */}

@@ -9,6 +9,13 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 
+// "DD/MM HH:mm" local — fim da carência (leite liberado a partir daí).
+function fmtDataHora(iso: string) {
+  const d = new Date(iso);
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function LoteForm({ onSalvo }: { onSalvo: () => void }) {
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const [grupoId, setGrupoId] = useState("");
@@ -80,11 +87,23 @@ export function ProducaoTab() {
         <>
           <h2 className="font-serif text-xl font-medium mb-3">Ranking de produção</h2>
           <RebTable>
-            <thead><tr><th>Vaca</th><th>Produção</th></tr></thead>
+            <thead><tr><th>Vaca</th><th>Produção</th><th>Carência</th></tr></thead>
             <tbody>{(data.ranking ?? []).map((r) => (
               <tr key={r.numero}>
                 <td><RebAnm>{r.nome ? <>{r.nome} <small>#{r.numero}</small></> : <>#{r.numero}</>}</RebAnm></td>
                 <td>{r.litros} L/d</td>
+                <td>
+                  {r.carencia ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-[13px] border border-[#E4B7B0] bg-[#FBEDEB] px-[9px] py-[3px] text-sm font-semibold text-[color:var(--prejuizo,#9A3B2E)]"
+                      title={`Não vender o leite desta vaca até ${fmtDataHora(r.carencia.fim)}`}
+                    >
+                      ⚠️ não vender até {fmtDataHora(r.carencia.fim)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-ink-3">—</span>
+                  )}
+                </td>
               </tr>
             ))}</tbody>
           </RebTable>
