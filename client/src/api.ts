@@ -144,3 +144,40 @@ export async function reclassificarCategoria(id: number, classificacao: "INVESTI
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
+
+// ── Simulação financeira (read-only sobre o dashboard real) ──────────────────
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers: comPropriedade({ "content-type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const b = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} em ${path}: ${b || res.statusText}`);
+  }
+  return res.json();
+}
+
+export interface SimPrecoLeite {
+  base: { litros: number; precoMedio: number; receitaLeite: number; custeioLeite: number; fluxoPeriodo: number };
+  resultado: {
+    variacaoPct: number; precoBase: number; precoSimulado: number;
+    receitaLeiteBase: number; receitaLeiteSimulada: number; deltaReceita: number;
+    margemLeiteBase: number; margemLeiteSimulada: number;
+    fluxoPeriodoBase: number; fluxoPeriodoSimulado: number;
+  };
+}
+export interface SimRacao {
+  base: { custoVacaDiaAtual: number; vacasEmLactacao: number; periodoDias: number };
+  resultado: {
+    custoVacaDiaAtual: number; custoVacaDiaSimulado: number; deltaVacaDia: number;
+    vacasEmLactacao: number; periodoDias: number;
+    custoMensalAtual: number; custoMensalSimulado: number; economiaMensal: number;
+  };
+}
+
+export const simularPrecoLeite = (variacaoPct: number) =>
+  postJson<SimPrecoLeite>("/simulacao/preco-leite", { variacaoPct });
+export const simularRacao = (params: { variacaoPct?: number; custoVacaDiaNovo?: number; periodoDias?: number }) =>
+  postJson<SimRacao>("/simulacao/racao", params);

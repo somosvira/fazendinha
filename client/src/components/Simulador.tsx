@@ -4,6 +4,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { CenariosReais } from "./CenariosReais";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -362,6 +363,8 @@ export function Simulador({ R }: { R: R }) {
           <div className="caption" style={{ fontStyle: "italic", marginTop: 4 }}>
             Modelo simplificado a partir dos dados reais (caixa, volume e custeio de Abr/26). Premissas editáveis acima — não substitui projeção contábil formal.
           </div>
+
+          <CenariosReais />
         </div>
       </div>
     </div>
