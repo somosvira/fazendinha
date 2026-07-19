@@ -455,13 +455,15 @@ export function useDashboard(periodo: PeriodoDashboard = "7d") {
 
 // ── Cockpit do Dia (Painel "Hoje") ───────────────────────────────────────────
 export interface CockpitContadorDTO {
-  categoria: "repro" | "sanidade" | "carencia" | "estoque";
+  categoria: "repro" | "sanidade" | "vacina" | "carencia" | "estoque";
   quantidade: number;
   chave: ChaveWorklistRebanho | null; // deep-link p/ worklist; null p/ carência/estoque
   tab: string;
 }
 export interface CockpitDTO {
   contadores: CockpitContadorDTO[];
+  pendenciasTotal: number; // soma dos 5 contadores
+  diaFechado: boolean;     // true quando nada pendente (ROADMAP §4.1: "fechamento com 0 itens")
   saldoDia: number;
   saldoMes: number;
   // Quebra do saldo do mês por atividade (Σ == saldoMes). Espelha cockpit.calc do server.

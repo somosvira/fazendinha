@@ -21,6 +21,8 @@ export async function montarCockpitHoje(propriedadeId: number | null, agora: Dat
   // 1) Worklists canônicas (mesma fonte dos cards de <Alertas>).
   const dashboard = await buildRebanhoDashboard("7d", propriedadeId, agora);
   const alertas: AlertaResumo[] = dashboard.alertas.map((a) => ({ chave: a.chave, quantidade: a.quantidade, severidade: a.severidade }));
+  // Vacinas pendentes: a worklist vacina-pendente já é montada no dashboard (vencidas + próximas).
+  const vacinaPendenteCount = dashboard.alertas.find((a) => a.chave === "vacina-pendente")?.quantidade ?? 0;
 
   // 2) Estoque abaixo do mínimo.
   const saldos = await listarSaldos({ propriedadeId });
@@ -59,5 +61,5 @@ export async function montarCockpitHoje(propriedadeId: number | null, agora: Dat
     totalGeral: t.totalGeral,
   };
 
-  return resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, fluxoDia, fluxoMes, mesPorAtividade });
+  return resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, vacinaPendenteCount, fluxoDia, fluxoMes, mesPorAtividade });
 }
