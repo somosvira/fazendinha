@@ -8,6 +8,7 @@ import type { ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebMain } from "@/components/rb/RebPrimitives";
+import { AlteracaoColetivaPanel } from "./AlteracaoColetivaPanel";
 
 type StatusFiltro = "ATIVO" | "BAIXADO" | "TODOS";
 const OPCOES: { k: StatusFiltro; lab: string }[] = [
@@ -19,7 +20,8 @@ const OPCOES: { k: StatusFiltro; lab: string }[] = [
 export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: string) => void; onNovo: () => void }) {
   const [status, setStatus] = useState<StatusFiltro>("ATIVO");
   const [setor, setSetor] = useState<string>("");
-  const { data, loading, erro } = useAnimais({ status, setor: setor || undefined });
+  const [bulkAberto, setBulkAberto] = useState(false);
+  const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined });
   const { data: setores } = useSetores();
 
   // ResumoAnimal[] que o HerdDomainView consome — cada animal traz seu resumo embutido.
@@ -54,7 +56,8 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         ariaLabel="Filtrar por setor"
         options={[{ value: "", label: "Todos os setores" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
       />
-      <RebButton variant="pri" className="ml-auto" onClick={onNovo}>+ Novo animal</RebButton>
+      <RebButton className="ml-auto" aria-pressed={bulkAberto} onClick={() => setBulkAberto((v) => !v)}>Alteração coletiva</RebButton>
+      <RebButton variant="pri" onClick={onNovo}>+ Novo animal</RebButton>
     </>
   );
 
@@ -70,5 +73,14 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
     );
   }
 
-  return <HerdDomainView config={DOMAINS.animal} resumos={resumos} onAbrirAnimal={onAbrirAnimal} nomes={nomes} controles={controles} />;
+  return (
+    <>
+      {bulkAberto && (
+        <RebMain>
+          <AlteracaoColetivaPanel onFechar={() => setBulkAberto(false)} onAplicado={recarregar} />
+        </RebMain>
+      )}
+      <HerdDomainView config={DOMAINS.animal} resumos={resumos} onAbrirAnimal={onAbrirAnimal} nomes={nomes} controles={controles} />
+    </>
+  );
 }

@@ -44,6 +44,9 @@ export const obterAnimal = (id: string) => req<Animal>(`/rebanho/animais/${id}`)
 export const criarAnimal = (input: AnimalForm) => req<Animal>(`/rebanho/animais`, { method: "POST", body: JSON.stringify(input) });
 export const editarAnimal = (id: string, input: Partial<AnimalForm>) => req<Animal>(`/rebanho/animais/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const darBaixa = (id: string, input: { motivo: string; data?: string }) => req<Animal>(`/rebanho/animais/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
+// Alteração coletiva: aplica grupo e/ou setor a vários animais de uma vez (grava movimentações).
+export const alterarAnimaisColetivo = (animalIds: number[], patch: { grupoId?: number | null; setor?: string | null }) =>
+  req<{ atualizados: number; movimentacoes: number }>(`/rebanho/animais/bulk`, { method: "PATCH", body: JSON.stringify({ animalIds, ...patch }) });
 export const listarGrupos = () => req<GrupoDTO[]>(`/rebanho/grupos`);
 export const listarRacas = () => req<RacaDTO[]>(`/rebanho/racas`);
 export const listarSetores = () => req<string[]>(`/rebanho/setores`);
