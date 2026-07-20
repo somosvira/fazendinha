@@ -1178,4 +1178,38 @@ export function useSaudeUbere(animalId: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Biblioteca de reprodutores + centrais de sêmen + índices genéticos ────────
+export interface CentralSemenDTO { id: number; nome: string; ativo: boolean; totalReprodutores: number }
+export interface ReprodutorDTO {
+  id: number; nome: string; codigo: string | null;
+  racaId: number | null; racaNome: string | null;
+  centralSemenId: number | null; centralNome: string | null;
+  ptaLeite: number | null; ptaGordura: number | null; ptaProteina: number | null; tpi: number | null; ativo: boolean;
+}
+export interface ResumoReprodutoresDTO {
+  total: number; mediaPtaLeite: number | null; mediaPtaGordura: number | null; mediaPtaProteina: number | null; mediaTpi: number | null;
+  melhorLeiteId: number | null; melhorTpiId: number | null;
+}
+export interface BibliotecaReprodutoresDTO { reprodutores: ReprodutorDTO[]; resumo: ResumoReprodutoresDTO }
+export interface ReprodutorInput {
+  nome: string; codigo?: string | null; racaId?: number | null; centralSemenId?: number | null;
+  ptaLeite?: number | null; ptaGordura?: number | null; ptaProteina?: number | null; tpi?: number | null; ativo?: boolean;
+}
+
+export const listarCentraisSemen = () => req<CentralSemenDTO[]>(`/rebanho/centrais-semen`);
+export const criarCentralSemen = (body: { nome: string }) => req<CentralSemenDTO>(`/rebanho/centrais-semen`, { method: "POST", body: JSON.stringify(body) });
+export const excluirCentralSemen = (id: number) => req<{ ok: true }>(`/rebanho/centrais-semen/${id}`, { method: "DELETE" });
+export const listarReprodutores = (incluirInativos = false) => req<BibliotecaReprodutoresDTO>(`/rebanho/reprodutores${incluirInativos ? "?inativos=1" : ""}`);
+export const criarReprodutor = (body: ReprodutorInput) => req<ReprodutorDTO>(`/rebanho/reprodutores`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarReprodutor = (id: number, body: Partial<ReprodutorInput>) => req<ReprodutorDTO>(`/rebanho/reprodutores/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirReprodutor = (id: number) => req<{ ok: true }>(`/rebanho/reprodutores/${id}`, { method: "DELETE" });
+
+export function useReprodutores(incluirInativos = false) {
+  const [data, setData] = useState<BibliotecaReprodutoresDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarReprodutores(incluirInativos).then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, [incluirInativos]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 export type { ResumoAnimal };

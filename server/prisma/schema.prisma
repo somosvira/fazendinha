@@ -416,6 +416,46 @@ model Raca {
   codigo  String?       @unique
   especie EspecieAnimal @default(BOVINO)
   animais Animal[]
+  reprodutores Reprodutor[]
+}
+
+// Central de sêmen (origem do sêmen dos reprodutores). Espelha CENTRALSEMEN do IDEagri.
+model CentralSemen {
+  id            Int          @id @default(autoincrement())
+  nome          String
+  ativo         Boolean      @default(true)
+  reprodutores  Reprodutor[]
+  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([propriedadeId])
+}
+
+// Biblioteca de reprodutores (touros) com origem e índices genéticos (PTAs). Espelha
+// ANIMALINFO_REPRODUTOR + GENCATALOGOINDICADOR do IDEagri (índices operacionais como colunas).
+model Reprodutor {
+  id             Int           @id @default(autoincrement())
+  nome           String
+  codigo         String? // registro/código do touro
+  raca           Raca?         @relation(fields: [racaId], references: [id])
+  racaId         Int?
+  centralSemen   CentralSemen? @relation(fields: [centralSemenId], references: [id])
+  centralSemenId Int?
+  ptaLeite       Decimal?      @db.Decimal(8, 2) // PTA leite (kg)
+  ptaGordura     Decimal?      @db.Decimal(6, 2) // PTA gordura (kg ou %)
+  ptaProteina    Decimal?      @db.Decimal(6, 2) // PTA proteína
+  tpi            Int? // índice composto (TPI/mérito líquido)
+  ativo          Boolean       @default(true)
+  propriedade    Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId  Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([propriedadeId])
+  @@index([racaId])
+  @@index([centralSemenId])
 }
 
 model Grupo {
@@ -466,6 +506,8 @@ model Propriedade {
   tanques              Tanque[]
   protocolosSanitarios ProtocoloSanitario[]
   aplicacoesSanitarias AplicacaoProtocoloSanitario[]
+  centraisSemen        CentralSemen[]
+  reprodutores         Reprodutor[]
   examesQuarto         ExameQuarto[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
