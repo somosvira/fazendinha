@@ -59,7 +59,10 @@ export async function buildRebanhoDashboard(
       select: { id: true, grupoId: true, data: true, litros: true, updatedAt: true },
     }),
     prisma.eventoReprodutivo.findMany({
-      where: { ...filhoWhere, tipo: { in: ["INSEMINACAO", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO"] } },
+      // EXAME_GINECOLOGICO entra aqui para derivar `ultimoExameGinecologico` por animal
+      // (worklist "precisa-de-exame"); é inócuo para os demais consumidores (contextoEventos
+      // só olha INSEMINACAO/TE/DIAGNOSTICO). orderBy asc → o último da lista é o mais recente.
+      where: { ...filhoWhere, tipo: { in: ["INSEMINACAO", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO", "EXAME_GINECOLOGICO"] } },
       select: { animalId: true, tipo: true, data: true, resultado: true },
       orderBy: { data: "asc" },
     }),
@@ -108,6 +111,12 @@ export async function buildRebanhoDashboard(
   const numero = (chave: "PEV_DIAS" | "GESTACAO_DIAS" | "SECAGEM_ANTEC", fallback: number) => parametros.get(chave)?.valorNumero ?? fallback;
   const ccsAceitavel = parametros.get("META_CCS")?.valorNumeroAceitavel ?? 400;
 
+  // Data do último exame ginecológico por animal (eventosRaw vem ordenado asc → o último vence).
+  const ultimoExamePorAnimal = new Map<number, string>();
+  for (const e of eventosRaw) {
+    if (e.tipo === "EXAME_GINECOLOGICO") ultimoExamePorAnimal.set(e.animalId, iso(e.data));
+  }
+
   return agregarDashboard({
     hoje,
     geradoEm: agora.toISOString(),
@@ -123,6 +132,7 @@ export async function buildRebanhoDashboard(
       grupoId: a.grupoId,
       grupoNome: a.grupo?.nome ?? null,
       setor: a.setor,
+      ultimoExameGinecologico: ultimoExamePorAnimal.get(a.id) ?? null,
       resumo: a.resumo ? {
         statusReprodutivo: a.resumo.statusReprodutivo,
         del: a.resumo.del,

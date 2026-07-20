@@ -16,8 +16,15 @@ function diasEntre(deISO: string, ateISO: string): number {
 
 // Precisa de exame quando: não está gestante confirmada, já passou do PEV (janela pós-parto para
 // voltar a ciclar), e o último exame está ausente ou vencido.
+//
+// Status que NÃO pedem exame ginecológico agora: gestação confirmada (o dicionário
+// do dashboard usa "PRENHE"; o do read-model interno, "GESTANTE" — ambos cobertos) e
+// fêmea recém-coberta aguardando DG ("INSEMINADA"), cujo próximo passo é o diagnóstico,
+// não a palpação de rotina. Sobram VAZIA e PEV (pós-parto voltando a ciclar).
+const STATUS_SEM_EXAME = new Set(["GESTANTE", "PRENHE", "INSEMINADA"]);
+
 export function precisaExame(a: AnimalExame, pevDias: number, hoje: string): boolean {
-  if (a.statusReprodutivo === "GESTANTE") return false;
+  if (a.statusReprodutivo != null && STATUS_SEM_EXAME.has(a.statusReprodutivo)) return false;
   if (a.del != null && a.del < pevDias) return false; // ainda no descanso pós-parto
   if (a.ultimoExameGinecologico == null) return true;
   return diasEntre(a.ultimoExameGinecologico, hoje) > EXAME_VALIDADE_DIAS;

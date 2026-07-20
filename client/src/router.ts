@@ -54,6 +54,7 @@ export const REBANHO_WORKLISTS = {
   "carencia": "sanidade",
   "producao-caindo": "producao",
   "vacina-pendente": "sanidade",
+  "precisa-de-exame": "reproducao",
 } as const;
 
 export type RebanhoWorklistChave = keyof typeof REBANHO_WORKLISTS;

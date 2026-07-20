@@ -8,6 +8,7 @@ import type {
   WorklistRebanhoDTO,
 } from "./dashboard.types.js";
 import { LIMIAR_QUEDA_PCT } from "./producao.recompute.js";
+import { precisaExame } from "./worklist-exame.calc.js";
 
 export const ESTADOS_ELEGIVEIS_PRENHEZ = new Set(["PEV", "VAZIA", "INSEMINADA", "PRENHE"]);
 export const ESPERA_DG_DIAS = 28;
@@ -159,6 +160,32 @@ export function construirWorklists(
     .sort((a, b) => (b.resumo?.producaoMediaDia ?? 0) - (a.resumo?.producaoMediaDia ?? 0) || compararAnimal(a, b))
     .map((a) => item(a, `Produção em queda (DEL ${a.resumo!.del}). Investigar dieta, cio ou sanidade.`, a.resumo?.producaoMediaDia ?? null, "L/dia", null));
 
+  // Precisa de exame ginecológico: vacas fora de gestação, já pós-PEV, sem exame recente
+  // (via precisaExame — worklist-exame.calc). Ordena da que está sem exame há mais tempo
+  // (ou nunca teve) para a mais recente. Ação = registrar exame ginecológico.
+  const precisaExameItens = animais
+    .filter((a) => precisaExame({
+      animalId: a.id,
+      statusReprodutivo: a.resumo?.statusReprodutivo ?? null,
+      del: a.resumo?.del ?? null,
+      ultimoExameGinecologico: a.ultimoExameGinecologico,
+    }, parametros.pevDias, hoje))
+    .sort((a, b) => {
+      // Sem exame (null) primeiro; depois, o mais antigo antes.
+      const ea = a.ultimoExameGinecologico, eb = b.ultimoExameGinecologico;
+      if (ea == null && eb == null) return compararAnimal(a, b);
+      if (ea == null) return -1;
+      if (eb == null) return 1;
+      return ea.localeCompare(eb) || compararAnimal(a, b);
+    })
+    .map((a) => {
+      const ex = a.ultimoExameGinecologico;
+      const motivo = ex == null
+        ? "Sem exame ginecológico registrado; vazia/pós-PEV — avaliar trato reprodutivo."
+        : `Último exame ginecológico em ${ex}; já venceu — reavaliar.`;
+      return item(a, motivo, ex == null ? null : diferencaDias(ex, hoje), ex == null ? null : "dias desde o exame", ex);
+    });
+
   // Vacinas agendadas pendentes (vencidas + próximas), já resolvidas no I/O via statusVacina.
   // Ordena vencidas antes de próximas; dentro de cada grupo, pela data prevista (mais antiga antes).
   // Ação leve = marcar aplicada (tratada no client); aqui é worklist de visualização.
@@ -185,6 +212,7 @@ export function construirWorklists(
     montar({ chave: "carencia", titulo: "Leite em carência", explicacao: "Vacas cujo leite não deve ser vendido enquanto durar a carência do medicamento.", severidade: "alta", tab: "sanidade" }, carenciaItens),
     montar({ chave: "producao-caindo", titulo: "Produção em queda", explicacao: `Vacas em lactação com queda de produção acima de ${LIMIAR_QUEDA_PCT}% entre os controles recentes.`, severidade: "media", tab: "producao" }, producaoCaindo),
     montar({ chave: "vacina-pendente", titulo: "Vacinas pendentes", explicacao: "Vacinas agendadas vencidas ou a vencer nos próximos dias.", severidade: "media", tab: "sanidade" }, vacinaItens),
+    montar({ chave: "precisa-de-exame", titulo: "Precisam de exame ginecológico", explicacao: `Vacas fora de gestação e acima do PEV (${parametros.pevDias} dias) sem exame ginecológico recente.`, severidade: "media", tab: "reproducao", acao: { tipo: "EXAME_GINECOLOGICO", rotulo: "Registrar exame" } }, precisaExameItens),
   ];
 }
 

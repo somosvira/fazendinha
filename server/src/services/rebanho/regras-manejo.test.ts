@@ -3,10 +3,15 @@ import type { AnimalDashboardIn, EventoConcepcaoDashboardIn, CarenciaWorklistIn,
 import { construirWorklists, ESPERA_DG_DIAS } from "./regras-manejo.js";
 
 const parametros = { pevDias: 60, gestacaoDias: 283, secagemAntec: 60, ccsAlto: 400 };
-const animal = (id: number, status: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE", extra: Record<string, unknown> = {}): AnimalDashboardIn => ({
-  id, numero: String(id), nome: `Animal ${id}`, categoria: "VACA", sexo: "F", grupoId: 1, grupoNome: "Alta", setor: "Leite",
-  resumo: { statusReprodutivo: status, del: null, producaoMediaDia: null, producaoTendencia: null, ccs: null, ccsTendencia: null, iepProjetado: null, diasGestacao: null, previsaoSecagem: null, ultimoDgData: null, ...extra },
-});
+const animal = (id: number, status: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE", extra: Record<string, unknown> = {}): AnimalDashboardIn => {
+  // `ultimoExameGinecologico` mora no topo do AnimalDashboardIn, não no resumo — extrai do extra.
+  const { ultimoExameGinecologico = null, ...resumoExtra } = extra;
+  return {
+    id, numero: String(id), nome: `Animal ${id}`, categoria: "VACA", sexo: "F", grupoId: 1, grupoNome: "Alta", setor: "Leite",
+    ultimoExameGinecologico: ultimoExameGinecologico as string | null,
+    resumo: { statusReprodutivo: status, del: null, producaoMediaDia: null, producaoTendencia: null, ccs: null, ccsTendencia: null, iepProjetado: null, diasGestacao: null, previsaoSecagem: null, ultimoDgData: null, ...resumoExtra },
+  };
+};
 const evento = (animalId: number, tipo: string, data: string): EventoConcepcaoDashboardIn => ({ animalId, tipo, data, resultado: null });
 const listas = (animais: AnimalDashboardIn[], eventos: EventoConcepcaoDashboardIn[] = [], carencias: CarenciaWorklistIn[] = []) => construirWorklists(animais, eventos, "2026-06-30", parametros, carencias);
 const ids = (chave: string, animais: AnimalDashboardIn[], eventos: EventoConcepcaoDashboardIn[] = []) => listas(animais, eventos).find((x) => x.chave === chave)!.itens.map((x) => x.animalId);
@@ -51,7 +56,7 @@ describe("worklists canônicas de manejo", () => {
     expect(worklists.find((x) => x.chave === "parto-proximo")!.itens.map((x) => x.animalId)).toEqual([2, 10]);
     for (const worklist of worklists) expect(worklist.quantidade).toBe(worklist.itens.length);
     expect(worklists.map((x) => [x.chave, x.acao?.tipo ?? null])).toEqual([
-      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null], ["producao-caindo", null], ["vacina-pendente", null],
+      ["secagem-atrasada", "SECAGEM"], ["vazia-pos-pev", "INSEMINACAO"], ["ccs-alta", "EXAME"], ["dg-pendente", "DIAGNOSTICO"], ["parto-proximo", "PARTO"], ["carencia", null], ["producao-caindo", null], ["vacina-pendente", null], ["precisa-de-exame", "EXAME_GINECOLOGICO"],
     ]);
   });
 });
@@ -178,5 +183,52 @@ describe("worklist vacina-pendente", () => {
 
   it("sem vacinas pendentes → worklist vazia", () => {
     expect(wl([animal(1, "PEV")], []).quantidade).toBe(0);
+  });
+});
+
+describe("worklist precisa-de-exame", () => {
+  // hoje = 2026-06-30, pevDias = 60, EXAME_VALIDADE_DIAS = 60.
+  const wl = (animais: AnimalDashboardIn[]) => listas(animais).find((x) => x.chave === "precisa-de-exame")!;
+
+  it("sinaliza vaca vazia pós-PEV sem exame ginecológico", () => {
+    const w = wl([animal(1, "VAZIA", { del: 90 })]);
+    expect(w.itens.map((i) => i.animalId)).toEqual([1]);
+    expect(w.itens[0].motivo).toContain("Sem exame");
+  });
+
+  it("ignora vaca prenhe (não precisa de exame)", () => {
+    expect(wl([animal(1, "PRENHE", { del: 200 })]).quantidade).toBe(0);
+  });
+
+  it("ignora vaca ainda dentro do PEV (descanso pós-parto)", () => {
+    expect(wl([animal(1, "VAZIA", { del: 30 })]).quantidade).toBe(0);
+  });
+
+  it("ignora vaca com exame recente (dentro da validade)", () => {
+    // exame há 20 dias (2026-06-10) < 60 → não precisa.
+    expect(wl([animal(1, "VAZIA", { del: 90, ultimoExameGinecologico: "2026-06-10" })]).quantidade).toBe(0);
+  });
+
+  it("sinaliza vaca com exame vencido (> validade)", () => {
+    // exame há 120 dias (2026-03-02) > 60 → precisa; motivo cita a data e traz dias desde o exame.
+    const w = wl([animal(1, "VAZIA", { del: 90, ultimoExameGinecologico: "2026-03-02" })]);
+    expect(w.quantidade).toBe(1);
+    expect(w.itens[0].motivo).toContain("2026-03-02");
+    expect(w.itens[0].unidade).toBe("dias desde o exame");
+  });
+
+  it("ordena sem-exame antes de exame-antigo; entre datas, o mais antigo primeiro", () => {
+    const animais = [
+      animal(1, "VAZIA", { del: 90, ultimoExameGinecologico: "2026-03-01" }),
+      animal(2, "VAZIA", { del: 90 }), // sem exame → primeiro
+      animal(3, "VAZIA", { del: 90, ultimoExameGinecologico: "2026-01-01" }), // mais antigo dos que têm
+    ];
+    expect(wl(animais).itens.map((i) => i.animalId)).toEqual([2, 3, 1]);
+  });
+
+  it("tem ação de registrar exame e aponta para a aba de reprodução", () => {
+    const w = wl([animal(1, "VAZIA", { del: 90 })]);
+    expect(w.acao).toEqual({ tipo: "EXAME_GINECOLOGICO", rotulo: "Registrar exame" });
+    expect(w.tab).toBe("reproducao");
   });
 });
