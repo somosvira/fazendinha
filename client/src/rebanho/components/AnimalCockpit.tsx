@@ -122,7 +122,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
             {a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}
             {insights?.score && <ScoreBadge score={insights.score} />}
           </h1>
-          <div className="mt-[7px] text-sm text-ink-3">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
+          <div className="mt-[7px] text-sm text-ink-3">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.grauSangue ? ` · grau ${a.grauSangue}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>
         </div>
         <div className="flex flex-wrap gap-2">
           {r?.statusReprodutivo === "PRENHE" && <span className="rounded-[13px] border border-[#D8C3A8] bg-[color:var(--cafe-soft)] px-[11px] py-[5px] text-sm font-semibold text-cafe">Prenhe · {r.diasGestacao} dias</span>}
