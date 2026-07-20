@@ -1212,4 +1212,20 @@ export function useReprodutores(incluirInativos = false) {
   return { data, loading, recarregar };
 }
 
+// ── Recomendação de acasalamento (ranking de touros para uma vaca) ────────────
+export interface RecomendacaoDTO { id: number; nome: string; score: number; consanguineo: boolean; motivo: string }
+export interface RecomendacaoAcasalamentoDTO { animalId: number; paiNome: string | null; recomendacoes: RecomendacaoDTO[] }
+export const obterAcasalamento = (animalId: string) => req<RecomendacaoAcasalamentoDTO>(`/rebanho/animais/${animalId}/acasalamento`);
+export function useAcasalamento(animalId: string | null) {
+  const [data, setData] = useState<RecomendacaoAcasalamentoDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = () => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    obterAcasalamento(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  };
+  useEffect(recarregar, [animalId]);
+  return { data, loading, recarregar };
+}
+
 export type { ResumoAnimal };
