@@ -1172,6 +1172,22 @@ export function useChuva() {
   return { data, loading, erro, recarregar };
 }
 
+// ── Conversão de U.A. (unidade animal / lotação) ─────────────────────────────
+export interface LinhaUaDTO { categoria: string; cabecas: number; pesoRef: number; ua: number; semPeso: boolean }
+export interface ConversaoUaDTO { linhas: LinhaUaDTO[]; totalCabecas: number; totalUA: number; uaPorHa: number | null; areaHa: number | null }
+export const obterUA = (areaHa?: number) => req<ConversaoUaDTO>(`/rebanho/ua${areaHa != null && areaHa > 0 ? `?areaHa=${areaHa}` : ""}`);
+
+export function useUA(areaHa?: number) {
+  const [data, setData] = useState<ConversaoUaDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    obterUA(areaHa).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [areaHa]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Sugestões (Painel "Hoje" preditivo) — V2 §5.1 ───────────────────────────
 export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
 export interface SugestaoDTO {
