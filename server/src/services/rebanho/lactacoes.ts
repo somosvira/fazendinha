@@ -11,11 +11,23 @@ export interface LactacaoDTO {
   dtFim: string | null;
   duracaoDias: number | null;
   motivoSecagem: string | null;
+  induzida: boolean; // lactação induzida por protocolo hormonal (sem parto) — LACTACAO.INDUZIDA do Ideagri
   producaoTotal: number | null; // medida (Ideagri) — só a última lactação
   producao305: number | null;
   producaoControles: number | null; // estimada dos controles (TIM) quando não há valor medido
   nControles: number; // controles usados na estimativa
   emCurso: boolean;
+}
+
+export class LactacaoError extends Error {
+  constructor(public code: "NAO_ENCONTRADO", message: string) { super(message); }
+}
+
+// Marca/desmarca uma lactação como induzida (decisão de manejo, feita após o registro).
+export async function marcarInducao(lactacaoId: number, induzida: boolean): Promise<{ id: number; induzida: boolean }> {
+  if (!(await prisma.lactacao.findUnique({ where: { id: lactacaoId } }))) throw new LactacaoError("NAO_ENCONTRADO", "lactação não encontrada");
+  const l = await prisma.lactacao.update({ where: { id: lactacaoId }, data: { induzida }, select: { id: true, induzida: true } });
+  return l;
 }
 
 export async function listarLactacoes(animalId: number, hoje: Date = new Date()) {
@@ -47,6 +59,7 @@ export async function listarLactacoes(animalId: number, hoje: Date = new Date())
     // duração até fim quando encerrada; DEL até dataHoje quando aberta (mesma fórmula)
     duracaoDias: duracaoLactacao(l as unknown as LactacaoRow, dataHoje),
     motivoSecagem: l.motivoSecagem,
+    induzida: l.induzida,
     producaoTotal: num(l.producaoTotal),
     producao305: num(l.producao305),
     producaoControles: derivadas[i].litros,
