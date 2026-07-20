@@ -78,8 +78,8 @@ export function ProducaoTab() {
           <h2 className="font-serif text-xl font-medium mb-3">Lotes</h2>
           <RebTable>
             <thead><tr><th>Lote</th><th>Litros/dia</th><th>Vacas</th><th>Rateio por vaca</th></tr></thead>
-            <tbody>{(data.lotes ?? []).map((l, i) => (
-              <tr key={i}><td><RebAnm>{l.grupo}</RebAnm></td><td>{l.litros != null ? `${l.litros} L` : "—"}</td><td>{l.vacas}</td><td>{l.rateio != null ? `${l.rateio} L/d` : "—"}</td></tr>
+            <tbody>{(data.lotes ?? []).map((l) => (
+              <tr key={l.grupo}><td><RebAnm>{l.grupo}</RebAnm></td><td>{l.litros != null ? `${l.litros} L` : "—"}</td><td>{l.vacas}</td><td>{l.rateio != null ? `${l.rateio} L/d` : "—"}</td></tr>
             ))}</tbody>
           </RebTable>
           {(data.lotes ?? []).length === 0 && <RebEmpty style={{ marginTop: 12 }}>Nenhuma produção de lote registrada ainda.</RebEmpty>}

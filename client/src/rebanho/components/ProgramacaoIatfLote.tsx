@@ -135,11 +135,11 @@ export function ProgramacaoIatfLote() {
                 {" · "}{p.etapasConcluidas}/{p.totalEtapas} etapas
               </div>
               <ol className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {p.agenda.map((et, i) => {
+                {p.agenda.map((et) => {
                   const passada = !p.concluido && p.proxima != null && et.data < p.proxima.data;
                   const atual = p.proxima != null && et.rotulo === p.proxima.rotulo;
                   return (
-                    <li key={i} className={`flex items-baseline gap-1 text-sm ${passada ? "text-ink-3 line-through" : atual ? "font-semibold text-[color:var(--cafe)]" : "text-[color:var(--ink)]"}`}>
+                    <li key={et.rotulo} className={`flex items-baseline gap-1 text-sm ${passada ? "text-ink-3 line-through" : atual ? "font-semibold text-[color:var(--cafe)]" : "text-[color:var(--ink)]"}`}>
                       <b className="font-semibold">{et.rotulo}</b>
                       <span className="tabular-nums text-ink-2">{fmtData(et.data)}</span>
                     </li>
