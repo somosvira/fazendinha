@@ -804,6 +804,18 @@ export function useTanques() {
   return { data, loading, recarregar };
 }
 
+// ── Agenda unificada de manejos futuros (vacinas + IATF de lote) ──────────────
+export type TipoManejo = "VACINA" | "IATF";
+export interface AgendaItemDTO { tipo: TipoManejo; data: string; titulo: string; alvo: string; status: "atrasado" | "futuro"; diasParaData: number }
+export const obterAgenda = (dias?: number) => req<AgendaItemDTO[]>(`/rebanho/agenda${dias ? `?dias=${dias}` : ""}`);
+export function useAgenda(dias?: number) {
+  const [data, setData] = useState<AgendaItemDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); obterAgenda(dias).then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, [dias]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Referências financeiras (Fatia 10): categorias + centros de custo ───────
 export interface RefDTO { id: number; nome: string }
 export const listarCategorias = () => req<RefDTO[]>(`/rebanho/categorias`);

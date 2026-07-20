@@ -3,6 +3,7 @@ import { fmtMoney } from "../../components/charts";
 import { useSugestoes, type SugestaoDTO, type TipoSugestao } from "../api";
 import { RebMain, RebEmpty } from "@/components/rb/RebPrimitives";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { AgendaSection } from "./AgendaSection";
 
 // Rótulo + cor por tipo (base.css). Cada tipo puxa a atividade/estado correspondente.
 const TIPO: Record<TipoSugestao, { label: string; cor: string }> = {
@@ -67,6 +68,8 @@ export function SugestoesTab({ onNav, onAbrirFicha }: { onNav?: (t: string) => v
       ) : (
         <div>{data.sugestoes.map((s) => <Card key={`${s.tipo}-${s.animalId}`} s={s} onNav={onNav} onAbrirFicha={onAbrirFicha} />)}</div>
       )}
+
+      <div className="mt-6"><AgendaSection /></div>
     </RebMain>
   );
 }
