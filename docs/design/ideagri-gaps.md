@@ -10,17 +10,19 @@
 
 > **Fora de escopo permanente** (não entram aqui): seção 11 do catálogo (encanamento interno do IDEagri — backup, exportadores, consulta SQL, integrações de colar/parlor) e o **financeiro** (nossa fonte é o Excel real do BPO, não o IDEagri).
 
-Atualizado em **2026-07-19** (pós-PR #168).
+Atualizado em **2026-07-20** (pós-PRs #170–#174 — bloco de prioridade alta zerado).
 
 ---
 
 ## 🔥 Prioridade alta — tem dado real na 777 para validar já
 
-- [ ] **Exames ginecológicos** (Reprodução · dado 777: **248**) — eventos clínicos reprodutivos por animal (útero/ovário/resultado) no cockpit + work-list "precisa de exame". Enum `EXAME_GINECOLOGICO` + dicionário de resultados. *Próximo candidato natural.*
-- [~] **Programação IATF/TETF por lote/data** (Reprodução · **67 + 418**) — o catálogo de protocolo já existe (#163); falta **aplicar o protocolo a um lote** com calendário de etapas D0/D7/D9/D11.
-- [ ] **Movimentação entre grupos/setores como fato histórico** (Rebanho · **1504 + 289**) — hoje temos setor/grupo atual por animal; falta o histórico de trocas ("onde a vaca esteve") no cockpit.
-- [~] **Análise de leite — tela dedicada** (Produção/Qualidade · **467**) — CCS/gordura/proteína já entram como evento; falta tela de qualidade com tendência de CCS ao longo do tempo.
-- [ ] **Princípio ativo (composição de medicamento)** (Estoque/Sanidade · **665 / 12445**) — `PRINCIPIOATIVO` + `PRODUTOPRINCIPIOATIVO`; base para carência/antibiótico. (A carência de leite já está ativa via #153; falta a base estruturada.)
+**Todas entregues (PRs #170–#174) — ver "Já entregue" abaixo.** As próximas fatias saem da lista de prioridade média.
+
+- [x] **Exames ginecológicos** (Reprodução · **248**) — evento `EXAME_GINECOLOGICO` + dicionário de achados + worklist "precisa de exame". **PR #170** (+ worklist exposta no #171).
+- [x] **Programação IATF/TETF por lote/data** (Reprodução · **67 + 418**) — aplica o protocolo do catálogo (#163) a um lote inteiro com calendário D0/D7/D9/D11. **PR #171**.
+- [x] **Movimentação entre grupos/setores como fato histórico** (Rebanho · **1504 + 289**) — `MovimentacaoAnimal` ("onde a vaca esteve") no cockpit. **PR #172**.
+- [x] **Análise de leite — tela dedicada** (Produção/Qualidade · **467**) — tendência de CCS, distribuição por faixa, piores CCS. **PR #173**.
+- [x] **Princípio ativo (composição de medicamento)** (Estoque/Sanidade · **665 / 12445**) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico. **PR #174**.
 
 ## 🟨 Prioridade média — valor de produto, mas sem dado real (replicar)
 
@@ -52,6 +54,11 @@ Atualizado em **2026-07-19** (pós-PR #168).
 
 Marcos recentes que fecharam gaps do IDEagri (ver catálogo para a lista completa de ✅):
 
+- [x] **Exames ginecológicos** (#170) — evento `EXAME_GINECOLOGICO` + achados + worklist "precisa de exame" (exposta no #171).
+- [x] **Programação IATF por lote/data** (#171) — `ProgramacaoIATFLote` aplica o protocolo (#163) a um lote com calendário D0/D7/D9/D11.
+- [x] **Movimentação lote/setor como fato histórico** (#172) — `MovimentacaoAnimal` no cockpit ("onde a vaca esteve").
+- [x] **Análise de leite (qualidade)** (#173) — tendência de CCS, distribuição por faixa e piores CCS na aba Produção.
+- [x] **Princípio ativo + composição de medicamento** (#174) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico.
 - [x] **CMT / mastite por quarto** (#168) — `ExameQuarto` por teta, mapa de úbere, quarto crônico → sugestão.
 - [x] **Histórico de lactações** (#146–147) + **pico/persistência** (#158) + **curva de lactação** (#154).
 - [x] **Correção 305 oficial** (#151–152).

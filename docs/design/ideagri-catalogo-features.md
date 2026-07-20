@@ -29,7 +29,7 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 | Resumo animal | ✅ | 631 | `ResumoAnimal` (espelha `ANIMALINFO_*`). |
 | Setor | ✅ | 5 | Local físico; filtro na aba Animal. |
 | Grupo / Tipo de grupo | ✅ | 20 | Lote de manejo (`Grupo`). |
-| Movimentação entre grupos / setores / locais | 🟡 | 1504 / 289 | Temos setor/grupo por animal; falta o **fato de movimentação** (histórico de trocas — `MOVGRUPOANIMAL` 1504, `MOVSETORANIMAL` 289) no cockpit. |
+| Movimentação entre grupos / setores / locais | ✅ | 1504 / 289 | **PR #172.** `MovimentacaoAnimal` grava o histórico de trocas de lote/setor ("onde a vaca esteve") quando o cadastro muda; seção no cockpit. |
 | Rebanho quantitativo | 🟡 | — | Temos KPIs de efetivo no Dashboard; falta o relatório "quantitativo" clássico (por categoria/idade ao longo do tempo). |
 | Alteração coletiva | ⬜ | — | Editar N animais de uma vez (bulk). Útil para operação. |
 | Seleção de animais / Filtro de animais | 🟡 | 52 | Temos filtros simples; Ideagri tem um construtor de filtros salvos (`FILTRO` 52). |
@@ -47,9 +47,9 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 | Diagnóstico reprodutivo | ✅ | ~1775 | Evento DIAGNOSTICO (P/N + parto previsto). |
 | Parto | ✅ | ~338 | Evento PARTO (tipo/crias/sexo). |
 | Transferência de embrião (TE) | 🟡 | — | Enum TRANSFERENCIA_EMBRIAO + doadora + `ehReceptora` (PR #94); falta fluxo/tela completa e coleta. |
-| **Exame ginecológico** | ⬜ | **248** | **Fatia 2 planejada.** `EXAMEANIMAL` — exames reprodutivos por animal (útero/ovário/resultado). Enum reprodutivo precisa de `EXAME_GINECOLOGICO`; `RESULTADOEXAMEGINECOLOGICO` (44) é o dicionário de resultados. |
+| **Exame ginecológico** | ✅ | **248** | **PR #170.** Evento `EXAME_GINECOLOGICO` em `EventoReprodutivo` + dicionário de achados (`ACHADOS_GINECOLOGICOS`) + worklist "precisa de exame" (exposta no #171). |
 | Diagnóstico / Tipo resultado ex. ginecológico | ⬜ | 44 | Dicionário de resultados de exame (lookup). |
-| **Programação IATF/TETF** | 🟡 | **67 + 418** | Catálogo de protocolos IATF configurável entregue (#163: D0/D7/D9/D11); falta a **programação por lote/data** (aplicar o protocolo a um lote com calendário). `PROGRAMACAOIATF` 67. |
+| **Programação IATF/TETF** | ✅ | **67 + 418** | **PR #171.** `ProgramacaoIATFLote` aplica o protocolo do catálogo (#163) a um lote inteiro num D0; calendário D0/D7/D9/D11 derivado + próxima etapa. |
 | Protocolo hormonal | ✅ | 31 | **Entregue (#163).** Catálogo de protocolos IATF configurável com etapas D0/D7/D9/D11 e princípios ativos. |
 | Estação de monta | ⬜ | vazio | Janela reprodutiva sazonal (mais usada em corte). |
 | Coleta FIV / TE | ⬜ | vazio | Aspiração/coleta de óvulos; sem tabela dedicada nesta base. |
@@ -67,7 +67,7 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 | **Secagem** | ✅ | 10 | Enum SECAGEM + retorno à fila na secagem (#150); work-list "a secar" (#156). Motivo de secagem no histórico de lactações. |
 | **Indução de lactação** | ⬜ | — | `LACTACAO.INDUZIDA` — flag de lactação induzida. |
 | **Histórico de lactações** | ✅ | **335** | **Entregue (#146–147).** `LACTACAO`: ordem, DEL, motivo de secagem, produção por lactação. Seção Lactações no cockpit + pico/persistência (#158). |
-| Análise de leite | 🟡 | 467 | `ANALISELEITE` importada como evento EXAME (CCS/gordura/proteína); falta **tela dedicada** de qualidade + tendência de CCS (parcial: tendência de CCS já no resumo). |
+| Análise de leite | ✅ | 467 | **PR #173.** Tela de qualidade na aba Produção: tendência de CCS mensal, distribuição por faixa (excelente/atenção/alarme) e piores CCS. Fonte = evento EXAME. |
 | Análise de tanque | ⬜ | vazio | Qualidade do leite do tanque (bulk). |
 | Tanque | ⬜ | vazio | Cadastro/gestão de tanques de resfriamento. |
 | CMT (mastite subclínica) | ✅ | — | **Entregue (#168).** CMT por quarto (AE/AD/PE/PD): entrada rápida das 4 tetas + mapa de úbere + detecção de quarto crônico → sugestão de secar/tratar. |
@@ -134,7 +134,7 @@ O financeiro do Ideagri (`MOVIMENTO` 380, `NOTA` 205, `CONTAGERENCIAL` 202) **n�
 | Ideagri | Status | Dado 777 | Nota |
 |---|---|---|---|
 | Produto e serviço | ✅ | 10372 | `Produto` unificado (MEDICAMENTO/RACAO/INSUMO…). |
-| Princípio ativo | ⬜ | 665 / 12445 | `PRINCIPIOATIVO` 665, `PRODUTOPRINCIPIOATIVO` 12445 — composição de medicamentos (carência, antibiótico). Relevante para carência de leite. |
+| Princípio ativo | ✅ | 665 / 12445 | **PR #174.** `PrincipioAtivo` + `ProdutoPrincipioAtivo` (composição N:N); deriva antibiótico + carência sugerida (máx). Seção na aba Estoque. Base carência/antibiótico. |
 | Lote de produto | 🟡 | — | Temos `loteProduto` em eventos; falta gestão de lotes/validade. |
 | Local de armazenamento / Movimentação entre locais | 🟡 | — | Estoque tem setor (PR #90); falta múltiplos locais físicos. |
 | Fechamento gestão e estoque | 🟡 | — | Temos `FechamentoMensal` no financeiro; estoque não tem fechamento. |
@@ -188,14 +188,14 @@ Critério: **(A)** valor operacional/de produto, **(B)** existência de dado rea
 |---|---|---|---|---|
 | ~~1~~ | ~~Histórico de lactações~~ | Produção | 335 | ✅ **Entregue** (#146–147). |
 | **2** | **Exames ginecológicos** | Reprodução | **248** | Eventos clínicos reprodutivos no cockpit + work-list "precisa de exame". Enum `EXAME_GINECOLOGICO`. **Próximo candidato.** |
-| 3 | Programação IATF/TETF por lote/data | Reprodução | 67 + 418 | Catálogo de protocolo já feito (#163); falta programar o protocolo a um lote → calendário reprodutivo. |
+| ~~3~~ ✅ | Programação IATF/TETF por lote/data | Reprodução | 67 + 418 | **PR #171** — `ProgramacaoIATFLote` aplica o protocolo (#163) a um lote com calendário D0/D7/D9/D11. |
 | 4 | Movimentação (grupos/setores) como fato histórico | Rebanho | 1504 + 289 | Histórico de trocas de lote/setor no cockpit; base para "onde a vaca esteve". |
 | ~~5~~ | ~~Correção 305 / produção corrigida~~ | Produção | 351 | ✅ **Entregue** (#151–152). |
 | 6 | Agenda de eventos / manejos futuros | Sanidade/Repro | vazio | Vacinação agendada já feita (#160); falta o calendário unificado de todos os manejos → work-lists proativas. |
 | 7 | Biblioteca de reprodutores + central de sêmen + índices genéticos | Genética | 65 + 25 + 271 | Base para recomendação de acasalamento; catálogo de touros/PTAs. |
 | 8 | Recomendação/medida de acasalamento | Genética | vazio | Motor de cruzamento dirigido. Depende de #7. |
-| 9 | Análise de leite (tela dedicada) + tanque | Produção/Qualidade | 467 | Qualidade do leite: tela dedicada de tendência CCS + tanque. (CMT/mastite por quarto já entregue em #168.) |
-| 10 | Princípio ativo (composição de medicamento) | Estoque/Sanidade | 665 | `PRINCIPIOATIVO` — composição/antibiótico. (Carência de leite já ativa via #153; falta a base de princípio ativo.) |
+| ~~9~~ ✅ | Análise de leite (tela dedicada) | Produção/Qualidade | 467 | **PR #173** — tendência CCS + distribuição por faixa + piores CCS. (Tanque/CMT ficam para fatia futura.) |
+| ~~10~~ ✅ | Princípio ativo (composição de medicamento) | Estoque/Sanidade | 665 | **PR #174** — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; deriva antibiótico + carência. (Aplicar a carência automaticamente = fatia futura.) |
 | 11 | Construtor de relatórios / dashboards montáveis | Análise | — | Diferencial de produto para revenda; grande. Baixa urgência. |
 | 12+ | Compras (cotação→pedido→nota), patrimônio/depreciação, orçamento previsto×realizado | Financeiro | vazio | Módulos financeiros do Ideagri; sem dado real, entram quando houver demanda. |
 
