@@ -4,6 +4,7 @@ import {
   listarLocaisArmazenamento, criarLocalArmazenamento, listarProdutos,
   type LocalArmazenamentoDTO, type ProdutoDTO, type StatusValidadeLote,
 } from "../api";
+import { PromptDialog } from "@/components/PromptDialog";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const STATUS_COR: Record<StatusValidadeLote, string> = { vencido: "var(--prejuizo)", "a-vencer": "var(--atencao)", ok: "var(--lucro)", "sem-validade": "var(--ink-mute)" };
@@ -16,6 +17,7 @@ export function LotesProdutoSection() {
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [locais, setLocais] = useState<LocalArmazenamentoDTO[]>([]);
   const [aberto, setAberto] = useState(false);
+  const [promptLocalAberto, setPromptLocalAberto] = useState(false);
   const [f, setF] = useState({ produtoId: "", codigo: "", validade: "", localId: "", quantidade: "" });
   const [erro, setErro] = useState<string | null>(null);
 
@@ -42,10 +44,9 @@ export function LotesProdutoSection() {
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao salvar lote."); }
   }
   async function excluir(id: number) { await excluirLoteProduto(id); recarregar(); }
-  async function novoLocal() {
-    const nome = window.prompt("Nome do local de armazenamento:");
-    if (!nome || !nome.trim()) return;
-    await criarLocalArmazenamento({ nome: nome.trim() });
+  async function confirmarNovoLocal(nome: string) {
+    setPromptLocalAberto(false);
+    await criarLocalArmazenamento({ nome });
     listarLocaisArmazenamento().then(setLocais).catch(() => {});
   }
 
@@ -76,7 +77,7 @@ export function LotesProdutoSection() {
               <option value="">—</option>{locais.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </select>
           </label>
-          <button type="button" onClick={novoLocal} className="pb-1 text-xs text-[color:var(--cafe)] hover:underline">+ local</button>
+          <button type="button" onClick={() => setPromptLocalAberto(true)} className="pb-1 text-xs text-[color:var(--cafe)] hover:underline">+ local</button>
           <label className="flex flex-col text-xs text-ink-3">Qtde<input type="number" min={0} className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></label>
           <button type="submit" className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white">Salvar</button>
           <button type="button" onClick={() => setAberto(false)} className="rounded border border-[color:var(--rule-soft)] px-3 py-1.5 text-sm text-ink-2">Cancelar</button>
@@ -100,6 +101,15 @@ export function LotesProdutoSection() {
           ))}
         </div>
       )}
+
+      <PromptDialog
+        open={promptLocalAberto}
+        title="Novo local de armazenamento"
+        label="Nome do local"
+        placeholder="Ex.: Galpão de insumos · Farmácia"
+        onConfirm={confirmarNovoLocal}
+        onCancel={() => setPromptLocalAberto(false)}
+      />
     </div>
   );
 }

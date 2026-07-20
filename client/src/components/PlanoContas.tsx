@@ -5,6 +5,7 @@ import R from "../data/rionovo";
 import { fmtMoney } from "./charts";
 import type { Tab } from "./Shell";
 import { useToast } from "./Toast";
+import { PromptDialog } from "./PromptDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -321,6 +322,8 @@ function exportarCSV() {
 export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
   const toast = useToast();
   const [search, setSearch] = useState("");
+  // Categoria alvo do prompt de nova subcategoria (null = diálogo fechado).
+  const [promptSubCat, setPromptSubCat] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [ignored, setIgnored] = useState<Record<number, boolean>>({});
 
@@ -414,12 +417,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
                 grupo={g}
                 search={search}
                 defaultOpen={i < 2}
-                onAddSub={(catNome) => {
-                  const sub = window.prompt(`Nome da nova subcategoria em "${catNome}":`);
-                  if (sub && sub.trim()) {
-                    toast.success("Subcategoria adicionada", `“${sub.trim()}” entrou em ${catNome}.`);
-                  }
-                }}
+                onAddSub={(catNome) => setPromptSubCat(catNome)}
               />
             ))
           )}
@@ -502,6 +500,20 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
       </div>
 
       {showNew && <NewCategoryModal onClose={() => setShowNew(false)} onCreate={handleCreate} />}
+
+      <PromptDialog
+        open={promptSubCat != null}
+        title="Nova subcategoria"
+        label={promptSubCat ? `Nome da subcategoria em “${promptSubCat}”` : "Nome da subcategoria"}
+        placeholder="Ex.: Adubo foliar"
+        confirmLabel="Adicionar"
+        onConfirm={(nome) => {
+          const cat = promptSubCat;
+          setPromptSubCat(null);
+          toast.success("Subcategoria adicionada", `“${nome}” entrou em ${cat}.`);
+        }}
+        onCancel={() => setPromptSubCat(null)}
+      />
     </div>
   );
 }

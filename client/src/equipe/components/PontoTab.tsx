@@ -7,6 +7,7 @@ import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { REB_INP, RebMain, RebAnm } from "@/components/rb/RebPrimitives";
+import { useToast } from "@/components/Toast";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -53,6 +54,7 @@ function linhaInicial(data: string, reg: RegistroDTO | null): Linha {
  * extra 50/100 exibidos vêm computados do backend (RegistroDTO). */
 export function PontoTab() {
   const { data: funcionarios, loading: loadFunc } = useFuncionarios(true);
+  const toast = useToast();
   const meses = useMemo(() => mesesRecentes(12), []);
   const [funcionarioId, setFuncionarioId] = useState<string>("");
   const [mes, setMes] = useState<string>(meses[0]); // mais recente com dado esperado (2026-05)
@@ -91,9 +93,9 @@ export function PontoTab() {
     try {
       const { criados } = await preencherGrade(funcionarioId, ano, m);
       recarregar();
-      if (criados === 0) alert("Nada a preencher: os dias úteis deste mês já têm registro.");
+      if (criados === 0) toast.info("Nada a preencher", "Os dias úteis deste mês já têm registro.");
     } catch (e: any) {
-      alert(e?.message ?? "Erro ao preencher a grade.");
+      toast.error("Erro ao preencher a grade", e?.message ?? undefined);
     } finally {
       setPreenchendo(false);
     }
@@ -124,7 +126,7 @@ export function PontoTab() {
       });
       recarregar(); // refaz o fetch → re-hidrata a grade com horas/extra computados
     } catch (e: any) {
-      alert(e?.message ?? "Erro ao salvar o ponto.");
+      toast.error("Erro ao salvar o ponto", e?.message ?? undefined);
       set(i, { salvando: false });
     }
   }

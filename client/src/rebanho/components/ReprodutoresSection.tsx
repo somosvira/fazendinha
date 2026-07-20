@@ -4,6 +4,7 @@ import {
   listarCentraisSemen, criarCentralSemen, listarRacas,
   type CentralSemenDTO, type RacaDTO,
 } from "../api";
+import { PromptDialog } from "@/components/PromptDialog";
 
 // Biblioteca de reprodutores (touros): nome, raça, central de sêmen e índices genéticos (PTAs).
 // Base para escolha de touro e para a recomendação de acasalamento. Espelha ANIMALINFO_REPRODUTOR.
@@ -12,6 +13,7 @@ export function ReprodutoresSection() {
   const [centrais, setCentrais] = useState<CentralSemenDTO[]>([]);
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [aberto, setAberto] = useState(false);
+  const [promptCentralAberto, setPromptCentralAberto] = useState(false);
   const [f, setF] = useState({ nome: "", codigo: "", racaId: "", centralSemenId: "", ptaLeite: "", ptaGordura: "", ptaProteina: "", tpi: "" });
   const [erro, setErro] = useState<string | null>(null);
 
@@ -38,10 +40,9 @@ export function ReprodutoresSection() {
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao salvar."); }
   }
   async function excluir(id: number) { await excluirReprodutor(id); recarregar(); }
-  async function novaCentral() {
-    const nome = window.prompt("Nome da central de sêmen:");
-    if (!nome || !nome.trim()) return;
-    await criarCentralSemen({ nome: nome.trim() });
+  async function confirmarNovaCentral(nome: string) {
+    setPromptCentralAberto(false);
+    await criarCentralSemen({ nome });
     listarCentraisSemen().then(setCentrais).catch(() => {});
   }
 
@@ -73,7 +74,7 @@ export function ReprodutoresSection() {
                 <option value="">—</option>{centrais.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </label>
-            <button type="button" onClick={novaCentral} className="pb-1 text-xs text-[color:var(--cafe)] hover:underline">+ central</button>
+            <button type="button" onClick={() => setPromptCentralAberto(true)} className="pb-1 text-xs text-[color:var(--cafe)] hover:underline">+ central</button>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col text-xs text-ink-3">PTA leite<input type="number" className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.ptaLeite} onChange={(e) => set("ptaLeite", e.target.value)} /></label>
@@ -105,6 +106,15 @@ export function ReprodutoresSection() {
           ))}
         </div>
       )}
+
+      <PromptDialog
+        open={promptCentralAberto}
+        title="Nova central de sêmen"
+        label="Nome da central"
+        placeholder="Ex.: Alta Genetics · Semex"
+        onConfirm={confirmarNovaCentral}
+        onCancel={() => setPromptCentralAberto(false)}
+      />
     </div>
   );
 }
