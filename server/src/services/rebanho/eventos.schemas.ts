@@ -18,5 +18,7 @@ export const criarEventoSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("SECAGEM"), ...comum, motivoSecagem: z.string().max(40).optional() }),
   // Exame ginecológico: achado clínico do trato (→ campo `resultado`). `metodo` (palpação/US) → `protocolo`.
   z.object({ tipo: z.literal("EXAME_GINECOLOGICO"), ...comum, resultado: z.enum(ACHADOS_GINECOLOGICOS), metodo: z.string().max(20).optional() }),
+  // Desmame do bezerro: fato de ciclo com data; `pesoKg` opcional (peso ao desmame) → campo `resultado`.
+  z.object({ tipo: z.literal("DESMAME"), ...comum, pesoKg: z.number().positive().max(1000).optional() }),
 ]);
 export type CriarEventoInput = z.infer<typeof criarEventoSchema>;

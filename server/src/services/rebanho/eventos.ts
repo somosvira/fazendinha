@@ -89,7 +89,9 @@ export async function registrarEvento(animalId: number, input: CriarEventoInput)
       data: {
         animalId, tipo: input.tipo, data: new Date(input.data), observacao: (input as any).observacao,
         reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
-        resultado: (input as any).resultado, dtPartoPrevista: d((input as any).dtPartoPrevista),
+        // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
+        resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
+        dtPartoPrevista: d((input as any).dtPartoPrevista),
         tipoParto: (input as any).tipoParto, numCrias: (input as any).numCrias, sexoCria: (input as any).sexoCria,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },

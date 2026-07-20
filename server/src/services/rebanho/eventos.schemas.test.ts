@@ -22,4 +22,9 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "TRANSFERENCIA_EMBRIAO", data: "2026-04-10", doadoraId: 42, reprodutor: "GEN 12" }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "TRANSFERENCIA_EMBRIAO", data: "2026-04-10", doadoraId: -1 }).success).toBe(false);
   });
+  it("DESMAME: só data obrigatória; pesoKg opcional e positivo", () => {
+    expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01" }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: 190 }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: -5 }).success).toBe(false);
+  });
 });

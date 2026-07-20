@@ -1,4 +1,4 @@
-export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO";
+export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
 export interface EvtRepro {
   id?: number;
   tipo: TipoEvt;

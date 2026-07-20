@@ -23,4 +23,15 @@ describe("toTimeline", () => {
     expect(t.detalhe).toContain("doadora #42");
     expect(t.marcador).toBe("receptora");
   });
+  it("DESMAME mostra peso (de resultado) e marcador desmamado", () => {
+    const t = toTimeline({ ...base, tipo: "DESMAME", data: new Date("2026-06-01"), resultado: "190" } as any);
+    expect(t.titulo).toBe("Desmame");
+    expect(t.detalhe).toContain("190 kg");
+    expect(t.marcador).toBe("desmamado");
+  });
+  it("DESMAME sem peso → sem detalhe de peso", () => {
+    const t = toTimeline({ ...base, tipo: "DESMAME", data: new Date("2026-06-01") } as any);
+    expect(t.titulo).toBe("Desmame");
+    expect(t.detalhe).toBeUndefined();
+  });
 });

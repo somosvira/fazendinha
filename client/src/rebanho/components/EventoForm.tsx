@@ -10,7 +10,7 @@ import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
-  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" },
+  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
 ];
 
 const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
@@ -80,6 +80,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     motivoSecagem: MOTIVOS_SECAGEM[0],
     // Exame ginecológico.
     achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0],
+    // Desmame (peso opcional).
+    pesoDesmame: "",
     observacao: "",
     // Sanidade.
     doenca: "", diasTratamento: "", produto: "", dose: "", carencia: "", loteProduto: "",
@@ -149,6 +151,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipo === "PARTO") { p.numCrias = Number(f.numCrias); p.sexoCria = f.sexoCria; p.tipoParto = f.tipoParto; }
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
         if (tipo === "EXAME_GINECOLOGICO") { p.resultado = f.achado as any; p.metodo = f.metodoExame || undefined; }
+        if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
         criado = await registrarEvento(animalId, p);
       } else {
         const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
@@ -293,6 +296,11 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
               <select className="rb-field-select" value={f.motivoSecagem} onChange={(e) => set("motivoSecagem", e.target.value)}>
                 {MOTIVOS_SECAGEM.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
+            </RebField>
+          )}
+          {tipo === "DESMAME" && (
+            <RebField label="Peso ao desmame (kg)">
+              <input type="number" min={0} step="0.1" value={f.pesoDesmame} onChange={(e) => set("pesoDesmame", e.target.value)} placeholder="opcional" />
             </RebField>
           )}
           {tipo === "EXAME_GINECOLOGICO" && <>
