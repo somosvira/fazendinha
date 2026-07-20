@@ -985,6 +985,21 @@ export function useCarteira() {
   return { data, loading, erro, recarregar };
 }
 
+// ── Composição do rebanho por grau de cruzamento (grau de sangue) ─────────────
+export interface GrauDistribuicao { grau: string; quantidade: number; pct: number }
+export interface ComposicaoRacialDTO { total: number; distribuicao: GrauDistribuicao[] }
+export const obterComposicaoRacial = () => req<ComposicaoRacialDTO>(`/rebanho/composicao-racial`);
+export function useComposicaoRacial() {
+  const [data, setData] = useState<ComposicaoRacialDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    obterComposicaoRacial().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Sugestões (Painel "Hoje" preditivo) — V2 §5.1 ───────────────────────────
 export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
 export interface SugestaoDTO {
