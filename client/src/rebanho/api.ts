@@ -924,6 +924,14 @@ export const obterComposicaoProduto = (produtoId: number) =>
 export const definirComposicaoProduto = (produtoId: number, principios: { principioAtivoId: number; concentracao?: string }[]) =>
   req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`, { method: "PUT", body: JSON.stringify({ principios }) });
 
+// ── Composição de produto / ração formulada (receita = ingredientes × proporção %) ──
+export interface ResumoComposicaoRacaoDTO { soma: number; somaOk: boolean; nIngredientes: number }
+export interface ItemComposicaoRacaoDTO { ingredienteId: number; ingredienteNome: string; proporcao: number }
+export interface ComposicaoRacaoDTO { produtoId: number; produtoNome: string; itens: ItemComposicaoRacaoDTO[]; resumo: ResumoComposicaoRacaoDTO }
+export const obterComposicaoRacao = (produtoId: number) => req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`);
+export const definirComposicaoRacao = (produtoId: number, itens: { ingredienteId: number; proporcao: number }[]) =>
+  req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`, { method: "PUT", body: JSON.stringify({ itens }) });
+
 export function usePrincipiosAtivos(incluirInativos = false) {
   const [data, setData] = useState<PrincipioAtivoDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
