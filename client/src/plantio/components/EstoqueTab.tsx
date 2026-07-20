@@ -9,6 +9,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebEmpty, RebAnm, RebPill, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { fmtMoneyExact } from "@/components/charts";
 
 /* Estoque de insumos da lavoura — espelha a EstoqueTab do rebanho.
  * Agora REAL (DB-backed): lê GET /api/plantio/estoque, que devolve os Produto
@@ -40,7 +41,7 @@ const TIPOS_FILTRO: TipoInsumoPlantio[] = ["FERTILIZANTE", "DEFENSIVO", "HERBICI
 // Rótulo tolerante a um `tipo` fora do mapa (ex.: OUTRO ou enum novo) — não quebra.
 const tipoLabel = (t: string) => (t in TIPO_LBL ? TIPO_LBL[t as TipoInsumoPlantio] : t);
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 export function EstoqueTab() {
