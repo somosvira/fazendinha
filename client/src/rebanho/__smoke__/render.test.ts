@@ -15,6 +15,7 @@ import { EstoqueTab } from "../components/EstoqueTab";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { CarteiraTab } from "../components/CarteiraTab";
 import { SugestoesTab } from "../components/SugestoesTab";
+import { SaudeUbereSection } from "../components/SaudeUbereSection";
 import { AnimalTab } from "../components/AnimalTab";
 import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
@@ -47,6 +48,11 @@ describe("render smoke", () => {
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
     const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
+  });
+
+  it("SaudeUbereSection renders the úbere map (loading shell in SSR)", () => {
+    // No SSR o hook fica em loading e o componente retorna null — não pode crashar.
+    expect(() => renderToString(h(SaudeUbereSection, { animalId: "1" }))).not.toThrow();
   });
 
   it("App gates on login when there is no session (email + senha)", () => {

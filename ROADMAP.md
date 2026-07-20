@@ -57,6 +57,7 @@
 - ✅ Vacinação com lembrete por data (#160) e queda de produção acionável (#159).
 - ✅ APLICACAO/VACINA em sanidade → SAÍDA automática de estoque (#161).
 - ✅ Protocolos IATF como catálogo configurável (D0/D7/D9/D11) (#163).
+- ✅ Saúde de úbere por quarto (mastite/CMT por teta) com detecção de quarto crônico → sugestão de secar/tratar.
 - ✅ Simulações financeiras read-only (preço do leite ±X%, troca de ração → custo vaca/dia) (#164).
 - ✅ Recompute automático de `ResumoAnimal` na criação de evento.
 
@@ -102,7 +103,7 @@ Objetivo: substituir o relatório Excel mensal do BPO + colocar a base do rebanh
 
 **Tema:** "tudo o que o produtor faz no dia a dia cabe no Fazendinha".
 
-**Status:** núcleo acionável ✅ entregue (jul/26). Restam só itens de captura/entrada: NF por foto no WhatsApp, CMT via tablet, histórico de mastite por quarto.
+**Status:** núcleo acionável ✅ entregue (jul/26). Sanidade por quarto (mastite/CMT) fechada. Resta só captura de NF por foto no WhatsApp.
 
 ### Objetivos
 
@@ -118,10 +119,10 @@ Objetivo: substituir o relatório Excel mensal do BPO + colocar a base do rebanh
    - ✅ Protocolos IATF como **catálogo configurável** (D0, D7, D9, D11 padrão) — #163.
 
 3. **Sanidade**:
-   - ⬜ Histórico de mastite por quarto.
+   - ✅ Histórico de mastite por quarto (AE/AD/PE/PD) com estado por teta e detecção de quarto crônico.
    - ✅ Carência ativa visível na produção (não vender o leite dessa vaca) — #153.
    - ✅ Vacinação obrigatória com lembrete por data — #160.
-   - ⬜ CMT como entrada rápida via tablet.
+   - ✅ CMT como entrada rápida por quarto (grade das 4 tetas na ficha do animal).
 
 4. **Produção**:
    - ✅ Tela de lançamento rápido (modos ORDENHA, TOTAL_DIARIO, TANQUE_LOTE).

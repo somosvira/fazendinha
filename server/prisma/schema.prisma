@@ -393,6 +393,7 @@ model Propriedade {
   vacinasAgendadas VacinaAgendada[]
   protocolosIATF   ProtocoloIATF[]
   aplicacoesIATF   AplicacaoProtocoloIATF[]
+  examesQuarto     ExameQuarto[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -469,6 +470,7 @@ model Animal {
   // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
   embrioesDoados      EventoReprodutivo[] @relation("Doadora")
   eventosSanitarios   EventoSanitario[]
+  examesQuarto        ExameQuarto[]
   vacinasAgendadas    VacinaAgendada[]
   aplicacoesIATF      AplicacaoProtocoloIATF[]
   lactacoes           Lactacao[]
@@ -493,12 +495,56 @@ model ResumoAnimal {
   producaoTendencia String?
   ccs               Int?
   ccsTendencia      String?
+  quartosCronicos   Int               @default(0)
+  quartosPerdidos   Int               @default(0)
   ultimoDgData      DateTime?         @db.Date
   ultimoDgResultado String?
   iepProjetado      Int?
   diasGestacao      Int?
   previsaoSecagem   DateTime?         @db.Date
   atualizadoEm      DateTime          @updatedAt
+}
+
+// Quarto mamário: anterior esq/dir, posterior esq/dir. Alinhado ao import legado (Fatia 19, MAMITE AD/AE/PD/PE).
+enum QuartoMamario {
+  AE
+  AD
+  PE
+  PD
+}
+
+// Escore do teste CMT (California Mastitis Test) por quarto: negativo → 3 cruzes.
+enum ScoreCmt {
+  NEGATIVO
+  TRACOS
+  UMA_CRUZ
+  DUAS_CRUZES
+  TRES_CRUZES
+}
+
+// Exame por quarto mamário (fato próprio): CMT/CCS subclínico e/ou episódio de mastite clínica.
+// Um teste CMT de uma vaca vira até 4 linhas (uma por teta). A cronicidade por quarto é derivada
+// em quarto.recompute.ts e agregada em ResumoAnimal.quartosCronicos/quartosPerdidos. Escopo de
+// propriedade nullable (multi-propriedade) — fazenda de 1 sítio não percebe a camada.
+model ExameQuarto {
+  id               Int           @id @default(autoincrement())
+  animal           Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId         Int
+  data             DateTime      @db.Date
+  quarto           QuartoMamario
+  scoreCmt         ScoreCmt? // rastreio subclínico; null se registro só clínico
+  ccs              Int? // CCS individual do quarto, se houver
+  clinica          Boolean       @default(false) // episódio de mastite clínica neste quarto
+  severidade       String? // leve/moderada/grave (só clínica)
+  resultadoCultivo String? // agente isolado (só clínica)
+  perdido          Boolean       @default(false) // quarto seco/perdido (agênese funcional)
+  observacao       String?
+  propriedade      Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
+  createdAt        DateTime      @default(now())
+
+  @@index([animalId, quarto, data])
+  @@index([propriedadeId])
 }
 
 enum TipoEventoReprodutivo {

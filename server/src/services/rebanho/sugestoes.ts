@@ -6,6 +6,8 @@
 import { prisma } from "../../db.js";
 import { getNumero } from "./parametros.js";
 import { obterCarteira } from "./carteira.js";
+import { recomputarQuartos, type Quarto } from "./quarto.recompute.js";
+import { quartoCronicoMaisGrave } from "./exames-quarto.js";
 import { montarSugestoes, type AnimalSugestao, type SugestoesDTO, type SugestaoDTO } from "./sugestoes.calc.js";
 
 const PEV_DIAS_DEFAULT = 60; // idem ParametroManejo PEV_DIAS (fallback)
@@ -25,9 +27,28 @@ export async function obterSugestoes(propriedadeId: number | null): Promise<Suge
   // 2) Campos extras do resumo (tendências, status repro, del) — uma query no pool.
   const resumos = await prisma.resumoAnimal.findMany({
     where: { animalId: { in: ids } },
-    select: { animalId: true, ccsTendencia: true, producaoTendencia: true, statusReprodutivo: true, del: true },
+    select: { animalId: true, ccsTendencia: true, producaoTendencia: true, statusReprodutivo: true, del: true, quartosCronicos: true },
   });
   const resumoPorId = new Map(resumos.map((r) => [r.animalId, r]));
+
+  // 2b) Quarto crônico (sinal fino): só p/ animais com quartosCronicos>=1. Deriva qual quarto
+  // via o mesmo calc puro, em lote (uma query de ExameQuarto). Sem cronicidade → mapa vazio.
+  const idsCronicos = resumos.filter((r) => (r.quartosCronicos ?? 0) >= 1).map((r) => r.animalId);
+  const quartoCronicoPorId = new Map<number, { quarto: string }>();
+  if (idsCronicos.length) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const exs = await prisma.exameQuarto.findMany({ where: { animalId: { in: idsCronicos } } });
+    const porAnimal = new Map<number, { quarto: Quarto; data: string; scoreCmt: any; ccs: number | null; clinica: boolean; perdido: boolean }[]>();
+    for (const e of exs) {
+      const arr = porAnimal.get(e.animalId) ?? [];
+      arr.push({ quarto: e.quarto as Quarto, data: e.data.toISOString().slice(0, 10), scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, perdido: e.perdido });
+      porAnimal.set(e.animalId, arr);
+    }
+    for (const [animalId, lista] of porAnimal) {
+      const cron = quartoCronicoMaisGrave(recomputarQuartos(lista, hoje).porQuarto);
+      if (cron) quartoCronicoPorId.set(animalId, cron);
+    }
+  }
 
   // 3) Mastites 12m EM LOTE (uma query agregada; escopo transitivo via animal).
   const desde12m = new Date(); desde12m.setMonth(desde12m.getMonth() - 12);
@@ -55,6 +76,7 @@ export async function obterSugestoes(propriedadeId: number | null): Promise<Suge
       del: r?.del ?? null,
       margemDiaEstimada: a.margemDiaEstimada,
       mastites12m: mastitesPorId.get(a.animalId) ?? 0,
+      quartoCronico: quartoCronicoPorId.get(a.animalId) ?? null,
     };
   });
 
