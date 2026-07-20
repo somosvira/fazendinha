@@ -88,7 +88,7 @@ export async function registrarEvento(animalId: number, input: CriarEventoInput)
     const e = await tx.eventoReprodutivo.create({
       data: {
         animalId, tipo: input.tipo, data: new Date(input.data), observacao: (input as any).observacao,
-        reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo,
+        reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
         resultado: (input as any).resultado, dtPartoPrevista: d((input as any).dtPartoPrevista),
         tipoParto: (input as any).tipoParto, numCrias: (input as any).numCrias, sexoCria: (input as any).sexoCria,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,

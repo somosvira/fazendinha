@@ -1,3 +1,5 @@
+import { ACHADOS_ALERTA } from "./eventos.schemas.js";
+
 export interface EventoTimelineDTO { id: string; animalId: string; data: string; dominio: "reproducao"; titulo: string; detalhe?: string; alerta?: boolean; marcador?: string; }
 const iso = (d: Date) => new Date(d).toISOString().slice(0, 10);
 
@@ -16,6 +18,10 @@ export function toTimeline(e: any): EventoTimelineDTO {
       return { ...base, titulo: `Parto — ${e.numCrias ?? 1} cria(s)${e.sexoCria ? ` ${e.sexoCria}` : ""}`, detalhe: e.tipoParto ?? undefined, marcador: "início da lactação" };
     case "SECAGEM":
       return { ...base, titulo: "Secagem", detalhe: e.motivoSecagem ?? undefined };
+    case "EXAME_GINECOLOGICO": {
+      const achado = e.resultado ? String(e.resultado).replace(/_/g, " ").toLowerCase() : "sem achado";
+      return { ...base, titulo: `Exame ginecológico — ${achado}`, detalhe: [e.protocolo, e.observacao].filter(Boolean).join(" · ") || undefined, alerta: ACHADOS_ALERTA.has(String(e.resultado)) };
+    }
     default:
       return { ...base, titulo: "Evento" };
   }
