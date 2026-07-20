@@ -5,6 +5,7 @@ import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { fmtMoneyExact } from "@/components/charts";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -12,7 +13,7 @@ const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "AJUSTE", label: "Ajuste (inventário)" },
 ];
 
-function money(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+const money = fmtMoneyExact;
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);

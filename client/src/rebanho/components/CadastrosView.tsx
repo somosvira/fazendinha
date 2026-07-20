@@ -10,6 +10,7 @@ import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";
 import { Package, Users } from "lucide-react";
+import { fmtMoneyExact } from "@/components/charts";
 
 type Sub = "produtos" | "fornecedores";
 
@@ -29,7 +30,7 @@ const TIPO_PESSOA: { id: TipoPessoa; label: string }[] = [
 ];
 const LABEL_PESSOA: Record<TipoPessoa, string> = Object.fromEntries(TIPO_PESSOA.map((t) => [t.id, t.label])) as Record<TipoPessoa, string>;
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 
 export function CadastrosView() {
   const [sub, setSub] = useState<Sub>("produtos");

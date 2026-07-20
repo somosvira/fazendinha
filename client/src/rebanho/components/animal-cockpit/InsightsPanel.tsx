@@ -6,9 +6,12 @@ import type {
   ScoreDTO, FinanceiroDTO, TendenciaDTO, InsightDTO, PercentisDTO,
   ProducaoFinanceiraDTO, EficienciaDTO, ProjecoesDTO, GenealogiaDTO,
 } from "../../api";
+import { fmtBRL as fmtBRLCanon, fmtMoneyExact } from "@/components/charts";
 
-const fmtBRL = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const fmtBRLExato = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+// Reusa os formatadores canônicos de charts.tsx (negativos com − U+2212):
+// fmtBRL sem centavos (não-compacto) e fmtMoneyExact para os valores com 2 casas.
+const fmtBRL = (n: number) => fmtBRLCanon(n, { compact: false });
+const fmtBRLExato = fmtMoneyExact;
 const fmtNum = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 const fmtPct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
