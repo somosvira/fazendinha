@@ -1,6 +1,7 @@
 import { prisma } from "../../db.js";
 import { toAnimalDTO } from "./animais.mappers.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { registrarMovimentacoes } from "./movimentacao.js";
 import type { AnimalDTO, GrupoDTO, RacaDTO } from "./types.js";
 import type { CriarAnimalInput, EditarAnimalInput, BaixaInput, ListFiltros } from "./animais.schemas.js";
 
@@ -75,21 +76,41 @@ export async function criarAnimal(input: CriarAnimalInput): Promise<AnimalDTO> {
 }
 
 export async function editarAnimal(id: number, input: EditarAnimalInput): Promise<AnimalDTO> {
-  const existing = await prisma.animal.findUnique({ where: { id } });
+  const existing = await prisma.animal.findUnique({ where: { id }, include: { grupo: { select: { nome: true } } } });
   if (!existing) throw new AnimalError("NAO_ENCONTRADO", "animal não encontrado");
   if (input.numero && input.numero !== existing.numero && (await prisma.animal.findUnique({ where: { numero: input.numero } }))) throw new AnimalError("NUMERO_DUPLICADO", `número ${input.numero} já existe`);
   await assertRefs(input);
-  const row = await prisma.animal.update({
-    where: { id },
-    data: {
-      numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria,
-      racaId: input.racaId, grauSangue: input.grauSangue,
-      dataNascimento: d(input.dataNascimento), dataEntrada: d(input.dataEntrada),
-      brincoEletronico: input.brincoEletronico, sisbov: input.sisbov,
-      maeId: input.maeId, paiNome: input.paiNome, grupoId: input.grupoId, setor: input.setor,
-      propriedadeId: input.propriedadeId, // undefined = não mexe; setado = move de sítio
-    },
-    include,
+
+  // Rótulo do grupo de destino (para o snapshot da movimentação). Só resolve quando o
+  // grupoId veio na edição e é diferente do atual — evita uma query à toa.
+  let grupoDestinoNome: string | null | undefined = undefined;
+  if (input.grupoId !== undefined && input.grupoId !== existing.grupoId) {
+    grupoDestinoNome = input.grupoId == null ? null
+      : (await prisma.grupo.findUnique({ where: { id: input.grupoId }, select: { nome: true } }))?.nome ?? null;
+  }
+
+  const row = await prisma.$transaction(async (tx) => {
+    const updated = await tx.animal.update({
+      where: { id },
+      data: {
+        numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria,
+        racaId: input.racaId, grauSangue: input.grauSangue,
+        dataNascimento: d(input.dataNascimento), dataEntrada: d(input.dataEntrada),
+        brincoEletronico: input.brincoEletronico, sisbov: input.sisbov,
+        maeId: input.maeId, paiNome: input.paiNome, grupoId: input.grupoId, setor: input.setor,
+        propriedadeId: input.propriedadeId, // undefined = não mexe; setado = move de sítio
+      },
+      include,
+    });
+    // Fato histórico de troca de lote/setor ("onde a vaca esteve") — só grava o que mudou.
+    await registrarMovimentacoes(
+      tx,
+      id,
+      { grupoId: existing.grupoId, grupoNome: existing.grupo?.nome ?? null, setor: existing.setor },
+      { grupoId: input.grupoId, grupoNome: grupoDestinoNome, setor: input.setor },
+      { propriedadeId: input.propriedadeId ?? existing.propriedadeId, motivo: input.motivoMovimentacao ?? null },
+    );
+    return updated;
   });
   return toAnimalDTO(row);
 }

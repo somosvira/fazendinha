@@ -4,6 +4,7 @@ import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema }
 import * as svc from "../../services/rebanho/animais.js";
 import { obterInsights } from "../../services/rebanho/insights.js";
 import { listarLactacoes } from "../../services/rebanho/lactacoes.js";
+import { listarMovimentacoes } from "../../services/rebanho/movimentacao.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 function handle(err: unknown): { status: 404 | 409 | 400 | 500; body: { error: string } } {
@@ -38,6 +39,12 @@ export const animaisRouter = new Hono()
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
     return c.json(await listarLactacoes(id));
+  })
+  .get("/rebanho/animais/:id/movimentacoes", async (c) => {
+    // Histórico de trocas de lote/setor ("onde a vaca esteve"). Escopo vem do id do animal.
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
+    return c.json(await listarMovimentacoes(id));
   })
   .post("/rebanho/animais", zValidator("json", criarAnimalSchema), async (c) => {
     try {
