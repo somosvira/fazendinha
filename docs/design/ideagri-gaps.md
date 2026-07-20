@@ -10,7 +10,7 @@
 
 > **Fora de escopo permanente** (não entram aqui): seção 11 do catálogo (encanamento interno do IDEagri — backup, exportadores, consulta SQL, integrações de colar/parlor) e o **financeiro** (nossa fonte é o Excel real do BPO, não o IDEagri).
 
-Atualizado em **2026-07-20** (pós-PRs #170–#186 — blocos de prioridade **alta e média** zerados; só resta prioridade baixa).
+Atualizado em **2026-07-20** (pós-PRs #170–#192 — prioridade **alta**, **média** e as **5 pequenas da baixa** fechadas; só restam as **2 grandes** da baixa: construtor de relatórios e consulta ABCZ).
 
 ---
 
@@ -42,13 +42,15 @@ Atualizado em **2026-07-20** (pós-PRs #170–#186 — blocos de prioridade **al
 
 ## 🧊 Prioridade baixa — grande, sem dado, ou diferencial futuro
 
-- [ ] **Construtor de relatórios / dashboards montáveis** (Análise · `RELATORIO` 165, `CAMPORELATORIO` 572) — usuário monta colunas/filtros/SQL. Diferencial de revenda, mas grande. Nossos painéis são fixos (mais bonitos).
-- [ ] **Correlação/consulta ABCZ** (Genética · —) — integração com associação de raça (registro genealógico).
-- [~] **Lote de produto / validade + múltiplos locais de armazenamento** (Estoque · —) — temos `loteProduto` em eventos e setor no estoque; falta gestão de lotes/validade e locais físicos múltiplos.
-- [ ] **Composição de produto (ração formulada)** (Estoque · —) — receita/composição de ração.
-- [ ] **Rebanho quantitativo (relatório clássico)** (Rebanho · —) — efetivo por categoria/idade ao longo do tempo. Temos KPIs no Dashboard; falta o relatório histórico.
-- [ ] **Clima / registro de chuva** (Análise · vazio) — estação meteorológica.
-- [ ] **Ajuste de U.A. de referência** (Nutrição · —) — unidade animal para conversão de lotação.
+**As 5 pequenas/self-contained foram entregues (PRs #188–#192).** Sobram só as **2 grandes**, deixadas de fora de propósito:
+
+- [ ] **Construtor de relatórios / dashboards montáveis** (Análise · `RELATORIO` 165, `CAMPORELATORIO` 572) — usuário monta colunas/filtros/SQL. Diferencial de revenda, mas grande. Nossos painéis são fixos (mais bonitos). **Fora de escopo por ora.**
+- [ ] **Correlação/consulta ABCZ** (Genética · —) — integração com associação de raça (registro genealógico). **Fora de escopo por ora.**
+- [x] **Rebanho quantitativo (relatório clássico)** (Rebanho · —) — efetivo por categoria × faixa etária. **PR #188**.
+- [x] **Composição de produto (ração formulada)** (Estoque · —) — receita/composição de ração (ingredientes × proporção %). **PR #189**.
+- [x] **Lote de produto / validade + múltiplos locais de armazenamento** (Estoque · —) — `LoteProduto` (código/validade/local) + `LocalArmazenamento`. **PR #190**.
+- [x] **Clima / registro de chuva** (Análise · vazio) — `RegistroChuva` (pluviômetro) + acumulado mensal. **PR #191**.
+- [x] **Ajuste de U.A. de referência** (Nutrição · —) — conversão efetivo → UA / UA/ha (reusa pesos-referência de Parâmetros). **PR #192**.
 
 ---
 
@@ -62,6 +64,7 @@ Marcos recentes que fecharam gaps do IDEagri (ver catálogo para a lista complet
 - [x] **Análise de leite (qualidade)** (#173) — tendência de CCS, distribuição por faixa e piores CCS na aba Produção.
 - [x] **Princípio ativo + composição de medicamento** (#174) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico.
 - [x] **Prioridade média completa (#176–#186):** indução de lactação (#176), grau de cruzamento (#177), desmame como evento (#178), escore de teto (#179), alteração coletiva/bulk (#180), filtro de animais salvo (#181), tanque + análise de tanque (#182), agenda de manejos (#183), protocolo sanitário (#184), biblioteca de reprodutores (#185), recomendação de acasalamento (#186).
+- [x] **5 pequenas da prioridade baixa (#188–#192):** rebanho quantitativo (#188), composição de ração formulada (#189), lote/validade + locais de armazenamento (#190), clima/registro de chuva (#191), ajuste de U.A. de referência (#192). Restam só as 2 grandes (construtor de relatórios, ABCZ), fora de escopo de propósito.
 - [x] **CMT / mastite por quarto** (#168) — `ExameQuarto` por teta, mapa de úbere, quarto crônico → sugestão.
 - [x] **Histórico de lactações** (#146–147) + **pico/persistência** (#158) + **curva de lactação** (#154).
 - [x] **Correção 305 oficial** (#151–152).
