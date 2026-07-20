@@ -45,7 +45,7 @@ Atualizado em **2026-07-20** (pós-PRs #170–#192 — prioridade **alta**, **m�
 **As 5 pequenas/self-contained foram entregues (PRs #188–#192).** Sobram só as **2 grandes**, deixadas de fora de propósito:
 
 - [ ] **Construtor de relatórios / dashboards montáveis** (Análise · `RELATORIO` 165, `CAMPORELATORIO` 572) — usuário monta colunas/filtros/SQL. Diferencial de revenda, mas grande. Nossos painéis são fixos (mais bonitos). **Fora de escopo por ora.**
-- [ ] **Correlação/consulta ABCZ** (Genética · —) — integração com associação de raça (registro genealógico). **Fora de escopo por ora.**
+- [ ] **Correlação/consulta ABCZ** (Genética · —) — integração com a associação de raça (registro genealógico oficial + comunicações). **Fora de escopo — provavelmente permanente.** A ABCZ registra **zebu de elite / puro de origem**; a Rio Novo é **laticínio comercial** de Holandês (taurino, fora da ABCZ) / Girolando. Só agrega valor a quem cria animais registrados p/ venda de genética — não a um rebanho leiteiro comercial. As partes úteis (composição racial, genealogia mãe/pai) já estão prontas. Se um dia fizer sentido, o candidato p/ leite seria Girolando/PMGZ ou controle leiteiro oficial, não ABCZ pura.
 - [x] **Rebanho quantitativo (relatório clássico)** (Rebanho · —) — efetivo por categoria × faixa etária. **PR #188**.
 - [x] **Composição de produto (ração formulada)** (Estoque · —) — receita/composição de ração (ingredientes × proporção %). **PR #189**.
 - [x] **Lote de produto / validade + múltiplos locais de armazenamento** (Estoque · —) — `LoteProduto` (código/validade/local) + `LocalArmazenamento`. **PR #190**.
