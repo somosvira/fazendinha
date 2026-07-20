@@ -571,7 +571,7 @@ function AtividadeSplit({ R }: { R: R }) {
 
 /* ========== KPI COCKPIT ========== */
 
-function KpiCockpit({ R }: { R: R }) {
+function KpiCockpit({ R, range, setRange }: { R: R; range: DateRange | null; setRange: (r: DateRange) => void }) {
   // totals23m já reflete o PERÍODO quando há filtro (backend troca por periodTotals).
   // reconciliarTotais garante a identidade: entrada − gasto === fluxo, e o gasto =
   // custeio + investimento + não-classificado (antes Receita/Custeio/Invest e o
@@ -627,6 +627,14 @@ function KpiCockpit({ R }: { R: R }) {
 
   return (
     <div className="pt-[26px]">
+      {/* Header do cockpit: eyebrow à esquerda, seletor de mês à direita — na
+          mesma linha (padrão "título + toggle" do painel de rebanho). Antes o
+          seletor morava num cabeçalho solto no topo do Dashboard, desperdiçando
+          uma faixa inteira só p/ um controle. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-[14px] font-semibold uppercase tracking-[0.16em] text-ink-3">Visão do mês</span>
+        <MonthRangePicker value={range ?? DEFAULT_RANGE} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
+      </div>
       {/* Grid com gap de 1px sobre fundo régua: as próprias frestas viram as
           linhas divisórias. Robusto a qualquer nº de colunas / quebra de linha
           (mesmo padrão do bloco Fôlego de caixa). 2 col (mobile) → 3 → 5. */}
@@ -1307,10 +1315,7 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
   return (
     <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <div className="mb-3 mt-5 flex flex-wrap items-center gap-3">
-        <MonthRangePicker value={range ?? DEFAULT_RANGE} onChange={setRange} min={FILTRO_MIN} max={FILTRO_MAX} />
-      </div>
-      <KpiCockpit R={data} />
+      <KpiCockpit R={data} range={range} setRange={setRange} />
       <FolegoCaixa R={data} />
       <GastoPorCategoria R={data} onDrill={setDrillCat} />
       <ExplorarCategoria R={data} onDrill={setDrillCat} />
