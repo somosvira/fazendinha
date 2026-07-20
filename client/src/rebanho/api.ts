@@ -145,6 +145,7 @@ export interface LactacaoDTO {
   dtFim: string | null;
   duracaoDias: number | null;
   motivoSecagem: string | null;
+  induzida: boolean; // lactação induzida por protocolo (sem parto) — LACTACAO.INDUZIDA
   producaoTotal: number | null; // medida (Ideagri) — só a última lactação
   producao305: number | null;
   producaoControles: number | null; // estimada dos controles (TIM) quando não há valor medido
@@ -175,6 +176,8 @@ export interface CurvaCicloDTO {
 export interface LactacoesResp { lactacoes: LactacaoDTO[]; resumo: ResumoLactacoesDTO; curva: CurvaCicloDTO; }
 
 export const listarLactacoes = (id: string) => req<LactacoesResp>(`/rebanho/animais/${id}/lactacoes`);
+export const marcarInducaoLactacao = (lactacaoId: number, induzida: boolean) =>
+  req<{ id: number; induzida: boolean }>(`/rebanho/lactacoes/${lactacaoId}`, { method: "PATCH", body: JSON.stringify({ induzida }) });
 
 export function useLactacoes(id: string | null) {
   const [data, setData] = useState<LactacoesResp | null>(null);

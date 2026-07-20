@@ -3,7 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema } from "../../services/rebanho/animais.schemas.js";
 import * as svc from "../../services/rebanho/animais.js";
 import { obterInsights } from "../../services/rebanho/insights.js";
-import { listarLactacoes } from "../../services/rebanho/lactacoes.js";
+import { listarLactacoes, marcarInducao, LactacaoError } from "../../services/rebanho/lactacoes.js";
+import { z } from "zod";
 import { listarMovimentacoes } from "../../services/rebanho/movimentacao.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
@@ -45,6 +46,14 @@ export const animaisRouter = new Hono()
     const id = Number(c.req.param("id"));
     if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
     return c.json(await listarMovimentacoes(id));
+  })
+  .patch("/rebanho/lactacoes/:id", zValidator("json", z.object({ induzida: z.boolean() })), async (c) => {
+    // Marca/desmarca uma lactação como induzida (LACTACAO.INDUZIDA do Ideagri).
+    try { return c.json(await marcarInducao(Number(c.req.param("id")), c.req.valid("json").induzida)); }
+    catch (e) {
+      if (e instanceof LactacaoError) return c.json({ error: e.message }, 404);
+      console.error("[lactacoes]", e); return c.json({ error: "Erro inesperado ao processar. Tente novamente." }, 500);
+    }
   })
   .post("/rebanho/animais", zValidator("json", criarAnimalSchema), async (c) => {
     try {

@@ -1,4 +1,4 @@
-import { useLactacoes } from "../api";
+import { useLactacoes, marcarInducaoLactacao } from "../api";
 import { CurvaLactacao } from "./CurvaLactacao";
 
 const fmtL = (v: number | null) => (v == null ? "—" : `${v.toLocaleString("pt-BR")} L`);
@@ -6,7 +6,8 @@ const fmtDias = (v: number | null) => (v == null ? "—" : `${v} d`);
 const fmtData = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
 
 export function LactacoesSection({ animalId }: { animalId: string }) {
-  const { data, loading } = useLactacoes(animalId);
+  const { data, loading, recarregar } = useLactacoes(animalId);
+  async function alternarInducao(id: number, atual: boolean) { await marcarInducaoLactacao(id, !atual); recarregar(); }
   if (loading) return null;
   const lacts = data?.lactacoes ?? [];
   if (lacts.length === 0) return null;
@@ -43,10 +44,14 @@ export function LactacoesSection({ animalId }: { animalId: string }) {
           >
             <span className="shrink-0 font-semibold text-[color:var(--ink)]">
               {l.numero}ª{l.emCurso ? " · em curso" : ""}
+              {l.induzida && <span className="ml-1.5 rounded bg-[color:var(--leite-soft)] px-1.5 py-0.5 text-xs font-semibold text-[#6e5a26]">induzida</span>}
             </span>
             <span className="flex-1 text-ink-2">
               {fmtData(l.dtInicio)} → {l.dtFim ? fmtData(l.dtFim) : "hoje"} · {fmtDias(l.duracaoDias)}
               {l.motivoSecagem ? ` · ${l.motivoSecagem}` : ""}
+              <button onClick={() => alternarInducao(l.id, l.induzida)} className="ml-2 text-xs text-ink-3 hover:text-[color:var(--cafe)] hover:underline">
+                {l.induzida ? "desmarcar induzida" : "marcar induzida"}
+              </button>
             </span>
             {l.producaoTotal != null ? (
               <span className="shrink-0 text-right text-ink-2">
