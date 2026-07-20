@@ -3,6 +3,7 @@ import { Loader } from "../../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
+import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
 import { RebHeader } from "./RebHeader";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -247,6 +248,8 @@ export function EstoqueTab() {
             ))}</tbody>
           </RebTable>
         )}
+
+      <PrincipiosAtivosSection />
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
       {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}

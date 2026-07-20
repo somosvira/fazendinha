@@ -133,34 +133,68 @@ enum TipoPessoa {
 }
 
 model Produto {
-  id                Int                @id @default(autoincrement())
-  nome              String             @unique
-  tipo              TipoProduto        @default(INSUMO)
+  id                Int                     @id @default(autoincrement())
+  nome              String                  @unique
+  tipo              TipoProduto             @default(INSUMO)
   // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
   subtipoPlantio    TipoInsumoPlantio?
-  unidade           String             @default("un")
-  custoUnitario     Decimal?           @db.Decimal(12, 2)
+  unidade           String                  @default("un")
+  custoUnitario     Decimal?                @db.Decimal(12, 2)
   carencia          Int?
-  percentualMS      Decimal?           @db.Decimal(5, 2)
-  estocavel         Boolean            @default(true)
-  minimoEstoque     Decimal?           @db.Decimal(12, 2)
-  ativo             Boolean            @default(true)
+  percentualMS      Decimal?                @db.Decimal(5, 2)
+  estocavel         Boolean                 @default(true)
+  minimoEstoque     Decimal?                @db.Decimal(12, 2)
+  ativo             Boolean                 @default(true)
   // Setor operacional (Leite/Café/Corte/Milho/Geral) — dimensão SEPARADA da
   // categoria contábil abaixo. Null = não classificado (exibido como GERAL).
   setor             SetorEstoque?
   // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
   // que a compra (ENTRADA) deste produto deve lançar.
-  categoria         Categoria?         @relation(fields: [categoriaId], references: [id])
+  categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
   categoriaId       Int?
-  centroCusto       CentroCusto?       @relation(fields: [centroCustoId], references: [id])
+  centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id])
   centroCustoId     Int?
   movimentos        MovimentoEstoque[]
   eventosSanitarios EventoSanitario[]
   dietaItens        DietaItem[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  principiosAtivos  ProdutoPrincipioAtivo[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 
   @@index([tipo])
+}
+
+// Princípio ativo (fármaco) — catálogo. Base para carência/antibiótico: um medicamento é
+// composto por um ou mais princípios ativos, e a carência efetiva do leite/carne deriva da
+// composição. Espelha PRINCIPIOATIVO (665) do IDEagri.
+model PrincipioAtivo {
+  id                 Int                     @id @default(autoincrement())
+  nome               String                  @unique
+  ehAntibiotico      Boolean                 @default(false) // antibiótico → leite em carência não pode ser vendido
+  carenciaLeiteHoras Int? // carência de leite sugerida (horas), quando conhecida
+  carenciaCarneDias  Int? // carência de carne sugerida (dias), quando conhecida
+  ativo              Boolean                 @default(true)
+  produtos           ProdutoPrincipioAtivo[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([ehAntibiotico])
+}
+
+// Composição: quais princípios ativos um Produto (medicamento) contém. Join N:N com
+// concentração opcional. Espelha PRODUTOPRINCIPIOATIVO (12445) do IDEagri.
+model ProdutoPrincipioAtivo {
+  id               Int            @id @default(autoincrement())
+  produto          Produto        @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId        Int
+  principioAtivo   PrincipioAtivo @relation(fields: [principioAtivoId], references: [id], onDelete: Cascade)
+  principioAtivoId Int
+  concentracao     String? // ex.: "150 mg/mL" — texto livre (a unidade varia por fármaco)
+  createdAt        DateTime       @default(now())
+
+  @@unique([produtoId, principioAtivoId])
+  @@index([produtoId])
+  @@index([principioAtivoId])
 }
 
 model ClienteFornecedor {

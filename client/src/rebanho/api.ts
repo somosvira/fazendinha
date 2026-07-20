@@ -791,6 +791,46 @@ export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) 
   return { data, loading, erro, recarregar };
 }
 
+// ── Princípios ativos (composição de medicamento — base carência/antibiótico) ──
+export interface PrincipioAtivoDTO {
+  id: number; nome: string; ehAntibiotico: boolean;
+  carenciaLeiteHoras: number | null; carenciaCarneDias: number | null;
+  ativo: boolean; usoEmProdutos: number;
+}
+export interface PrincipioAtivoInput {
+  nome: string; ehAntibiotico?: boolean;
+  carenciaLeiteHoras?: number | null; carenciaCarneDias?: number | null; ativo?: boolean;
+}
+export interface ComposicaoProdutoDTO {
+  produtoId: number; produtoNome: string;
+  principios: { principioAtivoId: number; nome: string; concentracao: string | null; ehAntibiotico: boolean }[];
+  ehAntibiotico: boolean; carenciaLeiteHorasSugerida: number | null; carenciaCarneDiasSugerida: number | null;
+}
+
+export const listarPrincipiosAtivos = (incluirInativos = false) =>
+  req<PrincipioAtivoDTO[]>(`/rebanho/principios-ativos${incluirInativos ? "?inativos=1" : ""}`);
+export const criarPrincipioAtivo = (body: PrincipioAtivoInput) =>
+  req<PrincipioAtivoDTO>(`/rebanho/principios-ativos`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarPrincipioAtivo = (id: number, body: Partial<PrincipioAtivoInput>) =>
+  req<PrincipioAtivoDTO>(`/rebanho/principios-ativos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirPrincipioAtivo = (id: number) =>
+  req<{ ok: true }>(`/rebanho/principios-ativos/${id}`, { method: "DELETE" });
+export const obterComposicaoProduto = (produtoId: number) =>
+  req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`);
+export const definirComposicaoProduto = (produtoId: number, principios: { principioAtivoId: number; concentracao?: string }[]) =>
+  req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`, { method: "PUT", body: JSON.stringify({ principios }) });
+
+export function usePrincipiosAtivos(incluirInativos = false) {
+  const [data, setData] = useState<PrincipioAtivoDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    listarPrincipiosAtivos(incluirInativos).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [incluirInativos]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 export function useFornecedores(f?: { tipo?: string; q?: string }) {
   const [data, setData] = useState<FornecedorDTO[]>([]);
   const [loading, setLoading] = useState(true);
