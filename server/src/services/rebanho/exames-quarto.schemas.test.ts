@@ -40,4 +40,11 @@ describe("registrarExameQuartoSchema", () => {
     expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "XX" }] }).success).toBe(false);
     expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "AE", ccs: 99999 }] }).success).toBe(false);
   });
+
+  it("escore de teto aceita 1–4 e rejeita fora da faixa", () => {
+    expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "AE", escoreTeto: 1 }] }).success).toBe(true);
+    expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "AE", escoreTeto: 4 }] }).success).toBe(true);
+    expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "AE", escoreTeto: 0 }] }).success).toBe(false);
+    expect(registrarExameQuartoSchema.safeParse({ data: "2026-07-19", quartos: [{ quarto: "AE", escoreTeto: 5 }] }).success).toBe(false);
+  });
 });

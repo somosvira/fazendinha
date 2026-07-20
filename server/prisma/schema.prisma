@@ -607,6 +607,7 @@ model ExameQuarto {
   severidade       String? // leve/moderada/grave (só clínica)
   resultadoCultivo String? // agente isolado (só clínica)
   perdido          Boolean       @default(false) // quarto seco/perdido (agênese funcional)
+  escoreTeto       Int? // escore da ponta do teto (hiperqueratose), 1–4; null = não avaliado
   observacao       String?
   propriedade      Propriedade?  @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?

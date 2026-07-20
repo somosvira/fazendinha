@@ -1044,13 +1044,14 @@ export interface QuartoInput {
   severidade?: string;
   resultadoCultivo?: string;
   perdido?: boolean;
+  escoreTeto?: number; // hiperqueratose da ponta do teto, 1–4
   observacao?: string;
 }
 export interface RegistrarExameQuartoInput { data: string; quartos: QuartoInput[] }
 
 export interface ExameQuartoDTO {
   id: number; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
-  clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; observacao: string | null;
+  clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; escoreTeto: number | null; observacao: string | null;
 }
 export interface EstadoPorQuarto { estado: EstadoQuarto; positivos12m: number; clinicas12m: number; ultimoPositivo: string | null }
 export interface SaudeUbereDTO {

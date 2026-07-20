@@ -14,6 +14,7 @@ const quartoSchema = z.object({
   severidade: z.string().max(20).optional(),
   resultadoCultivo: z.string().max(60).optional(),
   perdido: z.boolean().optional(),
+  escoreTeto: z.number().int().min(1, "escore de teto vai de 1 a 4").max(4, "escore de teto vai de 1 a 4").optional(),
   observacao: z.string().max(200).optional(),
 });
 
