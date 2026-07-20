@@ -5,9 +5,13 @@ import { resolverEscopoLeitura } from "../../services/propriedade.js";
 import { obterCarteira, simularDescarteCarteira } from "../../services/rebanho/carteira.js";
 import { obterComposicaoRacial } from "../../services/rebanho/composicao-racial.js";
 import { obterQuantitativo } from "../../services/rebanho/quantitativo.js";
+import { obterUA } from "../../services/rebanho/ua.js";
 
 // n é clampado a [0, totalAnimais] pelo calc puro; aqui só garantimos inteiro >= 0.
 const simularSchema = z.object({ n: z.coerce.number().int().min(0).default(0) });
+
+// areaHa opcional (lotação UA/ha); calc puro trata 0/negativo/ausente como "sem área".
+const uaSchema = z.object({ areaHa: z.coerce.number().min(0).optional() });
 
 export const carteiraRouter = new Hono()
   .get("/rebanho/carteira", async (c) => {
@@ -26,4 +30,9 @@ export const carteiraRouter = new Hono()
   .get("/rebanho/quantitativo", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
     return c.json(await obterQuantitativo(propriedadeId));
+  })
+  .get("/rebanho/ua", zValidator("query", uaSchema), async (c) => {
+    const { areaHa } = c.req.valid("query");
+    const propriedadeId = await resolverEscopoLeitura(c);
+    return c.json(await obterUA(propriedadeId, areaHa));
   });
