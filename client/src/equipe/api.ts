@@ -13,6 +13,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
+import { fmtMoneyExact } from "../components/charts";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -196,7 +197,7 @@ export function useCustoMOSetor() {
 
 // FORMATADORES (pt-BR) ----------------------------------------------------
 
-export const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const money = fmtMoneyExact;
 export const moneyN = (n: number | null | undefined) => (n == null ? "—" : money(n));
 export const num = (n: number, casas = 2) => n.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 export const horasFmt = (n: number) => `${num(n, 1)} h`;
