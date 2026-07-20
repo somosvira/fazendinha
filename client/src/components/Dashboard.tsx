@@ -94,8 +94,8 @@ const ymd = (d: Date | null): string | undefined =>
 // demais são um ramp categórico derivado. Fonte única de cor de gráfico: não
 // hardcodar hex de segmento fora daqui. Aplicada só como fill/background/stroke.
 const CAT_PALETTE = [
-  "var(--leite)", "var(--cafe)", "var(--outros)", "#D4BC85", "#8A5A30", "#93A07F",
-  "#A8543A", "#C9B98F", "#3D5A3D", "#8A6A20", "#6B7370", "#A8A089",
+  "var(--leite)", "var(--cafe)", "var(--outros)", "var(--leite-2)", "var(--cafe-2)", "var(--outros-2)",
+  "#A8543A", "#C9B98F", "#3D5A3D", "#8A6A20", "var(--ink-mute)", "#A8A089",
   "#7A3328", "#4A5240", "#C2A878", "#3A4341", "#9B6B43", "#7E8C6A",
   "#5F4B32", "#B0B7A0",
 ];
