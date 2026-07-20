@@ -1149,6 +1149,29 @@ export function useQuantitativo() {
   return { data, loading, recarregar };
 }
 
+// ── Clima / registro de chuva (pluviômetro) ──────────────────────────────────
+export interface RegistroChuvaDTO { id: number; data: string; mm: number; observacao: string | null }
+export interface MesChuvaDTO { mes: string; total: number; dias: number }
+export interface ResumoChuvaDTO { meses: MesChuvaDTO[]; total: number; diasComChuva: number }
+export interface ChuvaRespDTO { registros: RegistroChuvaDTO[]; resumo: ResumoChuvaDTO }
+export interface RegistrarChuvaInput { data: string; mm: number; observacao?: string | null }
+
+export const obterChuva = () => req<ChuvaRespDTO>(`/rebanho/chuva`);
+export const registrarChuva = (body: RegistrarChuvaInput) => req<RegistroChuvaDTO>(`/rebanho/chuva`, { method: "POST", body: JSON.stringify(body) });
+export const excluirChuva = (id: number) => req<{ ok: true }>(`/rebanho/chuva/${id}`, { method: "DELETE" });
+
+export function useChuva() {
+  const [data, setData] = useState<ChuvaRespDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    obterChuva().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
 // ── Sugestões (Painel "Hoje" preditivo) — V2 §5.1 ───────────────────────────
 export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
 export interface SugestaoDTO {
