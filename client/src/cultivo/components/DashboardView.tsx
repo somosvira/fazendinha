@@ -6,9 +6,9 @@ import { useDashboard } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
+import { fmtBRL } from "@/components/charts";
 
-const money = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const money = (n: number) => fmtBRL(n, { compact: false });
 
 export function DashboardView({ onNavMil }: { onNavMil: (s: MilSub) => void }) {
   const { data, loading } = useDashboard();
