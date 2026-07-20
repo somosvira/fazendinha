@@ -6,6 +6,7 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { fmtBRL } from "@/components/charts";
 
 /* Tipos de operação comercial. O valor é o enum TipoComercial em UPPERCASE. */
 const TIPOS: { v: TipoComercial; lab: string }[] = [
@@ -97,7 +98,7 @@ export function OperacaoComercialForm({ lote, onFechar, onSalvo }: { lote: Lote;
       {arrobasTot > 0 && (
         <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
           <b>{arrobasTot.toFixed(0)} @</b> carcaça (rend. 52%)
-          {receita > 0 && <> · receita estimada <b>{receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}</b></>}
+          {receita > 0 && <> · receita estimada <b>{fmtBRL(receita, { compact: false })}</b></>}
         </p>
       )}
 

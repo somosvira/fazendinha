@@ -6,8 +6,9 @@ import { useDashboard } from "../api";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
+import { fmtBRL } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const money = (n: number) => fmtBRL(n, { compact: false });
 
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
