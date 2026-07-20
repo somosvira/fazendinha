@@ -161,6 +161,7 @@ model Produto {
   // Receita (ração formulada): itens onde este produto é a ração-mãe, e onde é ingrediente.
   composicao          ComposicaoProdutoItem[] @relation("ComposicaoDaRacao")
   usadoEmComposicoes  ComposicaoProdutoItem[] @relation("IngredienteEmComposicao")
+  lotes             LoteProduto[]
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 
@@ -181,6 +182,42 @@ model ComposicaoProdutoItem {
   @@unique([produtoId, ingredienteId])
   @@index([produtoId])
   @@index([ingredienteId])
+}
+
+// Local físico de armazenamento (galpão, farmácia…). Espelha "local de armazenamento" do IDEagri.
+model LocalArmazenamento {
+  id            Int           @id @default(autoincrement())
+  nome          String
+  ativo         Boolean       @default(true)
+  lotes         LoteProduto[]
+  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([propriedadeId])
+}
+
+// Lote de um produto (código + validade + local). Cadastro/registro paralelo — NÃO é o razão de
+// estoque (o saldo continua em MovimentoEstoque). Espelha "Lote de produto" do IDEagri.
+model LoteProduto {
+  id            Int                 @id @default(autoincrement())
+  produto       Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  codigo        String
+  validade      DateTime?           @db.Date
+  local         LocalArmazenamento? @relation(fields: [localId], references: [id])
+  localId       Int?
+  quantidade    Decimal?            @db.Decimal(12, 2)
+  propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([produtoId])
+  @@index([validade])
+  @@index([localId])
+  @@index([propriedadeId])
 }
 
 // Princípio ativo (fármaco) — catálogo. Base para carência/antibiótico: um medicamento é
@@ -527,6 +564,8 @@ model Propriedade {
   aplicacoesSanitarias AplicacaoProtocoloSanitario[]
   centraisSemen        CentralSemen[]
   reprodutores         Reprodutor[]
+  locaisArmazenamento  LocalArmazenamento[]
+  lotesProduto         LoteProduto[]
   examesQuarto         ExameQuarto[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt

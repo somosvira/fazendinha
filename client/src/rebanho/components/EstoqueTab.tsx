@@ -5,6 +5,7 @@ import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
 import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
 import { ComposicaoRacaoSection } from "./ComposicaoRacaoSection";
+import { LotesProdutoSection } from "./LotesProdutoSection";
 import { RebHeader } from "./RebHeader";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -252,6 +253,7 @@ export function EstoqueTab() {
 
       <PrincipiosAtivosSection />
       <ComposicaoRacaoSection />
+      <LotesProdutoSection />
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
       {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
