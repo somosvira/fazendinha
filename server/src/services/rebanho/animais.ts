@@ -115,6 +115,49 @@ export async function editarAnimal(id: number, input: EditarAnimalInput): Promis
   return toAnimalDTO(row);
 }
 
+// Alteração coletiva: aplica um novo grupo e/ou setor a vários animais de uma vez, gravando
+// o histórico de movimentação de cada um (reusa registrarMovimentacoes, como editarAnimal).
+export async function alterarColetivo(
+  animalIds: number[],
+  patch: { grupoId?: number | null; setor?: string | null },
+  propriedadeId: number | null,
+): Promise<{ atualizados: number; movimentacoes: number }> {
+  const ids = [...new Set(animalIds)];
+  const animais = await prisma.animal.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, grupoId: true, setor: true, propriedadeId: true, grupo: { select: { nome: true } } },
+  });
+  if (animais.length === 0) throw new AnimalError("NAO_ENCONTRADO", "nenhum animal válido para alterar");
+
+  // Rótulo do grupo de destino, resolvido uma vez (o mesmo para todos).
+  let grupoDestinoNome: string | null | undefined = undefined;
+  if (patch.grupoId !== undefined) {
+    grupoDestinoNome = patch.grupoId == null ? null
+      : (await prisma.grupo.findUnique({ where: { id: patch.grupoId }, select: { nome: true } }))?.nome ?? null;
+  }
+
+  let movimentacoes = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const a of animais) {
+      await tx.animal.update({
+        where: { id: a.id },
+        data: {
+          ...(patch.grupoId !== undefined ? { grupoId: patch.grupoId } : {}),
+          ...(patch.setor !== undefined ? { setor: patch.setor } : {}),
+        },
+      });
+      movimentacoes += await registrarMovimentacoes(
+        tx,
+        a.id,
+        { grupoId: a.grupoId, grupoNome: a.grupo?.nome ?? null, setor: a.setor },
+        { grupoId: patch.grupoId, grupoNome: grupoDestinoNome, setor: patch.setor },
+        { propriedadeId: propriedadeId ?? a.propriedadeId, motivo: "alteração coletiva" },
+      );
+    }
+  });
+  return { atualizados: animais.length, movimentacoes };
+}
+
 export async function darBaixa(id: number, input: BaixaInput): Promise<AnimalDTO> {
   if (!(await prisma.animal.findUnique({ where: { id } }))) throw new AnimalError("NAO_ENCONTRADO", "animal não encontrado");
   const row = await prisma.animal.update({

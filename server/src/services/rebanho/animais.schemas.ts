@@ -33,6 +33,17 @@ export const baixaSchema = z.object({
   data: isoDate.optional(),
 });
 
+// Alteração coletiva (bulk): aplica grupo e/ou setor a vários animais. Ao menos um dos dois.
+export const bulkAnimaisSchema = z.object({
+  animalIds: z.array(z.number().int().positive()).min(1, "selecione ao menos um animal").max(1000),
+  grupoId: z.number().int().positive().nullable().optional(),
+  setor: z.string().max(40).nullable().optional(),
+}).refine((v) => v.grupoId !== undefined || v.setor !== undefined, {
+  message: "informe grupo e/ou setor para alterar",
+  path: ["grupoId"],
+});
+export type BulkAnimaisInput = z.infer<typeof bulkAnimaisSchema>;
+
 export const listFiltrosSchema = z.object({
   status: z.enum(["ATIVO", "BAIXADO", "TODOS"]).default("ATIVO"),
   grupoId: z.coerce.number().int().positive().optional(),

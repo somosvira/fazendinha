@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema } from "../../services/rebanho/animais.schemas.js";
+import { criarAnimalSchema, editarAnimalSchema, baixaSchema, listFiltrosSchema, bulkAnimaisSchema } from "../../services/rebanho/animais.schemas.js";
 import * as svc from "../../services/rebanho/animais.js";
 import { obterInsights } from "../../services/rebanho/insights.js";
 import { listarLactacoes, marcarInducao, LactacaoError } from "../../services/rebanho/lactacoes.js";
@@ -63,6 +63,17 @@ export const animaisRouter = new Hono()
       return c.json(await svc.criarAnimal({ ...input, propriedadeId }), 201);
     }
     catch (e) { const { status, body } = handle(e); return c.json(body, status); }
+  })
+  // Alteração coletiva (bulk) — precisa vir ANTES de /:id p/ "bulk" não cair no param.
+  .patch("/rebanho/animais/bulk", zValidator("json", bulkAnimaisSchema), async (c) => {
+    try {
+      const input = c.req.valid("json");
+      const propriedadeId = await resolverEscopoEscrita(c);
+      const patch: { grupoId?: number | null; setor?: string | null } = {};
+      if (input.grupoId !== undefined) patch.grupoId = input.grupoId;
+      if (input.setor !== undefined) patch.setor = input.setor;
+      return c.json(await svc.alterarColetivo(input.animalIds, patch, propriedadeId));
+    } catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })
   .patch("/rebanho/animais/:id", zValidator("json", editarAnimalSchema), async (c) => {
     try { return c.json(await svc.editarAnimal(Number(c.req.param("id")), c.req.valid("json"))); }
