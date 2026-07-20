@@ -8,6 +8,7 @@ import type { ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebMain } from "@/components/rb/RebPrimitives";
+import { PromptDialog } from "@/components/PromptDialog";
 import { AlteracaoColetivaPanel } from "./AlteracaoColetivaPanel";
 
 type StatusFiltro = "ATIVO" | "BAIXADO" | "TODOS";
@@ -24,6 +25,7 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
   const [categoria, setCategoria] = useState<string | undefined>(undefined);
   const [busca, setBusca] = useState<string | undefined>(undefined);
   const [bulkAberto, setBulkAberto] = useState(false);
+  const [promptFiltroAberto, setPromptFiltroAberto] = useState(false);
   const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined, grupoId, categoria, q: busca });
   const { data: setores } = useSetores();
   const filtros = useFiltrosAnimais();
@@ -32,10 +34,9 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
   function aplicarFiltro(c: FiltroCriterios) {
     setStatus(c.status); setSetor(c.setor ?? ""); setGrupoId(c.grupoId); setCategoria(c.categoria); setBusca(c.q);
   }
-  async function salvarFiltroAtual() {
-    const nome = window.prompt("Nome do filtro:");
-    if (!nome || !nome.trim()) return;
-    await criarFiltroAnimal({ nome: nome.trim(), status, grupoId: grupoId ?? null, setor: setor || null, categoria: categoria ?? null, busca: busca ?? null });
+  async function confirmarSalvarFiltro(nome: string) {
+    setPromptFiltroAberto(false);
+    await criarFiltroAnimal({ nome, status, grupoId: grupoId ?? null, setor: setor || null, categoria: categoria ?? null, busca: busca ?? null });
     filtros.recarregar();
   }
   async function removerFiltro(id: number) { await excluirFiltroAnimal(id); filtros.recarregar(); }
@@ -83,9 +84,17 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
           {(filtros.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
         </select>
       )}
-      <RebButton onClick={salvarFiltroAtual}>Salvar filtro</RebButton>
+      <RebButton onClick={() => setPromptFiltroAberto(true)}>Salvar filtro</RebButton>
       <RebButton className="ml-auto" aria-pressed={bulkAberto} onClick={() => setBulkAberto((v) => !v)}>Alteração coletiva</RebButton>
       <RebButton variant="pri" onClick={onNovo}>+ Novo animal</RebButton>
+      <PromptDialog
+        open={promptFiltroAberto}
+        title="Salvar filtro"
+        label="Nome do filtro"
+        placeholder="Ex.: Vacas em lactação · setor 2"
+        onConfirm={confirmarSalvarFiltro}
+        onCancel={() => setPromptFiltroAberto(false)}
+      />
     </>
   );
 

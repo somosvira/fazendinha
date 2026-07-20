@@ -11,6 +11,8 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebPill, RebAnm } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { fmtMoneyExact } from "@/components/charts";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/components/Toast";
 
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
@@ -58,18 +60,26 @@ export function PlanejamentoTab() {
 
   const [formTarefa, setFormTarefa] = useState<{ modo: "novo" | "realizar"; tarefa?: TarefaPlanejada } | null>(null);
   const [formApt, setFormApt] = useState(false);
+  const [confirmar, setConfirmar] = useState<{ tipo: "tarefa" | "apontamento"; id: number } | null>(null);
+  const toast = useToast();
 
   const safra = safras.find((s) => s.id === safraId) ?? null;
   const r = safra?.resumo;
   const pctConcluido = r && r.tarefasTotal > 0 ? Math.round((r.tarefasConcluidas / r.tarefasTotal) * 100) : 0;
 
-  async function removerTarefa(id: number) {
-    if (!confirm("Excluir esta tarefa?")) return;
-    try { await excluirTarefa(id); recTarefas(); } catch (e: any) { alert(e?.message ?? "Erro ao excluir."); }
-  }
-  async function removerApt(id: number) {
-    if (!confirm("Excluir este apontamento?")) return;
-    try { await excluirApontamento(id); recApt(); } catch (e: any) { alert(e?.message ?? "Erro ao excluir."); }
+  const removerTarefa = (id: number) => setConfirmar({ tipo: "tarefa", id });
+  const removerApt = (id: number) => setConfirmar({ tipo: "apontamento", id });
+
+  async function confirmarExclusao() {
+    if (!confirmar) return;
+    const { tipo, id } = confirmar;
+    setConfirmar(null);
+    try {
+      if (tipo === "tarefa") { await excluirTarefa(id); recTarefas(); }
+      else { await excluirApontamento(id); recApt(); }
+    } catch (e: any) {
+      toast.error("Erro ao excluir", e?.message ?? undefined);
+    }
   }
 
   return (
@@ -236,6 +246,18 @@ export function PlanejamentoTab() {
           onSalvo={() => { setFormApt(false); recApt(); }}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmar != null}
+        title={confirmar?.tipo === "apontamento" ? "Excluir apontamento" : "Excluir tarefa"}
+        message={confirmar?.tipo === "apontamento"
+          ? "Este apontamento será removido do planejamento da safra. Não dá para desfazer."
+          : "Esta tarefa será removida do planejamento da safra. Não dá para desfazer."}
+        confirmLabel="Excluir"
+        tone="danger"
+        onConfirm={confirmarExclusao}
+        onCancel={() => setConfirmar(null)}
+      />
     </RebMain>
   );
 }

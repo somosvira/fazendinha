@@ -6,13 +6,18 @@ import { describe, it, expect } from "vitest";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { EquipeContent, type EqpSub } from "../EquipeContent";
+import { ToastProvider } from "../../components/Toast";
 
 const ABAS: EqpSub[] = ["dashboard", "funcionarios", "ponto", "folha"];
 
 describe("equipe render smoke", () => {
   for (const aba of ABAS) {
     it(`EquipeContent renderiza a sub-aba ${aba}`, () => {
-      const html = renderToString(h(EquipeContent, { aba, onNavEqp: () => {} }));
+      // Em produção o App é envolto pelo ToastProvider (main.tsx); a aba ponto usa
+      // useToast(), então o smoke reproduz esse provedor.
+      const html = renderToString(
+        h(ToastProvider, null, h(EquipeContent, { aba, onNavEqp: () => {} })),
+      );
       // Título de topo removido — a casca `rb` prova que renderizou sem lançar.
       expect(html).toContain('class="rb"');
     });

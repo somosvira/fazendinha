@@ -14,6 +14,7 @@ import { fetchDashboard, reclassificarCategoria } from "../api";
 import { reconciliarMes } from "../lib/reconciliacao";
 import { fmtMoney, fmtBR, fmtBRL } from "./charts";
 import type { Tab } from "./Shell";
+import { useToast } from "./Toast";
 import { cn } from "@/lib/utils";
 
 /* ============ MÊS FECHADO (derivado do dado real) ============ */
@@ -511,6 +512,7 @@ function AtencaoCard({
 /* ============ PÁGINA ============ */
 
 export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
+  const toast = useToast();
   // Dado REAL do fechamento — mesmo payload que o Dashboard usa (fetchDashboard).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [data, setData] = useState<any>(null);
@@ -557,7 +559,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
     } catch (e) {
       console.error("[exportarPDF] falhou:", e);
       const msg = e instanceof Error ? e.message : String(e);
-      alert(`Falha ao gerar PDF: ${msg}\n\nAbra o console (F12) para o stack completo.`);
+      toast.error("Falha ao gerar PDF", msg);
     } finally {
       setExportando(false);
     }
