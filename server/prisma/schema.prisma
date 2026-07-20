@@ -158,10 +158,29 @@ model Produto {
   eventosSanitarios EventoSanitario[]
   dietaItens        DietaItem[]
   principiosAtivos  ProdutoPrincipioAtivo[]
+  // Receita (ração formulada): itens onde este produto é a ração-mãe, e onde é ingrediente.
+  composicao          ComposicaoProdutoItem[] @relation("ComposicaoDaRacao")
+  usadoEmComposicoes  ComposicaoProdutoItem[] @relation("IngredienteEmComposicao")
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 
   @@index([tipo])
+}
+
+// Um ingrediente da receita de um produto (ração formulada): produto-mãe → ingrediente + proporção.
+// Espelha "Composição de produto" do IDEagri; mesmo padrão do ProdutoPrincipioAtivo (#174).
+model ComposicaoProdutoItem {
+  id            Int      @id @default(autoincrement())
+  produto       Produto  @relation("ComposicaoDaRacao", fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  ingrediente   Produto  @relation("IngredienteEmComposicao", fields: [ingredienteId], references: [id], onDelete: Cascade)
+  ingredienteId Int
+  proporcao     Decimal  @db.Decimal(6, 3) // % do ingrediente na receita
+  createdAt     DateTime @default(now())
+
+  @@unique([produtoId, ingredienteId])
+  @@index([produtoId])
+  @@index([ingredienteId])
 }
 
 // Princípio ativo (fármaco) — catálogo. Base para carência/antibiótico: um medicamento é
