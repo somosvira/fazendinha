@@ -779,6 +779,31 @@ export function useAnaliseLeite() {
   return { data, loading, recarregar };
 }
 
+// ── Tanque de resfriamento + análise de tanque (qualidade do leite bulk) ──────
+export interface PontoTendenciaTanque { data: string; valor: number }
+export interface ResumoTanqueDTO {
+  total: number;
+  ultima: { data: string; ccs: number | null; cbt: number | null; gordura: number | null; proteina: number | null } | null;
+  tendenciaCCS: PontoTendenciaTanque[]; tendenciaCBT: PontoTendenciaTanque[];
+  gorduraMedia: number | null; proteinaMedia: number | null;
+}
+export interface TanqueDTO { id: number; nome: string; capacidadeLitros: number | null; ativo: boolean; totalAnalises: number; resumo: ResumoTanqueDTO }
+export interface AnaliseTanqueDTO { id: number; data: string; ccs: number | null; cbt: number | null; gordura: number | null; proteina: number | null; temperatura: number | null; observacao: string | null }
+export interface RegistrarAnaliseTanqueInput { data: string; ccs?: number | null; cbt?: number | null; gordura?: number | null; proteina?: number | null; temperatura?: number | null; observacao?: string | null }
+
+export const listarTanques = () => req<TanqueDTO[]>(`/rebanho/tanques`);
+export const criarTanque = (body: { nome: string; capacidadeLitros?: number | null }) => req<TanqueDTO>(`/rebanho/tanques`, { method: "POST", body: JSON.stringify(body) });
+export const excluirTanque = (id: number) => req<{ ok: true }>(`/rebanho/tanques/${id}`, { method: "DELETE" });
+export const listarAnalisesTanque = (id: number) => req<AnaliseTanqueDTO[]>(`/rebanho/tanques/${id}/analises`);
+export const registrarAnaliseTanque = (id: number, body: RegistrarAnaliseTanqueInput) => req<AnaliseTanqueDTO>(`/rebanho/tanques/${id}/analises`, { method: "POST", body: JSON.stringify(body) });
+export function useTanques() {
+  const [data, setData] = useState<TanqueDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarTanques().then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Referências financeiras (Fatia 10): categorias + centros de custo ───────
 export interface RefDTO { id: number; nome: string }
 export const listarCategorias = () => req<RefDTO[]>(`/rebanho/categorias`);

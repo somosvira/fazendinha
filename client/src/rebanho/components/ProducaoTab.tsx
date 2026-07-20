@@ -9,6 +9,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 import { QualidadeLeiteSection } from "./QualidadeLeiteSection";
+import { TanquesSection } from "./TanquesSection";
 
 // "DD/MM HH:mm" local — fim da carência (leite liberado a partir daí).
 function fmtDataHora(iso: string) {
@@ -114,6 +115,7 @@ export function ProducaoTab() {
       )}
 
       <QualidadeLeiteSection />
+      <TanquesSection />
     </RebMain>
   );
 }
