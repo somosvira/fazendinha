@@ -5,7 +5,9 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtMoneyExact } from "@/components/charts";
+import { Sprout } from "lucide-react";
 
 const money = fmtMoneyExact;
 // custoHa/custoSaca/custoTonelada podem vir null (safra em formação, sem
@@ -54,8 +56,14 @@ export function CustoTab() {
 
       {erroResumo ? (
         <p className="text-sm text-prejuizo">Não foi possível carregar o resumo: {erroResumo}</p>
+      ) : safras.length === 0 && !loadingSafras ? (
+        <EmptyState
+          icon={Sprout}
+          titulo="Nenhuma safra de milho cadastrada"
+          descricao="O custo de produção é calculado por safra. Cadastre uma safra em “Safras” para acompanhar custo por hectare, saca e tonelada."
+        />
       ) : carregando || !dadosResumo ? (
-        <p className="text-sm text-ink-3">{safras.length === 0 && !loadingSafras ? "Nenhuma safra cadastrada ainda." : "Carregando…"}</p>
+        <p className="text-sm text-ink-3">Carregando…</p>
       ) : (
         <>
           <RebKpiStrip cols={4}>
