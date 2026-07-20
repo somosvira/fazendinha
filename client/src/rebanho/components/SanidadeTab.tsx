@@ -6,6 +6,7 @@ import { RebHeader } from "./RebHeader";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { DOMAINS } from "../domains";
 import { insightDoRebanho } from "../mock";
+import { ProtocolosSanitarios } from "./ProtocolosSanitarios";
 import type { Animal, ResumoAnimal } from "../types";
 
 export function SanidadeTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirFicha, worklistChave, worklistSnapshot }: { onRegistrarEvento: (animal: Animal) => void; onRegistrarWorklist: (acao: AcaoItemWorklist) => void; onAbrirFicha: (id: string) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho }) {
@@ -20,5 +21,5 @@ export function SanidadeTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirFic
     const animal = data.find((a) => a.id === id);
     if (animal) onRegistrarEvento(animal);
   };
-  return <HerdDomainView key="sanidade" config={DOMAINS.sanidade} resumos={resumos} insight={insightDoRebanho("sanidade")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de sanidade" />;
+  return <HerdDomainView key="sanidade" config={DOMAINS.sanidade} resumos={resumos} insight={insightDoRebanho("sanidade")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de sanidade" topo={<ProtocolosSanitarios />} />;
 }
