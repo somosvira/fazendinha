@@ -4,8 +4,9 @@ import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 const litros = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 
 export function CustoProducaoTab() {

@@ -6,8 +6,9 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { REB_SUB } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 
 type Props = {
   dieta?: DietaDTO | null;

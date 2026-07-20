@@ -14,8 +14,9 @@ import { RebTable } from "@/components/rb/RebTable";
 import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
 // Cor do setor via variáveis CSS já existentes (não hardcodar hex): Leite/Café têm var própria;

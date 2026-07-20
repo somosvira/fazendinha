@@ -6,8 +6,9 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
 import { RebAnm } from "@/components/rb/RebPrimitives";
 import { getHoje } from "@/lib/hoje";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 // Primeiro dia do mês corrente → hoje (default "fechar o mês em curso").
