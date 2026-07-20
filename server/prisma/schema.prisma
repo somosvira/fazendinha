@@ -430,6 +430,7 @@ model Propriedade {
   aplicacoesIATF       AplicacaoProtocoloIATF[]
   programacoesIATF     ProgramacaoIATFLote[]
   movimentacoesAnimais MovimentacaoAnimal[]
+  filtrosAnimais       FiltroAnimal[]
   examesQuarto         ExameQuarto[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
@@ -550,6 +551,24 @@ model MovimentacaoAnimal {
   @@index([animalId])
   @@index([tipo])
   @@index([data])
+  @@index([propriedadeId])
+}
+
+// Filtro de animais salvo (nomeado) — o produtor guarda um conjunto de critérios simples e
+// reaplica com um clique. Espelha FILTRO do IDEagri (52). Critérios como colunas tipadas.
+model FiltroAnimal {
+  id            Int          @id @default(autoincrement())
+  nome          String
+  status        String       @default("ATIVO") // ATIVO | BAIXADO | TODOS
+  grupoId       Int?
+  setor         String?
+  categoria     String? // CategoriaAnimal (VACA/NOVILHA/...); string livre p/ não acoplar ao enum
+  busca         String? // termo de busca (número/nome/brinco)
+  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
   @@index([propriedadeId])
 }
 

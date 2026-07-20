@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAnimais, useSetores } from "../api";
+import { useAnimais, useSetores, useFiltrosAnimais, criarFiltroAnimal, excluirFiltroAnimal, type FiltroCriterios } from "../api";
 import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
 import { RebHeader } from "./RebHeader";
 import { DOMAINS } from "../domains";
@@ -20,9 +20,25 @@ const OPCOES: { k: StatusFiltro; lab: string }[] = [
 export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: string) => void; onNovo: () => void }) {
   const [status, setStatus] = useState<StatusFiltro>("ATIVO");
   const [setor, setSetor] = useState<string>("");
+  const [grupoId, setGrupoId] = useState<number | undefined>(undefined);
+  const [categoria, setCategoria] = useState<string | undefined>(undefined);
+  const [busca, setBusca] = useState<string | undefined>(undefined);
   const [bulkAberto, setBulkAberto] = useState(false);
-  const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined });
+  const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined, grupoId, categoria, q: busca });
   const { data: setores } = useSetores();
+  const filtros = useFiltrosAnimais();
+
+  // Aplica um filtro salvo: joga os critérios normalizados nos estados de filtro.
+  function aplicarFiltro(c: FiltroCriterios) {
+    setStatus(c.status); setSetor(c.setor ?? ""); setGrupoId(c.grupoId); setCategoria(c.categoria); setBusca(c.q);
+  }
+  async function salvarFiltroAtual() {
+    const nome = window.prompt("Nome do filtro:");
+    if (!nome || !nome.trim()) return;
+    await criarFiltroAnimal({ nome: nome.trim(), status, grupoId: grupoId ?? null, setor: setor || null, categoria: categoria ?? null, busca: busca ?? null });
+    filtros.recarregar();
+  }
+  async function removerFiltro(id: number) { await excluirFiltroAnimal(id); filtros.recarregar(); }
 
   // ResumoAnimal[] que o HerdDomainView consome — cada animal traz seu resumo embutido.
   const resumos: ResumoAnimal[] = data.map((a) => ({ ...(a.resumo ?? { statusReprodutivo: "VAZIA" }), animalId: a.id }) as ResumoAnimal);
@@ -56,6 +72,18 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         ariaLabel="Filtrar por setor"
         options={[{ value: "", label: "Todos os setores" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
       />
+      {(filtros.data ?? []).length > 0 && (
+        <select
+          aria-label="Aplicar filtro salvo"
+          className="rounded border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--ink)]"
+          value=""
+          onChange={(e) => { const f = (filtros.data ?? []).find((x) => String(x.id) === e.target.value); if (f) aplicarFiltro(f.criterios); }}
+        >
+          <option value="">Filtros salvos…</option>
+          {(filtros.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+        </select>
+      )}
+      <RebButton onClick={salvarFiltroAtual}>Salvar filtro</RebButton>
       <RebButton className="ml-auto" aria-pressed={bulkAberto} onClick={() => setBulkAberto((v) => !v)}>Alteração coletiva</RebButton>
       <RebButton variant="pri" onClick={onNovo}>+ Novo animal</RebButton>
     </>
@@ -78,6 +106,19 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
       {bulkAberto && (
         <RebMain>
           <AlteracaoColetivaPanel onFechar={() => setBulkAberto(false)} onAplicado={recarregar} />
+        </RebMain>
+      )}
+      {(filtros.data ?? []).length > 0 && (
+        <RebMain>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
+            <span className="uppercase tracking-[.06em]">Filtros salvos:</span>
+            {(filtros.data ?? []).map((f) => (
+              <span key={f.id} className="inline-flex items-center gap-1 rounded-full border border-[color:var(--rule-soft)] px-2 py-0.5">
+                <button onClick={() => aplicarFiltro(f.criterios)} className="font-semibold text-[color:var(--cafe)] hover:underline">{f.nome}</button>
+                <button onClick={() => removerFiltro(f.id)} className="text-ink-3 hover:text-prejuizo" aria-label={`Excluir filtro ${f.nome}`}>×</button>
+              </span>
+            ))}
+          </div>
         </RebMain>
       )}
       <HerdDomainView config={DOMAINS.animal} resumos={resumos} onAbrirAnimal={onAbrirAnimal} nomes={nomes} controles={controles} />
