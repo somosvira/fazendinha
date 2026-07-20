@@ -932,6 +932,32 @@ export const obterComposicaoRacao = (produtoId: number) => req<ComposicaoRacaoDT
 export const definirComposicaoRacao = (produtoId: number, itens: { ingredienteId: number; proporcao: number }[]) =>
   req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`, { method: "PUT", body: JSON.stringify({ itens }) });
 
+// ── Lotes de produto (código + validade + local) + locais de armazenamento ────
+export type StatusValidadeLote = "vencido" | "a-vencer" | "ok" | "sem-validade";
+export interface LocalArmazenamentoDTO { id: number; nome: string; ativo: boolean; totalLotes: number }
+export interface LoteProdutoDTO {
+  id: number; produtoId: number; produtoNome: string; codigo: string;
+  validade: string | null; localId: number | null; localNome: string | null;
+  quantidade: number | null; status: StatusValidadeLote;
+}
+export interface ResumoLotesDTO { vencido: number; "a-vencer": number; ok: number; "sem-validade": number; total: number }
+export interface LotesRespDTO { lotes: LoteProdutoDTO[]; resumo: ResumoLotesDTO }
+export interface LoteProdutoInput { produtoId: number; codigo: string; validade?: string | null; localId?: number | null; quantidade?: number | null }
+
+export const listarLocaisArmazenamento = () => req<LocalArmazenamentoDTO[]>(`/rebanho/locais-armazenamento`);
+export const criarLocalArmazenamento = (body: { nome: string }) => req<LocalArmazenamentoDTO>(`/rebanho/locais-armazenamento`, { method: "POST", body: JSON.stringify(body) });
+export const excluirLocalArmazenamento = (id: number) => req<{ ok: true }>(`/rebanho/locais-armazenamento/${id}`, { method: "DELETE" });
+export const listarLotesProduto = () => req<LotesRespDTO>(`/rebanho/lotes-produto`);
+export const criarLoteProduto = (body: LoteProdutoInput) => req<LoteProdutoDTO>(`/rebanho/lotes-produto`, { method: "POST", body: JSON.stringify(body) });
+export const excluirLoteProduto = (id: number) => req<{ ok: true }>(`/rebanho/lotes-produto/${id}`, { method: "DELETE" });
+export function useLotesProduto() {
+  const [data, setData] = useState<LotesRespDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarLotesProduto().then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 export function usePrincipiosAtivos(incluirInativos = false) {
   const [data, setData] = useState<PrincipioAtivoDTO[] | null>(null);
   const [loading, setLoading] = useState(true);

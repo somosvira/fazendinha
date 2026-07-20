@@ -36,6 +36,7 @@ import { protocoloSanitarioRouter } from "./routes/rebanho/protocolo-sanitario.j
 import { reprodutoresRouter } from "./routes/rebanho/reprodutores.js";
 import { acasalamentoRouter } from "./routes/rebanho/acasalamento.js";
 import { composicaoProdutoRouter } from "./routes/rebanho/composicao-produto.js";
+import { lotesRouter } from "./routes/rebanho/lotes.js";
 import { cadastrosRouter } from "./routes/rebanho/cadastros.js";
 import { principioAtivoRouter } from "./routes/rebanho/principio-ativo.js";
 import { estoqueRouter } from "./routes/rebanho/estoque.js";
@@ -133,6 +134,7 @@ app.route("/api", protocoloSanitarioRouter);
 app.route("/api", reprodutoresRouter);
 app.route("/api", acasalamentoRouter);
 app.route("/api", composicaoProdutoRouter);
+app.route("/api", lotesRouter);
 app.route("/api", cadastrosRouter);
 app.route("/api", principioAtivoRouter);
 app.route("/api", estoqueRouter);
