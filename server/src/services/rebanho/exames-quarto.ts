@@ -21,6 +21,7 @@ export interface ExameQuartoDTO {
   severidade: string | null;
   resultadoCultivo: string | null;
   perdido: boolean;
+  escoreTeto: number | null; // hiperqueratose da ponta do teto, 1–4
   observacao: string | null;
 }
 
@@ -33,9 +34,9 @@ export interface SaudeUbereDTO {
 
 function toDTO(e: {
   id: number; data: Date; quarto: Quarto; scoreCmt: string | null; ccs: number | null;
-  clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; observacao: string | null;
+  clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; escoreTeto: number | null; observacao: string | null;
 }): ExameQuartoDTO {
-  return { id: e.id, data: iso(e.data)!, quarto: e.quarto, scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, severidade: e.severidade, resultadoCultivo: e.resultadoCultivo, perdido: e.perdido, observacao: e.observacao };
+  return { id: e.id, data: iso(e.data)!, quarto: e.quarto, scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, severidade: e.severidade, resultadoCultivo: e.resultadoCultivo, perdido: e.perdido, escoreTeto: e.escoreTeto, observacao: e.observacao };
 }
 
 // Grava uma passada como 1..4 linhas de ExameQuarto e recomputa a sanidade do animal.
@@ -54,6 +55,7 @@ export async function registrarExameQuarto(animalId: number, input: RegistrarExa
       severidade: q.severidade ?? null,
       resultadoCultivo: q.resultadoCultivo ?? null,
       perdido: q.perdido ?? false,
+      escoreTeto: q.escoreTeto ?? null,
       observacao: q.observacao ?? null,
       propriedadeId: animal.propriedadeId,
     })),

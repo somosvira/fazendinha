@@ -25,8 +25,9 @@ const hojeISO = () => new Date().toISOString().slice(0, 10);
 const fmtData = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR") : "—");
 
 // Entrada de uma passada: por quarto, o operador escolhe o score CMT (ou marca clínica/perdido).
-type Rascunho = Record<Quarto, { scoreCmt?: ScoreCmt; clinica?: boolean; perdido?: boolean }>;
+type Rascunho = Record<Quarto, { scoreCmt?: ScoreCmt; clinica?: boolean; perdido?: boolean; escoreTeto?: number }>;
 const rascunhoVazio = (): Rascunho => ({ AE: {}, AD: {}, PE: {}, PD: {} });
+const ESCORES_TETO = [1, 2, 3, 4];
 
 export function SaudeUbereSection({ animalId }: { animalId: string }) {
   const { data, loading, recarregar } = useSaudeUbere(animalId);
@@ -37,18 +38,26 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
   const [erro, setErro] = useState<string | null>(null);
 
   const quartosPreenchidos = useMemo(
-    () => QUARTOS.filter((q) => rascunho[q].scoreCmt != null || rascunho[q].clinica || rascunho[q].perdido),
+    () => QUARTOS.filter((q) => rascunho[q].scoreCmt != null || rascunho[q].clinica || rascunho[q].perdido || rascunho[q].escoreTeto != null),
     [rascunho],
   );
 
   if (loading) return null;
   const porQuarto = data?.porQuarto;
+  // Último escore de teto registrado por quarto (exames vêm ordenados por data desc).
+  const escoreTetoPorQuarto: Partial<Record<Quarto, number>> = {};
+  for (const ex of data?.exames ?? []) {
+    if (ex.escoreTeto != null && escoreTetoPorQuarto[ex.quarto] == null) escoreTetoPorQuarto[ex.quarto] = ex.escoreTeto;
+  }
 
   function setScore(q: Quarto, v: ScoreCmt) {
     setRascunho((r) => ({ ...r, [q]: { ...r[q], scoreCmt: r[q].scoreCmt === v ? undefined : v } }));
   }
   function toggle(q: Quarto, campo: "clinica" | "perdido") {
     setRascunho((r) => ({ ...r, [q]: { ...r[q], [campo]: !r[q][campo] } }));
+  }
+  function setEscoreTeto(q: Quarto, v: number) {
+    setRascunho((r) => ({ ...r, [q]: { ...r[q], escoreTeto: r[q].escoreTeto === v ? undefined : v } }));
   }
 
   async function salvar(e: React.FormEvent) {
@@ -89,6 +98,9 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
                   {est.positivos12m}+/12m{est.ultimoPositivo ? ` · ${fmtData(est.ultimoPositivo)}` : ""}
                 </div>
               )}
+              {escoreTetoPorQuarto[q] != null && (
+                <div className="mt-0.5 text-[11px] text-ink-3">escore teto {escoreTetoPorQuarto[q]}</div>
+              )}
             </div>
           );
         })}
@@ -121,6 +133,11 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
                   className={`rounded border px-2 py-1 text-xs ${rascunho[q].clinica ? "border-prejuizo bg-prejuizo font-semibold text-white" : "border-[color:var(--rule-soft)] text-ink-3"}`}>clínica</button>
                 <button type="button" onClick={() => toggle(q, "perdido")}
                   className={`rounded border px-2 py-1 text-xs ${rascunho[q].perdido ? "border-[color:var(--ink-3)] bg-[color:var(--ink-3)] font-semibold text-white" : "border-[color:var(--rule-soft)] text-ink-3"}`}>perdido</button>
+                <span className="ml-1 text-[11px] text-ink-3">teto:</span>
+                {ESCORES_TETO.map((n) => (
+                  <button key={n} type="button" onClick={() => setEscoreTeto(q, n)} aria-label={`Escore de teto ${n} para ${QUARTO_LABEL[q]}`}
+                    className={`min-w-[26px] rounded border px-1.5 py-1 text-xs ${rascunho[q].escoreTeto === n ? "border-[color:var(--cafe)] bg-[color:var(--cafe)] font-semibold text-white" : "border-[color:var(--rule-soft)] text-ink-3"}`}>{n}</button>
+                ))}
               </div>
             ))}
           </div>
