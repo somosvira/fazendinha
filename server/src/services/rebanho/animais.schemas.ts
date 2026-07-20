@@ -44,13 +44,28 @@ export const bulkAnimaisSchema = z.object({
 });
 export type BulkAnimaisInput = z.infer<typeof bulkAnimaisSchema>;
 
+const CATEGORIAS = ["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "TOURO", "CABRITA", "CABRA", "CABRITO", "BODE"] as const;
+
 export const listFiltrosSchema = z.object({
   status: z.enum(["ATIVO", "BAIXADO", "TODOS"]).default("ATIVO"),
   grupoId: z.coerce.number().int().positive().optional(),
   q: z.string().max(40).optional(),
   setor: z.string().max(40).optional(),
+  categoria: z.enum(CATEGORIAS).optional(),
   propriedadeId: z.coerce.number().int().positive().optional(), // filtro por sítio
 });
+
+// Filtro de animais salvo (nomeado). Critérios = os do listFiltros + categoria; sem propriedadeId
+// (resolvido no escopo). `status` default ATIVO.
+export const criarFiltroSchema = z.object({
+  nome: z.string().min(1, "informe o nome do filtro").max(80),
+  status: z.enum(["ATIVO", "BAIXADO", "TODOS"]).default("ATIVO"),
+  grupoId: z.number().int().positive().nullable().optional(),
+  setor: z.string().max(40).nullable().optional(),
+  categoria: z.enum(CATEGORIAS).nullable().optional(),
+  busca: z.string().max(40).nullable().optional(),
+});
+export type CriarFiltroInput = z.infer<typeof criarFiltroSchema>;
 
 export type CriarAnimalInput = z.infer<typeof criarAnimalSchema>;
 export type EditarAnimalInput = z.infer<typeof editarAnimalSchema>;

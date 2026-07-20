@@ -38,7 +38,7 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
   return s ? `?${s}` : "";
 }
 
-export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string; setor?: string }) =>
+export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string }) =>
   req<Animal[]>(`/rebanho/animais${qs(f)}`);
 export const obterAnimal = (id: string) => req<Animal>(`/rebanho/animais/${id}`);
 export const criarAnimal = (input: AnimalForm) => req<Animal>(`/rebanho/animais`, { method: "POST", body: JSON.stringify(input) });
@@ -47,6 +47,31 @@ export const darBaixa = (id: string, input: { motivo: string; data?: string }) =
 // Alteração coletiva: aplica grupo e/ou setor a vários animais de uma vez (grava movimentações).
 export const alterarAnimaisColetivo = (animalIds: number[], patch: { grupoId?: number | null; setor?: string | null }) =>
   req<{ atualizados: number; movimentacoes: number }>(`/rebanho/animais/bulk`, { method: "PATCH", body: JSON.stringify({ animalIds, ...patch }) });
+
+// ── Filtros de animais salvos (nomeados) ─────────────────────────────────────
+export interface FiltroCriterios { status: "ATIVO" | "BAIXADO" | "TODOS"; grupoId?: number; setor?: string; categoria?: string; q?: string }
+export interface FiltroAnimalDTO {
+  id: number; nome: string; status: string;
+  grupoId: number | null; setor: string | null; categoria: string | null; busca: string | null;
+  criterios: FiltroCriterios;
+}
+export interface FiltroAnimalInput {
+  nome: string; status?: "ATIVO" | "BAIXADO" | "TODOS";
+  grupoId?: number | null; setor?: string | null; categoria?: string | null; busca?: string | null;
+}
+export const listarFiltrosAnimais = () => req<FiltroAnimalDTO[]>(`/rebanho/filtros`);
+export const criarFiltroAnimal = (body: FiltroAnimalInput) => req<FiltroAnimalDTO>(`/rebanho/filtros`, { method: "POST", body: JSON.stringify(body) });
+export const excluirFiltroAnimal = (id: number) => req<{ ok: true }>(`/rebanho/filtros/${id}`, { method: "DELETE" });
+export function useFiltrosAnimais() {
+  const [data, setData] = useState<FiltroAnimalDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    listarFiltrosAnimais().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
 export const listarGrupos = () => req<GrupoDTO[]>(`/rebanho/grupos`);
 export const listarRacas = () => req<RacaDTO[]>(`/rebanho/racas`);
 export const listarSetores = () => req<string[]>(`/rebanho/setores`);
@@ -60,7 +85,7 @@ export function useSetores() {
   return { data, loading, erro, recarregar };
 }
 
-export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string }) {
+export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string }) {
   const [data, setData] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);

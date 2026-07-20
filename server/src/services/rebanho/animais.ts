@@ -23,6 +23,7 @@ export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {
   if (f.status !== "TODOS") where.status = f.status;
   if (f.grupoId) where.grupoId = f.grupoId;
   if (f.setor) where.setor = f.setor;
+  if (f.categoria) where.categoria = f.categoria; // filtro por categoria (usado pelo filtro salvo)
   if (f.propriedadeId) where.propriedadeId = f.propriedadeId; // filtro por sítio (null = consolidado)
   // Busca por número, nome OU brinco eletrônico (A6 Fase 1 — o bastão RFID
   // digita o número da etiqueta no campo de busca).
