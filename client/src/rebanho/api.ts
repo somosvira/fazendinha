@@ -623,6 +623,41 @@ export function useAplicacoesIatf(animalId: string | null) {
   return { data, loading, recarregar };
 }
 
+// ── Protocolo sanitário: catálogo (D0/D+n) + aplicação por animal ─────────────
+export interface EtapaSanitariaDTO { dia: number; acao: string; produto: string | null; ordem: number }
+export interface EtapaSanitariaAgendadaDTO extends EtapaSanitariaDTO { rotulo: string; data: string }
+export interface ProtocoloSanitarioDTO { id: number; nome: string; descricao: string | null; ativo: boolean; etapas: EtapaSanitariaDTO[] }
+export interface AplicacaoSanitariaDTO { id: number; animalId: number; protocoloId: number; protocoloNome: string; dataInicio: string; observacao: string | null; etapas: EtapaSanitariaAgendadaDTO[] }
+export interface ProtocoloSanitarioInput { nome: string; descricao?: string | null; ativo?: boolean; etapas: { dia: number; acao: string; produto?: string | null; ordem?: number }[] }
+
+export const listarProtocolosSanitarios = (incluirInativos = false) =>
+  req<ProtocoloSanitarioDTO[]>(`/rebanho/protocolos-sanitarios${incluirInativos ? "?inativos=1" : ""}`);
+export const criarProtocoloSanitario = (body: ProtocoloSanitarioInput) => req<ProtocoloSanitarioDTO>(`/rebanho/protocolos-sanitarios`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarProtocoloSanitario = (id: number, body: Partial<ProtocoloSanitarioInput>) => req<ProtocoloSanitarioDTO>(`/rebanho/protocolos-sanitarios/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirProtocoloSanitario = (id: number) => req<{ ok: true }>(`/rebanho/protocolos-sanitarios/${id}`, { method: "DELETE" });
+export const listarAplicacoesSanitarias = (animalId: string) => req<AplicacaoSanitariaDTO[]>(`/rebanho/animais/${animalId}/protocolo-sanitario`);
+export const aplicarProtocoloSanitario = (animalId: string, body: { protocoloId: number; dataInicio: string; observacao?: string }) => req<AplicacaoSanitariaDTO>(`/rebanho/animais/${animalId}/protocolo-sanitario`, { method: "POST", body: JSON.stringify(body) });
+export const excluirAplicacaoSanitaria = (id: number) => req<{ ok: true }>(`/rebanho/protocolos-sanitarios/aplicacoes/${id}`, { method: "DELETE" });
+
+export function useProtocolosSanitarios(incluirInativos = false) {
+  const [data, setData] = useState<ProtocoloSanitarioDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); listarProtocolosSanitarios(incluirInativos).then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, [incluirInativos]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+export function useAplicacoesSanitarias(animalId: string | null) {
+  const [data, setData] = useState<AplicacaoSanitariaDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = () => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    listarAplicacoesSanitarias(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  };
+  useEffect(recarregar, [animalId]);
+  return { data, loading, recarregar };
+}
+
 // ── IATF por lote: programação de um protocolo para um conjunto de animais num mesmo D0 ──
 export interface ProgramacaoIatfLoteDTO {
   id: number; protocoloId: number; protocoloNome: string;

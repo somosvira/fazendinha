@@ -464,6 +464,8 @@ model Propriedade {
   movimentacoesAnimais MovimentacaoAnimal[]
   filtrosAnimais       FiltroAnimal[]
   tanques              Tanque[]
+  protocolosSanitarios ProtocoloSanitario[]
+  aplicacoesSanitarias AplicacaoProtocoloSanitario[]
   examesQuarto         ExameQuarto[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
@@ -544,6 +546,7 @@ model Animal {
   examesQuarto        ExameQuarto[]
   vacinasAgendadas    VacinaAgendada[]
   aplicacoesIATF      AplicacaoProtocoloIATF[]
+  aplicacoesSanitarias AplicacaoProtocoloSanitario[]
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
@@ -856,6 +859,55 @@ model AplicacaoProtocoloIATF {
   @@index([animalId])
   @@index([protocoloId])
   @@index([programacaoId])
+  @@index([propriedadeId])
+  @@index([dataInicio])
+}
+
+// Catálogo de protocolos sanitários (sequências de manejos: vacinas/tratamentos com offset de
+// dias a partir do D0). Espelha a estrutura do IATF (#163) para o domínio sanitário.
+model ProtocoloSanitario {
+  id            Int                            @id @default(autoincrement())
+  nome          String
+  descricao     String?
+  ativo         Boolean                        @default(true) // catálogo: inativar em vez de apagar
+  propriedade   Propriedade?                   @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  etapas        EtapaProtocoloSanitario[]
+  aplicacoes    AplicacaoProtocoloSanitario[]
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+
+  @@index([propriedadeId])
+  @@index([ativo])
+}
+
+model EtapaProtocoloSanitario {
+  id          Int                @id @default(autoincrement())
+  protocolo   ProtocoloSanitario @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  protocoloId Int
+  dia         Int // offset em dias a partir do D0
+  acao        String // o que fazer nessa etapa
+  produto     String? // produto/vacina aplicado, quando houver
+  ordem       Int                @default(0)
+
+  @@index([protocoloId])
+}
+
+model AplicacaoProtocoloSanitario {
+  id            Int                @id @default(autoincrement())
+  animal        Animal             @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId      Int
+  protocolo     ProtocoloSanitario @relation(fields: [protocoloId], references: [id])
+  protocoloId   Int
+  dataInicio    DateTime           @db.Date // D0 da aplicação neste animal
+  observacao    String?
+  propriedade   Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([animalId])
+  @@index([protocoloId])
   @@index([propriedadeId])
   @@index([dataInicio])
 }
