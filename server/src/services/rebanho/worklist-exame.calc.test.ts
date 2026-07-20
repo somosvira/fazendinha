@@ -17,6 +17,14 @@ describe("precisaExame", () => {
     expect(precisaExame({ ...base, statusReprodutivo: "GESTANTE" }, 60, HOJE)).toBe(false);
   });
 
+  it("status PRENHE (vocabulário do dashboard) → não precisa", () => {
+    expect(precisaExame({ ...base, statusReprodutivo: "PRENHE" }, 60, HOJE)).toBe(false);
+  });
+
+  it("status INSEMINADA (aguardando DG, não palpação de rotina) → não precisa", () => {
+    expect(precisaExame({ ...base, statusReprodutivo: "INSEMINADA" }, 60, HOJE)).toBe(false);
+  });
+
   it("exame recente (< validade) → não precisa", () => {
     expect(precisaExame({ ...base, ultimoExameGinecologico: "2026-06-20" }, 60, HOJE)).toBe(false);
   });

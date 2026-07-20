@@ -2,8 +2,8 @@ export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type TabRebanho = "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
 export type SeveridadeAlerta = "alta" | "media" | "baixa";
 export type StatusReprodutivoDashboard = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente";
-export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente" | "precisa-de-exame";
+export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO" | "EXAME_GINECOLOGICO";
 
 // Entrada já resolvida de carência de leite ativa (o carenciaAtiva roda no I/O, onde há Date).
 // A worklist "carencia" é de visualização — sem ação de registrar evento.
@@ -85,6 +85,9 @@ export interface AnimalDashboardIn {
   grupoNome: string | null;
   setor: string | null;
   resumo: ResumoDashboardIn | null;
+  // Data (YYYY-MM-DD) do último exame ginecológico registrado, ou null se nunca teve.
+  // Insumo da worklist "precisa-de-exame" (via precisaExame de worklist-exame.calc).
+  ultimoExameGinecologico: string | null;
 }
 
 export interface LactacaoDashboardIn {
