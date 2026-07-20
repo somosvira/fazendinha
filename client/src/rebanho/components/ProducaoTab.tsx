@@ -8,6 +8,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
+import { QualidadeLeiteSection } from "./QualidadeLeiteSection";
 
 // "DD/MM HH:mm" local — fim da carência (leite liberado a partir daí).
 function fmtDataHora(iso: string) {
@@ -111,6 +112,8 @@ export function ProducaoTab() {
           <p className="mt-[14px] text-sm text-ink-3">Registre controles na ficha de cada animal (+ Registrar controle).</p>
         </>
       )}
+
+      <QualidadeLeiteSection />
     </RebMain>
   );
 }

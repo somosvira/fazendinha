@@ -709,6 +709,25 @@ export function useProducao() {
   return { data, loading, erro, recarregar };
 }
 
+// ── Análise de leite (qualidade): tendência de CCS + distribuição + piores animais ──
+export type FaixaCCS = "EXCELENTE" | "ATENCAO" | "ALARME";
+export interface PontoTendenciaCCS { mes: string; ccsMedio: number; leituras: number }
+export interface PiorAnimalCCS { animalId: number; numero: string; nome: string | null; ccs: number; data: string; faixa: FaixaCCS }
+export interface AnaliseLeiteDTO {
+  totalLeituras: number; animaisComLeitura: number; ccsMedioAtual: number | null;
+  gorduraMedia: number | null; proteinaMedia: number | null;
+  tendenciaCCS: PontoTendenciaCCS[]; distribuicao: Record<FaixaCCS, number>;
+  pioresAnimais: PiorAnimalCCS[];
+}
+export const obterAnaliseLeite = () => req<AnaliseLeiteDTO>(`/rebanho/producao/analise-leite`);
+export function useAnaliseLeite() {
+  const [data, setData] = useState<AnaliseLeiteDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); obterAnaliseLeite().then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Referências financeiras (Fatia 10): categorias + centros de custo ───────
 export interface RefDTO { id: number; nome: string }
 export const listarCategorias = () => req<RefDTO[]>(`/rebanho/categorias`);
