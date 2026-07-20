@@ -22,6 +22,11 @@ export function toTimeline(e: any): EventoTimelineDTO {
       const achado = e.resultado ? String(e.resultado).replace(/_/g, " ").toLowerCase() : "sem achado";
       return { ...base, titulo: `Exame ginecológico — ${achado}`, detalhe: [e.protocolo, e.observacao].filter(Boolean).join(" · ") || undefined, alerta: ACHADOS_ALERTA.has(String(e.resultado)) };
     }
+    case "DESMAME": {
+      // peso ao desmame gravado em `resultado` (string numérica); observacao é texto livre.
+      const peso = e.resultado ? `${e.resultado} kg` : null;
+      return { ...base, titulo: "Desmame", detalhe: [peso, e.observacao].filter(Boolean).join(" · ") || undefined, marcador: "desmamado" };
+    }
     default:
       return { ...base, titulo: "Evento" };
   }

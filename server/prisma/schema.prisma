@@ -624,6 +624,7 @@ enum TipoEventoReprodutivo {
   SECAGEM
   TRANSFERENCIA_EMBRIAO // TE: embrião implantado numa receptora; genética vem da doadora
   EXAME_GINECOLOGICO // palpação/US do trato: achado clínico em `resultado` (diagnóstico, não fato estrutural)
+  DESMAME // desmame/desaleitamento do bezerro: fato de ciclo com data; peso opcional em `resultado`
 }
 
 model EventoReprodutivo {

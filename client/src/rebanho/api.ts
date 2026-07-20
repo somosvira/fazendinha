@@ -75,13 +75,14 @@ export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANT
 export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 
 export interface EventoPayload {
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO";
+  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
   doadoraId?: number; // TE: animal doador da genética
   metodo?: string; // exame ginecológico: palpação/US
+  pesoKg?: number; // desmame: peso opcional ao desmame
 }
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
