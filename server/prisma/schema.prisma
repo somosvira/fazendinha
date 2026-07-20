@@ -133,32 +133,32 @@ enum TipoPessoa {
 }
 
 model Produto {
-  id            Int                @id @default(autoincrement())
-  nome          String             @unique
-  tipo          TipoProduto        @default(INSUMO)
+  id                Int                @id @default(autoincrement())
+  nome              String             @unique
+  tipo              TipoProduto        @default(INSUMO)
   // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
-  subtipoPlantio TipoInsumoPlantio?
-  unidade       String             @default("un")
-  custoUnitario Decimal?           @db.Decimal(12, 2)
-  carencia      Int?
-  percentualMS  Decimal?           @db.Decimal(5, 2)
-  estocavel     Boolean            @default(true)
-  minimoEstoque Decimal?           @db.Decimal(12, 2)
-  ativo         Boolean            @default(true)
+  subtipoPlantio    TipoInsumoPlantio?
+  unidade           String             @default("un")
+  custoUnitario     Decimal?           @db.Decimal(12, 2)
+  carencia          Int?
+  percentualMS      Decimal?           @db.Decimal(5, 2)
+  estocavel         Boolean            @default(true)
+  minimoEstoque     Decimal?           @db.Decimal(12, 2)
+  ativo             Boolean            @default(true)
   // Setor operacional (Leite/Café/Corte/Milho/Geral) — dimensão SEPARADA da
   // categoria contábil abaixo. Null = não classificado (exibido como GERAL).
-  setor         SetorEstoque?
+  setor             SetorEstoque?
   // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
   // que a compra (ENTRADA) deste produto deve lançar.
-  categoria     Categoria?         @relation(fields: [categoriaId], references: [id])
-  categoriaId   Int?
-  centroCusto   CentroCusto?       @relation(fields: [centroCustoId], references: [id])
-  centroCustoId Int?
-  movimentos    MovimentoEstoque[]
+  categoria         Categoria?         @relation(fields: [categoriaId], references: [id])
+  categoriaId       Int?
+  centroCusto       CentroCusto?       @relation(fields: [centroCustoId], references: [id])
+  centroCustoId     Int?
+  movimentos        MovimentoEstoque[]
   eventosSanitarios EventoSanitario[]
-  dietaItens    DietaItem[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  dietaItens        DietaItem[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([tipo])
 }
@@ -353,16 +353,17 @@ model Raca {
 }
 
 model Grupo {
-  id                Int                @id @default(autoincrement())
-  nome              String             @unique
+  id                Int                   @id @default(autoincrement())
+  nome              String                @unique
   animais           Animal[]
-  dieta             Dieta?             @relation(fields: [dietaId], references: [id])
+  dieta             Dieta?                @relation(fields: [dietaId], references: [id])
   dietaId           Int?
-  propriedade       Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedade       Propriedade?          @relation(fields: [propriedadeId], references: [id])
   propriedadeId     Int?
   producoesLote     ProducaoLote[]
   movimentosEstoque MovimentoEstoque[]
   consumosPeriodo   ConsumoPeriodo[]
+  programacoesIATF  ProgramacaoIATFLote[]
 
   @@index([propriedadeId])
 }
@@ -370,46 +371,47 @@ model Grupo {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
-  id        Int      @id @default(autoincrement())
-  nome      String   @unique
-  apelido   String? // rótulo curto p/ o seletor ("Sede", "Recria")
-  cidade    String?
-  uf        String?
-  principal Boolean  @default(false) // a default quando não há filtro
-  ativo     Boolean  @default(true)
-  ordem     Int      @default(0)
-  animais   Animal[]
-  grupos    Grupo[]
+  id                Int                      @id @default(autoincrement())
+  nome              String                   @unique
+  apelido           String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  cidade            String?
+  uf                String?
+  principal         Boolean                  @default(false) // a default quando não há filtro
+  ativo             Boolean                  @default(true)
+  ordem             Int                      @default(0)
+  animais           Animal[]
+  grupos            Grupo[]
   movimentosEstoque MovimentoEstoque[]
-  lancamentos Lancamento[]
-  lotesCorte LoteCorte[]
-  piquetes   Piquete[]
-  talhoes   Talhao[]
-  lavouras  Lavoura[]
-  funcionarios Funcionario[]
-  safrasCultivo SafraCultivo[]
-  silos     Silo[]
-  caixinhas Caixinha[]
-  vacinasAgendadas VacinaAgendada[]
-  protocolosIATF   ProtocoloIATF[]
-  aplicacoesIATF   AplicacaoProtocoloIATF[]
-  examesQuarto     ExameQuarto[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lancamentos       Lancamento[]
+  lotesCorte        LoteCorte[]
+  piquetes          Piquete[]
+  talhoes           Talhao[]
+  lavouras          Lavoura[]
+  funcionarios      Funcionario[]
+  safrasCultivo     SafraCultivo[]
+  silos             Silo[]
+  caixinhas         Caixinha[]
+  vacinasAgendadas  VacinaAgendada[]
+  protocolosIATF    ProtocoloIATF[]
+  aplicacoesIATF    AplicacaoProtocoloIATF[]
+  programacoesIATF  ProgramacaoIATFLote[]
+  examesQuarto      ExameQuarto[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 }
 
 model Dieta {
-  id        Int      @id @default(autoincrement())
-  nome      String   @unique
-  descricao String?
-  pb        Decimal? @db.Decimal(4, 1) // % proteína bruta
-  edMcal    Decimal? @db.Decimal(4, 2) // energia (Mcal/kg)
-  ativo     Boolean  @default(true)
-  grupos    Grupo[]
-  itens     DietaItem[] // composição: quanto de cada produto por cabeça/dia
+  id              Int              @id @default(autoincrement())
+  nome            String           @unique
+  descricao       String?
+  pb              Decimal?         @db.Decimal(4, 1) // % proteína bruta
+  edMcal          Decimal?         @db.Decimal(4, 2) // energia (Mcal/kg)
+  ativo           Boolean          @default(true)
+  grupos          Grupo[]
+  itens           DietaItem[] // composição: quanto de cada produto por cabeça/dia
   consumosPeriodo ConsumoPeriodo[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 // Composição de uma dieta: quanto de cada produto por cabeça por dia.
@@ -432,43 +434,43 @@ model DietaItem {
 }
 
 model Animal {
-  id                  Int                 @id @default(autoincrement())
-  numero              String              @unique
+  id                  Int                      @id @default(autoincrement())
+  numero              String                   @unique
   nome                String?
   sexo                SexoAnimal
   categoria           CategoriaAnimal
-  raca                Raca?               @relation(fields: [racaId], references: [id])
+  raca                Raca?                    @relation(fields: [racaId], references: [id])
   racaId              Int?
   grauSangue          String?
-  dataNascimento      DateTime?           @db.Date
-  dataEntrada         DateTime            @db.Date
+  dataNascimento      DateTime?                @db.Date
+  dataEntrada         DateTime                 @db.Date
   brincoEletronico    String?
   sisbov              String?
-  mae                 Animal?             @relation("Maternidade", fields: [maeId], references: [id])
+  mae                 Animal?                  @relation("Maternidade", fields: [maeId], references: [id])
   maeId               Int?
-  pai                 Animal?             @relation("Paternidade", fields: [paiId], references: [id])
+  pai                 Animal?                  @relation("Paternidade", fields: [paiId], references: [id])
   paiId               Int?
   paiNome             String?
-  filhosMae           Animal[]            @relation("Maternidade")
-  filhosPai           Animal[]            @relation("Paternidade")
-  grupo               Grupo?              @relation(fields: [grupoId], references: [id])
+  filhosMae           Animal[]                 @relation("Maternidade")
+  filhosPai           Animal[]                 @relation("Paternidade")
+  grupo               Grupo?                   @relation(fields: [grupoId], references: [id])
   grupoId             Int?
   // Escopo de propriedade (multi-propriedade). Nullable + default=principal na
   // aplicação; fazenda de 1 sítio nunca percebe a camada.
-  propriedade         Propriedade?        @relation(fields: [propriedadeId], references: [id])
+  propriedade         Propriedade?             @relation(fields: [propriedadeId], references: [id])
   propriedadeId       Int?
   setor               String?
-  status              StatusAnimal        @default(ATIVO)
-  dataBaixa           DateTime?           @db.Date
+  status              StatusAnimal             @default(ATIVO)
+  dataBaixa           DateTime?                @db.Date
   motivoBaixa         String?
   // Papel de receptora (barriga de aluguel na TE). Marcado quando recebe um evento
   // TRANSFERENCIA_EMBRIAO; a genética das crias que ela carrega vem da doadora.
-  ehReceptora         Boolean             @default(false)
+  ehReceptora         Boolean                  @default(false)
   resumo              ResumoAnimal?
-  numPartosEntrada    Int                 @default(0)
+  numPartosEntrada    Int                      @default(0)
   eventosReprodutivos EventoReprodutivo[]
   // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
-  embrioesDoados      EventoReprodutivo[] @relation("Doadora")
+  embrioesDoados      EventoReprodutivo[]      @relation("Doadora")
   eventosSanitarios   EventoSanitario[]
   examesQuarto        ExameQuarto[]
   vacinasAgendadas    VacinaAgendada[]
@@ -476,8 +478,8 @@ model Animal {
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
 
   @@index([status])
   @@index([grupoId])
@@ -554,7 +556,7 @@ enum TipoEventoReprodutivo {
   PARTO
   SECAGEM
   TRANSFERENCIA_EMBRIAO // TE: embrião implantado numa receptora; genética vem da doadora
-  EXAME_GINECOLOGICO    // palpação/US do trato: achado clínico em `resultado` (diagnóstico, não fato estrutural)
+  EXAME_GINECOLOGICO // palpação/US do trato: achado clínico em `resultado` (diagnóstico, não fato estrutural)
 }
 
 model EventoReprodutivo {
@@ -585,15 +587,15 @@ model Lactacao {
   id              Int       @id @default(autoincrement())
   animal          Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
   animalId        Int
-  numero          Int       // ordem da lactação (ORDEMLACTACAO ou cronológica)
+  numero          Int // ordem da lactação (ORDEMLACTACAO ou cronológica)
   dtInicio        DateTime  @db.Date
-  dtFim           DateTime? @db.Date   // null = em curso
-  motivoSecagem   String?               // MOTIVOSECAGEM.DESCRICAO
-  tipoAleitamento String?               // TIPOALEITAMENTO ('A'…)
+  dtFim           DateTime? @db.Date // null = em curso
+  motivoSecagem   String? // MOTIVOSECAGEM.DESCRICAO
+  tipoAleitamento String? // TIPOALEITAMENTO ('A'…)
   induzida        Boolean   @default(false)
-  producaoTotal   Decimal?  @db.Decimal(10, 2)  // litros no ciclo — só a última lactação do animal (aberta ou seca) traz produção
+  producaoTotal   Decimal?  @db.Decimal(10, 2) // litros no ciclo — só a última lactação do animal (aberta ou seca) traz produção
   producao305     Decimal?  @db.Decimal(10, 2)
-  duracaoDias     Int?      // DEL do Ideagri (hoje sempre null; a duração exibida é recalculada)
+  duracaoDias     Int? // DEL do Ideagri (hoje sempre null; a duração exibida é recalculada)
   // Sem propriedadeId: como ControleLeiteiro/Pesagem, é fato-filho de Animal e herda o escopo do animal.
 
   @@index([animalId, numero])
@@ -620,35 +622,35 @@ enum TipoEventoSanitario {
 }
 
 model EventoSanitario {
-  id               Int                 @id @default(autoincrement())
-  animal           Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  animalId         Int
-  tipo             TipoEventoSanitario
-  data             DateTime            @db.Date
-  observacao       String?
-  doenca           String?
-  dtFim            DateTime?           @db.Date
-  diasTratamento   Int?
-  produto          String?
-  dose             String?
-  carencia         Int?
-  loteProduto      String?
-  ccs              Int?
-  gordura          Decimal?            @db.Decimal(4, 2)
-  proteina         Decimal?            @db.Decimal(4, 2)
-  quarto           String?
-  severidade       String?
-  resultadoCultivo String?
+  id                 Int                 @id @default(autoincrement())
+  animal             Animal              @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId           Int
+  tipo               TipoEventoSanitario
+  data               DateTime            @db.Date
+  observacao         String?
+  doenca             String?
+  dtFim              DateTime?           @db.Date
+  diasTratamento     Int?
+  produto            String?
+  dose               String?
+  carencia           Int?
+  loteProduto        String?
+  ccs                Int?
+  gordura            Decimal?            @db.Decimal(4, 2)
+  proteina           Decimal?            @db.Decimal(4, 2)
+  quarto             String?
+  severidade         String?
+  resultadoCultivo   String?
   // Vínculo opcional com o estoque: quando a APLICACAO/VACINA consome um Produto cadastrado,
   // produtoRef + quantidadeUsada geram uma SAIDA automática (movimentoEstoque). O texto livre
   // `produto` acima continua para retrocompatibilidade/exibição.
-  produtoRef         Produto?         @relation(fields: [produtoId], references: [id])
+  produtoRef         Produto?            @relation(fields: [produtoId], references: [id])
   produtoId          Int?
-  quantidadeUsada    Decimal?         @db.Decimal(12, 2)
-  movimentoEstoque   MovimentoEstoque? @relation(fields: [movimentoEstoqueId], references: [id])
-  movimentoEstoqueId Int?             @unique
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  quantidadeUsada    Decimal?            @db.Decimal(12, 2)
+  movimentoEstoque   MovimentoEstoque?   @relation(fields: [movimentoEstoqueId], references: [id])
+  movimentoEstoqueId Int?                @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([animalId, data])
   @@index([produtoId])
@@ -681,17 +683,18 @@ model VacinaAgendada {
 // configurável de etapas (D0/D7/D9/D11…) que se aplica a um animal com uma data de
 // início, gerando a agenda (calc puro em iatf.calc.ts).
 model ProtocoloIATF {
-  id            Int                      @id @default(autoincrement())
-  nome          String // rótulo do protocolo (ex.: "IATF 11 dias — P4 + ECP")
-  descricao     String?
-  hormonioBase  String? // hormônio-base/linha do protocolo (ex.: "P4 + ECP")
-  ativo         Boolean                  @default(true) // catálogo: inativar em vez de apagar
-  propriedade   Propriedade?             @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
-  etapas        EtapaProtocoloIATF[]
-  aplicacoes    AplicacaoProtocoloIATF[]
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
+  id               Int                      @id @default(autoincrement())
+  nome             String // rótulo do protocolo (ex.: "IATF 11 dias — P4 + ECP")
+  descricao        String?
+  hormonioBase     String? // hormônio-base/linha do protocolo (ex.: "P4 + ECP")
+  ativo            Boolean                  @default(true) // catálogo: inativar em vez de apagar
+  propriedade      Propriedade?             @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
+  etapas           EtapaProtocoloIATF[]
+  aplicacoes       AplicacaoProtocoloIATF[]
+  programacoesLote ProgramacaoIATFLote[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
   @@index([propriedadeId])
   @@index([ativo])
@@ -713,21 +716,50 @@ model EtapaProtocoloIATF {
 // Aplicação de um protocolo a um animal, a partir de uma data de início (o D0).
 // A agenda de cada etapa é derivada (dataInicio + etapa.dia) — não é materializada.
 model AplicacaoProtocoloIATF {
-  id            Int           @id @default(autoincrement())
-  animal        Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  id            Int                  @id @default(autoincrement())
+  animal        Animal               @relation(fields: [animalId], references: [id], onDelete: Cascade)
   animalId      Int
-  protocolo     ProtocoloIATF @relation(fields: [protocoloId], references: [id])
+  protocolo     ProtocoloIATF        @relation(fields: [protocoloId], references: [id])
   protocoloId   Int
-  dataInicio    DateTime      @db.Date // D0 da aplicação neste animal
+  dataInicio    DateTime             @db.Date // D0 da aplicação neste animal
   observacao    String?
-  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  // Programação de lote que criou esta aplicação (quando aplicada em massa). Nullable:
+  // null = aplicação avulsa (animal a animal, do #163); preenchido = veio de um lote.
+  programacao   ProgramacaoIATFLote? @relation(fields: [programacaoId], references: [id], onDelete: Cascade)
+  programacaoId Int?
+  propriedade   Propriedade?         @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@index([animalId])
   @@index([protocoloId])
+  @@index([programacaoId])
   @@index([propriedadeId])
+  @@index([dataInicio])
+}
+
+// Programação de um protocolo IATF para um LOTE inteiro num mesmo D0. Materializa,
+// numa transação, uma AplicacaoProtocoloIATF por animal do lote (todas com o mesmo
+// protocolo e dataInicio). A agenda D0/D7/D9/D11 é derivada (não materializada),
+// igual à aplicação individual. Espelha PROGRAMACAOIATF/PROGRAMACAOIATFASSOCIACAO do IDEagri.
+model ProgramacaoIATFLote {
+  id            Int                      @id @default(autoincrement())
+  protocolo     ProtocoloIATF            @relation(fields: [protocoloId], references: [id])
+  protocoloId   Int
+  grupo         Grupo?                   @relation(fields: [grupoId], references: [id])
+  grupoId       Int? // lote de origem (opcional — pode ser seleção manual de animais)
+  nome          String? // rótulo livre ("IATF novilhas — jul/26")
+  dataInicio    DateTime                 @db.Date // D0 comum do lote
+  observacao    String?
+  aplicacoes    AplicacaoProtocoloIATF[] // as aplicações individuais criadas por esta programação
+  propriedade   Propriedade?             @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([propriedadeId])
+  @@index([grupoId])
   @@index([dataInicio])
 }
 
@@ -748,34 +780,34 @@ enum OrigemMovimentoEstoque {
 }
 
 model MovimentoEstoque {
-  id            Int                    @id @default(autoincrement())
-  produto       Produto                @relation(fields: [produtoId], references: [id])
-  produtoId     Int
-  tipo          TipoMovimento
-  origem        OrigemMovimentoEstoque @default(MANUAL)
-  data          DateTime               @db.Date
-  quantidade    Decimal                @db.Decimal(12, 2)
-  custoUnitario Decimal                @db.Decimal(12, 2)
-  valorTotal    Decimal                @db.Decimal(14, 2)
-  grupo         Grupo?                 @relation(fields: [grupoId], references: [id])
-  grupoId       Int?
-  fornecedor    ClienteFornecedor?     @relation(fields: [fornecedorId], references: [id])
-  fornecedorId  Int?
+  id               Int                    @id @default(autoincrement())
+  produto          Produto                @relation(fields: [produtoId], references: [id])
+  produtoId        Int
+  tipo             TipoMovimento
+  origem           OrigemMovimentoEstoque @default(MANUAL)
+  data             DateTime               @db.Date
+  quantidade       Decimal                @db.Decimal(12, 2)
+  custoUnitario    Decimal                @db.Decimal(12, 2)
+  valorTotal       Decimal                @db.Decimal(14, 2)
+  grupo            Grupo?                 @relation(fields: [grupoId], references: [id])
+  grupoId          Int?
+  fornecedor       ClienteFornecedor?     @relation(fields: [fornecedorId], references: [id])
+  fornecedorId     Int?
   // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
-  propriedade   Propriedade?           @relation(fields: [propriedadeId], references: [id])
-  propriedadeId Int?
+  propriedade      Propriedade?           @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
   // Lançamento financeiro gerado pela ENTRADA (compra), se houver (ponte compra→financeiro).
-  lancamento    Lancamento?            @relation(fields: [lancamentoId], references: [id])
-  lancamentoId  Int?                   @unique
+  lancamento       Lancamento?            @relation(fields: [lancamentoId], references: [id])
+  lancamentoId     Int?                   @unique
   // Fechamento de consumo (Fatia 2) que gerou esta SAIDA, se automática.
-  consumoPeriodo   ConsumoPeriodo?     @relation(fields: [consumoPeriodoId], references: [id], onDelete: Cascade)
+  consumoPeriodo   ConsumoPeriodo?        @relation(fields: [consumoPeriodoId], references: [id], onDelete: Cascade)
   consumoPeriodoId Int?
   // Evento sanitário que gerou esta SAIDA (origem SANIDADE), se automática. Back-ref da FK
   // EventoSanitario.movimentoEstoqueId.
   eventoSanitario  EventoSanitario?
-  observacao    String?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  observacao       String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   @@index([produtoId, data])
   @@index([tipo, data])
@@ -957,18 +989,18 @@ model VariedadeCafe {
 
 // Lavoura = agrupador de talhões (espelha Grupo do rebanho).
 model Lavoura {
-  id              Int            @id @default(autoincrement())
-  nome            String         @unique
+  id              Int              @id @default(autoincrement())
+  nome            String           @unique
   observacao      String?
-  planoAdubacao   PlanoAdubacao? @relation(fields: [planoAdubacaoId], references: [id])
+  planoAdubacao   PlanoAdubacao?   @relation(fields: [planoAdubacaoId], references: [id])
   planoAdubacaoId Int?
   talhoes         Talhao[]
   tarefas         TarefaAgricola[]
   // Escopo de propriedade (Fatia 4B). Nullable + default principal.
-  propriedade     Propriedade?   @relation(fields: [propriedadeId], references: [id])
+  propriedade     Propriedade?     @relation(fields: [propriedadeId], references: [id])
   propriedadeId   Int?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([propriedadeId])
 }
@@ -992,27 +1024,27 @@ model PlanoAdubacao {
 
 // Talhão — unidade individual da lavoura. Espelha Animal do rebanho.
 model Talhao {
-  id               Int                @id @default(autoincrement())
-  codigo           String             @unique
+  id               Int                  @id @default(autoincrement())
+  codigo           String               @unique
   nome             String?
-  variedade        VariedadeCafe      @relation(fields: [variedadeId], references: [id])
+  variedade        VariedadeCafe        @relation(fields: [variedadeId], references: [id])
   variedadeId      Int
-  lavoura          Lavoura?           @relation(fields: [lavouraId], references: [id])
+  lavoura          Lavoura?             @relation(fields: [lavouraId], references: [id])
   lavouraId        Int?
   // Espaçamento como string ("3,80 × 0,60 m") preserva a forma usada pelo
   // produtor; plantasHa é derivado mas guardado pra agilidade nos queries.
   espacamento      String?
   plantasHa        Int
-  areaHa           Decimal            @db.Decimal(7, 2)
+  areaHa           Decimal              @db.Decimal(7, 2)
   anoPlantio       Int
   altitude         Int?
   exposicao        String?
-  declive          Decimal?           @db.Decimal(4, 1)
-  irrigado         Boolean            @default(false)
-  estado           EstadoTalhao       @default(ATIVO)
-  dataPlantio      DateTime           @db.Date
-  ultimaRecepa     DateTime?          @db.Date
-  dataBaixa        DateTime?          @db.Date
+  declive          Decimal?             @db.Decimal(4, 1)
+  irrigado         Boolean              @default(false)
+  estado           EstadoTalhao         @default(ATIVO)
+  dataPlantio      DateTime             @db.Date
+  ultimaRecepa     DateTime?            @db.Date
+  dataBaixa        DateTime?            @db.Date
   motivoBaixa      String?
   observacao       String?
   resumo           ResumoTalhao?
@@ -1025,10 +1057,10 @@ model Talhao {
   tarefasAgricolas TarefaAgricola[]
   apontamentos     ApontamentoMaquina[]
   // Escopo de propriedade (Fatia 4B). Nullable + default principal.
-  propriedade      Propriedade?       @relation(fields: [propriedadeId], references: [id])
+  propriedade      Propriedade?         @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@index([estado])
   @@index([lavouraId])
@@ -1626,9 +1658,9 @@ model Funcionario {
   jornadaDiariaHoras Decimal         @default(8) @db.Decimal(5, 2) // jornada normal/dia
   // Horário padrão (opcional): pré-preenche a grade do mês nos dias úteis.
   // Todos null = sem padrão → grade vazia (comportamento atual, admin lança à mão).
-  horaEntradaPadrao  String?         // "HH:MM"
-  horaSaidaPadrao    String?         // "HH:MM"
-  intervaloPadraoMin Int?            // almoço padrão, em minutos
+  horaEntradaPadrao  String? // "HH:MM"
+  horaSaidaPadrao    String? // "HH:MM"
+  intervaloPadraoMin Int? // almoço padrão, em minutos
   dataAdmissao       DateTime?       @db.Date
   cpf                String?
   chavePix           String?
@@ -1694,14 +1726,14 @@ model UsuarioWhatsapp {
 
 // Uma conversa por telefone; guarda o histórico para contexto multi-turno.
 model ConversaWhatsapp {
-  id           Int                 @id @default(autoincrement())
-  usuario      UsuarioWhatsapp?    @relation(fields: [usuarioId], references: [id])
-  usuarioId    Int?
-  telefone     String              @unique
-  mensagens    MensagemWhatsapp[]
-  ultimaAtividade DateTime         @default(now())
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id              Int                @id @default(autoincrement())
+  usuario         UsuarioWhatsapp?   @relation(fields: [usuarioId], references: [id])
+  usuarioId       Int?
+  telefone        String             @unique
+  mensagens       MensagemWhatsapp[]
+  ultimaAtividade DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
 model MensagemWhatsapp {
@@ -1721,18 +1753,18 @@ model MensagemWhatsapp {
 // Rascunho de lançamento (pré-preenchido por formulário/OCR) até o usuário
 // confirmar. Campos nullable: OCR pode preencher parcialmente.
 model LancamentoRascunho {
-  id                  Int            @id @default(autoincrement())
-  telefone            String
-  status              StatusRascunho @default(PENDENTE)
+  id       Int            @id @default(autoincrement())
+  telefone String
+  status   StatusRascunho @default(PENDENTE)
 
-  natureza            Natureza?
-  valor               Decimal?       @db.Decimal(14, 2)
-  dataCompetencia     DateTime?      @db.Date
-  dataVencimento      DateTime?      @db.Date
-  dataLiquidacao      DateTime?      @db.Date
-  situacao            Situacao?
-  numeroDocumento     String?
-  descricao           String?
+  natureza        Natureza?
+  valor           Decimal?  @db.Decimal(14, 2)
+  dataCompetencia DateTime? @db.Date
+  dataVencimento  DateTime? @db.Date
+  dataLiquidacao  DateTime? @db.Date
+  situacao        Situacao?
+  numeroDocumento String?
+  descricao       String?
 
   categoriaId         Int?
   centroCustoId       Int?
@@ -1740,12 +1772,12 @@ model LancamentoRascunho {
   clienteFornecedorId Int?
 
   // Extração crua do OCR/vision (auditoria + reprocessar se preciso).
-  rawOcr              Json?
+  rawOcr       Json?
   // Lançamento criado quando confirmado.
-  lancamentoId        Int?
+  lancamentoId Int?
 
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([telefone, status])
 }
@@ -1804,24 +1836,24 @@ enum OrigemMovimentoSilo {
 }
 
 model SafraCultivo {
-  id          Int                 @id @default(autoincrement())
-  cultura     Cultura
-  nome        String
-  ano         Int
-  dataInicio  DateTime            @db.Date
-  dataFim     DateTime?           @db.Date
-  areaHaTotal Decimal?            @db.Decimal(10, 2) // usado quando não há AreaCultivo
-  fechada     Boolean             @default(false)
-  observacao  String?
-  areas       AreaCultivo[]
-  custos      LancamentoCusto[]
-  producoes   ProducaoCultivo[]
-  resumo      ResumoSafraCultivo?
+  id            Int                 @id @default(autoincrement())
+  cultura       Cultura
+  nome          String
+  ano           Int
+  dataInicio    DateTime            @db.Date
+  dataFim       DateTime?           @db.Date
+  areaHaTotal   Decimal?            @db.Decimal(10, 2) // usado quando não há AreaCultivo
+  fechada       Boolean             @default(false)
+  observacao    String?
+  areas         AreaCultivo[]
+  custos        LancamentoCusto[]
+  producoes     ProducaoCultivo[]
+  resumo        ResumoSafraCultivo?
   // Escopo de propriedade (Fatia 4C). Nullable + default principal.
-  propriedade   Propriedade?      @relation(fields: [propriedadeId], references: [id])
+  propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@index([cultura, ano])
   @@index([propriedadeId])
@@ -1868,41 +1900,41 @@ model LancamentoCusto {
 }
 
 model ProducaoCultivo {
-  id             Int             @id @default(autoincrement())
-  safraCultivo   SafraCultivo    @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
+  id             Int              @id @default(autoincrement())
+  safraCultivo   SafraCultivo     @relation(fields: [safraCultivoId], references: [id], onDelete: Cascade)
   safraCultivoId Int
-  area           AreaCultivo?    @relation(fields: [areaCultivoId], references: [id])
+  area           AreaCultivo?     @relation(fields: [areaCultivoId], references: [id])
   areaCultivoId  Int?
-  data           DateTime        @db.Date
+  data           DateTime         @db.Date
   tipo           TipoProducao
-  quantidade     Decimal         @db.Decimal(12, 3)
+  quantidade     Decimal          @db.Decimal(12, 3)
   unidade        UnidadeProducao
   destino        DestinoProducao?
-  silo           Silo?           @relation(fields: [siloId], references: [id])
+  silo           Silo?            @relation(fields: [siloId], references: [id])
   siloId         Int?
   observacao     String?
   movimentos     MovimentoSilo[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@index([safraCultivoId, data])
 }
 
 model Silo {
-  id         Int               @id @default(autoincrement())
-  nome       String
-  tipo       TipoSilo
-  capacidade Decimal?          @db.Decimal(12, 3)
-  unidade    String
-  saldoAtual Decimal           @default(0) @db.Decimal(12, 3)
-  ativo      Boolean           @default(true)
-  movimentos MovimentoSilo[]
-  producoes  ProducaoCultivo[]
+  id            Int               @id @default(autoincrement())
+  nome          String
+  tipo          TipoSilo
+  capacidade    Decimal?          @db.Decimal(12, 3)
+  unidade       String
+  saldoAtual    Decimal           @default(0) @db.Decimal(12, 3)
+  ativo         Boolean           @default(true)
+  movimentos    MovimentoSilo[]
+  producoes     ProducaoCultivo[]
   // Escopo de propriedade (Fatia 4C). Nullable + default principal.
-  propriedade   Propriedade?   @relation(fields: [propriedadeId], references: [id])
+  propriedade   Propriedade?      @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@index([propriedadeId])
 }
@@ -1965,17 +1997,17 @@ enum CategoriaCaixinha {
 }
 
 model Caixinha {
-  id          Int                 @id @default(autoincrement())
-  nome        String
-  responsavel String?
-  saldoAtual  Decimal             @default(0) @db.Decimal(14, 2)
-  ativo       Boolean             @default(true)
-  movimentos  MovimentoCaixinha[]
+  id            Int                 @id @default(autoincrement())
+  nome          String
+  responsavel   String?
+  saldoAtual    Decimal             @default(0) @db.Decimal(14, 2)
+  ativo         Boolean             @default(true)
+  movimentos    MovimentoCaixinha[]
   // Escopo de propriedade (Fatia 4C). Nullable + default principal.
-  propriedade   Propriedade?      @relation(fields: [propriedadeId], references: [id])
+  propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@index([propriedadeId])
 }

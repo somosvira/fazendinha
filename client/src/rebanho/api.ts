@@ -321,9 +321,9 @@ export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consu
 
 export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente";
+export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente" | "precisa-de-exame";
 export type AcaoWorklistRebanho =
-  | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" }
+  | { dominio: "reproducao"; tipoEvento: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" | "EXAME_GINECOLOGICO" }
   | { dominio: "sanidade"; tipoEvento: "EXAME" };
 interface AcaoWorklistApi { tipo: "DIAGNOSTICO" | "SECAGEM" | "PARTO" | "INSEMINACAO" | "EXAME"; rotulo: string; }
 export interface WorklistItemRebanho {
@@ -390,8 +390,9 @@ const acaoPorWorklist: Partial<Record<ChaveWorklistRebanho, AcaoWorklistRebanho>
   "dg-pendente": { dominio: "reproducao", tipoEvento: "DIAGNOSTICO" },
   "parto-proximo": { dominio: "reproducao", tipoEvento: "PARTO" },
   "ccs-alta": { dominio: "sanidade", tipoEvento: "EXAME" },
+  "precisa-de-exame": { dominio: "reproducao", tipoEvento: "EXAME_GINECOLOGICO" },
 };
-const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia", "producao-caindo", "vacina-pendente"];
+const CHAVES_WORKLIST: readonly ChaveWorklistRebanho[] = ["secagem-atrasada", "vazia-pos-pev", "ccs-alta", "dg-pendente", "parto-proximo", "carencia", "producao-caindo", "vacina-pendente", "precisa-de-exame"];
 function ehChaveWorklist(chave: string): chave is ChaveWorklistRebanho { return (CHAVES_WORKLIST as readonly string[]).includes(chave); }
 function adaptarDashboard(d: DashboardApiDTO): DashboardData {
   const heroi = (chave: DashboardApiDTO["herois"][number]["chave"]): IndicadorHeroDashboard => {
@@ -568,6 +569,38 @@ export function useAplicacoesIatf(animalId: string | null) {
     listarAplicacoesIatf(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
   };
   useEffect(recarregar, [animalId]);
+  return { data, loading, recarregar };
+}
+
+// ── IATF por lote: programação de um protocolo para um conjunto de animais num mesmo D0 ──
+export interface ProgramacaoIatfLoteDTO {
+  id: number; protocoloId: number; protocoloNome: string;
+  grupoId: number | null; grupoNome: string | null; nome: string | null;
+  dataInicio: string; observacao: string | null; totalAnimais: number;
+  agenda: EtapaAgendadaDTO[]; totalEtapas: number; etapasConcluidas: number;
+  proxima: EtapaAgendadaDTO | null; concluido: boolean;
+}
+export interface AnimalProgramacaoDTO { animalId: number; numero: string; nome: string | null }
+export interface ProgramacaoIatfLoteDetalheDTO extends ProgramacaoIatfLoteDTO { animais: AnimalProgramacaoDTO[] }
+export interface CriarProgramacaoIatfInput {
+  protocoloId: number; dataInicio: string; grupoId?: number | null; nome?: string; observacao?: string; animalIds: number[];
+}
+
+export const listarProgramacoesIatf = () => req<ProgramacaoIatfLoteDTO[]>(`/rebanho/iatf/programacoes`);
+export const detalheProgramacaoIatf = (id: number) => req<ProgramacaoIatfLoteDetalheDTO>(`/rebanho/iatf/programacoes/${id}`);
+export const criarProgramacaoIatf = (body: CriarProgramacaoIatfInput) =>
+  req<ProgramacaoIatfLoteDetalheDTO>(`/rebanho/iatf/programacoes`, { method: "POST", body: JSON.stringify(body) });
+export const excluirProgramacaoIatf = (id: number) =>
+  req<{ ok: true }>(`/rebanho/iatf/programacoes/${id}`, { method: "DELETE" });
+
+export function useProgramacoesIatf() {
+  const [data, setData] = useState<ProgramacaoIatfLoteDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    setLoading(true);
+    listarProgramacoesIatf().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, recarregar };
 }
 
