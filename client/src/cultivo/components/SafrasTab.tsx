@@ -24,9 +24,10 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";
+import { fmtMoneyExact } from "@/components/charts";
 import { Sprout } from "lucide-react";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
 const ha = (n: number | null) => (n == null ? "—" : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha`);
 

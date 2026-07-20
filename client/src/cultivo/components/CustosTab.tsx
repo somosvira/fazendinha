@@ -19,8 +19,9 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 
 // Reproduz .rb-k para células custom (borda colorida / fonte custom).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";

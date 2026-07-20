@@ -5,8 +5,9 @@ import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebBox } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 // custoHa/custoSaca/custoTonelada podem vir null (safra em formação, sem
 // benefício no período, ou safra mista grão+silagem — ver `nota`).
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));
