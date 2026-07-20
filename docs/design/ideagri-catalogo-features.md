@@ -1,5 +1,7 @@
 # Catálogo de features do Ideagri — roadmap de paridade
 
+> **Ver também:** [`ideagri-gaps.md`](./ideagri-gaps.md) — a fila enxuta de lacunas (só o que falta), em checkbox, derivada deste catálogo.
+
 **Objetivo.** Este documento cataloga **todo o sistema Ideagri** (o ERP de rebanho leiteiro Delphi/Firebird que serve de referência para o nosso módulo Rebanho e adjacentes) tela a tela, e marca o status de cada feature no **nosso** sistema. A intenção é replicar o Ideagri por completo — porém mais bonito e organizado — já que o produto será revendido a várias fazendas.
 
 **Princípio norteador (decisão do usuário, 2026-07-14):** *não* é porque algo está vazio na fazenda 777 (Rio Novo) que a feature será descartada. Baseamo-nos em **todo o sistema Ideagri** para desenhar o nosso. "Vazio na 777" é apenas um dado de **priorização** (dá para testar com dado real agora?), nunca um critério de exclusão. As únicas features não replicadas são o **encanamento interno do próprio Ideagri** (backup, exportadores proprietários, consulta SQL etc.).
@@ -47,8 +49,8 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 | Transferência de embrião (TE) | 🟡 | — | Enum TRANSFERENCIA_EMBRIAO + doadora + `ehReceptora` (PR #94); falta fluxo/tela completa e coleta. |
 | **Exame ginecológico** | ⬜ | **248** | **Fatia 2 planejada.** `EXAMEANIMAL` — exames reprodutivos por animal (útero/ovário/resultado). Enum reprodutivo precisa de `EXAME_GINECOLOGICO`; `RESULTADOEXAMEGINECOLOGICO` (44) é o dicionário de resultados. |
 | Diagnóstico / Tipo resultado ex. ginecológico | ⬜ | 44 | Dicionário de resultados de exame (lookup). |
-| **Programação IATF/TETF** | ⬜ | **67 + 418** | Protocolo hormonal programado por lote/data. `PROGRAMACAOIATF` 67, `PROGRAMACAOIATFASSOCIACAO` 418 — **dado real substancial**, alta prioridade. |
-| Protocolo hormonal | ⬜ | 31 | `PROTOCOLOIATFPRINCIPIOATIVO` 31, `TIPOMANEJOPROTOCOLOREP` 8. Sustenta a IATF. |
+| **Programação IATF/TETF** | 🟡 | **67 + 418** | Catálogo de protocolos IATF configurável entregue (#163: D0/D7/D9/D11); falta a **programação por lote/data** (aplicar o protocolo a um lote com calendário). `PROGRAMACAOIATF` 67. |
+| Protocolo hormonal | ✅ | 31 | **Entregue (#163).** Catálogo de protocolos IATF configurável com etapas D0/D7/D9/D11 e princípios ativos. |
 | Estação de monta | ⬜ | vazio | Janela reprodutiva sazonal (mais usada em corte). |
 | Coleta FIV / TE | ⬜ | vazio | Aspiração/coleta de óvulos; sem tabela dedicada nesta base. |
 | Pool de doadoras | ⬜ | vazio | `GRUPOPOOLDOADORA` — agrupamento de doadoras FIV. |
@@ -61,15 +63,15 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 |---|---|---|---|
 | Controle leiteiro | ✅ | 1621 | `ControleLeiteiro`; produção média/305/tendência. |
 | Produção total de leite | ✅ | — | Modo TANQUE/TOTAL_DIARIO configurável (revenda). |
-| **Produção informada na lactação** | 🟡 | — | Parte da Fatia 1 — produção por lactação (não só a atual). |
-| **Secagem** | 🟡 | 10 | Enum SECAGEM existe; `MOTIVOSECAGEM` (10) não importado. Vira parte do histórico de lactação (Fatia 1) e work-list "a secar". |
+| **Produção informada na lactação** | ✅ | — | Produção por lactação no histórico (#147); curva de lactação por ciclo (#154, #158). |
+| **Secagem** | ✅ | 10 | Enum SECAGEM + retorno à fila na secagem (#150); work-list "a secar" (#156). Motivo de secagem no histórico de lactações. |
 | **Indução de lactação** | ⬜ | — | `LACTACAO.INDUZIDA` — flag de lactação induzida. |
-| **Histórico de lactações** | ⬜ | **335** | **Fatia 1 planejada.** `LACTACAO` (173 animais, 232 encerradas): ordem, DEL, motivo de secagem, tipo de aleitamento, produção por lactação. Hoje só mostramos a lactação atual. |
-| Análise de leite | 🟡 | 467 | `ANALISELEITE` importada como evento EXAME (CCS/gordura/proteína); falta **tela dedicada** de qualidade + tendência de CCS. |
+| **Histórico de lactações** | ✅ | **335** | **Entregue (#146–147).** `LACTACAO`: ordem, DEL, motivo de secagem, produção por lactação. Seção Lactações no cockpit + pico/persistência (#158). |
+| Análise de leite | 🟡 | 467 | `ANALISELEITE` importada como evento EXAME (CCS/gordura/proteína); falta **tela dedicada** de qualidade + tendência de CCS (parcial: tendência de CCS já no resumo). |
 | Análise de tanque | ⬜ | vazio | Qualidade do leite do tanque (bulk). |
 | Tanque | ⬜ | vazio | Cadastro/gestão de tanques de resfriamento. |
-| CMT (mastite subclínica) | ⬜ | — | Teste caneca/CMT por quarto. |
-| Correção 305 / idade adulta / produção total | 🟡 | 351/183/70 | `CORRECAO305` — produção corrigida a 305 dias/idade adulta (padrão zootécnico). Temos 305 simples; falta a correção oficial. |
+| CMT (mastite subclínica) | ✅ | — | **Entregue (#168).** CMT por quarto (AE/AD/PE/PD): entrada rápida das 4 tetas + mapa de úbere + detecção de quarto crônico → sugestão de secar/tratar. |
+| Correção 305 / idade adulta / produção total | ✅ | 351/183/70 | **Entregue (#151–152).** `CORRECAO305` — usa a correção oficial (não mais estimativa linear) e agrega no resumo de lactações. |
 
 ## 4. Sanidade
 
@@ -77,11 +79,11 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 |---|---|---|---|
 | Aplicação (produto) | ✅ | 3257 | Evento APLICACAO/VACINA; custo de sanidade (rateio + exato). |
 | Doença / Tipo de doença | ✅ | 339 / 38 | Evento OCORRENCIA (`DOENCAANIMAL`). |
-| Mastite / Tratamento Mastite / CMT | 🟡 | 24 | Evento MASTITE (quarto + microrganismo); falta tela de tratamento/CMT. |
-| Exame / Tipo de exame | 🟡 | 248 | `EXAMEANIMAL` — hoje só análise de leite entra; ginecológico é a Fatia 2. |
+| Mastite / Tratamento Mastite / CMT | ✅ | 24 | **Entregue (#168).** `ExameQuarto` por teta (AE/AD/PE/PD): CMT subclínico + episódio clínico + quarto perdido; cronicidade por quarto → sugestão de secar/tratar. Evento MASTITE legado permanece read-only. |
+| Exame / Tipo de exame | 🟡 | 248 | `EXAMEANIMAL` — análise de leite + exame por quarto entram; ginecológico ainda pendente (Fatia 2). |
 | Protocolo sanitário / Aplicação protocolo sanitário | ⬜ | 9 cat. / 0 | Catálogo de 9 protocolos existe; **aplicações por animal = 0** (sem dado real). Replicar como cadastro + calendário. |
-| Agenda de eventos / Agenda de sanidade | ⬜ | vazio | Calendário de manejos futuros (vacinas, exames) → work-lists. Alto valor operacional. |
-| Escore de teto | ⬜ | vazio | Avaliação de teto (saúde de úbere). |
+| Agenda de eventos / Agenda de sanidade | 🟡 | vazio | Vacinação agendada com lembrete por data (#160). Falta o calendário unificado de todos os manejos futuros (exames, protocolos) → work-lists. |
+| Escore de teto | 🟡 | vazio | Estado por quarto (sadio/ativo/crônico/perdido) já modela saúde de úbere (#168); falta o escore de teto formal (hiperqueratose). |
 | Correlação de microrganismos | ✅ | 48 | `MICROORGANISMO` importado (via mastite). |
 | Tratamento base | ⬜ | 13 | `TRATAMENTOBASE` — protocolos de tratamento padrão. |
 
@@ -180,18 +182,20 @@ Registradas por completude; **não** entram no backlog. São infra do software D
 
 Critério: **(A)** valor operacional/de produto, **(B)** existência de dado real na 777 para validar já, **(C)** tamanho/risco da fatia. Cada fatia = um PR verificável, seguindo o pipeline do módulo (extração reproduzível → import → model → service com cálculo puro TDD → cockpit + seção → browser-verified).
 
+> **Atualização 2026-07-19:** ✅ entregues desde a última revisão — **#1 Histórico de lactações** (#146–147), **#5 Correção 305** (#151–152), e a parte de **CMT/mastite por quarto** do #9 (#168). Carência de leite (parte do #10) também já ativa na produção (#153). A fila abaixo mantém só o que resta.
+
 | # | Fatia | Domínio | Dado real | Por quê |
 |---|---|---|---|---|
-| **1** | **Histórico de lactações** | Produção | **335** | **Spec escrita.** Destrava vida produtiva/persistência da vaca; enriquece `Lactacao` (hoje anêmico e não lido). Inclui motivo de secagem. |
-| **2** | **Exames ginecológicos** | Reprodução | **248** | Eventos clínicos reprodutivos no cockpit + work-list "precisa de exame". Enum `EXAME_GINECOLOGICO`. |
-| 3 | Programação IATF/TETF + protocolo hormonal | Reprodução | 67 + 418 | Muito dado real; protocolo hormonal programado por lote → calendário reprodutivo. Fatia maior. |
+| ~~1~~ | ~~Histórico de lactações~~ | Produção | 335 | ✅ **Entregue** (#146–147). |
+| **2** | **Exames ginecológicos** | Reprodução | **248** | Eventos clínicos reprodutivos no cockpit + work-list "precisa de exame". Enum `EXAME_GINECOLOGICO`. **Próximo candidato.** |
+| 3 | Programação IATF/TETF por lote/data | Reprodução | 67 + 418 | Catálogo de protocolo já feito (#163); falta programar o protocolo a um lote → calendário reprodutivo. |
 | 4 | Movimentação (grupos/setores) como fato histórico | Rebanho | 1504 + 289 | Histórico de trocas de lote/setor no cockpit; base para "onde a vaca esteve". |
-| 5 | Correção 305 / produção corrigida | Produção | 351 | Padrão zootécnico oficial; melhora comparabilidade entre vacas. |
-| 6 | Agenda de eventos / manejos futuros | Sanidade/Repro | vazio | Calendário unificado de manejos → work-lists proativas. Replicar (produto), sem dado. |
+| ~~5~~ | ~~Correção 305 / produção corrigida~~ | Produção | 351 | ✅ **Entregue** (#151–152). |
+| 6 | Agenda de eventos / manejos futuros | Sanidade/Repro | vazio | Vacinação agendada já feita (#160); falta o calendário unificado de todos os manejos → work-lists proativas. |
 | 7 | Biblioteca de reprodutores + central de sêmen + índices genéticos | Genética | 65 + 25 + 271 | Base para recomendação de acasalamento; catálogo de touros/PTAs. |
 | 8 | Recomendação/medida de acasalamento | Genética | vazio | Motor de cruzamento dirigido. Depende de #7. |
-| 9 | Análise de leite (tela dedicada) + tanque + CMT | Produção/Qualidade | 467 | Qualidade do leite: tendência CCS, tanque, mastite subclínica. |
-| 10 | Princípio ativo + carência de leite | Estoque/Sanidade | 665 | Carência (leite descartado pós-medicamento) — compliance real. |
+| 9 | Análise de leite (tela dedicada) + tanque | Produção/Qualidade | 467 | Qualidade do leite: tela dedicada de tendência CCS + tanque. (CMT/mastite por quarto já entregue em #168.) |
+| 10 | Princípio ativo (composição de medicamento) | Estoque/Sanidade | 665 | `PRINCIPIOATIVO` — composição/antibiótico. (Carência de leite já ativa via #153; falta a base de princípio ativo.) |
 | 11 | Construtor de relatórios / dashboards montáveis | Análise | — | Diferencial de produto para revenda; grande. Baixa urgência. |
 | 12+ | Compras (cotação→pedido→nota), patrimônio/depreciação, orçamento previsto×realizado | Financeiro | vazio | Módulos financeiros do Ideagri; sem dado real, entram quando houver demanda. |
 
