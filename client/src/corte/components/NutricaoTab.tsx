@@ -6,6 +6,7 @@ import { insightDaFazenda } from "../mock";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
+import { fmtMoneyExact } from "@/components/charts";
 import type { ResumoLote, Lote } from "../types";
 
 /* Catálogo de suplementos típicos Sul de Minas, com R$/kg de mai/2026. */
@@ -46,9 +47,9 @@ export function NutricaoTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
                 <tr key={s.tipo}>
                   <td><RebAnm>{s.label}</RebAnm></td>
                   <td>{s.gCabDia.toLocaleString("pt-BR")} g</td>
-                  <td>{s.custoKg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                  <td>{diaCab.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                  <td>{mesCab.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                  <td>{fmtMoneyExact(s.custoKg)}</td>
+                  <td>{fmtMoneyExact(diaCab)}</td>
+                  <td>{fmtMoneyExact(mesCab)}</td>
                 </tr>
               );
             })}

@@ -5,6 +5,7 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { fmtMoneyExact, fmtBRL } from "@/components/charts";
 
 /* Catálogo de suplementos típicos Sul de Minas (espelha o da NutricaoTab). O
  * valor é o enum TipoSuplemento em UPPERCASE; o resto pré-preenche o formulário. */
@@ -95,8 +96,8 @@ export function SuplementacaoForm({ lote, onFechar, onSalvo }: { lote: Lote; onF
 
       {custoCabDia > 0 && (
         <p className="text-sm text-ink-3" style={{ marginTop: 0 }}>
-          Custo estimado: <b>{custoCabDia.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/cab/dia</b>
-          {" · "}{(custoCabDia * lote.numCabecas * 30).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}/mês no lote.
+          Custo estimado: <b>{fmtMoneyExact(custoCabDia)}/cab/dia</b>
+          {" · "}{fmtBRL(custoCabDia * lote.numCabecas * 30, { compact: false })}/mês no lote.
         </p>
       )}
 

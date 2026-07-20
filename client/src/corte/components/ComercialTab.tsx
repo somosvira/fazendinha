@@ -11,6 +11,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
+import { fmtBRL } from "@/components/charts";
 import type { ResumoLote, Lote } from "../types";
 
 const PRECO_SPOT_MG = 317;
@@ -22,7 +23,7 @@ const CURVA_B3 = [
   { mes: "Nov/2026", preco: 357.65 },
 ];
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const money = (n: number) => fmtBRL(n, { compact: false });
 
 export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => void }) {
   const [aba, setAba] = useState<"painel" | "simulador">("painel");

@@ -1,11 +1,12 @@
 import { Loader } from "../../components/Loading";
 import { useCustoCorte } from "../api";
+import { fmtMoneyExact } from "@/components/charts";
 import { RebHeader } from "@/rebanho/components/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm } from "@/components/rb/RebPrimitives";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 // A economia do corte sai dos dados do próprio módulo; quando ainda não há base
 // suficiente o backend devolve null e mostramos um travessão em vez de "R$ 0,00".
 const moneyN = (n: number | null | undefined) => (n == null ? "—" : money(n));
