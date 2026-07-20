@@ -10,7 +10,7 @@
 
 > **Fora de escopo permanente** (não entram aqui): seção 11 do catálogo (encanamento interno do IDEagri — backup, exportadores, consulta SQL, integrações de colar/parlor) e o **financeiro** (nossa fonte é o Excel real do BPO, não o IDEagri).
 
-Atualizado em **2026-07-20** (pós-PRs #170–#174 — bloco de prioridade alta zerado).
+Atualizado em **2026-07-20** (pós-PRs #170–#186 — blocos de prioridade **alta e média** zerados; só resta prioridade baixa).
 
 ---
 
@@ -24,19 +24,21 @@ Atualizado em **2026-07-20** (pós-PRs #170–#174 — bloco de prioridade alta 
 - [x] **Análise de leite — tela dedicada** (Produção/Qualidade · **467**) — tendência de CCS, distribuição por faixa, piores CCS. **PR #173**.
 - [x] **Princípio ativo (composição de medicamento)** (Estoque/Sanidade · **665 / 12445**) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico. **PR #174**.
 
-## 🟨 Prioridade média — valor de produto, mas sem dado real (replicar)
+## 🟨 Prioridade média — TODAS ENTREGUES (PRs #176–#186)
 
-- [~] **Agenda de eventos / manejos futuros** (Sanidade/Repro · vazio) — vacinação agendada já feita (#160); falta o **calendário unificado** de todos os manejos (exames, protocolos) → work-lists proativas.
-- [ ] **Protocolo sanitário / aplicação por animal** (Sanidade · 9 cat. / 0) — catálogo de 9 protocolos existe no IDEagri; replicar como cadastro + calendário.
-- [ ] **Biblioteca de reprodutores + central de sêmen + índices genéticos** (Genética · **65 + 25 + 271**) — catálogo de touros com PTAs/índices genômicos; base para recomendação de acasalamento.
-- [ ] **Recomendação/medida de acasalamento** (Genética · vazio) — motor de cruzamento dirigido (evita consanguinidade, busca ganho genético). Depende da biblioteca de reprodutores.
-- [ ] **Grau de cruzamento** (Genética · 32) — grau de sangue (Holandês/Gir etc.); complementa a composição racial que já temos.
-- [ ] **Alteração coletiva de animais (bulk)** (Rebanho · —) — editar N animais de uma vez. Útil na operação.
-- [~] **Seleção/filtro de animais salvo** (Rebanho · 52) — temos filtros simples; IDEagri tem construtor de filtros salvos.
-- [~] **Desmama/desaleitamento como evento** (Rebanho · —) — hoje é proxy por categoria; falta evento/status DESMAME no schema.
-- [~] **Escore de teto** (Sanidade · vazio) — o estado por quarto (#168) já modela saúde de úbere; falta o escore de teto formal (hiperqueratose).
-- [ ] **Indução de lactação** (Produção · —) — flag `LACTACAO.INDUZIDA`.
-- [ ] **Tanque + análise de tanque** (Produção/Qualidade · vazio) — cadastro/gestão de tanques de resfriamento + qualidade do leite bulk.
+**Bloco de prioridade média zerado (2026-07-20).** As próximas fatias saem da prioridade baixa.
+
+- [x] **Agenda de eventos / manejos futuros** (Sanidade/Repro) — calendário unificado (vacinas + próximas etapas IATF de lote), atrasados destacados. **PR #183**.
+- [x] **Protocolo sanitário / aplicação por animal** (Sanidade) — catálogo D0/D+n + aplicação com agenda derivada (espelha IATF). **PR #184**.
+- [x] **Biblioteca de reprodutores + central de sêmen + índices genéticos** (Genética · **65 + 25 + 271**) — `Reprodutor` + `CentralSemen` com PTAs. **PR #185**.
+- [x] **Recomendação/medida de acasalamento** (Genética) — motor de cruzamento dirigido (mérito genético + evita consanguinidade). **PR #186**.
+- [x] **Grau de cruzamento** (Genética · 32) — grau de sangue exibido no cockpit + composição do rebanho por grau. **PR #177**.
+- [x] **Alteração coletiva de animais (bulk)** (Rebanho) — mover N animais de grupo/setor de uma vez (grava movimentações). **PR #180**.
+- [x] **Seleção/filtro de animais salvo** (Rebanho · 52) — `FiltroAnimal` (status/grupo/setor/categoria/busca) + aplicar. **PR #181**.
+- [x] **Desmama/desaleitamento como evento** (Rebanho) — evento `DESMAME` na timeline (peso opcional). **PR #178**.
+- [x] **Escore de teto** (Sanidade) — `ExameQuarto.escoreTeto` (1–4, hiperqueratose) no mapa de úbere. **PR #179**.
+- [x] **Indução de lactação** (Produção) — `LACTACAO.INDUZIDA` exposta + toggle. **PR #176**.
+- [x] **Tanque + análise de tanque** (Produção/Qualidade) — `Tanque` + `AnaliseTanque` (CCS/CBT/tendência). **PR #182**.
 
 ## 🧊 Prioridade baixa — grande, sem dado, ou diferencial futuro
 
@@ -59,6 +61,7 @@ Marcos recentes que fecharam gaps do IDEagri (ver catálogo para a lista complet
 - [x] **Movimentação lote/setor como fato histórico** (#172) — `MovimentacaoAnimal` no cockpit ("onde a vaca esteve").
 - [x] **Análise de leite (qualidade)** (#173) — tendência de CCS, distribuição por faixa e piores CCS na aba Produção.
 - [x] **Princípio ativo + composição de medicamento** (#174) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico.
+- [x] **Prioridade média completa (#176–#186):** indução de lactação (#176), grau de cruzamento (#177), desmame como evento (#178), escore de teto (#179), alteração coletiva/bulk (#180), filtro de animais salvo (#181), tanque + análise de tanque (#182), agenda de manejos (#183), protocolo sanitário (#184), biblioteca de reprodutores (#185), recomendação de acasalamento (#186).
 - [x] **CMT / mastite por quarto** (#168) — `ExameQuarto` por teta, mapa de úbere, quarto crônico → sugestão.
 - [x] **Histórico de lactações** (#146–147) + **pico/persistência** (#158) + **curva de lactação** (#154).
 - [x] **Correção 305 oficial** (#151–152).
