@@ -7,6 +7,7 @@ import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm } from "@/components/rb/RebPrimitives";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
+import { fmtMoneyExact } from "@/components/charts";
 
 // .rb-k — célula base da faixa de KPI (a 1ª perde a border-left dentro do grid).
 const RB_K = "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5";
@@ -14,7 +15,7 @@ const RB_K_LAB = "text-sm font-semibold uppercase tracking-[.06em] text-ink-2";
 const RB_K_VAL = "mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)] [&_u]:ml-1 [&_u]:text-[15px] [&_u]:font-medium [&_u]:not-italic [&_u]:no-underline [&_u]:text-ink-2";
 const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = fmtMoneyExact;
 // Em fase de formação não há saca/ha computável — o backend devolve null e
 // mostramos um travessão em vez de "R$ 0,00".
 const moneyN = (n: number | null) => (n == null ? "—" : money(n));

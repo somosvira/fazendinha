@@ -4,6 +4,7 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { fmtMoneyExact } from "@/components/charts";
 
 const num = (s: string): number | null => {
   const t = s.trim().replace(",", ".");
@@ -111,7 +112,7 @@ export function ApontamentoForm({ safraId, onFechar, onSalvo }: {
           </div>
 
           {previa != null && (
-            <p className="text-sm text-ink-3">Total estimado: <b>{previa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b></p>
+            <p className="text-sm text-ink-3">Total estimado: <b>{fmtMoneyExact(previa)}</b></p>
           )}
 
           <RebField label="Observação">
