@@ -554,6 +554,7 @@ enum TipoEventoReprodutivo {
   PARTO
   SECAGEM
   TRANSFERENCIA_EMBRIAO // TE: embrião implantado numa receptora; genética vem da doadora
+  EXAME_GINECOLOGICO    // palpação/US do trato: achado clínico em `resultado` (diagnóstico, não fato estrutural)
 }
 
 model EventoReprodutivo {

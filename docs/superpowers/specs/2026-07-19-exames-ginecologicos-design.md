@@ -41,7 +41,7 @@ Achados que pedem ação viram `alerta: true` na timeline: `ANESTRO`, `CISTO_FOL
 - `eventos.schemas.ts` — novo membro do discriminatedUnion: `{ tipo: "EXAME_GINECOLOGICO", data, observacao?, resultado: enum(ACHADOS), metodo?: string }`. (`metodo` mapeia para o campo `protocolo`.)
 - `eventos.mappers.ts` — case `EXAME_GINECOLOGICO`: título "Exame ginecológico — {achado}", alerta nos achados acima.
 - `eventos.ts` (`registrarEvento`) — já é genérico; só precisa aceitar o novo tipo (spread via `input as any`). `recomputarAnimal` não precisa mudar.
-- **Work-list** `precisa-de-exame` — cálculo puro `worklist-exame.calc.ts` (TDD): dado {statusReprodutivo, del, ultimoExameGinecologico}, sinaliza vacas **vazias/pós-PEV** (ou pós-parto além de X dias) **sem** exame ginecológico nos últimos `EXAME_VALIDADE_DIAS` (default 60). Exposta como nova chave de worklist no router de worklists.
+- **Work-list** `precisa-de-exame` — o cálculo puro `worklist-exame.calc.ts` (TDD) já entrega `precisaExame({statusReprodutivo, del, ultimoExameGinecologico})`: sinaliza vacas **vazias/pós-PEV sem** exame ginecológico nos últimos `EXAME_VALIDADE_DIAS` (default 60). **A exposição no router de worklists foi deferida** — exige carregar o campo agregado `ultimoExameGinecologico` no pipeline do dashboard (fatia própria). O cálculo fica pronto e testado para essa continuação.
 
 ## 6. Frontend
 

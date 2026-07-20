@@ -71,13 +71,17 @@ export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; 
   return { data, loading, erro, recarregar };
 }
 
+export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANTE", "ANESTRO", "CISTO_FOLICULAR", "CISTO_LUTEO", "ENDOMETRITE", "INDEFINIDO"] as const;
+export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
+
 export interface EventoPayload {
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO";
+  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO";
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
-  resultado?: "positivo" | "negativo"; dtPartoPrevista?: string;
+  resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
   doadoraId?: number; // TE: animal doador da genética
+  metodo?: string; // exame ginecológico: palpação/US
 }
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });

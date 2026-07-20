@@ -10,7 +10,7 @@ import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
-  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" },
+  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" },
 ];
 
 const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
@@ -42,6 +42,14 @@ const TIPOS_PARTO = [
   { v: "cesarea", label: "Cesárea" },
 ];
 
+// Achados de exame ginecológico (palpação/US). Valor = enum do backend; label = pt-BR.
+const ACHADOS_GINE: { v: string; label: string }[] = [
+  { v: "CICLANDO", label: "Ciclando" }, { v: "CIO", label: "Em cio" }, { v: "CORPO_LUTEO", label: "Corpo lúteo" },
+  { v: "GESTANTE", label: "Gestante" }, { v: "ANESTRO", label: "Anestro" }, { v: "CISTO_FOLICULAR", label: "Cisto folicular" },
+  { v: "CISTO_LUTEO", label: "Cisto lúteo" }, { v: "ENDOMETRITE", label: "Endometrite" }, { v: "INDEFINIDO", label: "Indefinido" },
+];
+const METODOS_EXAME = ["Palpação", "Ultrassom"];
+
 const QUARTOS_UBERE = ["AD", "AE", "PD", "PE"]; // anterior/posterior · direito/esquerdo
 
 const SEVERIDADES_MASTITE = ["Subclínica", "Clínica leve", "Clínica moderada", "Clínica grave"];
@@ -70,6 +78,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     resultado: "positivo", dtPartoPrevista: "",
     numCrias: "1", sexoCria: "F", tipoParto: "normal",
     motivoSecagem: MOTIVOS_SECAGEM[0],
+    // Exame ginecológico.
+    achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0],
     observacao: "",
     // Sanidade.
     doenca: "", diasTratamento: "", produto: "", dose: "", carencia: "", loteProduto: "",
@@ -138,6 +148,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
         if (tipo === "PARTO") { p.numCrias = Number(f.numCrias); p.sexoCria = f.sexoCria; p.tipoParto = f.tipoParto; }
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
+        if (tipo === "EXAME_GINECOLOGICO") { p.resultado = f.achado as any; p.metodo = f.metodoExame || undefined; }
         criado = await registrarEvento(animalId, p);
       } else {
         const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
@@ -284,6 +295,18 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
               </select>
             </RebField>
           )}
+          {tipo === "EXAME_GINECOLOGICO" && <>
+            <RebField label="Achado*">
+              <select className="rb-field-select" value={f.achado} onChange={(e) => set("achado", e.target.value)}>
+                {ACHADOS_GINE.map((a) => <option key={a.v} value={a.v}>{a.label}</option>)}
+              </select>
+            </RebField>
+            <RebField label="Método">
+              <select className="rb-field-select" value={f.metodoExame} onChange={(e) => set("metodoExame", e.target.value)}>
+                {METODOS_EXAME.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </RebField>
+          </>}
         </>}
         {dominio === "sanidade" && <>
           {tipoSan === "EXAME" && <>
