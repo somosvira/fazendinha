@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useAplicacoesSanitarias, useProtocolosSanitarios, aplicarProtocoloSanitario, excluirAplicacaoSanitaria } from "../api";
+import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 // Aplica um protocolo sanitário do catálogo a um animal com uma data de início (o D0) e mostra a
 // agenda derivada. Espelha IatfSection.
@@ -10,7 +10,7 @@ export function ProtocoloSanitarioSection({ animalId }: { animalId: string }) {
   const { data: aplicacoes, loading, recarregar } = useAplicacoesSanitarias(animalId);
   const { data: protocolos, loading: loadingProto } = useProtocolosSanitarios();
   const [protocoloId, setProtocoloId] = useState("");
-  const [dataInicio, setDataInicio] = useState(hojeISO());
+  const [dataInicio, setDataInicio] = useState(getHojeISO());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 

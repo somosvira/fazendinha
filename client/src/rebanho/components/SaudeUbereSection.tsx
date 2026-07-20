@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSaudeUbere, registrarExameQuarto, type Quarto, type ScoreCmt, type EstadoQuarto, type QuartoInput } from "../api";
+import { getHojeISO } from "../../lib/hoje";
 
 const QUARTOS: Quarto[] = ["AE", "AD", "PE", "PD"];
 const QUARTO_LABEL: Record<Quarto, string> = { AE: "Ant. Esq.", AD: "Ant. Dir.", PE: "Post. Esq.", PD: "Post. Dir." };
@@ -21,7 +22,6 @@ const ESTADO: Record<EstadoQuarto, { label: string; cls: string; dot: string }> 
   PERDIDO: { label: "perdido", cls: "text-prejuizo", dot: "var(--ink-3)" },
 };
 
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 const fmtData = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR") : "—");
 
 // Entrada de uma passada: por quarto, o operador escolhe o score CMT (ou marca clínica/perdido).
@@ -32,7 +32,7 @@ const ESCORES_TETO = [1, 2, 3, 4];
 export function SaudeUbereSection({ animalId }: { animalId: string }) {
   const { data, loading, recarregar } = useSaudeUbere(animalId);
   const [aberto, setAberto] = useState(false);
-  const [data_, setData_] = useState(hojeISO());
+  const [data_, setData_] = useState(getHojeISO());
   const [rascunho, setRascunho] = useState<Rascunho>(rascunhoVazio());
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);

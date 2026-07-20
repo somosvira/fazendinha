@@ -4,9 +4,9 @@ import {
   listarAnimais, listarGrupos, type GrupoDTO,
 } from "../api";
 import type { Animal } from "../types";
+import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 // Programa um protocolo IATF do catálogo para um LOTE inteiro num mesmo D0. Escolhe o protocolo,
 // a data D0 e o grupo (carrega os animais ativos do grupo) e cria uma aplicação por animal, todas
@@ -17,7 +17,7 @@ export function ProgramacaoIatfLote() {
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const [aberto, setAberto] = useState(false);
   const [protocoloId, setProtocoloId] = useState("");
-  const [dataInicio, setDataInicio] = useState(hojeISO());
+  const [dataInicio, setDataInicio] = useState(getHojeISO());
   const [grupoId, setGrupoId] = useState("");
   const [nome, setNome] = useState("");
   const [animais, setAnimais] = useState<Animal[]>([]);
@@ -39,7 +39,7 @@ export function ProgramacaoIatfLote() {
   if (loading || loadingProto) return null;
   const lista = programacoes ?? [];
 
-  function abrir() { setAberto(true); setProtocoloId(""); setDataInicio(hojeISO()); setGrupoId(""); setNome(""); setAnimais([]); setErro(null); }
+  function abrir() { setAberto(true); setProtocoloId(""); setDataInicio(getHojeISO()); setGrupoId(""); setNome(""); setAnimais([]); setErro(null); }
   function fechar() { setAberto(false); setErro(null); }
 
   async function programar(e: React.FormEvent) {
