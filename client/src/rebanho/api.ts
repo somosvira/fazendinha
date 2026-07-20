@@ -189,6 +189,25 @@ export function useLactacoes(id: string | null) {
   return { data, loading, erro, recarregar };
 }
 
+// ── Movimentações de lote/setor (histórico "onde a vaca esteve") ──────────────
+export interface MovimentacaoDTO {
+  id: number; tipo: "GRUPO" | "SETOR"; data: string;
+  origem: string | null; destino: string; motivo: string | null;
+}
+export const listarMovimentacoes = (id: string) => req<MovimentacaoDTO[]>(`/rebanho/animais/${id}/movimentacoes`);
+
+export function useMovimentacoes(id: string | null) {
+  const [data, setData] = useState<MovimentacaoDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => {
+    if (!id) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    listarMovimentacoes(id).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [id]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 export function useAnimal(id: string | null) {
   const [data, setData] = useState<Animal | null>(null);
   const [loading, setLoading] = useState(true);

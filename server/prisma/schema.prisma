@@ -371,33 +371,34 @@ model Grupo {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
-  id                Int                      @id @default(autoincrement())
-  nome              String                   @unique
-  apelido           String? // rótulo curto p/ o seletor ("Sede", "Recria")
-  cidade            String?
-  uf                String?
-  principal         Boolean                  @default(false) // a default quando não há filtro
-  ativo             Boolean                  @default(true)
-  ordem             Int                      @default(0)
-  animais           Animal[]
-  grupos            Grupo[]
-  movimentosEstoque MovimentoEstoque[]
-  lancamentos       Lancamento[]
-  lotesCorte        LoteCorte[]
-  piquetes          Piquete[]
-  talhoes           Talhao[]
-  lavouras          Lavoura[]
-  funcionarios      Funcionario[]
-  safrasCultivo     SafraCultivo[]
-  silos             Silo[]
-  caixinhas         Caixinha[]
-  vacinasAgendadas  VacinaAgendada[]
-  protocolosIATF    ProtocoloIATF[]
-  aplicacoesIATF    AplicacaoProtocoloIATF[]
-  programacoesIATF  ProgramacaoIATFLote[]
-  examesQuarto      ExameQuarto[]
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
+  id                   Int                      @id @default(autoincrement())
+  nome                 String                   @unique
+  apelido              String? // rótulo curto p/ o seletor ("Sede", "Recria")
+  cidade               String?
+  uf                   String?
+  principal            Boolean                  @default(false) // a default quando não há filtro
+  ativo                Boolean                  @default(true)
+  ordem                Int                      @default(0)
+  animais              Animal[]
+  grupos               Grupo[]
+  movimentosEstoque    MovimentoEstoque[]
+  lancamentos          Lancamento[]
+  lotesCorte           LoteCorte[]
+  piquetes             Piquete[]
+  talhoes              Talhao[]
+  lavouras             Lavoura[]
+  funcionarios         Funcionario[]
+  safrasCultivo        SafraCultivo[]
+  silos                Silo[]
+  caixinhas            Caixinha[]
+  vacinasAgendadas     VacinaAgendada[]
+  protocolosIATF       ProtocoloIATF[]
+  aplicacoesIATF       AplicacaoProtocoloIATF[]
+  programacoesIATF     ProgramacaoIATFLote[]
+  movimentacoesAnimais MovimentacaoAnimal[]
+  examesQuarto         ExameQuarto[]
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 }
 
 model Dieta {
@@ -478,11 +479,43 @@ model Animal {
   lactacoes           Lactacao[]
   controlesLeiteiros  ControleLeiteiro[]
   pesagens            Pesagem[]
+  movimentacoes       MovimentacaoAnimal[]
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
 
   @@index([status])
   @@index([grupoId])
+  @@index([propriedadeId])
+}
+
+// Se a movimentação foi de lote (grupo de manejo) ou de setor (local físico).
+enum TipoMovimentacaoAnimal {
+  GRUPO
+  SETOR
+}
+
+// Fato histórico de troca de lote/setor de um animal ("onde a vaca esteve").
+// Espelha MOVGRUPOANIMAL (1504) / MOVSETORANIMAL (289) do IDEagri, unificados num só
+// fato com `tipo`. Guarda rótulos de origem/destino (snapshot — sobrevive a rename/exclusão
+// do grupo) + o id do grupo quando aplicável. `origem` null = primeira alocação (entrada no lote/setor).
+model MovimentacaoAnimal {
+  id             Int                    @id @default(autoincrement())
+  animal         Animal                 @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId       Int
+  tipo           TipoMovimentacaoAnimal
+  data           DateTime               @db.Date // dia da movimentação
+  origem         String? // rótulo de origem (nome do grupo/setor), null = primeira alocação
+  destino        String // rótulo de destino
+  grupoOrigemId  Int? // id do grupo de origem (só p/ tipo GRUPO; snapshot em `origem` cobre rename)
+  grupoDestinoId Int? // id do grupo de destino (só p/ tipo GRUPO)
+  motivo         String?
+  propriedade    Propriedade?           @relation(fields: [propriedadeId], references: [id])
+  propriedadeId  Int?
+  createdAt      DateTime               @default(now())
+
+  @@index([animalId])
+  @@index([tipo])
+  @@index([data])
   @@index([propriedadeId])
 }
 

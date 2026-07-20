@@ -22,7 +22,11 @@ export const criarAnimalSchema = z.object({
   propriedadeId: z.number().int().positive().optional(), // sítio (multi-propriedade)
 });
 
-export const editarAnimalSchema = criarAnimalSchema.partial();
+// Edição: tudo opcional + um motivo livre para a movimentação de lote/setor, quando houver
+// (só é usado se grupo/setor mudar; ignorado caso contrário).
+export const editarAnimalSchema = criarAnimalSchema.partial().extend({
+  motivoMovimentacao: z.string().max(200).optional(),
+});
 
 export const baixaSchema = z.object({
   motivo: z.string().min(1, "motivo é obrigatório").max(60),
