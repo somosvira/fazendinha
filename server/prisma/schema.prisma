@@ -343,6 +343,38 @@ model ProducaoLote {
   @@index([data])
 }
 
+// Tanque de resfriamento (cadastro). Espelha "Tanque" do IDEagri.
+model Tanque {
+  id              Int             @id @default(autoincrement())
+  nome            String
+  capacidadeLitros Int?
+  ativo           Boolean         @default(true)
+  analises        AnaliseTanque[]
+  propriedade     Propriedade?    @relation(fields: [propriedadeId], references: [id])
+  propriedadeId   Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([propriedadeId])
+}
+
+// Análise de tanque (qualidade do leite bulk). Espelha "Análise de tanque" do IDEagri.
+model AnaliseTanque {
+  id          Int      @id @default(autoincrement())
+  tanque      Tanque   @relation(fields: [tanqueId], references: [id], onDelete: Cascade)
+  tanqueId    Int
+  data        DateTime @db.Date
+  ccs         Int? // células somáticas do tanque (mil/mL)
+  cbt         Int? // contagem bacteriana total (mil UFC/mL)
+  gordura     Decimal? @db.Decimal(4, 2)
+  proteina    Decimal? @db.Decimal(4, 2)
+  temperatura Decimal? @db.Decimal(4, 1) // °C na coleta
+  observacao  String?
+  createdAt   DateTime @default(now())
+
+  @@index([tanqueId, data])
+}
+
 enum SexoAnimal {
   F
   M
@@ -431,6 +463,7 @@ model Propriedade {
   programacoesIATF     ProgramacaoIATFLote[]
   movimentacoesAnimais MovimentacaoAnimal[]
   filtrosAnimais       FiltroAnimal[]
+  tanques              Tanque[]
   examesQuarto         ExameQuarto[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
