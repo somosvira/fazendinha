@@ -6,6 +6,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 import { ComposicaoRacialSection } from "./ComposicaoRacialSection";
+import { QuantitativoSection } from "./QuantitativoSection";
 
 // Rótulo + cor por faixa (melhor → pior). Cores das variáveis da paleta (base.css).
 const FAIXAS: { chave: ClassificacaoScore; label: string; cor: string }[] = [
@@ -186,6 +187,7 @@ export function CarteiraTab({ onAbrirFicha }: { onAbrirFicha?: (id: number) => v
       </div>
 
       <ComposicaoRacialSection />
+      <QuantitativoSection />
     </RebMain>
   );
 }
