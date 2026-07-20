@@ -1101,6 +1101,20 @@ export function useComposicaoRacial() {
   return { data, loading, recarregar };
 }
 
+// ── Rebanho quantitativo (efetivo por categoria × faixa etária) ───────────────
+export type FaixaEtaria = "0-6" | "6-12" | "12-24" | "24-36" | "36+" | "sem-idade";
+export const FAIXAS_ETARIAS: FaixaEtaria[] = ["0-6", "6-12", "12-24", "24-36", "36+", "sem-idade"];
+export interface LinhaQuantDTO { categoria: string; faixas: Record<FaixaEtaria, number>; totalCategoria: number }
+export interface QuantitativoDTO { linhas: LinhaQuantDTO[]; totalPorFaixa: Record<FaixaEtaria, number>; total: number }
+export const obterQuantitativo = () => req<QuantitativoDTO>(`/rebanho/quantitativo`);
+export function useQuantitativo() {
+  const [data, setData] = useState<QuantitativoDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const recarregar = useCallback(() => { setLoading(true); obterQuantitativo().then(setData).catch(() => setData(null)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, recarregar };
+}
+
 // ── Sugestões (Painel "Hoje" preditivo) — V2 §5.1 ───────────────────────────
 export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
 export interface SugestaoDTO {
