@@ -12,6 +12,7 @@ import { IatfSection } from "./IatfSection";
 import { SaudeUbereSection } from "./SaudeUbereSection";
 import { MovimentacoesSection } from "./MovimentacoesSection";
 import { ProtocoloSanitarioSection } from "./ProtocoloSanitarioSection";
+import { AcasalamentoSection } from "./AcasalamentoSection";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -261,6 +262,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           <VacinasSection animalId={animalId} />
           <IatfSection animalId={animalId} />
           <ProtocoloSanitarioSection animalId={animalId} />
+          <AcasalamentoSection animalId={animalId} />
           <MovimentacoesSection animalId={animalId} />
         </div>
       </div>
