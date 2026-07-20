@@ -5,13 +5,14 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
 import { RebAnm } from "@/components/rb/RebPrimitives";
+import { getHoje } from "@/lib/hoje";
 
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 // Primeiro dia do mês corrente → hoje (default "fechar o mês em curso").
 function mesCorrente(): { inicio: string; fim: string } {
-  const hoje = new Date();
+  const hoje = getHoje();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   return { inicio: iso(new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1))), fim: iso(hoje) };
 }

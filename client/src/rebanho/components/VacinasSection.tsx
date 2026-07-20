@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useVacinas, agendarVacina, marcarVacinaAplicada, excluirVacina, type StatusVacina } from "../api";
+import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR") : "—");
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 // Cor/rótulo do status da vacina. Vencida = prejuízo (ação atrasada); próxima = âmbar; aplicada/em dia = neutro.
 const STATUS: Record<StatusVacina, { label: string; cls: string }> = {
@@ -33,7 +33,7 @@ export function VacinasSection({ animalId }: { animalId: string }) {
     finally { setSalvando(false); }
   }
 
-  async function aplicar(id: number) { await marcarVacinaAplicada(id, hojeISO()); recarregar(); }
+  async function aplicar(id: number) { await marcarVacinaAplicada(id, getHojeISO()); recarregar(); }
   async function remover(id: number) { await excluirVacina(id); recarregar(); }
 
   return (

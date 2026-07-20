@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MiniBarChart } from "../../components/charts";
 import { useChuva, registrarChuva, excluirChuva } from "../api";
+import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const mm = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -10,17 +11,13 @@ const rotuloMes = (m: string) => {
   const [ano, mesN] = m.split("-");
   return `${MESES[Number(mesN) - 1]}/${ano.slice(2)}`;
 };
-const hojeISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
 
 // Clima / registro de chuva (pluviômetro): mm por dia → acumulado mensal. Só o pluviômetro —
 // sem estação meteorológica, sem temperatura. Espelha "Clima / registro de chuva" do IDEagri.
 export function ClimaChuvaSection() {
   const { data, loading, recarregar } = useChuva();
   const [aberto, setAberto] = useState(false);
-  const [f, setF] = useState({ data: hojeISO(), mm: "", observacao: "" });
+  const [f, setF] = useState({ data: getHojeISO(), mm: "", observacao: "" });
   const [erro, setErro] = useState<string | null>(null);
 
   if (loading) return null;
@@ -36,7 +33,7 @@ export function ClimaChuvaSection() {
     setErro(null);
     try {
       await registrarChuva({ data: f.data, mm: valor, observacao: f.observacao.trim() || null });
-      setF({ data: hojeISO(), mm: "", observacao: "" }); setAberto(false); recarregar();
+      setF({ data: getHojeISO(), mm: "", observacao: "" }); setAberto(false); recarregar();
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao registrar chuva."); }
   }
   async function excluir(id: number) { await excluirChuva(id); recarregar(); }

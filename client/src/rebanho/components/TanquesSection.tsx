@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTanques, criarTanque, excluirTanque, registrarAnaliseTanque, type TanqueDTO } from "../api";
 import { MiniBarChart } from "../../components/charts";
+import { getHojeISO } from "../../lib/hoje";
 
-const hojeISO = () => new Date().toISOString().slice(0, 10);
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const fmtMes = (iso: string) => {
   const [, mes, dia] = iso.split("-");
@@ -66,7 +66,7 @@ export function TanquesSection() {
 
 function TanqueCard({ tanque, onMudou, onExcluir }: { tanque: TanqueDTO; onMudou: () => void; onExcluir: () => void }) {
   const [aberto, setAberto] = useState(false);
-  const [data, setData] = useState(hojeISO());
+  const [data, setData] = useState(getHojeISO());
   const [ccs, setCcs] = useState("");
   const [cbt, setCbt] = useState("");
   const [gordura, setGordura] = useState("");
