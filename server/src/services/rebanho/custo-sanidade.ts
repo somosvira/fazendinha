@@ -6,8 +6,12 @@ import { prisma } from "../../db.js";
 
 export interface AnimalAplic {
   numero: string;
-  nome: string;
+  nome: string | null;
   n: number;
+}
+
+export function iniciarAnimalAplic(numero: string, nome: string | null): AnimalAplic {
+  return { numero, nome, n: 0 };
 }
 
 // ── Motor puro (TDD) ─────────────────────────────────────────────────────────
@@ -56,7 +60,7 @@ export async function agregarCustoSanidade(meses = 12) {
   const exatoPorAnimal = new Map<string, number>(); // soma do custoUnitario dos produtos precificados
   for (const a of aplics) {
     const num = a.animal.numero;
-    const cur = porAnimalMap.get(num) ?? { numero: num, nome: a.animal.nome ?? num, n: 0 };
+    const cur = porAnimalMap.get(num) ?? iniciarAnimalAplic(num, a.animal.nome);
     cur.n++;
     porAnimalMap.set(num, cur);
     if (a.produto) {

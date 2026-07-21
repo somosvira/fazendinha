@@ -21,6 +21,7 @@ import {
   ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
 } from "./animal-cockpit/InsightsPanel";
 import type { Animal } from "../types";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 function fmtPrevSecagem(iso?: string | null) {
   if (!iso) return "—";
@@ -120,8 +121,8 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>
-          <h1 className="mt-1 font-serif text-[38px] font-medium leading-[1.05] [&_small]:text-2xl [&_small]:font-medium [&_small]:text-ink-2">
-            {a.nome ? <>{a.nome} <small>· #{a.numero}</small></> : <>#{a.numero}</>}
+          <h1 className="mt-1 flex flex-wrap items-center gap-3">
+            <AnimalIdentity numero={a.numero} nome={a.nome} variant="heading" />
             {insights?.score && <ScoreBadge score={insights.score} />}
           </h1>
           <div className="mt-[7px] text-sm text-ink-3">{a.categoria === "VACA" ? "Vaca" : a.categoria.toLowerCase()}{a.raca ? ` · ${a.raca}` : ""}{a.grauSangue ? ` · grau ${a.grauSangue}` : ""}{a.dataNascimento ? ` · nascida ${new Date(a.dataNascimento).toLocaleDateString("pt-BR")} (${idade})` : ""}{a.brincoEletronico ? ` · brinco ${a.brincoEletronico}` : ""}</div>

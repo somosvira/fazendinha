@@ -1026,7 +1026,7 @@ export interface CustoSanidade {
   totalMedicamento: number;
   totalAplicacoes: number;
   custoPorAplicacao: number;
-  topAnimais: { numero: string; nome: string; n: number; custoEstimado: number; custoExato: number }[];
+  topAnimais: { numero: string; nome: string | null; n: number; custoEstimado: number; custoExato: number }[];
   produtos: { produto: string; n: number; custoUnitario: number | null; custoExato: number | null }[];
   custoExatoTotal: number;
   produtosPrecificados: number;

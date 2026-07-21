@@ -69,4 +69,11 @@ describe("sanidade dos registros", () => {
     expect(lanc.regimes.a_vencer.filtrosFixos).toEqual({ situacao: "ABERTO", estornado: false });
     expect(lanc.regimes.a_vencer.campoData).toBe("dataVencimento");
   });
+
+  it("rótulo individual do rebanho prioriza número e preserva zeros", () => {
+    const dimensao = DOMINIOS.rebanho.entidades.animal.dimensoes.animal;
+    expect(dimensao.rotulo).toBeTypeOf("function");
+    expect(dimensao.rotulo!({ numero: "0042", nome: "Jurema" })).toBe("#0042 · Jurema");
+    expect(dimensao.rotulo!({ numero: "0042", nome: null })).toBe("#0042");
+  });
 });

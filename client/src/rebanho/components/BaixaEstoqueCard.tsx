@@ -7,6 +7,7 @@ import {
   type SaldoDTO,
 } from "../api";
 import type { Animal } from "../types";
+import { AnimalIdentity, mencaoAnimal } from "./AnimalIdentity";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
@@ -67,7 +68,7 @@ export function BaixaEstoqueCard({
   const [quantidade, setQuantidade] = useState<string>("1");
   const [observacao, setObservacao] = useState<string>(() => {
     const partes = [
-      `${rotuloTipo(tipo)}${animal ? ` em ${animal.nome || animal.numero}` : ""}`,
+      `${rotuloTipo(tipo)}${animal ? ` em ${mencaoAnimal(animal.numero, animal.nome)}` : ""}`,
       dose ? `dose: ${dose}` : null,
       loteProduto ? `lote ${loteProduto}` : null,
     ].filter(Boolean);
@@ -149,7 +150,7 @@ export function BaixaEstoqueCard({
       <>
         <dl className="mb-4 grid grid-cols-1 gap-1.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-3.5 py-3 font-sans text-sm [&>div]:grid [&>div]:grid-cols-[88px_1fr] [&>div]:items-baseline [&>div]:gap-3 [&_dt]:m-0 [&_dt]:font-serif [&_dt]:italic [&_dt]:text-ink-3 [&_dd]:m-0 [&_dd]:text-foreground">
           <div><dt>Data</dt><dd>{fmtDataBR(data)}</dd></div>
-          {animal && <div><dt>Animal</dt><dd>{animal.nome ? `${animal.nome} (${animal.numero})` : animal.numero}</dd></div>}
+          {animal && <div><dt>Animal</dt><dd><AnimalIdentity numero={animal.numero} nome={animal.nome} /></dd></div>}
           <div><dt>Produto</dt><dd>{produtoDigitado || "—"}</dd></div>
           {dose && <div><dt>Dose</dt><dd>{dose}</dd></div>}
           {loteProduto && <div><dt>Lote</dt><dd>{loteProduto}</dd></div>}

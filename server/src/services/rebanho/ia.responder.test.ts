@@ -27,7 +27,7 @@ describe("responderDemo", () => {
     const r = responderDemo("Quais vacas com CÉLULAS somáticas altas?", ctx);
     expect(r.modo).toBe("demo");
     expect(r.resposta).toContain("400");
-    expect(r.lista?.[0]).toContain("Tulipa #1450");
+    expect(r.lista?.[0]).toContain("#1450 Tulipa");
     expect(r.lista?.[0]).toContain("512");
   });
 
@@ -41,13 +41,13 @@ describe("responderDemo", () => {
     const r = responderDemo("Por que a prenhez caiu?", ctx);
     expect(r.modo).toBe("demo");
     expect(r.resposta).toContain("25");
-    expect(r.lista?.[0]).toContain("Jurema #1234");
+    expect(r.lista?.[0]).toContain("#1234 Jurema");
   });
 
   it("Secagem → conta e lista", () => {
     const r = responderDemo("Quem eu vou secar esse mês?", ctx);
     expect(r.modo).toBe("demo");
-    expect(r.lista?.[0]).toContain("Jurema #1234");
+    expect(r.lista?.[0]).toContain("#1234 Jurema");
     expect(r.lista?.[0]).toContain("2026-06-15");
   });
 
@@ -62,7 +62,7 @@ describe("responderDemo", () => {
   it("Vazias → conta e lista DEL", () => {
     const r = responderDemo("tem vaca vazia atrasada?", ctx);
     expect(r.modo).toBe("demo");
-    expect(r.lista?.[0]).toContain("Cravina #1300");
+    expect(r.lista?.[0]).toContain("#1300 Cravina");
     expect(r.lista?.[0]).toContain("120");
   });
 

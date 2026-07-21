@@ -9,6 +9,7 @@
 
 import { CategoriaAnimal, Prisma, SexoAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
 import type { DominioDef, LinhaBase, OperadorFiltro } from "../tipos.js";
+import { rotuloAnimal } from "../../rebanho/identificacao.js";
 import { condEnum } from "./financeiro.js";
 
 const condTexto = (op: OperadorFiltro, valor: string | string[]): Record<string, unknown> => {
@@ -173,7 +174,7 @@ export const rebanho: DominioDef = {
         // sempre sai top-N. Filtro casa número exato OU parte do nome.
         animal: {
           descricao:
-            "O animal individual (nome #número). Use em agruparPor + ordenarPor para rankings: 'vaca mais produtiva' = agruparPor ['animal'], ordenarPor mediaProducaoDia desc, limite 1.",
+            "O animal individual (#número · nome). Use em agruparPor + ordenarPor para rankings: 'vaca mais produtiva' = agruparPor ['animal'], ordenarPor mediaProducaoDia desc, limite 1.",
           tipo: "texto",
           cardinalidade: "alta",
           operadores: ["igual", "contem"],
@@ -182,7 +183,7 @@ export const rebanho: DominioDef = {
             OR: [{ numero: String(v) }, { nome: { contains: v as string, mode: "insensitive" } }],
           }),
           select: { nome: true, numero: true },
-          rotulo: (l) => `${(l.nome as string | null) ?? "Sem nome"} #${l.numero}`,
+          rotulo: (l) => rotuloAnimal(String(l.numero), l.nome as string | null),
         },
       },
       metricas: {

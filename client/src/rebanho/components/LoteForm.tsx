@@ -4,6 +4,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField, REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebFieldset, REB_SUB } from "@/components/rb/RebPrimitives";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 type Props = {
   lote?: LoteDTO | null;
@@ -161,8 +162,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
                     }}
                   >
                     <input type="checkbox" checked={checked} onChange={() => toggleAnimal(a.id)} style={{ accentColor: "var(--cafe)" }} />
-                    <span style={{ fontWeight: 600, color: "var(--ink)", minWidth: 60 }}>{a.numero}</span>
-                    <span style={{ flex: 1 }}>{a.nome ?? <i style={{ color: "var(--ink-3)" }}>(sem nome)</i>}</span>
+                    <AnimalIdentity numero={a.numero} nome={a.nome} className="min-w-0 flex-1" />
                     <span style={{ fontSize: 13, color: "var(--ink-3)" }}>{CAT_LABEL[a.categoria] ?? a.categoria}</span>
                     {outroLote && !checked && (
                       <span style={{ fontSize: 12.5, color: "var(--ink-3)", fontStyle: "italic" }}>em {a.grupoNome}</span>

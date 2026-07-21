@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { toolsConsulta } from "./tools-consulta.js";
+import { formatarAnimalAlerta } from "./tools.js";
 
 describe("toolsConsulta", () => {
   const porNome = new Map(toolsConsulta.map((t) => [t.spec.function.name, t]));
@@ -21,5 +22,10 @@ describe("toolsConsulta", () => {
       .properties;
     expect(props.entidade.enum!.sort()).toEqual(["animal", "producao_lote"]);
     expect(props.razao).toBeUndefined();
+  });
+
+  it("alertas identificam o animal pelo número antes do nome", () => {
+    expect(formatarAnimalAlerta({ numero: "0042", nome: "Jurema" })).toBe("#0042 Jurema");
+    expect(formatarAnimalAlerta({ numero: "0042", nome: null })).toBe("#0042");
   });
 });

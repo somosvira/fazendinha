@@ -3,12 +3,12 @@
 // contexto real do rebanho. Roteamento por palavra-chave (normalizada).
 
 import type { ContextoRebanho } from "./ia.context.js";
+import { mencaoAnimal } from "./identificacao.js";
 
 export interface RespostaIA { resposta: string; lista?: string[]; rodape?: string; modo: "ia" | "demo"; }
 
 // minúsculas + remove acentos
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-const apelido = (numero: string, nome: string | null) => `${nome ?? "Sem nome"} #${numero}`;
 const tem = (p: string, ...termos: string[]) => termos.some((t) => p.includes(t));
 
 export function responderDemo(pergunta: string, ctx: ContextoRebanho): RespostaIA {
@@ -20,7 +20,7 @@ export function responderDemo(pergunta: string, ctx: ContextoRebanho): RespostaI
     if (!ctx.ccsAlto.length) return { resposta: "Nenhuma vaca com CCS ≥ 400 mil agora.", modo: "demo", rodape };
     return {
       resposta: `${ctx.ccsAlto.length} vaca(s) com CCS ≥ 400 mil:`,
-      lista: ctx.ccsAlto.map((a) => `${apelido(a.numero, a.nome)} — ${a.ccs} mil · ${a.tendencia ?? "tendência —"}`),
+      lista: ctx.ccsAlto.map((a) => `${mencaoAnimal(a.numero, a.nome)} — ${a.ccs} mil · ${a.tendencia ?? "tendência —"}`),
       rodape,
       modo: "demo",
     };
@@ -31,7 +31,7 @@ export function responderDemo(pergunta: string, ctx: ContextoRebanho): RespostaI
     const pct = ctx.prenhezPct != null ? `${ctx.prenhezPct}%` : "—";
     const resposta = `Prenhez atual: ${pct} (${ctx.totais.gestantes} gestante(s) confirmada(s)).`;
     const lista = ctx.partosPrevistos.length
-      ? ctx.partosPrevistos.map((a) => `${apelido(a.numero, a.nome)} — ${a.diasGestacao ?? "—"} dias de gestação`)
+      ? ctx.partosPrevistos.map((a) => `${mencaoAnimal(a.numero, a.nome)} — ${a.diasGestacao ?? "—"} dias de gestação`)
       : undefined;
     return { resposta, lista, rodape, modo: "demo" };
   }
@@ -41,7 +41,7 @@ export function responderDemo(pergunta: string, ctx: ContextoRebanho): RespostaI
     if (!ctx.aSecar.length) return { resposta: "Nenhuma vaca a secar nos próximos 30 dias.", modo: "demo", rodape };
     return {
       resposta: `${ctx.aSecar.length} vaca(s) a secar nos próximos 30 dias:`,
-      lista: ctx.aSecar.map((a) => `${apelido(a.numero, a.nome)} — secar até ${a.previsaoSecagem}`),
+      lista: ctx.aSecar.map((a) => `${mencaoAnimal(a.numero, a.nome)} — secar até ${a.previsaoSecagem}`),
       rodape,
       modo: "demo",
     };
@@ -65,7 +65,7 @@ export function responderDemo(pergunta: string, ctx: ContextoRebanho): RespostaI
     if (!ctx.vaziasAtrasadas.length) return { resposta: "Nenhuma vaca vazia atrasada (DEL > 90).", modo: "demo", rodape };
     return {
       resposta: `${ctx.vaziasAtrasadas.length} vaca(s) vazia(s) atrasada(s) (DEL > 90):`,
-      lista: ctx.vaziasAtrasadas.map((a) => `${apelido(a.numero, a.nome)} — ${a.del ?? "—"} DEL`),
+      lista: ctx.vaziasAtrasadas.map((a) => `${mencaoAnimal(a.numero, a.nome)} — ${a.del ?? "—"} DEL`),
       rodape,
       modo: "demo",
     };

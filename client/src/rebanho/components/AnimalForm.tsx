@@ -7,6 +7,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
+import { rotuloAnimal } from "./AnimalIdentity";
 
 type Modo = "novo" | "editar" | "baixa";
 
@@ -96,7 +97,8 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
   }
 
-  const titulo = modo === "novo" ? "Novo animal" : modo === "editar" ? `Editar ${animal?.nome ?? animal?.numero}` : `Dar baixa — ${animal?.nome ?? animal?.numero}`;
+  const identidade = animal ? rotuloAnimal(animal.numero, animal.nome) : "";
+  const titulo = modo === "novo" ? "Novo animal" : modo === "editar" ? `Editar ${identidade}` : `Dar baixa — ${identidade}`;
   return (
     <RebModal
       title={titulo}
@@ -113,7 +115,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
           <RebField label="Motivo da baixa"><input value={f.motivo} onChange={(e) => set("motivo", e.target.value)} placeholder="venda, morte, descarte…" /></RebField>
         ) : (
           <>
-            <RebField label="Número*"><input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></RebField>
+            <RebField label="Número do animal*"><input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></RebField>
             <RebField label="Nome"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></RebField>
             <RebField label="Sexo"><RebSelect value={f.sexo} onChange={(v) => set("sexo", v)}><option value="F">Fêmea</option><option value="M">Macho</option></RebSelect></RebField>
             <RebField label="Categoria">

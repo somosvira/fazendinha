@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { ratearCustoSanidade } from "./custo-sanidade.js";
+import { iniciarAnimalAplic, ratearCustoSanidade } from "./custo-sanidade.js";
+
+describe("iniciarAnimalAplic", () => {
+  it("mantém nome ausente como null para não repetir o número", () => {
+    expect(iniciarAnimalAplic("0942", null)).toEqual({ numero: "0942", nome: null, n: 0 });
+  });
+});
 
 describe("ratearCustoSanidade", () => {
   it("rateia por volume e ordena por custo desc", () => {

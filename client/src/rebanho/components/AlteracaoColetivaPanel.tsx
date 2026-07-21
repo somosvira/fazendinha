@@ -4,6 +4,7 @@ import {
   type GrupoDTO,
 } from "../api";
 import type { Animal } from "../types";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 // Alteração coletiva: filtra por grupo/setor, seleciona os animais e aplica um novo grupo e/ou
 // setor a todos de uma vez (o backend grava as movimentações). Painel próprio (lista leve com
@@ -95,8 +96,7 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
           {animais.map((a) => (
             <label key={a.id} className="flex items-center gap-2 border-b border-dashed border-[color:var(--rule-soft)] px-3 py-1 text-sm last:border-0">
               <input type="checkbox" checked={sel.has(Number(a.id))} onChange={() => toggle(Number(a.id))} />
-              <span className="font-semibold text-[color:var(--ink)]">#{a.numero}</span>
-              {a.nome ? <span className="text-ink-2">{a.nome}</span> : null}
+              <AnimalIdentity numero={a.numero} nome={a.nome} />
               <span className="ml-auto text-xs text-ink-3">{a.grupoId != null ? nomeGrupo[a.grupoId] ?? "" : "sem grupo"}{a.setor ? ` · ${a.setor}` : ""}</span>
             </label>
           ))}

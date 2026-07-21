@@ -10,6 +10,7 @@ import { RebField } from "@/components/rb/RebField";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 import { QualidadeLeiteSection } from "./QualidadeLeiteSection";
 import { TanquesSection } from "./TanquesSection";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 // "DD/MM HH:mm" local — fim da carência (leite liberado a partir daí).
 function fmtDataHora(iso: string) {
@@ -92,7 +93,7 @@ export function ProducaoTab() {
             <thead><tr><th>Vaca</th><th>Produção</th><th>Carência</th></tr></thead>
             <tbody>{(data.ranking ?? []).map((r) => (
               <tr key={r.numero}>
-                <td><RebAnm>{r.nome ? <>{r.nome} <small>#{r.numero}</small></> : <>#{r.numero}</>}</RebAnm></td>
+                <td><AnimalIdentity numero={r.numero} nome={r.nome} /></td>
                 <td>{r.litros} L/d</td>
                 <td>
                   {r.carencia ? (
