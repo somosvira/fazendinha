@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { EventoTimeline } from "../types";
+import { contarPorDominio, filtrarEventos, type FiltroTimeline } from "../lib/timelineFiltro";
 
 const DOM_LABEL: Record<string, string> = { reproducao: "Reprodução", sanidade: "Sanidade", nutricao: "Nutrição", producao: "Produção" };
 
@@ -25,11 +27,44 @@ function fmtDia(iso: string) {
 }
 
 export function Timeline({ eventos, interpretacao, flashEventoId }: { eventos: EventoTimeline[]; interpretacao?: Record<string, string>; flashEventoId?: string | null }) {
+  const [filtro, setFiltro] = useState<FiltroTimeline>("tudo");
+  // Barra de filtro só quando há mais de um domínio (senão não há o que separar).
+  const dominios = contarPorDominio(eventos);
+  const filtroAtivo = dominios.length > 1;
+  const alvo = filtroAtivo ? filtrarEventos(eventos, filtro) : eventos;
   // Pilha (LIFO), como num currículo: mais recente no topo. Ordenação defensiva por data.
-  const ordenados = [...eventos].sort((a, b) => Date.parse(b.data) - Date.parse(a.data));
+  const ordenados = [...alvo].sort((a, b) => Date.parse(b.data) - Date.parse(a.data));
   const anoTopo = ordenados[0] ? new Date(ordenados[0].data).getFullYear() : new Date().getFullYear();
   return (
-    // .rb-tl — trilho vertical com border-left
+    <>
+      {filtroAtivo && (
+        <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Filtrar linha do tempo por domínio">
+          {[
+            { chave: "tudo" as FiltroTimeline, rotulo: "Tudo", n: eventos.length },
+            ...dominios.map((d) => ({ chave: d.dominio as FiltroTimeline, rotulo: DOM_LABEL[d.dominio], n: d.n })),
+          ].map(({ chave, rotulo, n }) => {
+            const on = filtro === chave;
+            return (
+              <button
+                key={chave}
+                aria-pressed={on}
+                aria-label={`${rotulo} (${n})`}
+                onClick={() => setFiltro(chave)}
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold transition-colors " +
+                  (on
+                    ? "border-[color:var(--ink)] bg-[color:var(--ink)] text-[color:var(--bg)]"
+                    : "border-[color:var(--rule)] bg-transparent text-ink-2 hover:border-ink-3")
+                }
+              >
+                {rotulo}
+                <span className={"tabular-nums " + (on ? "opacity-80" : "text-ink-3")}>{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    {/* .rb-tl — trilho vertical com border-left */}
     <div className="relative ml-1.5 border-l-2 border-[color:var(--rule)] pl-6">
       <div className="my-0 mb-3 mt-0.5 font-serif text-sm italic text-ink-2">{anoTopo}</div>
       {ordenados.map((e) => {
@@ -60,5 +95,6 @@ export function Timeline({ eventos, interpretacao, flashEventoId }: { eventos: E
         );
       })}
     </div>
+    </>
   );
 }
