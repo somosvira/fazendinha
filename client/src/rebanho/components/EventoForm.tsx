@@ -8,6 +8,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
+import { rotuloAnimal } from "./AnimalIdentity";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
@@ -267,7 +268,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
               <select className="rb-field-select" value={f.doadoraId} onChange={(e) => set("doadoraId", e.target.value)}>
                 <option value="">— selecionar —</option>
                 {animais.filter((a) => a.id !== animalId).map((a) => (
-                  <option key={a.id} value={a.id}>{a.nome ? `${a.nome} · #${a.numero}` : `#${a.numero}`}</option>
+                  <option key={a.id} value={a.id}>{rotuloAnimal(a.numero, a.nome)}</option>
                 ))}
               </select>
             </RebField>

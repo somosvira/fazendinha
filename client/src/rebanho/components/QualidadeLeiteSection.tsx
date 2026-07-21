@@ -1,6 +1,7 @@
 import { useAnaliseLeite, type FaixaCCS } from "../api";
 import { MiniBarChart } from "../../components/charts";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 const fmtMes = (m: string) => {
   const [ano, mes] = m.split("-");
@@ -72,7 +73,7 @@ export function QualidadeLeiteSection() {
           <ol className="flex flex-col">
             {data.pioresAnimais.map((a) => (
               <li key={a.animalId} className="flex flex-wrap items-baseline gap-x-2 border-b border-dashed border-[color:var(--rule-soft)] py-[6px] text-sm last:border-0">
-                <span className="w-28 shrink-0 font-semibold text-[color:var(--ink)]">#{a.numero}{a.nome ? ` · ${a.nome}` : ""}</span>
+                <AnimalIdentity numero={a.numero} nome={a.nome} className="w-36 shrink-0" />
                 <span className="w-24 shrink-0 tabular-nums" style={{ color: FAIXA_COR[a.faixa] }}>{a.ccs} mil/mL</span>
                 <span className="text-ink-3">{fmtData(a.data)}</span>
               </li>

@@ -1,4 +1,5 @@
 import { prisma } from "../db.js";
+import { rotuloAnimal } from "./rebanho/identificacao.js";
 
 /**
  * Busca global de entidades reais para a paleta de comandos (⌘K).
@@ -47,7 +48,7 @@ export function mapearAnimal(row: {
   return {
     tipo: "animal",
     entidadeId: String(row.id),
-    label: row.numero + (row.nome ? " · " + row.nome : ""),
+    label: rotuloAnimal(row.numero, row.nome),
     // Mostra o brinco eletrônico no sublabel quando houver — confirma pro
     // usuário que o número lido pelo bastão casou com este animal.
     sublabel:

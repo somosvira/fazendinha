@@ -5,6 +5,7 @@
 
 import { ehVaziaAtrasada } from "./regras-manejo.js";
 import type { ScoreClassificacao } from "./score.calc.js";
+import { mencaoAnimal } from "./identificacao.js";
 
 export type TipoSugestao = "DESCARTE" | "REPRODUCAO" | "MASTITE" | "QUEDA_PRODUCAO";
 export const TIPOS_SUGESTAO: TipoSugestao[] = ["DESCARTE", "REPRODUCAO", "MASTITE", "QUEDA_PRODUCAO"];
@@ -64,7 +65,6 @@ export interface SugestoesDTO {
   custoVacaDia: number | null;
 }
 
-const rotulo = (a: AnimalSugestao) => `#${a.numero}${a.nome ? ` ${a.nome}` : ""}`;
 const receitaDia = (a: AnimalSugestao, precoLeite: number) => (a.producaoDia ?? 0) * precoLeite;
 
 // ── Regras (cada uma → SugestaoDTO | null) ──────────────────────────────────
@@ -79,7 +79,7 @@ export function avaliarDescarte(a: AnimalSugestao): SugestaoDTO | null {
   const margemTxt = margem < 0 ? `−R$${Math.abs(margem).toFixed(2)}/dia` : `R$${margem.toFixed(2)}/dia`;
   return {
     tipo: "DESCARTE", animalId: a.animalId, numero: a.numero, nome: a.nome,
-    titulo: `Cogite descarte de ${rotulo(a)}`,
+    titulo: `Cogite descarte de ${mencaoAnimal(a.numero, a.nome)}`,
     motivo: `Score ${a.score} (${a.classificacao}) + margem ${margemTxt}`,
     impactoDiaEstimado: impacto, prazoDias: null,
     acao: { label: "Revisar caso", tab: "carteira" },
@@ -95,7 +95,7 @@ export function avaliarReproducao(a: AnimalSugestao, cfg: SugestoesConfig): Suge
   const prazoDias = a.del != null ? Math.max(0, META_IEP - a.del) : null;
   return {
     tipo: "REPRODUCAO", animalId: a.animalId, numero: a.numero, nome: a.nome,
-    titulo: `Inseminar ${rotulo(a)}`,
+    titulo: `Inseminar ${mencaoAnimal(a.numero, a.nome)}`,
     motivo: `Vazia há ${a.del} dias (${diasAcima} além do PEV ${cfg.pevDias})`,
     impactoDiaEstimado: impacto, prazoDias,
     acao: { label: "Registrar inseminação", tab: "reproducao", worklistChave: "vazia-pos-pev" },
@@ -110,7 +110,7 @@ export function avaliarMastite(a: AnimalSugestao, cfg: SugestoesConfig): Sugesta
   if (a.quartoCronico) {
     return {
       tipo: "MASTITE", animalId: a.animalId, numero: a.numero, nome: a.nome,
-      titulo: `Secar/tratar quarto ${a.quartoCronico.quarto} de ${rotulo(a)}`,
+      titulo: `Secar/tratar quarto ${a.quartoCronico.quarto} de ${mencaoAnimal(a.numero, a.nome)}`,
       motivo: `Quarto ${a.quartoCronico.quarto} crônico — mastite reincidente não sara`,
       impactoDiaEstimado: impacto, prazoDias: null,
       acao: { label: "Registrar exame do quarto", tab: "sanidade", worklistChave: "ccs-alta" },
@@ -120,7 +120,7 @@ export function avaliarMastite(a: AnimalSugestao, cfg: SugestoesConfig): Sugesta
   if (!gatilho) return null;
   return {
     tipo: "MASTITE", animalId: a.animalId, numero: a.numero, nome: a.nome,
-    titulo: `Mastite recorrente em ${rotulo(a)}`,
+    titulo: `Mastite recorrente em ${mencaoAnimal(a.numero, a.nome)}`,
     motivo: `CCS ${a.ccs}↑ + ${a.mastites12m} mastites/12m`,
     impactoDiaEstimado: impacto, prazoDias: null,
     acao: { label: "Registrar exame", tab: "sanidade", worklistChave: "ccs-alta" },
@@ -135,7 +135,7 @@ export function avaliarQueda(a: AnimalSugestao, cfg: SugestoesConfig): SugestaoD
   const impacto = round(receitaDia(a, cfg.precoLeite) * FRACAO_QUEDA);
   return {
     tipo: "QUEDA_PRODUCAO", animalId: a.animalId, numero: a.numero, nome: a.nome,
-    titulo: `Produção caindo em ${rotulo(a)}`,
+    titulo: `Produção caindo em ${mencaoAnimal(a.numero, a.nome)}`,
     motivo: `Produção em queda no DEL ${a.del} (fase de pico/platô)`,
     impactoDiaEstimado: impacto, prazoDias: null,
     acao: { label: "Investigar", tab: "producao", worklistChave: "producao-caindo" },

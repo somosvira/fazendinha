@@ -45,7 +45,7 @@ describe("mapearAnimal", () => {
     expect(mapearAnimal({ id: 12, numero: "CA-100", nome: "Catarina", categoria: "VACA", raca: { nome: "Girolando" } })).toEqual({
       tipo: "animal",
       entidadeId: "12",
-      label: "CA-100 · Catarina",
+      label: "#CA-100 · Catarina",
       sublabel: "VACA · Girolando",
       tab: "reb-animal",
       grupo: "Animais",
@@ -53,7 +53,7 @@ describe("mapearAnimal", () => {
   });
   it("sem nome e sem raça", () => {
     const r = mapearAnimal({ id: 9, numero: "200", nome: null, categoria: "NOVILHA", raca: null });
-    expect(r.label).toBe("200");
+    expect(r.label).toBe("#200");
     expect(r.sublabel).toBe("NOVILHA");
   });
   it("brinco eletrônico entra no sublabel quando presente (A6)", () => {

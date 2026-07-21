@@ -2,6 +2,7 @@
 // Filosofia: maioria transparente com border-left de cor (estilo .rb-ia-band); .rb-box reservado
 // para dados estruturados. Sempre indicar "estimativa" quando o dado vier de fallback ou inferência.
 
+import { AnimalIdentity } from "../AnimalIdentity";
 import type {
   ScoreDTO, FinanceiroDTO, TendenciaDTO, InsightDTO, PercentisDTO,
   ProducaoFinanceiraDTO, EficienciaDTO, ProjecoesDTO, GenealogiaDTO,
@@ -204,14 +205,14 @@ export function Genealogia({ g, onAbrirAnimal }: { g: GenealogiaDTO; onAbrirAnim
           <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Mãe</span>
             {g.mae ? (
-              <button className="bg-none border-0 p-0 cursor-pointer text-cafe font-semibold font-sans text-sm text-right hover:underline" onClick={() => onAbrirAnimal(g.mae!.id)}>{g.mae.nome ?? "—"} #{g.mae.numero}</button>
+              <button className="cursor-pointer border-0 bg-transparent p-0 text-right text-cafe hover:underline" onClick={() => onAbrirAnimal(g.mae!.id)}><AnimalIdentity numero={g.mae.numero} nome={g.mae.nome} /></button>
             ) : <span className="text-ink-2 text-sm italic text-right">—</span>}
           </div>
           {g.mae?.producaoMediaDia != null && <div className="text-sm text-ink-3 italic text-right -mt-1 mb-0.5">produção {g.mae.producaoMediaDia} L/dia</div>}
           <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">
             <span>Avó materna</span>
             {g.avoMaterna ? (
-              <button className="bg-none border-0 p-0 cursor-pointer text-cafe font-semibold font-sans text-sm text-right hover:underline" onClick={() => onAbrirAnimal(g.avoMaterna!.id)}>{g.avoMaterna.nome ?? "—"} #{g.avoMaterna.numero}</button>
+              <button className="cursor-pointer border-0 bg-transparent p-0 text-right text-cafe hover:underline" onClick={() => onAbrirAnimal(g.avoMaterna!.id)}><AnimalIdentity numero={g.avoMaterna.numero} nome={g.avoMaterna.nome} /></button>
             ) : <span className="text-ink-2 text-sm italic text-right">sem registro</span>}
           </div>
           <div className="flex justify-between items-baseline gap-2 text-sm py-1 border-b border-dashed border-[color:var(--rule-soft)] [&>span:first-child]:text-ink-3 [&>span:first-child]:text-sm">

@@ -10,6 +10,7 @@
 import { prisma } from "../../db.js";
 import { jsonSafe } from "./serialize.js";
 import { buildDashboard } from "../dashboard.js";
+import { mencaoAnimal } from "../rebanho/identificacao.js";
 import type { ContextoConsulta } from "../consulta/tipos.js";
 import { toolsConsulta } from "./tools-consulta.js";
 
@@ -397,6 +398,10 @@ const buscarAnimal: Tool = {
   },
 };
 
+export function formatarAnimalAlerta(animal: { numero: string; nome: string | null }): string {
+  return mencaoAnimal(animal.numero, animal.nome);
+}
+
 const alertasRebanho: Tool = {
   spec: fn(
     "alertas_rebanho",
@@ -405,20 +410,19 @@ const alertasRebanho: Tool = {
   ),
   handler: async () => {
     const animais = await prisma.animal.findMany({ where: { status: "ATIVO" }, include: { resumo: true } });
-    const apelido = (a: (typeof animais)[number]) => `${a.nome ?? "Sem nome"} #${a.numero}`;
     const hoje = new Date();
     const lim = new Date(hoje);
     lim.setUTCDate(lim.getUTCDate() + 30);
 
     const ccsAlto = animais
       .filter((a) => a.resumo?.ccs != null && a.resumo.ccs >= 400)
-      .map((a) => ({ animal: apelido(a), ccs: a.resumo!.ccs }));
+      .map((a) => ({ animal: formatarAnimalAlerta(a), ccs: a.resumo!.ccs }));
     const vaziasAtrasadas = animais
       .filter((a) => a.resumo?.statusReprodutivo === "VAZIA" && (a.resumo?.del ?? 0) > 90)
-      .map((a) => ({ animal: apelido(a), del: a.resumo!.del }));
+      .map((a) => ({ animal: formatarAnimalAlerta(a), del: a.resumo!.del }));
     const aSecar = animais
       .filter((a) => a.resumo?.statusReprodutivo === "PRENHE" && a.resumo?.previsaoSecagem && a.resumo.previsaoSecagem <= lim)
-      .map((a) => ({ animal: apelido(a), previsaoSecagem: a.resumo!.previsaoSecagem!.toISOString().slice(0, 10) }));
+      .map((a) => ({ animal: formatarAnimalAlerta(a), previsaoSecagem: a.resumo!.previsaoSecagem!.toISOString().slice(0, 10) }));
 
     return jsonSafe({ ccsAlto, vaziasAtrasadas, aSecar });
   },

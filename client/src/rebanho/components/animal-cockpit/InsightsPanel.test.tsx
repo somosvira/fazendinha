@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
+import { render } from "@testing-library/react";
 import {
   ScoreBadge, RentabilidadeKpi, Tendencias, Insights, Percentis,
   ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
@@ -101,14 +102,19 @@ describe("InsightsPanel — migração Tailwind", () => {
   });
 
   it("Genealogia mostra mãe clicável e campos sem registro", () => {
-    const html = renderToString(h(Genealogia, {
+    const { container } = render(h(Genealogia, {
       g: { mae: { id: "m1", nome: "CATARINA", numero: "1002", producaoMediaDia: 28 }, pai: "BRUISER", avoMaterna: null, avoMaterno: null },
       onAbrirAnimal: () => {},
     }));
-    expect(html).toContain("Genealogia");
-    expect(html).toContain("CATARINA");
-    expect(html).toContain("BRUISER");
-    expect(html).toContain("sem registro");
+    expect(container.textContent).toContain("Genealogia");
+    const identidade = container.querySelector("button > span")!;
+    const [descricao, numero, separador, nome] = Array.from(identidade.children);
+    expect(descricao).toHaveProperty("textContent", "Animal número 1002, CATARINA");
+    expect(numero).toHaveProperty("textContent", "#1002");
+    expect(separador).toHaveProperty("textContent", "·");
+    expect(nome).toHaveProperty("textContent", "CATARINA");
+    expect(container.textContent).toContain("BRUISER");
+    expect(container.textContent).toContain("sem registro");
   });
 });
 

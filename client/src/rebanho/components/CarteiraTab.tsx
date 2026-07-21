@@ -4,11 +4,12 @@ import { Donut, fmtMoney } from "../../components/charts";
 import { useCarteira, simularDescarte, type ClassificacaoScore, type AnimalCarteiraDTO, type SimulacaoDescarteDTO } from "../api";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
-import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
+import { RebMain, RebBox, RebEmpty } from "@/components/rb/RebPrimitives";
 import { ComposicaoRacialSection } from "./ComposicaoRacialSection";
 import { QuantitativoSection } from "./QuantitativoSection";
 import { ClimaChuvaSection } from "./ClimaChuvaSection";
 import { UaReferenciaSection } from "./UaReferenciaSection";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 // Rótulo + cor por faixa (melhor → pior). Cores das variáveis da paleta (base.css).
 const FAIXAS: { chave: ClassificacaoScore; label: string; cor: string }[] = [
@@ -39,10 +40,7 @@ function LinhaAnimal({ a, onAbrir }: { a: AnimalCarteiraDTO; onAbrir?: (id: numb
   return (
     <tr className={onAbrir ? "cursor-pointer" : undefined} onClick={onAbrir ? () => onAbrir(a.animalId) : undefined}>
       <td>
-        <RebAnm>
-          {a.numero}
-          {a.nome ? <small>{a.nome}</small> : null}
-        </RebAnm>
+        <AnimalIdentity numero={a.numero} nome={a.nome} />
       </td>
       <td><b>{a.score}</b></td>
       <td><Estrelas classificacao={a.classificacao} /></td>

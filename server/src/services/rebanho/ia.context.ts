@@ -3,6 +3,7 @@
 // lotes, e produz um snapshot do rebanho + um texto PT-BR usado como system prompt.
 
 import { ehCcsAlto, ehElegivelPrenhez, ehPartoProximo, ehVaziaAtrasada } from "./regras-manejo.js";
+import { mencaoAnimal } from "./identificacao.js";
 
 export interface AnimalCtx {
   numero: string; nome: string | null; categoria: string;
@@ -81,7 +82,6 @@ export function montarContexto(animais: AnimalCtx[], lotes: LoteCtx[], hoje: str
   };
 }
 
-const apelido = (numero: string, nome: string | null) => `${nome ?? "Sem nome"} #${numero}`;
 
 export function contextoParaTexto(ctx: ContextoRebanho): string {
   const L: string[] = [];
@@ -93,22 +93,22 @@ export function contextoParaTexto(ctx: ContextoRebanho): string {
 
   L.push("");
   L.push(`CCS alto (≥ ${CCS_ALTO} mil):`);
-  if (ctx.ccsAlto.length) ctx.ccsAlto.forEach((a) => L.push(`- ${apelido(a.numero, a.nome)} — ${a.ccs} mil${a.tendencia ? ` · ${a.tendencia}` : ""}`));
+  if (ctx.ccsAlto.length) ctx.ccsAlto.forEach((a) => L.push(`- ${mencaoAnimal(a.numero, a.nome)} — ${a.ccs} mil${a.tendencia ? ` · ${a.tendencia}` : ""}`));
   else L.push("- nenhum");
 
   L.push("");
   L.push("Vazias atrasadas (PEV):");
-  if (ctx.vaziasAtrasadas.length) ctx.vaziasAtrasadas.forEach((a) => L.push(`- ${apelido(a.numero, a.nome)} — ${a.del ?? "—"} DEL`));
+  if (ctx.vaziasAtrasadas.length) ctx.vaziasAtrasadas.forEach((a) => L.push(`- ${mencaoAnimal(a.numero, a.nome)} — ${a.del ?? "—"} DEL`));
   else L.push("- nenhuma");
 
   L.push("");
   L.push("A secar (próximos 30 dias, inclui atrasadas):");
-  if (ctx.aSecar.length) ctx.aSecar.forEach((a) => L.push(`- ${apelido(a.numero, a.nome)} — secar até ${a.previsaoSecagem}`));
+  if (ctx.aSecar.length) ctx.aSecar.forEach((a) => L.push(`- ${mencaoAnimal(a.numero, a.nome)} — secar até ${a.previsaoSecagem}`));
   else L.push("- nenhuma");
 
   L.push("");
   L.push("Partos previstos:");
-  if (ctx.partosPrevistos.length) ctx.partosPrevistos.forEach((a) => L.push(`- ${apelido(a.numero, a.nome)} — ${a.diasGestacao ?? "—"} dias de gestação`));
+  if (ctx.partosPrevistos.length) ctx.partosPrevistos.forEach((a) => L.push(`- ${mencaoAnimal(a.numero, a.nome)} — ${a.diasGestacao ?? "—"} dias de gestação`));
   else L.push("- nenhum");
 
   L.push("");

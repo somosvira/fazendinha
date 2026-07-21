@@ -29,7 +29,7 @@ describe("gerarInsightsRebanho", () => {
     expect(secar).toBeDefined();
     expect(secar!.escopo).toBe("rebanho");
     expect(secar!.dominio).toBe("reproducao");
-    expect(secar!.texto).toContain("<b>Jurema #1234</b>");
+    expect(secar!.texto).toContain("<b>#1234 Jurema</b>");
     expect(secar!.texto).toContain("2026-07-10");
     expect(secar!.acoes.length).toBeGreaterThan(0);
   });

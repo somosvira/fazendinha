@@ -5,6 +5,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 const money = fmtMoneyExact;
 const litros = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
@@ -118,7 +119,7 @@ export function CustoProducaoTab() {
                     const pct = maxCusto > 0 ? (a.custoEstimado / maxCusto) * 100 : 0;
                     return (
                       <tr key={a.numero}>
-                        <td><RebAnm>{a.nome} #{a.numero}</RebAnm></td>
+                        <td><AnimalIdentity numero={a.numero} nome={a.nome} /></td>
                         <td>
                           <div style={{ background: "var(--rb-bar-bg, rgba(0,0,0,.06))", borderRadius: 4, height: 10, overflow: "hidden" }}>
                             <div style={{ width: `${pct}%`, background: "var(--leite)", height: "100%" }} />

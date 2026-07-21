@@ -5,6 +5,7 @@
 // client (client/src/rebanho/types.ts): escopo/dominio/texto/acoes.
 
 import type { ContextoRebanho } from "./ia.context.js";
+import { mencaoAnimal } from "./identificacao.js";
 
 export interface IaInsightDTO {
   id: string;
@@ -16,7 +17,6 @@ export interface IaInsightDTO {
 }
 
 const b = (s: string | number) => `<b>${s}</b>`;
-const apelido = (numero: string, nome: string | null) => `${nome ?? "Sem nome"} #${numero}`;
 
 export function gerarInsightsRebanho(ctx: ContextoRebanho): IaInsightDTO[] {
   const out: IaInsightDTO[] = [];
@@ -31,7 +31,7 @@ export function gerarInsightsRebanho(ctx: ContextoRebanho): IaInsightDTO[] {
       dominio: "reproducao",
       texto:
         `${b(n)} ${n === 1 ? "vaca prenhe entra" : "vacas prenhes entram"} na janela de secagem dos próximos 30 dias — ` +
-        `a mais urgente é ${b(apelido(primeira.numero, primeira.nome))}, secar até ${b(primeira.previsaoSecagem)}. ` +
+        `a mais urgente é ${b(mencaoAnimal(primeira.numero, primeira.nome))}, secar até ${b(primeira.previsaoSecagem)}. ` +
         `Secar no ponto certo protege o período seco e a próxima lactação.`,
       acoes: [{ label: "Ver vacas a secar", primaria: true }, { label: "Agendar secagem" }],
     });
@@ -50,7 +50,7 @@ export function gerarInsightsRebanho(ctx: ContextoRebanho): IaInsightDTO[] {
       texto:
         `${b(n)} ${n === 1 ? "vaca está" : "vacas estão"} com CCS alto (≥ 400 mil cél/mL)` +
         `${subindo ? `, ${b(subindo)} com tendência de subida` : ""}. ` +
-        `A pior é ${b(apelido(pior.numero, pior.nome))} — ${b(`${pior.ccs} mil`)}${pior.tendencia ? ` e ${pior.tendencia}` : ""}. ` +
+        `A pior é ${b(mencaoAnimal(pior.numero, pior.nome))} — ${b(`${pior.ccs} mil`)}${pior.tendencia ? ` e ${pior.tendencia}` : ""}. ` +
         `Risco de mastite subclínica: candidata a cultura no próximo controle.`,
       acoes: [{ label: "Ver vacas com CCS alto", primaria: true }, { label: "Agendar cultura" }],
     });
@@ -68,7 +68,7 @@ export function gerarInsightsRebanho(ctx: ContextoRebanho): IaInsightDTO[] {
       texto:
         `${b(n)} ${n === 1 ? "vaca vazia passou" : "vacas vazias passaram"} do período voluntário de espera (DEL > 90)` +
         `${pct != null ? ` — a prenhez do rebanho está em ${b(`${pct}%`)}` : ""}. ` +
-        `Ex.: ${b(apelido(primeira.numero, primeira.nome))} com ${b(`${primeira.del ?? "—"} DEL`)}. ` +
+        `Ex.: ${b(mencaoAnimal(primeira.numero, primeira.nome))} com ${b(`${primeira.del ?? "—"} DEL`)}. ` +
         `Cada dia aberto além do ideal empurra o IEP e custa leite.`,
       acoes: [{ label: "Ver vazias atrasadas", primaria: true }, { label: "Programar IATF" }],
     });
@@ -84,7 +84,7 @@ export function gerarInsightsRebanho(ctx: ContextoRebanho): IaInsightDTO[] {
       dominio: "reproducao",
       texto:
         `${b(n)} ${n === 1 ? "vaca está" : "vacas estão"} com gestação avançada e parto previsto em breve — ` +
-        `a mais adiantada é ${b(apelido(primeira.numero, primeira.nome))} com ${b(`${primeira.diasGestacao ?? "—"} dias`)}. ` +
+        `a mais adiantada é ${b(mencaoAnimal(primeira.numero, primeira.nome))} com ${b(`${primeira.diasGestacao ?? "—"} dias`)}. ` +
         `Vale preparar a maternidade e revisar o manejo de pré-parto.`,
       acoes: [{ label: "Ver partos previstos", primaria: true }],
     });

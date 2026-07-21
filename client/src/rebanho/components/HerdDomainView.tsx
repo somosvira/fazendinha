@@ -7,6 +7,7 @@ import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain } from "@/components/rb/RebPrimitives";
+import { AnimalIdentity } from "./AnimalIdentity";
 
 // Toolbar do header (filtros/controles) — reaproveitada por AnimalTab etc.
 export const RB_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -92,7 +93,7 @@ export function HerdDomainView({
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
                   <tr className="rb-row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
-                    <td className="font-semibold text-[color:var(--ink)] [&_small]:font-medium [&_small]:text-ink-2">{a?.nome} <small>#{a?.numero}</small></td>
+                    <td>{a ? <AnimalIdentity numero={a.numero} nome={a.nome} /> : "—"}</td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>
                 );
