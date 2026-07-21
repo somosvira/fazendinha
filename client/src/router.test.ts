@@ -7,6 +7,11 @@ import {
 } from "./router";
 
 describe("roteamento do rebanho", () => {
+  it("mapeia inicio ⇄ /inicio", () => {
+    expect(tabToPath("inicio")).toBe("/inicio");
+    expect(pathToTab("/inicio")).toBe("inicio");
+  });
+
   it.each([
     ["reb-dashboard", "/rebanho/dashboard"],
     ["reb-reproducao", "/rebanho/reproducao"],

@@ -19,6 +19,7 @@ import { SidebarFarmPicker } from "./FarmPicker";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
+  inicio: <><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></>,
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   gastos: <><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></>,
   lancar: <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 8v8M8 12h8"/></>,
@@ -368,6 +369,10 @@ export function AppSidebar({
   const navBody = (
     <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
+        <Item id="inicio" label="Início" current={current} onNav={nav} />
+      </div>
+
+      <div className="mt-4 flex flex-col gap-px">
         <GroupLabel>Gestão</GroupLabel>
         {gestao.map((t) => (
           <Item

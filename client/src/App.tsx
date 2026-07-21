@@ -9,6 +9,7 @@ import { type Tab, type NavTab } from "./components/Shell";
 import { buildRotaWorklistRebanho, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { Header } from "./components/Header";
+import { InicioContent } from "./inicio/InicioContent";
 import { Dashboard } from "./components/Dashboard";
 import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
@@ -153,7 +154,7 @@ export function App() {
     typeof window === "undefined" ? null : getUsuario(),
   );
 
-  // Aba inicial vem da URL (deep-link / reload); cai no dashboard se a rota não
+  // Aba inicial vem da URL (deep-link / reload); cai em Início se a rota não
   // casar. Guard de `window` p/ render fora do browser (smoke test SSR).
   const [tab, setTab] = useState<Tab>(() =>
     (typeof window === "undefined" ? null : pathToTab(window.location.pathname)) ?? DEFAULT_TAB,
@@ -312,7 +313,7 @@ export function App() {
   }, [mobileOpen]);
 
   // Reflete a aba ativa na URL. Primeiro render usa replaceState (não empilha
-  // histórico ao normalizar "/" → "/dashboard); trocas seguintes usam pushState
+  // histórico ao normalizar "/" → "/inicio"); trocas seguintes usam pushState
   // para o botão "voltar" do navegador funcionar.
   const firstSync = useRef(true);
   useEffect(() => {
@@ -407,13 +408,13 @@ export function App() {
     const isCor = String(tab).startsWith("cor-");
     const isEqp = String(tab).startsWith("eqp-");
     const isMil = String(tab).startsWith("mil-");
-    if (isReb || isPla || isCor || isEqp || isMil || tab === "acessos" || tab === "config" || tab === "cadastros") return;
+    if (tab === "inicio" || isReb || isPla || isCor || isEqp || isMil || tab === "acessos" || tab === "config" || tab === "cadastros") return;
     const allowed = visibleTabs.map((t) => t.id);
-    if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
+    if (!allowed.includes(tab)) setTab(allowed[0] || DEFAULT_TAB);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTabs]);
 
-  const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
+  const canSee = (id: Tab) => id === "inicio" || visibleTabs.some((t) => t.id === id);
 
   // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
   // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
@@ -460,6 +461,7 @@ export function App() {
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
     : (
       <>
+        {tab === "inicio" && <InicioContent onNav={(t) => navegarTab(t as Tab)} />}
         {tab === "dashboard" &&
           (canSee("dashboard")
             ? <Dashboard

@@ -15,6 +15,7 @@ import type { Tab } from "./components/Shell";
 
 // Abas de slug fixo (financeiro + administração). Slug = parte visível na URL.
 const PATH_BY_TAB: Partial<Record<Tab, string>> = {
+  inicio: "/inicio",
   dashboard: "/dashboard",
   gastos: "/gastos",
   lancar: "/lancar",
@@ -43,7 +44,7 @@ const MODULO_BASE: Array<{ prefix: string; base: string; defaultSub?: string }> 
   { prefix: "eqp-", base: "/equipe" },
 ];
 
-export const DEFAULT_TAB: Tab = "dashboard";
+export const DEFAULT_TAB: Tab = "inicio";
 
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
