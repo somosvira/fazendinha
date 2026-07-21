@@ -2,16 +2,26 @@ export type ResumoLeite = { producaoDia: number | null; emLactacao: number | nul
 export type ResumoCaixa = { saldo: number | null; mesLabel: string | null; entrada: number | null; saida: number | null; fluxo: number | null };
 export type ResumoAtencao = { chave: string; titulo: string; quantidade: number; severidade: "alta" | "media" | "baixa"; tab: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const heroi = (d: any, k: string) => (d?.herois?.[k]?.valor ?? null) as number | null;
+function registro(valor: unknown): Record<string, unknown> | null {
+  return typeof valor === "object" && valor !== null ? valor as Record<string, unknown> : null;
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function resumoLeite(d: any): ResumoLeite {
+function numero(valor: unknown): number | null {
+  return typeof valor === "number" ? valor : null;
+}
+
+function heroi(d: unknown, chave: string): Record<string, unknown> | null {
+  const herois = registro(registro(d)?.herois);
+  return registro(herois?.[chave]);
+}
+
+export function resumoLeite(d: unknown): ResumoLeite {
+  const producao = heroi(d, "producaoTotalDia");
   return {
-    producaoDia: heroi(d, "producaoTotalDia"),
-    emLactacao: heroi(d, "vacasEmLactacao"),
-    mediaVaca: heroi(d, "producaoMediaVaca"),
-    tendenciaPct: (d?.herois?.producaoTotalDia?.variacaoPercentual ?? null) as number | null,
+    producaoDia: numero(producao?.valor),
+    emLactacao: numero(heroi(d, "vacasEmLactacao")?.valor),
+    mediaVaca: numero(heroi(d, "producaoMediaVaca")?.valor),
+    tendenciaPct: numero(producao?.variacaoPercentual),
   };
 }
 
@@ -24,11 +34,15 @@ function mesLabelDeIdx(idx: number): string {
   return `${MESES[((mo % 12) + 12) % 12]}/${String(ano).slice(2)}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function resumoCaixa(d: any): ResumoCaixa {
-  const cred: number[] = Array.isArray(d?.creditoTotal) ? d.creditoTotal : [];
-  const deb: number[] = Array.isArray(d?.debitoTotal) ? d.debitoTotal : [];
-  const saldo = (d?.caixaHoje?.total ?? null) as number | null;
+function serieNumerica(valor: unknown): number[] {
+  return Array.isArray(valor) ? valor.map((item) => numero(item) ?? 0) : [];
+}
+
+export function resumoCaixa(d: unknown): ResumoCaixa {
+  const payload = registro(d);
+  const cred = serieNumerica(payload?.creditoTotal);
+  const deb = serieNumerica(payload?.debitoTotal);
+  const saldo = numero(registro(payload?.caixaHoje)?.total);
   for (let i = Math.max(cred.length, deb.length) - 1; i >= 0; i--) {
     const e = cred[i] || 0, s = deb[i] || 0;
     if (e !== 0 || s !== 0) return { saldo, mesLabel: mesLabelDeIdx(i), entrada: e, saida: s, fluxo: e - s };
@@ -37,13 +51,24 @@ export function resumoCaixa(d: any): ResumoCaixa {
 }
 
 const RANK = { alta: 0, media: 1, baixa: 2 } as const;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function resumoAtencao(d: any, max = 4): ResumoAtencao[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const alertas: any[] = Array.isArray(d?.alertas) ? d.alertas : [];
+
+function alertaValido(alerta: Record<string, unknown> | null): alerta is Record<string, unknown> & ResumoAtencao {
+  return alerta !== null
+    && typeof alerta.chave === "string"
+    && typeof alerta.titulo === "string"
+    && typeof alerta.tab === "string"
+    && typeof alerta.quantidade === "number"
+    && alerta.quantidade > 0
+    && (alerta.severidade === "alta" || alerta.severidade === "media" || alerta.severidade === "baixa");
+}
+
+export function resumoAtencao(d: unknown, max = 4): ResumoAtencao[] {
+  const payload = registro(d);
+  const alertas = Array.isArray(payload?.alertas) ? payload.alertas : [];
   return alertas
-    .filter((a) => (a?.quantidade ?? 0) > 0)
-    .sort((a, b) => RANK[a.severidade as keyof typeof RANK] - RANK[b.severidade as keyof typeof RANK] || b.quantidade - a.quantidade)
+    .map(registro)
+    .filter(alertaValido)
+    .sort((a, b) => RANK[a.severidade] - RANK[b.severidade] || b.quantidade - a.quantidade)
     .slice(0, max)
-    .map((a) => ({ chave: a.chave, titulo: a.titulo, quantidade: a.quantidade, severidade: a.severidade, tab: a.tab }));
+    .map(({ chave, titulo, quantidade, severidade, tab }) => ({ chave, titulo, quantidade, severidade, tab }));
 }
