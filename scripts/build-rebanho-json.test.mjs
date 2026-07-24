@@ -120,11 +120,12 @@ test("parseEvento: desconhecido (9) ou falta de ideagriId → null (faha em main
   assert.equal(parseEvento("1~|~~|~1~|~2025-01-01~|~~|~~|~~|~~|~~|~~|~~|~~|~").ideagriId, null);
 });
 
-test("parseEvento: parto (tipo 7) → PARTO com cria", () => {
-  const e = parseEvento("1027~|~1006~|~7~|~2023-09-12~|~~|~~|~~|~~|~~|~~|~1~|~1~|~M");
+test("parseEvento: parto (tipo 7) → PARTO com cria e auxílio", () => {
+  const e = parseEvento("1027~|~1006~|~7~|~2023-09-12~|~~|~~|~~|~~|~~|~~|~2~|~1~|~1~|~M");
   assert.equal(e.tipo, "PARTO");
   assert.equal(e.ideagriId, 1006);
-  assert.equal(e.tipoParto, "1");
+  assert.equal(e.tipoParto, "2"); // Auxiliado
+  assert.equal(e.auxilioParto, "1"); // Bezerro puxado
   assert.equal(e.numCrias, 1);
   assert.equal(e.sexoCria, "M");
 });

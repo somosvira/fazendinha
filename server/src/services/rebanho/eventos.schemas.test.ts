@@ -14,9 +14,10 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "COBERTURA", data: "2026-04-28" }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "COBERTURA", data: "2026-04-28", reprodutor: "Touro 1" }).success).toBe(true);
   });
-  it("PARTO exige numCrias >= 1", () => {
+  it("PARTO exige numCrias >= 1, exceto quando é aborto", () => {
     expect(criarEventoSchema.safeParse({ tipo: "PARTO", data: "2026-01-22", numCrias: 1 }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "PARTO", data: "2026-01-22", numCrias: 0 }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({ tipo: "PARTO", data: "2026-01-22", tipoParto: "3", numCrias: 0 }).success).toBe(true); // 3=Aborto
   });
   it("CIO só precisa de data", () => {
     expect(criarEventoSchema.safeParse({ tipo: "CIO", data: "2026-04-01" }).success).toBe(true);

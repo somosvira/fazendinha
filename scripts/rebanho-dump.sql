@@ -81,7 +81,8 @@ WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1 AND l.DTLEITE IS NOT NULL;
 
 /* ── EVENTOS REPRODUTIVOS (REPRODUCAO) ───────────────────────────────────────
  * Campos: numero | ideagriId | cdtipo | data | reprodutor | doadoraNumero |
- * doadoraNome | embriaoId | diagnostico | dtParto | tipoParto | numCrias | sexoCria
+ * doadoraNome | embriaoId | diagnostico | dtParto | tipoParto | auxilioParto |
+ * numCrias | sexoCria
  * TE: receptora=r.CDANIMAL; embrião=r.CDEMBRIAO; doadora=emb.CDMAE; sêmen=emb.CDPAI.
  */
 SELECT '@E@' || a.NUMERO
@@ -95,6 +96,7 @@ SELECT '@E@' || a.NUMERO
   || '~|~' || COALESCE(r.DIAGNOSTICO,'')
   || '~|~' || COALESCE(CAST(r.DTPARTOPROVAVEL AS VARCHAR(12)),'')
   || '~|~' || COALESCE(CAST(r.CDTIPOPARTO AS VARCHAR(4)),'')
+  || '~|~' || COALESCE(CAST(r.CDAUXILIOPARTO AS VARCHAR(4)),'')
   || '~|~' || COALESCE(CAST(r.NUMCRIA AS VARCHAR(4)),'')
   || '~|~' || COALESCE(r.SEXOCRIA1,'')
   AS "LINHA"

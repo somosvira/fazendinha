@@ -107,7 +107,8 @@ export interface EventoPayload {
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
-  numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
+  numCrias?: number; criasVivas?: number; criasNatimortas?: number;
+  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
   doadoraId?: number; // TE: animal doador da genética
   metodo?: string; // exame ginecológico: palpação/US
   pesoKg?: number; // desmame: peso opcional ao desmame

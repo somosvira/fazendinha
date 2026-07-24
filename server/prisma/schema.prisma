@@ -815,8 +815,11 @@ model EventoReprodutivo {
   protocolo       String?
   resultado       String?
   dtPartoPrevista DateTime?             @db.Date
-  tipoParto       String?
+  tipoParto       String? // código IDEAGRI TIPOPARTO (1..7) ou rótulo canônico
+  auxilioParto    String? // código IDEAGRI AUXILIOPARTO (1..4) quando tipo=Auxiliado
   numCrias        Int?
+  criasVivas      Int?
+  criasNatimortas Int?
   sexoCria        String?
   motivoSecagem   String?
   // Identidade do fato no REPRODUCAO do IDEAGRI — garante import/reconciliação 1:1.

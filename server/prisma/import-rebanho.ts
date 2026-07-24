@@ -77,6 +77,7 @@ interface EventoJson {
   resultado: string | null;
   dtPartoPrevista: string | null;
   tipoParto: string | null;
+  auxilioParto: string | null;
   numCrias: number | null;
   sexoCria: string | null;
   observacao: string | null;
@@ -314,7 +315,15 @@ async function main() {
       resultado: e.resultado ?? null,
       dtPartoPrevista: d(e.dtPartoPrevista),
       tipoParto: e.tipoParto ?? null,
+      auxilioParto: e.auxilioParto ?? null,
       numCrias: e.numCrias ?? null,
+      // Split vivos/natimortos derivado do dicionário quando o fato não traz colunas próprias.
+      criasVivas: e.tipo === "PARTO"
+        ? (e.tipoParto === "4" ? 0 : e.tipoParto === "3" ? 0 : e.numCrias ?? null)
+        : null,
+      criasNatimortas: e.tipo === "PARTO"
+        ? (e.tipoParto === "4" ? (e.numCrias ?? 0) : 0)
+        : null,
       sexoCria: e.sexoCria ?? null,
       observacao: e.observacao ?? null,
     }));

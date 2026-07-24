@@ -7,6 +7,7 @@ export interface EvtRepro {
   dtPartoPrevista?: string | null;
   reprodutor?: string | null;
   protocolo?: string | null;
+  tipoParto?: string | null;
   motivoSecagem?: string | null;
 }
 
@@ -67,6 +68,8 @@ export function planejarSincronizacaoLactacoes(
 
   const { evento } = mutacao;
   if (mutacao.tipo === "CRIACAO" && evento.tipo === "PARTO") {
+    // Aborto (tipoParto=3) encerra gestação sem abrir lactação.
+    if (evento.tipoParto === "3" || evento.tipoParto === "aborto" || evento.tipoParto === "AB") return [];
     if (porInicio.has(evento.data)) return [];
     const maior = Math.max(numPartosEntrada, 0, ...persistidas.map((l) => l.numero));
     return [{ tipo: "CRIAR", numero: maior + 1, dtInicio: evento.data }];
@@ -91,8 +94,15 @@ export function reconstruirLactacoes(eventos: EvtRepro[], numPartosEntrada: numb
   const ps = eventos.filter((e) => e.tipo === "PARTO" || e.tipo === "SECAGEM").slice().sort((a, b) => Date.parse(a.data) - Date.parse(b.data) || (a.id ?? 0) - (b.id ?? 0));
   const lacts: Lact[] = [];
   for (const e of ps) {
-    if (e.tipo === "PARTO") lacts.push({ numero: numPartosEntrada + lacts.length + 1, dtInicio: e.data, dtFim: null });
-    else { const aberta = [...lacts].reverse().find((l) => l.dtFim === null); if (aberta) aberta.dtFim = e.data; }
+    // Aborto não abre lactação.
+    if (e.tipo === "PARTO") {
+      const t = (e.tipoParto ?? "").toLowerCase();
+      if (t === "3" || t === "aborto" || t === "ab") continue;
+      lacts.push({ numero: numPartosEntrada + lacts.length + 1, dtInicio: e.data, dtFim: null });
+    } else {
+      const aberta = [...lacts].reverse().find((l) => l.dtFim === null);
+      if (aberta) aberta.dtFim = e.data;
+    }
   }
   return lacts;
 }

@@ -37,10 +37,21 @@ const DETECCAO_CIO = [
   "Bastão marcador", "Touro rufião", "Pintura / cera",
 ];
 
+// Dicionários oficiais IDEAGRI (TIPOPARTO / AUXILIOPARTO).
 const TIPOS_PARTO = [
-  { v: "normal", label: "Normal" },
-  { v: "distocia", label: "Distocia" },
-  { v: "cesarea", label: "Cesárea" },
+  { v: "1", label: "Normal" },
+  { v: "2", label: "Auxiliado" },
+  { v: "3", label: "Aborto" },
+  { v: "4", label: "Natimorto" },
+  { v: "5", label: "Induzido" },
+  { v: "6", label: "Prematuro" },
+  { v: "7", label: "Vivo/Natimorto" },
+];
+const AUXILIOS_PARTO = [
+  { v: "4", label: "1-Introdução de mãos" },
+  { v: "1", label: "2-Bezerro puxado" },
+  { v: "3", label: "3-Complicado" },
+  { v: "2", label: "4-Cesariana" },
 ];
 
 // Achados de exame ginecológico (palpação/US). Valor = enum do backend; label = pt-BR.
@@ -77,7 +88,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     // Transferência de embrião (TE): doadora da genética + touro/sêmen do embrião.
     doadoraId: "", semenTE: "",
     resultado: "positivo", dtPartoPrevista: "",
-    numCrias: "1", sexoCria: "F", tipoParto: "normal",
+    numCrias: "1", criasVivas: "1", criasNatimortas: "0", sexoCria: "F", tipoParto: "1", auxilioParto: "1",
     motivoSecagem: MOTIVOS_SECAGEM[0],
     // Exame ginecológico.
     achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0],
@@ -152,7 +163,23 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           p.protocolo = proto || undefined;
         }
         if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
-        if (tipo === "PARTO") { p.numCrias = Number(f.numCrias); p.sexoCria = f.sexoCria; p.tipoParto = f.tipoParto; }
+        if (tipo === "PARTO") {
+          p.tipoParto = f.tipoParto || undefined;
+          p.auxilioParto = f.tipoParto === "2" ? (f.auxilioParto || undefined) : undefined;
+          if (f.tipoParto === "3") {
+            p.numCrias = 0;
+            p.criasVivas = 0;
+            p.criasNatimortas = 0;
+          } else {
+            const vivos = num(f.criasVivas);
+            const natim = num(f.criasNatimortas);
+            const total = num(f.numCrias) ?? ((vivos ?? 0) + (natim ?? 0) || 1);
+            p.numCrias = total;
+            p.criasVivas = vivos ?? (f.tipoParto === "4" ? 0 : total);
+            p.criasNatimortas = natim ?? (f.tipoParto === "4" ? total : 0);
+            p.sexoCria = f.sexoCria || undefined;
+          }
+        }
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
         if (tipo === "EXAME_GINECOLOGICO") { p.resultado = f.achado as any; p.metodo = f.metodoExame || undefined; }
         if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
@@ -294,9 +321,23 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             <RebField label="Parto previsto"><input type="date" value={f.dtPartoPrevista} onChange={(e) => set("dtPartoPrevista", e.target.value)} /></RebField>
           </>}
           {tipo === "PARTO" && <>
-            <RebField label="Nº de crias"><input type="number" min={1} max={3} value={f.numCrias} onChange={(e) => set("numCrias", e.target.value)} /></RebField>
-            <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar</option></select></RebField>
-            <RebField label="Tipo de parto"><select className="rb-field-select" value={f.tipoParto} onChange={(e) => set("tipoParto", e.target.value)}>{TIPOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</select></RebField>
+            <RebField label="Tipo de parto">
+              <select className="rb-field-select" value={f.tipoParto} onChange={(e) => set("tipoParto", e.target.value)}>
+                {TIPOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+              </select>
+            </RebField>
+            {f.tipoParto === "2" && (
+              <RebField label="Auxílio">
+                <select className="rb-field-select" value={f.auxilioParto} onChange={(e) => set("auxilioParto", e.target.value)}>
+                  {AUXILIOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+                </select>
+              </RebField>
+            )}
+            {f.tipoParto !== "3" && <>
+              <RebField label="Crias vivas"><input type="number" min={0} max={3} value={f.criasVivas} onChange={(e) => set("criasVivas", e.target.value)} /></RebField>
+              <RebField label="Natimortos"><input type="number" min={0} max={3} value={f.criasNatimortas} onChange={(e) => set("criasNatimortas", e.target.value)} /></RebField>
+              <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar</option></select></RebField>
+            </>}
           </>}
           {tipo === "SECAGEM" && (
             <RebField label="Motivo">

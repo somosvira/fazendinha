@@ -8,10 +8,23 @@ describe("toTimeline", () => {
     expect(t).toMatchObject({ id: "5", animalId: "7", data: "2026-05-28", dominio: "reproducao" });
     expect(t.titulo).toContain("POSITIVO");
   });
-  it("parto recebe marcador de lactação", () => {
-    const t = toTimeline({ ...base, tipo: "PARTO", data: new Date("2026-01-22"), numCrias: 1, sexoCria: "F" } as any);
+  it("parto recebe marcador de lactação e rótulo do dicionário", () => {
+    const t = toTimeline({ ...base, tipo: "PARTO", data: new Date("2026-01-22"), numCrias: 1, sexoCria: "F", tipoParto: "1" } as any);
     expect(t.titulo).toContain("Parto");
+    expect(t.detalhe).toBe("Normal");
     expect(t.marcador).toContain("lactação");
+  });
+  it("aborto marca alerta e interrompe gestação", () => {
+    const t = toTimeline({ ...base, tipo: "PARTO", data: new Date("2026-01-22"), tipoParto: "3" } as any);
+    expect(t.titulo).toBe("Aborto");
+    expect(t.alerta).toBe(true);
+    expect(t.marcador).toBe("gestação interrompida");
+  });
+  it("natimortos aparecem no título e marcam alerta", () => {
+    const t = toTimeline({ ...base, tipo: "PARTO", data: new Date("2026-01-22"), criasVivas: 1, criasNatimortas: 1, tipoParto: "7" } as any);
+    expect(t.titulo).toContain("1 viva(s)");
+    expect(t.titulo).toContain("1 natimorto(s)");
+    expect(t.alerta).toBe(true);
   });
   it("DG negativo marca alerta", () => {
     const t = toTimeline({ ...base, tipo: "DIAGNOSTICO", data: new Date("2026-05-14"), resultado: "negativo" } as any);

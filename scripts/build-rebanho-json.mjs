@@ -144,8 +144,9 @@ export function parseEvento(linha) {
     resultado: cdtipo === "4" ? (f[8] === "P" ? "positivo" : f[8] === "N" ? "negativo" : null) : null,
     dtPartoPrevista: s(f[9]),
     tipoParto: cdtipo === "7" ? s(f[10]) : null,
-    numCrias: cdtipo === "7" ? n(f[11]) : null,
-    sexoCria: cdtipo === "7" ? s(f[12]) : null,
+    auxilioParto: cdtipo === "7" ? s(f[11]) : null,
+    numCrias: cdtipo === "7" ? n(f[12]) : null,
+    sexoCria: cdtipo === "7" ? s(f[13]) : null,
     observacao: null,
   };
 }

@@ -45,7 +45,7 @@ function animalNoEscopo(animalId: number, propriedadeId: number | null) {
 export async function recomputarAnimal(tx: Tx, animalId: number, mutacao: MutacaoEvento): Promise<void> {
   const animal = await tx.animal.findUnique({ where: { id: animalId }, include: { eventosReprodutivos: true } });
   if (!animal) return;
-  const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, protocolo: e.protocolo, motivoSecagem: e.motivoSecagem }));
+  const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, protocolo: e.protocolo, tipoParto: e.tipoParto, motivoSecagem: e.motivoSecagem }));
 
   // Sincronização pontual das lactações persistidas (não destrutiva).
   const persistidas: LactacaoEstrutural[] = (await tx.lactacao.findMany({ where: { animalId }, select: { id: true, numero: true, dtInicio: true, dtFim: true, motivoSecagem: true } }))
@@ -150,14 +150,16 @@ export async function registrarEvento(
         // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
         resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
         dtPartoPrevista: d((input as any).dtPartoPrevista),
-        tipoParto: (input as any).tipoParto, numCrias: (input as any).numCrias, sexoCria: (input as any).sexoCria,
+        tipoParto: (input as any).tipoParto, auxilioParto: (input as any).auxilioParto,
+        numCrias: (input as any).numCrias, criasVivas: (input as any).criasVivas, criasNatimortas: (input as any).criasNatimortas,
+        sexoCria: (input as any).sexoCria,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },
     });
     // Uma transferência de embrião marca o papel de receptora do animal que recebe
     // (barriga de aluguel). Flag sticky: fica marcada mesmo que o evento seja excluído.
     if (input.tipo === "TRANSFERENCIA_EMBRIAO") await tx.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
-    await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem } });
+    await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
     return toTimeline(e);
   });
 }
@@ -172,6 +174,6 @@ export async function excluirEvento(eventoId: number, propriedadeId: number | nu
   if (!e) throw new EventoError("NAO_ENCONTRADO", "evento não encontrado");
   await prisma.$transaction(async (tx) => {
     await tx.eventoReprodutivo.delete({ where: { id: eventoId } });
-    await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem } });
+    await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
   });
 }
