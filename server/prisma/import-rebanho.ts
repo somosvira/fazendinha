@@ -67,7 +67,11 @@ interface ControleJson {
 }
 interface EventoJson {
   numero: string;
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+  ideagriId: number;
+  ideagriEmbriaoId: number | null;
+  doadoraNumero: string | null;
+  doadoraNome: string | null;
+  tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO";
   data: string;
   reprodutor: string | null;
   resultado: string | null;
@@ -294,10 +298,16 @@ async function main() {
   }
 
   // --- Eventos reprodutivos (createMany em lotes) — REPRODUCAO do Ideagri -----
+  // ideagriId = CDREPRODUCAO (unique). TE resolve doadora por número se estiver no rebanho.
   const eventoRows = (dados.eventos ?? [])
-    .filter((e) => idByNumero.has(e.numero) && e.data)
+    .filter((e) => idByNumero.has(e.numero) && e.data && e.ideagriId != null)
     .map((e) => ({
       animalId: idByNumero.get(e.numero)!,
+      ideagriId: e.ideagriId,
+      ideagriEmbriaoId: e.ideagriEmbriaoId ?? null,
+      doadoraNumero: e.doadoraNumero ?? null,
+      doadoraNome: e.doadoraNome ?? null,
+      doadoraId: e.doadoraNumero ? idByNumero.get(e.doadoraNumero) ?? null : null,
       tipo: e.tipo,
       data: d(e.data)!,
       reprodutor: e.reprodutor ?? null,
@@ -313,6 +323,17 @@ async function main() {
     const r = await prisma.eventoReprodutivo.createMany({ data: eventoRows.slice(i, i + CHUNK) });
     eventosInseridos += r.count;
   }
+
+  // Receptoras: sticky a partir de qualquer TE importada.
+  const receptoras = [...new Set(
+    (dados.eventos ?? [])
+      .filter((e) => e.tipo === "TRANSFERENCIA_EMBRIAO" && idByNumero.has(e.numero))
+      .map((e) => idByNumero.get(e.numero)!),
+  )];
+  if (receptoras.length) {
+    await prisma.animal.updateMany({ where: { id: { in: receptoras } }, data: { ehReceptora: true } });
+  }
+  console.log(`Receptoras marcadas: ${receptoras.length}.`);
 
   // --- Eventos sanitários (createMany em lotes) — DOENCAANIMAL + APLICACAOPRODUTO ---
   const sanitarioRows = (dados.eventosSanitarios ?? [])

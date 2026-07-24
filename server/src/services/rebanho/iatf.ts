@@ -44,6 +44,16 @@ function etapasCreate(etapas: EtapaInput[]) {
   return etapas.map((e, i) => ({ dia: e.dia, acao: e.acao, hormonio: e.hormonio ?? null, ordem: e.ordem ?? i }));
 }
 
+// Catálogos legados com propriedadeId null são compartilhados; registros de sítio
+// só podem ser lidos ou alterados no próprio escopo.
+function catalogoNoEscopo(propriedadeId: number | null) {
+  return propriedadeId != null ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : {};
+}
+
+function animalNoEscopo(animalId: number, propriedadeId: number | null) {
+  return { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) };
+}
+
 // ── Catálogo de protocolos ───────────────────────────────────────────────────
 
 export async function listarProtocolos(propriedadeId: number | null, incluirInativos = false): Promise<ProtocoloDTO[]> {
@@ -51,7 +61,7 @@ export async function listarProtocolos(propriedadeId: number | null, incluirInat
     where: {
       ...(incluirInativos ? {} : { ativo: true }),
       // Escopo: protocolos do sítio + os compartilhados (propriedadeId null).
-      ...(propriedadeId != null ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : {}),
+      ...catalogoNoEscopo(propriedadeId),
     },
     include: { etapas: true },
     orderBy: [{ ativo: "desc" }, { nome: "asc" }],
@@ -74,8 +84,16 @@ export async function criarProtocolo(input: CriarProtocoloInput, propriedadeId: 
   return protocoloDTO(p);
 }
 
-export async function atualizarProtocolo(id: number, input: AtualizarProtocoloInput): Promise<ProtocoloDTO> {
-  if (!(await prisma.protocoloIATF.findUnique({ where: { id } }))) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
+export async function atualizarProtocolo(
+  id: number,
+  input: AtualizarProtocoloInput,
+  propriedadeId: number | null = null,
+): Promise<ProtocoloDTO> {
+  const existente = await prisma.protocoloIATF.findFirst({
+    where: { id, ...catalogoNoEscopo(propriedadeId) },
+    select: { id: true },
+  });
+  if (!existente) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
   const p = await prisma.$transaction(async (tx) => {
     await tx.protocoloIATF.update({
       where: { id },
@@ -97,8 +115,12 @@ export async function atualizarProtocolo(id: number, input: AtualizarProtocoloIn
   return protocoloDTO(p);
 }
 
-export async function excluirProtocolo(id: number): Promise<void> {
-  if (!(await prisma.protocoloIATF.findUnique({ where: { id } }))) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
+export async function excluirProtocolo(id: number, propriedadeId: number | null = null): Promise<void> {
+  const existente = await prisma.protocoloIATF.findFirst({
+    where: { id, ...catalogoNoEscopo(propriedadeId) },
+    select: { id: true },
+  });
+  if (!existente) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
   const emUso = await prisma.aplicacaoProtocoloIATF.count({ where: { protocoloId: id } });
   if (emUso > 0) {
     // Preserva a história: protocolo já aplicado só é inativado, não apagado.
@@ -120,8 +142,14 @@ function aplicacaoDTO(a: { id: number; animalId: number; protocoloId: number; da
 }
 
 export async function aplicarProtocolo(animalId: number, input: AplicarProtocoloInput, propriedadeId: number | null): Promise<AplicacaoDTO> {
-  if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new IatfError("NAO_ENCONTRADO", "animal não encontrado");
-  const protocolo = await prisma.protocoloIATF.findUnique({ where: { id: input.protocoloId } });
+  const animal = await prisma.animal.findFirst({
+    where: animalNoEscopo(animalId, propriedadeId),
+    select: { id: true },
+  });
+  if (!animal) throw new IatfError("NAO_ENCONTRADO", "animal não encontrado");
+  const protocolo = await prisma.protocoloIATF.findFirst({
+    where: { id: input.protocoloId, ...catalogoNoEscopo(propriedadeId) },
+  });
   if (!protocolo) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
   if (!protocolo.ativo) throw new IatfError("PROTOCOLO_INATIVO", "protocolo inativo não pode ser aplicado");
   const a = await prisma.aplicacaoProtocoloIATF.create({
@@ -131,7 +159,12 @@ export async function aplicarProtocolo(animalId: number, input: AplicarProtocolo
   return aplicacaoDTO(a);
 }
 
-export async function listarAplicacoes(animalId: number): Promise<AplicacaoDTO[]> {
+export async function listarAplicacoes(animalId: number, propriedadeId: number | null = null): Promise<AplicacaoDTO[]> {
+  const animal = await prisma.animal.findFirst({
+    where: animalNoEscopo(animalId, propriedadeId),
+    select: { id: true },
+  });
+  if (!animal) throw new IatfError("NAO_ENCONTRADO", "animal não encontrado");
   const rows = await prisma.aplicacaoProtocoloIATF.findMany({
     where: { animalId },
     include: { protocolo: { include: { etapas: true } } },
@@ -140,7 +173,14 @@ export async function listarAplicacoes(animalId: number): Promise<AplicacaoDTO[]
   return rows.map(aplicacaoDTO);
 }
 
-export async function excluirAplicacao(id: number): Promise<void> {
-  if (!(await prisma.aplicacaoProtocoloIATF.findUnique({ where: { id } }))) throw new IatfError("NAO_ENCONTRADO", "aplicação não encontrada");
+export async function excluirAplicacao(id: number, propriedadeId: number | null = null): Promise<void> {
+  const existente = await prisma.aplicacaoProtocoloIATF.findFirst({
+    where: {
+      id,
+      ...(propriedadeId != null ? { animal: { propriedadeId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (!existente) throw new IatfError("NAO_ENCONTRADO", "aplicação não encontrada");
   await prisma.aplicacaoProtocoloIATF.delete({ where: { id } });
 }

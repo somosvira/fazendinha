@@ -744,6 +744,8 @@ model ResumoAnimal {
   iepProjetado      Int?
   diasGestacao      Int?
   previsaoSecagem   DateTime?         @db.Date
+  ultimaInseminacao DateTime?         @db.Date // cobertura mais recente: IA ou TE (nome legado consumido pelo client)
+  protocoloAtual    String? // protocolo informado na cobertura mais recente
   atualizadoEm      DateTime          @updatedAt
 }
 
@@ -793,6 +795,7 @@ model ExameQuarto {
 enum TipoEventoReprodutivo {
   CIO
   INSEMINACAO
+  COBERTURA // monta natural (IDEAGRI CDTIPOREPRODUCAO=2)
   DIAGNOSTICO
   PARTO
   SECAGEM
@@ -816,6 +819,12 @@ model EventoReprodutivo {
   numCrias        Int?
   sexoCria        String?
   motivoSecagem   String?
+  // Identidade do fato no REPRODUCAO do IDEAGRI — garante import/reconciliação 1:1.
+  ideagriId        Int?                  @unique
+  // TE: preserva o embrião e a doadora externos mesmo quando não pertencem ao rebanho 777.
+  ideagriEmbriaoId Int?
+  doadoraNumero    String?
+  doadoraNome      String?
   // TE: doadora do embrião — a genética do bezerro vem dela, não da barriga (animal).
   doadora         Animal?               @relation("Doadora", fields: [doadoraId], references: [id])
   doadoraId       Int?
@@ -823,6 +832,7 @@ model EventoReprodutivo {
   updatedAt       DateTime              @updatedAt
 
   @@index([animalId, data])
+  @@index([ideagriEmbriaoId])
 }
 
 model Lactacao {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnimalDashboardIn, EventoConcepcaoDashboardIn, CarenciaWorklistIn, VacinaWorklistIn } from "./dashboard.types.js";
+import { CHAVES_WORKLIST_REBANHO } from "./dashboard.types.js";
 import { construirWorklists, ESPERA_DG_DIAS } from "./regras-manejo.js";
 
 const parametros = { pevDias: 60, gestacaoDias: 283, secagemAntec: 60, ccsAlto: 400 };
@@ -43,13 +44,14 @@ describe("worklists canônicas de manejo", () => {
     expect(ids("dg-pendente", animais, eventos)).toEqual([4, 2]);
   });
 
-  it("ordena deterministicamente por urgência e deriva quantidade dos itens", () => {
+  it("emite exatamente as chaves canônicas, ordena por urgência e deriva quantidade dos itens", () => {
     const animais = [
       animal(10, "PRENHE", { previsaoSecagem: "2026-06-20", ccs: 500, diasGestacao: 260 }),
       animal(2, "PRENHE", { previsaoSecagem: "2026-06-10", ccs: 700, diasGestacao: 270 }),
       animal(1, "VAZIA", { del: 80 }), animal(3, "VAZIA", { del: 90 }),
     ];
     const worklists = listas(animais);
+    expect(worklists.map((x) => x.chave)).toEqual(CHAVES_WORKLIST_REBANHO);
     expect(worklists.find((x) => x.chave === "secagem-atrasada")!.itens.map((x) => x.animalId)).toEqual([2, 10]);
     expect(worklists.find((x) => x.chave === "vazia-pos-pev")!.itens.map((x) => x.animalId)).toEqual([3, 1]);
     expect(worklists.find((x) => x.chave === "ccs-alta")!.itens.map((x) => x.animalId)).toEqual([2, 10]);

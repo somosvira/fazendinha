@@ -10,6 +10,10 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "INSEMINACAO", data: "2026-04-28" }).success).toBe(false);
     expect(criarEventoSchema.safeParse({ tipo: "INSEMINACAO", data: "2026-04-28", reprodutor: "Lance 884" }).success).toBe(true);
   });
+  it("COBERTURA aceita só data (touro opcional)", () => {
+    expect(criarEventoSchema.safeParse({ tipo: "COBERTURA", data: "2026-04-28" }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({ tipo: "COBERTURA", data: "2026-04-28", reprodutor: "Touro 1" }).success).toBe(true);
+  });
   it("PARTO exige numCrias >= 1", () => {
     expect(criarEventoSchema.safeParse({ tipo: "PARTO", data: "2026-01-22", numCrias: 1 }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "PARTO", data: "2026-01-22", numCrias: 0 }).success).toBe(false);

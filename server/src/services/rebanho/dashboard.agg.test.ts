@@ -53,11 +53,16 @@ const hero = (d: ReturnType<typeof agregarDashboard>, chave: string) => d.herois
     expect(d.meta.cobertura).toMatchObject({ diasEsperados: 7, diasComProducao: 2, percentual: 28.6 });
   });
 
-  it("usa snapshots de lactação e denominador reprodutivo elegível", () => {
-    const d = agregarDashboard(base());
+  it("usa snapshots de lactação e taxa de prenhez sobre prenhes + vazias aptas", () => {
+    const input = base();
+    input.animais.push(
+      { id: 5, numero: "5", nome: null, setor: null, categoria: "VACA", sexo: "F", grupoId: null, grupoNome: null, ultimoExameGinecologico: null, resumo: resumo("PEV", { del: 20 }) },
+    );
+    const d = agregarDashboard(input);
     expect(hero(d, "vacasLactacao").valor).toBe(2); // snapshots variam no período
-    expect(d.estadosReprodutivos.find((x) => x.estado === "PRENHE")).toMatchObject({ quantidade: 1, percentual: 33.3 });
-    expect(d.indicadores.find((g) => g.grupo === "reproducao")?.itens.find((x) => x.chave === "prenhez")?.valor).toBe(33.3);
+    expect(d.estadosReprodutivos.find((x) => x.estado === "PRENHE")).toMatchObject({ quantidade: 1, percentual: 25 });
+    const prenhez = d.indicadores.find((g) => g.grupo === "reproducao")?.itens.find((x) => x.chave === "prenhez");
+    expect(prenhez).toMatchObject({ valor: 50, amostra: 2 }); // 1 PRENHE / (1 PRENHE + 1 VAZIA)
   });
 
   it("aplica parâmetros customizados nos alertas e ordena grupos por quantidade", () => {

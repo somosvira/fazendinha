@@ -24,15 +24,25 @@ export const iatfRouter = new Hono()
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .patch("/rebanho/iatf/protocolos/:id", zValidator("json", atualizarProtocoloSchema), async (c) => {
-    try { return c.json(await svc.atualizarProtocolo(Number(c.req.param("id")), c.req.valid("json"))); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await svc.atualizarProtocolo(Number(c.req.param("id")), c.req.valid("json"), propriedadeId));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/iatf/protocolos/:id", async (c) => {
-    try { await svc.excluirProtocolo(Number(c.req.param("id"))); return c.json({ ok: true }); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirProtocolo(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   // ── Aplicação a um animal ──────────────────────────────────────────────────
-  .get("/rebanho/animais/:id/iatf", async (c) => c.json(await svc.listarAplicacoes(Number(c.req.param("id")))))
+  .get("/rebanho/animais/:id/iatf", async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoLeitura(c);
+      return c.json(await svc.listarAplicacoes(Number(c.req.param("id")), propriedadeId));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
   .post("/rebanho/animais/:id/iatf", zValidator("json", aplicarProtocoloSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
@@ -40,6 +50,9 @@ export const iatfRouter = new Hono()
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/iatf/aplicacoes/:id", async (c) => {
-    try { await svc.excluirAplicacao(Number(c.req.param("id"))); return c.json({ ok: true }); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirAplicacao(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   });

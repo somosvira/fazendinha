@@ -82,6 +82,29 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.caixinha.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+
+  // `prisma db push` cria as colunas do read-model, mas não executa o SQL de
+  // backfill da migration. Mantém a tabela da Reprodução útil logo no primeiro
+  // boot após o deploy, sem depender de um novo evento por animal.
+  await prisma.$executeRaw`
+    WITH "UltimaCobertura" AS (
+      SELECT DISTINCT ON ("animalId")
+        "animalId", "data", "protocolo"
+      FROM "EventoReprodutivo"
+      WHERE "tipo" IN ('INSEMINACAO', 'COBERTURA', 'TRANSFERENCIA_EMBRIAO')
+      ORDER BY "animalId", "data" DESC, "id" DESC
+    )
+    UPDATE "ResumoAnimal" AS "resumo"
+    SET
+      "ultimaInseminacao" = "cobertura"."data",
+      "protocoloAtual" = "cobertura"."protocolo"
+    FROM "UltimaCobertura" AS "cobertura"
+    WHERE "resumo"."animalId" = "cobertura"."animalId"
+      AND (
+        "resumo"."ultimaInseminacao" IS DISTINCT FROM "cobertura"."data"
+        OR "resumo"."protocoloAtual" IS DISTINCT FROM "cobertura"."protocolo"
+      )
+  `;
 }
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────

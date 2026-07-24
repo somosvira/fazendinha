@@ -11,7 +11,7 @@ import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SAN
 import { rotuloAnimal } from "./AnimalIdentity";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
-  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
+  { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "COBERTURA", label: "Cobertura (monta natural)" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
 ];
 
 const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
@@ -142,6 +142,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
           p.protocolo = proto || undefined;
         }
+        if (tipo === "COBERTURA") {
+          if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
+        }
         if (tipo === "TRANSFERENCIA_EMBRIAO") {
           if (f.doadoraId) p.doadoraId = Number(f.doadoraId);
           if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
@@ -260,6 +263,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
               <RebField label="Descrever protocolo"><input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: P36 / FertilizAID" /></RebField>
             )}
           </>}
+          {tipo === "COBERTURA" && (
+            <RebField label="Touro (opcional)"><input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Touro do pasto" /></RebField>
+          )}
           {tipo === "TRANSFERENCIA_EMBRIAO" && <>
             <p style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
               A receptora (este animal) carrega o embrião; a genética do bezerro vem da <b>doadora</b>.

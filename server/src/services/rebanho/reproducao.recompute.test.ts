@@ -102,9 +102,25 @@ describe("recomputarResumoReproducao", () => {
     const r = recomputarResumoReproducao(eventos, reconstruirLactacoes(eventos, 1), 1, HOJE);
     expect(r.statusReprodutivo).toBe("PEV");          // DEL 27 < 60
   });
-  it("inseminada aguardando DG", () => {
-    const eventos = [ev("PARTO", "2026-01-10"), ev("INSEMINACAO", "2026-06-01")];
+  it("inseminada aguardando DG expõe a cobertura IA e seu protocolo", () => {
+    const eventos = [ev("PARTO", "2026-01-10"), ev("INSEMINACAO", "2026-06-01", { protocolo: "IATF 11 dias" })];
     const r = recomputarResumoReproducao(eventos, reconstruirLactacoes(eventos, 1), 1, HOJE);
+    expect(r.statusReprodutivo).toBe("INSEMINADA");
+    expect(r.ultimaInseminacao).toBe("2026-06-01");
+    expect(r.protocoloAtual).toBe("IATF 11 dias");
+  });
+  it("usa TE como última cobertura mesmo quando há IA anterior", () => {
+    const eventos = [
+      ev("INSEMINACAO", "2026-05-01", { protocolo: "IATF 9 dias" }),
+      ev("TRANSFERENCIA_EMBRIAO", "2026-06-05", { protocolo: "Sincronização de receptoras" }),
+    ];
+    const r = recomputarResumoReproducao(eventos, [], 0, HOJE);
+    expect(r.statusReprodutivo).toBe("INSEMINADA");
+    expect(r.ultimaInseminacao).toBe("2026-06-05");
+    expect(r.protocoloAtual).toBe("Sincronização de receptoras");
+  });
+  it("monta natural (COBERTURA) conta como cobertura pendente de DG", () => {
+    const r = recomputarResumoReproducao([ev("COBERTURA", "2026-06-01")], [], 0, HOJE);
     expect(r.statusReprodutivo).toBe("INSEMINADA");
     expect(r.ultimaInseminacao).toBe("2026-06-01");
   });

@@ -10,7 +10,7 @@ const row: any = {
   mae: { id: 3, numero: "0871", nome: "Jandira" }, maeId: 3, paiNome: "Lance 612",
   grupo: { id: 1, nome: "Alta Produção" }, grupoId: 1, setor: "Galpão 2",
   status: "ATIVO", dataBaixa: null, motivoBaixa: null,
-  resumo: { statusReprodutivo: "PRENHE", del: 145, ordemLactacao: 3, producaoMediaDia: new Prisma.Decimal("28.00"), producao305: 8900, ccs: 512, ccsTendencia: "subindo", ultimoDgData: new Date("2026-05-28"), ultimoDgResultado: "positivo", iepProjetado: 395, diasGestacao: 30, previsaoSecagem: new Date("2026-12-12") },
+  resumo: { statusReprodutivo: "PRENHE", del: 145, ordemLactacao: 3, producaoMediaDia: new Prisma.Decimal("28.00"), producao305: 8900, ccs: 512, ccsTendencia: "subindo", ultimoDgData: new Date("2026-05-28"), ultimoDgResultado: "positivo", iepProjetado: 395, diasGestacao: 30, previsaoSecagem: new Date("2026-12-12"), ultimaInseminacao: new Date("2026-04-28"), protocoloAtual: "IATF 11 dias" },
 };
 
 describe("toAnimalDTO", () => {
@@ -25,6 +25,8 @@ describe("toAnimalDTO", () => {
     expect(dto.dataNascimento).toBe("2020-03-12");
     expect(dto.resumo?.producaoMediaDia).toBe(28);
     expect(typeof dto.resumo?.producaoMediaDia).toBe("number");
+    expect(dto.resumo?.ultimaInseminacao).toBe("2026-04-28");
+    expect(dto.resumo?.protocoloAtual).toBe("IATF 11 dias");
   });
   it("serializa a última pesagem como ultimoPesoKg (number) e null quando não há pesagem", () => {
     const com = toAnimalDTO({ ...row, pesagens: [{ id: 1, data: new Date("2026-06-01"), peso: new Prisma.Decimal("512.50") }] });

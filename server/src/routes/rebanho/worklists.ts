@@ -3,15 +3,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { resolverEscopoLeitura } from "../../services/propriedade.js";
 import { buildRebanhoWorklist } from "../../services/rebanho/dashboard-rebanho.js";
+import { CHAVES_WORKLIST_REBANHO } from "../../services/rebanho/dashboard.types.js";
 
-export const chaveWorklistSchema = z.enum([
-  "secagem-atrasada",
-  "vazia-pos-pev",
-  "ccs-alta",
-  "dg-pendente",
-  "parto-proximo",
-  "carencia",
-]);
+export const chaveWorklistSchema = z.enum(CHAVES_WORKLIST_REBANHO);
 
 const paramSchema = z.object({ chave: chaveWorklistSchema });
 

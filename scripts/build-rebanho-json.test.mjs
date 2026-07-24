@@ -83,8 +83,9 @@ test("delEStatusLactacao: lactação aberta → del + lactacaoAberta; seca → d
 });
 
 test("parseEvento: IA (tipo 1) → INSEMINACAO com reprodutor", () => {
-  const e = parseEvento("1002~|~1~|~2025-07-31~|~BRUISER~|~~|~~|~~|~~|~");
+  const e = parseEvento("1002~|~1000~|~1~|~2025-07-31~|~BRUISER~|~~|~~|~~|~~|~~|~~|~~|~");
   assert.equal(e.numero, "1002");
+  assert.equal(e.ideagriId, 1000);
   assert.equal(e.tipo, "INSEMINACAO");
   assert.equal(e.data, "2025-07-31");
   assert.equal(e.reprodutor, "BRUISER");
@@ -92,22 +93,37 @@ test("parseEvento: IA (tipo 1) → INSEMINACAO com reprodutor", () => {
 });
 
 test("parseEvento: diagnóstico (tipo 4) P → DIAGNOSTICO positivo + previsão de parto", () => {
-  const e = parseEvento("1002~|~4~|~2025-08-20~|~~|~P~|~2026-05-01~|~~|~~|~");
+  const e = parseEvento("1002~|~1001~|~4~|~2025-08-20~|~~|~~|~~|~~|~P~|~2026-05-01~|~~|~~|~");
   assert.equal(e.tipo, "DIAGNOSTICO");
+  assert.equal(e.ideagriId, 1001);
   assert.equal(e.resultado, "positivo");
   assert.equal(e.dtPartoPrevista, "2026-05-01");
   // N → negativo
-  assert.equal(parseEvento("1002~|~4~|~2025-08-20~|~~|~N~|~~|~~|~~|~").resultado, "negativo");
+  assert.equal(parseEvento("1002~|~1002~|~4~|~2025-08-20~|~~|~~|~~|~~|~N~|~~|~~|~~|~").resultado, "negativo");
 });
 
-test("parseEvento: cobertura (2) e TE (3) → INSEMINACAO com observação", () => {
-  assert.match(parseEvento("1~|~2~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /Cobertura/);
-  assert.match(parseEvento("1~|~3~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /embri/i);
+test("parseEvento: cobertura (2) → COBERTURA e TE (3) → TRANSFERENCIA_EMBRIAO com doadora/embrião", () => {
+  const mn = parseEvento("1~|~1003~|~2~|~2025-01-01~|~Touro 1~|~~|~~|~~|~~|~~|~~|~~|~");
+  assert.equal(mn.tipo, "COBERTURA");
+  assert.equal(mn.reprodutor, "Touro 1");
+
+  const te = parseEvento("1~|~1004~|~3~|~2025-01-01~|~Touro 2~|~200~|~Doadora A~|~500~|~~|~~|~~|~~|~");
+  assert.equal(te.tipo, "TRANSFERENCIA_EMBRIAO");
+  assert.equal(te.reprodutor, "Touro 2");
+  assert.equal(te.doadoraNumero, "200");
+  assert.equal(te.doadoraNome, "Doadora A");
+  assert.equal(te.ideagriEmbriaoId, 500);
+});
+
+test("parseEvento: desconhecido (9) ou falta de ideagriId → null (faha em main)", () => {
+  assert.equal(parseEvento("1~|~1005~|~9~|~2025-01-01~|~~|~~|~~|~~|~~|~~|~~|~~|~").tipo, null);
+  assert.equal(parseEvento("1~|~~|~1~|~2025-01-01~|~~|~~|~~|~~|~~|~~|~~|~~|~").ideagriId, null);
 });
 
 test("parseEvento: parto (tipo 7) → PARTO com cria", () => {
-  const e = parseEvento("1027~|~7~|~2023-09-12~|~~|~~|~~|~1~|~1~|~M");
+  const e = parseEvento("1027~|~1006~|~7~|~2023-09-12~|~~|~~|~~|~~|~~|~~|~1~|~1~|~M");
   assert.equal(e.tipo, "PARTO");
+  assert.equal(e.ideagriId, 1006);
   assert.equal(e.tipoParto, "1");
   assert.equal(e.numCrias, 1);
   assert.equal(e.sexoCria, "M");

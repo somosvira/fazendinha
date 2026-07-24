@@ -103,7 +103,7 @@ export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANT
 export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 
 export interface EventoPayload {
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
+  tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
@@ -116,8 +116,8 @@ export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/ani
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
 
-// ── Taxa de concepção por método (IA × TE) — KPI de reprodução (baseline ~35%) ──
-export interface TaxaConcepcaoMetodo { metodo: "IA" | "TE"; coberturas: number; prenhes: number; taxa: number | null }
+// ── Taxa de concepção por método (IA × monta natural × TE) — KPI de reprodução ──
+export interface TaxaConcepcaoMetodo { metodo: "IA" | "MN" | "TE"; coberturas: number; prenhes: number; taxa: number | null }
 export const obterTaxaConcepcao = () => req<TaxaConcepcaoMetodo[]>(`/rebanho/reproducao/taxa-concepcao`);
 export function useTaxaConcepcao() {
   const [data, setData] = useState<TaxaConcepcaoMetodo[]>([]);

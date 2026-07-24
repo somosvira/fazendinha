@@ -3,19 +3,20 @@ import { calcularTaxaConcepcao, type EvtConcepcao } from "./reproducao.concepcao
 
 // helper: evento mínimo pro cálculo (só o que a função lê)
 const ev = (animalId: number, tipo: EvtConcepcao["tipo"], data: string, resultado?: string): EvtConcepcao => ({ animalId, tipo, data, resultado });
-const byMetodo = (r: ReturnType<typeof calcularTaxaConcepcao>, m: "IA" | "TE") => r.find((x) => x.metodo === m)!;
+const byMetodo = (r: ReturnType<typeof calcularTaxaConcepcao>, m: "IA" | "MN" | "TE") => r.find((x) => x.metodo === m)!;
 
 describe("calcularTaxaConcepcao", () => {
-  it("retorna sempre IA e TE, na ordem, mesmo sem eventos → taxa null (não NaN)", () => {
+  it("retorna sempre IA, MN e TE, na ordem, mesmo sem eventos → taxa null (não NaN)", () => {
     const r = calcularTaxaConcepcao([]);
-    expect(r.map((x) => x.metodo)).toEqual(["IA", "TE"]);
+    expect(r.map((x) => x.metodo)).toEqual(["IA", "MN", "TE"]);
     expect(byMetodo(r, "IA")).toEqual({ metodo: "IA", coberturas: 0, prenhes: 0, taxa: null });
+    expect(byMetodo(r, "MN")).toEqual({ metodo: "MN", coberturas: 0, prenhes: 0, taxa: null });
     expect(byMetodo(r, "TE")).toEqual({ metodo: "TE", coberturas: 0, prenhes: 0, taxa: null });
     // não pode ser NaN
     expect(Number.isNaN(byMetodo(r, "IA").taxa as number)).toBe(false);
   });
 
-  it("só IA: 2 coberturas, 1 prenhe → taxa 0.5; TE fica null", () => {
+  it("só IA: 2 coberturas, 1 prenhe → taxa 0.5; MN e TE ficam null", () => {
     const evs = [
       ev(1, "INSEMINACAO", "2026-01-01"),
       ev(1, "DIAGNOSTICO", "2026-01-25", "positivo"),
@@ -24,7 +25,19 @@ describe("calcularTaxaConcepcao", () => {
     ];
     const r = calcularTaxaConcepcao(evs);
     expect(byMetodo(r, "IA")).toEqual({ metodo: "IA", coberturas: 2, prenhes: 1, taxa: 0.5 });
+    expect(byMetodo(r, "MN").taxa).toBeNull();
     expect(byMetodo(r, "TE")).toEqual({ metodo: "TE", coberturas: 0, prenhes: 0, taxa: null });
+  });
+
+  it("monta natural conta no bucket MN", () => {
+    const evs = [
+      ev(1, "COBERTURA", "2026-01-01"),
+      ev(1, "DIAGNOSTICO", "2026-01-25", "positivo"),
+      ev(2, "COBERTURA", "2026-02-01"),
+      ev(2, "DIAGNOSTICO", "2026-02-25", "negativo"),
+    ];
+    const r = calcularTaxaConcepcao(evs);
+    expect(byMetodo(r, "MN")).toEqual({ metodo: "MN", coberturas: 2, prenhes: 1, taxa: 0.5 });
   });
 
   it("só TE: 4 coberturas, 1 prenhe → 0.25", () => {

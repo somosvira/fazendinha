@@ -43,19 +43,21 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 
 | Ideagri | Status | Dado 777 | Nota |
 |---|---|---|---|
-| Inseminação / cobrição | ✅ | ~1006 | Evento INSEMINACAO; taxa de concepção (PR #94). |
-| Diagnóstico reprodutivo | ✅ | ~1775 | Evento DIAGNOSTICO (P/N + parto previsto). |
-| Parto | ✅ | ~338 | Evento PARTO (tipo/crias/sexo). |
-| Transferência de embrião (TE) | 🟡 | — | Enum TRANSFERENCIA_EMBRIAO + doadora + `ehReceptora` (PR #94); falta fluxo/tela completa e coleta. |
-| **Exame ginecológico** | ✅ | **248** | **PR #170.** Evento `EXAME_GINECOLOGICO` em `EventoReprodutivo` + dicionário de achados (`ACHADOS_GINECOLOGICOS`) + worklist "precisa de exame" (exposta no #171). |
-| Diagnóstico / Tipo resultado ex. ginecológico | ⬜ | 44 | Dicionário de resultados de exame (lookup). |
-| **Programação IATF/TETF** | ✅ | **67 + 418** | **PR #171.** `ProgramacaoIATFLote` aplica o protocolo do catálogo (#163) a um lote inteiro num D0; calendário D0/D7/D9/D11 derivado + próxima etapa. |
-| Protocolo hormonal | ✅ | 31 | **Entregue (#163).** Catálogo de protocolos IATF configurável com etapas D0/D7/D9/D11 e princípios ativos. |
+| Inseminação / cobrição | 🟡 | 832 / 61 | O app registra IA, mas o import atual colapsa cobrição em `INSEMINACAO`; falta fato e reconciliação distintos. |
+| Diagnóstico reprodutivo | 🟡 | 1843 | Evento DIAGNOSTICO (P/N + parto previsto); faltam campos/métodos e reconciliação completa da tela oficial. |
+| Parto | 🟡 | 352 | Evento PARTO básico; faltam os 7 tipos IDEAGRI, 4 auxílios, aborto/natimorto e criação/vínculo das crias. |
+| Transferência de embrião (TE) | 🟡 | 146 | Enum TRANSFERENCIA_EMBRIAO + doadora + `ehReceptora`; o import ainda converte TE em IA e falta embrião/coleta/estoque. |
+| **Exame ginecológico** | 🟡 | **248** | Evento existe, mas os 44 resultados oficiais foram condensados em 9 e o histórico não é importado. |
+| Diagnóstico / Tipo resultado ex. ginecológico | ⬜ | 44 | Importar e preservar o dicionário completo por útero/ovário. |
+| **Programação IATF/TETF** | 🟡 | **74 + 466** | Planejador D0/D+n existe; faltam import, TETF, execução e campos oficiais de implante/estímulo/CIDR/produtos/doses. |
+| Protocolo hormonal | 🟡 | 5 / 31 | Catálogo genérico existe; faltam import e os princípios/produtos/doses/usos estruturados da fonte. |
+| Aptidão / aptidão automática de novilhas | ⬜ | — | Telas oficiais `frmLancarAptidaoAnimal` e `frmAptidaoAutomatica`; hoje PEV é só derivado. |
 | Estação de monta | ⬜ | vazio | Janela reprodutiva sazonal (mais usada em corte). |
-| Coleta FIV / TE | ⬜ | vazio | Aspiração/coleta de óvulos; sem tabela dedicada nesta base. |
-| Pool de doadoras | ⬜ | vazio | `GRUPOPOOLDOADORA` — agrupamento de doadoras FIV. |
-| Recomendação de acasalamento / Medida de acasalamento / Medidas combinadas | ⬜ | vazio | Motor de cruzamento dirigido (evita consanguinidade, busca ganho genético). |
-| Auxílio ao parto | ⬜ | 4 (dic.) | `AUXILIOPARTO` é dicionário (distocia); dado de parto assistido é esparso. |
+| Coleta FIV / TE | ⬜ | 7 | `COLETA`: doadora, reprodutor, técnico, oócitos e embriões por qualidade/estágio. |
+| Pool de doadoras | ⬜ | vazio | `GRUPOPOOLDOADORA` — agrupamento de doadoras FIV (validar com fixture). |
+| Recomendação de acasalamento / Medida de acasalamento / Medidas combinadas | 🟡 | vazio | Ranking simples existe; faltam medidas, combinações, pedigree/endogamia e plano equivalentes. |
+| Auxílio ao parto | ⬜ | 4 (dic.) | Quatro auxílios oficiais; precisam ser estruturados e associados ao parto. |
+| Receber coletas / dados IATF | ⬜ | 4 coletas | Fluxos oficiais de sincronização/mobile; implementar ou marcar N/A no aceite. |
 
 ## 3. Produção de leite
 
@@ -104,9 +106,9 @@ Coluna **Dado 777** indica se há dado real nesta fazenda para testar (número d
 | Composição racial | ✅ | 132 | Importado (`ANIMALINFO_CADASTRO.RACA`). |
 | Grau de cruzamento | ⬜ | 32 | `GRAUCRUZAMENTO` — grau sangue Holandês/Gir etc. Complementa composição racial. |
 | Associação de raça / Raça / Raça ABCZ | 🟡 | 111 / 65 | Cadastro de raças existe; falta o cruzamento ABCZ. |
-| Biblioteca de reprodutores | ⬜ | 65 | `ANIMALINFO_REPRODUTOR` — catálogo de touros com índices. Base para recomendação de acasalamento. |
-| Catálogo de índices genéticos | ⬜ | 271 | `GENCATALOGOINDICADOR` 271, `GENCATALOGOMARCADOR` 20, `GENCATALOGOCASEINA` 15 — PTAs/índices genômicos e caseína. |
-| Central de sêmen / Tipo de sêmen / Associação de sêmen | ⬜ | 25 | `CENTRALSEMEN` 25 — estoque/origem de sêmen. Base para reprodução. |
+| Biblioteca de reprodutores | 🟡 | 67 | CRUD reduzido existe; falta importar `ANIMALINFO_REPRODUTOR` e ligar eventos ao cadastro estruturado. |
+| Catálogo de índices genéticos | ⬜ | 271 / 20 / 15 | Importar indicadores, marcadores, caseínas, provas, valores e pedigree — não reduzir a quatro métricas. |
+| Central / tipo / associação / estoque de sêmen | 🟡 | 25 / 3 | Central existe; faltam import, tipos, associação ao cadastro, doses/lotes/baixas. |
 | Consulta de animais — ABCZ / Comunicação ABCZ | ⬜ | — | Integração com associação de raça (registro genealógico). |
 | Genealogia | ✅ | — | Mãe/pai no cockpit (PR #48). |
 

@@ -116,25 +116,37 @@ function parseControle(linha) {
   };
 }
 
-// CDTIPOREPRODUCAO → TipoEventoReprodutivo (1/2/3 IA-cobertura-TE, 4 diagnóstico, 7 parto).
-// Não há CIO nem SECAGEM em REPRODUCAO (deferidos).
-const TIPO_EV = { "1": "INSEMINACAO", "2": "INSEMINACAO", "3": "INSEMINACAO", "4": "DIAGNOSTICO", "7": "PARTO" };
+// CDTIPOREPRODUCAO → TipoEventoReprodutivo (1 IA, 2 cobrição, 3 TE, 4 DG, 7 parto).
+// Não há CIO nem SECAGEM em REPRODUCAO (deferidos). Código desconhecido → tipo null
+// (main() aborta) — nunca colapsar TE/cobrição em INSEMINACAO.
+const TIPO_EV = {
+  "1": "INSEMINACAO",
+  "2": "COBERTURA",
+  "3": "TRANSFERENCIA_EMBRIAO",
+  "4": "DIAGNOSTICO",
+  "7": "PARTO",
+};
 export function parseEvento(linha) {
   const f = linha.split(SEP);
-  const cdtipo = f[1];
-  const tipo = TIPO_EV[cdtipo] ?? "INSEMINACAO";
-  const observacao = cdtipo === "2" ? "Cobertura (monta natural)" : cdtipo === "3" ? "Transferência de embrião" : null;
+  const ideagriId = n(f[1]);
+  const cdtipo = f[2];
+  const tipo = TIPO_EV[cdtipo] ?? null;
   return {
     numero: f[0],
+    ideagriId,
+    cdtipo,
     tipo,
-    data: s(f[2]),
-    reprodutor: s(f[3]),
-    resultado: cdtipo === "4" ? (f[4] === "P" ? "positivo" : f[4] === "N" ? "negativo" : null) : null,
-    dtPartoPrevista: s(f[5]),
-    tipoParto: cdtipo === "7" ? s(f[6]) : null,
-    numCrias: cdtipo === "7" ? n(f[7]) : null,
-    sexoCria: cdtipo === "7" ? s(f[8]) : null,
-    observacao,
+    data: s(f[3]),
+    reprodutor: s(f[4]),
+    doadoraNumero: s(f[5]),
+    doadoraNome: s(f[6]),
+    ideagriEmbriaoId: n(f[7]),
+    resultado: cdtipo === "4" ? (f[8] === "P" ? "positivo" : f[8] === "N" ? "negativo" : null) : null,
+    dtPartoPrevista: s(f[9]),
+    tipoParto: cdtipo === "7" ? s(f[10]) : null,
+    numCrias: cdtipo === "7" ? n(f[11]) : null,
+    sexoCria: cdtipo === "7" ? s(f[12]) : null,
+    observacao: null,
   };
 }
 
@@ -269,13 +281,18 @@ function main() {
   const eventosSanitarios = [];
   const pesagens = [];
   const lactacoes = [];
+  const eventosInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
     else if (l.startsWith("@P@")) { const p = parseProducao(l.slice(3)); prodPorNum.set(p.numero, p); }
     else if (l.startsWith("@R@")) { const r = parseReproducao(l.slice(3)); reproPorNum.set(r.numero, r); }
     else if (l.startsWith("@L@")) controles.push(parseControle(l.slice(3)));
-    else if (l.startsWith("@E@")) eventos.push(parseEvento(l.slice(3)));
+    else if (l.startsWith("@E@")) {
+      const e = parseEvento(l.slice(3));
+      if (e.tipo == null || e.ideagriId == null) eventosInvalidos.push(e);
+      else eventos.push(e);
+    }
     else if (l.startsWith("@D@")) eventosSanitarios.push(parseDoenca(l.slice(3)));
     else if (l.startsWith("@V@")) eventosSanitarios.push(parseAplicacao(l.slice(3)));
     else if (l.startsWith("@Q@")) eventosSanitarios.push(parseAnalise(l.slice(3)));
@@ -284,13 +301,24 @@ function main() {
     else if (l.startsWith("@Y@")) lactacoes.push(parseLactacao(l.slice(3)));
   }
 
+  if (eventosInvalidos.length) {
+    const amostra = eventosInvalidos.slice(0, 5).map((e) => ({
+      numero: e.numero, cdtipo: e.cdtipo, ideagriId: e.ideagriId,
+    }));
+    console.error(`ERRO: ${eventosInvalidos.length} eventos reprodutivos inválidos (tipo desconhecido ou sem CDREPRODUCAO).`);
+    console.error(JSON.stringify(amostra));
+    process.exit(1);
+  }
+
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
   for (const a of animais) {
     if (a.grupo) grupos.add(a.grupo);
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles, eventos, eventosSanitarios, pesagens, lactacoes };
+  // ideagriId não entra no JSON consumido pelo import — fica nos campos do evento.
+  const eventosOut = eventos.map(({ cdtipo: _c, ...e }) => e);
+  const out = { geradoEm, animais, controles, eventos: eventosOut, eventosSanitarios, pesagens, lactacoes };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -300,7 +328,7 @@ function main() {
   console.error(`  animais=${animais.length} (ATIVO=${ativos.length} BAIXADO=${animais.length - ativos.length})`);
   console.error(`  ativos por categoria: ${JSON.stringify(cnt(ativos, "categoria"))}`);
   console.error(`  em lactação=${animais.filter((a) => a.resumo.del != null).length} · controles=${controles.length}`);
-  console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
+  console.error(`  eventos reprodutivos=${eventosOut.length} ${JSON.stringify(cnt(eventosOut, "tipo"))}`);
   console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
   console.error(`  pesagens=${pesagens.length}`);
   console.error(`  lactações=${lactacoes.length}`);

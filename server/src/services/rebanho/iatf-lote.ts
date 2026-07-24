@@ -43,6 +43,10 @@ type ProgRow = {
   _count: { aplicacoes: number };
 };
 
+type ProgDetalheRow = Omit<ProgRow, "_count"> & {
+  aplicacoes: { animal: { id: number; numero: string; nome: string | null } }[];
+};
+
 function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
   const dataInicio = iso(p.dataInicio);
   const r: ResumoProgramacao = resumoProgramacao({ etapas: p.protocolo.etapas, dataInicio, hoje });
@@ -64,42 +68,80 @@ function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
   };
 }
 
-const INCLUDE_PROG = {
-  protocolo: { select: { nome: true, etapas: { select: { dia: true, acao: true, hormonio: true, ordem: true } } } },
-  grupo: { select: { nome: true } },
-  _count: { select: { aplicacoes: true } },
-} as const;
+function includeProgramacao(propriedadeId: number | null) {
+  return {
+    protocolo: { select: { nome: true, etapas: { select: { dia: true, acao: true, hormonio: true, ordem: true } } } },
+    grupo: { select: { nome: true } },
+    _count: {
+      select: {
+        aplicacoes: propriedadeId != null
+          ? { where: { animal: { propriedadeId } } }
+          : true,
+      },
+    },
+  } as const;
+}
+
+function registroNoEscopo(propriedadeId: number | null) {
+  return propriedadeId != null ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : {};
+}
 
 export async function listarProgramacoes(propriedadeId: number | null): Promise<ProgramacaoIatfLoteDTO[]> {
   const rows = await prisma.programacaoIATFLote.findMany({
-    where: propriedadeId != null ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : {},
-    include: INCLUDE_PROG,
+    where: registroNoEscopo(propriedadeId),
+    include: includeProgramacao(propriedadeId),
     orderBy: { dataInicio: "desc" },
   });
   const hoje = hojeUTC();
   return rows.map((p) => programacaoDTO(p as ProgRow, hoje));
 }
 
-export async function detalheProgramacao(id: number): Promise<ProgramacaoDetalheDTO> {
-  const p = await prisma.programacaoIATFLote.findUnique({
-    where: { id },
-    include: { ...INCLUDE_PROG, aplicacoes: { select: { animal: { select: { id: true, numero: true, nome: true } } }, orderBy: { animal: { numero: "asc" } } } },
+export async function detalheProgramacao(id: number, propriedadeId: number | null = null): Promise<ProgramacaoDetalheDTO> {
+  const p = await prisma.programacaoIATFLote.findFirst({
+    where: { id, ...registroNoEscopo(propriedadeId) },
+    include: {
+      ...includeProgramacao(propriedadeId),
+      aplicacoes: {
+        where: propriedadeId != null ? { animal: { propriedadeId } } : {},
+        select: { animal: { select: { id: true, numero: true, nome: true } } },
+        orderBy: { animal: { numero: "asc" } },
+      },
+    },
   });
   if (!p) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
-  const base = programacaoDTO(p as unknown as ProgRow, hojeUTC());
-  const animais = p.aplicacoes.map((a) => ({ animalId: a.animal.id, numero: a.animal.numero, nome: a.animal.nome }));
+  const detalhe = p as unknown as ProgDetalheRow;
+  const base = programacaoDTO({ ...detalhe, _count: { aplicacoes: detalhe.aplicacoes.length } }, hojeUTC());
+  const animais = detalhe.aplicacoes.map((a) => ({ animalId: a.animal.id, numero: a.animal.numero, nome: a.animal.nome }));
   return { ...base, animais };
 }
 
 export async function criarProgramacao(input: CriarProgramacaoInput, propriedadeId: number | null): Promise<ProgramacaoDetalheDTO> {
-  const protocolo = await prisma.protocoloIATF.findUnique({ where: { id: input.protocoloId } });
+  const protocolo = await prisma.protocoloIATF.findFirst({
+    where: { id: input.protocoloId, ...registroNoEscopo(propriedadeId) },
+  });
   if (!protocolo) throw new IatfLoteError("NAO_ENCONTRADO", "protocolo não encontrado");
   if (!protocolo.ativo) throw new IatfLoteError("PROTOCOLO_INATIVO", "protocolo inativo não pode ser aplicado");
+  if (input.grupoId != null) {
+    const grupo = await prisma.grupo.findFirst({
+      where: {
+        id: input.grupoId,
+        ...(propriedadeId != null ? { propriedadeId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!grupo) throw new IatfLoteError("NAO_ENCONTRADO", "grupo não encontrado");
+  }
 
   // Só animais que realmente existem entram no lote (ignora ids fantasma silenciosamente
   // filtrando; se sobrar zero, é erro do chamador).
   const ids = [...new Set(input.animalIds)];
-  const existentes = await prisma.animal.findMany({ where: { id: { in: ids } }, select: { id: true } });
+  const existentes = await prisma.animal.findMany({
+    where: {
+      id: { in: ids },
+      ...(propriedadeId != null ? { propriedadeId } : {}),
+    },
+    select: { id: true },
+  });
   const validos = existentes.map((a) => a.id);
   if (validos.length === 0) throw new IatfLoteError("SEM_ANIMAIS", "nenhum animal válido para a programação");
 
@@ -127,11 +169,15 @@ export async function criarProgramacao(input: CriarProgramacaoInput, propriedade
     });
     return prog.id;
   });
-  return detalheProgramacao(criada);
+  return detalheProgramacao(criada, propriedadeId);
 }
 
-export async function excluirProgramacao(id: number): Promise<void> {
-  if (!(await prisma.programacaoIATFLote.findUnique({ where: { id } }))) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
+export async function excluirProgramacao(id: number, propriedadeId: number | null = null): Promise<void> {
+  const existente = await prisma.programacaoIATFLote.findFirst({
+    where: { id, ...registroNoEscopo(propriedadeId) },
+    select: { id: true },
+  });
+  if (!existente) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
   // As aplicações-filhas caem por cascade (onDelete: Cascade em programacaoId).
   await prisma.programacaoIATFLote.delete({ where: { id } });
 }

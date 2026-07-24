@@ -157,11 +157,13 @@ describe("periodoServicoMedio", () => {
 
 // 9 — % Prenhez
 describe("pctPrenhez", () => {
-  it("vacas e novilhas, contando PRENHE", () => {
+  it("calcula prenhes / (prenhes + vazias aptas) e ignora PEV/INSEMINADA", () => {
     const animais: AnimalIn[] = [
       vaca(1, { resumo: { statusReprodutivo: "PRENHE", del: 100 } }),
       vaca(2, { resumo: { statusReprodutivo: "VAZIA", del: null } }),
       { ...vaca(3), categoria: "NOVILHA", resumo: { statusReprodutivo: "PRENHE", del: null } },
+      vaca(4, { resumo: { statusReprodutivo: "PEV", del: 30 } }),
+      vaca(5, { resumo: { statusReprodutivo: "INSEMINADA", del: 90 } }),
     ];
     expect(pctPrenhez(animais)).toBe(66.7);
   });

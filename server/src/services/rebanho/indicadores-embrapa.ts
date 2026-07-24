@@ -264,12 +264,14 @@ export function periodoServicoMedio(
 // ─────────────────────────────────────────────────────────────────────────────
 // 9. % Prenhez do rebanho
 // ─────────────────────────────────────────────────────────────────────────────
-// Fórmula: vacas PRENHE ÷ vacas (excluindo machos/bezerros) × 100
-// Meta Embrapa: ≥ 85% das vacas aptas; rebanho geral ≥ 60%.
+// Fórmula de domínio: prenhes ÷ (prenhes + vazias aptas) × 100.
+// PEV está em espera voluntária e INSEMINADA aguarda DG, então não entram.
 
 export function pctPrenhez(animais: AnimalIn[]): number | null {
   const elegiveis = animais.filter(
-    (a) => a.status === "ATIVO" && (a.categoria === "VACA" || a.categoria === "NOVILHA" || a.categoria === "CABRA")
+    (a) => a.status === "ATIVO"
+      && (a.categoria === "VACA" || a.categoria === "NOVILHA" || a.categoria === "CABRA")
+      && (a.resumo?.statusReprodutivo === "PRENHE" || a.resumo?.statusReprodutivo === "VAZIA")
   );
   if (elegiveis.length === 0) return null;
   const prenhes = elegiveis.filter((a) => a.resumo?.statusReprodutivo === "PRENHE").length;

@@ -1,4 +1,4 @@
-export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
+export type TipoEvt = "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
 export interface EvtRepro {
   id?: number;
   tipo: TipoEvt;
@@ -6,6 +6,7 @@ export interface EvtRepro {
   resultado?: string | null;
   dtPartoPrevista?: string | null;
   reprodutor?: string | null;
+  protocolo?: string | null;
   motivoSecagem?: string | null;
 }
 
@@ -32,12 +33,13 @@ export class ConflitoLactacaoError extends Error {
   }
 }
 // IA e TE são ambas "coberturas": geram gestação e definem o status INSEMINADA/PRENHE.
-const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "TRANSFERENCIA_EMBRIAO";
+const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "COBERTURA" || t === "TRANSFERENCIA_EMBRIAO";
 export interface Lact { numero: number; dtInicio: string; dtFim: string | null; }
 export interface ResumoRepro {
   statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
   del: number | null; ordemLactacao: number | null;
   ultimoDgData: string | null; ultimoDgResultado: string | null; ultimaInseminacao: string | null;
+  protocoloAtual: string | null;
   diasGestacao: number | null; iepProjetado: number | null; previsaoSecagem: string | null;
 }
 
@@ -108,8 +110,9 @@ export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[
   const del = lactAberta ? diff(lactAberta.dtInicio, hoje) : null;
 
   const ultimoDg = ultimo("DIAGNOSTICO");
-  const ultimaIa = ultimo("INSEMINACAO"); // usado só no campo ultimaInseminacao do read-model
-  const ultimaCobertura = [...evs].reverse().find((e) => ehCobertura(e.tipo)) ?? null; // IA ou TE
+  // A tabela de reprodução chama o campo de "última tentativa", portanto a data
+  // canônica é a cobertura mais recente, seja inseminação artificial ou TE.
+  const ultimaCobertura = [...evs].reverse().find((e) => ehCobertura(e.tipo)) ?? null;
   const partoAposDg = !!(ultimoDg && ultimoParto && Date.parse(ultimoParto.data) > Date.parse(ultimoDg.data));
 
   let status: ResumoRepro["statusReprodutivo"];
@@ -134,6 +137,8 @@ export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[
   return {
     statusReprodutivo: status, del, ordemLactacao,
     ultimoDgData: ultimoDg?.data ?? null, ultimoDgResultado: ultimoDg?.resultado ?? null,
-    ultimaInseminacao: ultimaIa?.data ?? null, diasGestacao, iepProjetado, previsaoSecagem,
+    ultimaInseminacao: ultimaCobertura?.data ?? null,
+    protocoloAtual: ultimaCobertura?.protocolo ?? null,
+    diasGestacao, iepProjetado, previsaoSecagem,
   };
 }

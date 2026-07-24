@@ -156,13 +156,14 @@ export function agregarDashboard(input: DashboardRebanhoInput): DashboardDTO {
   ];
 
   const estados = ["PEV", "VAZIA", "INSEMINADA", "PRENHE"] as const;
-  const elegiveis = input.animais.filter((a) => ehElegivelPrenhez(a.resumo?.statusReprodutivo)).length;
+  const totalEstadosReprodutivos = input.animais.filter((a) => estados.some((estado) => a.resumo?.statusReprodutivo === estado)).length;
   const estadosReprodutivos = estados.map((estado) => {
     const quantidade = input.animais.filter((a) => a.resumo?.statusReprodutivo === estado).length;
-    return { estado, quantidade, percentual: elegiveis ? round1((quantidade / elegiveis) * 100) : null };
+    return { estado, quantidade, percentual: totalEstadosReprodutivos ? round1((quantidade / totalEstadosReprodutivos) * 100) : null };
   });
   const gestantes = estadosReprodutivos.find((x) => x.estado === "PRENHE")!.quantidade;
-  const prenhez = elegiveis ? round1((gestantes / elegiveis) * 100) : null;
+  const elegiveisPrenhez = input.animais.filter((a) => ehElegivelPrenhez(a.resumo?.statusReprodutivo)).length;
+  const prenhez = elegiveisPrenhez ? round1((gestantes / elegiveisPrenhez) * 100) : null;
   const ccs = input.animais.map((a) => a.resumo?.ccs).filter((x): x is number => x != null);
   const ieps = input.animais.map((a) => a.resumo?.iepProjetado).filter((x): x is number => x != null);
   const taxas = calcularTaxaConcepcao(input.eventosConcepcao);
@@ -178,7 +179,7 @@ export function agregarDashboard(input: DashboardRebanhoInput): DashboardDTO {
       indicador("diasLactacao", "Vacas em lactação", lactAtual, "vacas", input.lactacoes.length, "Sem histórico de lactações."),
     ] },
     { grupo: "reproducao" as const, titulo: "Reprodução", itens: [
-      indicador("prenhez", "Prenhez das elegíveis", prenhez, "%", elegiveis, "Sem fêmeas reprodutivamente elegíveis."),
+      indicador("prenhez", "Prenhez das elegíveis", prenhez, "%", elegiveisPrenhez, "Sem fêmeas reprodutivamente elegíveis."),
       indicador("taxaConcepcao", "Taxa de concepção", taxaConcepcao, "%", coberturas, "Sem coberturas com base suficiente."),
       indicador("iep", "IEP projetado médio", media(ieps), "dias", ieps.length, "Sem IEP projetado calculado."),
     ] },

@@ -69,21 +69,32 @@ function resolvePesos(params: Map<ChaveParametro, ParametroDTO>): Partial<Record
   return out;
 }
 
-export async function montarRelatorioEmbrapa(): Promise<RelatorioEmbrapaDTO> {
+export async function montarRelatorioEmbrapa(propriedadeId: number | null = null): Promise<RelatorioEmbrapaDTO> {
   // ── Parâmetros configuráveis ──────────────────────────────────────────────
   const paramsMap = new Map((await getParametros()).map((p) => [p.chave, p]));
   const meta = (chave: ChaveParametro, fallback: ind.MetaConfig) => resolveMeta(paramsMap, chave, fallback);
   const pesosOverride = resolvePesos(paramsMap);
   const uaRefKg = paramsMap.get("PESO_UA_REF_KG")?.valorNumero ?? ind.UA_REF_KG_DEFAULT;
 
+  // Escopo multi-propriedade: fatos-filho de Animal herdam via animal.propriedadeId;
+  // MovimentoEstoque carrega a própria coluna. null = consolidado.
+  const whereAnimal = propriedadeId != null ? { propriedadeId } : {};
+  const viaAnimal = propriedadeId != null ? { animal: { propriedadeId } } : {};
+  const whereMov = propriedadeId != null ? { propriedadeId } : {};
+
   // ── Carga única do banco ──────────────────────────────────────────────────
   const [animaisRaw, eventosRepro, lactacoesRaw, controlesRaw, movRacao] = await Promise.all([
-    prisma.animal.findMany({ include: { resumo: true } }),
-    prisma.eventoReprodutivo.findMany({}),
-    prisma.lactacao.findMany({}),
-    prisma.controleLeiteiro.findMany({}),
+    prisma.animal.findMany({ where: whereAnimal, include: { resumo: true } }),
+    prisma.eventoReprodutivo.findMany({ where: viaAnimal }),
+    prisma.lactacao.findMany({ where: viaAnimal }),
+    prisma.controleLeiteiro.findMany({ where: viaAnimal }),
     prisma.movimentoEstoque.findMany({
-      where: { tipo: "SAIDA", produto: { tipo: "RACAO" }, data: { gte: new Date(Date.now() - 365 * 86_400_000) } },
+      where: {
+        tipo: "SAIDA",
+        produto: { tipo: "RACAO" },
+        data: { gte: new Date(Date.now() - 365 * 86_400_000) },
+        ...whereMov,
+      },
     }),
   ]);
 

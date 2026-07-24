@@ -23,6 +23,7 @@ export interface ResumoDTO {
   ccs: number | null; ccsTendencia: string | null;
   ultimoDgData: string | null; ultimoDgResultado: string | null;
   iepProjetado: number | null; diasGestacao: number | null; previsaoSecagem: string | null;
+  ultimaInseminacao: string | null; protocoloAtual: string | null;
 }
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }

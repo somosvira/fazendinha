@@ -19,8 +19,11 @@ export const reprodutoresRouter = new Hono()
     return c.json(await svc.criarCentral(c.req.valid("json"), propriedadeId), 201);
   })
   .delete("/rebanho/centrais-semen/:id", async (c) => {
-    try { await svc.excluirCentral(Number(c.req.param("id"))); return c.json({ ok: true }); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirCentral(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   // Reprodutores
   .get("/rebanho/reprodutores", async (c) => {
@@ -33,10 +36,15 @@ export const reprodutoresRouter = new Hono()
     return c.json(await svc.criarReprodutor(c.req.valid("json"), propriedadeId), 201);
   })
   .patch("/rebanho/reprodutores/:id", zValidator("json", atualizarReprodutorSchema), async (c) => {
-    try { return c.json(await svc.atualizarReprodutor(Number(c.req.param("id")), c.req.valid("json"))); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await svc.atualizarReprodutor(Number(c.req.param("id")), c.req.valid("json"), propriedadeId));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/reprodutores/:id", async (c) => {
-    try { await svc.excluirReprodutor(Number(c.req.param("id"))); return c.json({ ok: true }); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirReprodutor(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   });

@@ -18,10 +18,15 @@ describe("toTimeline", () => {
     expect(t.alerta).toBe(true);
   });
   it("TE mostra título de transferência, doadora e marcador de receptora", () => {
-    const t = toTimeline({ ...base, tipo: "TRANSFERENCIA_EMBRIAO", data: new Date("2026-04-10"), doadoraId: 42, reprodutor: "GEN 12" } as any);
+    const t = toTimeline({ ...base, tipo: "TRANSFERENCIA_EMBRIAO", data: new Date("2026-04-10"), doadoraNome: "Doadora A", doadoraNumero: "200", reprodutor: "GEN 12" } as any);
     expect(t.titulo).toContain("Transferência de embrião");
-    expect(t.detalhe).toContain("doadora #42");
+    expect(t.detalhe).toContain("doadora Doadora A");
     expect(t.marcador).toBe("receptora");
+  });
+  it("cobrição mostra título de monta natural", () => {
+    const t = toTimeline({ ...base, tipo: "COBERTURA", data: new Date("2026-04-10"), reprodutor: "Touro 1" } as any);
+    expect(t.titulo).toContain("Cobertura");
+    expect(t.detalhe).toContain("Touro 1");
   });
   it("DESMAME mostra peso (de resultado) e marcador desmamado", () => {
     const t = toTimeline({ ...base, tipo: "DESMAME", data: new Date("2026-06-01"), resultado: "190" } as any);
