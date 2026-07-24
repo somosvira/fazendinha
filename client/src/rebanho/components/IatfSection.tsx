@@ -1,17 +1,28 @@
 import { useState } from "react";
-import { useAplicacoesIatf, useProtocolosIatf, aplicarProtocoloIatf, excluirAplicacaoIatf } from "../api";
+import {
+  useAplicacoesIatf, useProtocolosIatf, aplicarProtocoloIatf, excluirAplicacaoIatf, executarEtapaIatf,
+  type EtapaIatfStatusDTO,
+} from "../api";
 import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 
+function statusLabel(et: EtapaIatfStatusDTO): string {
+  if (et.status === "CONCLUIDA") return "feita";
+  if (et.status === "PULADA") return "pulada";
+  if (et.atrasada) return "atrasada";
+  return "pendente";
+}
+
 // Aplica um protocolo IATF do catálogo a um animal com uma data de início (o D0)
-// e mostra a agenda derivada (D0/D7/D9/D11…). Segue a forma de VacinasSection.
+// e permite marcar cada etapa como feita/pulada (execução real).
 export function IatfSection({ animalId }: { animalId: string }) {
   const { data: aplicacoes, loading, recarregar } = useAplicacoesIatf(animalId);
   const { data: protocolos, loading: loadingProto } = useProtocolosIatf();
   const [protocoloId, setProtocoloId] = useState("");
   const [dataInicio, setDataInicio] = useState(getHojeISO());
   const [salvando, setSalvando] = useState(false);
+  const [busyExec, setBusyExec] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   if (loading || loadingProto) return null;
@@ -30,6 +41,19 @@ export function IatfSection({ animalId }: { animalId: string }) {
   }
 
   async function remover(id: number) { await excluirAplicacaoIatf(id); recarregar(); }
+
+  async function marcar(execucaoId: number | null, status: "CONCLUIDA" | "PULADA" | "PENDENTE") {
+    if (execucaoId == null) {
+      setErro("Esta aplicação ainda não tem etapas materializadas. Reaplique o protocolo.");
+      return;
+    }
+    setBusyExec(execucaoId); setErro(null);
+    try {
+      await executarEtapaIatf(execucaoId, { status, dataExecucao: status === "PENDENTE" ? undefined : getHojeISO() });
+      recarregar();
+    } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao atualizar etapa."); }
+    finally { setBusyExec(null); }
+  }
 
   return (
     <div className="mb-4 rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-[15px]">
@@ -69,17 +93,62 @@ export function IatfSection({ animalId }: { animalId: string }) {
                 <span className="font-semibold text-[color:var(--ink)]">{a.protocoloNome}</span>
                 <span className="flex items-center gap-2 text-xs text-ink-3">
                   início {fmtData(a.dataInicio)}
+                  {" · "}
+                  {a.progresso.concluido
+                    ? "concluído"
+                    : a.progresso.proxima
+                      ? `próxima ${a.progresso.proxima.rotulo}`
+                      : "sem etapas"}
+                  {" · "}
+                  {a.progresso.resolvidas}/{a.progresso.total}
                   <button onClick={() => remover(a.id)} className="text-ink-3 hover:text-prejuizo hover:underline" aria-label={`Excluir aplicação ${a.protocoloNome}`}>excluir</button>
                 </span>
               </div>
-              <ol className="flex flex-col gap-0.5">
-                {a.etapas.map((et, i) => (
-                  <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                    <b className="w-9 shrink-0 font-semibold text-[color:var(--cafe)]">{et.rotulo}</b>
-                    <span className="w-24 shrink-0 tabular-nums text-ink-2">{fmtData(et.data)}</span>
-                    <span className="flex-1 text-[color:var(--ink)]">{et.acao}{et.hormonio ? <span className="text-ink-3"> · {et.hormonio}</span> : null}</span>
-                  </li>
-                ))}
+              {(a.usoCidr || a.estimulo || a.perdaImplante) && (
+                <p className="mb-1.5 text-xs text-ink-3">
+                  {[a.usoCidr && "CIDR", a.estimulo && `estímulo ${a.estimulo}`, a.perdaImplante && "perda de implante"].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <ol className="flex flex-col gap-1">
+                {a.etapas.map((et) => {
+                  const busy = busyExec === et.execucaoId;
+                  const done = et.status === "CONCLUIDA";
+                  const skipped = et.status === "PULADA";
+                  return (
+                    <li key={`${et.dia}-${et.ordem}`} className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-sm ${done || skipped ? "opacity-70" : ""}`}>
+                      <b className="w-9 shrink-0 font-semibold text-[color:var(--cafe)]">{et.rotulo}</b>
+                      <span className={`w-24 shrink-0 tabular-nums ${et.atrasada ? "font-semibold text-prejuizo" : "text-ink-2"}`}>
+                        {fmtData(et.dataEfetiva)}
+                      </span>
+                      <span className={`min-w-[4.5rem] shrink-0 text-xs uppercase tracking-[.04em] ${et.atrasada ? "text-prejuizo" : "text-ink-3"}`}>
+                        {statusLabel(et)}
+                      </span>
+                      <span className={`flex-1 text-[color:var(--ink)] ${done || skipped ? "line-through" : ""}`}>
+                        {et.acao}{et.hormonio ? <span className="text-ink-3"> · {et.hormonio}</span> : null}
+                      </span>
+                      <span className="flex shrink-0 gap-1">
+                        {et.status !== "CONCLUIDA" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "CONCLUIDA")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--cafe)] hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            feita
+                          </button>
+                        )}
+                        {et.status !== "PULADA" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "PULADA")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs text-ink-2 hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            pular
+                          </button>
+                        )}
+                        {et.status !== "PENDENTE" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "PENDENTE")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs text-ink-3 hover:underline disabled:opacity-50">
+                            reabrir
+                          </button>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
           ))}

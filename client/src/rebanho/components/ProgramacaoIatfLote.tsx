@@ -128,7 +128,7 @@ export function ProgramacaoIatfLote() {
               </div>
               <div className="mb-1 text-xs text-ink-3">
                 {p.concluido
-                  ? "protocolo concluído"
+                  ? "concluído"
                   : p.proxima
                     ? <>próxima etapa <b className="text-[color:var(--cafe)]">{p.proxima.rotulo}</b> em {fmtData(p.proxima.data)} — {p.proxima.acao}</>
                     : "sem etapas"}

@@ -576,9 +576,23 @@ export interface ProtocoloIatfDTO {
   id: number; nome: string; descricao: string | null; hormonioBase: string | null; ativo: boolean;
   etapas: EtapaProtocoloDTO[];
 }
+export interface EtapaIatfStatusDTO extends EtapaAgendadaDTO {
+  execucaoId: number | null;
+  status: "PENDENTE" | "CONCLUIDA" | "PULADA";
+  dataExecucao: string | null;
+  dataEfetiva: string;
+  atrasada: boolean;
+}
+export interface ProgressoIatfDTO {
+  total: number; resolvidas: number; concluidas: number; puladas: number; pendentes: number;
+  proxima: EtapaIatfStatusDTO | null; concluido: boolean;
+}
 export interface AplicacaoIatfDTO {
   id: number; animalId: number; protocoloId: number; protocoloNome: string;
-  dataInicio: string; observacao: string | null; etapas: EtapaAgendadaDTO[];
+  dataInicio: string; observacao: string | null;
+  usoCidr: boolean; estimulo: string | null; perdaImplante: boolean;
+  etapas: EtapaIatfStatusDTO[];
+  progresso: ProgressoIatfDTO;
 }
 export interface ProtocoloIatfInput {
   nome: string; descricao?: string | null; hormonioBase?: string | null; ativo?: boolean;
@@ -600,6 +614,10 @@ export const aplicarProtocoloIatf = (animalId: string, body: { protocoloId: numb
   req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
 export const excluirAplicacaoIatf = (id: number) =>
   req<{ ok: true }>(`/rebanho/iatf/aplicacoes/${id}`, { method: "DELETE" });
+export const executarEtapaIatf = (
+  execucaoId: number,
+  body: { status: "CONCLUIDA" | "PULADA" | "PENDENTE"; dataExecucao?: string; produto?: string | null; dose?: string | null; observacao?: string | null },
+) => req<AplicacaoIatfDTO>(`/rebanho/iatf/execucoes/${execucaoId}`, { method: "PATCH", body: JSON.stringify(body) });
 
 export function useProtocolosIatf(incluirInativos = false) {
   const [data, setData] = useState<ProtocoloIatfDTO[] | null>(null);

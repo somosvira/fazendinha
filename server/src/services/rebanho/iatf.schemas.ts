@@ -34,5 +34,17 @@ export const aplicarProtocoloSchema = z.object({
   protocoloId: z.number().int().positive(),
   dataInicio: dataISO,
   observacao: z.string().max(500).optional(),
+  usoCidr: z.boolean().optional(),
+  estimulo: z.string().max(80).optional(),
+  perdaImplante: z.boolean().optional(),
 });
 export type AplicarProtocoloInput = z.infer<typeof aplicarProtocoloSchema>;
+
+export const executarEtapaSchema = z.object({
+  status: z.enum(["CONCLUIDA", "PULADA", "PENDENTE"]),
+  dataExecucao: dataISO.optional(), // default = hoje (UTC) quando CONCLUIDA/PULADA
+  produto: z.string().max(120).nullable().optional(),
+  dose: z.string().max(40).nullable().optional(),
+  observacao: z.string().max(500).nullable().optional(),
+});
+export type ExecutarEtapaInput = z.infer<typeof executarEtapaSchema>;

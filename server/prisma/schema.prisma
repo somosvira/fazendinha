@@ -968,8 +968,15 @@ model EtapaProtocoloIATF {
   @@index([protocoloId])
 }
 
+// Status real de uma etapa materializada na aplicação do protocolo a um animal.
+enum StatusExecucaoEtapaIATF {
+  PENDENTE
+  CONCLUIDA
+  PULADA
+}
+
 // Aplicação de um protocolo a um animal, a partir de uma data de início (o D0).
-// A agenda de cada etapa é derivada (dataInicio + etapa.dia) — não é materializada.
+// As etapas passam a ser materializadas em ExecucaoEtapaIATF (snapshot + status real).
 model AplicacaoProtocoloIATF {
   id            Int                  @id @default(autoincrement())
   animal        Animal               @relation(fields: [animalId], references: [id], onDelete: Cascade)
@@ -978,12 +985,17 @@ model AplicacaoProtocoloIATF {
   protocoloId   Int
   dataInicio    DateTime             @db.Date // D0 da aplicação neste animal
   observacao    String?
+  // Dimensões operacionais espelhadas de PROGRAMACAOIATFASSOCIACAO (quando vierem do lote).
+  usoCidr       Boolean              @default(false)
+  estimulo      String? // ex.: eCG, texto livre da fonte
+  perdaImplante Boolean              @default(false)
   // Programação de lote que criou esta aplicação (quando aplicada em massa). Nullable:
   // null = aplicação avulsa (animal a animal, do #163); preenchido = veio de um lote.
   programacao   ProgramacaoIATFLote? @relation(fields: [programacaoId], references: [id], onDelete: Cascade)
   programacaoId Int?
   propriedade   Propriedade?         @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
+  execucoes     ExecucaoEtapaIATF[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
@@ -992,6 +1004,30 @@ model AplicacaoProtocoloIATF {
   @@index([programacaoId])
   @@index([propriedadeId])
   @@index([dataInicio])
+}
+
+// Execução real de uma etapa do protocolo neste animal. Snapshot de dia/ação/hormônio
+// (não FK no catálogo) — editar o protocolo depois não reescreve o histórico.
+model ExecucaoEtapaIATF {
+  id            Int                    @id @default(autoincrement())
+  aplicacao     AplicacaoProtocoloIATF @relation(fields: [aplicacaoId], references: [id], onDelete: Cascade)
+  aplicacaoId   Int
+  dia           Int // offset D0
+  acao          String
+  hormonio      String?
+  ordem         Int                    @default(0)
+  dataPlanejada DateTime               @db.Date
+  status        StatusExecucaoEtapaIATF @default(PENDENTE)
+  dataExecucao  DateTime?              @db.Date // quando foi marcada feita/pulada
+  produto       String? // produto aplicado na etapa (quando houver)
+  dose          String?
+  observacao    String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([aplicacaoId, dia, ordem])
+  @@index([aplicacaoId, status])
+  @@index([dataPlanejada])
 }
 
 // Catálogo de protocolos sanitários (sequências de manejos: vacinas/tratamentos com offset de

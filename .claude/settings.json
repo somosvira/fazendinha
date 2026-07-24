@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ corepack pnpm --filter rionovo-server run test)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\\\\\Users && where pnpm && where node\")",
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ PORT=41973 corepack pnpm --filter rionovo-server run dev)",
+      "Bash(find /home/mathe/.local /usr/local /opt -maxdepth 4 -type f \\\\\\( -name node -o -name pnpm \\\\\\) -print 2>/dev/null)",
+      "Read(//usr/local/**)",
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ PORT=41973 SHARED_ACCESS_TOKEN=verification-token-123 corepack pnpm --filter rionovo-server run dev)",
+      "Bash(\"/home/mathe/.local/node/bin/node\" --version)",
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ pnpm --filter rionovo-client exec vitest run src/router.test.ts src/rebanho/__smoke__/render.test.ts)",
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ pnpm --filter rionovo-client run build)",
+      "Bash(PATH=/home/mathe/.local/node/bin:__TRACKED_VAR__ pnpm install --frozen-lockfile)",
+      "Skill(code-review)",
+      "Skill(code-review:*)"
+    ]
+  }
+}

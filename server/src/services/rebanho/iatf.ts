@@ -1,9 +1,14 @@
 import { prisma } from "../../db.js";
-import { agendarEtapas, ordenarEtapas, type EtapaAgendada } from "./iatf.calc.js";
-import type { CriarProtocoloInput, AtualizarProtocoloInput, AplicarProtocoloInput, EtapaInput } from "./iatf.schemas.js";
+import {
+  agendarEtapas, ordenarEtapas, etapasComStatus, progressoExecucao,
+  type EtapaComStatus, type ExecucaoEtapa,
+} from "./iatf.calc.js";
+import type {
+  CriarProtocoloInput, AtualizarProtocoloInput, AplicarProtocoloInput, EtapaInput, ExecutarEtapaInput,
+} from "./iatf.schemas.js";
 
 export class IatfError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "PROTOCOLO_INATIVO", message: string) { super(message); }
+  constructor(public code: "NAO_ENCONTRADO" | "PROTOCOLO_INATIVO" | "CONFLITO", message: string) { super(message); }
 }
 
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
@@ -26,7 +31,19 @@ export interface AplicacaoDTO {
   protocoloNome: string;
   dataInicio: string;
   observacao: string | null;
-  etapas: EtapaAgendada[]; // agenda derivada (dataInicio + etapa.dia)
+  usoCidr: boolean;
+  estimulo: string | null;
+  perdaImplante: boolean;
+  etapas: EtapaComStatus[];
+  progresso: {
+    total: number;
+    resolvidas: number;
+    concluidas: number;
+    puladas: number;
+    pendentes: number;
+    proxima: EtapaComStatus | null;
+    concluido: boolean;
+  };
 }
 
 type EtapaRow = { dia: number; acao: string; hormonio: string | null; ordem: number };
@@ -132,13 +149,54 @@ export async function excluirProtocolo(id: number, propriedadeId: number | null 
 
 // ── Aplicação a um animal ────────────────────────────────────────────────────
 
-function aplicacaoDTO(a: { id: number; animalId: number; protocoloId: number; dataInicio: Date; observacao: string | null; protocolo: ProtocoloRow }): AplicacaoDTO {
+type ExecRow = {
+  id: number; dia: number; acao: string; hormonio: string | null; ordem: number;
+  dataPlanejada: Date; status: "PENDENTE" | "CONCLUIDA" | "PULADA";
+  dataExecucao: Date | null; produto: string | null; dose: string | null; observacao: string | null;
+};
+type AplicacaoRow = {
+  id: number; animalId: number; protocoloId: number; dataInicio: Date; observacao: string | null;
+  usoCidr: boolean; estimulo: string | null; perdaImplante: boolean;
+  protocolo: ProtocoloRow;
+  execucoes: ExecRow[];
+};
+
+const INCLUDE_APLICACAO = {
+  protocolo: { include: { etapas: true } },
+  execucoes: true,
+} as const;
+
+function toExecucao(e: ExecRow): ExecucaoEtapa {
+  return {
+    id: e.id, dia: e.dia, acao: e.acao, hormonio: e.hormonio, ordem: e.ordem,
+    dataPlanejada: iso(e.dataPlanejada)!, status: e.status, dataExecucao: iso(e.dataExecucao),
+    produto: e.produto, dose: e.dose, observacao: e.observacao,
+  };
+}
+
+function aplicacaoDTO(a: AplicacaoRow, hoje = new Date().toISOString().slice(0, 10)): AplicacaoDTO {
   const dataInicio = iso(a.dataInicio)!;
+  // Prefer materializadas; se vazias (legado), deriva da agenda do catálogo.
+  const etapasTpl = a.protocolo.etapas;
+  const execs = a.execucoes.map(toExecucao);
+  const etapas = etapasComStatus(etapasTpl, dataInicio, execs, hoje);
   return {
     id: a.id, animalId: a.animalId, protocoloId: a.protocoloId, protocoloNome: a.protocolo.nome,
     dataInicio, observacao: a.observacao,
-    etapas: agendarEtapas(a.protocolo.etapas, dataInicio),
+    usoCidr: a.usoCidr, estimulo: a.estimulo, perdaImplante: a.perdaImplante,
+    etapas, progresso: progressoExecucao(etapas),
   };
+}
+
+/** Snapshot das etapas do catálogo → linhas de execução PENDENTE na data planejada. */
+export function materializarExecucoes(
+  etapas: { dia: number; acao: string; hormonio: string | null; ordem: number }[],
+  dataInicio: string,
+) {
+  return agendarEtapas(etapas, dataInicio).map((e) => ({
+    dia: e.dia, acao: e.acao, hormonio: e.hormonio, ordem: e.ordem,
+    dataPlanejada: dataDb(e.data), status: "PENDENTE" as const,
+  }));
 }
 
 export async function aplicarProtocolo(animalId: number, input: AplicarProtocoloInput, propriedadeId: number | null): Promise<AplicacaoDTO> {
@@ -149,14 +207,26 @@ export async function aplicarProtocolo(animalId: number, input: AplicarProtocolo
   if (!animal) throw new IatfError("NAO_ENCONTRADO", "animal não encontrado");
   const protocolo = await prisma.protocoloIATF.findFirst({
     where: { id: input.protocoloId, ...catalogoNoEscopo(propriedadeId) },
+    include: { etapas: true },
   });
   if (!protocolo) throw new IatfError("NAO_ENCONTRADO", "protocolo não encontrado");
   if (!protocolo.ativo) throw new IatfError("PROTOCOLO_INATIVO", "protocolo inativo não pode ser aplicado");
+
+  const execs = materializarExecucoes(protocolo.etapas, input.dataInicio);
   const a = await prisma.aplicacaoProtocoloIATF.create({
-    data: { animalId, protocoloId: input.protocoloId, dataInicio: dataDb(input.dataInicio), observacao: input.observacao ?? null, propriedadeId },
-    include: { protocolo: { include: { etapas: true } } },
+    data: {
+      animalId, protocoloId: input.protocoloId,
+      dataInicio: dataDb(input.dataInicio),
+      observacao: input.observacao ?? null,
+      usoCidr: input.usoCidr ?? false,
+      estimulo: input.estimulo ?? null,
+      perdaImplante: input.perdaImplante ?? false,
+      propriedadeId,
+      execucoes: { create: execs },
+    },
+    include: INCLUDE_APLICACAO,
   });
-  return aplicacaoDTO(a);
+  return aplicacaoDTO(a as unknown as AplicacaoRow);
 }
 
 export async function listarAplicacoes(animalId: number, propriedadeId: number | null = null): Promise<AplicacaoDTO[]> {
@@ -167,10 +237,11 @@ export async function listarAplicacoes(animalId: number, propriedadeId: number |
   if (!animal) throw new IatfError("NAO_ENCONTRADO", "animal não encontrado");
   const rows = await prisma.aplicacaoProtocoloIATF.findMany({
     where: { animalId },
-    include: { protocolo: { include: { etapas: true } } },
+    include: INCLUDE_APLICACAO,
     orderBy: { dataInicio: "desc" },
   });
-  return rows.map(aplicacaoDTO);
+  const hoje = new Date().toISOString().slice(0, 10);
+  return rows.map((r) => aplicacaoDTO(r as unknown as AplicacaoRow, hoje));
 }
 
 export async function excluirAplicacao(id: number, propriedadeId: number | null = null): Promise<void> {
@@ -182,5 +253,42 @@ export async function excluirAplicacao(id: number, propriedadeId: number | null 
     select: { id: true },
   });
   if (!existente) throw new IatfError("NAO_ENCONTRADO", "aplicação não encontrada");
-  await prisma.aplicacaoProtocoloIATF.delete({ where: { id } });
+  await prisma.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade execuções
+}
+
+/** Marca uma etapa materializada como CONCLUIDA / PULADA / PENDENTE. */
+export async function executarEtapa(
+  execucaoId: number,
+  input: ExecutarEtapaInput,
+  propriedadeId: number | null = null,
+): Promise<AplicacaoDTO> {
+  const ex = await prisma.execucaoEtapaIATF.findFirst({
+    where: {
+      id: execucaoId,
+      ...(propriedadeId != null ? { aplicacao: { animal: { propriedadeId } } } : {}),
+    },
+    include: { aplicacao: { include: INCLUDE_APLICACAO } },
+  });
+  if (!ex) throw new IatfError("NAO_ENCONTRADO", "execução de etapa não encontrada");
+
+  const dataExec = input.status === "PENDENTE"
+    ? null
+    : dataDb(input.dataExecucao ?? new Date().toISOString().slice(0, 10));
+
+  await prisma.execucaoEtapaIATF.update({
+    where: { id: execucaoId },
+    data: {
+      status: input.status,
+      dataExecucao: dataExec,
+      ...(input.produto !== undefined ? { produto: input.produto } : {}),
+      ...(input.dose !== undefined ? { dose: input.dose } : {}),
+      ...(input.observacao !== undefined ? { observacao: input.observacao } : {}),
+    },
+  });
+
+  const a = await prisma.aplicacaoProtocoloIATF.findUniqueOrThrow({
+    where: { id: ex.aplicacaoId },
+    include: INCLUDE_APLICACAO,
+  });
+  return aplicacaoDTO(a as unknown as AplicacaoRow);
 }

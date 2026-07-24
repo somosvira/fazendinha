@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { agendarEtapas, ordenarEtapas, type EtapaProtocolo, type EtapaAgendada } from "./iatf.calc.js";
+import {
+  agendarEtapas, ordenarEtapas, etapasComStatus, progressoExecucao,
+  type EtapaProtocolo, type EtapaAgendada,
+} from "./iatf.calc.js";
 
 // Protocolo IATF clássico de 11 dias (D0/D7/D9/D11): implante + benzoato,
 // retirada + PGF, ECP/GnRH, IATF. `dia` é o offset em dias a partir de D0.
@@ -50,5 +53,47 @@ describe("ordenarEtapas", () => {
       { dia: 0, acao: "primeira", hormonio: null, ordem: 1 },
     ];
     expect(ordenarEtapas(etapas).map((e) => e.acao)).toEqual(["primeira", "segunda"]);
+  });
+});
+
+describe("etapasComStatus + progressoExecucao", () => {
+  const HOJE = "2026-07-25";
+  const etapas = [
+    { dia: 0, acao: "D0", hormonio: null, ordem: 1 },
+    { dia: 7, acao: "D7", hormonio: null, ordem: 2 },
+    { dia: 11, acao: "D11", hormonio: null, ordem: 3 },
+  ];
+  const ex = (
+    dia: number, ordem: number, status: "PENDENTE" | "CONCLUIDA" | "PULADA",
+    dataPlanejada: string, dataExecucao: string | null = null, id = dia,
+  ) => ({ id, dia, acao: "x", hormonio: null, ordem, dataPlanejada, status, dataExecucao });
+
+  it("cruza agenda com execuções e marca atraso em pendentes vencidas", () => {
+    const r = etapasComStatus(etapas, "2026-07-19", [
+      ex(0, 1, "CONCLUIDA", "2026-07-19", "2026-07-19"),
+      ex(7, 2, "PENDENTE", "2026-07-26"),
+      ex(11, 3, "PENDENTE", "2026-07-30"),
+    ], HOJE);
+    expect(r[0].status).toBe("CONCLUIDA");
+    expect(r[0].atrasada).toBe(false);
+    expect(r[1].status).toBe("PENDENTE");
+    expect(r[1].atrasada).toBe(false); // D7 = 26/jul > 25/jul
+    // se hoje for depois de D7:
+    const r2 = etapasComStatus(etapas, "2026-07-19", [
+      ex(0, 1, "CONCLUIDA", "2026-07-19", "2026-07-19"),
+      ex(7, 2, "PENDENTE", "2026-07-26"),
+    ], "2026-07-28");
+    expect(r2[1].atrasada).toBe(true);
+  });
+
+  it("progresso usa status real, não só a data", () => {
+    const sts = etapasComStatus(etapas, "2026-07-19", [
+      ex(0, 1, "CONCLUIDA", "2026-07-19", "2026-07-19"),
+      ex(7, 2, "PULADA", "2026-07-26", "2026-07-26"),
+      ex(11, 3, "PENDENTE", "2026-07-30"),
+    ], HOJE);
+    const p = progressoExecucao(sts);
+    expect(p).toMatchObject({ total: 3, resolvidas: 2, concluidas: 1, puladas: 1, pendentes: 1, concluido: false });
+    expect(p.proxima?.rotulo).toBe("D11");
   });
 });

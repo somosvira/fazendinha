@@ -2,6 +2,7 @@ import { prisma } from "../../db.js";
 import { resumoProgramacao, type ResumoProgramacao } from "./iatf-lote.calc.js";
 import type { EtapaAgendada } from "./iatf.calc.js";
 import type { CriarProgramacaoInput } from "./iatf-lote.schemas.js";
+import { materializarExecucoes } from "./iatf.js";
 
 export class IatfLoteError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "PROTOCOLO_INATIVO" | "SEM_ANIMAIS", message: string) { super(message); }
@@ -49,6 +50,8 @@ type ProgDetalheRow = Omit<ProgRow, "_count"> & {
 
 function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
   const dataInicio = iso(p.dataInicio);
+  // Lote exibe progresso com base nas datas planejadas (agenda simples). O status real
+  // de cada etapa é preenchido e consultado na aplicação individual.
   const r: ResumoProgramacao = resumoProgramacao({ etapas: p.protocolo.etapas, dataInicio, hoje });
   return {
     id: p.id,
@@ -145,7 +148,15 @@ export async function criarProgramacao(input: CriarProgramacaoInput, propriedade
   const validos = existentes.map((a) => a.id);
   if (validos.length === 0) throw new IatfLoteError("SEM_ANIMAIS", "nenhum animal válido para a programação");
 
-  const dataInicio = dataDb(input.dataInicio);
+  const dataInicioIso = input.dataInicio;
+  const dataInicio = dataDb(dataInicioIso);
+  // Etapas do catálogo → snapshot de execução para cada animal do lote.
+  const protocoloFull = await prisma.protocoloIATF.findUniqueOrThrow({
+    where: { id: input.protocoloId },
+    include: { etapas: true },
+  });
+  const execTemplate = materializarExecucoes(protocoloFull.etapas, dataInicioIso);
+
   const criada = await prisma.$transaction(async (tx) => {
     const prog = await tx.programacaoIATFLote.create({
       data: {
@@ -157,16 +168,19 @@ export async function criarProgramacao(input: CriarProgramacaoInput, propriedade
         propriedadeId,
       },
     });
-    // Fan-out: uma aplicação individual por animal, todas amarradas à programação e ao mesmo D0.
-    await tx.aplicacaoProtocoloIATF.createMany({
-      data: validos.map((animalId) => ({
-        animalId,
-        protocoloId: input.protocoloId,
-        dataInicio,
-        programacaoId: prog.id,
-        propriedadeId,
-      })),
-    });
+    // Fan-out: uma aplicação + execuções materializadas por animal.
+    for (const animalId of validos) {
+      await tx.aplicacaoProtocoloIATF.create({
+        data: {
+          animalId,
+          protocoloId: input.protocoloId,
+          dataInicio,
+          programacaoId: prog.id,
+          propriedadeId,
+          execucoes: { create: execTemplate },
+        },
+      });
+    }
     return prog.id;
   });
   return detalheProgramacao(criada, propriedadeId);
