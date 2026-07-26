@@ -1,8 +1,19 @@
 import { prisma } from "../../db.js";
 import { resumoProgramacao, type ResumoProgramacao } from "./iatf-lote.calc.js";
 import type { EtapaAgendada } from "./iatf.calc.js";
-import type { CriarProgramacaoInput } from "./iatf-lote.schemas.js";
-import { materializarExecucoes } from "./iatf.js";
+import {
+  agregarStatusLote,
+  planejarExecucaoColetiva,
+  type AplicacaoLoteExec,
+  type ResumoLoteExec,
+} from "./iatf-lote-exec.calc.js";
+import type { CriarProgramacaoInput, ExecutarEtapaLoteInput } from "./iatf-lote.schemas.js";
+import {
+  atualizarExecucaoNaTransacao,
+  materializarExecucoes,
+  type AplicacaoRow,
+  type ExecRow,
+} from "./iatf.js";
 
 export class IatfLoteError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "PROTOCOLO_INATIVO" | "SEM_ANIMAIS", message: string) { super(message); }
@@ -32,8 +43,11 @@ export interface ProgramacaoIatfLoteDTO {
   concluido: boolean;
 }
 
-export interface AnimalProgramacaoDTO { animalId: number; numero: string; nome: string | null }
-export interface ProgramacaoDetalheDTO extends ProgramacaoIatfLoteDTO { animais: AnimalProgramacaoDTO[] }
+export interface AnimalProgramacaoDTO { aplicacaoId: number; animalId: number; numero: string; nome: string | null }
+export interface ProgramacaoDetalheDTO extends ProgramacaoIatfLoteDTO {
+  animais: AnimalProgramacaoDTO[];
+  resumoExec: ResumoLoteExec;
+}
 
 type EtapaRow = { dia: number; acao: string; hormonio: string | null; ordem: number };
 type ProgRow = {
@@ -44,9 +58,33 @@ type ProgRow = {
   _count: { aplicacoes: number };
 };
 
-type ProgDetalheRow = Omit<ProgRow, "_count"> & {
-  aplicacoes: { animal: { id: number; numero: string; nome: string | null } }[];
+type ExecResumoRow = {
+  id: number;
+  dia: number;
+  ordem: number;
+  status: "PENDENTE" | "CONCLUIDA" | "PULADA";
+  dataPlanejada: Date;
 };
+type AplicacaoResumoRow = { id: number; animalId: number; execucoes: ExecResumoRow[] };
+type ProgDetalheRow = Omit<ProgRow, "_count"> & {
+  aplicacoes: (AplicacaoResumoRow & {
+    animal: { id: number; numero: string; nome: string | null };
+  })[];
+};
+
+function aplicacaoExecDTO(a: AplicacaoResumoRow): AplicacaoLoteExec {
+  return {
+    aplicacaoId: a.id,
+    animalId: a.animalId,
+    execucoes: a.execucoes.map((e) => ({
+      id: e.id,
+      dia: e.dia,
+      ordem: e.ordem,
+      status: e.status,
+      dataPlanejada: iso(e.dataPlanejada),
+    })),
+  };
+}
 
 function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
   const dataInicio = iso(p.dataInicio);
@@ -106,16 +144,28 @@ export async function detalheProgramacao(id: number, propriedadeId: number | nul
       ...includeProgramacao(propriedadeId),
       aplicacoes: {
         where: propriedadeId != null ? { animal: { propriedadeId } } : {},
-        select: { animal: { select: { id: true, numero: true, nome: true } } },
+        select: {
+          id: true,
+          animalId: true,
+          animal: { select: { id: true, numero: true, nome: true } },
+          execucoes: { select: { id: true, dia: true, ordem: true, status: true, dataPlanejada: true } },
+        },
         orderBy: { animal: { numero: "asc" } },
       },
     },
   });
   if (!p) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
   const detalhe = p as unknown as ProgDetalheRow;
-  const base = programacaoDTO({ ...detalhe, _count: { aplicacoes: detalhe.aplicacoes.length } }, hojeUTC());
-  const animais = detalhe.aplicacoes.map((a) => ({ animalId: a.animal.id, numero: a.animal.numero, nome: a.animal.nome }));
-  return { ...base, animais };
+  const hoje = hojeUTC();
+  const base = programacaoDTO({ ...detalhe, _count: { aplicacoes: detalhe.aplicacoes.length } }, hoje);
+  const animais = detalhe.aplicacoes.map((a) => ({
+    aplicacaoId: a.id,
+    animalId: a.animal.id,
+    numero: a.animal.numero,
+    nome: a.animal.nome,
+  }));
+  const resumoExec = agregarStatusLote(detalhe.aplicacoes.map(aplicacaoExecDTO), hoje);
+  return { ...base, animais, resumoExec };
 }
 
 export async function criarProgramacao(input: CriarProgramacaoInput, propriedadeId: number | null): Promise<ProgramacaoDetalheDTO> {
@@ -184,6 +234,75 @@ export async function criarProgramacao(input: CriarProgramacaoInput, propriedade
     return prog.id;
   });
   return detalheProgramacao(criada, propriedadeId);
+}
+
+async function aplicacoesDaProgramacao(
+  programacaoId: number,
+  propriedadeId: number | null,
+) {
+  return prisma.aplicacaoProtocoloIATF.findMany({
+    where: {
+      programacaoId,
+      ...(propriedadeId != null ? { animal: { propriedadeId } } : {}),
+    },
+    include: {
+      protocolo: { include: { etapas: true } },
+      execucoes: true,
+    },
+    orderBy: { animalId: "asc" },
+  });
+}
+
+/** Marca a mesma etapa para os animais do lote, preservando as exceções individuais. */
+export async function executarEtapaLote(
+  programacaoId: number,
+  input: ExecutarEtapaLoteInput,
+  propriedadeId: number | null,
+): Promise<{ aplicados: number; ignorados: number; resumo: ResumoLoteExec }> {
+  const programacao = await prisma.programacaoIATFLote.findFirst({
+    where: { id: programacaoId, ...registroNoEscopo(propriedadeId) },
+    select: { id: true },
+  });
+  if (!programacao) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
+
+  const rows = await aplicacoesDaProgramacao(programacaoId, propriedadeId);
+  const aplicacoes = rows.map((a) => aplicacaoExecDTO(a));
+  const plano = planejarExecucaoColetiva(
+    aplicacoes,
+    { dia: input.dia, ordem: input.ordem },
+    input.status,
+    input.excecoesAnimalIds ?? [],
+  );
+  if (!plano.length) {
+    return {
+      aplicados: 0,
+      ignorados: aplicacoes.length,
+      resumo: agregarStatusLote(aplicacoes, hojeUTC()),
+    };
+  }
+
+  const porId = new Map(rows.map((a) => [a.id, a]));
+  const hoje = hojeUTC();
+  await prisma.$transaction(async (tx) => {
+    for (const item of plano) {
+      const aplicacao = porId.get(item.aplicacaoId);
+      const execucao = aplicacao?.execucoes.find((e) => e.id === item.execucaoId);
+      if (!aplicacao || !execucao) continue;
+      await atualizarExecucaoNaTransacao(
+        tx,
+        { ...execucao, aplicacaoId: aplicacao.id, aplicacao } as unknown as ExecRow & { aplicacaoId: number; aplicacao: AplicacaoRow },
+        input,
+        hoje,
+      );
+    }
+  });
+
+  const atualizadas = (await aplicacoesDaProgramacao(programacaoId, propriedadeId)).map((a) => aplicacaoExecDTO(a));
+  return {
+    aplicados: plano.length,
+    ignorados: aplicacoes.length - plano.length,
+    resumo: agregarStatusLote(atualizadas, hoje),
+  };
 }
 
 export async function excluirProgramacao(id: number, propriedadeId: number | null = null): Promise<void> {
