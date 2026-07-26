@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { resumoProgramacao, type ResumoProgramacao } from "./iatf-lote.calc.js";
+import { resumoProgramacao } from "./iatf-lote.calc.js";
 import type { EtapaAgendada } from "./iatf.calc.js";
 import {
   agregarStatusLote,
@@ -35,12 +35,12 @@ export interface ProgramacaoIatfLoteDTO {
   dataInicio: string;
   observacao: string | null;
   totalAnimais: number;
-  // Leitura de progresso do lote (agenda derivada + próxima etapa + concluídas).
   agenda: EtapaAgendada[];
   totalEtapas: number;
   etapasConcluidas: number;
   proxima: EtapaAgendada | null;
   concluido: boolean;
+  resumoExec: ResumoLoteExec;
 }
 
 export interface AnimalProgramacaoDTO { aplicacaoId: number; animalId: number; numero: string; nome: string | null }
@@ -55,6 +55,7 @@ type ProgRow = {
   dataInicio: Date; observacao: string | null;
   protocolo: { nome: string; etapas: EtapaRow[] };
   grupo: { nome: string } | null;
+  aplicacoes: AplicacaoResumoRow[];
   _count: { aplicacoes: number };
 };
 
@@ -66,7 +67,7 @@ type ExecResumoRow = {
   dataPlanejada: Date;
 };
 type AplicacaoResumoRow = { id: number; animalId: number; execucoes: ExecResumoRow[] };
-type ProgDetalheRow = Omit<ProgRow, "_count"> & {
+type ProgDetalheRow = Omit<ProgRow, "_count" | "aplicacoes"> & {
   aplicacoes: (AplicacaoResumoRow & {
     animal: { id: number; numero: string; nome: string | null };
   })[];
@@ -88,9 +89,11 @@ function aplicacaoExecDTO(a: AplicacaoResumoRow): AplicacaoLoteExec {
 
 function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
   const dataInicio = iso(p.dataInicio);
-  // Lote exibe progresso com base nas datas planejadas (agenda simples). O status real
-  // de cada etapa é preenchido e consultado na aplicação individual.
-  const r: ResumoProgramacao = resumoProgramacao({ etapas: p.protocolo.etapas, dataInicio, hoje });
+  const agenda = resumoProgramacao({ etapas: p.protocolo.etapas, dataInicio, hoje }).agenda;
+  const resumoExec = agregarStatusLote(p.aplicacoes.map(aplicacaoExecDTO), hoje);
+  const proxima = resumoExec.proximaEtapa
+    ? agenda.find((etapa) => etapa.dia === resumoExec.proximaEtapa!.dia && etapa.ordem === resumoExec.proximaEtapa!.ordem) ?? null
+    : null;
   return {
     id: p.id,
     protocoloId: p.protocoloId,
@@ -101,11 +104,12 @@ function programacaoDTO(p: ProgRow, hoje: string): ProgramacaoIatfLoteDTO {
     dataInicio,
     observacao: p.observacao,
     totalAnimais: p._count.aplicacoes,
-    agenda: r.agenda,
-    totalEtapas: r.totalEtapas,
-    etapasConcluidas: r.etapasConcluidas,
-    proxima: r.proxima,
-    concluido: r.concluido,
+    agenda,
+    totalEtapas: resumoExec.porEtapa.length,
+    etapasConcluidas: resumoExec.porEtapa.filter((etapa) => etapa.pendentes === 0).length,
+    proxima,
+    concluido: resumoExec.concluido,
+    resumoExec,
   };
 }
 
@@ -113,6 +117,14 @@ function includeProgramacao(propriedadeId: number | null) {
   return {
     protocolo: { select: { nome: true, etapas: { select: { dia: true, acao: true, hormonio: true, ordem: true } } } },
     grupo: { select: { nome: true } },
+    aplicacoes: {
+      where: propriedadeId != null ? { animal: { propriedadeId } } : {},
+      select: {
+        id: true,
+        animalId: true,
+        execucoes: { select: { id: true, dia: true, ordem: true, status: true, dataPlanejada: true } },
+      },
+    },
     _count: {
       select: {
         aplicacoes: propriedadeId != null

@@ -61,6 +61,9 @@ export interface EtapaComStatus extends EtapaAgendada {
   dataExecucao: string | null;
   dataEfetiva: string; // dataExecucao se concluída/pulada, senão data planejada
   atrasada: boolean; // pendente e dataPlanejada < hoje
+  produto: string | null;
+  dose: string | null;
+  observacao: string | null;
 }
 
 /** Cruza agenda projetada com execuções materializadas (por dia+ordem). */
@@ -83,6 +86,9 @@ export function etapasComStatus(
       dataExecucao,
       dataEfetiva,
       atrasada: status === "PENDENTE" && ag.data < hoje,
+      produto: ex?.produto ?? null,
+      dose: ex?.dose ?? null,
+      observacao: ex?.observacao ?? null,
     };
   });
 }

@@ -573,7 +573,8 @@ export function useVacinas(animalId: string | null) {
 export interface EtapaProtocoloDTO { dia: number; acao: string; hormonio: string | null; ordem: number }
 export interface EtapaAgendadaDTO extends EtapaProtocoloDTO { rotulo: string; data: string }
 export interface ProtocoloIatfDTO {
-  id: number; nome: string; descricao: string | null; hormonioBase: string | null; ativo: boolean;
+  id: number; nome: string; descricao: string | null; hormonioBase: string | null;
+  finalidade: "IATF" | "TETF"; ativo: boolean;
   etapas: EtapaProtocoloDTO[];
 }
 export interface EtapaIatfStatusDTO extends EtapaAgendadaDTO {
@@ -582,6 +583,9 @@ export interface EtapaIatfStatusDTO extends EtapaAgendadaDTO {
   dataExecucao: string | null;
   dataEfetiva: string;
   atrasada: boolean;
+  produto: string | null;
+  dose: string | null;
+  observacao: string | null;
 }
 export interface ProgressoIatfDTO {
   total: number; resolvidas: number; concluidas: number; puladas: number; pendentes: number;
@@ -595,7 +599,8 @@ export interface AplicacaoIatfDTO {
   progresso: ProgressoIatfDTO;
 }
 export interface ProtocoloIatfInput {
-  nome: string; descricao?: string | null; hormonioBase?: string | null; ativo?: boolean;
+  nome: string; descricao?: string | null; hormonioBase?: string | null;
+  finalidade?: "IATF" | "TETF"; ativo?: boolean;
   etapas: { dia: number; acao: string; hormonio?: string | null; ordem?: number }[];
 }
 
@@ -610,8 +615,10 @@ export const excluirProtocoloIatf = (id: number) =>
 
 export const listarAplicacoesIatf = (animalId: string) =>
   req<AplicacaoIatfDTO[]>(`/rebanho/animais/${animalId}/iatf`);
-export const aplicarProtocoloIatf = (animalId: string, body: { protocoloId: number; dataInicio: string; observacao?: string }) =>
-  req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
+export const aplicarProtocoloIatf = (animalId: string, body: {
+  protocoloId: number; dataInicio: string; observacao?: string;
+  usoCidr?: boolean; estimulo?: string; perdaImplante?: boolean;
+}) => req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
 export const excluirAplicacaoIatf = (id: number) =>
   req<{ ok: true }>(`/rebanho/iatf/aplicacoes/${id}`, { method: "DELETE" });
 export const executarEtapaIatf = (
@@ -683,10 +690,20 @@ export interface ProgramacaoIatfLoteDTO {
   grupoId: number | null; grupoNome: string | null; nome: string | null;
   dataInicio: string; observacao: string | null; totalAnimais: number;
   agenda: EtapaAgendadaDTO[]; totalEtapas: number; etapasConcluidas: number;
-  proxima: EtapaAgendadaDTO | null; concluido: boolean;
+  proxima: EtapaAgendadaDTO | null; concluido: boolean; resumoExec: ResumoLoteExecDTO;
 }
-export interface AnimalProgramacaoDTO { animalId: number; numero: string; nome: string | null }
-export interface ProgramacaoIatfLoteDetalheDTO extends ProgramacaoIatfLoteDTO { animais: AnimalProgramacaoDTO[] }
+export interface AnimalProgramacaoDTO { aplicacaoId: number; animalId: number; numero: string; nome: string | null }
+export interface EtapaResumoLoteDTO { dia: number; ordem: number; concluidas: number; puladas: number; pendentes: number; atrasadas: number }
+export interface ResumoLoteExecDTO {
+  totalAnimais: number;
+  porEtapa: EtapaResumoLoteDTO[];
+  proximaEtapa: { dia: number; ordem: number } | null;
+  concluido: boolean;
+}
+export interface ProgramacaoIatfLoteDetalheDTO extends ProgramacaoIatfLoteDTO {
+  animais: AnimalProgramacaoDTO[];
+  resumoExec: ResumoLoteExecDTO;
+}
 export interface CriarProgramacaoIatfInput {
   protocoloId: number; dataInicio: string; grupoId?: number | null; nome?: string; observacao?: string; animalIds: number[];
 }
@@ -697,6 +714,14 @@ export const criarProgramacaoIatf = (body: CriarProgramacaoIatfInput) =>
   req<ProgramacaoIatfLoteDetalheDTO>(`/rebanho/iatf/programacoes`, { method: "POST", body: JSON.stringify(body) });
 export const excluirProgramacaoIatf = (id: number) =>
   req<{ ok: true }>(`/rebanho/iatf/programacoes/${id}`, { method: "DELETE" });
+export const executarEtapaLoteIatf = (id: number, body: {
+  dia: number; ordem: number; status: "CONCLUIDA" | "PULADA" | "PENDENTE";
+  dataExecucao?: string; excecoesAnimalIds?: number[];
+  produto?: string | null; dose?: string | null; observacao?: string | null;
+}) => req<{ aplicados: number; ignorados: number; resumo: ResumoLoteExecDTO }>(
+  `/rebanho/iatf/programacoes/${id}/execucoes`,
+  { method: "PATCH", body: JSON.stringify(body) },
+);
 
 export function useProgramacoesIatf() {
   const [data, setData] = useState<ProgramacaoIatfLoteDTO[] | null>(null);

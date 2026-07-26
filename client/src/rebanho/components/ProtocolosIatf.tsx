@@ -26,6 +26,7 @@ export function ProtocolosIatf() {
   const [editandoId, setEditandoId] = useState<number | "novo" | null>(null);
   const [nome, setNome] = useState("");
   const [hormonioBase, setHormonioBase] = useState("");
+  const [finalidade, setFinalidade] = useState<"IATF" | "TETF">("IATF");
   const [etapas, setEtapas] = useState<EtapaEdit[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -34,10 +35,10 @@ export function ProtocolosIatf() {
   const protocolos = data ?? [];
 
   function abrirNovo() {
-    setEditandoId("novo"); setNome(""); setHormonioBase(""); setEtapas(ETAPAS_PADRAO.map((e) => ({ ...e }))); setErro(null);
+    setEditandoId("novo"); setNome(""); setHormonioBase(""); setFinalidade("IATF"); setEtapas(ETAPAS_PADRAO.map((e) => ({ ...e }))); setErro(null);
   }
   function abrirEdicao(p: ProtocoloIatfDTO) {
-    setEditandoId(p.id); setNome(p.nome); setHormonioBase(p.hormonioBase ?? ""); setEtapas(etapasDoDTO(p)); setErro(null);
+    setEditandoId(p.id); setNome(p.nome); setHormonioBase(p.hormonioBase ?? ""); setFinalidade(p.finalidade); setEtapas(etapasDoDTO(p)); setErro(null);
   }
   function fechar() { setEditandoId(null); setErro(null); }
 
@@ -55,7 +56,7 @@ export function ProtocolosIatf() {
     if (!nome.trim() || etapasLimpas.length === 0) { setErro("Informe nome e ao menos uma etapa com dia e ação."); return; }
     setSalvando(true); setErro(null);
     try {
-      const body = { nome: nome.trim(), hormonioBase: hormonioBase.trim() || null, etapas: etapasLimpas };
+      const body = { nome: nome.trim(), hormonioBase: hormonioBase.trim() || null, finalidade, etapas: etapasLimpas };
       if (editandoId === "novo") await criarProtocoloIatf(body);
       else if (typeof editandoId === "number") await atualizarProtocoloIatf(editandoId, body);
       fechar(); recarregar();
@@ -81,6 +82,13 @@ export function ProtocolosIatf() {
             <label className="flex flex-1 flex-col text-xs text-ink-3">
               Nome
               <input className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="IATF 11 dias — P4 + ECP" maxLength={120} />
+            </label>
+            <label className="flex flex-col text-xs text-ink-3">
+              Finalidade
+              <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={finalidade} onChange={(e) => setFinalidade(e.target.value as "IATF" | "TETF")}>
+                <option value="IATF">IATF · inseminação</option>
+                <option value="TETF">TETF · transferência de embrião</option>
+              </select>
             </label>
             <label className="flex flex-col text-xs text-ink-3">
               Hormônio-base (opcional)
@@ -114,7 +122,7 @@ export function ProtocolosIatf() {
           {protocolos.map((p) => (
             <div key={p.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-dashed border-[color:var(--rule-soft)] py-[7px] text-sm last:border-0">
               <span className={`shrink-0 font-semibold ${p.ativo ? "text-[color:var(--ink)]" : "text-ink-3 line-through"}`}>{p.nome}</span>
-              <span className="flex-1 text-ink-2">{p.etapas.map((e) => `D${e.dia}`).join(" · ")}{p.hormonioBase ? ` · ${p.hormonioBase}` : ""}</span>
+              <span className="flex-1 text-ink-2">{p.finalidade} · {p.etapas.map((e) => `D${e.dia}`).join(" · ")}{p.hormonioBase ? ` · ${p.hormonioBase}` : ""}</span>
               <span className="flex shrink-0 gap-2">
                 <button onClick={() => abrirEdicao(p)} className="text-sm font-semibold text-[color:var(--cafe)] hover:underline">editar</button>
                 <button onClick={() => toggleAtivo(p)} className="text-sm text-ink-3 hover:underline">{p.ativo ? "inativar" : "reativar"}</button>

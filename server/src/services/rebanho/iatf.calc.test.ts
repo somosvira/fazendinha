@@ -96,4 +96,19 @@ describe("etapasComStatus + progressoExecucao", () => {
     expect(p).toMatchObject({ total: 3, resolvidas: 2, concluidas: 1, puladas: 1, pendentes: 1, concluido: false });
     expect(p.proxima?.rotulo).toBe("D11");
   });
+
+  it("preserva produto, dose e observação da execução materializada", () => {
+    const execucao = {
+      ...ex(0, 1, "CONCLUIDA", "2026-07-19", "2026-07-19", 91),
+      produto: "CIDR",
+      dose: "1 unidade",
+      observacao: "Implante íntegro",
+    };
+    const [etapa] = etapasComStatus([etapas[0]], "2026-07-19", [execucao], HOJE);
+    expect(etapa).toMatchObject({
+      produto: "CIDR",
+      dose: "1 unidade",
+      observacao: "Implante íntegro",
+    });
+  });
 });

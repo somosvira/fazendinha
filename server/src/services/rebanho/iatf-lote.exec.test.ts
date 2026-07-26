@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   programacaoFindFirst: vi.fn(),
+  programacaoFindMany: vi.fn(),
   aplicacaoFindMany: vi.fn(),
   atualizarExecucao: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
   prisma: {
-    programacaoIATFLote: { findFirst: mocks.programacaoFindFirst },
+    programacaoIATFLote: { findFirst: mocks.programacaoFindFirst, findMany: mocks.programacaoFindMany },
     aplicacaoProtocoloIATF: { findMany: mocks.aplicacaoFindMany },
     $transaction: (fn: (tx: unknown) => unknown) => fn({}),
   },
@@ -19,7 +20,7 @@ vi.mock("./iatf.js", () => ({
   atualizarExecucaoNaTransacao: mocks.atualizarExecucao,
 }));
 
-import { executarEtapaLote } from "./iatf-lote.js";
+import { executarEtapaLote, listarProgramacoes } from "./iatf-lote.js";
 
 const exec = (id: number, status: "PENDENTE" | "CONCLUIDA" = "PENDENTE") => ({
   id,
@@ -60,6 +61,33 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.programacaoFindFirst.mockResolvedValue({ id: 3 });
   mocks.atualizarExecucao.mockResolvedValue(false);
+});
+
+describe("listarProgramacoes", () => {
+  it("usa status real: etapa vencida e pendente continua pendente", async () => {
+    mocks.programacaoFindMany.mockResolvedValue([{
+      id: 3,
+      protocoloId: 3,
+      grupoId: null,
+      nome: "Lote teste",
+      dataInicio: new Date("2026-07-06T00:00:00Z"),
+      observacao: null,
+      protocolo: { nome: "P11", etapas: [{ dia: 7, ordem: 0, acao: "Retirada", hormonio: null }] },
+      grupo: null,
+      aplicacoes: [{ id: 1, animalId: 101, execucoes: [exec(11)] }],
+      _count: { aplicacoes: 1 },
+    }]);
+
+    const [r] = await listarProgramacoes(null);
+
+    expect(r.resumoExec).toMatchObject({
+      totalAnimais: 1,
+      porEtapa: [{ dia: 7, ordem: 0, pendentes: 1 }],
+      concluido: false,
+    });
+    expect(r.etapasConcluidas).toBe(0);
+    expect(r.concluido).toBe(false);
+  });
 });
 
 describe("executarEtapaLote", () => {

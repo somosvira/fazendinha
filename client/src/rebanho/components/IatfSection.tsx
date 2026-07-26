@@ -21,6 +21,10 @@ export function IatfSection({ animalId }: { animalId: string }) {
   const { data: protocolos, loading: loadingProto } = useProtocolosIatf();
   const [protocoloId, setProtocoloId] = useState("");
   const [dataInicio, setDataInicio] = useState(getHojeISO());
+  const [usoCidr, setUsoCidr] = useState(false);
+  const [estimulo, setEstimulo] = useState("");
+  const [perdaImplante, setPerdaImplante] = useState(false);
+  const [detalhes, setDetalhes] = useState<Record<number, { produto: string; dose: string; observacao: string }>>({});
   const [salvando, setSalvando] = useState(false);
   const [busyExec, setBusyExec] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -34,13 +38,32 @@ export function IatfSection({ animalId }: { animalId: string }) {
     if (!protocoloId || !dataInicio) return;
     setSalvando(true); setErro(null);
     try {
-      await aplicarProtocoloIatf(animalId, { protocoloId: Number(protocoloId), dataInicio });
-      setProtocoloId(""); recarregar();
+      await aplicarProtocoloIatf(animalId, {
+        protocoloId: Number(protocoloId),
+        dataInicio,
+        usoCidr,
+        estimulo: estimulo.trim() || undefined,
+        perdaImplante,
+      });
+      setProtocoloId(""); setUsoCidr(false); setEstimulo(""); setPerdaImplante(false); recarregar();
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao aplicar protocolo."); }
     finally { setSalvando(false); }
   }
 
   async function remover(id: number) { await excluirAplicacaoIatf(id); recarregar(); }
+
+  function editarDetalhe(et: EtapaIatfStatusDTO, campo: "produto" | "dose" | "observacao", valor: string) {
+    if (et.execucaoId == null) return;
+    setDetalhes((atuais) => ({
+      ...atuais,
+      [et.execucaoId!]: {
+        produto: atuais[et.execucaoId!]?.produto ?? et.produto ?? "",
+        dose: atuais[et.execucaoId!]?.dose ?? et.dose ?? "",
+        observacao: atuais[et.execucaoId!]?.observacao ?? et.observacao ?? "",
+        [campo]: valor,
+      },
+    }));
+  }
 
   async function marcar(execucaoId: number | null, status: "CONCLUIDA" | "PULADA" | "PENDENTE") {
     if (execucaoId == null) {
@@ -49,7 +72,17 @@ export function IatfSection({ animalId }: { animalId: string }) {
     }
     setBusyExec(execucaoId); setErro(null);
     try {
-      await executarEtapaIatf(execucaoId, { status, dataExecucao: status === "PENDENTE" ? undefined : getHojeISO() });
+      const detalhe = detalhes[execucaoId];
+      await executarEtapaIatf(execucaoId, {
+        status,
+        dataExecucao: status === "PENDENTE" ? undefined : getHojeISO(),
+        ...(detalhe ? {
+          produto: detalhe.produto.trim() || null,
+          dose: detalhe.dose.trim() || null,
+          observacao: detalhe.observacao.trim() || null,
+        } : {}),
+      });
+      setDetalhes((atuais) => { const proximo = { ...atuais }; delete proximo[execucaoId]; return proximo; });
       recarregar();
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao atualizar etapa."); }
     finally { setBusyExec(null); }
@@ -75,6 +108,16 @@ export function IatfSection({ animalId }: { animalId: string }) {
           <label className="flex flex-col text-xs text-ink-3">
             Início (D0)
             <input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink-3">
+            <input type="checkbox" checked={usoCidr} onChange={(e) => setUsoCidr(e.target.checked)} /> CIDR
+          </label>
+          <label className="flex flex-col text-xs text-ink-3">
+            Estímulo
+            <input className="mt-0.5 w-28 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={estimulo} onChange={(e) => setEstimulo(e.target.value)} placeholder="eCG" maxLength={80} />
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink-3">
+            <input type="checkbox" checked={perdaImplante} onChange={(e) => setPerdaImplante(e.target.checked)} /> perda implante
           </label>
           <button type="submit" disabled={salvando || !protocoloId || !dataInicio} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
             Aplicar
@@ -114,6 +157,7 @@ export function IatfSection({ animalId }: { animalId: string }) {
                   const busy = busyExec === et.execucaoId;
                   const done = et.status === "CONCLUIDA";
                   const skipped = et.status === "PULADA";
+                  const detalhe = et.execucaoId == null ? undefined : detalhes[et.execucaoId];
                   return (
                     <li key={`${et.dia}-${et.ordem}`} className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-sm ${done || skipped ? "opacity-70" : ""}`}>
                       <b className="w-9 shrink-0 font-semibold text-[color:var(--cafe)]">{et.rotulo}</b>
@@ -127,6 +171,12 @@ export function IatfSection({ animalId }: { animalId: string }) {
                         {et.acao}{et.hormonio ? <span className="text-ink-3"> · {et.hormonio}</span> : null}
                       </span>
                       <span className="flex shrink-0 gap-1">
+                        {detalhe && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, et.status)}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--cafe)] hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            salvar detalhes
+                          </button>
+                        )}
                         {et.status !== "CONCLUIDA" && (
                           <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "CONCLUIDA")}
                             className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--cafe)] hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
@@ -146,6 +196,31 @@ export function IatfSection({ animalId }: { animalId: string }) {
                           </button>
                         )}
                       </span>
+                      {et.execucaoId != null && (
+                        <div className="ml-11 grid w-[calc(100%-2.75rem)] grid-cols-1 gap-1.5 border-l border-[color:var(--rule-soft)] pl-2 sm:grid-cols-[1fr_8rem_2fr]">
+                          <input
+                            aria-label={`Produto da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.produto ?? et.produto ?? ""}
+                            onChange={(e) => editarDetalhe(et, "produto", e.target.value)}
+                            placeholder="produto"
+                          />
+                          <input
+                            aria-label={`Dose da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.dose ?? et.dose ?? ""}
+                            onChange={(e) => editarDetalhe(et, "dose", e.target.value)}
+                            placeholder="dose"
+                          />
+                          <input
+                            aria-label={`Observação da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.observacao ?? et.observacao ?? ""}
+                            onChange={(e) => editarDetalhe(et, "observacao", e.target.value)}
+                            placeholder="observação"
+                          />
+                        </div>
+                      )}
                     </li>
                   );
                 })}
