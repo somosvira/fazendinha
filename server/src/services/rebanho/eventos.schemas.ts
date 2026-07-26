@@ -7,6 +7,7 @@ const comum = { data: isoDate, observacao: z.string().max(200).optional() };
 // Achados de exame ginecológico (palpação/US). Condensa RESULTADOEXAMEGINECOLOGICO do IDEagri
 // nos estados operacionais. Os que pedem ação viram alerta na timeline (ver eventos.mappers).
 export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANTE", "ANESTRO", "CISTO_FOLICULAR", "CISTO_LUTEO", "ENDOMETRITE", "INDEFINIDO"] as const;
+export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 export const ACHADOS_ALERTA = new Set(["ANESTRO", "CISTO_FOLICULAR", "CISTO_LUTEO", "ENDOMETRITE"]);
 
 const CODIGOS_TIPO_PARTO = TIPOS_PARTO.map((t) => t.codigo) as [string, ...string[]];
@@ -38,7 +39,7 @@ const criarEventoBase = z.discriminatedUnion("tipo", [
   partoObject,
   z.object({ tipo: z.literal("SECAGEM"), ...comum, motivoSecagem: z.string().max(40).optional() }),
   // Exame ginecológico: achado clínico do trato (→ campo `resultado`). `metodo` (palpação/US) → `protocolo`.
-  z.object({ tipo: z.literal("EXAME_GINECOLOGICO"), ...comum, resultado: z.enum(ACHADOS_GINECOLOGICOS), metodo: z.string().max(20).optional() }),
+  z.object({ tipo: z.literal("EXAME_GINECOLOGICO"), ...comum, resultado: z.enum(ACHADOS_GINECOLOGICOS), resultadoGinecologicoId: z.number().int().positive().optional(), metodo: z.string().max(20).optional() }),
   // Desmame do bezerro: fato de ciclo com data; `pesoKg` opcional (peso ao desmame) → campo `resultado`.
   z.object({ tipo: z.literal("DESMAME"), ...comum, pesoKg: z.number().positive().max(1000).optional() }),
 ]);

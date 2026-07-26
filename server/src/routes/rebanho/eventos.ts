@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { criarEventoSchema } from "../../services/rebanho/eventos.schemas.js";
 import * as svc from "../../services/rebanho/eventos.js";
+import { listarResultadosGinecologicos } from "../../services/rebanho/exame-ginecologico.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
@@ -12,6 +13,7 @@ function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } 
 }
 
 export const eventosRouter = new Hono()
+  .get("/rebanho/resultados-ginecologicos", async (c) => c.json(await listarResultadosGinecologicos()))
   .get("/rebanho/reproducao/taxa-concepcao", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
     return c.json(await svc.taxaConcepcaoRebanho(propriedadeId));

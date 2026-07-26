@@ -4,6 +4,7 @@ import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
   parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem, parseLactacao,
   parseProtocoloIatf, parseProtocoloPrincipio, parseProgramacaoIatf, parseProgramacaoAssociacao,
+  parseResultadoGinecologico,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -170,6 +171,25 @@ test("parseProgramacaoAssociacao preserva animal/programação/CIDR/estímulo/pe
     estimulo: "eCG",
     perdaImplante: false,
   });
+});
+
+test("parseResultadoGinecologico preserva o dicionário oficial", () => {
+  assert.deepEqual(
+    parseResultadoGinecologico("12~|~CL presente~|~Corpo lúteo presente no ovário direito~|~OVARIO~|~1"),
+    {
+      codigo: 12,
+      nomeResumido: "CL presente",
+      nomeCompleto: "Corpo lúteo presente no ovário direito",
+      tipo: "OVARIO",
+      padrao: true,
+    },
+  );
+});
+
+test("parseResultadoGinecologico rejeita código inválido", () => {
+  assert.equal(parseResultadoGinecologico("abc~|~Inválido~|~~|~~|~0"), null);
+  assert.equal(parseResultadoGinecologico("0~|~Inválido~|~~|~~|~0"), null);
+  assert.equal(parseResultadoGinecologico("1.5~|~Inválido~|~~|~~|~0"), null);
 });
 
 test("parseDoenca → OCORRENCIA com doença/dtFim/dias", () => {

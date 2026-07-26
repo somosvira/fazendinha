@@ -32,4 +32,18 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: 190 }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: -5 }).success).toBe(false);
   });
+  it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "EXAME_GINECOLOGICO",
+      data: "2026-06-01",
+      resultado: "CORPO_LUTEO",
+      resultadoGinecologicoId: 12,
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "EXAME_GINECOLOGICO",
+      data: "2026-06-01",
+      resultado: "CORPO_LUTEO",
+      resultadoGinecologicoId: 0,
+    }).success).toBe(false);
+  });
 });

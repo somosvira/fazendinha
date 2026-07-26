@@ -20,6 +20,7 @@
 import { readFileSync } from "node:fs";
 import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
 import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
+import { semearResultadosGinecologicos, type ResultadoGinecologicoSeed } from "../src/services/rebanho/exame-ginecologico.js";
 
 const prisma = new PrismaClient();
 
@@ -126,6 +127,7 @@ interface RebanhoJson extends DadosIatfLegado {
   eventosSanitarios: EventoSanitarioJson[];
   pesagens: PesagemJson[];
   lactacoes?: LactacaoJson[];
+  resultadosGinecologicos?: ResultadoGinecologicoSeed[];
 }
 
 // datas vêm como "YYYY-MM-DD" (campos @db.Date) — fixar em UTC para não escorregar de dia
@@ -348,6 +350,9 @@ async function main() {
   // --- Catálogo/programações/aplicações IATF (opcional, idempotente por id de origem) ---
   const iatf = await importarIatfLegado(prisma, dados, idByNumero);
   console.log(`IATF importado: ${iatf.protocolos} protocolos, ${iatf.principios} princípios, ${iatf.programacoes} programações, ${iatf.associacoes} associações.`);
+
+  await semearResultadosGinecologicos(prisma, dados.resultadosGinecologicos ?? []);
+  console.log(`Resultados ginecológicos importados: ${dados.resultadosGinecologicos?.length ?? 0}.`);
 
   // --- Eventos sanitários (createMany em lotes) — DOENCAANIMAL + APLICACAOPRODUTO ---
   const sanitarioRows = (dados.eventosSanitarios ?? [])

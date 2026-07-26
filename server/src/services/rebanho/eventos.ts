@@ -140,6 +140,16 @@ export async function registrarEvento(
     });
     if (!doadora) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
   }
+  const resultadoGinecologicoId = input.tipo === "EXAME_GINECOLOGICO"
+    ? input.resultadoGinecologicoId
+    : undefined;
+  if (resultadoGinecologicoId != null) {
+    const resultado = await prisma.resultadoExameGinecologico.findUnique({
+      where: { id: resultadoGinecologicoId },
+      select: { id: true },
+    });
+    if (!resultado) throw new EventoError("NAO_ENCONTRADO", "resultado ginecológico não encontrado");
+  }
   // Evento + sincronização de lactações + resumo na mesma transação: se a sincronização
   // recusar (conflito estrutural), nada é gravado — o evento não vaza sem read-model coerente.
   return prisma.$transaction(async (tx) => {
@@ -149,6 +159,7 @@ export async function registrarEvento(
         reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
         // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
         resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
+        resultadoGinecologicoId,
         dtPartoPrevista: d((input as any).dtPartoPrevista),
         tipoParto: (input as any).tipoParto, auxilioParto: (input as any).auxilioParto,
         numCrias: (input as any).numCrias, criasVivas: (input as any).criasVivas, criasNatimortas: (input as any).criasNatimortas,
