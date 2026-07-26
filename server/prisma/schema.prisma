@@ -824,6 +824,8 @@ model EventoReprodutivo {
   motivoSecagem   String?
   // Identidade do fato no REPRODUCAO do IDEAGRI — garante import/reconciliação 1:1.
   ideagriId        Int?                  @unique
+  // Etapa terminal de IATF/TETF que gerou este evento. Unique = reconcluir não duplica o fato.
+  origemExecucaoId Int?                  @unique
   // TE: preserva o embrião e a doadora externos mesmo quando não pertencem ao rebanho 777.
   ideagriEmbriaoId Int?
   doadoraNumero    String?
@@ -933,6 +935,12 @@ model VacinaAgendada {
   @@index([dataPrevista])
 }
 
+// Finalidade do protocolo: IATF termina em inseminação; TETF, em transferência de embrião.
+enum FinalidadeIATF {
+  IATF
+  TETF
+}
+
 // Catálogo de protocolos IATF (inseminação artificial em tempo fixo). Antes o
 // protocolo era só texto livre em EventoReprodutivo.protocolo; agora é um catálogo
 // configurável de etapas (D0/D7/D9/D11…) que se aplica a um animal com uma data de
@@ -942,6 +950,8 @@ model ProtocoloIATF {
   nome             String // rótulo do protocolo (ex.: "IATF 11 dias — P4 + ECP")
   descricao        String?
   hormonioBase     String? // hormônio-base/linha do protocolo (ex.: "P4 + ECP")
+  finalidade       FinalidadeIATF            @default(IATF)
+  ideagriId        Int?                      @unique // CDPROTOCOLOIATF de origem
   ativo            Boolean                  @default(true) // catálogo: inativar em vez de apagar
   propriedade      Propriedade?             @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?
@@ -989,6 +999,7 @@ model AplicacaoProtocoloIATF {
   usoCidr       Boolean              @default(false)
   estimulo      String? // ex.: eCG, texto livre da fonte
   perdaImplante Boolean              @default(false)
+  ideagriId     Int?                 @unique // CDPROGRAMACAOIATFASSOCIACAO de origem
   // Programação de lote que criou esta aplicação (quando aplicada em massa). Nullable:
   // null = aplicação avulsa (animal a animal, do #163); preenchido = veio de um lote.
   programacao   ProgramacaoIATFLote? @relation(fields: [programacaoId], references: [id], onDelete: Cascade)
@@ -1090,6 +1101,7 @@ model ProgramacaoIATFLote {
   grupo         Grupo?                   @relation(fields: [grupoId], references: [id])
   grupoId       Int? // lote de origem (opcional — pode ser seleção manual de animais)
   nome          String? // rótulo livre ("IATF novilhas — jul/26")
+  ideagriId     Int?                     @unique // CDPROGRAMACAOIATF de origem
   dataInicio    DateTime                 @db.Date // D0 comum do lote
   observacao    String?
   aplicacoes    AplicacaoProtocoloIATF[] // as aplicações individuais criadas por esta programação
