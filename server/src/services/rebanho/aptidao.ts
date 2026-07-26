@@ -58,13 +58,22 @@ export async function registrarAptidao(
   propriedadeId: number | null,
 ): Promise<AptidaoDTO> {
   await garantirAnimalNoEscopo(animalId, propriedadeId);
-  const row = await prisma.aptidaoAnimal.create({
-    data: {
+  const data = dataDb(input.data);
+  const row = await prisma.aptidaoAnimal.upsert({
+    where: {
+      animalId_data_origem: { animalId, data, origem: "MANUAL" },
+    },
+    create: {
       animalId,
-      data: dataDb(input.data),
+      data,
       apta: input.apta,
       motivo: input.motivo ?? null,
       origem: "MANUAL",
+      propriedadeId,
+    },
+    update: {
+      apta: input.apta,
+      motivo: input.motivo ?? null,
       propriedadeId,
     },
   });

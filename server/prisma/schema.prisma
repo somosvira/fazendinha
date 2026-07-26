@@ -816,6 +816,7 @@ model AptidaoAnimal {
   propriedadeId Int?
   createdAt     DateTime      @default(now())
 
+  @@unique([animalId, data, origem])
   @@index([animalId])
   @@index([propriedadeId])
 }

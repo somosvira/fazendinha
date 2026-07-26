@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   animalFindFirst: vi.fn(),
   animalFindMany: vi.fn(),
   aptidaoFindMany: vi.fn(),
-  aptidaoCreate: vi.fn(),
+  aptidaoUpsert: vi.fn(),
   aptidaoCreateMany: vi.fn(),
   getNumero: vi.fn(),
 }));
@@ -17,7 +17,7 @@ vi.mock("../../db.js", () => ({
     },
     aptidaoAnimal: {
       findMany: mocks.aptidaoFindMany,
-      create: mocks.aptidaoCreate,
+      upsert: mocks.aptidaoUpsert,
       createMany: mocks.aptidaoCreateMany,
     },
   },
@@ -59,12 +59,12 @@ describe("aptidão manual", () => {
       where: { id: 31, propriedadeId: 7 },
       select: { id: true },
     });
-    expect(mocks.aptidaoCreate).not.toHaveBeenCalled();
+    expect(mocks.aptidaoUpsert).not.toHaveBeenCalled();
   });
 
   it("registra o fato manual com data UTC e escopo do sítio", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 31 });
-    mocks.aptidaoCreate.mockResolvedValue({
+    mocks.aptidaoUpsert.mockResolvedValue({
       id: 9,
       animalId: 31,
       data: new Date("2026-07-26T00:00:00Z"),
@@ -86,13 +86,25 @@ describe("aptidão manual", () => {
       origem: "MANUAL",
     });
 
-    expect(mocks.aptidaoCreate).toHaveBeenCalledWith({
-      data: {
+    expect(mocks.aptidaoUpsert).toHaveBeenCalledWith({
+      where: {
+        animalId_data_origem: {
+          animalId: 31,
+          data: new Date("2026-07-26T00:00:00Z"),
+          origem: "MANUAL",
+        },
+      },
+      create: {
         animalId: 31,
         data: new Date("2026-07-26T00:00:00Z"),
         apta: true,
         motivo: "Avaliação do técnico",
         origem: "MANUAL",
+        propriedadeId: 7,
+      },
+      update: {
+        apta: true,
+        motivo: "Avaliação do técnico",
         propriedadeId: 7,
       },
     });
