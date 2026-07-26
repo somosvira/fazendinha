@@ -19,9 +19,9 @@ export type ConsumoInput = z.infer<typeof consumoSchema>;
 
 // Carrega lote + dieta + composição, resolve cabeças/dias e devolve as linhas de
 // consumo já casadas com saldo atual. Base comum de previsão e fechamento.
-async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: string) {
-  const grupo = await prisma.grupo.findUnique({
-    where: { id: grupoId },
+async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: string, propriedadeId: number | null = null) {
+  const grupo = await prisma.grupo.findFirst({
+    where: { id: grupoId, ...(propriedadeId != null ? { propriedadeId } : {}) },
     include: { dieta: { include: { itens: { include: { produto: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] } } } },
   });
   if (!grupo) throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
@@ -32,7 +32,7 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
   const dias = diasNoPeriodo(dataInicio, dataFim);
   if (dias <= 0) throw new NutricaoError("PERIODO_INVALIDO", "a data final deve ser igual ou posterior à inicial");
 
-  const numCabecas = await prisma.animal.count({ where: { grupoId, status: "ATIVO" } });
+  const numCabecas = await prisma.animal.count({ where: { grupoId, status: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) } });
 
   const linhasBase = consumoEsperado(
     itens.map((i) => ({ produtoId: i.produtoId, qtdPorCabecaDia: Number(i.qtdPorCabecaDia) })),
@@ -42,7 +42,7 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
 
   // Saldo atual de cada produto envolvido (Σ entradas − Σ saídas).
   const produtoIds = itens.map((i) => i.produtoId);
-  const movs = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtoIds } }, select: { produtoId: true, tipo: true, quantidade: true, valorTotal: true, data: true } });
+  const movs = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtoIds }, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { produtoId: true, tipo: true, quantidade: true, valorTotal: true, data: true } });
   const saldoPorProduto = new Map<number, number>();
   for (const pid of produtoIds) {
     const doProduto: MovIn[] = movs.filter((m) => m.produtoId === pid).map((m) => ({ tipo: m.tipo, quantidade: Number(m.quantidade), valorTotal: Number(m.valorTotal), data: iso(m.data) }));
@@ -87,18 +87,18 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
 }
 
 // Preview (não grava): mostra "vai baixar X, custo R$ Y, saldo fica Z".
-export async function previsaoConsumo(grupoId: number, dataInicio: string, dataFim: string) {
-  return resolverConsumo(grupoId, dataInicio, dataFim);
+export async function previsaoConsumo(grupoId: number, dataInicio: string, dataFim: string, propriedadeId: number | null = null) {
+  return resolverConsumo(grupoId, dataInicio, dataFim, propriedadeId);
 }
 
 // Fecha o consumo do período: grava as SAIDAs (origem NUTRICAO) e o cabeçalho.
 // Idempotente por (lote, janela). Saldo insuficiente NÃO bloqueia (a vaca comeu)
 // — a previsão já sinaliza o negativo ao usuário. Não gera Lançamento: o caixa
 // já saiu na compra (ENTRADA).
-export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput) {
-  const prev = await resolverConsumo(grupoId, input.dataInicio, input.dataFim);
+export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput, propriedadeId: number | null = null) {
+  const prev = await resolverConsumo(grupoId, input.dataInicio, input.dataFim, propriedadeId);
   const dataMov = new Date(input.dataFim + "T00:00:00Z");
-  const propriedadeId = prev.propriedadeId ?? (await propriedadePrincipalId()); // escopo das SAIDAs
+  const propriedadeMovimentoId = prev.propriedadeId ?? (await propriedadePrincipalId()); // escopo das SAIDAs
 
   try {
     await assertMesAberto(dataMov);
@@ -137,7 +137,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput)
             custoUnitario: l.custoUnitario,
             valorTotal,
             grupoId,
-            propriedadeId,
+            propriedadeId: propriedadeMovimentoId,
             consumoPeriodoId: cp.id,
             observacao: `Consumo dieta ${prev.dietaNome} — ${input.dataInicio} a ${input.dataFim}`,
           },
@@ -157,8 +157,8 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput)
 }
 
 // Estorna um período fechado: apaga as SAIDAs geradas (cascade) e o cabeçalho.
-export async function reabrirConsumoPeriodo(id: number) {
-  const cp = await prisma.consumoPeriodo.findUnique({ where: { id } });
+export async function reabrirConsumoPeriodo(id: number, propriedadeId: number | null = null) {
+  const cp = await prisma.consumoPeriodo.findFirst({ where: { id, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) } });
   if (!cp) throw new NutricaoError("NAO_ENCONTRADO", "fechamento de consumo não encontrado");
   try {
     await assertMesAberto(cp.dataFim);
@@ -171,8 +171,11 @@ export async function reabrirConsumoPeriodo(id: number) {
 }
 
 // Fechamentos já feitos para um lote (para exibir e permitir estorno).
-export async function listarConsumosPeriodo(grupoId: number) {
-  const periodos = await prisma.consumoPeriodo.findMany({ where: { grupoId }, orderBy: { dataFim: "desc" }, include: { _count: { select: { movimentos: true } } } });
+export async function listarConsumosPeriodo(grupoId: number, propriedadeId: number | null = null) {
+  if (propriedadeId != null && !(await prisma.grupo.findFirst({ where: { id: grupoId, propriedadeId }, select: { id: true } }))) {
+    throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
+  }
+  const periodos = await prisma.consumoPeriodo.findMany({ where: { grupoId, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, orderBy: { dataFim: "desc" }, include: { _count: { select: { movimentos: true } } } });
   const fechados = await prisma.fechamentoMensal.findMany({ select: { ano: true, mes: true } });
   const mesFechado = (d: Date) => fechados.some((f) => f.ano === d.getUTCFullYear() && f.mes === d.getUTCMonth() + 1);
   return periodos.map((p) => ({
