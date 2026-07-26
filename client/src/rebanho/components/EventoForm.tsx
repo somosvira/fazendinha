@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, useProdutos, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
+import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoSanidadePayload, type RacaDTO } from "../api";
+import { camposExameGinecologico, camposParto } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
@@ -89,9 +90,10 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     doadoraId: "", semenTE: "",
     resultado: "positivo", dtPartoPrevista: "",
     numCrias: "1", criasVivas: "1", criasNatimortas: "0", sexoCria: "F", tipoParto: "1", auxilioParto: "1",
+    criaAcao: "nenhuma", criaNumero: "", criaId: "",
     motivoSecagem: MOTIVOS_SECAGEM[0],
     // Exame ginecológico.
-    achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0],
+    achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0], resultadoGinecologicoId: "",
     // Desmame (peso opcional).
     pesoDesmame: "",
     observacao: "",
@@ -118,8 +120,13 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const { data: produtosEstoque } = useProdutos({ ativo: true });
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
-  // Só carrega o catálogo de animais quando a TE for selecionada (evita fetch à toa).
-  useEffect(() => { if (tipo === "TRANSFERENCIA_EMBRIAO" && animais.length === 0) listarAnimais({ status: "ATIVO" }).then(setAnimais).catch(() => {}); }, [tipo, animais.length]);
+  // Só carrega o catálogo de animais quando a TE ou vínculo de cria precisarem dele.
+  useEffect(() => {
+    if ((tipo === "TRANSFERENCIA_EMBRIAO" || (tipo === "PARTO" && f.criaAcao === "vincular")) && animais.length === 0) {
+      listarAnimais({ status: "ATIVO" }).then(setAnimais).catch(() => {});
+    }
+  }, [tipo, f.criaAcao, animais.length]);
+  const resultadosGinecologicos = useResultadosGinecologicos(tipo === "EXAME_GINECOLOGICO");
 
   // Espécie da fêmea — filtra raças do reprodutor pra mesma espécie.
   const especie = animal ? ESPECIE_POR_CATEGORIA[animal.categoria] : null;
@@ -163,25 +170,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           p.protocolo = proto || undefined;
         }
         if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
-        if (tipo === "PARTO") {
-          p.tipoParto = f.tipoParto || undefined;
-          p.auxilioParto = f.tipoParto === "2" ? (f.auxilioParto || undefined) : undefined;
-          if (f.tipoParto === "3") {
-            p.numCrias = 0;
-            p.criasVivas = 0;
-            p.criasNatimortas = 0;
-          } else {
-            const vivos = num(f.criasVivas);
-            const natim = num(f.criasNatimortas);
-            const total = num(f.numCrias) ?? ((vivos ?? 0) + (natim ?? 0) || 1);
-            p.numCrias = total;
-            p.criasVivas = vivos ?? (f.tipoParto === "4" ? 0 : total);
-            p.criasNatimortas = natim ?? (f.tipoParto === "4" ? total : 0);
-            p.sexoCria = f.sexoCria || undefined;
-          }
-        }
+        if (tipo === "PARTO") Object.assign(p, camposParto(f));
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
-        if (tipo === "EXAME_GINECOLOGICO") { p.resultado = f.achado as any; p.metodo = f.metodoExame || undefined; }
+        if (tipo === "EXAME_GINECOLOGICO") Object.assign(p, camposExameGinecologico(f));
         if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
         criado = await registrarEvento(animalId, p);
       } else {
@@ -336,7 +327,31 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             {f.tipoParto !== "3" && <>
               <RebField label="Crias vivas"><input type="number" min={0} max={3} value={f.criasVivas} onChange={(e) => set("criasVivas", e.target.value)} /></RebField>
               <RebField label="Natimortos"><input type="number" min={0} max={3} value={f.criasNatimortas} onChange={(e) => set("criasNatimortas", e.target.value)} /></RebField>
-              <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar</option></select></RebField>
+              <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar · fêmea e macho</option><option value="MF">Gemelar · macho e fêmea</option></select></RebField>
+              <RebField label="Destino da cria">
+                <select className="rb-field-select" value={f.criaAcao} onChange={(e) => set("criaAcao", e.target.value)}>
+                  <option value="nenhuma">Não cadastrar agora</option>
+                  <option value="criar">Cadastrar a cria</option>
+                  <option value="vincular">Vincular cria existente</option>
+                </select>
+              </RebField>
+              {f.criaAcao === "criar" && (
+                <RebField label="Número da cria*">
+                  <input value={f.criaNumero} onChange={(e) => set("criaNumero", e.target.value)} placeholder="ex.: B-101" maxLength={20} />
+                  {Number(f.criasVivas) > 1 && <small className="font-sans text-xs not-italic text-ink-3">As demais recebem sufixo -2, -3.</small>}
+                </RebField>
+              )}
+              {f.criaAcao === "vincular" && (
+                <RebField label="Cria existente*">
+                  <select className="rb-field-select" value={f.criaId} onChange={(e) => set("criaId", e.target.value)}>
+                    <option value="">— selecionar —</option>
+                    {animais.filter((a) => a.id !== animalId && (a.categoria === "BEZERRA" || a.categoria === "BEZERRO")).map((a) => (
+                      <option key={a.id} value={a.id}>{rotuloAnimal(a.numero, a.nome)}</option>
+                    ))}
+                  </select>
+                  {Number(f.criasVivas) !== 1 && <small className="font-sans text-xs not-italic text-prejuizo">O vínculo exige exatamente uma cria viva.</small>}
+                </RebField>
+              )}
             </>}
           </>}
           {tipo === "SECAGEM" && (
@@ -352,7 +367,13 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             </RebField>
           )}
           {tipo === "EXAME_GINECOLOGICO" && <>
-            <RebField label="Achado*">
+            <RebField label="Resultado oficial">
+              <select className="rb-field-select" value={f.resultadoGinecologicoId} onChange={(e) => set("resultadoGinecologicoId", e.target.value)} disabled={resultadosGinecologicos.loading}>
+                <option value="">{resultadosGinecologicos.loading ? "Carregando catálogo…" : "— selecionar —"}</option>
+                {(resultadosGinecologicos.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.nomeResumido}{r.tipo ? ` · ${r.tipo.toLowerCase()}` : ""}</option>)}
+              </select>
+            </RebField>
+            <RebField label="Achado operacional*">
               <select className="rb-field-select" value={f.achado} onChange={(e) => set("achado", e.target.value)}>
                 {ACHADOS_GINE.map((a) => <option key={a.v} value={a.v}>{a.label}</option>)}
               </select>

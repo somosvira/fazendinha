@@ -108,11 +108,71 @@ export interface EventoPayload {
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; criasVivas?: number; criasNatimortas?: number;
-  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  criarCria?: boolean; criaNumero?: string; criaId?: number;
   doadoraId?: number; // TE: animal doador da genética
+  resultadoGinecologicoId?: number;
   metodo?: string; // exame ginecológico: palpação/US
   pesoKg?: number; // desmame: peso opcional ao desmame
 }
+
+export interface AptidaoDTO {
+  id: number; animalId: number; data: string; apta: boolean;
+  motivo: string | null; origem: "MANUAL" | "AUTOMATICA";
+}
+export interface SugestaoAptidaoDTO { animalId: number; numero: string; apta: true; motivo: string }
+export interface AplicacaoAptidaoDTO { data: string; candidatas: number; aplicadas: number; ignoradas: number }
+export interface ResultadoGinecologicoDTO {
+  id: number; codigo: number; nomeResumido: string;
+  nomeCompleto: string | null; tipo: string | null; padrao: boolean;
+}
+
+export const listarAptidoes = (animalId: string) => req<AptidaoDTO[]>(`/rebanho/animais/${animalId}/aptidao`);
+export const registrarAptidao = (animalId: string, body: { data: string; apta: boolean; motivo?: string }) =>
+  req<AptidaoDTO>(`/rebanho/animais/${animalId}/aptidao`, { method: "POST", body: JSON.stringify(body) });
+export const sugerirAptidoesAutomaticas = () => req<SugestaoAptidaoDTO[]>(`/rebanho/aptidao/sugestoes`);
+export const aplicarAptidaoAutomatica = (data?: string) =>
+  req<AplicacaoAptidaoDTO>(`/rebanho/aptidao/aplicar`, { method: "POST", body: JSON.stringify(data ? { data } : {}) });
+export const listarResultadosGinecologicos = () => req<ResultadoGinecologicoDTO[]>(`/rebanho/resultados-ginecologicos`);
+
+export function useSugestoesAptidao() {
+  const [data, setData] = useState<SugestaoAptidaoDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    sugerirAptidoesAutomaticas().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useAptidoes(animalId: string | null) {
+  const [data, setData] = useState<AptidaoDTO[] | null>(null);
+  const [loading, setLoading] = useState(Boolean(animalId));
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarAptidoes(animalId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [animalId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useResultadosGinecologicos(ativo = true) {
+  const [data, setData] = useState<ResultadoGinecologicoDTO[] | null>(null);
+  const [loading, setLoading] = useState(ativo);
+  useEffect(() => {
+    if (!ativo) { setLoading(false); return; }
+    let vivo = true;
+    setLoading(true);
+    listarResultadosGinecologicos().then((itens) => { if (vivo) setData(itens); }).catch(() => { if (vivo) setData([]); }).finally(() => { if (vivo) setLoading(false); });
+    return () => { vivo = false; };
+  }, [ativo]);
+  return { data, loading };
+}
+
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
