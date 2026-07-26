@@ -20,7 +20,7 @@ Atualizado em **2026-07-24** após auditoria direta do `DADOS777.FDB`. Os PRs #1
 - [~] **Diagnóstico reprodutivo** (**1843**) — o evento básico existe; completar campos/métodos e validar efeitos contra a tela oficial.
 - [~] **Parto** (**352**) — completar 7 tipos, 4 auxílios, aborto/natimorto, criação/vínculo das crias e transição de categoria/lactação.
 - [~] **Exames ginecológicos** (**248 + 44 resultados**) — evento/worklist existem; importar histórico e dicionário oficial sem reduzir 44 resultados a 9.
-- [~] **Programação IATF/TETF** (**74 + 466**) — agenda D0/D+n existe; importar dados e completar TETF, implante/perda, estímulo, CIDR, produtos, doses e execução.
+- [~] **Programação IATF/TETF** (**74 + 466**) — **operação entregue** (execução individual+coletiva, finalidade TETF, CIDR/estímulo/perda, produto/dose por etapa, evento terminal idempotente IA/TE, adaptador de import idempotente por `ideagriId`). Falta só **reconciliar 5/31/74/466 na máquina com o `DADOS777.FDB`** — ver [`../reproducao-teste-na-maquina-ideagri.md`](../reproducao-teste-na-maquina-ideagri.md).
 - [ ] **Aptidão e aptidão automática de novilhas** — duas telas oficiais sem equivalente histórico/operacional.
 - [ ] **Coleta FIV/TE** (**7**) — doadora, reprodutor, técnico, oócitos e embriões por qualidade/estágio.
 - [ ] **Receber coletas / dados IATF** (`DADOSCOLETA`: **4**) — reproduzir sincronização/mobile ou obter N/A assinado.
