@@ -126,6 +126,58 @@ const TIPO_EV = {
   "4": "DIAGNOSTICO",
   "7": "PARTO",
 };
+const FINALIDADES_IATF = new Set(["IATF", "TETF"]);
+
+// Contratos intermediários da extração IATF. O SQL da máquina-fonte deve emitir
+// exatamente estes campos após consultar o inventário real de colunas do Firebird.
+export function parseProtocoloIatf(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = n(f[0]);
+  const nome = s(f[1]);
+  const finalidade = (s(f[2]) ?? "IATF").toUpperCase();
+  if (ideagriId == null || !nome || !FINALIDADES_IATF.has(finalidade)) return null;
+  return { ideagriId, nome, finalidade };
+}
+
+export function parseProtocoloPrincipio(linha) {
+  const f = linha.split(SEP);
+  const protocoloIdeagriId = n(f[0]);
+  if (protocoloIdeagriId == null) return null;
+  return {
+    protocoloIdeagriId,
+    dia: n(f[1]) ?? 0,
+    principio: s(f[2]),
+    produto: s(f[3]),
+    dose: s(f[4]),
+    uso: s(f[5]),
+  };
+}
+
+export function parseProgramacaoIatf(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = n(f[0]);
+  const dataInicio = s(f[2]);
+  const protocoloIdeagriId = n(f[3]);
+  if (ideagriId == null || !dataInicio || protocoloIdeagriId == null) return null;
+  return { ideagriId, nome: s(f[1]), dataInicio, protocoloIdeagriId };
+}
+
+export function parseProgramacaoAssociacao(linha) {
+  const f = linha.split(SEP);
+  const numero = s(f[0]);
+  const ideagriId = n(f[1]);
+  const programacaoIdeagriId = n(f[2]);
+  if (!numero || ideagriId == null || programacaoIdeagriId == null) return null;
+  return {
+    numero,
+    ideagriId,
+    programacaoIdeagriId,
+    usoCidr: f[3] === "1",
+    estimulo: s(f[4]),
+    perdaImplante: f[5] === "1",
+  };
+}
+
 export function parseEvento(linha) {
   const f = linha.split(SEP);
   const ideagriId = n(f[1]);
@@ -282,7 +334,12 @@ function main() {
   const eventosSanitarios = [];
   const pesagens = [];
   const lactacoes = [];
+  const protocolosIatf = [];
+  const principiosProtocolo = [];
+  const programacoesIatf = [];
+  const associacoesProgramacao = [];
   const eventosInvalidos = [];
+  const iatfInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -300,6 +357,22 @@ function main() {
     else if (l.startsWith("@M@")) eventosSanitarios.push(parseMamite(l.slice(3)));
     else if (l.startsWith("@W@")) pesagens.push(parsePesagem(l.slice(3)));
     else if (l.startsWith("@Y@")) lactacoes.push(parseLactacao(l.slice(3)));
+    else if (l.startsWith("@PROTOIATF@")) {
+      const row = parseProtocoloIatf(l.slice(11));
+      if (row) protocolosIatf.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROTOPRIN@")) {
+      const row = parseProtocoloPrincipio(l.slice(11));
+      if (row) principiosProtocolo.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROGIATF@")) {
+      const row = parseProgramacaoIatf(l.slice(10));
+      if (row) programacoesIatf.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROGASSOC@")) {
+      const row = parseProgramacaoAssociacao(l.slice(11));
+      if (row) associacoesProgramacao.push(row); else iatfInvalidos.push(l);
+    }
   }
 
   if (eventosInvalidos.length) {
@@ -311,6 +384,12 @@ function main() {
     process.exit(1);
   }
 
+  if (iatfInvalidos.length) {
+    console.error(`ERRO: ${iatfInvalidos.length} registros IATF inválidos.`);
+    console.error(JSON.stringify(iatfInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
   for (const a of animais) {
     if (a.grupo) grupos.add(a.grupo);
@@ -319,7 +398,19 @@ function main() {
 
   // ideagriId não entra no JSON consumido pelo import — fica nos campos do evento.
   const eventosOut = eventos.map(({ cdtipo: _c, ...e }) => e);
-  const out = { geradoEm, animais, controles, eventos: eventosOut, eventosSanitarios, pesagens, lactacoes };
+  const out = {
+    geradoEm,
+    animais,
+    controles,
+    eventos: eventosOut,
+    eventosSanitarios,
+    pesagens,
+    lactacoes,
+    protocolosIatf,
+    principiosProtocolo,
+    programacoesIatf,
+    associacoesProgramacao,
+  };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -333,6 +424,7 @@ function main() {
   console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
   console.error(`  pesagens=${pesagens.length}`);
   console.error(`  lactações=${lactacoes.length}`);
+  console.error(`  IATF: protocolos=${protocolosIatf.length} princípios=${principiosProtocolo.length} programações=${programacoesIatf.length} associações=${associacoesProgramacao.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

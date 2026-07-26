@@ -956,6 +956,7 @@ model ProtocoloIATF {
   propriedade      Propriedade?             @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?
   etapas           EtapaProtocoloIATF[]
+  principios       PrincipioProtocoloIATF[]
   aplicacoes       AplicacaoProtocoloIATF[]
   programacoesLote ProgramacaoIATFLote[]
   createdAt        DateTime                 @default(now())
@@ -975,6 +976,21 @@ model EtapaProtocoloIATF {
   hormonio    String? // hormônio/fármaco aplicado, quando houver
   ordem       Int           @default(0) // desempate quando duas etapas caem no mesmo dia
 
+  @@index([protocoloId])
+}
+
+// Produto/princípio/dose/uso oficial de uma etapa do protocolo (catálogo IDEAGRI).
+model PrincipioProtocoloIATF {
+  id          Int           @id @default(autoincrement())
+  protocolo   ProtocoloIATF @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  protocoloId Int
+  dia         Int           @default(0)
+  principio   String?
+  produto     String?
+  dose        String?
+  uso         String?
+
+  @@unique([protocoloId, dia, principio, produto, uso])
   @@index([protocoloId])
 }
 

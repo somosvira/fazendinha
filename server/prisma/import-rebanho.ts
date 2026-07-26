@@ -19,6 +19,7 @@
 
 import { readFileSync } from "node:fs";
 import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
+import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
 
 const prisma = new PrismaClient();
 
@@ -117,7 +118,7 @@ interface LactacaoJson {
   producao305: number | null;
   duracaoDias: number | null;
 }
-interface RebanhoJson {
+interface RebanhoJson extends DadosIatfLegado {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
@@ -343,6 +344,10 @@ async function main() {
     await prisma.animal.updateMany({ where: { id: { in: receptoras } }, data: { ehReceptora: true } });
   }
   console.log(`Receptoras marcadas: ${receptoras.length}.`);
+
+  // --- Catálogo/programações/aplicações IATF (opcional, idempotente por id de origem) ---
+  const iatf = await importarIatfLegado(prisma, dados, idByNumero);
+  console.log(`IATF importado: ${iatf.protocolos} protocolos, ${iatf.principios} princípios, ${iatf.programacoes} programações, ${iatf.associacoes} associações.`);
 
   // --- Eventos sanitários (createMany em lotes) — DOENCAANIMAL + APLICACAOPRODUTO ---
   const sanitarioRows = (dados.eventosSanitarios ?? [])

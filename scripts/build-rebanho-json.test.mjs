@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
   parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem, parseLactacao,
+  parseProtocoloIatf, parseProtocoloPrincipio, parseProgramacaoIatf, parseProgramacaoAssociacao,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -128,6 +129,47 @@ test("parseEvento: parto (tipo 7) → PARTO com cria e auxílio", () => {
   assert.equal(e.auxilioParto, "1"); // Bezerro puxado
   assert.equal(e.numCrias, 1);
   assert.equal(e.sexoCria, "M");
+});
+
+test("parseProtocoloIatf preserva identidade/nome/finalidade e rejeita finalidade desconhecida", () => {
+  assert.deepEqual(parseProtocoloIatf("10~|~IATF 11 dias~|~IATF"), {
+    ideagriId: 10,
+    nome: "IATF 11 dias",
+    finalidade: "IATF",
+  });
+  assert.equal(parseProtocoloIatf("11~|~X~|~FIV"), null);
+  assert.equal(parseProtocoloIatf("~|~Sem id~|~IATF"), null);
+});
+
+test("parseProtocoloPrincipio preserva dia/princípio/produto/dose/uso", () => {
+  assert.deepEqual(parseProtocoloPrincipio("10~|~7~|~PGF2a~|~Ciosin~|~2 ml~|~luteólise"), {
+    protocoloIdeagriId: 10,
+    dia: 7,
+    principio: "PGF2a",
+    produto: "Ciosin",
+    dose: "2 ml",
+    uso: "luteólise",
+  });
+});
+
+test("parseProgramacaoIatf preserva identidade/protocolo/data", () => {
+  assert.deepEqual(parseProgramacaoIatf("700~|~Novilhas julho~|~2026-07-06~|~10"), {
+    ideagriId: 700,
+    nome: "Novilhas julho",
+    dataInicio: "2026-07-06",
+    protocoloIdeagriId: 10,
+  });
+});
+
+test("parseProgramacaoAssociacao preserva animal/programação/CIDR/estímulo/perda", () => {
+  assert.deepEqual(parseProgramacaoAssociacao("1234~|~500~|~700~|~1~|~eCG~|~0"), {
+    numero: "1234",
+    ideagriId: 500,
+    programacaoIdeagriId: 700,
+    usoCidr: true,
+    estimulo: "eCG",
+    perdaImplante: false,
+  });
 });
 
 test("parseDoenca → OCORRENCIA com doença/dtFim/dias", () => {
