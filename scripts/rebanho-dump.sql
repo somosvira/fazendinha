@@ -79,20 +79,33 @@ FROM LEITE l
   JOIN ANIMAL a ON a.CDANIMAL = l.CDANIMAL
 WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1 AND l.DTLEITE IS NOT NULL;
 
-/* ── EVENTOS REPRODUTIVOS (REPRODUCAO) ─────────────────────────────────────── */
+/* ── EVENTOS REPRODUTIVOS (REPRODUCAO) ───────────────────────────────────────
+ * Campos: numero | ideagriId | cdtipo | data | reprodutor | doadoraNumero |
+ * doadoraNome | embriaoId | diagnostico | dtParto | tipoParto | auxilioParto |
+ * numCrias | sexoCria
+ * TE: receptora=r.CDANIMAL; embrião=r.CDEMBRIAO; doadora=emb.CDMAE; sêmen=emb.CDPAI.
+ */
 SELECT '@E@' || a.NUMERO
+  || '~|~' || CAST(r.CDREPRODUCAO AS VARCHAR(12))
   || '~|~' || CAST(r.CDTIPOREPRODUCAO AS VARCHAR(4))
   || '~|~' || CAST(r.DATA AS VARCHAR(12))
-  || '~|~' || COALESCE(rep.NOME, rep.NUMERO, '')
+  || '~|~' || COALESCE(rep.NOME, rep.NUMERO, pai.NOME, pai.NUMERO, '')
+  || '~|~' || COALESCE(doa.NUMERO, '')
+  || '~|~' || COALESCE(doa.NOME, '')
+  || '~|~' || COALESCE(CAST(r.CDEMBRIAO AS VARCHAR(12)), '')
   || '~|~' || COALESCE(r.DIAGNOSTICO,'')
   || '~|~' || COALESCE(CAST(r.DTPARTOPROVAVEL AS VARCHAR(12)),'')
   || '~|~' || COALESCE(CAST(r.CDTIPOPARTO AS VARCHAR(4)),'')
+  || '~|~' || COALESCE(CAST(r.CDAUXILIOPARTO AS VARCHAR(4)),'')
   || '~|~' || COALESCE(CAST(r.NUMCRIA AS VARCHAR(4)),'')
   || '~|~' || COALESCE(r.SEXOCRIA1,'')
   AS "LINHA"
 FROM REPRODUCAO r
   JOIN ANIMAL a ON a.CDANIMAL = r.CDANIMAL
   LEFT JOIN ANIMAL rep ON rep.CDANIMAL = r.CDREPRODUTOR
+  LEFT JOIN ANIMAL emb ON emb.CDANIMAL = r.CDEMBRIAO
+  LEFT JOIN ANIMAL doa ON doa.CDANIMAL = emb.CDMAE
+  LEFT JOIN ANIMAL pai ON pai.CDANIMAL = emb.CDPAI
 WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1 AND r.DATA IS NOT NULL;
 
 /* ── DOENÇAS / OCORRÊNCIAS (DOENCAANIMAL) ──────────────────────────────────── */

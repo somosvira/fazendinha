@@ -103,11 +103,12 @@ export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANT
 export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 
 export interface EventoPayload {
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
+  tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
   data: string; observacao?: string;
   reprodutor?: string; protocolo?: string;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
-  numCrias?: number; sexoCria?: string; tipoParto?: string; motivoSecagem?: string;
+  numCrias?: number; criasVivas?: number; criasNatimortas?: number;
+  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
   doadoraId?: number; // TE: animal doador da genética
   metodo?: string; // exame ginecológico: palpação/US
   pesoKg?: number; // desmame: peso opcional ao desmame
@@ -116,8 +117,8 @@ export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/ani
 export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
 
-// ── Taxa de concepção por método (IA × TE) — KPI de reprodução (baseline ~35%) ──
-export interface TaxaConcepcaoMetodo { metodo: "IA" | "TE"; coberturas: number; prenhes: number; taxa: number | null }
+// ── Taxa de concepção por método (IA × monta natural × TE) — KPI de reprodução ──
+export interface TaxaConcepcaoMetodo { metodo: "IA" | "MN" | "TE"; coberturas: number; prenhes: number; taxa: number | null }
 export const obterTaxaConcepcao = () => req<TaxaConcepcaoMetodo[]>(`/rebanho/reproducao/taxa-concepcao`);
 export function useTaxaConcepcao() {
   const [data, setData] = useState<TaxaConcepcaoMetodo[]>([]);
@@ -572,15 +573,34 @@ export function useVacinas(animalId: string | null) {
 export interface EtapaProtocoloDTO { dia: number; acao: string; hormonio: string | null; ordem: number }
 export interface EtapaAgendadaDTO extends EtapaProtocoloDTO { rotulo: string; data: string }
 export interface ProtocoloIatfDTO {
-  id: number; nome: string; descricao: string | null; hormonioBase: string | null; ativo: boolean;
+  id: number; nome: string; descricao: string | null; hormonioBase: string | null;
+  finalidade: "IATF" | "TETF"; ativo: boolean;
   etapas: EtapaProtocoloDTO[];
+}
+export interface EtapaIatfStatusDTO extends EtapaAgendadaDTO {
+  execucaoId: number | null;
+  status: "PENDENTE" | "CONCLUIDA" | "PULADA";
+  dataExecucao: string | null;
+  dataEfetiva: string;
+  atrasada: boolean;
+  produto: string | null;
+  dose: string | null;
+  observacao: string | null;
+}
+export interface ProgressoIatfDTO {
+  total: number; resolvidas: number; concluidas: number; puladas: number; pendentes: number;
+  proxima: EtapaIatfStatusDTO | null; concluido: boolean;
 }
 export interface AplicacaoIatfDTO {
   id: number; animalId: number; protocoloId: number; protocoloNome: string;
-  dataInicio: string; observacao: string | null; etapas: EtapaAgendadaDTO[];
+  dataInicio: string; observacao: string | null;
+  usoCidr: boolean; estimulo: string | null; perdaImplante: boolean;
+  etapas: EtapaIatfStatusDTO[];
+  progresso: ProgressoIatfDTO;
 }
 export interface ProtocoloIatfInput {
-  nome: string; descricao?: string | null; hormonioBase?: string | null; ativo?: boolean;
+  nome: string; descricao?: string | null; hormonioBase?: string | null;
+  finalidade?: "IATF" | "TETF"; ativo?: boolean;
   etapas: { dia: number; acao: string; hormonio?: string | null; ordem?: number }[];
 }
 
@@ -595,10 +615,16 @@ export const excluirProtocoloIatf = (id: number) =>
 
 export const listarAplicacoesIatf = (animalId: string) =>
   req<AplicacaoIatfDTO[]>(`/rebanho/animais/${animalId}/iatf`);
-export const aplicarProtocoloIatf = (animalId: string, body: { protocoloId: number; dataInicio: string; observacao?: string }) =>
-  req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
+export const aplicarProtocoloIatf = (animalId: string, body: {
+  protocoloId: number; dataInicio: string; observacao?: string;
+  usoCidr?: boolean; estimulo?: string; perdaImplante?: boolean;
+}) => req<AplicacaoIatfDTO>(`/rebanho/animais/${animalId}/iatf`, { method: "POST", body: JSON.stringify(body) });
 export const excluirAplicacaoIatf = (id: number) =>
   req<{ ok: true }>(`/rebanho/iatf/aplicacoes/${id}`, { method: "DELETE" });
+export const executarEtapaIatf = (
+  execucaoId: number,
+  body: { status: "CONCLUIDA" | "PULADA" | "PENDENTE"; dataExecucao?: string; produto?: string | null; dose?: string | null; observacao?: string | null },
+) => req<AplicacaoIatfDTO>(`/rebanho/iatf/execucoes/${execucaoId}`, { method: "PATCH", body: JSON.stringify(body) });
 
 export function useProtocolosIatf(incluirInativos = false) {
   const [data, setData] = useState<ProtocoloIatfDTO[] | null>(null);
@@ -664,10 +690,20 @@ export interface ProgramacaoIatfLoteDTO {
   grupoId: number | null; grupoNome: string | null; nome: string | null;
   dataInicio: string; observacao: string | null; totalAnimais: number;
   agenda: EtapaAgendadaDTO[]; totalEtapas: number; etapasConcluidas: number;
-  proxima: EtapaAgendadaDTO | null; concluido: boolean;
+  proxima: EtapaAgendadaDTO | null; concluido: boolean; resumoExec: ResumoLoteExecDTO;
 }
-export interface AnimalProgramacaoDTO { animalId: number; numero: string; nome: string | null }
-export interface ProgramacaoIatfLoteDetalheDTO extends ProgramacaoIatfLoteDTO { animais: AnimalProgramacaoDTO[] }
+export interface AnimalProgramacaoDTO { aplicacaoId: number; animalId: number; numero: string; nome: string | null }
+export interface EtapaResumoLoteDTO { dia: number; ordem: number; concluidas: number; puladas: number; pendentes: number; atrasadas: number }
+export interface ResumoLoteExecDTO {
+  totalAnimais: number;
+  porEtapa: EtapaResumoLoteDTO[];
+  proximaEtapa: { dia: number; ordem: number } | null;
+  concluido: boolean;
+}
+export interface ProgramacaoIatfLoteDetalheDTO extends ProgramacaoIatfLoteDTO {
+  animais: AnimalProgramacaoDTO[];
+  resumoExec: ResumoLoteExecDTO;
+}
 export interface CriarProgramacaoIatfInput {
   protocoloId: number; dataInicio: string; grupoId?: number | null; nome?: string; observacao?: string; animalIds: number[];
 }
@@ -678,6 +714,14 @@ export const criarProgramacaoIatf = (body: CriarProgramacaoIatfInput) =>
   req<ProgramacaoIatfLoteDetalheDTO>(`/rebanho/iatf/programacoes`, { method: "POST", body: JSON.stringify(body) });
 export const excluirProgramacaoIatf = (id: number) =>
   req<{ ok: true }>(`/rebanho/iatf/programacoes/${id}`, { method: "DELETE" });
+export const executarEtapaLoteIatf = (id: number, body: {
+  dia: number; ordem: number; status: "CONCLUIDA" | "PULADA" | "PENDENTE";
+  dataExecucao?: string; excecoesAnimalIds?: number[];
+  produto?: string | null; dose?: string | null; observacao?: string | null;
+}) => req<{ aplicados: number; ignorados: number; resumo: ResumoLoteExecDTO }>(
+  `/rebanho/iatf/programacoes/${id}/execucoes`,
+  { method: "PATCH", body: JSON.stringify(body) },
+);
 
 export function useProgramacoesIatf() {
   const [data, setData] = useState<ProgramacaoIatfLoteDTO[] | null>(null);

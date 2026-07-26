@@ -19,6 +19,7 @@
 
 import { readFileSync } from "node:fs";
 import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
+import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
 
 const prisma = new PrismaClient();
 
@@ -67,12 +68,17 @@ interface ControleJson {
 }
 interface EventoJson {
   numero: string;
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM";
+  ideagriId: number;
+  ideagriEmbriaoId: number | null;
+  doadoraNumero: string | null;
+  doadoraNome: string | null;
+  tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO";
   data: string;
   reprodutor: string | null;
   resultado: string | null;
   dtPartoPrevista: string | null;
   tipoParto: string | null;
+  auxilioParto: string | null;
   numCrias: number | null;
   sexoCria: string | null;
   observacao: string | null;
@@ -112,7 +118,7 @@ interface LactacaoJson {
   producao305: number | null;
   duracaoDias: number | null;
 }
-interface RebanhoJson {
+interface RebanhoJson extends DadosIatfLegado {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
@@ -294,17 +300,31 @@ async function main() {
   }
 
   // --- Eventos reprodutivos (createMany em lotes) — REPRODUCAO do Ideagri -----
+  // ideagriId = CDREPRODUCAO (unique). TE resolve doadora por número se estiver no rebanho.
   const eventoRows = (dados.eventos ?? [])
-    .filter((e) => idByNumero.has(e.numero) && e.data)
+    .filter((e) => idByNumero.has(e.numero) && e.data && e.ideagriId != null)
     .map((e) => ({
       animalId: idByNumero.get(e.numero)!,
+      ideagriId: e.ideagriId,
+      ideagriEmbriaoId: e.ideagriEmbriaoId ?? null,
+      doadoraNumero: e.doadoraNumero ?? null,
+      doadoraNome: e.doadoraNome ?? null,
+      doadoraId: e.doadoraNumero ? idByNumero.get(e.doadoraNumero) ?? null : null,
       tipo: e.tipo,
       data: d(e.data)!,
       reprodutor: e.reprodutor ?? null,
       resultado: e.resultado ?? null,
       dtPartoPrevista: d(e.dtPartoPrevista),
       tipoParto: e.tipoParto ?? null,
+      auxilioParto: e.auxilioParto ?? null,
       numCrias: e.numCrias ?? null,
+      // Split vivos/natimortos derivado do dicionário quando o fato não traz colunas próprias.
+      criasVivas: e.tipo === "PARTO"
+        ? (e.tipoParto === "4" ? 0 : e.tipoParto === "3" ? 0 : e.numCrias ?? null)
+        : null,
+      criasNatimortas: e.tipo === "PARTO"
+        ? (e.tipoParto === "4" ? (e.numCrias ?? 0) : 0)
+        : null,
       sexoCria: e.sexoCria ?? null,
       observacao: e.observacao ?? null,
     }));
@@ -313,6 +333,21 @@ async function main() {
     const r = await prisma.eventoReprodutivo.createMany({ data: eventoRows.slice(i, i + CHUNK) });
     eventosInseridos += r.count;
   }
+
+  // Receptoras: sticky a partir de qualquer TE importada.
+  const receptoras = [...new Set(
+    (dados.eventos ?? [])
+      .filter((e) => e.tipo === "TRANSFERENCIA_EMBRIAO" && idByNumero.has(e.numero))
+      .map((e) => idByNumero.get(e.numero)!),
+  )];
+  if (receptoras.length) {
+    await prisma.animal.updateMany({ where: { id: { in: receptoras } }, data: { ehReceptora: true } });
+  }
+  console.log(`Receptoras marcadas: ${receptoras.length}.`);
+
+  // --- Catálogo/programações/aplicações IATF (opcional, idempotente por id de origem) ---
+  const iatf = await importarIatfLegado(prisma, dados, idByNumero);
+  console.log(`IATF importado: ${iatf.protocolos} protocolos, ${iatf.principios} princípios, ${iatf.programacoes} programações, ${iatf.associacoes} associações.`);
 
   // --- Eventos sanitários (createMany em lotes) — DOENCAANIMAL + APLICACAOPRODUTO ---
   const sanitarioRows = (dados.eventosSanitarios ?? [])

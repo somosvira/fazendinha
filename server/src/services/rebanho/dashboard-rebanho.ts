@@ -62,7 +62,7 @@ export async function buildRebanhoDashboard(
       // EXAME_GINECOLOGICO entra aqui para derivar `ultimoExameGinecologico` por animal
       // (worklist "precisa-de-exame"); é inócuo para os demais consumidores (contextoEventos
       // só olha INSEMINACAO/TE/DIAGNOSTICO). orderBy asc → o último da lista é o mais recente.
-      where: { ...filhoWhere, tipo: { in: ["INSEMINACAO", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO", "EXAME_GINECOLOGICO"] } },
+      where: { ...filhoWhere, tipo: { in: ["INSEMINACAO", "COBERTURA", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO", "EXAME_GINECOLOGICO"] } },
       select: { animalId: true, tipo: true, data: true, resultado: true },
       orderBy: { data: "asc" },
     }),

@@ -69,21 +69,32 @@ function resolvePesos(params: Map<ChaveParametro, ParametroDTO>): Partial<Record
   return out;
 }
 
-export async function montarRelatorioEmbrapa(): Promise<RelatorioEmbrapaDTO> {
+export async function montarRelatorioEmbrapa(propriedadeId: number | null = null): Promise<RelatorioEmbrapaDTO> {
   // ── Parâmetros configuráveis ──────────────────────────────────────────────
   const paramsMap = new Map((await getParametros()).map((p) => [p.chave, p]));
   const meta = (chave: ChaveParametro, fallback: ind.MetaConfig) => resolveMeta(paramsMap, chave, fallback);
   const pesosOverride = resolvePesos(paramsMap);
   const uaRefKg = paramsMap.get("PESO_UA_REF_KG")?.valorNumero ?? ind.UA_REF_KG_DEFAULT;
 
+  // Escopo multi-propriedade: fatos-filho de Animal herdam via animal.propriedadeId;
+  // MovimentoEstoque carrega a própria coluna. null = consolidado.
+  const whereAnimal = propriedadeId != null ? { propriedadeId } : {};
+  const viaAnimal = propriedadeId != null ? { animal: { propriedadeId } } : {};
+  const whereMov = propriedadeId != null ? { propriedadeId } : {};
+
   // ── Carga única do banco ──────────────────────────────────────────────────
   const [animaisRaw, eventosRepro, lactacoesRaw, controlesRaw, movRacao] = await Promise.all([
-    prisma.animal.findMany({ include: { resumo: true } }),
-    prisma.eventoReprodutivo.findMany({}),
-    prisma.lactacao.findMany({}),
-    prisma.controleLeiteiro.findMany({}),
+    prisma.animal.findMany({ where: whereAnimal, include: { resumo: true } }),
+    prisma.eventoReprodutivo.findMany({ where: viaAnimal }),
+    prisma.lactacao.findMany({ where: viaAnimal }),
+    prisma.controleLeiteiro.findMany({ where: viaAnimal }),
     prisma.movimentoEstoque.findMany({
-      where: { tipo: "SAIDA", produto: { tipo: "RACAO" }, data: { gte: new Date(Date.now() - 365 * 86_400_000) } },
+      where: {
+        tipo: "SAIDA",
+        produto: { tipo: "RACAO" },
+        data: { gte: new Date(Date.now() - 365 * 86_400_000) },
+        ...whereMov,
+      },
     }),
   ]);
 
@@ -104,20 +115,24 @@ export async function montarRelatorioEmbrapa(): Promise<RelatorioEmbrapaDTO> {
       : null,
   }));
 
+  // Partos a termo (exclui aborto tipoParto=3). Split vivos/natimortos quando disponível.
   const partos: ind.PartoIn[] = eventosRepro
-    .filter((e) => e.tipo === "PARTO")
-    .map((e) => ({
-      animalId: e.animalId,
-      data: isoDate(e.data),
-      numCrias: e.numCrias,
-      // Campos schema-futuro (criasVivas/criasNatimortas) — quando existirem,
-      // ler de e.criasVivas. Por ora, assume numCrias = nascidos vivos (limite superior).
-      criasVivas: e.numCrias,
-      criasNatimortas: 0,
-    }));
+    .filter((e) => e.tipo === "PARTO" && e.tipoParto !== "3" && e.tipoParto !== "aborto" && e.tipoParto !== "AB")
+    .map((e) => {
+      const n = e.numCrias ?? null;
+      const vivos = e.criasVivas ?? (e.tipoParto === "4" || e.tipoParto === "natimorto" || e.tipoParto === "NT" ? 0 : n);
+      const natim = e.criasNatimortas ?? (e.tipoParto === "4" || e.tipoParto === "natimorto" || e.tipoParto === "NT" ? (n ?? 0) : 0);
+      return {
+        animalId: e.animalId,
+        data: isoDate(e.data),
+        numCrias: n,
+        criasVivas: vivos,
+        criasNatimortas: natim,
+      };
+    });
 
   const inseminacoes: ind.InseminacaoIn[] = eventosRepro
-    .filter((e) => e.tipo === "INSEMINACAO")
+    .filter((e) => e.tipo === "INSEMINACAO" || e.tipo === "COBERTURA")
     .map((e) => ({ animalId: e.animalId, data: isoDate(e.data) }));
 
   const diagnosticos: ind.DiagnosticoIn[] = eventosRepro
@@ -128,8 +143,10 @@ export async function montarRelatorioEmbrapa(): Promise<RelatorioEmbrapaDTO> {
       resultado: e.resultado as "positivo" | "negativo",
     }));
 
-  // Aborto ainda não existe no enum — array vazio até schema ser estendido.
-  const abortos: ind.AbortoIn[] = [];
+  // Aborto = PARTO com tipoParto oficial 3 (Aborto).
+  const abortos: ind.AbortoIn[] = eventosRepro
+    .filter((e) => e.tipo === "PARTO" && (e.tipoParto === "3" || e.tipoParto === "aborto" || e.tipoParto === "AB"))
+    .map((e) => ({ animalId: e.animalId, data: isoDate(e.data) }));
 
   const lactacoes: ind.LactacaoIn[] = lactacoesRaw.map((l) => ({
     animalId: l.animalId,
@@ -230,7 +247,9 @@ export async function montarRelatorioEmbrapa(): Promise<RelatorioEmbrapaDTO> {
     mk("AB", 14, "Taxa de Abortos e Natimortos", "reprodutivo",
        ind.taxaAbortosNatimortos(partos, abortos)?.combinada ?? null,
        "%", meta("META_AB", ind.METAS_EMBRAPA.abortos),
-       "Schema ainda não tem evento ABORTO nem campo criasNatimortas em PARTO — valor parcial."),
+       abortos.length === 0 && partos.every((p) => (p.criasNatimortas ?? 0) === 0)
+         ? "Sem abortos/natimortos registrados no período."
+         : undefined),
 
     mk("PDIP", 15, "PDIP — Produção / dia de IEP", "produtivo_reprodutivo",
        ind.pdip(producaoLactacaoMediaKg, ipReal), "kg/dia", meta("META_PDIP", ind.METAS_EMBRAPA.pdip)),

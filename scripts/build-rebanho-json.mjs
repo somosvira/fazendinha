@@ -116,25 +116,90 @@ function parseControle(linha) {
   };
 }
 
-// CDTIPOREPRODUCAO → TipoEventoReprodutivo (1/2/3 IA-cobertura-TE, 4 diagnóstico, 7 parto).
-// Não há CIO nem SECAGEM em REPRODUCAO (deferidos).
-const TIPO_EV = { "1": "INSEMINACAO", "2": "INSEMINACAO", "3": "INSEMINACAO", "4": "DIAGNOSTICO", "7": "PARTO" };
+// CDTIPOREPRODUCAO → TipoEventoReprodutivo (1 IA, 2 cobrição, 3 TE, 4 DG, 7 parto).
+// Não há CIO nem SECAGEM em REPRODUCAO (deferidos). Código desconhecido → tipo null
+// (main() aborta) — nunca colapsar TE/cobrição em INSEMINACAO.
+const TIPO_EV = {
+  "1": "INSEMINACAO",
+  "2": "COBERTURA",
+  "3": "TRANSFERENCIA_EMBRIAO",
+  "4": "DIAGNOSTICO",
+  "7": "PARTO",
+};
+const FINALIDADES_IATF = new Set(["IATF", "TETF"]);
+
+// Contratos intermediários da extração IATF. O SQL da máquina-fonte deve emitir
+// exatamente estes campos após consultar o inventário real de colunas do Firebird.
+export function parseProtocoloIatf(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = n(f[0]);
+  const nome = s(f[1]);
+  const finalidade = (s(f[2]) ?? "IATF").toUpperCase();
+  if (ideagriId == null || !nome || !FINALIDADES_IATF.has(finalidade)) return null;
+  return { ideagriId, nome, finalidade };
+}
+
+export function parseProtocoloPrincipio(linha) {
+  const f = linha.split(SEP);
+  const protocoloIdeagriId = n(f[0]);
+  if (protocoloIdeagriId == null) return null;
+  return {
+    protocoloIdeagriId,
+    dia: n(f[1]) ?? 0,
+    principio: s(f[2]),
+    produto: s(f[3]),
+    dose: s(f[4]),
+    uso: s(f[5]),
+  };
+}
+
+export function parseProgramacaoIatf(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = n(f[0]);
+  const dataInicio = s(f[2]);
+  const protocoloIdeagriId = n(f[3]);
+  if (ideagriId == null || !dataInicio || protocoloIdeagriId == null) return null;
+  return { ideagriId, nome: s(f[1]), dataInicio, protocoloIdeagriId };
+}
+
+export function parseProgramacaoAssociacao(linha) {
+  const f = linha.split(SEP);
+  const numero = s(f[0]);
+  const ideagriId = n(f[1]);
+  const programacaoIdeagriId = n(f[2]);
+  if (!numero || ideagriId == null || programacaoIdeagriId == null) return null;
+  return {
+    numero,
+    ideagriId,
+    programacaoIdeagriId,
+    usoCidr: f[3] === "1",
+    estimulo: s(f[4]),
+    perdaImplante: f[5] === "1",
+  };
+}
+
 export function parseEvento(linha) {
   const f = linha.split(SEP);
-  const cdtipo = f[1];
-  const tipo = TIPO_EV[cdtipo] ?? "INSEMINACAO";
-  const observacao = cdtipo === "2" ? "Cobertura (monta natural)" : cdtipo === "3" ? "Transferência de embrião" : null;
+  const ideagriId = n(f[1]);
+  const cdtipo = f[2];
+  const tipo = TIPO_EV[cdtipo] ?? null;
   return {
     numero: f[0],
+    ideagriId,
+    cdtipo,
     tipo,
-    data: s(f[2]),
-    reprodutor: s(f[3]),
-    resultado: cdtipo === "4" ? (f[4] === "P" ? "positivo" : f[4] === "N" ? "negativo" : null) : null,
-    dtPartoPrevista: s(f[5]),
-    tipoParto: cdtipo === "7" ? s(f[6]) : null,
-    numCrias: cdtipo === "7" ? n(f[7]) : null,
-    sexoCria: cdtipo === "7" ? s(f[8]) : null,
-    observacao,
+    data: s(f[3]),
+    reprodutor: s(f[4]),
+    doadoraNumero: s(f[5]),
+    doadoraNome: s(f[6]),
+    ideagriEmbriaoId: n(f[7]),
+    resultado: cdtipo === "4" ? (f[8] === "P" ? "positivo" : f[8] === "N" ? "negativo" : null) : null,
+    dtPartoPrevista: s(f[9]),
+    tipoParto: cdtipo === "7" ? s(f[10]) : null,
+    auxilioParto: cdtipo === "7" ? s(f[11]) : null,
+    numCrias: cdtipo === "7" ? n(f[12]) : null,
+    sexoCria: cdtipo === "7" ? s(f[13]) : null,
+    observacao: null,
   };
 }
 
@@ -269,19 +334,60 @@ function main() {
   const eventosSanitarios = [];
   const pesagens = [];
   const lactacoes = [];
+  const protocolosIatf = [];
+  const principiosProtocolo = [];
+  const programacoesIatf = [];
+  const associacoesProgramacao = [];
+  const eventosInvalidos = [];
+  const iatfInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
     else if (l.startsWith("@P@")) { const p = parseProducao(l.slice(3)); prodPorNum.set(p.numero, p); }
     else if (l.startsWith("@R@")) { const r = parseReproducao(l.slice(3)); reproPorNum.set(r.numero, r); }
     else if (l.startsWith("@L@")) controles.push(parseControle(l.slice(3)));
-    else if (l.startsWith("@E@")) eventos.push(parseEvento(l.slice(3)));
+    else if (l.startsWith("@E@")) {
+      const e = parseEvento(l.slice(3));
+      if (e.tipo == null || e.ideagriId == null) eventosInvalidos.push(e);
+      else eventos.push(e);
+    }
     else if (l.startsWith("@D@")) eventosSanitarios.push(parseDoenca(l.slice(3)));
     else if (l.startsWith("@V@")) eventosSanitarios.push(parseAplicacao(l.slice(3)));
     else if (l.startsWith("@Q@")) eventosSanitarios.push(parseAnalise(l.slice(3)));
     else if (l.startsWith("@M@")) eventosSanitarios.push(parseMamite(l.slice(3)));
     else if (l.startsWith("@W@")) pesagens.push(parsePesagem(l.slice(3)));
     else if (l.startsWith("@Y@")) lactacoes.push(parseLactacao(l.slice(3)));
+    else if (l.startsWith("@PROTOIATF@")) {
+      const row = parseProtocoloIatf(l.slice(11));
+      if (row) protocolosIatf.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROTOPRIN@")) {
+      const row = parseProtocoloPrincipio(l.slice(11));
+      if (row) principiosProtocolo.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROGIATF@")) {
+      const row = parseProgramacaoIatf(l.slice(10));
+      if (row) programacoesIatf.push(row); else iatfInvalidos.push(l);
+    }
+    else if (l.startsWith("@PROGASSOC@")) {
+      const row = parseProgramacaoAssociacao(l.slice(11));
+      if (row) associacoesProgramacao.push(row); else iatfInvalidos.push(l);
+    }
+  }
+
+  if (eventosInvalidos.length) {
+    const amostra = eventosInvalidos.slice(0, 5).map((e) => ({
+      numero: e.numero, cdtipo: e.cdtipo, ideagriId: e.ideagriId,
+    }));
+    console.error(`ERRO: ${eventosInvalidos.length} eventos reprodutivos inválidos (tipo desconhecido ou sem CDREPRODUCAO).`);
+    console.error(JSON.stringify(amostra));
+    process.exit(1);
+  }
+
+  if (iatfInvalidos.length) {
+    console.error(`ERRO: ${iatfInvalidos.length} registros IATF inválidos.`);
+    console.error(JSON.stringify(iatfInvalidos.slice(0, 5)));
+    process.exit(1);
   }
 
   const grupos = new Set(); // grupo = lote de manejo real (ANIMALINFO_CADASTRO.GRUPO)
@@ -290,7 +396,21 @@ function main() {
     a.resumo = montarResumo(prodPorNum.get(a.numero), reproPorNum.get(a.numero), geradoEm);
   }
 
-  const out = { geradoEm, animais, controles, eventos, eventosSanitarios, pesagens, lactacoes };
+  // ideagriId não entra no JSON consumido pelo import — fica nos campos do evento.
+  const eventosOut = eventos.map(({ cdtipo: _c, ...e }) => e);
+  const out = {
+    geradoEm,
+    animais,
+    controles,
+    eventos: eventosOut,
+    eventosSanitarios,
+    pesagens,
+    lactacoes,
+    protocolosIatf,
+    principiosProtocolo,
+    programacoesIatf,
+    associacoesProgramacao,
+  };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 
@@ -300,10 +420,11 @@ function main() {
   console.error(`  animais=${animais.length} (ATIVO=${ativos.length} BAIXADO=${animais.length - ativos.length})`);
   console.error(`  ativos por categoria: ${JSON.stringify(cnt(ativos, "categoria"))}`);
   console.error(`  em lactação=${animais.filter((a) => a.resumo.del != null).length} · controles=${controles.length}`);
-  console.error(`  eventos reprodutivos=${eventos.length} ${JSON.stringify(cnt(eventos, "tipo"))}`);
+  console.error(`  eventos reprodutivos=${eventosOut.length} ${JSON.stringify(cnt(eventosOut, "tipo"))}`);
   console.error(`  eventos sanitários=${eventosSanitarios.length} ${JSON.stringify(cnt(eventosSanitarios, "tipo"))}`);
   console.error(`  pesagens=${pesagens.length}`);
   console.error(`  lactações=${lactacoes.length}`);
+  console.error(`  IATF: protocolos=${protocolosIatf.length} princípios=${principiosProtocolo.length} programações=${programacoesIatf.length} associações=${associacoesProgramacao.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

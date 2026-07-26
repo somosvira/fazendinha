@@ -1,17 +1,32 @@
 import { useState } from "react";
-import { useAplicacoesIatf, useProtocolosIatf, aplicarProtocoloIatf, excluirAplicacaoIatf } from "../api";
+import {
+  useAplicacoesIatf, useProtocolosIatf, aplicarProtocoloIatf, excluirAplicacaoIatf, executarEtapaIatf,
+  type EtapaIatfStatusDTO,
+} from "../api";
 import { getHojeISO } from "../../lib/hoje";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 
+function statusLabel(et: EtapaIatfStatusDTO): string {
+  if (et.status === "CONCLUIDA") return "feita";
+  if (et.status === "PULADA") return "pulada";
+  if (et.atrasada) return "atrasada";
+  return "pendente";
+}
+
 // Aplica um protocolo IATF do catálogo a um animal com uma data de início (o D0)
-// e mostra a agenda derivada (D0/D7/D9/D11…). Segue a forma de VacinasSection.
+// e permite marcar cada etapa como feita/pulada (execução real).
 export function IatfSection({ animalId }: { animalId: string }) {
   const { data: aplicacoes, loading, recarregar } = useAplicacoesIatf(animalId);
   const { data: protocolos, loading: loadingProto } = useProtocolosIatf();
   const [protocoloId, setProtocoloId] = useState("");
   const [dataInicio, setDataInicio] = useState(getHojeISO());
+  const [usoCidr, setUsoCidr] = useState(false);
+  const [estimulo, setEstimulo] = useState("");
+  const [perdaImplante, setPerdaImplante] = useState(false);
+  const [detalhes, setDetalhes] = useState<Record<number, { produto: string; dose: string; observacao: string }>>({});
   const [salvando, setSalvando] = useState(false);
+  const [busyExec, setBusyExec] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   if (loading || loadingProto) return null;
@@ -23,13 +38,55 @@ export function IatfSection({ animalId }: { animalId: string }) {
     if (!protocoloId || !dataInicio) return;
     setSalvando(true); setErro(null);
     try {
-      await aplicarProtocoloIatf(animalId, { protocoloId: Number(protocoloId), dataInicio });
-      setProtocoloId(""); recarregar();
+      await aplicarProtocoloIatf(animalId, {
+        protocoloId: Number(protocoloId),
+        dataInicio,
+        usoCidr,
+        estimulo: estimulo.trim() || undefined,
+        perdaImplante,
+      });
+      setProtocoloId(""); setUsoCidr(false); setEstimulo(""); setPerdaImplante(false); recarregar();
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao aplicar protocolo."); }
     finally { setSalvando(false); }
   }
 
   async function remover(id: number) { await excluirAplicacaoIatf(id); recarregar(); }
+
+  function editarDetalhe(et: EtapaIatfStatusDTO, campo: "produto" | "dose" | "observacao", valor: string) {
+    if (et.execucaoId == null) return;
+    setDetalhes((atuais) => ({
+      ...atuais,
+      [et.execucaoId!]: {
+        produto: atuais[et.execucaoId!]?.produto ?? et.produto ?? "",
+        dose: atuais[et.execucaoId!]?.dose ?? et.dose ?? "",
+        observacao: atuais[et.execucaoId!]?.observacao ?? et.observacao ?? "",
+        [campo]: valor,
+      },
+    }));
+  }
+
+  async function marcar(execucaoId: number | null, status: "CONCLUIDA" | "PULADA" | "PENDENTE") {
+    if (execucaoId == null) {
+      setErro("Esta aplicação ainda não tem etapas materializadas. Reaplique o protocolo.");
+      return;
+    }
+    setBusyExec(execucaoId); setErro(null);
+    try {
+      const detalhe = detalhes[execucaoId];
+      await executarEtapaIatf(execucaoId, {
+        status,
+        dataExecucao: status === "PENDENTE" ? undefined : getHojeISO(),
+        ...(detalhe ? {
+          produto: detalhe.produto.trim() || null,
+          dose: detalhe.dose.trim() || null,
+          observacao: detalhe.observacao.trim() || null,
+        } : {}),
+      });
+      setDetalhes((atuais) => { const proximo = { ...atuais }; delete proximo[execucaoId]; return proximo; });
+      recarregar();
+    } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao atualizar etapa."); }
+    finally { setBusyExec(null); }
+  }
 
   return (
     <div className="mb-4 rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-[15px]">
@@ -52,6 +109,16 @@ export function IatfSection({ animalId }: { animalId: string }) {
             Início (D0)
             <input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink-3">
+            <input type="checkbox" checked={usoCidr} onChange={(e) => setUsoCidr(e.target.checked)} /> CIDR
+          </label>
+          <label className="flex flex-col text-xs text-ink-3">
+            Estímulo
+            <input className="mt-0.5 w-28 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={estimulo} onChange={(e) => setEstimulo(e.target.value)} placeholder="eCG" maxLength={80} />
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink-3">
+            <input type="checkbox" checked={perdaImplante} onChange={(e) => setPerdaImplante(e.target.checked)} /> perda implante
+          </label>
           <button type="submit" disabled={salvando || !protocoloId || !dataInicio} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
             Aplicar
           </button>
@@ -69,17 +136,94 @@ export function IatfSection({ animalId }: { animalId: string }) {
                 <span className="font-semibold text-[color:var(--ink)]">{a.protocoloNome}</span>
                 <span className="flex items-center gap-2 text-xs text-ink-3">
                   início {fmtData(a.dataInicio)}
+                  {" · "}
+                  {a.progresso.concluido
+                    ? "concluído"
+                    : a.progresso.proxima
+                      ? `próxima ${a.progresso.proxima.rotulo}`
+                      : "sem etapas"}
+                  {" · "}
+                  {a.progresso.resolvidas}/{a.progresso.total}
                   <button onClick={() => remover(a.id)} className="text-ink-3 hover:text-prejuizo hover:underline" aria-label={`Excluir aplicação ${a.protocoloNome}`}>excluir</button>
                 </span>
               </div>
-              <ol className="flex flex-col gap-0.5">
-                {a.etapas.map((et, i) => (
-                  <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                    <b className="w-9 shrink-0 font-semibold text-[color:var(--cafe)]">{et.rotulo}</b>
-                    <span className="w-24 shrink-0 tabular-nums text-ink-2">{fmtData(et.data)}</span>
-                    <span className="flex-1 text-[color:var(--ink)]">{et.acao}{et.hormonio ? <span className="text-ink-3"> · {et.hormonio}</span> : null}</span>
-                  </li>
-                ))}
+              {(a.usoCidr || a.estimulo || a.perdaImplante) && (
+                <p className="mb-1.5 text-xs text-ink-3">
+                  {[a.usoCidr && "CIDR", a.estimulo && `estímulo ${a.estimulo}`, a.perdaImplante && "perda de implante"].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <ol className="flex flex-col gap-1">
+                {a.etapas.map((et) => {
+                  const busy = busyExec === et.execucaoId;
+                  const done = et.status === "CONCLUIDA";
+                  const skipped = et.status === "PULADA";
+                  const detalhe = et.execucaoId == null ? undefined : detalhes[et.execucaoId];
+                  return (
+                    <li key={`${et.dia}-${et.ordem}`} className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-sm ${done || skipped ? "opacity-70" : ""}`}>
+                      <b className="w-9 shrink-0 font-semibold text-[color:var(--cafe)]">{et.rotulo}</b>
+                      <span className={`w-24 shrink-0 tabular-nums ${et.atrasada ? "font-semibold text-prejuizo" : "text-ink-2"}`}>
+                        {fmtData(et.dataEfetiva)}
+                      </span>
+                      <span className={`min-w-[4.5rem] shrink-0 text-xs uppercase tracking-[.04em] ${et.atrasada ? "text-prejuizo" : "text-ink-3"}`}>
+                        {statusLabel(et)}
+                      </span>
+                      <span className={`flex-1 text-[color:var(--ink)] ${done || skipped ? "line-through" : ""}`}>
+                        {et.acao}{et.hormonio ? <span className="text-ink-3"> · {et.hormonio}</span> : null}
+                      </span>
+                      <span className="flex shrink-0 gap-1">
+                        {detalhe && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, et.status)}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--cafe)] hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            salvar detalhes
+                          </button>
+                        )}
+                        {et.status !== "CONCLUIDA" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "CONCLUIDA")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--cafe)] hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            feita
+                          </button>
+                        )}
+                        {et.status !== "PULADA" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "PULADA")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs text-ink-2 hover:bg-[color:var(--rule-soft)] disabled:opacity-50">
+                            pular
+                          </button>
+                        )}
+                        {et.status !== "PENDENTE" && (
+                          <button type="button" disabled={busy} onClick={() => marcar(et.execucaoId, "PENDENTE")}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-0.5 text-xs text-ink-3 hover:underline disabled:opacity-50">
+                            reabrir
+                          </button>
+                        )}
+                      </span>
+                      {et.execucaoId != null && (
+                        <div className="ml-11 grid w-[calc(100%-2.75rem)] grid-cols-1 gap-1.5 border-l border-[color:var(--rule-soft)] pl-2 sm:grid-cols-[1fr_8rem_2fr]">
+                          <input
+                            aria-label={`Produto da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.produto ?? et.produto ?? ""}
+                            onChange={(e) => editarDetalhe(et, "produto", e.target.value)}
+                            placeholder="produto"
+                          />
+                          <input
+                            aria-label={`Dose da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.dose ?? et.dose ?? ""}
+                            onChange={(e) => editarDetalhe(et, "dose", e.target.value)}
+                            placeholder="dose"
+                          />
+                          <input
+                            aria-label={`Observação da etapa ${et.rotulo}`}
+                            className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                            value={detalhe?.observacao ?? et.observacao ?? ""}
+                            onChange={(e) => editarDetalhe(et, "observacao", e.target.value)}
+                            placeholder="observação"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             </div>
           ))}

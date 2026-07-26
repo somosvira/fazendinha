@@ -4,23 +4,23 @@
 // administração cita ("~35% de concepção") é o percentual de coberturas que viram
 // prenhez confirmada no diagnóstico de gestação.
 //
-// Método de cobertura: INSEMINACAO → "IA"; TRANSFERENCIA_EMBRIAO → "TE".
+// Método de cobertura: INSEMINACAO → "IA"; COBERTURA → "MN"; TRANSFERENCIA_EMBRIAO → "TE".
 // "Prenhe" = diagnóstico com resultado "positivo" (é assim que o campo `resultado`
 // é gravado hoje — enum minúsculo "positivo"/"negativo" em eventos.schemas.ts;
 // aqui comparamos case-insensitive por segurança).
 //
-// Atribuição: um DIAGNOSTICO é atribuído à cobertura (IA ou TE) mais recente ANTES
+// Atribuição: um DIAGNOSTICO é atribuído à cobertura (IA, MN ou TE) mais recente ANTES
 // dele, no MESMO animal — por isso o input precisa de `animalId` pra agrupar. Um
 // diagnóstico positivo resolve a cobertura pendente (evita contagem dupla em
 // reconfirmações); diagnóstico sem cobertura anterior é ignorado.
 //
 // taxa = prenhes / coberturas, ou `null` quando não há coberturas (nunca NaN).
 
-export type MetodoCobertura = "IA" | "TE";
+export type MetodoCobertura = "IA" | "MN" | "TE";
 
 export interface EvtConcepcao {
   animalId: number | string;
-  tipo: "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | string;
+  tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | string;
   data: string; // ISO YYYY-MM-DD
   resultado?: string | null;
 }
@@ -33,13 +33,13 @@ export interface TaxaConcepcaoMetodo {
 }
 
 const metodoDaCobertura = (tipo: string): MetodoCobertura | null =>
-  tipo === "INSEMINACAO" ? "IA" : tipo === "TRANSFERENCIA_EMBRIAO" ? "TE" : null;
+  tipo === "INSEMINACAO" ? "IA" : tipo === "COBERTURA" ? "MN" : tipo === "TRANSFERENCIA_EMBRIAO" ? "TE" : null;
 
 const ehPositivo = (r?: string | null): boolean => (r ?? "").trim().toLowerCase() === "positivo";
 
 export function calcularTaxaConcepcao(eventos: EvtConcepcao[]): TaxaConcepcaoMetodo[] {
-  const coberturas: Record<MetodoCobertura, number> = { IA: 0, TE: 0 };
-  const prenhes: Record<MetodoCobertura, number> = { IA: 0, TE: 0 };
+  const coberturas: Record<MetodoCobertura, number> = { IA: 0, MN: 0, TE: 0 };
+  const prenhes: Record<MetodoCobertura, number> = { IA: 0, MN: 0, TE: 0 };
 
   // agrupa por animal e ordena por data (estável) — a atribuição do diagnóstico
   // depende da sequência cronológica de cada fêmea.
@@ -78,5 +78,5 @@ export function calcularTaxaConcepcao(eventos: EvtConcepcao[]): TaxaConcepcaoMet
     taxa: coberturas[metodo] > 0 ? prenhes[metodo] / coberturas[metodo] : null,
   });
 
-  return [linha("IA"), linha("TE")];
+  return [linha("IA"), linha("MN"), linha("TE")];
 }

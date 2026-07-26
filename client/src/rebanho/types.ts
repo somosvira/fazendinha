@@ -53,8 +53,8 @@ export interface ResumoAnimal {
   iepProjetado?: number;        // dias
   diasGestacao?: number;
   previsaoSecagem?: string;     // ISO
-  ultimaInseminacao?: string;   // ISO
-  protocoloAtual?: string;
+  ultimaInseminacao?: string | null;   // ISO; cobertura mais recente, IA ou TE
+  protocoloAtual?: string | null;
   // Enriquecimento feito pelas tabs a partir do Animal (não vem no read-model
   // do servidor) — usado pelas work-lists que dependem de idade/peso/categoria,
   // como "A desmamar".

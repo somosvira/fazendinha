@@ -14,13 +14,17 @@ import { HOJE } from "../HOJE";
 import { insightDoRebanho } from "../mock";
 import type { Animal, ResumoAnimal } from "../types";
 
-// KPI "Taxa de concepção": IA × TE. Baseline citado pela administração ~35%.
-const METODO_LABEL: Record<TaxaConcepcaoMetodo["metodo"], string> = { IA: "Inseminação (IA)", TE: "Transferência de embrião (TE)" };
+// KPI "Taxa de concepção": IA × monta natural × TE. Baseline citado pela administração ~35%.
+const METODO_LABEL: Record<TaxaConcepcaoMetodo["metodo"], string> = {
+  IA: "Inseminação (IA)",
+  MN: "Monta natural",
+  TE: "Transferência de embrião (TE)",
+};
 function TaxaConcepcaoStrip() {
   const { data, loading } = useTaxaConcepcao();
   if (loading) return null;
   return (
-    <RebKpiStrip cols={2} className="mb-[18px]">
+    <RebKpiStrip cols={3} className="mb-[18px]">
       {data.map((m) => {
         const pct = m.taxa == null ? null : Math.round(m.taxa * 100);
         const tom = pct == null ? undefined : pct >= 35 ? "ok" : pct >= 25 ? undefined : "up";

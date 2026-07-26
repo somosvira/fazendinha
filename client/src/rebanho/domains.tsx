@@ -21,9 +21,9 @@ export const reproducao: DomainConfig = {
   titulo: "Reprodução",
   eyebrow: "Rebanho · Sítio São Francisco",
   kpis: (rs) => {
-    const n = rs.length || 1;
     const prenhes = rs.filter((r) => r.statusReprodutivo === "PRENHE").length;
     const vazias = rs.filter((r) => r.statusReprodutivo === "VAZIA").length;
+    const elegiveisPrenhez = prenhes + vazias;
     const servidas = rs.filter((r) => r.statusReprodutivo === "INSEMINADA").length;
     const aptas = rs.filter((r) => r.statusReprodutivo === "PEV").length;
     const ieps = rs.map((r) => r.iepProjetado).filter((x): x is number => typeof x === "number");
@@ -33,7 +33,7 @@ export const reproducao: DomainConfig = {
       { lab: "Servidas", val: String(servidas), d: "aguardando DG" },
       { lab: "Gestantes", val: String(prenhes), d: "prenhes" },
       { lab: "Vazias", val: String(vazias), tom: "up" },
-      { lab: "Taxa prenhez", val: String(Math.round((prenhes / n) * 100)), sufixo: "%" },
+      { lab: "Taxa prenhez", val: elegiveisPrenhez ? String(Math.round((prenhes / elegiveisPrenhez) * 100)) : "—", sufixo: elegiveisPrenhez ? "%" : undefined },
       { lab: "IEP médio", val: iepMedio ? String(iepMedio) : "—", sufixo: iepMedio ? "d" : undefined },
     ];
   },

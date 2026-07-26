@@ -2,7 +2,18 @@ export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type TabRebanho = "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
 export type SeveridadeAlerta = "alta" | "media" | "baixa";
 export type StatusReprodutivoDashboard = "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
-export type ChaveWorklistRebanho = "secagem-atrasada" | "vazia-pos-pev" | "ccs-alta" | "dg-pendente" | "parto-proximo" | "carencia" | "producao-caindo" | "vacina-pendente" | "precisa-de-exame";
+export const CHAVES_WORKLIST_REBANHO = [
+  "secagem-atrasada",
+  "vazia-pos-pev",
+  "ccs-alta",
+  "dg-pendente",
+  "parto-proximo",
+  "carencia",
+  "producao-caindo",
+  "vacina-pendente",
+  "precisa-de-exame",
+] as const;
+export type ChaveWorklistRebanho = (typeof CHAVES_WORKLIST_REBANHO)[number];
 export type TipoAcaoWorklist = "SECAGEM" | "INSEMINACAO" | "EXAME" | "DIAGNOSTICO" | "PARTO" | "EXAME_GINECOLOGICO";
 
 // Entrada já resolvida de carência de leite ativa (o carenciaAtiva roda no I/O, onde há Date).
@@ -48,7 +59,7 @@ export interface ItemWorklistDTO {
   diasGestacao: number | null;
   previsaoSecagem: string | null;
   ultimaCoberturaData: string | null;
-  ultimaCoberturaTipo: "INSEMINACAO" | "TRANSFERENCIA_EMBRIAO" | null;
+  ultimaCoberturaTipo: "INSEMINACAO" | "COBERTURA" | "TRANSFERENCIA_EMBRIAO" | null;
 }
 
 export interface WorklistRebanhoDTO {

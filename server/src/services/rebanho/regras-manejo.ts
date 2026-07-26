@@ -10,7 +10,9 @@ import type {
 import { LIMIAR_QUEDA_PCT } from "./producao.recompute.js";
 import { precisaExame } from "./worklist-exame.calc.js";
 
-export const ESTADOS_ELEGIVEIS_PRENHEZ = new Set(["PEV", "VAZIA", "INSEMINADA", "PRENHE"]);
+// Denominador da taxa de prenhez: prenhes + vazias aptas. PEV ainda está em
+// espera voluntária e INSEMINADA aguarda DG, portanto nenhuma das duas entra.
+export const ESTADOS_ELEGIVEIS_PRENHEZ = new Set(["VAZIA", "PRENHE"]);
 export const ESPERA_DG_DIAS = 28;
 
 export interface LimiaresManejo {
@@ -56,7 +58,7 @@ function compararAnimal(a: AnimalDashboardIn, b: AnimalDashboardIn): number {
 }
 
 function contextoEventos(eventos: EventoConcepcaoDashboardIn[]) {
-  const coberturas = eventos.filter((e) => e.tipo === "INSEMINACAO" || e.tipo === "TRANSFERENCIA_EMBRIAO");
+  const coberturas = eventos.filter((e) => e.tipo === "INSEMINACAO" || e.tipo === "COBERTURA" || e.tipo === "TRANSFERENCIA_EMBRIAO");
   const ultimaCobertura = coberturas.sort((a, b) => b.data.localeCompare(a.data) || b.tipo.localeCompare(a.tipo))[0] ?? null;
   const dgPosterior = ultimaCobertura != null && eventos.some((e) => e.tipo === "DIAGNOSTICO" && e.data > ultimaCobertura.data);
   return { ultimaCobertura, dgPosterior };
@@ -97,7 +99,7 @@ export function construirWorklists(
       diasGestacao: animal.resumo?.diasGestacao ?? null,
       previsaoSecagem: animal.resumo?.previsaoSecagem ?? null,
       ultimaCoberturaData: ultimaCobertura?.data ?? null,
-      ultimaCoberturaTipo: (ultimaCobertura?.tipo as "INSEMINACAO" | "TRANSFERENCIA_EMBRIAO" | undefined) ?? null,
+      ultimaCoberturaTipo: (ultimaCobertura?.tipo as "INSEMINACAO" | "COBERTURA" | "TRANSFERENCIA_EMBRIAO" | undefined) ?? null,
     };
   };
 

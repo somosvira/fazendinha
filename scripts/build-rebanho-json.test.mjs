@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
   parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem, parseLactacao,
+  parseProtocoloIatf, parseProtocoloPrincipio, parseProgramacaoIatf, parseProgramacaoAssociacao,
 } from "./build-rebanho-json.mjs";
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
@@ -83,8 +84,9 @@ test("delEStatusLactacao: lactação aberta → del + lactacaoAberta; seca → d
 });
 
 test("parseEvento: IA (tipo 1) → INSEMINACAO com reprodutor", () => {
-  const e = parseEvento("1002~|~1~|~2025-07-31~|~BRUISER~|~~|~~|~~|~~|~");
+  const e = parseEvento("1002~|~1000~|~1~|~2025-07-31~|~BRUISER~|~~|~~|~~|~~|~~|~~|~~|~");
   assert.equal(e.numero, "1002");
+  assert.equal(e.ideagriId, 1000);
   assert.equal(e.tipo, "INSEMINACAO");
   assert.equal(e.data, "2025-07-31");
   assert.equal(e.reprodutor, "BRUISER");
@@ -92,25 +94,82 @@ test("parseEvento: IA (tipo 1) → INSEMINACAO com reprodutor", () => {
 });
 
 test("parseEvento: diagnóstico (tipo 4) P → DIAGNOSTICO positivo + previsão de parto", () => {
-  const e = parseEvento("1002~|~4~|~2025-08-20~|~~|~P~|~2026-05-01~|~~|~~|~");
+  const e = parseEvento("1002~|~1001~|~4~|~2025-08-20~|~~|~~|~~|~~|~P~|~2026-05-01~|~~|~~|~");
   assert.equal(e.tipo, "DIAGNOSTICO");
+  assert.equal(e.ideagriId, 1001);
   assert.equal(e.resultado, "positivo");
   assert.equal(e.dtPartoPrevista, "2026-05-01");
   // N → negativo
-  assert.equal(parseEvento("1002~|~4~|~2025-08-20~|~~|~N~|~~|~~|~~|~").resultado, "negativo");
+  assert.equal(parseEvento("1002~|~1002~|~4~|~2025-08-20~|~~|~~|~~|~~|~N~|~~|~~|~~|~").resultado, "negativo");
 });
 
-test("parseEvento: cobertura (2) e TE (3) → INSEMINACAO com observação", () => {
-  assert.match(parseEvento("1~|~2~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /Cobertura/);
-  assert.match(parseEvento("1~|~3~|~2025-01-01~|~~|~~|~~|~~|~~|~").observacao, /embri/i);
+test("parseEvento: cobertura (2) → COBERTURA e TE (3) → TRANSFERENCIA_EMBRIAO com doadora/embrião", () => {
+  const mn = parseEvento("1~|~1003~|~2~|~2025-01-01~|~Touro 1~|~~|~~|~~|~~|~~|~~|~~|~");
+  assert.equal(mn.tipo, "COBERTURA");
+  assert.equal(mn.reprodutor, "Touro 1");
+
+  const te = parseEvento("1~|~1004~|~3~|~2025-01-01~|~Touro 2~|~200~|~Doadora A~|~500~|~~|~~|~~|~~|~");
+  assert.equal(te.tipo, "TRANSFERENCIA_EMBRIAO");
+  assert.equal(te.reprodutor, "Touro 2");
+  assert.equal(te.doadoraNumero, "200");
+  assert.equal(te.doadoraNome, "Doadora A");
+  assert.equal(te.ideagriEmbriaoId, 500);
 });
 
-test("parseEvento: parto (tipo 7) → PARTO com cria", () => {
-  const e = parseEvento("1027~|~7~|~2023-09-12~|~~|~~|~~|~1~|~1~|~M");
+test("parseEvento: desconhecido (9) ou falta de ideagriId → null (faha em main)", () => {
+  assert.equal(parseEvento("1~|~1005~|~9~|~2025-01-01~|~~|~~|~~|~~|~~|~~|~~|~~|~").tipo, null);
+  assert.equal(parseEvento("1~|~~|~1~|~2025-01-01~|~~|~~|~~|~~|~~|~~|~~|~~|~").ideagriId, null);
+});
+
+test("parseEvento: parto (tipo 7) → PARTO com cria e auxílio", () => {
+  const e = parseEvento("1027~|~1006~|~7~|~2023-09-12~|~~|~~|~~|~~|~~|~~|~2~|~1~|~1~|~M");
   assert.equal(e.tipo, "PARTO");
-  assert.equal(e.tipoParto, "1");
+  assert.equal(e.ideagriId, 1006);
+  assert.equal(e.tipoParto, "2"); // Auxiliado
+  assert.equal(e.auxilioParto, "1"); // Bezerro puxado
   assert.equal(e.numCrias, 1);
   assert.equal(e.sexoCria, "M");
+});
+
+test("parseProtocoloIatf preserva identidade/nome/finalidade e rejeita finalidade desconhecida", () => {
+  assert.deepEqual(parseProtocoloIatf("10~|~IATF 11 dias~|~IATF"), {
+    ideagriId: 10,
+    nome: "IATF 11 dias",
+    finalidade: "IATF",
+  });
+  assert.equal(parseProtocoloIatf("11~|~X~|~FIV"), null);
+  assert.equal(parseProtocoloIatf("~|~Sem id~|~IATF"), null);
+});
+
+test("parseProtocoloPrincipio preserva dia/princípio/produto/dose/uso", () => {
+  assert.deepEqual(parseProtocoloPrincipio("10~|~7~|~PGF2a~|~Ciosin~|~2 ml~|~luteólise"), {
+    protocoloIdeagriId: 10,
+    dia: 7,
+    principio: "PGF2a",
+    produto: "Ciosin",
+    dose: "2 ml",
+    uso: "luteólise",
+  });
+});
+
+test("parseProgramacaoIatf preserva identidade/protocolo/data", () => {
+  assert.deepEqual(parseProgramacaoIatf("700~|~Novilhas julho~|~2026-07-06~|~10"), {
+    ideagriId: 700,
+    nome: "Novilhas julho",
+    dataInicio: "2026-07-06",
+    protocoloIdeagriId: 10,
+  });
+});
+
+test("parseProgramacaoAssociacao preserva animal/programação/CIDR/estímulo/perda", () => {
+  assert.deepEqual(parseProgramacaoAssociacao("1234~|~500~|~700~|~1~|~eCG~|~0"), {
+    numero: "1234",
+    ideagriId: 500,
+    programacaoIdeagriId: 700,
+    usoCidr: true,
+    estimulo: "eCG",
+    perdaImplante: false,
+  });
 });
 
 test("parseDoenca → OCORRENCIA com doença/dtFim/dias", () => {

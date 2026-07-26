@@ -6,12 +6,10 @@ import { resumos } from "../mock/animais";
 const HOJE = "2026-06-16";
 
 describe("aInseminar", () => {
-  it("inclui PEV e VAZIA (aptas a inseminar)", () => {
-    const ids = aInseminar(resumos).map((r) => r.animalId).sort();
-    expect(ids).toEqual(["0877", "0942", "1188", "1305", "1421"]);
-  });
-  it("não inclui prenhes", () => {
-    expect(aInseminar(resumos).some((r) => r.statusReprodutivo === "PRENHE")).toBe(false);
+  it("inclui somente VAZIA; PEV ainda está na espera voluntária", () => {
+    const lista = aInseminar(resumos);
+    expect(lista.map((r) => r.animalId).sort()).toEqual(["0942", "1305", "1421"]);
+    expect(lista.every((r) => r.statusReprodutivo === "VAZIA")).toBe(true);
   });
 });
 

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { criarProgramacaoSchema } from "../../services/rebanho/iatf-lote.schemas.js";
+import { criarProgramacaoSchema, executarEtapaLoteSchema } from "../../services/rebanho/iatf-lote.schemas.js";
 import * as svc from "../../services/rebanho/iatf-lote.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
@@ -23,10 +23,25 @@ export const iatfLoteRouter = new Hono()
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .get("/rebanho/iatf/programacoes/:id", async (c) => {
-    try { return c.json(await svc.detalheProgramacao(Number(c.req.param("id")))); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoLeitura(c);
+      return c.json(await svc.detalheProgramacao(Number(c.req.param("id")), propriedadeId));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
+  .patch("/rebanho/iatf/programacoes/:id/execucoes", zValidator("json", executarEtapaLoteSchema), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await svc.executarEtapaLote(
+        Number(c.req.param("id")),
+        c.req.valid("json"),
+        propriedadeId,
+      ));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/iatf/programacoes/:id", async (c) => {
-    try { await svc.excluirProgramacao(Number(c.req.param("id"))); return c.json({ ok: true }); }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirProgramacao(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   });

@@ -19,6 +19,8 @@ export function toResumoDTO(r: any | null | undefined): ResumoDTO | null {
     iepProjetado: r.iepProjetado ?? null,
     diasGestacao: r.diasGestacao ?? null,
     previsaoSecagem: iso(r.previsaoSecagem),
+    ultimaInseminacao: iso(r.ultimaInseminacao),
+    protocoloAtual: r.protocoloAtual ?? null,
   };
 }
 

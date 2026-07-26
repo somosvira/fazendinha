@@ -15,7 +15,10 @@ export interface RecomendacaoAcasalamentoDTO {
 
 // Recomenda touros do catálogo para uma vaca, por mérito genético, evitando consanguinidade.
 export async function recomendarParaAnimal(animalId: number, propriedadeId: number | null): Promise<RecomendacaoAcasalamentoDTO> {
-  const vaca = await prisma.animal.findUnique({ where: { id: animalId }, select: { id: true, paiNome: true } });
+  const vaca = await prisma.animal.findFirst({
+    where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) },
+    select: { id: true, paiNome: true },
+  });
   if (!vaca) throw new AcasalamentoError("NAO_ENCONTRADO", "animal não encontrado");
 
   const rows = await prisma.reprodutor.findMany({

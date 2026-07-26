@@ -10,35 +10,34 @@
 
 > **Fora de escopo permanente** (não entram aqui): seção 11 do catálogo (encanamento interno do IDEagri — backup, exportadores, consulta SQL, integrações de colar/parlor) e o **financeiro** (nossa fonte é o Excel real do BPO, não o IDEagri).
 
-Atualizado em **2026-07-20** (pós-PRs #170–#192 — prioridade **alta**, **média** e as **5 pequenas da baixa** fechadas; só restam as **2 grandes** da baixa: construtor de relatórios e consulta ABCZ).
+Atualizado em **2026-07-24** após auditoria direta do `DADOS777.FDB`. Os PRs #170–#192 entregaram boas fundações, mas **não** equivalem a paridade funcional integral: import, semântica avançada, IATF/TETF, TE/FIV, genética e parto ainda têm lacunas. A fonte e o gate de aceite estão em [`reproducao-paridade-ideagri.md`](./reproducao-paridade-ideagri.md).
 
 ---
 
-## 🔥 Prioridade alta — tem dado real na 777 para validar já
+## 🔥 Prioridade alta — paridade reprodutiva validável na 777
 
-**Todas entregues (PRs #170–#174) — ver "Já entregue" abaixo.** As próximas fatias saem da lista de prioridade média.
+- [~] **Fidelidade do histórico IA / cobrição / TE** (`REPRODUCAO`: **832 / 61 / 146**) — o transformador atual colapsa os três em `INSEMINACAO`. Separar fatos, manter id de origem e reconciliar por animal/data.
+- [~] **Diagnóstico reprodutivo** (**1843**) — o evento básico existe; completar campos/métodos e validar efeitos contra a tela oficial.
+- [~] **Parto** (**352**) — completar 7 tipos, 4 auxílios, aborto/natimorto, criação/vínculo das crias e transição de categoria/lactação.
+- [~] **Exames ginecológicos** (**248 + 44 resultados**) — evento/worklist existem; importar histórico e dicionário oficial sem reduzir 44 resultados a 9.
+- [~] **Programação IATF/TETF** (**74 + 466**) — **operação entregue** (execução individual+coletiva, finalidade TETF, CIDR/estímulo/perda, produto/dose por etapa, evento terminal idempotente IA/TE, adaptador de import idempotente por `ideagriId`). Falta só **reconciliar 5/31/74/466 na máquina com o `DADOS777.FDB`** — ver [`../reproducao-teste-na-maquina-ideagri.md`](../reproducao-teste-na-maquina-ideagri.md).
+- [ ] **Aptidão e aptidão automática de novilhas** — duas telas oficiais sem equivalente histórico/operacional.
+- [ ] **Coleta FIV/TE** (**7**) — doadora, reprodutor, técnico, oócitos e embriões por qualidade/estágio.
+- [ ] **Receber coletas / dados IATF** (`DADOSCOLETA`: **4**) — reproduzir sincronização/mobile ou obter N/A assinado.
 
-- [x] **Exames ginecológicos** (Reprodução · **248**) — evento `EXAME_GINECOLOGICO` + dicionário de achados + worklist "precisa de exame". **PR #170** (+ worklist exposta no #171).
-- [x] **Programação IATF/TETF por lote/data** (Reprodução · **67 + 418**) — aplica o protocolo do catálogo (#163) a um lote inteiro com calendário D0/D7/D9/D11. **PR #171**.
-- [x] **Movimentação entre grupos/setores como fato histórico** (Rebanho · **1504 + 289**) — `MovimentacaoAnimal` ("onde a vaca esteve") no cockpit. **PR #172**.
-- [x] **Análise de leite — tela dedicada** (Produção/Qualidade · **467**) — tendência de CCS, distribuição por faixa, piores CCS. **PR #173**.
-- [x] **Princípio ativo (composição de medicamento)** (Estoque/Sanidade · **665 / 12445**) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico. **PR #174**.
+As entregas de movimentação, análise de leite e princípio ativo continuam válidas em seus domínios, mas não fecham os gaps acima.
 
-## 🟨 Prioridade média — TODAS ENTREGUES (PRs #176–#186)
+## 🟨 Prioridade média — genética, insumos e operação em escala
 
-**Bloco de prioridade média zerado (2026-07-20).** As próximas fatias saem da prioridade baixa.
+- [~] **Biblioteca de reprodutores + central de sêmen** (**67 + 25**) — CRUD reduzido existe; falta import e vínculo estruturado com os eventos.
+- [ ] **Tipo/associação/estoque de sêmen** (**3 tipos**) — doses, lotes, localização e baixa atômica na IA.
+- [ ] **Catálogos genéticos completos** (**271 indicadores + 20 marcadores + 15 caseínas**) — importar provas, valores e pedigree.
+- [~] **Recomendação/medida/medidas combinadas de acasalamento** — ranking simples existe; faltam fórmulas, pedigree/endogamia e plano equivalente.
+- [ ] **Pool de doadoras** — tela e model faltam; validar com fixture porque a 777 está vazia.
+- [~] **Agenda de manejos** — mostra vacinas e próxima etapa IATF; falta execução real, exames, TE/FIV e demais manejos futuros.
+- [ ] **Lançamento coletivo reprodutivo** — bulk atual altera grupo/setor, não registra IA/TE/DG/exame/secagem em lote.
 
-- [x] **Agenda de eventos / manejos futuros** (Sanidade/Repro) — calendário unificado (vacinas + próximas etapas IATF de lote), atrasados destacados. **PR #183**.
-- [x] **Protocolo sanitário / aplicação por animal** (Sanidade) — catálogo D0/D+n + aplicação com agenda derivada (espelha IATF). **PR #184**.
-- [x] **Biblioteca de reprodutores + central de sêmen + índices genéticos** (Genética · **65 + 25 + 271**) — `Reprodutor` + `CentralSemen` com PTAs. **PR #185**.
-- [x] **Recomendação/medida de acasalamento** (Genética) — motor de cruzamento dirigido (mérito genético + evita consanguinidade). **PR #186**.
-- [x] **Grau de cruzamento** (Genética · 32) — grau de sangue exibido no cockpit + composição do rebanho por grau. **PR #177**.
-- [x] **Alteração coletiva de animais (bulk)** (Rebanho) — mover N animais de grupo/setor de uma vez (grava movimentações). **PR #180**.
-- [x] **Seleção/filtro de animais salvo** (Rebanho · 52) — `FiltroAnimal` (status/grupo/setor/categoria/busca) + aplicar. **PR #181**.
-- [x] **Desmama/desaleitamento como evento** (Rebanho) — evento `DESMAME` na timeline (peso opcional). **PR #178**.
-- [x] **Escore de teto** (Sanidade) — `ExameQuarto.escoreTeto` (1–4, hiperqueratose) no mapa de úbere. **PR #179**.
-- [x] **Indução de lactação** (Produção) — `LACTACAO.INDUZIDA` exposta + toggle. **PR #176**.
-- [x] **Tanque + análise de tanque** (Produção/Qualidade) — `Tanque` + `AnaliseTanque` (CCS/CBT/tendência). **PR #182**.
+As demais entregas dos PRs #176–#186 permanecem feitas nos seus respectivos domínios.
 
 ## 🧊 Prioridade baixa — grande, sem dado, ou diferencial futuro
 
@@ -58,17 +57,17 @@ Atualizado em **2026-07-20** (pós-PRs #170–#192 — prioridade **alta**, **m�
 
 ---
 
-## Já entregue (paridade alcançada) — referência
+## Já entregue como fundação (não implica paridade integral) — referência
 
 Marcos recentes que fecharam gaps do IDEagri (ver catálogo para a lista completa de ✅):
 
-- [x] **Exames ginecológicos** (#170) — evento `EXAME_GINECOLOGICO` + achados + worklist "precisa de exame" (exposta no #171).
-- [x] **Programação IATF por lote/data** (#171) — `ProgramacaoIATFLote` aplica o protocolo (#163) a um lote com calendário D0/D7/D9/D11.
+- [~] **Exames ginecológicos — fundação** (#170) — evento `EXAME_GINECOLOGICO` + achados + worklist "precisa de exame" (exposta no #171).
+- [~] **Programação IATF por lote/data — fundação** (#171) — `ProgramacaoIATFLote` aplica o protocolo (#163) a um lote com calendário D0/D7/D9/D11.
 - [x] **Movimentação lote/setor como fato histórico** (#172) — `MovimentacaoAnimal` no cockpit ("onde a vaca esteve").
 - [x] **Análise de leite (qualidade)** (#173) — tendência de CCS, distribuição por faixa e piores CCS na aba Produção.
 - [x] **Princípio ativo + composição de medicamento** (#174) — `PrincipioAtivo` + `ProdutoPrincipioAtivo`; base carência/antibiótico.
-- [x] **Prioridade média completa (#176–#186):** indução de lactação (#176), grau de cruzamento (#177), desmame como evento (#178), escore de teto (#179), alteração coletiva/bulk (#180), filtro de animais salvo (#181), tanque + análise de tanque (#182), agenda de manejos (#183), protocolo sanitário (#184), biblioteca de reprodutores (#185), recomendação de acasalamento (#186).
-- [x] **5 pequenas da prioridade baixa (#188–#192):** rebanho quantitativo (#188), composição de ração formulada (#189), lote/validade + locais de armazenamento (#190), clima/registro de chuva (#191), ajuste de U.A. de referência (#192). Restam só as 2 grandes (construtor de relatórios, ABCZ), fora de escopo de propósito.
+- [~] **Fundações da prioridade média (#176–#186):** indução de lactação (#176), grau de cruzamento (#177), desmame como evento (#178), escore de teto (#179), alteração coletiva/bulk (#180), filtro de animais salvo (#181), tanque + análise de tanque (#182), agenda de manejos (#183), protocolo sanitário (#184), biblioteca de reprodutores (#185), recomendação de acasalamento (#186).
+- [x] **5 pequenas da prioridade baixa (#188–#192):** rebanho quantitativo (#188), composição de ração formulada (#189), lote/validade + locais de armazenamento (#190), clima/registro de chuva (#191), ajuste de U.A. de referência (#192). A auditoria reprodutiva de 2026-07-24 reabriu gaps específicos listados acima.
 - [x] **CMT / mastite por quarto** (#168) — `ExameQuarto` por teta, mapa de úbere, quarto crônico → sugestão.
 - [x] **Histórico de lactações** (#146–147) + **pico/persistência** (#158) + **curva de lactação** (#154).
 - [x] **Correção 305 oficial** (#151–152).

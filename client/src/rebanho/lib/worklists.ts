@@ -1,9 +1,9 @@
 import type { ResumoAnimal } from "../types";
 import { diffDias } from "./derive";
 
-// Aptas a inseminar: fora do período prenhe/inseminada (PEV ou VAZIA).
+// A inseminar: somente VAZIA. PEV é a janela voluntária em que o manejo ainda espera.
 export function aInseminar(resumos: ResumoAnimal[]): ResumoAnimal[] {
-  return resumos.filter((r) => r.statusReprodutivo === "PEV" || r.statusReprodutivo === "VAZIA");
+  return resumos.filter((r) => r.statusReprodutivo === "VAZIA");
 }
 
 // DG pendente: inseminadas aguardando diagnóstico.

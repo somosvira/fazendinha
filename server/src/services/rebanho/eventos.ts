@@ -24,6 +24,19 @@ const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : nu
 // Cliente de transação Prisma (mesma superfície do PrismaClient p/ os models usados aqui).
 type Tx = Prisma.TransactionClient;
 
+// Filtro de fato-filho de Animal: herda o escopo via animal.propriedadeId.
+function viaAnimal(propriedadeId: number | null) {
+  return propriedadeId != null ? { animal: { propriedadeId } } : {};
+}
+
+// Animal no sítio ativo (consolidado = qualquer).
+function animalNoEscopo(animalId: number, propriedadeId: number | null) {
+  return {
+    id: animalId,
+    ...(propriedadeId != null ? { propriedadeId } : {}),
+  };
+}
+
 // Recomputa o read-model do animal SEM destruir o histórico enriquecido de lactações.
 // A `mutacao` (evento recém-criado/excluído) guia quais ciclos criar/encerrar/reabrir;
 // os demais campos (producaoTotal, producao305, tipoAleitamento, induzida, duracaoDias)
@@ -32,7 +45,7 @@ type Tx = Prisma.TransactionClient;
 export async function recomputarAnimal(tx: Tx, animalId: number, mutacao: MutacaoEvento): Promise<void> {
   const animal = await tx.animal.findUnique({ where: { id: animalId }, include: { eventosReprodutivos: true } });
   if (!animal) return;
-  const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, motivoSecagem: e.motivoSecagem }));
+  const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, protocolo: e.protocolo, tipoParto: e.tipoParto, motivoSecagem: e.motivoSecagem }));
 
   // Sincronização pontual das lactações persistidas (não destrutiva).
   const persistidas: LactacaoEstrutural[] = (await tx.lactacao.findMany({ where: { animalId }, select: { id: true, numero: true, dtInicio: true, dtFim: true, motivoSecagem: true } }))
@@ -58,30 +71,75 @@ export async function recomputarAnimal(tx: Tx, animalId: number, mutacao: Mutaca
   });
   await tx.resumoAnimal.upsert({
     where: { animalId },
-    create: { animalId, statusReprodutivo: r.statusReprodutivo, del: r.del, ordemLactacao: r.ordemLactacao, ultimoDgData: d(r.ultimoDgData ?? undefined), ultimoDgResultado: r.ultimoDgResultado, diasGestacao: r.diasGestacao, iepProjetado: r.iepProjetado, previsaoSecagem: d(r.previsaoSecagem ?? undefined) },
-    update: { statusReprodutivo: r.statusReprodutivo, del: r.del, ordemLactacao: r.ordemLactacao, ultimoDgData: d(r.ultimoDgData ?? undefined) ?? null, ultimoDgResultado: r.ultimoDgResultado, diasGestacao: r.diasGestacao, iepProjetado: r.iepProjetado, previsaoSecagem: d(r.previsaoSecagem ?? undefined) ?? null },
+    create: {
+      animalId,
+      statusReprodutivo: r.statusReprodutivo,
+      del: r.del,
+      ordemLactacao: r.ordemLactacao,
+      ultimoDgData: d(r.ultimoDgData ?? undefined),
+      ultimoDgResultado: r.ultimoDgResultado,
+      diasGestacao: r.diasGestacao,
+      iepProjetado: r.iepProjetado,
+      previsaoSecagem: d(r.previsaoSecagem ?? undefined),
+      ultimaInseminacao: d(r.ultimaInseminacao ?? undefined),
+      protocoloAtual: r.protocoloAtual,
+    },
+    update: {
+      statusReprodutivo: r.statusReprodutivo,
+      del: r.del,
+      ordemLactacao: r.ordemLactacao,
+      ultimoDgData: d(r.ultimoDgData ?? undefined) ?? null,
+      ultimoDgResultado: r.ultimoDgResultado,
+      diasGestacao: r.diasGestacao,
+      iepProjetado: r.iepProjetado,
+      previsaoSecagem: d(r.previsaoSecagem ?? undefined) ?? null,
+      ultimaInseminacao: d(r.ultimaInseminacao ?? undefined) ?? null,
+      protocoloAtual: r.protocoloAtual,
+    },
   });
 }
 
-// KPI de reprodução: taxa de concepção por método (IA × TE) em todo o rebanho.
+// KPI de reprodução: taxa de concepção por método (IA × TE) no sítio (ou consolidado).
 // Lê os eventos e delega ao cálculo puro (que pareia diagnóstico → cobertura).
-export async function taxaConcepcaoRebanho(): Promise<TaxaConcepcaoMetodo[]> {
+export async function taxaConcepcaoRebanho(propriedadeId: number | null = null): Promise<TaxaConcepcaoMetodo[]> {
   const evs = await prisma.eventoReprodutivo.findMany({
-    where: { tipo: { in: ["INSEMINACAO", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO"] } },
+    where: {
+      tipo: { in: ["INSEMINACAO", "COBERTURA", "TRANSFERENCIA_EMBRIAO", "DIAGNOSTICO"] },
+      ...viaAnimal(propriedadeId),
+    },
     select: { animalId: true, tipo: true, data: true, resultado: true },
   });
   return calcularTaxaConcepcao(evs.map((e) => ({ animalId: e.animalId, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado })));
 }
 
-export async function listarEventos(animalId: number): Promise<EventoTimelineDTO[]> {
+export async function listarEventos(animalId: number, propriedadeId: number | null = null): Promise<EventoTimelineDTO[]> {
+  const animal = await prisma.animal.findFirst({
+    where: animalNoEscopo(animalId, propriedadeId),
+    select: { id: true },
+  });
+  if (!animal) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
   const evs = await prisma.eventoReprodutivo.findMany({ where: { animalId }, orderBy: { data: "desc" } });
   return evs.map(toTimeline);
 }
 
-export async function registrarEvento(animalId: number, input: CriarEventoInput): Promise<EventoTimelineDTO> {
-  if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
+export async function registrarEvento(
+  animalId: number,
+  input: CriarEventoInput,
+  propriedadeId: number | null = null,
+): Promise<EventoTimelineDTO> {
+  const animal = await prisma.animal.findFirst({
+    where: animalNoEscopo(animalId, propriedadeId),
+    select: { id: true },
+  });
+  if (!animal) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
   const doadoraId = (input as any).doadoraId as number | undefined;
-  if (doadoraId != null && !(await prisma.animal.findUnique({ where: { id: doadoraId } }))) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
+  if (doadoraId != null) {
+    const doadora = await prisma.animal.findFirst({
+      where: animalNoEscopo(doadoraId, propriedadeId),
+      select: { id: true },
+    });
+    if (!doadora) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
+  }
   // Evento + sincronização de lactações + resumo na mesma transação: se a sincronização
   // recusar (conflito estrutural), nada é gravado — o evento não vaza sem read-model coerente.
   return prisma.$transaction(async (tx) => {
@@ -92,23 +150,30 @@ export async function registrarEvento(animalId: number, input: CriarEventoInput)
         // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
         resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
         dtPartoPrevista: d((input as any).dtPartoPrevista),
-        tipoParto: (input as any).tipoParto, numCrias: (input as any).numCrias, sexoCria: (input as any).sexoCria,
+        tipoParto: (input as any).tipoParto, auxilioParto: (input as any).auxilioParto,
+        numCrias: (input as any).numCrias, criasVivas: (input as any).criasVivas, criasNatimortas: (input as any).criasNatimortas,
+        sexoCria: (input as any).sexoCria,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },
     });
     // Uma transferência de embrião marca o papel de receptora do animal que recebe
     // (barriga de aluguel). Flag sticky: fica marcada mesmo que o evento seja excluído.
     if (input.tipo === "TRANSFERENCIA_EMBRIAO") await tx.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
-    await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem } });
+    await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
     return toTimeline(e);
   });
 }
 
-export async function excluirEvento(eventoId: number): Promise<void> {
-  const e = await prisma.eventoReprodutivo.findUnique({ where: { id: eventoId } });
+export async function excluirEvento(eventoId: number, propriedadeId: number | null = null): Promise<void> {
+  const e = await prisma.eventoReprodutivo.findFirst({
+    where: {
+      id: eventoId,
+      ...viaAnimal(propriedadeId),
+    },
+  });
   if (!e) throw new EventoError("NAO_ENCONTRADO", "evento não encontrado");
   await prisma.$transaction(async (tx) => {
     await tx.eventoReprodutivo.delete({ where: { id: eventoId } });
-    await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem } });
+    await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
   });
 }

@@ -38,3 +38,80 @@ export function agendarEtapas(etapas: readonly EtapaProtocolo[], dataInicio: str
     data: somaDias(dataInicio, e.dia),
   }));
 }
+
+export type StatusExecucao = "PENDENTE" | "CONCLUIDA" | "PULADA";
+
+export interface ExecucaoEtapa {
+  id?: number;
+  dia: number;
+  acao: string;
+  hormonio: string | null;
+  ordem: number;
+  dataPlanejada: string;
+  status: StatusExecucao;
+  dataExecucao: string | null;
+  produto?: string | null;
+  dose?: string | null;
+  observacao?: string | null;
+}
+
+export interface EtapaComStatus extends EtapaAgendada {
+  execucaoId: number | null;
+  status: StatusExecucao;
+  dataExecucao: string | null;
+  dataEfetiva: string; // dataExecucao se concluída/pulada, senão data planejada
+  atrasada: boolean; // pendente e dataPlanejada < hoje
+  produto: string | null;
+  dose: string | null;
+  observacao: string | null;
+}
+
+/** Cruza agenda projetada com execuções materializadas (por dia+ordem). */
+export function etapasComStatus(
+  etapas: readonly EtapaProtocolo[],
+  dataInicio: string,
+  execucoes: readonly ExecucaoEtapa[],
+  hoje: string,
+): EtapaComStatus[] {
+  const byKey = new Map(execucoes.map((e) => [`${e.dia}:${e.ordem}`, e]));
+  return agendarEtapas(etapas, dataInicio).map((ag) => {
+    const ex = byKey.get(`${ag.dia}:${ag.ordem}`);
+    const status: StatusExecucao = ex?.status ?? "PENDENTE";
+    const dataExecucao = ex?.dataExecucao ?? null;
+    const dataEfetiva = (status !== "PENDENTE" && dataExecucao) ? dataExecucao : ag.data;
+    return {
+      ...ag,
+      execucaoId: ex?.id ?? null,
+      status,
+      dataExecucao,
+      dataEfetiva,
+      atrasada: status === "PENDENTE" && ag.data < hoje,
+      produto: ex?.produto ?? null,
+      dose: ex?.dose ?? null,
+      observacao: ex?.observacao ?? null,
+    };
+  });
+}
+
+/** Progresso real: concluídas+puladas contam como resolvidas; próxima = primeira pendente. */
+export function progressoExecucao(etapas: readonly EtapaComStatus[]): {
+  total: number;
+  resolvidas: number;
+  concluidas: number;
+  puladas: number;
+  pendentes: number;
+  proxima: EtapaComStatus | null;
+  concluido: boolean;
+} {
+  const resolvidas = etapas.filter((e) => e.status === "CONCLUIDA" || e.status === "PULADA");
+  const pendentes = etapas.filter((e) => e.status === "PENDENTE");
+  return {
+    total: etapas.length,
+    resolvidas: resolvidas.length,
+    concluidas: etapas.filter((e) => e.status === "CONCLUIDA").length,
+    puladas: etapas.filter((e) => e.status === "PULADA").length,
+    pendentes: pendentes.length,
+    proxima: pendentes[0] ?? null,
+    concluido: pendentes.length === 0 && etapas.length > 0,
+  };
+}

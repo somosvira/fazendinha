@@ -1,4 +1,4 @@
-export type TipoEvt = "CIO" | "INSEMINACAO" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
+export type TipoEvt = "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
 export interface EvtRepro {
   id?: number;
   tipo: TipoEvt;
@@ -6,6 +6,8 @@ export interface EvtRepro {
   resultado?: string | null;
   dtPartoPrevista?: string | null;
   reprodutor?: string | null;
+  protocolo?: string | null;
+  tipoParto?: string | null;
   motivoSecagem?: string | null;
 }
 
@@ -32,12 +34,13 @@ export class ConflitoLactacaoError extends Error {
   }
 }
 // IA e TE são ambas "coberturas": geram gestação e definem o status INSEMINADA/PRENHE.
-const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "TRANSFERENCIA_EMBRIAO";
+const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "COBERTURA" || t === "TRANSFERENCIA_EMBRIAO";
 export interface Lact { numero: number; dtInicio: string; dtFim: string | null; }
 export interface ResumoRepro {
   statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
   del: number | null; ordemLactacao: number | null;
   ultimoDgData: string | null; ultimoDgResultado: string | null; ultimaInseminacao: string | null;
+  protocoloAtual: string | null;
   diasGestacao: number | null; iepProjetado: number | null; previsaoSecagem: string | null;
 }
 
@@ -65,6 +68,8 @@ export function planejarSincronizacaoLactacoes(
 
   const { evento } = mutacao;
   if (mutacao.tipo === "CRIACAO" && evento.tipo === "PARTO") {
+    // Aborto (tipoParto=3) encerra gestação sem abrir lactação.
+    if (evento.tipoParto === "3" || evento.tipoParto === "aborto" || evento.tipoParto === "AB") return [];
     if (porInicio.has(evento.data)) return [];
     const maior = Math.max(numPartosEntrada, 0, ...persistidas.map((l) => l.numero));
     return [{ tipo: "CRIAR", numero: maior + 1, dtInicio: evento.data }];
@@ -89,8 +94,15 @@ export function reconstruirLactacoes(eventos: EvtRepro[], numPartosEntrada: numb
   const ps = eventos.filter((e) => e.tipo === "PARTO" || e.tipo === "SECAGEM").slice().sort((a, b) => Date.parse(a.data) - Date.parse(b.data) || (a.id ?? 0) - (b.id ?? 0));
   const lacts: Lact[] = [];
   for (const e of ps) {
-    if (e.tipo === "PARTO") lacts.push({ numero: numPartosEntrada + lacts.length + 1, dtInicio: e.data, dtFim: null });
-    else { const aberta = [...lacts].reverse().find((l) => l.dtFim === null); if (aberta) aberta.dtFim = e.data; }
+    // Aborto não abre lactação.
+    if (e.tipo === "PARTO") {
+      const t = (e.tipoParto ?? "").toLowerCase();
+      if (t === "3" || t === "aborto" || t === "ab") continue;
+      lacts.push({ numero: numPartosEntrada + lacts.length + 1, dtInicio: e.data, dtFim: null });
+    } else {
+      const aberta = [...lacts].reverse().find((l) => l.dtFim === null);
+      if (aberta) aberta.dtFim = e.data;
+    }
   }
   return lacts;
 }
@@ -108,8 +120,9 @@ export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[
   const del = lactAberta ? diff(lactAberta.dtInicio, hoje) : null;
 
   const ultimoDg = ultimo("DIAGNOSTICO");
-  const ultimaIa = ultimo("INSEMINACAO"); // usado só no campo ultimaInseminacao do read-model
-  const ultimaCobertura = [...evs].reverse().find((e) => ehCobertura(e.tipo)) ?? null; // IA ou TE
+  // A tabela de reprodução chama o campo de "última tentativa", portanto a data
+  // canônica é a cobertura mais recente, seja inseminação artificial ou TE.
+  const ultimaCobertura = [...evs].reverse().find((e) => ehCobertura(e.tipo)) ?? null;
   const partoAposDg = !!(ultimoDg && ultimoParto && Date.parse(ultimoParto.data) > Date.parse(ultimoDg.data));
 
   let status: ResumoRepro["statusReprodutivo"];
@@ -134,6 +147,8 @@ export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[
   return {
     statusReprodutivo: status, del, ordemLactacao,
     ultimoDgData: ultimoDg?.data ?? null, ultimoDgResultado: ultimoDg?.resultado ?? null,
-    ultimaInseminacao: ultimaIa?.data ?? null, diasGestacao, iepProjetado, previsaoSecagem,
+    ultimaInseminacao: ultimaCobertura?.data ?? null,
+    protocoloAtual: ultimaCobertura?.protocolo ?? null,
+    diasGestacao, iepProjetado, previsaoSecagem,
   };
 }

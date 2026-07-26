@@ -40,10 +40,9 @@ describe("montarContexto", () => {
     expect(ctx.producaoMediaRebanho).toBe(24);
   });
 
-  it("prenhezPct — gestantes / elegíveis", () => {
-    // elegíveis = PRENHE, VAZIA, INSEMINADA, PEV → Jurema, Cravina, Tulipa, Acácia = 4
-    // 100 * 1 / 4 = 25
-    expect(ctx.prenhezPct).toBe(25);
+  it("prenhezPct — prenhes / (prenhes + vazias aptas)", () => {
+    // PEV está em espera voluntária e INSEMINADA aguarda DG; denominador = Jurema + Cravina.
+    expect(ctx.prenhezPct).toBe(50);
   });
 
   it("ccsAlto — ccs >= 400 ordenado desc", () => {
