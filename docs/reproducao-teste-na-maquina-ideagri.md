@@ -76,5 +76,5 @@ pnpm build
 
 ## Pendências dos próximos blocos (não neste PR)
 
-- **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): plano em [`superpowers/plans/2026-07-26-reproducao-bloco-B-ciclo.md`](superpowers/plans/2026-07-26-reproducao-bloco-B-ciclo.md). Reconciliação de `EXAMEANIMAL` (248) + `RESULTADOEXAMEGINECOLOGICO` (44) também depende do `DADOS777.FDB`.
+- **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): **ENTREGUE** (commits `007633d`→`a9944ee`). Operando com o conjunto-semente de 9 resultados ginecológicos (códigos negativos) até a reextração. **Pendente na máquina:** reconciliar `RESULTADOEXAMEGINECOLOGICO` (44) e `EXAMEANIMAL` (248) a partir do `DADOS777.FDB` — adicionar o contrato `@RESULTGINE@` ao dump, rodar `build-rebanho-json` + `import:rebanho` e conferir que os códigos oficiais positivos substituem os seeds na listagem.
 - **Blocos C–F** (sêmen/genética, acasalamento, FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.

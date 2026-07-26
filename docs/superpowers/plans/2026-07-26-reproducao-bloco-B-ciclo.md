@@ -4,7 +4,7 @@
 
 **Goal:** Fechar as linhas *Aptidão de novilhas*, *DG/exame ginecológico* e completar *Parto* do contrato de paridade: aptidão vira fato próprio (manual + automática), o exame ginecológico ganha o dicionário oficial de resultados, e o parto passa a criar (ou vincular) o `Animal` cria com genealogia.
 
-> **Progresso (retomada):** branch `feat/reproducao-ciclo-basico`. ✅ **Task 1** (schema aptidão/dicionário/cria — migration `20260726140000_ciclo_reprodutivo`, commit `684ebdf`) e ✅ **Task 2** (regra pura `aptidao.calc.ts`, 8/8, commit `706e870`) concluídas. **Retomar a partir da Task 3** (service+rota de aptidão). Tasks 4–7 pendentes.
+> **Progresso:** branch `feat/reproducao-ciclo-basico`. ✅ **Tasks 1–7 concluídas.** Commits: T1 `684ebdf` · T2 `706e870` · T3 `007633d` · T4 `fbfb77b` · T5 `be0b5ed` · T6 `12b5f73` · revisão (vínculo de cria seguro) `54679e3` · revisão (idempotência diária da aptidão + `@@unique` + migration `20260726150000_aptidao_idempotente`) `a9944ee`. Gate verde: server 942/942 · parser 27/27 · `pnpm build` OK. **Pendente na máquina (Step 4 da Task 7):** reconciliar os 44 `RESULTADOEXAMEGINECOLOGICO` e as 248 linhas de `EXAMEANIMAL` a partir do `DADOS777.FDB`; até lá opera-se com o conjunto-semente de 9 resultados.
 
 **Architecture:** Rota fina → service → cálculo puro `*.calc.ts` + schemas, TDD. Aptidão automática e a criação de cria no parto são funções puras; a persistência roda na transação do evento (mesmo padrão de `recomputarAnimal`).
 
