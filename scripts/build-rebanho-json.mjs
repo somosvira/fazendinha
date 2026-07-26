@@ -178,6 +178,22 @@ export function parseProgramacaoAssociacao(linha) {
   };
 }
 
+// RESULTADOEXAMEGINECOLOGICO → dicionário oficial compartilhado.
+// Código precisa ser inteiro positivo; inválidos fazem main() abortar (fail-closed).
+export function parseResultadoGinecologico(linha) {
+  const f = linha.split(SEP);
+  const codigo = n(f[0]);
+  const nomeResumido = s(f[1]);
+  if (!Number.isInteger(codigo) || codigo <= 0 || !nomeResumido) return null;
+  return {
+    codigo,
+    nomeResumido,
+    nomeCompleto: s(f[2]),
+    tipo: s(f[3]),
+    padrao: f[4] === "1",
+  };
+}
+
 export function parseEvento(linha) {
   const f = linha.split(SEP);
   const ideagriId = n(f[1]);
@@ -338,8 +354,10 @@ function main() {
   const principiosProtocolo = [];
   const programacoesIatf = [];
   const associacoesProgramacao = [];
+  const resultadosGinecologicos = [];
   const eventosInvalidos = [];
   const iatfInvalidos = [];
+  const resultadosGinecologicosInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -373,6 +391,10 @@ function main() {
       const row = parseProgramacaoAssociacao(l.slice(11));
       if (row) associacoesProgramacao.push(row); else iatfInvalidos.push(l);
     }
+    else if (l.startsWith("@RESULTGINE@")) {
+      const row = parseResultadoGinecologico(l.slice(12));
+      if (row) resultadosGinecologicos.push(row); else resultadosGinecologicosInvalidos.push(l);
+    }
   }
 
   if (eventosInvalidos.length) {
@@ -387,6 +409,12 @@ function main() {
   if (iatfInvalidos.length) {
     console.error(`ERRO: ${iatfInvalidos.length} registros IATF inválidos.`);
     console.error(JSON.stringify(iatfInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
+  if (resultadosGinecologicosInvalidos.length) {
+    console.error(`ERRO: ${resultadosGinecologicosInvalidos.length} resultados ginecológicos inválidos.`);
+    console.error(JSON.stringify(resultadosGinecologicosInvalidos.slice(0, 5)));
     process.exit(1);
   }
 
@@ -410,6 +438,7 @@ function main() {
     principiosProtocolo,
     programacoesIatf,
     associacoesProgramacao,
+    resultadosGinecologicos,
   };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
@@ -425,6 +454,7 @@ function main() {
   console.error(`  pesagens=${pesagens.length}`);
   console.error(`  lactações=${lactacoes.length}`);
   console.error(`  IATF: protocolos=${protocolosIatf.length} princípios=${principiosProtocolo.length} programações=${programacoesIatf.length} associações=${associacoesProgramacao.length}`);
+  console.error(`  resultados ginecológicos=${resultadosGinecologicos.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

@@ -16,6 +16,18 @@ describe("EventoForm tipoInicial", () => {
     expect(html).toContain(`<span style="pointer-events:none">${label}</span>`);
   });
 
+  it("oferece cadastro ou vínculo da cria ao iniciar em parto", () => {
+    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "PARTO" } }));
+    expect(html).toContain("Cadastrar a cria");
+    expect(html).toContain("Vincular cria existente");
+  });
+
+  it("oferece resultado oficial ao iniciar em exame ginecológico", () => {
+    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "EXAME_GINECOLOGICO" } }));
+    expect(html).toContain("Resultado oficial");
+    expect(html).toContain("Carregando catálogo");
+  });
+
   it("inicia sanidade em exame", () => {
     const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
     expect(html).toContain('<span style="pointer-events:none">Exame</span>');

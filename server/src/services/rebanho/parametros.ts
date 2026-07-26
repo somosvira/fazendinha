@@ -25,6 +25,8 @@ export type ChaveParametro =
   | "DESMAME_MODO"
   | "DESMAME_DIAS"
   | "DESMAME_PESO_KG"
+  | "APTIDAO_IDADE_MIN_MESES"
+  | "APTIDAO_PESO_MIN_KG"
   | "PESO_UA_REF_KG"
   // Pesos de referência por categoria (UA)
   | "PESO_REF_VACA" | "PESO_REF_TOURO" | "PESO_REF_NOVILHA"
@@ -102,6 +104,9 @@ export const PARAMETRO_DEFAULTS: Record<ChaveParametro, Default> = {
   DESMAME_DIAS:      D("MANEJO",    "Idade de desmame (por dias)",          "dias",   120, 2),
   DESMAME_PESO_KG:   D("MANEJO",    "Peso de desmame (por peso)",           "kg",     180, 3),
   PESO_UA_REF_KG:    D("MANEJO",    "Peso vivo de 1 UA",                    "kg",     450, 4),
+
+  APTIDAO_IDADE_MIN_MESES: D("REPRODUCAO", "Idade mínima para aptidão de novilha", "meses", 13, 43),
+  APTIDAO_PESO_MIN_KG:     D("REPRODUCAO", "Peso mínimo para aptidão de novilha",  "kg",   320, 44),
 
   PESO_REF_VACA:     D("MANEJO",    "Peso referência VACA",                 "kg",     500, 10),
   PESO_REF_TOURO:    D("MANEJO",    "Peso referência TOURO",                "kg",     800, 11),

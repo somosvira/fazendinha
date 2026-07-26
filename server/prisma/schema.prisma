@@ -585,6 +585,7 @@ model Propriedade {
   lotesProduto         LoteProduto[]
   examesQuarto         ExameQuarto[]
   registrosChuva       RegistroChuva[]
+  aptidoes             AptidaoAnimal[]
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
 }
@@ -660,6 +661,9 @@ model Animal {
   eventosReprodutivos  EventoReprodutivo[]
   // Eventos de TE em que este animal é a DOADORA do embrião (genética dos bezerros).
   embrioesDoados       EventoReprodutivo[]           @relation("Doadora")
+  // Parto que gerou esta cria (lado inverso de EventoReprodutivo.cria). Opcional.
+  partoDeOrigem        EventoReprodutivo?            @relation("CriaDoParto")
+  aptidoes             AptidaoAnimal[]
   eventosSanitarios    EventoSanitario[]
   examesQuarto         ExameQuarto[]
   vacinasAgendadas     VacinaAgendada[]
@@ -792,6 +796,43 @@ model ExameQuarto {
   @@index([propriedadeId])
 }
 
+// Origem de um registro de aptidão: lançado à mão ou derivado da regra automática de novilhas.
+enum OrigemAptidao {
+  MANUAL
+  AUTOMATICA
+}
+
+// Aptidão reprodutiva do animal (novilha apta a entrar em reprodução). Espelha
+// frmLancarAptidaoAnimal + frmAptidaoAutomatica do IDEAGRI. Fato próprio (não só PEV derivado).
+model AptidaoAnimal {
+  id            Int           @id @default(autoincrement())
+  animal        Animal        @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animalId      Int
+  data          DateTime      @db.Date
+  apta          Boolean
+  motivo        String? // por que está apta/inapta (idade/peso/decisão)
+  origem        OrigemAptidao @default(MANUAL)
+  propriedade   Propriedade?  @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  createdAt     DateTime      @default(now())
+
+  @@unique([animalId, data, origem])
+  @@index([animalId])
+  @@index([propriedadeId])
+}
+
+// Dicionário oficial de resultados de exame ginecológico (RESULTADOEXAMEGINECOLOGICO do IDEAGRI,
+// 44 resultados por útero/ovário). Compartilhado entre propriedades (propriedadeId ausente de propósito).
+model ResultadoExameGinecologico {
+  id            Int                 @id @default(autoincrement())
+  codigo        Int                 @unique // CDRESULTADOEXAMEGINECOLOGICO de origem
+  nomeResumido  String
+  nomeCompleto  String?
+  tipo          String? // útero/ovário/…
+  padrao        Boolean             @default(false)
+  eventos       EventoReprodutivo[]
+}
+
 enum TipoEventoReprodutivo {
   CIO
   INSEMINACAO
@@ -826,6 +867,12 @@ model EventoReprodutivo {
   ideagriId        Int?                  @unique
   // Etapa terminal de IATF/TETF que gerou este evento. Unique = reconcluir não duplica o fato.
   origemExecucaoId Int?                  @unique
+  // EXAME_GINECOLOGICO: resultado oficial do dicionário IDEAGRI (além do achado condensado em `resultado`).
+  resultadoGinecologico   ResultadoExameGinecologico? @relation(fields: [resultadoGinecologicoId], references: [id])
+  resultadoGinecologicoId Int?
+  // PARTO: cria criada/vinculada por este parto (genealogia). Nullable — nem todo parto cadastra a cria.
+  cria            Animal?               @relation("CriaDoParto", fields: [criaId], references: [id])
+  criaId          Int?                  @unique
   // TE: preserva o embrião e a doadora externos mesmo quando não pertencem ao rebanho 777.
   ideagriEmbriaoId Int?
   doadoraNumero    String?

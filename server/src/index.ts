@@ -19,9 +19,11 @@ import { examesQuartoRouter } from "./routes/rebanho/exames-quarto.js";
 import { vacinaRouter } from "./routes/rebanho/vacina.js";
 import { iatfRouter } from "./routes/rebanho/iatf.js";
 import { iatfLoteRouter } from "./routes/rebanho/iatf-lote.js";
+import { aptidaoRouter } from "./routes/rebanho/aptidao.js";
 import { nutricaoRouter } from "./routes/rebanho/nutricao.js";
 import { propriedadeRouter } from "./routes/propriedade.js";
 import { garantirFundacaoPropriedade } from "./services/propriedade.js";
+import { garantirResultadosGinecologicosSemente } from "./services/rebanho/exame-ginecologico.js";
 import { rebanhoDashboardRouter } from "./routes/rebanho/dashboard.js";
 import { rebanhoWorklistsRouter } from "./routes/rebanho/worklists.js";
 import { rebanhoHojeRouter } from "./routes/rebanho/hoje.js";
@@ -120,6 +122,7 @@ app.route("/api", examesQuartoRouter);
 app.route("/api", vacinaRouter);
 app.route("/api", iatfRouter);
 app.route("/api", iatfLoteRouter);
+app.route("/api", aptidaoRouter);
 app.route("/api", nutricaoRouter);
 app.route("/api", rebanhoDashboardRouter);
 app.route("/api", rebanhoWorklistsRouter);
@@ -185,6 +188,9 @@ iniciarCleanupPendentes();
 // Fundação multi-propriedade: cria a principal e backfilla escopos nulos.
 // Idempotente e à prova de `db push` (que não roda o seed/backfill da migration).
 garantirFundacaoPropriedade().catch((e) => console.error("[propriedade] falha ao garantir fundação:", e));
+
+// Dicionário operacional mínimo até a reextração dos 44 resultados oficiais.
+garantirResultadosGinecologicosSemente().catch((e) => console.error("[rebanho] falha ao semear resultados ginecológicos:", e));
 
 // Cria o dono no primeiro boot (tabela Usuario vazia + AUTH_BOOTSTRAP_EMAIL).
 garantirDonoBootstrap().catch((e) => console.error("[auth] falha no bootstrap do dono:", e));
