@@ -17,10 +17,18 @@ export interface RebKpiStripProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function RebKpiStrip({ cols, className, style, children, ...props }: RebKpiStripProps) {
+  const responsiveStyle = {
+    "--reb-kpi-cols": cols,
+    ...style,
+  } as React.CSSProperties;
+
   return (
     <div
-      className={cn("my-[22px] grid gap-0 overflow-visible", className)}
-      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, ...style }}
+      className={cn(
+        "my-[22px] grid grid-cols-1 gap-0 overflow-visible min-[700px]:grid-cols-2 min-[1100px]:grid-cols-[repeat(var(--reb-kpi-cols),minmax(0,1fr))]",
+        className,
+      )}
+      style={responsiveStyle}
       {...props}
     >
       {children}
@@ -55,7 +63,7 @@ export function RebKpi({
   return (
     <div
       className={cn(
-        "relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-2.5 pb-2 first:border-l-0 first:pl-0.5",
+        "relative border-t border-[color:var(--rule-soft)] bg-transparent px-0 py-3 first:border-t-0 min-[700px]:border-l min-[700px]:border-t-0 min-[700px]:px-[22px] min-[700px]:first:border-l-0 min-[700px]:first:pl-0.5",
         className,
       )}
       {...props}

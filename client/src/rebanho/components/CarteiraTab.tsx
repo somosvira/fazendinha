@@ -38,9 +38,18 @@ function Estrelas({ classificacao }: { classificacao: ClassificacaoScore }) {
 
 function LinhaAnimal({ a, onAbrir }: { a: AnimalCarteiraDTO; onAbrir?: (id: number) => void }) {
   return (
-    <tr className={onAbrir ? "cursor-pointer" : undefined} onClick={onAbrir ? () => onAbrir(a.animalId) : undefined}>
+    <tr>
       <td>
-        <AnimalIdentity numero={a.numero} nome={a.nome} />
+        {onAbrir ? (
+          <button
+            type="button"
+            aria-label={`Abrir ficha do animal número ${a.numero}${a.nome ? `, ${a.nome}` : ""}`}
+            className="cursor-pointer border-0 bg-transparent p-0 text-left font-inherit text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cafe"
+            onClick={() => onAbrir(a.animalId)}
+          >
+            <AnimalIdentity numero={a.numero} nome={a.nome} />
+          </button>
+        ) : <AnimalIdentity numero={a.numero} nome={a.nome} />}
       </td>
       <td><b>{a.score}</b></td>
       <td><Estrelas classificacao={a.classificacao} /></td>

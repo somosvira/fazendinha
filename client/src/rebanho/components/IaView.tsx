@@ -41,8 +41,8 @@ export function IaView() {
     <RebMain>
       <RebHeader eyebrow="Assistente" title="IA" />
 
-      <div className="mt-2 grid grid-cols-[1fr_300px] gap-6">
-        <div className="flex min-h-[62vh] flex-col">
+      <div className="mt-2 grid grid-cols-1 gap-6 min-[1000px]:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex min-w-0 min-h-[62vh] flex-col">
           <p className="mb-3.5 mt-0 text-sm text-ink-3">Pergunte qualquer coisa sobre a fazenda — produção, reprodução, sanidade, nutrição. A IA lê o contexto do rebanho e responde com os dados reais.</p>
           <div className="mb-5 flex flex-wrap gap-2">
             {SUGESTOES.map((s) => (
@@ -59,11 +59,11 @@ export function IaView() {
           <div className="flex flex-1 flex-col gap-3.5">
             {msgs.map((m, i) =>
               m.de === "user" ? (
-                <div key={i} className="max-w-[80%] self-end rounded-[13px_13px_3px_13px] bg-cafe px-3.5 py-2.5 text-sm leading-normal text-white">{m.txt}</div>
+                <div key={i} className="max-w-full self-end [overflow-wrap:anywhere] rounded-[13px_13px_3px_13px] bg-cafe px-3.5 py-2.5 text-sm leading-normal text-white min-[600px]:max-w-[80%]">{m.txt}</div>
               ) : (
-                <div key={i} className="flex max-w-[80%] gap-2.5 self-start text-sm leading-normal">
+                <div key={i} className="flex max-w-full min-w-0 gap-2.5 self-start text-sm leading-normal min-[600px]:max-w-[80%]">
                   <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-mast font-serif font-bold text-leite">✦</div>
-                  <div className="rounded-[13px_13px_13px_3px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-3.5 py-[11px] text-ink-2">
+                  <div className="min-w-0 [overflow-wrap:anywhere] rounded-[13px_13px_13px_3px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-3.5 py-[11px] text-ink-2">
                     <Enfase texto={m.txt} />
                     {m.lista && <ul className="m-0 mt-[9px] list-none p-0 [&>li]:border-t [&>li]:border-dashed [&>li]:border-[color:var(--rule-soft)] [&>li]:py-[5px] [&>li]:text-sm">{m.lista.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     {m.rodape && <div className="mt-[9px] font-semibold text-[color:var(--ink)]">{m.rodape}</div>}

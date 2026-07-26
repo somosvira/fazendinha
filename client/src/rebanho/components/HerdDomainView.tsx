@@ -63,6 +63,9 @@ export function HerdDomainView({
               return (
                 <button
                   key={w.id}
+                  type="button"
+                  aria-label={w.label}
+                  aria-pressed={on}
                   className={
                     "flex-1 cursor-pointer border-t-2 bg-transparent px-1 pb-1.5 pt-3 text-left transition-colors max-[900px]:min-w-[130px] max-[900px]:flex-none " +
                     (on
@@ -84,7 +87,7 @@ export function HerdDomainView({
             <h3 className="m-0 font-serif text-lg font-medium">
               {wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}
             </h3>
-            <span className="text-sm text-ink-3">{dicaLinha ?? "clique numa linha pra abrir a ficha"}</span>
+            <span className="text-sm text-ink-3">{dicaLinha ?? "use o botão do animal para abrir a ficha"}</span>
           </div>
           <RebTable>
             <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
@@ -92,8 +95,19 @@ export function HerdDomainView({
               {linhas.map((r) => {
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
-                  <tr className="rb-row" key={r.animalId} onClick={() => onAbrirAnimal(r.animalId)}>
-                    <td>{a ? <AnimalIdentity numero={a.numero} nome={a.nome} /> : "—"}</td>
+                  <tr key={r.animalId}>
+                    <td>
+                      {a ? (
+                        <button
+                          type="button"
+                          aria-label={`Abrir ficha do animal número ${a.numero}${a.nome ? `, ${a.nome}` : ""}`}
+                          className="cursor-pointer border-0 bg-transparent p-0 text-left font-inherit text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cafe"
+                          onClick={() => onAbrirAnimal(r.animalId)}
+                        >
+                          <AnimalIdentity numero={a.numero} nome={a.nome} />
+                        </button>
+                      ) : "—"}
+                    </td>
                     {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>
                 );

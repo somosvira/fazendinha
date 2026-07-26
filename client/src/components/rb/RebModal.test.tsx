@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, vi } from "vitest";
+import * as React from "react";
 import { createElement as h } from "react";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RebModal } from "./RebModal";
 
-/* RebModal reproduz .rb-drawer-bg + .rb-drawer (rebanho.css) sem Radix.
- * jsdom porque tem backdrop/Esc/onClose interativos. */
+/* RebModal preserva o visual do drawer sobre o Dialog Radix.
+ * jsdom porque tem backdrop/Esc/foco/onClose interativos. */
 
 afterEach(cleanup);
 
@@ -17,14 +18,15 @@ describe("RebModal", () => {
     expect(screen.getByRole("button", { name: "Salvar" })).toBeDefined();
   });
 
-  it("fecha ao clicar no backdrop", () => {
+  it("fecha ao clicar no backdrop", async () => {
     const onClose = vi.fn();
-    const { container } = render(h(RebModal, { title: "X", onClose, children: "y" }));
-    // backdrop é o primeiro div (fixed inset-0)
-    const backdrop = container.querySelector(".rb-fade-in");
+    render(h(RebModal, { title: "X", onClose, children: "y" }));
+    const backdrop = document.querySelector('[data-slot="dialog-overlay"]');
     expect(backdrop).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    fireEvent.pointerDown(backdrop!, { button: 0, ctrlKey: false });
     fireEvent.click(backdrop!);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("fecha no botão X", () => {
@@ -37,7 +39,7 @@ describe("RebModal", () => {
   it("fecha ao apertar Esc", () => {
     const onClose = vi.fn();
     render(h(RebModal, { title: "X", onClose, children: "y" }));
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -46,9 +48,38 @@ describe("RebModal", () => {
     expect(screen.queryByRole("button", { name: "Fechar" })).toBeNull();
   });
 
-  it("stacked sobe o z-index do card", () => {
-    const { container } = render(h(RebModal, { title: "X", onClose: () => {}, stacked: true, children: "y" }));
-    const card = container.querySelector('[role="dialog"]');
-    expect(card?.className).toContain("z-[21]");
+  it("associa o título ao nome acessível do diálogo", () => {
+    render(h(RebModal, { title: "Novo animal", onClose: () => {}, children: "y" }));
+    expect(screen.getByRole("dialog", { name: "Novo animal" })).toBeDefined();
   });
+
+  it("move o foco para o diálogo e o devolve ao gatilho ao fechar", async () => {
+    const Trigger = () => {
+      const [open, setOpen] = React.useState(false);
+      return h(React.Fragment, null,
+        h("button", { onClick: () => setOpen(true) }, "Abrir"),
+        open ? h(RebModal, { title: "X", onClose: () => setOpen(false), children: h("button", null, "Ação") }) : null,
+      );
+    };
+    render(h(Trigger));
+    const abrir = screen.getByRole("button", { name: "Abrir" });
+    abrir.focus();
+    fireEvent.click(abrir);
+    await waitFor(() => expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(document.activeElement).toBe(abrir));
+  });
+
+  it("Escape fecha somente o modal empilhado", async () => {
+    const base = vi.fn();
+    const topo = vi.fn();
+    render(h(React.Fragment, null,
+      h(RebModal, { title: "Base", onClose: base, children: "base" }),
+      h(RebModal, { title: "Topo", onClose: topo, stacked: true, children: "topo" }),
+    ));
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(topo).toHaveBeenCalledTimes(1));
+    expect(base).not.toHaveBeenCalled();
+  });
+
 });
