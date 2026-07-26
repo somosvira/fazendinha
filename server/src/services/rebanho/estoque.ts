@@ -105,89 +105,96 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
 }
 
 // Um mês (ano/mes 1-12) está fechado se existe FechamentoMensal correspondente.
-async function mesFechado(data: Date): Promise<boolean> {
+// Recebe o client da transação para que a decisão e a escrita sejam uma unidade atômica.
+async function mesFechado(tx: Prisma.TransactionClient, data: Date): Promise<boolean> {
   const ano = data.getUTCFullYear();
   const mes = data.getUTCMonth() + 1;
-  return (await prisma.fechamentoMensal.findFirst({ where: { ano, mes } })) != null;
+  return (await tx.fechamentoMensal.findUnique({ where: { ano_mes: { ano, mes } } })) != null;
 }
 
 export async function registrarMovimento(input: MovimentoInput) {
-  const produto = await prisma.produto.findUnique({ where: { id: input.produtoId } });
-  if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
-  const custo = input.custoUnitario ?? (produto.custoUnitario != null ? Number(produto.custoUnitario) : 0);
-  // Decimal exato (não float) — este valor alimenta o livro financeiro real (Lancamento.valor).
-  const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
-  const data = new Date(input.data);
   const propriedadeId = input.propriedadeId ?? (await propriedadePrincipalId()); // sítio ativo ou principal
-  const m = await prisma.movimentoEstoque.create({
-    data: {
-      produtoId: input.produtoId,
+
+  return prisma.$transaction(async (tx) => {
+    const produto = await tx.produto.findUnique({ where: { id: input.produtoId } });
+    if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
+    const custo = input.custoUnitario ?? (produto.custoUnitario != null ? Number(produto.custoUnitario) : 0);
+    // Decimal exato (não float) — este valor alimenta o livro financeiro real (Lancamento.valor).
+    const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
+    const data = new Date(input.data);
+    const m = await tx.movimentoEstoque.create({
+      data: {
+        produtoId: input.produtoId,
+        tipo: input.tipo,
+        data,
+        quantidade: input.quantidade,
+        custoUnitario: custo,
+        valorTotal,
+        grupoId: input.grupoId ?? null,
+        fornecedorId: input.fornecedorId ?? null,
+        propriedadeId,
+        observacao: input.observacao,
+      },
+    });
+
+    // Ponte compra→financeiro: ENTRADA pode gerar um Lancamento (DEBITO/LIQUIDADO).
+    // Nunca bloqueia o movimento — se não dá para criar, devolve o motivo.
+    const resol = resolverLancamentoDaEntrada({
       tipo: input.tipo,
-      data,
-      quantidade: input.quantidade,
-      custoUnitario: custo,
-      valorTotal,
-      grupoId: input.grupoId ?? null,
-      fornecedorId: input.fornecedorId ?? null,
-      propriedadeId,
-      observacao: input.observacao,
-    },
-  });
+      gerarLancamento: input.gerarLancamento,
+      inputCategoriaId: input.categoriaId,
+      inputCentroCustoId: input.centroCustoId,
+      produtoCategoriaId: produto.categoriaId,
+      produtoCentroCustoId: produto.centroCustoId,
+      mesFechado: input.tipo === "ENTRADA" ? await mesFechado(tx, data) : false,
+    });
 
-  // Ponte compra→financeiro: ENTRADA pode gerar um Lancamento (DEBITO/LIQUIDADO).
-  // Nunca bloqueia o movimento — se não dá para criar, devolve o motivo.
-  const resol = resolverLancamentoDaEntrada({
-    tipo: input.tipo,
-    gerarLancamento: input.gerarLancamento,
-    inputCategoriaId: input.categoriaId,
-    inputCentroCustoId: input.centroCustoId,
-    produtoCategoriaId: produto.categoriaId,
-    produtoCentroCustoId: produto.centroCustoId,
-    mesFechado: input.tipo === "ENTRADA" ? await mesFechado(data) : false,
-  });
+    if (!resol.deveCriar) return { id: m.id, lancamentoCriado: false, motivo: resol.motivo };
 
-  if (!resol.deveCriar) return { id: m.id, lancamentoCriado: false, motivo: resol.motivo };
-
-  const lanc = await prisma.lancamento.create({
-    data: {
-      natureza: "DEBITO",
-      valor: valorTotal,
-      dataCompetencia: data,
-      dataVencimento: data,
-      dataLiquidacao: data,
-      situacao: "LIQUIDADO",
-      categoriaId: resol.categoriaId!,
-      centroCustoId: resol.centroCustoId!,
-      clienteFornecedorId: input.fornecedorId ?? null,
-      propriedadeId, // o lançamento da compra herda o sítio do movimento (Fatia 3)
-      descricao: `Compra: ${produto.nome} (${input.quantidade} ${produto.unidade})`,
-    },
-  });
-  await prisma.movimentoEstoque.update({ where: { id: m.id }, data: { lancamentoId: lanc.id } });
-  return { id: m.id, lancamentoCriado: true, lancamentoId: lanc.id };
+    const lanc = await tx.lancamento.create({
+      data: {
+        natureza: "DEBITO",
+        valor: valorTotal,
+        dataCompetencia: data,
+        dataVencimento: data,
+        dataLiquidacao: data,
+        situacao: "LIQUIDADO",
+        categoriaId: resol.categoriaId!,
+        centroCustoId: resol.centroCustoId!,
+        clienteFornecedorId: input.fornecedorId ?? null,
+        propriedadeId, // o lançamento da compra herda o sítio do movimento (Fatia 3)
+        descricao: `Compra: ${produto.nome} (${input.quantidade} ${produto.unidade})`,
+      },
+    });
+    await tx.movimentoEstoque.update({ where: { id: m.id }, data: { lancamentoId: lanc.id } });
+    return { id: m.id, lancamentoCriado: true, lancamentoId: lanc.id };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function excluirMovimento(id: number) {
-  const mov = await prisma.movimentoEstoque.findUnique({
-    where: { id },
-    include: { lancamento: true },
-  });
-  if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
+export async function excluirMovimento(id: number, propriedadeId: number | null = null) {
+  return prisma.$transaction(async (tx) => {
+    const mov = await tx.movimentoEstoque.findFirst({
+      where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      include: { lancamento: true },
+    });
+    if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
 
-  // Baixa de consumo de dieta é gerida pelo fechamento (ConsumoPeriodo): excluí-la
-  // avulsa deixaria o custo do período inconsistente. Estorne o período inteiro.
-  if (mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
+    // Saídas automáticas são geridas pelo domínio que as originou. Excluí-las
+    // avulsamente deixaria o fato de origem e o saldo de estoque divergentes.
+    if (mov.origem === "SANIDADE") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de um evento sanitário — exclua ou estorne o evento na ficha do animal");
+    if (mov.origem === "NUTRICAO" || mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
 
-  // Se há um Lancamento vinculado num mês fechado, não exclui nada.
-  if (mov.lancamento) {
-    const ref = mov.lancamento.dataLiquidacao ?? mov.lancamento.dataCompetencia;
-    if (await mesFechado(ref)) throw new EstoqueError("MES_FECHADO", "lançamento em mês fechado — não pode ser excluído");
-  }
+    // Se há um Lancamento vinculado num mês fechado, não exclui nada.
+    if (mov.lancamento) {
+      const ref = mov.lancamento.dataLiquidacao ?? mov.lancamento.dataCompetencia;
+      if (await mesFechado(tx, ref)) throw new EstoqueError("MES_FECHADO", "lançamento em mês fechado — não pode ser excluído");
+    }
 
-  // O movimento referencia o lançamento (FK em MovimentoEstoque.lancamentoId);
-  // exclui o movimento primeiro, depois o lançamento.
-  await prisma.movimentoEstoque.delete({ where: { id } });
-  if (mov.lancamentoId) await prisma.lancamento.delete({ where: { id: mov.lancamentoId } });
+    // O movimento referencia o lançamento (FK em MovimentoEstoque.lancamentoId);
+    // exclui o movimento primeiro, depois o lançamento, na mesma transação.
+    await tx.movimentoEstoque.delete({ where: { id } });
+    if (mov.lancamentoId) await tx.lancamento.delete({ where: { id: mov.lancamentoId } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: number | null) {
