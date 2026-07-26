@@ -14,6 +14,7 @@ export const criarProtocoloSchema = z.object({
   nome: z.string().min(1, "informe o nome do protocolo").max(120),
   descricao: z.string().max(500).optional(),
   hormonioBase: z.string().max(80).optional(),
+  finalidade: z.enum(["IATF", "TETF"]).optional(),
   ativo: z.boolean().optional(),
   etapas: z.array(etapaSchema).min(1, "o protocolo precisa de ao menos uma etapa").max(20),
 });
@@ -25,6 +26,7 @@ export const atualizarProtocoloSchema = z.object({
   nome: z.string().min(1).max(120).optional(),
   descricao: z.string().max(500).nullable().optional(),
   hormonioBase: z.string().max(80).nullable().optional(),
+  finalidade: z.enum(["IATF", "TETF"]).optional(),
   ativo: z.boolean().optional(),
   etapas: z.array(etapaSchema).min(1).max(20).optional(),
 });

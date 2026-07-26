@@ -21,6 +21,7 @@ export interface ProtocoloDTO {
   nome: string;
   descricao: string | null;
   hormonioBase: string | null;
+  finalidade: "IATF" | "TETF";
   ativo: boolean;
   etapas: EtapaDTO[];
 }
@@ -47,11 +48,12 @@ export interface AplicacaoDTO {
 }
 
 type EtapaRow = { dia: number; acao: string; hormonio: string | null; ordem: number };
-type ProtocoloRow = { id: number; nome: string; descricao: string | null; hormonioBase: string | null; ativo: boolean; etapas: EtapaRow[] };
+type ProtocoloRow = { id: number; nome: string; descricao: string | null; hormonioBase: string | null; finalidade: "IATF" | "TETF"; ativo: boolean; etapas: EtapaRow[] };
 
 function protocoloDTO(p: ProtocoloRow): ProtocoloDTO {
   return {
-    id: p.id, nome: p.nome, descricao: p.descricao, hormonioBase: p.hormonioBase, ativo: p.ativo,
+    id: p.id, nome: p.nome, descricao: p.descricao, hormonioBase: p.hormonioBase,
+    finalidade: p.finalidade, ativo: p.ativo,
     etapas: ordenarEtapas(p.etapas).map((e) => ({ dia: e.dia, acao: e.acao, hormonio: e.hormonio, ordem: e.ordem })),
   };
 }
@@ -92,6 +94,7 @@ export async function criarProtocolo(input: CriarProtocoloInput, propriedadeId: 
       nome: input.nome,
       descricao: input.descricao ?? null,
       hormonioBase: input.hormonioBase ?? null,
+      finalidade: input.finalidade ?? "IATF",
       ativo: input.ativo ?? true,
       propriedadeId,
       etapas: { create: etapasCreate(input.etapas) },
@@ -118,6 +121,7 @@ export async function atualizarProtocolo(
         ...(input.nome !== undefined ? { nome: input.nome } : {}),
         ...(input.descricao !== undefined ? { descricao: input.descricao } : {}),
         ...(input.hormonioBase !== undefined ? { hormonioBase: input.hormonioBase } : {}),
+        ...(input.finalidade !== undefined ? { finalidade: input.finalidade } : {}),
         ...(input.ativo !== undefined ? { ativo: input.ativo } : {}),
       },
     });
