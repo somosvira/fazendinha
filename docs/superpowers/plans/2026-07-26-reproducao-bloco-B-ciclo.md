@@ -4,6 +4,8 @@
 
 **Goal:** Fechar as linhas *Aptidão de novilhas*, *DG/exame ginecológico* e completar *Parto* do contrato de paridade: aptidão vira fato próprio (manual + automática), o exame ginecológico ganha o dicionário oficial de resultados, e o parto passa a criar (ou vincular) o `Animal` cria com genealogia.
 
+> **Progresso (retomada):** branch `feat/reproducao-ciclo-basico`. ✅ **Task 1** (schema aptidão/dicionário/cria — migration `20260726140000_ciclo_reprodutivo`, commit `684ebdf`) e ✅ **Task 2** (regra pura `aptidao.calc.ts`, 8/8, commit `706e870`) concluídas. **Retomar a partir da Task 3** (service+rota de aptidão). Tasks 4–7 pendentes.
+
 **Architecture:** Rota fina → service → cálculo puro `*.calc.ts` + schemas, TDD. Aptidão automática e a criação de cria no parto são funções puras; a persistência roda na transação do evento (mesmo padrão de `recomputarAnimal`).
 
 **Tech Stack:** Hono + Zod + Prisma 6 + Vitest (server); React 18 + Vite + TS (client). Sem novas dependências.
