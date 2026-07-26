@@ -11,8 +11,8 @@ import { gerarInsightsRebanho, type IaInsightDTO } from "./ia.insights.js";
 
 const isoOrNull = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
 
-async function carregarAnimais(): Promise<AnimalCtx[]> {
-  const animais = await prisma.animal.findMany({ where: { status: "ATIVO" }, include: { resumo: true } });
+async function carregarAnimais(propriedadeId: number | null): Promise<AnimalCtx[]> {
+  const animais = await prisma.animal.findMany({ where: { status: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) }, include: { resumo: true } });
   return animais.map((a) => ({
     numero: a.numero,
     nome: a.nome ?? null,
@@ -28,10 +28,11 @@ async function carregarAnimais(): Promise<AnimalCtx[]> {
   }));
 }
 
-async function carregarLotes(): Promise<LoteCtx[]> {
+async function carregarLotes(propriedadeId: number | null): Promise<LoteCtx[]> {
   const grupos = await prisma.grupo.findMany({
+    where: propriedadeId != null ? { propriedadeId } : {},
     orderBy: { nome: "asc" },
-    include: { dieta: true, animais: { where: { status: "ATIVO" }, include: { resumo: true } } },
+    include: { dieta: true, animais: { where: { status: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) }, include: { resumo: true } } },
   });
   return grupos.map((g) => {
     const prods = g.animais
@@ -47,19 +48,19 @@ async function carregarLotes(): Promise<LoteCtx[]> {
 }
 
 // Monta o contexto real do rebanho (mesma fonte do chat) — reusado pelos insights.
-async function montarContextoReal(): Promise<ContextoRebanho> {
-  const [animais, lotes] = await Promise.all([carregarAnimais(), carregarLotes()]);
+async function montarContextoReal(propriedadeId: number | null): Promise<ContextoRebanho> {
+  const [animais, lotes] = await Promise.all([carregarAnimais(propriedadeId), carregarLotes(propriedadeId)]);
   const hoje = new Date().toISOString().slice(0, 10);
   return montarContexto(animais, lotes, hoje);
 }
 
 // Cards proativos ("insights da semana") do rebanho, a partir do contexto real.
-export async function listarInsightsRebanho(): Promise<IaInsightDTO[]> {
-  return gerarInsightsRebanho(await montarContextoReal());
+export async function listarInsightsRebanho(propriedadeId: number | null = null): Promise<IaInsightDTO[]> {
+  return gerarInsightsRebanho(await montarContextoReal(propriedadeId));
 }
 
-export async function responderPergunta(pergunta: string): Promise<RespostaIA> {
-  const ctx = await montarContextoReal();
+export async function responderPergunta(pergunta: string, propriedadeId: number | null = null): Promise<RespostaIA> {
+  const ctx = await montarContextoReal(propriedadeId);
 
   if (env.OPENAI_API_KEY) {
     try {

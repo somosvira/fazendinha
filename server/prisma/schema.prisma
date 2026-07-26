@@ -403,16 +403,19 @@ model ControleLeiteiro {
 
 // Produção por lote/tanque (modo TANQUE_LOTE) — per-animal vem por rateio.
 model ProducaoLote {
-  id        Int      @id @default(autoincrement())
-  grupo     Grupo?   @relation(fields: [grupoId], references: [id])
-  grupoId   Int? // null = tanque da fazenda inteira
-  data      DateTime @db.Date
-  litros    Decimal  @db.Decimal(10, 2)
-  origem    String   @default("manual")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int          @id @default(autoincrement())
+  grupo         Grupo?       @relation(fields: [grupoId], references: [id])
+  grupoId       Int? // null = tanque da propriedade inteira
+  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id])
+  propriedadeId Int?
+  data          DateTime     @db.Date
+  litros        Decimal      @db.Decimal(10, 2)
+  origem        String       @default("manual")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([grupoId, data])
+  @@index([propriedadeId, data])
   @@index([data])
 }
 
@@ -560,6 +563,7 @@ model Propriedade {
   ordem                Int                           @default(0)
   animais              Animal[]
   grupos               Grupo[]
+  producoesLote        ProducaoLote[]
   movimentosEstoque    MovimentoEstoque[]
   lancamentos          Lancamento[]
   lotesCorte           LoteCorte[]

@@ -27,7 +27,7 @@ export function ratearCustoSanidade(totalMedicamento: number, porAnimal: AnimalA
 // ── Service (junta financeiro real + consumo real) ───────────────────────────
 const toNum = (x: any) => (x != null ? Number(x) : 0);
 
-export async function agregarCustoSanidade(meses = 12) {
+export async function agregarCustoSanidade(meses = 12, propriedadeId: number | null = null) {
   const desde = new Date();
   desde.setMonth(desde.getMonth() - meses);
 
@@ -38,6 +38,8 @@ export async function agregarCustoSanidade(meses = 12) {
       natureza: "DEBITO",
       dataLiquidacao: { not: null, gte: desde },
       categoria: { nome: "Medicamento Animal" },
+      estornado: false,
+      ...(propriedadeId != null ? { propriedadeId } : {}),
     },
     select: { valor: true },
   });
@@ -46,7 +48,7 @@ export async function agregarCustoSanidade(meses = 12) {
   // Aplicações reais por animal + ranking de produtos (inclui VACINA — também é
   // consumo de produto veterinário; só o tipo na timeline difere).
   const aplics = await prisma.eventoSanitario.findMany({
-    where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde } },
+    where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde }, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) },
     select: { produto: true, animal: { select: { numero: true, nome: true } } },
   });
   // Preços do Produto (Cadastros) — null quando não precificado.

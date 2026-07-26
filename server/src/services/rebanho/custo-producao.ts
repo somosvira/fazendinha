@@ -31,7 +31,7 @@ export function quebrarPorCategoria(itens: ItemCusto[]): QuebraCusto {
 // ── Service (agrega Lancamento real) ────────────────────────────────────────
 const toNum = (x: any) => (x != null ? Number(x) : 0);
 
-export async function agregarCustoProducao(meses = 12) {
+export async function agregarCustoProducao(meses = 12, propriedadeId: number | null = null) {
   const desde = new Date();
   desde.setMonth(desde.getMonth() - meses);
 
@@ -44,20 +44,21 @@ export async function agregarCustoProducao(meses = 12) {
       natureza: "DEBITO",
       dataLiquidacao: { not: null, gte: desde },
       centroCusto: { nome: "Atividade Leiteira" },
+      ...(propriedadeId != null ? { propriedadeId } : {}),
     },
     select: { valor: true, categoria: { select: { nome: true } } },
   });
   const quebra = quebrarPorCategoria(lancs.map((l) => ({ categoria: l.categoria.nome, valor: toNum(l.valor) })));
 
   // Custo vaca/dia (real): reusa o motor do Estoque (consumo de insumo ÷ vacas×dias).
-  const cvd = await calcularCustoVacaDia(30); // { custoVacaDia, vacasEmLactacao, totalConsumo }
+  const cvd = await calcularCustoVacaDia(30, propriedadeId); // { custoVacaDia, vacasEmLactacao, totalConsumo }
 
   // Litros estimados do período — produção média/dia das vacas em lactação × dias.
   // Com o rebanho real importado (Ideagri), isto já é a escala da fazenda inteira,
   // então alimenta o custo/litro de verdade (é uma estimativa: produção atual × dias).
   const dias = meses * 30;
   const animais = await prisma.animal.findMany({
-    where: { status: "ATIVO", resumo: { del: { not: null } } },
+    where: { status: "ATIVO", resumo: { del: { not: null } }, ...(propriedadeId != null ? { propriedadeId } : {}) },
     include: { resumo: true },
   });
   const litrosDia = animais.reduce((s, a) => s + toNum(a.resumo?.producaoMediaDia), 0);
