@@ -17,24 +17,33 @@ export interface LactacaoEstrutural {
   dtInicio: string;
   dtFim: string | null;
   motivoSecagem: string | null;
+  enriquecida?: boolean;
 }
 
 export type OperacaoLactacao =
   | { tipo: "CRIAR"; numero: number; dtInicio: string }
   | { tipo: "ENCERRAR"; lactacaoId: number; dtFim: string; motivoSecagem: string | null }
-  | { tipo: "REABRIR"; lactacaoId: number };
+  | { tipo: "REABRIR"; lactacaoId: number }
+  | { tipo: "REMOVER"; lactacaoId: number };
 
 export type MutacaoEvento =
   | { tipo: "CRIACAO"; evento: EvtRepro }
   | { tipo: "EXCLUSAO"; evento: EvtRepro };
 
 export class ConflitoLactacaoError extends Error {
-  constructor(public code: "AMBIGUIDADE" | "SEM_LACTACAO_ABERTA", message: string) {
+  constructor(public code: "AMBIGUIDADE" | "SEM_LACTACAO_ABERTA" | "CICLO_ENRIQUECIDO", message: string) {
     super(message);
   }
 }
 // IA e TE são ambas "coberturas": geram gestação e definem o status INSEMINADA/PRENHE.
 const ehCobertura = (t: TipoEvt) => t === "INSEMINACAO" || t === "COBERTURA" || t === "TRANSFERENCIA_EMBRIAO";
+
+export function categoriaAposParto(categoria: string): string {
+  if (categoria === "NOVILHA") return "VACA";
+  if (categoria === "CABRITA") return "CABRA";
+  return categoria;
+}
+
 export interface Lact { numero: number; dtInicio: string; dtFim: string | null; }
 export interface ResumoRepro {
   statusReprodutivo: "PEV" | "VAZIA" | "INSEMINADA" | "PRENHE";
@@ -72,7 +81,13 @@ export function planejarSincronizacaoLactacoes(
     if (evento.tipoParto === "3" || evento.tipoParto === "aborto" || evento.tipoParto === "AB") return [];
     if (porInicio.has(evento.data)) return [];
     const maior = Math.max(numPartosEntrada, 0, ...persistidas.map((l) => l.numero));
-    return [{ tipo: "CRIAR", numero: maior + 1, dtInicio: evento.data }];
+    const abertas = persistidas.filter((l) => l.dtFim == null).sort((a, b) =>
+      b.dtInicio.localeCompare(a.dtInicio) || b.numero - a.numero || b.id - a.id,
+    );
+    return [
+      ...abertas.map((l) => ({ tipo: "ENCERRAR" as const, lactacaoId: l.id, dtFim: evento.data, motivoSecagem: "Novo parto" })),
+      { tipo: "CRIAR", numero: maior + 1, dtInicio: evento.data },
+    ];
   }
   if (mutacao.tipo === "CRIACAO" && evento.tipo === "SECAGEM") {
     const abertas = persistidas.filter((l) => l.dtFim == null).sort((a, b) =>
@@ -86,6 +101,20 @@ export function planejarSincronizacaoLactacoes(
       .filter((l) => l.dtFim === evento.data && l.dtInicio <= evento.data)
       .sort((a, b) => b.dtInicio.localeCompare(a.dtInicio) || b.numero - a.numero || b.id - a.id);
     return candidatas.length ? [{ tipo: "REABRIR", lactacaoId: candidatas[0].id }] : [];
+  }
+  if (mutacao.tipo === "EXCLUSAO" && evento.tipo === "PARTO") {
+    const doParto = persistidas.filter((l) => l.dtInicio === evento.data);
+    if (!doParto.length) return [];
+    if (doParto[0].enriquecida) {
+      throw new ConflitoLactacaoError("CICLO_ENRIQUECIDO", "A lactação deste parto possui produção ou dados históricos e não pode ser removida.");
+    }
+    const anterior = persistidas
+      .filter((l) => l.id !== doParto[0].id && l.dtFim === evento.data && l.motivoSecagem === "Novo parto")
+      .sort((a, b) => b.dtInicio.localeCompare(a.dtInicio) || b.numero - a.numero || b.id - a.id)[0];
+    return [
+      { tipo: "REMOVER", lactacaoId: doParto[0].id },
+      ...(anterior ? [{ tipo: "REABRIR" as const, lactacaoId: anterior.id }] : []),
+    ];
   }
   return [];
 }
@@ -107,7 +136,7 @@ export function reconstruirLactacoes(eventos: EvtRepro[], numPartosEntrada: numb
   return lacts;
 }
 
-export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: Lact[], numPartosEntrada: number, hoje: string, params: ParamsReproducao = {}): ResumoRepro {
+export function recomputarResumoReproducao(eventos: EvtRepro[], lactacoes: readonly Lact[], numPartosEntrada: number, hoje: string, params: ParamsReproducao = {}): ResumoRepro {
   const PEV_DIAS      = params.pevDias      ?? DEFAULT_PARAMS.pevDias;
   const GESTACAO_DIAS = params.gestacaoDias ?? DEFAULT_PARAMS.gestacaoDias;
   const SECAGEM_ANTEC = params.secagemAntec ?? DEFAULT_PARAMS.secagemAntec;
