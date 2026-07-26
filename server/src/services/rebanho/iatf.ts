@@ -1,4 +1,6 @@
 import { prisma } from "../../db.js";
+import type { Prisma } from "@prisma/client";
+import { recomputarAnimal } from "./eventos.js";
 import {
   agendarEtapas, ordenarEtapas, etapasComStatus, progressoExecucao,
   type EtapaComStatus, type ExecucaoEtapa,
@@ -153,12 +155,12 @@ export async function excluirProtocolo(id: number, propriedadeId: number | null 
 
 // ── Aplicação a um animal ────────────────────────────────────────────────────
 
-type ExecRow = {
+export type ExecRow = {
   id: number; dia: number; acao: string; hormonio: string | null; ordem: number;
   dataPlanejada: Date; status: "PENDENTE" | "CONCLUIDA" | "PULADA";
   dataExecucao: Date | null; produto: string | null; dose: string | null; observacao: string | null;
 };
-type AplicacaoRow = {
+export type AplicacaoRow = {
   id: number; animalId: number; protocoloId: number; dataInicio: Date; observacao: string | null;
   usoCidr: boolean; estimulo: string | null; perdaImplante: boolean;
   protocolo: ProtocoloRow;
@@ -260,6 +262,65 @@ export async function excluirAplicacao(id: number, propriedadeId: number | null 
   await prisma.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade execuções
 }
 
+/** Atualiza a execução e mantém o evento terminal IA/TE idempotente na mesma transação. */
+export async function atualizarExecucaoNaTransacao(
+  tx: Prisma.TransactionClient,
+  ex: ExecRow & { aplicacaoId: number; aplicacao: AplicacaoRow },
+  input: ExecutarEtapaInput,
+  hoje: string,
+): Promise<boolean> {
+  const dataExecucao = input.status === "PENDENTE"
+    ? null
+    : dataDb(input.dataExecucao ?? hoje);
+  await tx.execucaoEtapaIATF.update({
+    where: { id: ex.id },
+    data: {
+      status: input.status,
+      dataExecucao,
+      ...(input.produto !== undefined ? { produto: input.produto } : {}),
+      ...(input.dose !== undefined ? { dose: input.dose } : {}),
+      ...(input.observacao !== undefined ? { observacao: input.observacao } : {}),
+    },
+  });
+
+  const diaTerminal = Math.max(...ex.aplicacao.protocolo.etapas.map((etapa) => etapa.dia));
+  if (ex.dia !== diaTerminal) return false;
+
+  if (input.status !== "CONCLUIDA") {
+    await tx.eventoReprodutivo.deleteMany({ where: { origemExecucaoId: ex.id } });
+  } else {
+    const tipo = ex.aplicacao.protocolo.finalidade === "TETF"
+      ? "TRANSFERENCIA_EMBRIAO"
+      : "INSEMINACAO";
+    const produto = input.produto === undefined ? ex.produto : input.produto;
+    const data = dataExecucao ?? ex.dataPlanejada;
+    await tx.eventoReprodutivo.upsert({
+      where: { origemExecucaoId: ex.id },
+      create: {
+        animalId: ex.aplicacao.animalId,
+        tipo,
+        data,
+        protocolo: ex.aplicacao.protocolo.nome,
+        reprodutor: produto ?? (tipo === "INSEMINACAO" ? "IATF" : null),
+        origemExecucaoId: ex.id,
+      },
+      update: {
+        data,
+        protocolo: ex.aplicacao.protocolo.nome,
+        ...(produto !== undefined ? { reprodutor: produto } : {}),
+      },
+    });
+  }
+  await recomputarAnimal(tx, ex.aplicacao.animalId, {
+    tipo: input.status === "CONCLUIDA" ? "CRIACAO" : "EXCLUSAO",
+    evento: {
+      tipo: ex.aplicacao.protocolo.finalidade === "TETF" ? "TRANSFERENCIA_EMBRIAO" : "INSEMINACAO",
+      data: iso(dataExecucao ?? ex.dataPlanejada)!,
+    },
+  });
+  return true;
+}
+
 /** Marca uma etapa materializada como CONCLUIDA / PULADA / PENDENTE. */
 export async function executarEtapa(
   execucaoId: number,
@@ -275,20 +336,12 @@ export async function executarEtapa(
   });
   if (!ex) throw new IatfError("NAO_ENCONTRADO", "execução de etapa não encontrada");
 
-  const dataExec = input.status === "PENDENTE"
-    ? null
-    : dataDb(input.dataExecucao ?? new Date().toISOString().slice(0, 10));
-
-  await prisma.execucaoEtapaIATF.update({
-    where: { id: execucaoId },
-    data: {
-      status: input.status,
-      dataExecucao: dataExec,
-      ...(input.produto !== undefined ? { produto: input.produto } : {}),
-      ...(input.dose !== undefined ? { dose: input.dose } : {}),
-      ...(input.observacao !== undefined ? { observacao: input.observacao } : {}),
-    },
-  });
+  await prisma.$transaction((tx) => atualizarExecucaoNaTransacao(
+    tx,
+    ex as unknown as ExecRow & { aplicacaoId: number; aplicacao: AplicacaoRow },
+    input,
+    new Date().toISOString().slice(0, 10),
+  ));
 
   const a = await prisma.aplicacaoProtocoloIATF.findUniqueOrThrow({
     where: { id: ex.aplicacaoId },
