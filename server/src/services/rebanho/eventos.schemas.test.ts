@@ -32,6 +32,32 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: 190 }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: -5 }).success).toBe(false);
   });
+  it("PARTO valida criação ou vínculo de uma cria viva", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", sexoCria: "F",
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", criaId: 77, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", sexoCria: "XX",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 2, criasVivas: 2,
+      criaId: 77, sexoCria: "FM",
+    }).success).toBe(false);
+  });
   it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {
     expect(criarEventoSchema.safeParse({
       tipo: "EXAME_GINECOLOGICO",

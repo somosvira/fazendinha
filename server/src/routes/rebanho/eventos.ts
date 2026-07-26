@@ -6,7 +6,7 @@ import { listarResultadosGinecologicos } from "../../services/rebanho/exame-gine
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
-  if (e instanceof svc.EventoError) return { status: 404, body: { error: e.message } };
+  if (e instanceof svc.EventoError) return { status: e.code === "CONFLITO" ? 409 : 404, body: { error: e.message } };
   if (e instanceof svc.ConflitoLactacaoError) return { status: 409, body: { error: e.message } };
   console.error("[eventos]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };

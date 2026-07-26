@@ -22,9 +22,12 @@ const partoObject = z.object({
   numCrias: z.number().int().min(0).max(3).optional(),
   criasVivas: z.number().int().min(0).max(3).optional(),
   criasNatimortas: z.number().int().min(0).max(3).optional(),
-  sexoCria: z.string().max(2).optional(),
+  sexoCria: z.enum(["F", "M", "FM", "MF"]).optional(),
   tipoParto: z.string().max(20).optional(),
   auxilioParto: z.string().max(20).optional(),
+  criarCria: z.boolean().optional(),
+  criaNumero: z.string().trim().min(1).max(20).optional(),
+  criaId: z.number().int().positive().optional(),
 });
 
 const criarEventoBase = z.discriminatedUnion("tipo", [
@@ -55,6 +58,18 @@ export const criarEventoSchema = criarEventoBase.superRefine((v, ctx) => {
   if (v.criasVivas != null && v.criasNatimortas != null && v.numCrias != null
     && v.criasVivas + v.criasNatimortas !== v.numCrias) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "crias vivas + natimortas deve somar numCrias", path: ["criasVivas"] });
+  }
+  if (v.criarCria && !v.criaNumero) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "informe o número da cria", path: ["criaNumero"] });
+  }
+  if (v.criarCria && !v.sexoCria) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "informe o sexo da cria", path: ["sexoCria"] });
+  }
+  if (v.criarCria && v.criaId != null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "escolha criar ou vincular a cria", path: ["criaId"] });
+  }
+  if (v.criaId != null && (v.criasVivas ?? n) !== 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "vínculo por id exige exatamente uma cria viva", path: ["criaId"] });
   }
   // silencia unused-helper warnings em builds estritos
   void CODIGOS_TIPO_PARTO; void CODIGOS_AUXILIO; void normalizarAuxilioParto;
