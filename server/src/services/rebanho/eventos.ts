@@ -144,13 +144,38 @@ async function persistirPlanosDeCria(
     if (plano.tipo === "VINCULAR") {
       const cria = await tx.animal.findFirst({
         where: animalNoEscopo(plano.criaId, propriedadeId),
-        select: { id: true },
+        select: {
+          id: true,
+          sexo: true,
+          categoria: true,
+          maeId: true,
+          dataNascimento: true,
+          partoDeOrigem: { select: { id: true } },
+        },
       });
       if (!cria) throw new EventoError("NAO_ENCONTRADO", "cria não encontrada");
-      await tx.animal.update({
-        where: { id: plano.criaId },
-        data: { maeId: plano.maeId, dataNascimento: new Date(`${plano.dataNascimento}T00:00:00Z`) },
-      });
+      if (cria.categoria !== plano.categoria || cria.sexo !== plano.sexo) {
+        throw new EventoError("CONFLITO", "sexo ou categoria da cria não confere com o parto");
+      }
+      if (cria.partoDeOrigem) {
+        throw new EventoError("CONFLITO", "cria já está vinculada a outro parto");
+      }
+      if (cria.maeId != null && cria.maeId !== plano.maeId) {
+        throw new EventoError("CONFLITO", "mãe cadastrada da cria não confere com este parto");
+      }
+      const dataNascimento = new Date(`${plano.dataNascimento}T00:00:00Z`);
+      if (cria.dataNascimento != null && cria.dataNascimento.getTime() !== dataNascimento.getTime()) {
+        throw new EventoError("CONFLITO", "data de nascimento da cria não confere com o parto");
+      }
+      if (cria.maeId == null || cria.dataNascimento == null) {
+        await tx.animal.update({
+          where: { id: plano.criaId },
+          data: {
+            ...(cria.maeId == null ? { maeId: plano.maeId } : {}),
+            ...(cria.dataNascimento == null ? { dataNascimento } : {}),
+          },
+        });
+      }
       ids.push(cria.id);
       continue;
     }
@@ -183,6 +208,9 @@ export async function registrarEvento(
     select: { id: true, propriedadeId: true },
   });
   if (!animal) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
+  if (input.tipo === "PARTO" && input.criaId === animalId) {
+    throw new EventoError("CONFLITO", "a paridora não pode ser vinculada como própria cria");
+  }
   const doadoraId = (input as any).doadoraId as number | undefined;
   if (doadoraId != null) {
     const doadora = await prisma.animal.findFirst({

@@ -50,20 +50,24 @@ const criarEventoBase = z.discriminatedUnion("tipo", [
 export const criarEventoSchema = criarEventoBase.superRefine((v, ctx) => {
   if (v.tipo !== "PARTO") return;
   const tipo = normalizarTipoParto(v.tipoParto);
-  if (tipo === "3") return; // aborto: 0 crias ok
+  const aborto = tipo === "3";
   const n = v.numCrias ?? ((v.criasVivas ?? 0) + (v.criasNatimortas ?? 0));
-  if (n < 1) {
+  if (!aborto && n < 1) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "informe ao menos 1 cria (ou marque aborto)", path: ["numCrias"] });
   }
   if (v.criasVivas != null && v.criasNatimortas != null && v.numCrias != null
     && v.criasVivas + v.criasNatimortas !== v.numCrias) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "crias vivas + natimortas deve somar numCrias", path: ["criasVivas"] });
   }
+  const temAcaoCria = v.criarCria === true || v.criaId != null;
   if (v.criarCria && !v.criaNumero) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "informe o número da cria", path: ["criaNumero"] });
   }
-  if (v.criarCria && !v.sexoCria) {
+  if (temAcaoCria && !v.sexoCria) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "informe o sexo da cria", path: ["sexoCria"] });
+  }
+  if (temAcaoCria && (v.criasVivas ?? 0) < 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "cadastro ou vínculo exige ao menos uma cria viva", path: ["criasVivas"] });
   }
   if (v.criarCria && v.criaId != null) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "escolha criar ou vincular a cria", path: ["criaId"] });

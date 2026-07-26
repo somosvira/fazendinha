@@ -24,6 +24,8 @@ export type NovaCriaPlano =
   | {
     tipo: "VINCULAR";
     criaId: number;
+    sexo: "F" | "M";
+    categoria: "BEZERRA" | "BEZERRO";
     maeId: number;
     dataNascimento: string;
   };
@@ -44,12 +46,21 @@ export function planejarCrias(
   if ((vivos ?? 0) < 1) return [];
 
   const maeId = doadoraId ?? receptoraId;
+  const sexos = sexosDasCrias(parto.sexoCria, vivos!);
   if (parto.criaId != null) {
-    return [{ tipo: "VINCULAR", criaId: parto.criaId, maeId, dataNascimento: parto.data }];
+    const sexo = sexos[0];
+    return [{
+      tipo: "VINCULAR",
+      criaId: parto.criaId,
+      sexo,
+      categoria: sexo === "F" ? "BEZERRA" : "BEZERRO",
+      maeId,
+      dataNascimento: parto.data,
+    }];
   }
   if (!parto.criarCria || !parto.criaNumero) return [];
 
-  return sexosDasCrias(parto.sexoCria, vivos!).map((sexo, indice) => ({
+  return sexos.map((sexo, indice) => ({
     tipo: "CRIAR" as const,
     numero: indice === 0 ? parto.criaNumero! : `${parto.criaNumero}-${indice + 1}`,
     sexo,

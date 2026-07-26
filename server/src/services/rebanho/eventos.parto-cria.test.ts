@@ -134,8 +134,165 @@ describe("parto cria ou vincula Animal", () => {
 
     expect(mocks.txAnimalFindFirst).toHaveBeenCalledWith({
       where: { id: 77, propriedadeId: 7 },
-      select: { id: true },
+      select: {
+        id: true,
+        sexo: true,
+        categoria: true,
+        maeId: true,
+        dataNascimento: true,
+        partoDeOrigem: { select: { id: true } },
+      },
     });
+    expect(mocks.txEventoCreate).not.toHaveBeenCalled();
+  });
+
+  it("recusa vincular a própria paridora como cria", async () => {
+    await expect(registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 31,
+    }, 7)).rejects.toEqual(expect.objectContaining({ code: "CONFLITO" }));
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("recusa vincular animal adulto como cria", async () => {
+    mocks.txEventoFindFirst.mockResolvedValue(null);
+    mocks.txAnimalFindFirst.mockResolvedValue({
+      id: 77,
+      categoria: "VACA",
+      maeId: null,
+      dataNascimento: null,
+      partoDeOrigem: null,
+    });
+
+    await expect(registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 77,
+    }, 7)).rejects.toEqual(expect.objectContaining({ code: "CONFLITO" }));
+
+    expect(mocks.txAnimalUpdate).not.toHaveBeenCalled();
+    expect(mocks.txEventoCreate).not.toHaveBeenCalled();
+  });
+
+  it("preserva genealogia existente e recusa mãe divergente", async () => {
+    mocks.txEventoFindFirst.mockResolvedValue(null);
+    mocks.txAnimalFindFirst.mockResolvedValue({
+      id: 77,
+      categoria: "BEZERRA",
+      maeId: 99,
+      dataNascimento: new Date("2026-07-26T00:00:00Z"),
+      partoDeOrigem: null,
+    });
+
+    await expect(registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 77,
+    }, 7)).rejects.toEqual(expect.objectContaining({ code: "CONFLITO" }));
+
+    expect(mocks.txAnimalUpdate).not.toHaveBeenCalled();
+    expect(mocks.txEventoCreate).not.toHaveBeenCalled();
+  });
+
+  it("vincula cria elegível e preenche somente genealogia e nascimento ausentes", async () => {
+    mocks.txEventoFindFirst.mockResolvedValue(null);
+    mocks.txAnimalFindFirst.mockResolvedValue({
+      id: 77,
+      sexo: "F",
+      categoria: "BEZERRA",
+      maeId: null,
+      dataNascimento: null,
+      partoDeOrigem: null,
+    });
+
+    await registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 77,
+    }, 7);
+
+    expect(mocks.txAnimalUpdate).toHaveBeenCalledWith({
+      where: { id: 77 },
+      data: { maeId: 31, dataNascimento: new Date("2026-07-26T00:00:00Z") },
+    });
+    expect(mocks.txEventoCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ criaId: 77 }),
+    });
+  });
+
+  it("preserva genealogia e nascimento já coincidentes sem reescrever a cria", async () => {
+    mocks.txEventoFindFirst.mockResolvedValue(null);
+    mocks.txAnimalFindFirst.mockResolvedValue({
+      id: 77,
+      sexo: "F",
+      categoria: "BEZERRA",
+      maeId: 31,
+      dataNascimento: new Date("2026-07-26T00:00:00Z"),
+      partoDeOrigem: null,
+    });
+
+    await registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 77,
+    }, 7);
+
+    expect(mocks.txAnimalUpdate).not.toHaveBeenCalled();
+    expect(mocks.txEventoCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ criaId: 77 }),
+    });
+  });
+
+  it("recusa vínculo quando sexo cadastrado contradiz o parto", async () => {
+    mocks.txEventoFindFirst.mockResolvedValue(null);
+    mocks.txAnimalFindFirst.mockResolvedValue({
+      id: 77,
+      sexo: "M",
+      categoria: "BEZERRO",
+      maeId: null,
+      dataNascimento: null,
+      partoDeOrigem: null,
+    });
+
+    await expect(registrarEvento(31, {
+      tipo: "PARTO",
+      data: "2026-07-26",
+      tipoParto: "1",
+      numCrias: 1,
+      criasVivas: 1,
+      criasNatimortas: 0,
+      sexoCria: "F",
+      criaId: 77,
+    }, 7)).rejects.toEqual(expect.objectContaining({ code: "CONFLITO" }));
+
+    expect(mocks.txAnimalUpdate).not.toHaveBeenCalled();
     expect(mocks.txEventoCreate).not.toHaveBeenCalled();
   });
 

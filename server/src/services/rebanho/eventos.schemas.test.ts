@@ -57,6 +57,18 @@ describe("criarEventoSchema", () => {
       tipo: "PARTO", data: "2026-07-26", numCrias: 2, criasVivas: 2,
       criaId: 77, sexoCria: "FM",
     }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criaId: 77,
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", tipoParto: "3", numCrias: 0,
+      criaId: 77, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", tipoParto: "4", numCrias: 1,
+      criasVivas: 0, criasNatimortas: 1, criarCria: true, criaNumero: "B-101", sexoCria: "F",
+    }).success).toBe(false);
   });
   it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {
     expect(criarEventoSchema.safeParse({

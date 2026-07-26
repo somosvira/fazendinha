@@ -67,6 +67,8 @@ describe("planejarCrias", () => {
     expect(planejarCrias(parto({ criarCria: false, criaNumero: undefined, criaId: 77 }), 10, null)).toEqual([{
       tipo: "VINCULAR",
       criaId: 77,
+      sexo: "F",
+      categoria: "BEZERRA",
       maeId: 10,
       dataNascimento: "2026-07-26",
     }]);
