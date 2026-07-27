@@ -72,6 +72,15 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   const pid = await propriedadePrincipalId();
   await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
+  // Produção por grupo herda o sítio do lote; tanque geral legado cai na principal.
+  await prisma.$executeRaw`
+    UPDATE "ProducaoLote" AS p
+    SET "propriedadeId" = COALESCE(
+      (SELECT g."propriedadeId" FROM "Grupo" AS g WHERE g."id" = p."grupoId"),
+      ${pid}
+    )
+    WHERE p."propriedadeId" IS NULL
+  `;
   await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.lancamento.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.loteCorte.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
