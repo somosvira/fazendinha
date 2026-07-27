@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS "EstoqueSemen" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "EstoqueSemen_ideagriId_key" ON "EstoqueSemen"("ideagriId");
 CREATE INDEX IF NOT EXISTS "EstoqueSemen_reprodutorId_idx" ON "EstoqueSemen"("reprodutorId");
+CREATE INDEX IF NOT EXISTS "EstoqueSemen_tipoSemenId_idx" ON "EstoqueSemen"("tipoSemenId");
 CREATE INDEX IF NOT EXISTS "EstoqueSemen_propriedadeId_idx" ON "EstoqueSemen"("propriedadeId");
 
 ALTER TABLE "Reprodutor" ADD COLUMN IF NOT EXISTS "ideagriId" INTEGER;
@@ -116,6 +117,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Reprodutor_ideagriId_key" ON "Reprodutor"("id
 ALTER TABLE "EventoReprodutivo"
   ADD COLUMN IF NOT EXISTS "estoqueSemenId" INTEGER,
   ADD COLUMN IF NOT EXISTS "estoqueSemenDoseBaixada" BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS "EventoReprodutivo_estoqueSemenId_idx" ON "EventoReprodutivo"("estoqueSemenId");
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ValorIndicadorReprodutor_reprodutorId_fkey') THEN
