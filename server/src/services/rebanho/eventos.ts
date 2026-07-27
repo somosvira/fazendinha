@@ -6,17 +6,20 @@ import {
   reconstruirLactacoes,
   recomputarResumoReproducao,
   planejarSincronizacaoLactacoes,
+  categoriaAposParto,
   type EvtRepro,
   type LactacaoEstrutural,
   type MutacaoEvento,
 } from "./reproducao.recompute.js";
 import { calcularTaxaConcepcao, type TaxaConcepcaoMetodo } from "./reproducao.concepcao.js";
 import { getNumero } from "./parametros.js";
+import { planejarCrias, type NovaCriaPlano } from "./parto-cria.calc.js";
+import { planejarBaixaDose, planejarDevolucaoDose } from "./semen-baixa.calc.js";
 
 export { ConflitoLactacaoError } from "./reproducao.recompute.js";
 
 export class EventoError extends Error {
-  constructor(public code: "NAO_ENCONTRADO", message: string) { super(message); }
+  constructor(public code: "NAO_ENCONTRADO" | "CONFLITO", message: string) { super(message); }
 }
 const d = (s?: string) => (s ? new Date(s) : undefined);
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
@@ -48,17 +51,59 @@ export async function recomputarAnimal(tx: Tx, animalId: number, mutacao: Mutaca
   const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, protocolo: e.protocolo, tipoParto: e.tipoParto, motivoSecagem: e.motivoSecagem }));
 
   // Sincronização pontual das lactações persistidas (não destrutiva).
-  const persistidas: LactacaoEstrutural[] = (await tx.lactacao.findMany({ where: { animalId }, select: { id: true, numero: true, dtInicio: true, dtFim: true, motivoSecagem: true } }))
-    .map((l) => ({ id: l.id, numero: l.numero, dtInicio: iso(l.dtInicio)!, dtFim: iso(l.dtFim), motivoSecagem: l.motivoSecagem }));
+  const [lactacoesDb, controles] = await Promise.all([
+    tx.lactacao.findMany({
+      where: { animalId },
+      select: {
+        id: true,
+        numero: true,
+        dtInicio: true,
+        dtFim: true,
+        motivoSecagem: true,
+        tipoAleitamento: true,
+        induzida: true,
+        producaoTotal: true,
+        producao305: true,
+        duracaoDias: true,
+      },
+    }),
+    tx.controleLeiteiro.findMany({ where: { animalId }, select: { data: true } }),
+  ]);
+  const persistidas: LactacaoEstrutural[] = lactacoesDb.map((l) => ({
+    id: l.id,
+    numero: l.numero,
+    dtInicio: iso(l.dtInicio)!,
+    dtFim: iso(l.dtFim),
+    motivoSecagem: l.motivoSecagem,
+    enriquecida: l.tipoAleitamento != null || l.induzida || l.producaoTotal != null
+      || l.producao305 != null || l.duracaoDias != null
+      || controles.some((c) => c.data >= l.dtInicio && (l.dtFim == null || c.data <= l.dtFim)),
+  }));
   const operacoes = planejarSincronizacaoLactacoes(persistidas, mutacao, animal.numPartosEntrada);
   for (const op of operacoes) {
     if (op.tipo === "CRIAR") await tx.lactacao.create({ data: { animalId, numero: op.numero, dtInicio: new Date(op.dtInicio) } });
     else if (op.tipo === "ENCERRAR") await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: new Date(op.dtFim), motivoSecagem: op.motivoSecagem } });
-    else await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: null, motivoSecagem: null } });
+    else if (op.tipo === "REABRIR") await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: null, motivoSecagem: null } });
+    else await tx.lactacao.delete({ where: { id: op.lactacaoId } });
   }
 
-  // O resumo reprodutivo deriva dos eventos (cálculo puro), independente da persistência acima.
-  const lactsDerivadas = reconstruirLactacoes(evs, animal.numPartosEntrada);
+  const tipoParto = (mutacao.evento.tipoParto ?? "").toLowerCase();
+  const partoValido = mutacao.tipo === "CRIACAO" && mutacao.evento.tipo === "PARTO"
+    && tipoParto !== "3" && tipoParto !== "aborto" && tipoParto !== "ab";
+  const categoria = categoriaAposParto(animal.categoria);
+  if (partoValido && categoria !== animal.categoria) {
+    await tx.animal.update({ where: { id: animalId }, data: { categoria: categoria as typeof animal.categoria } });
+  }
+
+  // O resumo usa a estrutura persistida depois da sincronização. Assim, ciclos
+  // importados sem evento PARTO correspondente continuam fornecendo DEL e ordem.
+  const lactsPersistidas = (await tx.lactacao.findMany({
+    where: { animalId },
+    select: { numero: true, dtInicio: true, dtFim: true },
+  })).map((l) => ({ numero: l.numero, dtInicio: iso(l.dtInicio)!, dtFim: iso(l.dtFim) }));
+  const lactsDerivadas = lactsPersistidas.length
+    ? lactsPersistidas
+    : reconstruirLactacoes(evs, animal.numPartosEntrada);
   const [pevDias, gestacaoDias, secagemAntec] = await Promise.all([
     getNumero("PEV_DIAS"),
     getNumero("GESTACAO_DIAS"),
@@ -122,16 +167,94 @@ export async function listarEventos(animalId: number, propriedadeId: number | nu
   return evs.map(toTimeline);
 }
 
+async function persistirPlanosDeCria(
+  tx: Tx,
+  planos: readonly NovaCriaPlano[],
+  propriedadeId: number | null,
+): Promise<number[]> {
+  const criacoes = planos.filter((plano): plano is Extract<NovaCriaPlano, { tipo: "CRIAR" }> => plano.tipo === "CRIAR");
+  if (criacoes.length > 0) {
+    const existentes = await tx.animal.findMany({
+      where: { numero: { in: criacoes.map((plano) => plano.numero) } },
+      select: { numero: true },
+    });
+    if (existentes.length > 0) {
+      throw new EventoError("CONFLITO", `número ${existentes[0].numero} já existe`);
+    }
+  }
+
+  const ids: number[] = [];
+  for (const plano of planos) {
+    if (plano.tipo === "VINCULAR") {
+      const cria = await tx.animal.findFirst({
+        where: animalNoEscopo(plano.criaId, propriedadeId),
+        select: {
+          id: true,
+          sexo: true,
+          categoria: true,
+          maeId: true,
+          dataNascimento: true,
+          partoDeOrigem: { select: { id: true } },
+        },
+      });
+      if (!cria) throw new EventoError("NAO_ENCONTRADO", "cria não encontrada");
+      if (cria.categoria !== plano.categoria || cria.sexo !== plano.sexo) {
+        throw new EventoError("CONFLITO", "sexo ou categoria da cria não confere com o parto");
+      }
+      if (cria.partoDeOrigem) {
+        throw new EventoError("CONFLITO", "cria já está vinculada a outro parto");
+      }
+      if (cria.maeId != null && cria.maeId !== plano.maeId) {
+        throw new EventoError("CONFLITO", "mãe cadastrada da cria não confere com este parto");
+      }
+      const dataNascimento = new Date(`${plano.dataNascimento}T00:00:00Z`);
+      if (cria.dataNascimento != null && cria.dataNascimento.getTime() !== dataNascimento.getTime()) {
+        throw new EventoError("CONFLITO", "data de nascimento da cria não confere com o parto");
+      }
+      if (cria.maeId == null || cria.dataNascimento == null) {
+        await tx.animal.update({
+          where: { id: plano.criaId },
+          data: {
+            ...(cria.maeId == null ? { maeId: plano.maeId } : {}),
+            ...(cria.dataNascimento == null ? { dataNascimento } : {}),
+          },
+        });
+      }
+      ids.push(cria.id);
+      continue;
+    }
+    const dataNascimento = new Date(`${plano.dataNascimento}T00:00:00Z`);
+    const cria = await tx.animal.create({
+      data: {
+        numero: plano.numero,
+        sexo: plano.sexo,
+        categoria: plano.categoria,
+        dataNascimento,
+        dataEntrada: dataNascimento,
+        maeId: plano.maeId,
+        propriedadeId,
+        resumo: { create: { statusReprodutivo: "VAZIA" } },
+      },
+      select: { id: true },
+    });
+    ids.push(cria.id);
+  }
+  return ids;
+}
+
 export async function registrarEvento(
   animalId: number,
   input: CriarEventoInput,
   propriedadeId: number | null = null,
-): Promise<EventoTimelineDTO> {
+): Promise<EventoTimelineDTO & { aviso?: string }> {
   const animal = await prisma.animal.findFirst({
     where: animalNoEscopo(animalId, propriedadeId),
-    select: { id: true },
+    select: { id: true, propriedadeId: true },
   });
   if (!animal) throw new EventoError("NAO_ENCONTRADO", "animal não encontrado");
+  if (input.tipo === "PARTO" && input.criaId === animalId) {
+    throw new EventoError("CONFLITO", "a paridora não pode ser vinculada como própria cria");
+  }
   const doadoraId = (input as any).doadoraId as number | undefined;
   if (doadoraId != null) {
     const doadora = await prisma.animal.findFirst({
@@ -140,19 +263,81 @@ export async function registrarEvento(
     });
     if (!doadora) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
   }
-  // Evento + sincronização de lactações + resumo na mesma transação: se a sincronização
-  // recusar (conflito estrutural), nada é gravado — o evento não vaza sem read-model coerente.
+  const resultadoGinecologicoId = input.tipo === "EXAME_GINECOLOGICO"
+    ? input.resultadoGinecologicoId
+    : undefined;
+  if (resultadoGinecologicoId != null) {
+    const resultado = await prisma.resultadoExameGinecologico.findUnique({
+      where: { id: resultadoGinecologicoId },
+      select: { id: true },
+    });
+    if (!resultado) throw new EventoError("NAO_ENCONTRADO", "resultado ginecológico não encontrado");
+  }
+  // Evento + baixa de dose + crias + sincronização de lactações + resumo na mesma
+  // transação: se qualquer etapa recusar, nada é gravado — o evento não vaza sem
+  // estoque, genealogia e read-model coerentes.
   return prisma.$transaction(async (tx) => {
+    let estoqueSemenDoseBaixada = false;
+    let aviso: string | null = null;
+    const estoqueSemenId = input.tipo === "INSEMINACAO" ? input.estoqueSemenId : undefined;
+    const propriedadeEstoqueId = animal.propriedadeId ?? propriedadeId;
+    if (estoqueSemenId != null) {
+      const estoque = await tx.estoqueSemen.findFirst({
+        where: { id: estoqueSemenId, ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}) },
+        select: { id: true, dosesDisponiveis: true },
+      });
+      if (!estoque) throw new EventoError("NAO_ENCONTRADO", "lote de sêmen não encontrado");
+      const plano = planejarBaixaDose({ estoqueSemenId, dosesDisponiveis: estoque.dosesDisponiveis });
+      aviso = plano.aviso;
+      if (plano.consumir) {
+        const baixa = await tx.estoqueSemen.updateMany({
+          where: {
+            id: estoqueSemenId,
+            ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}),
+            dosesDisponiveis: { gte: 1 },
+          },
+          data: { dosesDisponiveis: { decrement: 1 } },
+        });
+        estoqueSemenDoseBaixada = baixa.count === 1;
+        if (!estoqueSemenDoseBaixada) {
+          aviso = planejarBaixaDose({ estoqueSemenId, dosesDisponiveis: 0 }).aviso;
+        }
+      }
+    }
+
+    let criaId: number | undefined;
+    if (input.tipo === "PARTO") {
+      const dataParto = new Date(`${input.data}T00:00:00Z`);
+      const ultimoServico = await tx.eventoReprodutivo.findFirst({
+        where: {
+          animalId,
+          tipo: { in: ["INSEMINACAO", "COBERTURA", "TRANSFERENCIA_EMBRIAO", "PARTO"] },
+          data: { lte: dataParto },
+        },
+        orderBy: [{ data: "desc" }, { id: "desc" }],
+        select: { tipo: true, doadoraId: true },
+      });
+      const maeGeneticaId = ultimoServico?.tipo === "TRANSFERENCIA_EMBRIAO"
+        ? ultimoServico.doadoraId
+        : null;
+      const planos = planejarCrias(input, animalId, maeGeneticaId);
+      const ids = await persistirPlanosDeCria(tx, planos, animal.propriedadeId);
+      criaId = ids[0];
+    }
     const e = await tx.eventoReprodutivo.create({
       data: {
         animalId, tipo: input.tipo, data: new Date(input.data), observacao: (input as any).observacao,
         reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
         // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
         resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
+        resultadoGinecologicoId,
         dtPartoPrevista: d((input as any).dtPartoPrevista),
         tipoParto: (input as any).tipoParto, auxilioParto: (input as any).auxilioParto,
         numCrias: (input as any).numCrias, criasVivas: (input as any).criasVivas, criasNatimortas: (input as any).criasNatimortas,
         sexoCria: (input as any).sexoCria,
+        criaId,
+        estoqueSemenId,
+        estoqueSemenDoseBaixada,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },
     });
@@ -160,7 +345,8 @@ export async function registrarEvento(
     // (barriga de aluguel). Flag sticky: fica marcada mesmo que o evento seja excluído.
     if (input.tipo === "TRANSFERENCIA_EMBRIAO") await tx.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
     await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
-    return toTimeline(e);
+    const timeline = toTimeline(e);
+    return aviso ? { ...timeline, aviso } : timeline;
   });
 }
 
@@ -170,9 +356,28 @@ export async function excluirEvento(eventoId: number, propriedadeId: number | nu
       id: eventoId,
       ...viaAnimal(propriedadeId),
     },
+    include: { animal: { select: { propriedadeId: true } } },
   });
   if (!e) throw new EventoError("NAO_ENCONTRADO", "evento não encontrado");
   await prisma.$transaction(async (tx) => {
+    if (e.estoqueSemenId != null && e.estoqueSemenDoseBaixada) {
+      const propriedadeEstoqueId = e.animal.propriedadeId ?? propriedadeId;
+      const estoque = await tx.estoqueSemen.findFirst({
+        where: { id: e.estoqueSemenId, ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}) },
+        select: { id: true, dosesDisponiveis: true },
+      });
+      if (!estoque) throw new EventoError("NAO_ENCONTRADO", "lote de sêmen não encontrado");
+      const plano = planejarDevolucaoDose({
+        doseBaixada: e.estoqueSemenDoseBaixada,
+        dosesDisponiveis: estoque.dosesDisponiveis,
+      });
+      if (plano.devolver) {
+        await tx.estoqueSemen.update({
+          where: { id: e.estoqueSemenId },
+          data: { dosesDisponiveis: { increment: 1 } },
+        });
+      }
+    }
     await tx.eventoReprodutivo.delete({ where: { id: eventoId } });
     await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
   });

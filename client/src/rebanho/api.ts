@@ -105,16 +105,78 @@ export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 export interface EventoPayload {
   tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
   data: string; observacao?: string;
-  reprodutor?: string; protocolo?: string;
+  reprodutor?: string; protocolo?: string; estoqueSemenId?: number;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; criasVivas?: number; criasNatimortas?: number;
-  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  criarCria?: boolean; criaNumero?: string; criaId?: number;
   doadoraId?: number; // TE: animal doador da genética
+  resultadoGinecologicoId?: number;
   metodo?: string; // exame ginecológico: palpação/US
   pesoKg?: number; // desmame: peso opcional ao desmame
 }
+
+export interface AptidaoDTO {
+  id: number; animalId: number; data: string; apta: boolean;
+  motivo: string | null; origem: "MANUAL" | "AUTOMATICA";
+}
+export interface SugestaoAptidaoDTO { animalId: number; numero: string; apta: true; motivo: string }
+export interface AplicacaoAptidaoDTO { data: string; candidatas: number; aplicadas: number; ignoradas: number }
+export interface ResultadoGinecologicoDTO {
+  id: number; codigo: number; nomeResumido: string;
+  nomeCompleto: string | null; tipo: string | null; padrao: boolean;
+}
+
+export const listarAptidoes = (animalId: string) => req<AptidaoDTO[]>(`/rebanho/animais/${animalId}/aptidao`);
+export const registrarAptidao = (animalId: string, body: { data: string; apta: boolean; motivo?: string }) =>
+  req<AptidaoDTO>(`/rebanho/animais/${animalId}/aptidao`, { method: "POST", body: JSON.stringify(body) });
+export const sugerirAptidoesAutomaticas = () => req<SugestaoAptidaoDTO[]>(`/rebanho/aptidao/sugestoes`);
+export const aplicarAptidaoAutomatica = (data?: string) =>
+  req<AplicacaoAptidaoDTO>(`/rebanho/aptidao/aplicar`, { method: "POST", body: JSON.stringify(data ? { data } : {}) });
+export const listarResultadosGinecologicos = () => req<ResultadoGinecologicoDTO[]>(`/rebanho/resultados-ginecologicos`);
+
+export function useSugestoesAptidao() {
+  const [data, setData] = useState<SugestaoAptidaoDTO[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    sugerirAptidoesAutomaticas().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useAptidoes(animalId: string | null) {
+  const [data, setData] = useState<AptidaoDTO[] | null>(null);
+  const [loading, setLoading] = useState(Boolean(animalId));
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!animalId) { setData(null); setLoading(false); return; }
+    setLoading(true); setErro(null);
+    listarAptidoes(animalId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+  }, [animalId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
+
+export function useResultadosGinecologicos(ativo = true) {
+  const [data, setData] = useState<ResultadoGinecologicoDTO[] | null>(null);
+  const [loading, setLoading] = useState(ativo);
+  useEffect(() => {
+    if (!ativo) { setLoading(false); return; }
+    let vivo = true;
+    setLoading(true);
+    listarResultadosGinecologicos().then((itens) => { if (vivo) setData(itens); }).catch(() => { if (vivo) setData([]); }).finally(() => { if (vivo) setLoading(false); });
+    return () => { vivo = false; };
+  }, [ativo]);
+  return { data, loading };
+}
+
+export type EventoRegistrado = EventoTimeline & { aviso?: string };
+
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
-export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
+export const registrarEvento = (id: string, p: EventoPayload) => req<EventoRegistrado>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
 
 // ── Taxa de concepção por método (IA × monta natural × TE) — KPI de reprodução ──
@@ -1334,6 +1396,68 @@ export const listarReprodutores = (incluirInativos = false) => req<BibliotecaRep
 export const criarReprodutor = (body: ReprodutorInput) => req<ReprodutorDTO>(`/rebanho/reprodutores`, { method: "POST", body: JSON.stringify(body) });
 export const atualizarReprodutor = (id: number, body: Partial<ReprodutorInput>) => req<ReprodutorDTO>(`/rebanho/reprodutores/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 export const excluirReprodutor = (id: number) => req<{ ok: true }>(`/rebanho/reprodutores/${id}`, { method: "DELETE" });
+
+export type DirecaoIndicadorGenetico = "maior_melhor" | "menor_melhor";
+export type ColunaLegadaIndicador = "ptaLeite" | "ptaGordura" | "ptaProteina" | "tpi";
+export interface IndicadorGeneticoDTO {
+  id: number; sigla: string; nome: string; unidade: string | null;
+  direcao: DirecaoIndicadorGenetico; colunaLegada: ColunaLegadaIndicador | null;
+  ranking: boolean; ativo: boolean;
+}
+export interface IndicadorGeneticoInput {
+  sigla: string; nome: string; unidade?: string | null;
+  direcao?: DirecaoIndicadorGenetico; colunaLegada?: ColunaLegadaIndicador | null;
+  ranking?: boolean; ativo?: boolean;
+}
+export interface DicionarioGeneticoDTO { id: number; sigla: string; nome: string }
+export interface DicionarioGeneticoInput { sigla: string; nome: string }
+export interface ValorIndicadorGeneticoInput { indicadorId: number; valor: number }
+export interface ValorMarcadorGeneticoInput { marcadorId: number; resultado: string }
+export interface ValorCaseinaInput { caseinaId: number; genotipo: string }
+export interface PedigreeReprodutorDTO {
+  paiNome: string | null; paiCodigo: string | null;
+  maeNome: string | null; maeCodigo: string | null;
+  avoMaternoNome: string | null; avoMaternoCodigo: string | null;
+  avoPaternoNome: string | null; avoPaternoCodigo: string | null;
+}
+export interface FichaGeneticaDTO {
+  valoresIndicador: ValorIndicadorGeneticoInput[];
+  valoresMarcador: ValorMarcadorGeneticoInput[];
+  valoresCaseina: ValorCaseinaInput[];
+  pedigree: PedigreeReprodutorDTO | null;
+}
+export interface SalvarFichaGeneticaInput {
+  valoresIndicador: ValorIndicadorGeneticoInput[];
+  valoresMarcador: ValorMarcadorGeneticoInput[];
+  valoresCaseina: ValorCaseinaInput[];
+  pedigree?: PedigreeReprodutorDTO | null;
+}
+export interface RankingReprodutoresDTO { ordem: number[]; indicadorId: number | null }
+export interface TipoSemenDTO { id: number; sigla: string; nome: string }
+export interface EstoqueSemenDTO {
+  id: number; reprodutorId: number; tipoSemenId: number | null; tipoSemenNome: string | null;
+  lote: string | null; localizacao: string | null; dosesDisponiveis: number;
+}
+export interface LoteSemenInput {
+  tipoSemenId?: number | null; lote?: string | null; localizacao?: string | null; dosesDisponiveis: number;
+}
+
+export const listarIndicadores = () => req<IndicadorGeneticoDTO[]>(`/rebanho/genetica/indicadores`);
+export const criarIndicador = (body: IndicadorGeneticoInput) => req<IndicadorGeneticoDTO>(`/rebanho/genetica/indicadores`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarIndicador = (id: number, body: Partial<IndicadorGeneticoInput>) => req<IndicadorGeneticoDTO>(`/rebanho/genetica/indicadores/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirIndicador = (id: number) => req<{ ok: true }>(`/rebanho/genetica/indicadores/${id}`, { method: "DELETE" });
+export const listarMarcadores = () => req<DicionarioGeneticoDTO[]>(`/rebanho/genetica/marcadores`);
+export const criarMarcador = (body: DicionarioGeneticoInput) => req<DicionarioGeneticoDTO>(`/rebanho/genetica/marcadores`, { method: "POST", body: JSON.stringify(body) });
+export const listarCaseinas = () => req<DicionarioGeneticoDTO[]>(`/rebanho/genetica/caseinas`);
+export const criarCaseina = (body: DicionarioGeneticoInput) => req<DicionarioGeneticoDTO>(`/rebanho/genetica/caseinas`, { method: "POST", body: JSON.stringify(body) });
+export const obterFichaGenetica = (reprodutorId: number) => req<FichaGeneticaDTO>(`/rebanho/reprodutores/${reprodutorId}/genetica`);
+export const salvarFichaGenetica = (reprodutorId: number, body: SalvarFichaGeneticaInput) => req<FichaGeneticaDTO>(`/rebanho/reprodutores/${reprodutorId}/genetica`, { method: "PUT", body: JSON.stringify(body) });
+export const rankingReprodutores = (indicadorId?: number) => req<RankingReprodutoresDTO>(`/rebanho/reprodutores/ranking${indicadorId == null ? "" : `?indicadorId=${indicadorId}`}`);
+export const listarTiposSemen = () => req<TipoSemenDTO[]>(`/rebanho/semen/tipos`);
+export const criarTipoSemen = (body: DicionarioGeneticoInput) => req<TipoSemenDTO>(`/rebanho/semen/tipos`, { method: "POST", body: JSON.stringify(body) });
+export const listarEstoqueSemen = (reprodutorId: number) => req<EstoqueSemenDTO[]>(`/rebanho/reprodutores/${reprodutorId}/semen`);
+export const criarLoteSemen = (reprodutorId: number, body: LoteSemenInput) => req<EstoqueSemenDTO>(`/rebanho/reprodutores/${reprodutorId}/semen`, { method: "POST", body: JSON.stringify(body) });
+export const ajustarDoses = (estoqueId: number, delta: number) => req<EstoqueSemenDTO>(`/rebanho/semen/${estoqueId}/doses`, { method: "PATCH", body: JSON.stringify({ delta }) });
 
 export function useReprodutores(incluirInativos = false) {
   const [data, setData] = useState<BibliotecaReprodutoresDTO | null>(null);

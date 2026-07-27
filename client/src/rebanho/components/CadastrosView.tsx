@@ -11,8 +11,9 @@ import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb
 import { EmptyState } from "@/components/EmptyState";
 import { Package, Users } from "lucide-react";
 import { fmtMoneyExact } from "@/components/charts";
+import { IndicadoresGeneticosSection } from "./IndicadoresGeneticosSection";
 
-type Sub = "produtos" | "fornecedores";
+type Sub = "produtos" | "fornecedores" | "indicadores";
 
 const TIPO_PRODUTO: { id: TipoProduto; label: string }[] = [
   { id: "MEDICAMENTO", label: "Medicamento" },
@@ -38,10 +39,11 @@ export function CadastrosView() {
     <RebMain>
       <RebHeader eyebrow="Cadastros · compartilhado entre propriedades" title="Cadastros" />
       <div className={REB_CHIPS} style={{ marginBottom: 18 }}>
-        <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
-        <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
+        <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} aria-pressed={sub === "produtos"} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
+        <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} aria-pressed={sub === "fornecedores"} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
+        <button className={REB_CHIP_Q} onClick={() => setSub("indicadores")} aria-pressed={sub === "indicadores"} style={sub === "indicadores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Indicadores</button>
       </div>
-      {sub === "produtos" ? <Produtos /> : <Fornecedores />}
+      {sub === "produtos" ? <Produtos /> : sub === "fornecedores" ? <Fornecedores /> : <IndicadoresGeneticosSection />}
     </RebMain>
   );
 }

@@ -32,4 +32,56 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: 190 }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "DESMAME", data: "2026-06-01", pesoKg: -5 }).success).toBe(false);
   });
+  it("PARTO valida criação ou vínculo de uma cria viva", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", sexoCria: "F",
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", criaId: 77, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criarCria: true, criaNumero: "B-101", sexoCria: "XX",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 2, criasVivas: 2,
+      criaId: 77, sexoCria: "FM",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 1, criasVivas: 1,
+      criaId: 77,
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", tipoParto: "3", numCrias: 0,
+      criaId: 77, sexoCria: "F",
+    }).success).toBe(false);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", tipoParto: "4", numCrias: 1,
+      criasVivas: 0, criasNatimortas: 1, criarCria: true, criaNumero: "B-101", sexoCria: "F",
+    }).success).toBe(false);
+  });
+  it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "EXAME_GINECOLOGICO",
+      data: "2026-06-01",
+      resultado: "CORPO_LUTEO",
+      resultadoGinecologicoId: 12,
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "EXAME_GINECOLOGICO",
+      data: "2026-06-01",
+      resultado: "CORPO_LUTEO",
+      resultadoGinecologicoId: 0,
+    }).success).toBe(false);
+  });
 });

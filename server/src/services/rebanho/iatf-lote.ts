@@ -10,6 +10,7 @@ import {
 import type { CriarProgramacaoInput, ExecutarEtapaLoteInput } from "./iatf-lote.schemas.js";
 import {
   atualizarExecucaoNaTransacao,
+  estornarDosesSemenPorExecucoesNaTransacao,
   materializarExecucoes,
   type AplicacaoRow,
   type ExecRow,
@@ -323,6 +324,21 @@ export async function excluirProgramacao(id: number, propriedadeId: number | nul
     select: { id: true },
   });
   if (!existente) throw new IatfLoteError("NAO_ENCONTRADO", "programação não encontrada");
-  // As aplicações-filhas caem por cascade (onDelete: Cascade em programacaoId).
-  await prisma.programacaoIATFLote.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    const programacao = await tx.programacaoIATFLote.findUniqueOrThrow({
+      where: { id },
+      select: { propriedadeId: true },
+    });
+    const aplicacoes = await tx.aplicacaoProtocoloIATF.findMany({
+      where: { programacaoId: id },
+      select: { execucoes: { select: { id: true } } },
+    });
+    await estornarDosesSemenPorExecucoesNaTransacao(
+      tx,
+      aplicacoes.flatMap((aplicacao) => aplicacao.execucoes.map((execucao) => execucao.id)),
+      programacao.propriedadeId ?? propriedadeId,
+    );
+    // As aplicações-filhas caem por cascade (onDelete: Cascade em programacaoId).
+    await tx.programacaoIATFLote.delete({ where: { id } });
+  });
 }

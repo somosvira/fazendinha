@@ -1,6 +1,7 @@
 import { prisma } from "../../db.js";
 import type { Prisma } from "@prisma/client";
 import { recomputarAnimal } from "./eventos.js";
+import { planejarBaixaDose, planejarDevolucaoDose } from "./semen-baixa.calc.js";
 import {
   agendarEtapas, ordenarEtapas, etapasComStatus, progressoExecucao,
   type EtapaComStatus, type ExecucaoEtapa,
@@ -162,7 +163,7 @@ export type ExecRow = {
 };
 export type AplicacaoRow = {
   id: number; animalId: number; protocoloId: number; dataInicio: Date; observacao: string | null;
-  usoCidr: boolean; estimulo: string | null; perdaImplante: boolean;
+  usoCidr: boolean; estimulo: string | null; perdaImplante: boolean; propriedadeId: number | null;
   protocolo: ProtocoloRow;
   execucoes: ExecRow[];
 };
@@ -250,6 +251,62 @@ export async function listarAplicacoes(animalId: number, propriedadeId: number |
   return rows.map((r) => aplicacaoDTO(r as unknown as AplicacaoRow, hoje));
 }
 
+export async function estornarDosesSemenPorExecucoesNaTransacao(
+  tx: Prisma.TransactionClient,
+  execucaoIds: number[],
+  propriedadeId: number | null,
+): Promise<void> {
+  const ids = [...new Set(execucaoIds)].sort((a, b) => a - b);
+  if (ids.length === 0) return;
+
+  const eventosComBaixa = await tx.eventoReprodutivo.findMany({
+    where: {
+      origemExecucaoId: { in: ids },
+      estoqueSemenId: { not: null },
+      estoqueSemenDoseBaixada: true,
+    },
+    select: { estoqueSemenId: true },
+    orderBy: { id: "asc" },
+  });
+  const eventosParaExcluir = await tx.eventoReprodutivo.findMany({
+    where: { origemExecucaoId: { in: ids } },
+    select: { id: true, animalId: true, tipo: true, data: true },
+    orderBy: { id: "asc" },
+  });
+  const quantidadePorLote = new Map<number, number>();
+  for (const evento of eventosComBaixa) {
+    if (evento.estoqueSemenId == null) continue;
+    quantidadePorLote.set(
+      evento.estoqueSemenId,
+      (quantidadePorLote.get(evento.estoqueSemenId) ?? 0) + 1,
+    );
+  }
+
+  for (const [loteId, quantidade] of quantidadePorLote) {
+    // updateMany mantém o escopo exato e tolera lote removido/fora do sítio (count = 0).
+    await tx.estoqueSemen.updateMany({
+      where: { id: loteId, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      data: { dosesDisponiveis: { increment: quantidade } },
+    });
+  }
+  // origemExecucaoId não é FK; remove explicitamente os eventos após o estorno.
+  await tx.eventoReprodutivo.deleteMany({
+    where: { origemExecucaoId: { in: ids } },
+  });
+  const primeiroEventoPorAnimal = new Map<number, (typeof eventosParaExcluir)[number]>();
+  for (const evento of eventosParaExcluir) {
+    if (!primeiroEventoPorAnimal.has(evento.animalId)) {
+      primeiroEventoPorAnimal.set(evento.animalId, evento);
+    }
+  }
+  for (const [animalId, evento] of primeiroEventoPorAnimal) {
+    await recomputarAnimal(tx, animalId, {
+      tipo: "EXCLUSAO",
+      evento: { id: evento.id, tipo: evento.tipo, data: iso(evento.data)! },
+    });
+  }
+}
+
 export async function excluirAplicacao(id: number, propriedadeId: number | null = null): Promise<void> {
   const existente = await prisma.aplicacaoProtocoloIATF.findFirst({
     where: {
@@ -259,7 +316,21 @@ export async function excluirAplicacao(id: number, propriedadeId: number | null 
     select: { id: true },
   });
   if (!existente) throw new IatfError("NAO_ENCONTRADO", "aplicação não encontrada");
-  await prisma.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade execuções
+  await prisma.$transaction(async (tx) => {
+    const aplicacao = await tx.aplicacaoProtocoloIATF.findUniqueOrThrow({
+      where: { id },
+      select: {
+        propriedadeId: true,
+        execucoes: { select: { id: true } },
+      },
+    });
+    await estornarDosesSemenPorExecucoesNaTransacao(
+      tx,
+      aplicacao.execucoes.map((execucao) => execucao.id),
+      aplicacao.propriedadeId ?? propriedadeId,
+    );
+    await tx.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade das execuções
+  });
 }
 
 /** Atualiza a execução e mantém o evento terminal IA/TE idempotente na mesma transação. */
@@ -268,7 +339,7 @@ export async function atualizarExecucaoNaTransacao(
   ex: ExecRow & { aplicacaoId: number; aplicacao: AplicacaoRow },
   input: ExecutarEtapaInput,
   hoje: string,
-): Promise<boolean> {
+): Promise<{ eventoTerminalAtualizado: boolean; aviso?: string }> {
   const dataExecucao = input.status === "PENDENTE"
     ? null
     : dataDb(input.dataExecucao ?? hoje);
@@ -284,9 +355,42 @@ export async function atualizarExecucaoNaTransacao(
   });
 
   const diaTerminal = Math.max(...ex.aplicacao.protocolo.etapas.map((etapa) => etapa.dia));
-  if (ex.dia !== diaTerminal) return false;
+  if (ex.dia !== diaTerminal) return { eventoTerminalAtualizado: false };
+
+  const propriedadeId = ex.aplicacao.propriedadeId;
+  // Estoque decidido a partir do evento terminal já vinculado (idempotência do upsert por
+  // origemExecucaoId): só consumimos quando a etapa passa a CONCLUIDA e ainda não há baixa
+  // para o mesmo lote; trocar de lote devolve a dose antiga e consome a nova; reabrir/pular
+  // devolve a dose uma vez e desvincula o evento. Reconcluir o mesmo lote não decrementa de novo.
+  // O fallback existe apenas para testes/consumidores legados com uma superfície Prisma mínima.
+  const eventoTerminal = typeof tx.eventoReprodutivo.findFirst === "function"
+    ? await tx.eventoReprodutivo.findFirst({
+      where: { origemExecucaoId: ex.id },
+      select: { estoqueSemenId: true, estoqueSemenDoseBaixada: true },
+    })
+    : null;
+
+  // Escopo: leitura/decremento condicionados ao sítio da aplicação (cobre individual e lote).
+  const escopoPropriedade = propriedadeId != null ? { propriedadeId } : {};
+  let aviso: string | null = null;
+
+  async function devolverDose(loteId: number): Promise<void> {
+    const estoque = await tx.estoqueSemen.findFirst({
+      where: { id: loteId, ...escopoPropriedade },
+      select: { id: true, dosesDisponiveis: true },
+    });
+    if (!estoque) return; // lote removido/fora de escopo: nada a devolver
+    const plano = planejarDevolucaoDose({ doseBaixada: true, dosesDisponiveis: estoque.dosesDisponiveis });
+    if (plano.devolver) {
+      await tx.estoqueSemen.update({ where: { id: loteId }, data: { dosesDisponiveis: { increment: 1 } } });
+    }
+  }
 
   if (input.status !== "CONCLUIDA") {
+    // Reabrir/pular: devolve a dose que este evento consumiu (uma vez) antes de removê-lo.
+    if (eventoTerminal?.estoqueSemenId != null && eventoTerminal.estoqueSemenDoseBaixada) {
+      await devolverDose(eventoTerminal.estoqueSemenId);
+    }
     await tx.eventoReprodutivo.deleteMany({ where: { origemExecucaoId: ex.id } });
   } else {
     const tipo = ex.aplicacao.protocolo.finalidade === "TETF"
@@ -294,6 +398,42 @@ export async function atualizarExecucaoNaTransacao(
       : "INSEMINACAO";
     const produto = input.produto === undefined ? ex.produto : input.produto;
     const data = dataExecucao ?? ex.dataPlanejada;
+    const loteAnterior = eventoTerminal?.estoqueSemenId ?? null;
+    const doseAnteriorBaixada = eventoTerminal?.estoqueSemenDoseBaixada ?? false;
+    // A execução terminal individual pode informar estoqueSemenId. O schema do lote não
+    // expõe esse campo: em lote, não há seleção/consumo de lote novo — só preservação e
+    // reconciliação idempotente de eventual vínculo terminal já existente. TETF sempre ignora lote.
+    const loteInput = tipo === "INSEMINACAO"
+      ? (input.estoqueSemenId === undefined ? loteAnterior : input.estoqueSemenId)
+      : null;
+
+    // O lote persistido no evento é a fonte da verdade da baixa; só decrementa quando muda
+    // de lote (ou é o primeiro consumo). Reconcluir o mesmo lote preserva a baixa existente.
+    let estoqueSemenDoseBaixada = loteInput != null && loteInput === loteAnterior && doseAnteriorBaixada;
+    if (loteInput != null && !(loteInput === loteAnterior && doseAnteriorBaixada)) {
+      const estoque = await tx.estoqueSemen.findFirst({
+        where: { id: loteInput, ...escopoPropriedade },
+        select: { id: true, dosesDisponiveis: true },
+      });
+      if (!estoque) throw new IatfError("NAO_ENCONTRADO", "lote de sêmen não encontrado");
+      // Trocou de lote e o anterior tinha baixa: devolve a dose antiga antes de consumir a nova.
+      if (loteAnterior != null && loteAnterior !== loteInput && doseAnteriorBaixada) {
+        await devolverDose(loteAnterior);
+      }
+      const plano = planejarBaixaDose({ estoqueSemenId: loteInput, dosesDisponiveis: estoque.dosesDisponiveis });
+      aviso = plano.aviso;
+      if (plano.consumir) {
+        const baixa = await tx.estoqueSemen.updateMany({
+          where: { id: loteInput, ...escopoPropriedade, dosesDisponiveis: { gte: 1 } },
+          data: { dosesDisponiveis: { decrement: 1 } },
+        });
+        estoqueSemenDoseBaixada = baixa.count === 1;
+        if (!estoqueSemenDoseBaixada) {
+          aviso = planejarBaixaDose({ estoqueSemenId: loteInput, dosesDisponiveis: 0 }).aviso;
+        }
+      }
+    }
+
     await tx.eventoReprodutivo.upsert({
       where: { origemExecucaoId: ex.id },
       create: {
@@ -303,11 +443,15 @@ export async function atualizarExecucaoNaTransacao(
         protocolo: ex.aplicacao.protocolo.nome,
         reprodutor: produto ?? (tipo === "INSEMINACAO" ? "IATF" : null),
         origemExecucaoId: ex.id,
+        estoqueSemenId: loteInput,
+        estoqueSemenDoseBaixada,
       },
       update: {
         data,
         protocolo: ex.aplicacao.protocolo.nome,
         ...(produto !== undefined ? { reprodutor: produto } : {}),
+        estoqueSemenId: loteInput,
+        estoqueSemenDoseBaixada,
       },
     });
   }
@@ -318,7 +462,9 @@ export async function atualizarExecucaoNaTransacao(
       data: iso(dataExecucao ?? ex.dataPlanejada)!,
     },
   });
-  return true;
+  return aviso
+    ? { eventoTerminalAtualizado: true, aviso }
+    : { eventoTerminalAtualizado: true };
 }
 
 /** Marca uma etapa materializada como CONCLUIDA / PULADA / PENDENTE. */
@@ -326,7 +472,7 @@ export async function executarEtapa(
   execucaoId: number,
   input: ExecutarEtapaInput,
   propriedadeId: number | null = null,
-): Promise<AplicacaoDTO> {
+): Promise<AplicacaoDTO & { aviso?: string }> {
   const ex = await prisma.execucaoEtapaIATF.findFirst({
     where: {
       id: execucaoId,
@@ -336,7 +482,7 @@ export async function executarEtapa(
   });
   if (!ex) throw new IatfError("NAO_ENCONTRADO", "execução de etapa não encontrada");
 
-  await prisma.$transaction((tx) => atualizarExecucaoNaTransacao(
+  const resultado = await prisma.$transaction((tx) => atualizarExecucaoNaTransacao(
     tx,
     ex as unknown as ExecRow & { aplicacaoId: number; aplicacao: AplicacaoRow },
     input,
@@ -347,5 +493,6 @@ export async function executarEtapa(
     where: { id: ex.aplicacaoId },
     include: INCLUDE_APLICACAO,
   });
-  return aplicacaoDTO(a as unknown as AplicacaoRow);
+  const dto = aplicacaoDTO(a as unknown as AplicacaoRow);
+  return resultado.aviso ? { ...dto, aviso: resultado.aviso } : dto;
 }

@@ -34,6 +34,11 @@ describe("PARAMETRO_DEFAULTS", () => {
     expect(PARAMETRO_DEFAULTS.DESMAME_PESO_KG.valor).toBe(180);
   });
 
+  it("aptidão automática usa defaults próprios de 13 meses e 320 kg", () => {
+    expect(PARAMETRO_DEFAULTS.APTIDAO_IDADE_MIN_MESES.valor).toBe(13);
+    expect(PARAMETRO_DEFAULTS.APTIDAO_PESO_MIN_KG.valor).toBe(320);
+  });
+
   it("ordens são únicas (ordenação estável na tela de Configurações)", () => {
     const ordens = CHAVES_PARAMETRO.map((c) => PARAMETRO_DEFAULTS[c].ordem);
     expect(new Set(ordens).size).toBe(ordens.length);

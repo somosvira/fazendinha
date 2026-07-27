@@ -127,6 +127,144 @@ const TIPO_EV = {
   "7": "PARTO",
 };
 const FINALIDADES_IATF = new Set(["IATF", "TETF"]);
+const DIRECOES_INDICADOR = new Set(["maior_melhor", "menor_melhor"]);
+const COLUNAS_LEGADAS_INDICADOR = new Set(["ptaLeite", "ptaGordura", "ptaProteina", "tpi"]);
+
+function inteiroPositivo(valor) {
+  const numero = n(valor);
+  return Number.isInteger(numero) && numero > 0 ? numero : null;
+}
+
+function textoObrigatorio(valor) {
+  const texto = s(valor);
+  return texto && texto.trim() ? texto : null;
+}
+
+export function parseReprodutorGenetico(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const nome = textoObrigatorio(f[1]);
+  if (ideagriId == null || !nome) return null;
+  return {
+    ideagriId,
+    nome,
+    codigo: s(f[2]),
+    racaSigla: s(f[3]),
+    centralSigla: s(f[4]),
+  };
+}
+
+export function parseIndicadorGenetico(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const sigla = textoObrigatorio(f[1]);
+  const nome = textoObrigatorio(f[2]);
+  const direcao = s(f[4]);
+  const colunaLegada = s(f[5]);
+  if (
+    ideagriId == null
+    || !sigla
+    || !nome
+    || !DIRECOES_INDICADOR.has(direcao)
+    || (colunaLegada != null && !COLUNAS_LEGADAS_INDICADOR.has(colunaLegada))
+  ) return null;
+  return {
+    ideagriId,
+    sigla,
+    nome,
+    unidade: s(f[3]),
+    direcao,
+    colunaLegada,
+    ranking: f[6] === "1",
+  };
+}
+
+export function parseValorIndicador(linha) {
+  const f = linha.split(SEP);
+  const reprodutorIdeagriId = inteiroPositivo(f[0]);
+  const indicadorSigla = textoObrigatorio(f[1]);
+  const valor = n(f[2]);
+  if (reprodutorIdeagriId == null || !indicadorSigla || !Number.isFinite(valor)) return null;
+  return { reprodutorIdeagriId, indicadorSigla, valor };
+}
+
+export function parseMarcador(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const sigla = textoObrigatorio(f[1]);
+  const nome = textoObrigatorio(f[2]);
+  if (ideagriId == null || !sigla || !nome) return null;
+  return { ideagriId, sigla, nome };
+}
+
+export function parseValorMarcador(linha) {
+  const f = linha.split(SEP);
+  const reprodutorIdeagriId = inteiroPositivo(f[0]);
+  const marcadorSigla = textoObrigatorio(f[1]);
+  const resultado = textoObrigatorio(f[2]);
+  if (reprodutorIdeagriId == null || !marcadorSigla || !resultado) return null;
+  return { reprodutorIdeagriId, marcadorSigla, resultado };
+}
+
+export function parseCaseina(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const sigla = textoObrigatorio(f[1]);
+  const nome = textoObrigatorio(f[2]);
+  if (ideagriId == null || !sigla || !nome) return null;
+  return { ideagriId, sigla, nome };
+}
+
+export function parseValorCaseina(linha) {
+  const f = linha.split(SEP);
+  const reprodutorIdeagriId = inteiroPositivo(f[0]);
+  const caseinaSigla = textoObrigatorio(f[1]);
+  const genotipo = textoObrigatorio(f[2]);
+  if (reprodutorIdeagriId == null || !caseinaSigla || !genotipo) return null;
+  return { reprodutorIdeagriId, caseinaSigla, genotipo };
+}
+
+export function parseTipoSemen(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const sigla = textoObrigatorio(f[1]);
+  const nome = textoObrigatorio(f[2]);
+  if (ideagriId == null || !sigla || !nome) return null;
+  return { ideagriId, sigla, nome };
+}
+
+export function parseEstoqueSemen(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const reprodutorIdeagriId = inteiroPositivo(f[1]);
+  const doses = n(f[5]);
+  if (ideagriId == null || reprodutorIdeagriId == null || !Number.isInteger(doses) || doses < 0) return null;
+  return {
+    ideagriId,
+    reprodutorIdeagriId,
+    tipoSemenSigla: s(f[2]),
+    lote: s(f[3]),
+    localizacao: s(f[4]),
+    doses,
+  };
+}
+
+export function parsePedigree(linha) {
+  const f = linha.split(SEP);
+  const reprodutorIdeagriId = inteiroPositivo(f[0]);
+  if (reprodutorIdeagriId == null) return null;
+  return {
+    reprodutorIdeagriId,
+    paiNome: s(f[1]),
+    paiCodigo: s(f[2]),
+    maeNome: s(f[3]),
+    maeCodigo: s(f[4]),
+    avoMaternoNome: s(f[5]),
+    avoMaternoCodigo: s(f[6]),
+    avoPaternoNome: s(f[7]),
+    avoPaternoCodigo: s(f[8]),
+  };
+}
 
 // Contratos intermediários da extração IATF. O SQL da máquina-fonte deve emitir
 // exatamente estes campos após consultar o inventário real de colunas do Firebird.
@@ -175,6 +313,22 @@ export function parseProgramacaoAssociacao(linha) {
     usoCidr: f[3] === "1",
     estimulo: s(f[4]),
     perdaImplante: f[5] === "1",
+  };
+}
+
+// RESULTADOEXAMEGINECOLOGICO → dicionário oficial compartilhado.
+// Código precisa ser inteiro positivo; inválidos fazem main() abortar (fail-closed).
+export function parseResultadoGinecologico(linha) {
+  const f = linha.split(SEP);
+  const codigo = n(f[0]);
+  const nomeResumido = s(f[1]);
+  if (!Number.isInteger(codigo) || codigo <= 0 || !nomeResumido) return null;
+  return {
+    codigo,
+    nomeResumido,
+    nomeCompleto: s(f[2]),
+    tipo: s(f[3]),
+    padrao: f[4] === "1",
   };
 }
 
@@ -338,8 +492,21 @@ function main() {
   const principiosProtocolo = [];
   const programacoesIatf = [];
   const associacoesProgramacao = [];
+  const resultadosGinecologicos = [];
+  const reprodutoresGeneticos = [];
+  const indicadores = [];
+  const valoresIndicador = [];
+  const marcadores = [];
+  const valoresMarcador = [];
+  const caseinas = [];
+  const valoresCaseina = [];
+  const tiposSemen = [];
+  const estoquesSemen = [];
+  const pedigrees = [];
   const eventosInvalidos = [];
   const iatfInvalidos = [];
+  const resultadosGinecologicosInvalidos = [];
+  const geneticaInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -373,6 +540,50 @@ function main() {
       const row = parseProgramacaoAssociacao(l.slice(11));
       if (row) associacoesProgramacao.push(row); else iatfInvalidos.push(l);
     }
+    else if (l.startsWith("@RESULTGINE@")) {
+      const row = parseResultadoGinecologico(l.slice(12));
+      if (row) resultadosGinecologicos.push(row); else resultadosGinecologicosInvalidos.push(l);
+    }
+    else if (l.startsWith("@REPRODUTOR@")) {
+      const row = parseReprodutorGenetico(l.slice("@REPRODUTOR@".length));
+      if (row) reprodutoresGeneticos.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@INDICADOR@")) {
+      const row = parseIndicadorGenetico(l.slice("@INDICADOR@".length));
+      if (row) indicadores.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@VALORIND@")) {
+      const row = parseValorIndicador(l.slice("@VALORIND@".length));
+      if (row) valoresIndicador.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@MARCADOR@")) {
+      const row = parseMarcador(l.slice("@MARCADOR@".length));
+      if (row) marcadores.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@VALORMARC@")) {
+      const row = parseValorMarcador(l.slice("@VALORMARC@".length));
+      if (row) valoresMarcador.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@CASEINA@")) {
+      const row = parseCaseina(l.slice("@CASEINA@".length));
+      if (row) caseinas.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@VALORCAS@")) {
+      const row = parseValorCaseina(l.slice("@VALORCAS@".length));
+      if (row) valoresCaseina.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@TIPOSEMEN@")) {
+      const row = parseTipoSemen(l.slice("@TIPOSEMEN@".length));
+      if (row) tiposSemen.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@ESTSEMEN@")) {
+      const row = parseEstoqueSemen(l.slice("@ESTSEMEN@".length));
+      if (row) estoquesSemen.push(row); else geneticaInvalidos.push(l);
+    }
+    else if (l.startsWith("@PEDIGREE@")) {
+      const row = parsePedigree(l.slice("@PEDIGREE@".length));
+      if (row) pedigrees.push(row); else geneticaInvalidos.push(l);
+    }
   }
 
   if (eventosInvalidos.length) {
@@ -387,6 +598,18 @@ function main() {
   if (iatfInvalidos.length) {
     console.error(`ERRO: ${iatfInvalidos.length} registros IATF inválidos.`);
     console.error(JSON.stringify(iatfInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
+  if (resultadosGinecologicosInvalidos.length) {
+    console.error(`ERRO: ${resultadosGinecologicosInvalidos.length} resultados ginecológicos inválidos.`);
+    console.error(JSON.stringify(resultadosGinecologicosInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
+  if (geneticaInvalidos.length) {
+    console.error(`ERRO: ${geneticaInvalidos.length} registros de genética/sêmen inválidos.`);
+    console.error(JSON.stringify(geneticaInvalidos.slice(0, 5)));
     process.exit(1);
   }
 
@@ -410,6 +633,17 @@ function main() {
     principiosProtocolo,
     programacoesIatf,
     associacoesProgramacao,
+    resultadosGinecologicos,
+    reprodutoresGeneticos,
+    indicadores,
+    valoresIndicador,
+    marcadores,
+    valoresMarcador,
+    caseinas,
+    valoresCaseina,
+    tiposSemen,
+    estoquesSemen,
+    pedigrees,
   };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
@@ -425,6 +659,8 @@ function main() {
   console.error(`  pesagens=${pesagens.length}`);
   console.error(`  lactações=${lactacoes.length}`);
   console.error(`  IATF: protocolos=${protocolosIatf.length} princípios=${principiosProtocolo.length} programações=${programacoesIatf.length} associações=${associacoesProgramacao.length}`);
+  console.error(`  resultados ginecológicos=${resultadosGinecologicos.length}`);
+  console.error(`  genética/sêmen: reprodutores=${reprodutoresGeneticos.length} indicadores=${indicadores.length} valoresIndicador=${valoresIndicador.length} marcadores=${marcadores.length} valoresMarcador=${valoresMarcador.length} caseínas=${caseinas.length} valoresCaseina=${valoresCaseina.length} tiposSemen=${tiposSemen.length} estoques=${estoquesSemen.length} pedigrees=${pedigrees.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

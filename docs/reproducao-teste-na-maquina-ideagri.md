@@ -30,8 +30,18 @@ Delimitador `~|~`. Uma linha por registro, com o prefixo indicado.
 | `@PROGIATF@` | ideagriId · nome · dataInicio(`YYYY-MM-DD`) · protocoloIdeagriId | `PROGRAMACAOIATF` |
 | `@PROGASSOC@` | numeroAnimal · ideagriId · programacaoIdeagriId · usoCidr(`0`\|`1`) · estimulo · perdaImplante(`0`\|`1`) | `PROGRAMACAOIATFASSOCIACAO` |
 | `@RESULTGINE@` | codigo · nomeResumido · nomeCompleto · tipo · padrao | `RESULTADOEXAMEGINECOLOGICO` (Bloco B) |
+| `@REPRODUTOR@` | ideagriId · nome · codigo · racaSigla · centralSigla | `ANIMALINFO_REPRODUTOR` (Bloco C) |
+| `@INDICADOR@` | ideagriId · sigla · nome · unidade · direcao · colunaLegada · ranking(`0`\|`1`) | `GENCATALOGOINDICADOR` (Bloco C) |
+| `@VALORIND@` | reprodutorIdeagriId · indicadorSigla · valor | `GENVALORIND` (Bloco C) |
+| `@MARCADOR@` | ideagriId · sigla · nome | `GENCATALOGOMARCADOR` (Bloco C) |
+| `@VALORMARC@` | reprodutorIdeagriId · marcadorSigla · resultado | valores por touro vinculados a `GENCATALOGOMARCADOR` (Bloco C; relação física a confirmar no inventário) |
+| `@CASEINA@` | ideagriId · sigla · nome | `GENCATALOGOCASEINA` (Bloco C) |
+| `@VALORCAS@` | reprodutorIdeagriId · caseinaSigla · genotipo | valores por touro vinculados a `GENCATALOGOCASEINA` (Bloco C; relação física a confirmar no inventário) |
+| `@TIPOSEMEN@` | ideagriId · sigla · nome | `TIPOSEMEN` (Bloco C) |
+| `@ESTSEMEN@` | ideagriId · reprodutorIdeagriId · tipoSemenSigla · lote · localizacao · doses | estoque de sêmen (Bloco C; tabela física a confirmar no inventário) |
+| `@PEDIGREE@` | reprodutorIdeagriId · paiNome · paiCodigo · maeNome · maeCodigo · avoMaternoNome · avoMaternoCodigo · avoPaternoNome · avoPaternoCodigo | `GENPEDIGREE` (Bloco C) |
 
-Finalidade fora de `IATF/TETF`, id ausente ou referência quebrada **abortam** o build (fail-closed) — é intencional; corrija o mapeamento SQL, nunca invente dado.
+Finalidade fora de `IATF/TETF`, id ausente ou referência quebrada **abortam** o build (fail-closed) — é intencional; corrija o mapeamento SQL, nunca invente dado. O mesmo vale para os contratos de genética/sêmen: os prefixos acima são o contrato intermediário do parser, não uma afirmação de que as colunas físicas ou relações da fonte já foram reconciliadas.
 
 ## 2. Regenerar o JSON e importar
 
@@ -74,7 +84,24 @@ pnpm --filter rionovo-client exec vitest run src/rebanho/lib/iatf-lote.test.ts
 pnpm build
 ```
 
-## Pendências dos próximos blocos (não neste PR)
+## 6. Reconciliação pendente de genética e sêmen (Bloco C)
 
-- **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): plano em [`superpowers/plans/2026-07-26-reproducao-bloco-B-ciclo.md`](superpowers/plans/2026-07-26-reproducao-bloco-B-ciclo.md). Reconciliação de `EXAMEANIMAL` (248) + `RESULTADOEXAMEGINECOLOGICO` (44) também depende do `DADOS777.FDB`.
-- **Blocos C–F** (sêmen/genética, acasalamento, FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.
+**Não houve reconciliação real do Bloco C neste ambiente.** A fonte `DADOS777.FDB` não existe nesta máquina; portanto, as quantidades abaixo são o baseline que ainda precisa ser conferido na máquina do IDEAGRI, e não contagens observadas por esta execução:
+
+| Fonte | Baseline pendente | Inclui |
+|---|---:|---|
+| `ANIMALINFO_REPRODUTOR` | **67** | reprodutores e seus identificadores oficiais |
+| `GENCATALOGOINDICADOR` | **271** | catálogo de indicadores genéticos |
+| `GENCATALOGOMARCADOR` | **20** | catálogo de marcadores |
+| `GENCATALOGOCASEINA` | **15** | catálogo de caseínas |
+| `TIPOSEMEN` | **3** | tipos de sêmen |
+
+Também permanecem pendentes de extração e reconciliação **os valores por touro**: indicadores (`GENVALORIND`), resultados de marcadores, genótipos de caseínas, pedigree (`GENPEDIGREE`) e os lotes/doses do estoque de sêmen. Esses valores não receberam contagens nesta máquina e não devem ser inferidos a partir dos catálogos.
+
+Até a reextração do `DADOS777.FDB`, a biblioteca de genética/sêmen opera somente com o que o usuário cadastrar no Fazendinha. Quando a fonte estiver disponível, o SQL deve emitir os dez prefixos do contrato intermediário, o parser deve regenerar o JSON e o import deve ser executado de forma idempotente; só então as contagens e os valores por touro poderão ser declarados reconciliados.
+
+## Pendências dos próximos blocos
+
+- **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): **ENTREGUE** (commits `007633d`→`a9944ee`). Operando com o conjunto-semente de 9 resultados ginecológicos (códigos negativos) até a reextração. **Pendente na máquina:** reconciliar `RESULTADOEXAMEGINECOLOGICO` (44) e `EXAMEANIMAL` (248) a partir do `DADOS777.FDB` — adicionar o contrato `@RESULTGINE@` ao dump, rodar `build-rebanho-json` + `import:rebanho` e conferir que os códigos oficiais positivos substituem os seeds na listagem.
+- **Bloco C** (sêmen/genética): operação entregue; a reconciliação real permanece pendente nos termos da seção 6.
+- **Blocos D–F** (acasalamento, FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.

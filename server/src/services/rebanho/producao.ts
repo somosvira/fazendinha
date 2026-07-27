@@ -30,11 +30,11 @@ export async function recomputarProducaoDoAnimal(animalId: number): Promise<void
   if (producaoModo === "TANQUE_LOTE") {
     // último ProducaoLote do grupo do animal; senão da fazenda (grupoId null)
     const doGrupo = animal.grupoId != null ? await prisma.producaoLote.findFirst({ where: { grupoId: animal.grupoId }, orderBy: { data: "desc" } }) : null;
-    const lote = doGrupo ?? (await prisma.producaoLote.findFirst({ where: { grupoId: null }, orderBy: { data: "desc" } }));
+    const lote = doGrupo ?? (await prisma.producaoLote.findFirst({ where: { grupoId: null, propriedadeId: animal.propriedadeId }, orderBy: { data: "desc" } }));
     let mediaDia: number | null = null;
     if (lote) {
       const escopo = lote.grupoId != null ? { grupoId: lote.grupoId } : {};
-      const vacas = await prisma.animal.count({ where: { status: "ATIVO", ...escopo, resumo: { del: { not: null } } } });
+      const vacas = await prisma.animal.count({ where: { status: "ATIVO", ...escopo, propriedadeId: animal.propriedadeId, resumo: { del: { not: null } } } });
       mediaDia = ratearProducao(Number(lote.litros), vacas);
     }
     r = { producaoMediaDia: mediaDia, producao305: producao305De(mediaDia, temLact), producaoTendencia: null };
@@ -57,8 +57,8 @@ export async function recomputarProducaoTodos(): Promise<void> {
   for (const id of ids) await recomputarProducaoDoAnimal(id);
 }
 
-export async function registrarControle(animalId: number, input: ControleInput) {
-  if (!(await prisma.animal.findUnique({ where: { id: animalId } }))) throw new ProducaoError("NAO_ENCONTRADO", "animal não encontrado");
+export async function registrarControle(animalId: number, input: ControleInput, propriedadeId: number | null = null) {
+  if (!(await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) } }))) throw new ProducaoError("NAO_ENCONTRADO", "animal não encontrado");
   const total = input.pesoTotal ?? (Number(input.peso1 ?? 0) + Number(input.peso2 ?? 0) + Number(input.peso3 ?? 0));
   const c = await prisma.controleLeiteiro.create({
     data: { animalId, data: new Date(input.data), peso1: input.peso1, peso2: input.peso2, peso3: input.peso3, pesoTotal: total },
@@ -67,44 +67,51 @@ export async function registrarControle(animalId: number, input: ControleInput) 
   return toTimelineControle(c);
 }
 
-export async function excluirControle(id: number) {
-  const c = await prisma.controleLeiteiro.findUnique({ where: { id } });
+export async function excluirControle(id: number, propriedadeId: number | null = null) {
+  const c = await prisma.controleLeiteiro.findFirst({ where: { id, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) } });
   if (!c) throw new ProducaoError("NAO_ENCONTRADO", "controle não encontrado");
   await prisma.controleLeiteiro.delete({ where: { id } });
   await recomputarProducaoDoAnimal(c.animalId);
 }
 
-export async function registrarProducaoLote(input: ProducaoLoteInput) {
-  const l = await prisma.producaoLote.create({ data: { grupoId: input.grupoId ?? null, data: new Date(input.data), litros: input.litros } });
+export async function registrarProducaoLote(input: ProducaoLoteInput, propriedadeId: number) {
+  if (input.grupoId != null && !(await prisma.grupo.findFirst({ where: { id: input.grupoId, propriedadeId } }))) {
+    throw new ProducaoError("NAO_ENCONTRADO", "lote não encontrado");
+  }
+  const l = await prisma.producaoLote.create({ data: { grupoId: input.grupoId ?? null, propriedadeId, data: new Date(input.data), litros: input.litros } });
   // recomputa os animais afetados
-  const where = l.grupoId != null ? { status: "ATIVO" as const, grupoId: l.grupoId } : { status: "ATIVO" as const };
+  const where = { status: "ATIVO" as const, propriedadeId, ...(l.grupoId != null ? { grupoId: l.grupoId } : {}) };
   for (const a of await prisma.animal.findMany({ where, select: { id: true } })) await recomputarProducaoDoAnimal(a.id);
   return { id: l.id };
 }
 
-export async function excluirProducaoLote(id: number) {
-  const l = await prisma.producaoLote.findUnique({ where: { id } });
+export async function excluirProducaoLote(id: number, propriedadeId: number | null = null) {
+  const l = await prisma.producaoLote.findFirst({ where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) } });
   if (!l) throw new ProducaoError("NAO_ENCONTRADO", "produção de lote não encontrada");
   await prisma.producaoLote.delete({ where: { id } });
-  const where = l.grupoId != null ? { status: "ATIVO" as const, grupoId: l.grupoId } : { status: "ATIVO" as const };
+  const where = { status: "ATIVO" as const, ...(l.propriedadeId != null ? { propriedadeId: l.propriedadeId } : {}), ...(l.grupoId != null ? { grupoId: l.grupoId } : {}) };
   for (const a of await prisma.animal.findMany({ where, select: { id: true } })) await recomputarProducaoDoAnimal(a.id);
 }
 
-export async function agregarProducao() {
+export async function agregarProducao(propriedadeId: number | null = null) {
   const { producaoModo } = await obterConfig();
-  const animais = await prisma.animal.findMany({ where: { status: "ATIVO" }, include: { resumo: true } });
+  const animais = await prisma.animal.findMany({ where: { status: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) }, include: { resumo: true } });
   const emLact = animais.filter((a) => a.resumo?.del != null);
   const totalDia = Math.round(emLact.reduce((s, a) => s + (a.resumo?.producaoMediaDia != null ? Number(a.resumo.producaoMediaDia) : 0), 0) * 10) / 10;
   const mediaVaca = emLact.length ? Math.round((totalDia / emLact.length) * 10) / 10 : null;
   if (producaoModo === "TANQUE_LOTE") {
-    const grupos = await prisma.grupo.findMany({ include: { animais: { where: { status: "ATIVO" }, include: { resumo: true } } } });
-    const lotes = await Promise.all(
-      grupos.map(async (g) => {
-        const ult = await prisma.producaoLote.findFirst({ where: { grupoId: g.id }, orderBy: { data: "desc" } });
-        const vacas = g.animais.filter((a) => a.resumo?.del != null).length;
-        return { grupo: g.nome, litros: ult ? Number(ult.litros) : null, vacas, rateio: ult && vacas ? Math.round((Number(ult.litros) / vacas) * 10) / 10 : null };
-      }),
-    );
+    const grupos = await prisma.grupo.findMany({ where: propriedadeId != null ? { propriedadeId } : {}, include: { animais: { where: { status: "ATIVO", ...(propriedadeId != null ? { propriedadeId } : {}) }, include: { resumo: true } } } });
+    const producoes = await prisma.producaoLote.findMany({
+      where: { grupoId: { in: grupos.map((g) => g.id) }, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      orderBy: [{ grupoId: "asc" }, { data: "desc" }, { id: "desc" }],
+    });
+    const ultimaPorGrupo = new Map<number, (typeof producoes)[number]>();
+    for (const p of producoes) if (p.grupoId != null && !ultimaPorGrupo.has(p.grupoId)) ultimaPorGrupo.set(p.grupoId, p);
+    const lotes = grupos.map((g) => {
+      const ult = ultimaPorGrupo.get(g.id) ?? null;
+      const vacas = g.animais.filter((a) => a.resumo?.del != null).length;
+      return { grupo: g.nome, litros: ult ? Number(ult.litros) : null, vacas, rateio: ult && vacas ? Math.round((Number(ult.litros) / vacas) * 10) / 10 : null };
+    });
     return { modo: producaoModo, totalDia, emLactacao: emLact.length, lotes };
   }
   // Carência de leite ativa por animal em lactação (uma query só, agregada por animalId —
@@ -113,7 +120,7 @@ export async function agregarProducao() {
   const idsLact = emLact.map((a) => a.id);
   const aplicsCarencia = idsLact.length
     ? await prisma.eventoSanitario.findMany({
-        where: { animalId: { in: idsLact }, tipo: "APLICACAO", carencia: { gt: 0 } },
+        where: { animalId: { in: idsLact }, tipo: "APLICACAO", carencia: { gt: 0 }, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) },
         select: { animalId: true, data: true, carencia: true },
       })
     : [];
