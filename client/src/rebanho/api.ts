@@ -1468,8 +1468,25 @@ export function useReprodutores(incluirInativos = false) {
 }
 
 // ── Recomendação de acasalamento (ranking de touros para uma vaca) ────────────
-export interface RecomendacaoDTO { id: number; nome: string; score: number; consanguineo: boolean; motivo: string }
-export interface RecomendacaoAcasalamentoDTO { animalId: number; paiNome: string | null; recomendacoes: RecomendacaoDTO[] }
+export type StatusRecomendacaoAcasalamento = "ok" | "consanguineo" | "restrito" | "nao_verificavel";
+export interface RecomendacaoDTO {
+  id: number;
+  nome: string;
+  score: number;
+  consanguineo: boolean;
+  motivo: string;
+  status?: StatusRecomendacaoAcasalamento;
+  parentesco?: number;
+  merito?: number;
+  motivos?: string[];
+  indicadoresPontuados?: number;
+}
+export interface RecomendacaoAcasalamentoDTO {
+  animalId: number;
+  paiNome: string | null;
+  combinacaoId?: number | null;
+  recomendacoes: RecomendacaoDTO[];
+}
 export const obterAcasalamento = (animalId: string) => req<RecomendacaoAcasalamentoDTO>(`/rebanho/animais/${animalId}/acasalamento`);
 export function useAcasalamento(animalId: string | null) {
   const [data, setData] = useState<RecomendacaoAcasalamentoDTO | null>(null);
