@@ -6,10 +6,12 @@ import { RebKpiStrip, RebKpi } from "./RebKpiStrip";
 /* RebKpiStrip/RebKpi reproduzem .rb-kstrip/.rb-k (rebanho.css). SSR string. */
 
 describe("RebKpiStrip", () => {
-  it("define grid-template-columns a partir de cols", () => {
+  it("define o número de colunas e permite reflow estreito", () => {
     const html = renderToString(h(RebKpiStrip, { cols: 3 }, "x"));
-    expect(html).toContain("repeat(3, 1fr)");
-    expect(html).toContain("grid");
+    expect(html).toContain("--reb-kpi-cols:3");
+    expect(html).toContain("grid-cols-1");
+    expect(html).toContain("min-[700px]:grid-cols-2");
+    expect(html).toContain("min-[1100px]:grid-cols-[repeat(var(--reb-kpi-cols),minmax(0,1fr))]");
   });
 
   it("renderiza os filhos", () => {

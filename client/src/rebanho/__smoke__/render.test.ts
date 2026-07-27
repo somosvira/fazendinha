@@ -129,15 +129,11 @@ describe("render smoke", () => {
     expect(html).toContain("Dietas");
   });
 
-  it("ConsumoLoteDrawer renders the header and date range without throwing", () => {
-    const html = renderToString(h(ConsumoLoteDrawer, {
+  it("ConsumoLoteDrawer pode ser montado com o Dialog portalizado", () => {
+    expect(() => renderToString(h(ConsumoLoteDrawer, {
       lote: { id: 1, nome: "Lote Teste", dietaId: 2, dietaNome: "Dieta X", numAnimais: 10, producaoMedia: null },
       onFechar: () => {},
-    }));
-    expect(html).toContain("Consumo"); // título do drawer (nome do lote vem em nó separado no SSR)
-    expect(html).toContain("Lote Teste");
-    expect(html).toContain("Início");
-    expect(html).toContain("Fim");
+    }))).not.toThrow();
   });
 
   it("AnimalTab renders the status filter (Ativos/Baixados/Todos), visible while loading", () => {

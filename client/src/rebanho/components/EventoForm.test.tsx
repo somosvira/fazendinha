@@ -2,7 +2,6 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
 import { Children, createElement, Fragment, isValidElement, type ChangeEvent, type ReactNode } from "react";
 
 const apiMocks = vi.hoisted(() => ({
@@ -75,30 +74,30 @@ describe("EventoForm tipoInicial", () => {
     ["PARTO", "Parto"],
     ["INSEMINACAO", "Inseminação"],
   ] as const)("inicia reprodução em %s", (tipo, label) => {
-    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo } }));
-    expect(html).toContain(`<span style="pointer-events:none">${label}</span>`);
+    render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo } }));
+    expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe(label);
   });
 
   it("oferece cadastro ou vínculo da cria ao iniciar em parto", () => {
-    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "PARTO" } }));
-    expect(html).toContain("Cadastrar a cria");
-    expect(html).toContain("Vincular cria existente");
+    render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "PARTO" } }));
+    expect(screen.getByRole("option", { name: "Cadastrar a cria" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Vincular cria existente" })).toBeTruthy();
   });
 
   it("oferece o seletor de lote de sêmen ao iniciar em inseminação", () => {
-    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "INSEMINACAO" } }));
-    expect(html).toContain("Lote de sêmen");
+    render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "INSEMINACAO" } }));
+    expect(screen.getByLabelText("Lote de sêmen")).toBeTruthy();
   });
 
   it("oferece resultado oficial ao iniciar em exame ginecológico", () => {
-    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "EXAME_GINECOLOGICO" } }));
-    expect(html).toContain("Resultado oficial");
-    expect(html).toContain("Carregando catálogo");
+    render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "EXAME_GINECOLOGICO" } }));
+    expect(screen.getByLabelText("Resultado oficial")).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Carregando catálogo…" })).toBeTruthy();
   });
 
   it("inicia sanidade em exame", () => {
-    const html = renderToString(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
-    expect(html).toContain('<span style="pointer-events:none">Exame</span>');
+    render(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
+    expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe("Exame");
   });
 
   it("mantém o modal aberto até confirmar o aviso retornado ao salvar", async () => {
@@ -159,7 +158,7 @@ describe("EventoForm tipoInicial", () => {
     }) => void;
     apiMocks.registrarEvento.mockReturnValue(new Promise((resolve) => { resolver = resolve; }));
 
-    const { container } = render(createElement(EventoForm, {
+    render(createElement(EventoForm, {
       ...base,
       onFechar,
       onSalvo,
@@ -175,7 +174,7 @@ describe("EventoForm tipoInicial", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.click(container.querySelector(".rb-fade-in") as Element);
+    fireEvent.pointerDown(document.querySelector('[data-slot="dialog-overlay"]') as Element);
     expect(onFechar).not.toHaveBeenCalled();
 
     await act(async () => resolver({
@@ -185,4 +184,5 @@ describe("EventoForm tipoInicial", () => {
     expect(await screen.findByText("Estoque zerado: evento salvo sem baixa de dose.")).toBeTruthy();
     expect(onSalvo).not.toHaveBeenCalled();
   });
+
 });
