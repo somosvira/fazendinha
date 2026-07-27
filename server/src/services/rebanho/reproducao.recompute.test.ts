@@ -4,6 +4,7 @@ import {
   recomputarResumoReproducao,
   planejarSincronizacaoLactacoes,
   ConflitoLactacaoError,
+  categoriaAposParto,
   type LactacaoEstrutural,
 } from "./reproducao.recompute.js";
 
@@ -18,6 +19,17 @@ const lact = (over: Partial<LactacaoEstrutural> = {}): LactacaoEstrutural => ({
   ...over,
 });
 const evento = (id: number, tipo: any, data: string, extra: any = {}) => ({ id, tipo, data, ...extra });
+
+describe("categoriaAposParto", () => {
+  it.each([
+    ["NOVILHA", "VACA"],
+    ["CABRITA", "CABRA"],
+    ["VACA", "VACA"],
+    ["TOURO", "TOURO"],
+  ])("promove %s para %s quando aplicável", (atual, esperada) => {
+    expect(categoriaAposParto(atual)).toBe(esperada);
+  });
+});
 
 describe("reconstruirLactacoes", () => {
   it("parto abre, secagem fecha, numero parte de numPartosEntrada", () => {
@@ -41,8 +53,9 @@ describe("planejarSincronizacaoLactacoes", () => {
     expect(planejarSincronizacaoLactacoes([lact()], { tipo: "CRIACAO", evento: evento(2, "PARTO", "2025-01-10") })).toEqual([]);
   });
 
-  it("PARTO novo cria só um ciclo com número após o maior persistido/entrada", () => {
-    expect(planejarSincronizacaoLactacoes([lact({ numero: 4 })], { tipo: "CRIACAO", evento: evento(3, "PARTO", "2026-02-01") }, 2)).toEqual([
+  it("PARTO novo encerra o ciclo aberto antes de criar o próximo", () => {
+    expect(planejarSincronizacaoLactacoes([lact({ id: 8, numero: 4 })], { tipo: "CRIACAO", evento: evento(3, "PARTO", "2026-02-01") }, 2)).toEqual([
+      { tipo: "ENCERRAR", lactacaoId: 8, dtFim: "2026-02-01", motivoSecagem: "Novo parto" },
       { tipo: "CRIAR", numero: 5, dtInicio: "2026-02-01" },
     ]);
   });
@@ -66,13 +79,26 @@ describe("planejarSincronizacaoLactacoes", () => {
     ]);
   });
 
-  it("excluir PARTO preserva a lactação histórica", () => {
-    expect(planejarSincronizacaoLactacoes([lact()], { tipo: "EXCLUSAO", evento: evento(7, "PARTO", "2025-01-10") })).toEqual([]);
+  it("excluir PARTO remove seu ciclo e reabre o anterior encerrado automaticamente", () => {
+    const rows = [
+      lact({ id: 9, numero: 1, dtInicio: "2024-01-10", dtFim: "2025-01-10", motivoSecagem: "Novo parto" }),
+      lact({ id: 10, numero: 2, dtInicio: "2025-01-10" }),
+    ];
+    expect(planejarSincronizacaoLactacoes(rows, { tipo: "EXCLUSAO", evento: evento(7, "PARTO", "2025-01-10") })).toEqual([
+      { tipo: "REMOVER", lactacaoId: 10 },
+      { tipo: "REABRIR", lactacaoId: 9 },
+    ]);
+  });
+
+  it("recusa excluir parto quando o ciclo associado possui histórico enriquecido", () => {
+    const enriquecida = lact({ id: 10, enriquecida: true });
+    expect(() => planejarSincronizacaoLactacoes([enriquecida], { tipo: "EXCLUSAO", evento: evento(8, "PARTO", "2025-01-10") }))
+      .toThrowError(expect.objectContaining({ code: "CICLO_ENRIQUECIDO" }));
   });
 
   it("recusa duas lactações com o mesmo início", () => {
     const rows = [lact({ id: 1 }), lact({ id: 2 })];
-    expect(() => planejarSincronizacaoLactacoes(rows, { tipo: "CRIACAO", evento: evento(8, "CIO", "2026-01-01") }))
+    expect(() => planejarSincronizacaoLactacoes(rows, { tipo: "CRIACAO", evento: evento(9, "CIO", "2026-01-01") }))
       .toThrowError(expect.objectContaining({ code: "AMBIGUIDADE" }));
   });
 });
@@ -129,6 +155,17 @@ describe("recomputarResumoReproducao", () => {
     expect(r.statusReprodutivo).toBe("VAZIA");
     expect(r.del).toBeNull();
     expect(r.ordemLactacao).toBeNull();
+  });
+
+  it("preserva DEL e ordem de lactação importada sem evento PARTO correspondente", () => {
+    const r = recomputarResumoReproducao(
+      [ev("CIO", "2026-06-01")],
+      [{ numero: 3, dtInicio: "2026-01-10", dtFim: null }],
+      2,
+      HOJE,
+    );
+    expect(r.del).toBe(157);
+    expect(r.ordemLactacao).toBe(3);
   });
   it("override de pevDias: DEL=27 vira VAZIA se PEV for 25", () => {
     const eventos = [ev("PARTO", "2026-05-20")];

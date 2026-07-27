@@ -6,6 +6,7 @@ import {
   reconstruirLactacoes,
   recomputarResumoReproducao,
   planejarSincronizacaoLactacoes,
+  categoriaAposParto,
   type EvtRepro,
   type LactacaoEstrutural,
   type MutacaoEvento,
@@ -50,17 +51,59 @@ export async function recomputarAnimal(tx: Tx, animalId: number, mutacao: Mutaca
   const evs: EvtRepro[] = animal.eventosReprodutivos.map((e) => ({ id: e.id, tipo: e.tipo, data: iso(e.data)!, resultado: e.resultado, dtPartoPrevista: iso(e.dtPartoPrevista), reprodutor: e.reprodutor, protocolo: e.protocolo, tipoParto: e.tipoParto, motivoSecagem: e.motivoSecagem }));
 
   // Sincronização pontual das lactações persistidas (não destrutiva).
-  const persistidas: LactacaoEstrutural[] = (await tx.lactacao.findMany({ where: { animalId }, select: { id: true, numero: true, dtInicio: true, dtFim: true, motivoSecagem: true } }))
-    .map((l) => ({ id: l.id, numero: l.numero, dtInicio: iso(l.dtInicio)!, dtFim: iso(l.dtFim), motivoSecagem: l.motivoSecagem }));
+  const [lactacoesDb, controles] = await Promise.all([
+    tx.lactacao.findMany({
+      where: { animalId },
+      select: {
+        id: true,
+        numero: true,
+        dtInicio: true,
+        dtFim: true,
+        motivoSecagem: true,
+        tipoAleitamento: true,
+        induzida: true,
+        producaoTotal: true,
+        producao305: true,
+        duracaoDias: true,
+      },
+    }),
+    tx.controleLeiteiro.findMany({ where: { animalId }, select: { data: true } }),
+  ]);
+  const persistidas: LactacaoEstrutural[] = lactacoesDb.map((l) => ({
+    id: l.id,
+    numero: l.numero,
+    dtInicio: iso(l.dtInicio)!,
+    dtFim: iso(l.dtFim),
+    motivoSecagem: l.motivoSecagem,
+    enriquecida: l.tipoAleitamento != null || l.induzida || l.producaoTotal != null
+      || l.producao305 != null || l.duracaoDias != null
+      || controles.some((c) => c.data >= l.dtInicio && (l.dtFim == null || c.data <= l.dtFim)),
+  }));
   const operacoes = planejarSincronizacaoLactacoes(persistidas, mutacao, animal.numPartosEntrada);
   for (const op of operacoes) {
     if (op.tipo === "CRIAR") await tx.lactacao.create({ data: { animalId, numero: op.numero, dtInicio: new Date(op.dtInicio) } });
     else if (op.tipo === "ENCERRAR") await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: new Date(op.dtFim), motivoSecagem: op.motivoSecagem } });
-    else await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: null, motivoSecagem: null } });
+    else if (op.tipo === "REABRIR") await tx.lactacao.update({ where: { id: op.lactacaoId }, data: { dtFim: null, motivoSecagem: null } });
+    else await tx.lactacao.delete({ where: { id: op.lactacaoId } });
   }
 
-  // O resumo reprodutivo deriva dos eventos (cálculo puro), independente da persistência acima.
-  const lactsDerivadas = reconstruirLactacoes(evs, animal.numPartosEntrada);
+  const tipoParto = (mutacao.evento.tipoParto ?? "").toLowerCase();
+  const partoValido = mutacao.tipo === "CRIACAO" && mutacao.evento.tipo === "PARTO"
+    && tipoParto !== "3" && tipoParto !== "aborto" && tipoParto !== "ab";
+  const categoria = categoriaAposParto(animal.categoria);
+  if (partoValido && categoria !== animal.categoria) {
+    await tx.animal.update({ where: { id: animalId }, data: { categoria: categoria as typeof animal.categoria } });
+  }
+
+  // O resumo usa a estrutura persistida depois da sincronização. Assim, ciclos
+  // importados sem evento PARTO correspondente continuam fornecendo DEL e ordem.
+  const lactsPersistidas = (await tx.lactacao.findMany({
+    where: { animalId },
+    select: { numero: true, dtInicio: true, dtFim: true },
+  })).map((l) => ({ numero: l.numero, dtInicio: iso(l.dtInicio)!, dtFim: iso(l.dtFim) }));
+  const lactsDerivadas = lactsPersistidas.length
+    ? lactsPersistidas
+    : reconstruirLactacoes(evs, animal.numPartosEntrada);
   const [pevDias, gestacaoDias, secagemAntec] = await Promise.all([
     getNumero("PEV_DIAS"),
     getNumero("GESTACAO_DIAS"),
