@@ -251,6 +251,62 @@ export async function listarAplicacoes(animalId: number, propriedadeId: number |
   return rows.map((r) => aplicacaoDTO(r as unknown as AplicacaoRow, hoje));
 }
 
+export async function estornarDosesSemenPorExecucoesNaTransacao(
+  tx: Prisma.TransactionClient,
+  execucaoIds: number[],
+  propriedadeId: number | null,
+): Promise<void> {
+  const ids = [...new Set(execucaoIds)].sort((a, b) => a - b);
+  if (ids.length === 0) return;
+
+  const eventosComBaixa = await tx.eventoReprodutivo.findMany({
+    where: {
+      origemExecucaoId: { in: ids },
+      estoqueSemenId: { not: null },
+      estoqueSemenDoseBaixada: true,
+    },
+    select: { estoqueSemenId: true },
+    orderBy: { id: "asc" },
+  });
+  const eventosParaExcluir = await tx.eventoReprodutivo.findMany({
+    where: { origemExecucaoId: { in: ids } },
+    select: { id: true, animalId: true, tipo: true, data: true },
+    orderBy: { id: "asc" },
+  });
+  const quantidadePorLote = new Map<number, number>();
+  for (const evento of eventosComBaixa) {
+    if (evento.estoqueSemenId == null) continue;
+    quantidadePorLote.set(
+      evento.estoqueSemenId,
+      (quantidadePorLote.get(evento.estoqueSemenId) ?? 0) + 1,
+    );
+  }
+
+  for (const [loteId, quantidade] of quantidadePorLote) {
+    // updateMany mantém o escopo exato e tolera lote removido/fora do sítio (count = 0).
+    await tx.estoqueSemen.updateMany({
+      where: { id: loteId, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      data: { dosesDisponiveis: { increment: quantidade } },
+    });
+  }
+  // origemExecucaoId não é FK; remove explicitamente os eventos após o estorno.
+  await tx.eventoReprodutivo.deleteMany({
+    where: { origemExecucaoId: { in: ids } },
+  });
+  const primeiroEventoPorAnimal = new Map<number, (typeof eventosParaExcluir)[number]>();
+  for (const evento of eventosParaExcluir) {
+    if (!primeiroEventoPorAnimal.has(evento.animalId)) {
+      primeiroEventoPorAnimal.set(evento.animalId, evento);
+    }
+  }
+  for (const [animalId, evento] of primeiroEventoPorAnimal) {
+    await recomputarAnimal(tx, animalId, {
+      tipo: "EXCLUSAO",
+      evento: { id: evento.id, tipo: evento.tipo, data: iso(evento.data)! },
+    });
+  }
+}
+
 export async function excluirAplicacao(id: number, propriedadeId: number | null = null): Promise<void> {
   const existente = await prisma.aplicacaoProtocoloIATF.findFirst({
     where: {
@@ -260,7 +316,21 @@ export async function excluirAplicacao(id: number, propriedadeId: number | null 
     select: { id: true },
   });
   if (!existente) throw new IatfError("NAO_ENCONTRADO", "aplicação não encontrada");
-  await prisma.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade execuções
+  await prisma.$transaction(async (tx) => {
+    const aplicacao = await tx.aplicacaoProtocoloIATF.findUniqueOrThrow({
+      where: { id },
+      select: {
+        propriedadeId: true,
+        execucoes: { select: { id: true } },
+      },
+    });
+    await estornarDosesSemenPorExecucoesNaTransacao(
+      tx,
+      aplicacao.execucoes.map((execucao) => execucao.id),
+      aplicacao.propriedadeId ?? propriedadeId,
+    );
+    await tx.aplicacaoProtocoloIATF.delete({ where: { id } }); // cascade das execuções
+  });
 }
 
 /** Atualiza a execução e mantém o evento terminal IA/TE idempotente na mesma transação. */

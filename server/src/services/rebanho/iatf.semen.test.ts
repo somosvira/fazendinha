@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   execFindFirst: vi.fn(),
   aplicacaoFindUnique: vi.fn(),
+  aplicacaoFindUniqueNaTx: vi.fn(),
+  aplicacaoFindFirst: vi.fn(),
+  aplicacaoDeleteForaTx: vi.fn(),
+  aplicacaoDeleteNaTx: vi.fn(),
   execUpdate: vi.fn(),
   eventoFindFirst: vi.fn(),
+  eventoFindMany: vi.fn(),
   eventoUpsert: vi.fn(),
   eventoDeleteMany: vi.fn(),
   estoqueFindFirst: vi.fn(),
@@ -16,11 +21,20 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../db.js", () => ({
   prisma: {
     execucaoEtapaIATF: { findFirst: mocks.execFindFirst, update: mocks.execUpdate },
-    aplicacaoProtocoloIATF: { findUniqueOrThrow: mocks.aplicacaoFindUnique },
+    aplicacaoProtocoloIATF: {
+      findUniqueOrThrow: mocks.aplicacaoFindUnique,
+      findFirst: mocks.aplicacaoFindFirst,
+      delete: mocks.aplicacaoDeleteForaTx,
+    },
     $transaction: (fn: (tx: unknown) => unknown) => fn({
       execucaoEtapaIATF: { update: mocks.execUpdate },
+      aplicacaoProtocoloIATF: {
+        findUniqueOrThrow: mocks.aplicacaoFindUniqueNaTx,
+        delete: mocks.aplicacaoDeleteNaTx,
+      },
       eventoReprodutivo: {
         findFirst: mocks.eventoFindFirst,
+        findMany: mocks.eventoFindMany,
         upsert: mocks.eventoUpsert,
         deleteMany: mocks.eventoDeleteMany,
       },
@@ -36,7 +50,7 @@ vi.mock("../../db.js", () => ({
 vi.mock("./eventos.js", () => ({ recomputarAnimal: mocks.recomputarAnimal }));
 
 import { executarEtapaSchema } from "./iatf.schemas.js";
-import { executarEtapa } from "./iatf.js";
+import { executarEtapa, excluirAplicacao } from "./iatf.js";
 
 function aplicacao(finalidade: "IATF" | "TETF" = "IATF") {
   return {
@@ -76,7 +90,13 @@ function execucao(dia: number, finalidade: "IATF" | "TETF" = "IATF") {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.aplicacaoFindUnique.mockResolvedValue(aplicacao());
+  mocks.aplicacaoFindUniqueNaTx.mockResolvedValue({
+    propriedadeId: 7,
+    execucoes: [{ id: 51 }, { id: 52 }],
+  });
+  mocks.aplicacaoFindFirst.mockResolvedValue({ id: 5 });
   mocks.eventoFindFirst.mockResolvedValue(null);
+  mocks.eventoFindMany.mockResolvedValue([]);
   mocks.eventoUpsert.mockResolvedValue({ id: 90 });
   mocks.eventoDeleteMany.mockResolvedValue({ count: 1 });
   mocks.estoqueFindFirst.mockResolvedValue({ id: 18, dosesDisponiveis: 4 });
@@ -90,6 +110,113 @@ describe("schema de execução IATF com lote de sêmen", () => {
 
     expect(resultado.success).toBe(true);
     if (resultado.success) expect(resultado.data).toEqual(expect.objectContaining({ estoqueSemenId: 18 }));
+  });
+});
+
+describe("excluirAplicacao — estorno de sêmen antes do cascade", () => {
+  it("devolve uma dose por evento com baixa antes de excluir na mesma transação", async () => {
+    mocks.eventoFindMany
+      .mockResolvedValueOnce([{ estoqueSemenId: 18 }])
+      .mockResolvedValueOnce([{
+        id: 90,
+        animalId: 7,
+        tipo: "INSEMINACAO",
+        data: new Date("2026-07-17T00:00:00Z"),
+      }]);
+
+    await excluirAplicacao(5, 7);
+
+    expect(mocks.aplicacaoFindFirst).toHaveBeenCalledWith({
+      where: { id: 5, animal: { propriedadeId: 7 } },
+      select: { id: true },
+    });
+    expect(mocks.aplicacaoFindUniqueNaTx).toHaveBeenCalledWith({
+      where: { id: 5 },
+      select: {
+        propriedadeId: true,
+        execucoes: { select: { id: true } },
+      },
+    });
+    expect(mocks.eventoFindMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        origemExecucaoId: { in: [51, 52] },
+        estoqueSemenId: { not: null },
+        estoqueSemenDoseBaixada: true,
+      },
+      select: { estoqueSemenId: true },
+      orderBy: { id: "asc" },
+    });
+    expect(mocks.eventoFindMany).toHaveBeenNthCalledWith(2, {
+      where: { origemExecucaoId: { in: [51, 52] } },
+      select: { id: true, animalId: true, tipo: true, data: true },
+      orderBy: { id: "asc" },
+    });
+    expect(mocks.estoqueUpdateMany).toHaveBeenCalledWith({
+      where: { id: 18, propriedadeId: 7 },
+      data: { dosesDisponiveis: { increment: 1 } },
+    });
+    expect(mocks.eventoDeleteMany).toHaveBeenCalledWith({
+      where: { origemExecucaoId: { in: [51, 52] } },
+    });
+    expect(mocks.recomputarAnimal).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      {
+        tipo: "EXCLUSAO",
+        evento: { id: 90, tipo: "INSEMINACAO", data: "2026-07-17" },
+      },
+    );
+    expect(mocks.aplicacaoDeleteNaTx).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(mocks.aplicacaoDeleteForaTx).not.toHaveBeenCalled();
+    expect(mocks.estoqueUpdateMany.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.eventoDeleteMany.mock.invocationCallOrder[0]);
+    expect(mocks.eventoDeleteMany.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.recomputarAnimal.mock.invocationCallOrder[0]);
+    expect(mocks.recomputarAnimal.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.aplicacaoDeleteNaTx.mock.invocationCallOrder[0]);
+  });
+
+  it("não devolve dose de evento cujo marcador de baixa é falso", async () => {
+    mocks.eventoFindMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{
+        id: 90,
+        animalId: 7,
+        tipo: "INSEMINACAO",
+        data: new Date("2026-07-17T00:00:00Z"),
+      }]);
+
+    await excluirAplicacao(5, 7);
+
+    expect(mocks.eventoFindMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      where: expect.objectContaining({ estoqueSemenDoseBaixada: true }),
+    }));
+    expect(mocks.estoqueUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.eventoDeleteMany).toHaveBeenCalledWith({
+      where: { origemExecucaoId: { in: [51, 52] } },
+    });
+    expect(mocks.recomputarAnimal).toHaveBeenCalledOnce();
+    expect(mocks.aplicacaoDeleteNaTx).toHaveBeenCalledWith({ where: { id: 5 } });
+  });
+
+  it("tolera lote ausente ou fora do sítio sem atualizar outro estoque", async () => {
+    mocks.eventoFindMany
+      .mockResolvedValueOnce([{ estoqueSemenId: 18 }])
+      .mockResolvedValueOnce([{
+        id: 90,
+        animalId: 7,
+        tipo: "INSEMINACAO",
+        data: new Date("2026-07-17T00:00:00Z"),
+      }]);
+    mocks.estoqueUpdateMany.mockResolvedValue({ count: 0 });
+
+    await expect(excluirAplicacao(5, 7)).resolves.toBeUndefined();
+
+    expect(mocks.estoqueUpdateMany).toHaveBeenCalledWith({
+      where: { id: 18, propriedadeId: 7 },
+      data: { dosesDisponiveis: { increment: 1 } },
+    });
+    expect(mocks.aplicacaoDeleteNaTx).toHaveBeenCalledWith({ where: { id: 5 } });
   });
 });
 
