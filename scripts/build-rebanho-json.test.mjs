@@ -1,11 +1,35 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   categoriaDe, parseAnimal, derivarStatusRepro, delEStatusLactacao, diasEntre, parseEvento,
   parseDoenca, parseAplicacao, parseAnalise, parseMamite, parsePesagem, parseLactacao,
   parseProtocoloIatf, parseProtocoloPrincipio, parseProgramacaoIatf, parseProgramacaoAssociacao,
-  parseResultadoGinecologico,
+  parseResultadoGinecologico, parseReprodutorGenetico, parseIndicadorGenetico,
+  parseValorIndicador, parseMarcador, parseValorMarcador, parseCaseina, parseValorCaseina,
+  parseTipoSemen, parseEstoqueSemen, parsePedigree,
 } from "./build-rebanho-json.mjs";
+
+const SCRIPT_PATH = fileURLToPath(new URL("./build-rebanho-json.mjs", import.meta.url));
+
+function executarMainIsolado(t, linhas) {
+  const raiz = realpathSync(mkdtempSync(join(tmpdir(), "build-rebanho-json-")));
+  const scriptsDir = join(raiz, "scripts");
+  const prismaDir = join(raiz, "server", "prisma");
+  mkdirSync(scriptsDir, { recursive: true });
+  mkdirSync(prismaDir, { recursive: true });
+  const script = join(scriptsDir, "build-rebanho-json.mjs");
+  const dump = join(raiz, "dump.txt");
+  copyFileSync(SCRIPT_PATH, script);
+  writeFileSync(dump, `${linhas.join("\n")}\n`, "latin1");
+  t.after(() => rmSync(raiz, { recursive: true, force: true }));
+  const execucao = spawnSync(process.execPath, [script, dump, "2026-07-27"], { encoding: "utf8" });
+  return { execucao, destino: join(prismaDir, "rebanho_real.json") };
+}
 
 test("categoriaDe mapeia CDCATEGORIA por código e sexo", () => {
   assert.equal(categoriaDe("7", "F"), "VACA");
@@ -190,6 +214,196 @@ test("parseResultadoGinecologico rejeita código inválido", () => {
   assert.equal(parseResultadoGinecologico("abc~|~Inválido~|~~|~~|~0"), null);
   assert.equal(parseResultadoGinecologico("0~|~Inválido~|~~|~~|~0"), null);
   assert.equal(parseResultadoGinecologico("1.5~|~Inválido~|~~|~~|~0"), null);
+});
+
+test("parseReprodutorGenetico preserva identidade e campos opcionais", () => {
+  assert.deepEqual(parseReprodutorGenetico("100~|~Touro Atlas~|~ATL-1~|~HO~|~ABS"), {
+    ideagriId: 100,
+    nome: "Touro Atlas",
+    codigo: "ATL-1",
+    racaSigla: "HO",
+    centralSigla: "ABS",
+  });
+  assert.deepEqual(parseReprodutorGenetico("101~|~Touro sem códigos~|~~|~~|~"), {
+    ideagriId: 101,
+    nome: "Touro sem códigos",
+    codigo: null,
+    racaSigla: null,
+    centralSigla: null,
+  });
+  assert.equal(parseReprodutorGenetico("1.5~|~Touro inválido~|~~|~~|~"), null);
+  assert.equal(parseReprodutorGenetico("100~|~~|~ATL-1~|~HO~|~ABS"), null);
+});
+
+test("parseIndicadorGenetico preserva identidade/direção/colunaLegada e rejeita campos inválidos", () => {
+  assert.deepEqual(parseIndicadorGenetico("42~|~PTAL~|~PTA Leite~|~kg~|~maior_melhor~|~ptaLeite~|~1"), {
+    ideagriId: 42,
+    sigla: "PTAL",
+    nome: "PTA Leite",
+    unidade: "kg",
+    direcao: "maior_melhor",
+    colunaLegada: "ptaLeite",
+    ranking: true,
+  });
+  assert.deepEqual(parseIndicadorGenetico("43~|~CCS~|~CCS prevista~|~~|~menor_melhor~|~~|~0"), {
+    ideagriId: 43,
+    sigla: "CCS",
+    nome: "CCS prevista",
+    unidade: null,
+    direcao: "menor_melhor",
+    colunaLegada: null,
+    ranking: false,
+  });
+  assert.equal(parseIndicadorGenetico("42~|~~|~Sem sigla~|~~|~maior_melhor~|~~|~0"), null);
+  assert.equal(parseIndicadorGenetico("42~|~X~|~~|~~|~maior_melhor~|~~|~0"), null);
+  assert.equal(parseIndicadorGenetico("42~|~X~|~Y~|~~|~torto~|~~|~0"), null);
+  assert.equal(parseIndicadorGenetico("42~|~X~|~Y~|~~|~maior_melhor~|~naoExiste~|~0"), null);
+  assert.equal(parseIndicadorGenetico("Infinity~|~X~|~Y~|~~|~maior_melhor~|~~|~0"), null);
+});
+
+test("parseValorIndicador exige reprodutor/sigla e número finito", () => {
+  assert.deepEqual(parseValorIndicador("100~|~PTAL~|~900.5"), {
+    reprodutorIdeagriId: 100,
+    indicadorSigla: "PTAL",
+    valor: 900.5,
+  });
+  assert.equal(parseValorIndicador("100~|~PTAL~|~abc"), null);
+  assert.equal(parseValorIndicador("100~|~PTAL~|~Infinity"), null);
+  assert.equal(parseValorIndicador("~|~PTAL~|~9"), null);
+  assert.equal(parseValorIndicador("100~|~~|~9"), null);
+});
+
+test("parseMarcador e parseValorMarcador exigem identidade, sigla, nome e resultado", () => {
+  assert.deepEqual(parseMarcador("8~|~BLAD~|~Deficiência de adesão leucocitária"), {
+    ideagriId: 8,
+    sigla: "BLAD",
+    nome: "Deficiência de adesão leucocitária",
+  });
+  assert.equal(parseMarcador("8~|~BLAD~|~"), null);
+  assert.equal(parseMarcador("0~|~BLAD~|~Nome"), null);
+  assert.deepEqual(parseValorMarcador("100~|~BLAD~|~LIVRE"), {
+    reprodutorIdeagriId: 100,
+    marcadorSigla: "BLAD",
+    resultado: "LIVRE",
+  });
+  assert.equal(parseValorMarcador("100~|~BLAD~|~"), null);
+  assert.equal(parseValorMarcador("-1~|~BLAD~|~LIVRE"), null);
+});
+
+test("parseCaseina e parseValorCaseina exigem identidade, sigla, nome e genótipo", () => {
+  assert.deepEqual(parseCaseina("9~|~K-CN~|~Kappa-caseína"), {
+    ideagriId: 9,
+    sigla: "K-CN",
+    nome: "Kappa-caseína",
+  });
+  assert.equal(parseCaseina("9~|~~|~Kappa-caseína"), null);
+  assert.deepEqual(parseValorCaseina("100~|~K-CN~|~A2A2"), {
+    reprodutorIdeagriId: 100,
+    caseinaSigla: "K-CN",
+    genotipo: "A2A2",
+  });
+  assert.equal(parseValorCaseina("100~|~K-CN~|~"), null);
+  assert.equal(parseValorCaseina("100.1~|~K-CN~|~A2A2"), null);
+});
+
+test("parseTipoSemen exige identidade, sigla e nome", () => {
+  assert.deepEqual(parseTipoSemen("3~|~SEX~|~Sexado"), {
+    ideagriId: 3,
+    sigla: "SEX",
+    nome: "Sexado",
+  });
+  assert.equal(parseTipoSemen("3~|~~|~Sexado"), null);
+  assert.equal(parseTipoSemen("abc~|~SEX~|~Sexado"), null);
+});
+
+test("parseEstoqueSemen preserva tipo opcional e exige IDs/doses válidos", () => {
+  assert.deepEqual(parseEstoqueSemen("7~|~100~|~SEX~|~L-22~|~Botijão 1~|~12"), {
+    ideagriId: 7,
+    reprodutorIdeagriId: 100,
+    tipoSemenSigla: "SEX",
+    lote: "L-22",
+    localizacao: "Botijão 1",
+    doses: 12,
+  });
+  assert.deepEqual(parseEstoqueSemen("8~|~100~|~~|~~|~~|~0"), {
+    ideagriId: 8,
+    reprodutorIdeagriId: 100,
+    tipoSemenSigla: null,
+    lote: null,
+    localizacao: null,
+    doses: 0,
+  });
+  assert.equal(parseEstoqueSemen("7~|~~|~SEX~|~L-22~|~~|~12"), null);
+  assert.equal(parseEstoqueSemen("7~|~100~|~SEX~|~L-22~|~~|~-1"), null);
+  assert.equal(parseEstoqueSemen("7~|~100~|~SEX~|~L-22~|~~|~1.5"), null);
+  assert.equal(parseEstoqueSemen("7~|~100~|~SEX~|~L-22~|~~|~Infinity"), null);
+});
+
+test("parsePedigree exige reprodutor e preserva nomes/códigos opcionais", () => {
+  assert.deepEqual(
+    parsePedigree("100~|~Pai Atlas~|~P-1~|~Mãe Lua~|~M-1~|~Avô Materno~|~AM-1~|~Avô Paterno~|~AP-1"),
+    {
+      reprodutorIdeagriId: 100,
+      paiNome: "Pai Atlas",
+      paiCodigo: "P-1",
+      maeNome: "Mãe Lua",
+      maeCodigo: "M-1",
+      avoMaternoNome: "Avô Materno",
+      avoMaternoCodigo: "AM-1",
+      avoPaternoNome: "Avô Paterno",
+      avoPaternoCodigo: "AP-1",
+    },
+  );
+  assert.deepEqual(parsePedigree("101~|~~|~~|~~|~~|~~|~~|~~|~"), {
+    reprodutorIdeagriId: 101,
+    paiNome: null,
+    paiCodigo: null,
+    maeNome: null,
+    maeCodigo: null,
+    avoMaternoNome: null,
+    avoMaternoCodigo: null,
+    avoPaternoNome: null,
+    avoPaternoCodigo: null,
+  });
+  assert.equal(parsePedigree("~|~Pai~|~~|~~|~~|~~|~~|~~|~"), null);
+});
+
+test("main coleta todos os prefixos genéticos, emite arrays e contagens", (t) => {
+  const linhas = [
+    "@REPRODUTOR@100~|~Touro Atlas~|~ATL-1~|~HO~|~ABS",
+    "@INDICADOR@42~|~PTAL~|~PTA Leite~|~kg~|~maior_melhor~|~ptaLeite~|~1",
+    "@VALORIND@100~|~PTAL~|~900.5",
+    "@MARCADOR@8~|~BLAD~|~Deficiência de adesão leucocitária",
+    "@VALORMARC@100~|~BLAD~|~LIVRE",
+    "@CASEINA@9~|~K-CN~|~Kappa-caseína",
+    "@VALORCAS@100~|~K-CN~|~A2A2",
+    "@TIPOSEMEN@3~|~SEX~|~Sexado",
+    "@ESTSEMEN@7~|~100~|~SEX~|~L-22~|~Botijão 1~|~12",
+    "@PEDIGREE@100~|~Pai Atlas~|~P-1~|~Mãe Lua~|~M-1~|~~|~~|~~|~",
+  ];
+  const { execucao, destino } = executarMainIsolado(t, linhas);
+  assert.equal(execucao.status, 0, execucao.stderr);
+  const out = JSON.parse(readFileSync(destino, "utf8"));
+  assert.equal(out.reprodutoresGeneticos.length, 1);
+  assert.equal(out.indicadores.length, 1);
+  assert.equal(out.valoresIndicador.length, 1);
+  assert.equal(out.marcadores.length, 1);
+  assert.equal(out.valoresMarcador.length, 1);
+  assert.equal(out.caseinas.length, 1);
+  assert.equal(out.valoresCaseina.length, 1);
+  assert.equal(out.tiposSemen.length, 1);
+  assert.equal(out.estoquesSemen.length, 1);
+  assert.equal(out.pedigrees.length, 1);
+  assert.match(execucao.stderr, /genética\/sêmen: reprodutores=1 indicadores=1 valoresIndicador=1 marcadores=1 valoresMarcador=1 caseínas=1 valoresCaseina=1 tiposSemen=1 estoques=1 pedigrees=1/);
+});
+
+test("main aborta sem emitir JSON quando encontra registro genético inválido e reporta amostra", (t) => {
+  const linhaInvalida = "@VALORIND@100~|~PTAL~|~Infinity";
+  const { execucao, destino } = executarMainIsolado(t, [linhaInvalida]);
+  assert.equal(execucao.status, 1);
+  assert.equal(existsSync(destino), false);
+  assert.match(execucao.stderr, /ERRO: 1 registros de genética\/sêmen inválidos\./);
+  assert.match(execucao.stderr, new RegExp(linhaInvalida));
 });
 
 test("parseDoenca → OCORRENCIA com doença/dtFim/dias", () => {
