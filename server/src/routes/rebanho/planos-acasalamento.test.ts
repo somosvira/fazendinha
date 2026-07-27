@@ -116,6 +116,26 @@ describe("rotas de planos de acasalamento", () => {
     expect(response.status).toBe(404);
   });
 
+  it("retorna 404 quando a combinação do plano está indisponível no recálculo", async () => {
+    const { PlanoAcasalamentoError } = await import(
+      "../../services/rebanho/planos-acasalamento.js"
+    );
+    mocks.recalcular.mockRejectedValueOnce(new PlanoAcasalamentoError(
+      "NAO_ENCONTRADO",
+      "combinação do plano indisponível",
+    ));
+
+    const response = await planosAcasalamentoRouter.request(
+      "/rebanho/acasalamento/planos/100/recalcular",
+      { method: "POST" },
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "combinação do plano indisponível",
+    });
+  });
+
   it("mapeia erros de domínio para 404 e 409", async () => {
     const { PlanoAcasalamentoError } = await import(
       "../../services/rebanho/planos-acasalamento.js"

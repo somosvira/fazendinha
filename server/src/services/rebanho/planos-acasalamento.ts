@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../db.js";
-import { recomendarParaAnimais } from "./acasalamento.js";
+import {
+  AcasalamentoError,
+  recomendarParaAnimais,
+} from "./acasalamento.js";
 import type { ConfigRecomendacao } from "./recomendar-acasalamento.calc.js";
 import {
   type CriarPlanoAcasalamentoInput,
@@ -373,11 +376,22 @@ export async function recalcularPlanoAcasalamento(
     throw new PlanoAcasalamentoError("NAO_ENCONTRADO", "plano não encontrado");
   }
 
-  const calculo = await carregarCalculoDoGrupo(
-    plano.grupoId,
-    plano.combinacaoId,
-    propriedadeId,
-  );
+  let calculo: Awaited<ReturnType<typeof carregarCalculoDoGrupo>>;
+  try {
+    calculo = await carregarCalculoDoGrupo(
+      plano.grupoId,
+      plano.combinacaoId,
+      propriedadeId,
+    );
+  } catch (erro) {
+    if (erro instanceof AcasalamentoError) {
+      throw new PlanoAcasalamentoError(
+        "NAO_ENCONTRADO",
+        "combinação do plano indisponível",
+      );
+    }
+    throw erro;
+  }
   const ultima = await prisma.versaoPlanoAcasalamento.aggregate({
     where: { planoId: plano.id },
     _max: { versao: true },
@@ -483,7 +497,10 @@ export async function escolherReprodutorPlano(
       include: linhaInclude,
     });
     const estoque = await tx.estoqueSemen.aggregate({
-      where: { reprodutorId: candidato.reprodutorId, propriedadeId },
+      where: {
+        reprodutorId: candidato.reprodutorId,
+        ...registroNoEscopo(propriedadeId),
+      },
       _sum: { dosesDisponiveis: true },
     });
     return { atualizada, doses: estoque._sum.dosesDisponiveis ?? 0 };

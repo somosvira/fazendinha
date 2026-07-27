@@ -46,6 +46,11 @@ vi.mock("../../db.js", () => ({
 }));
 
 vi.mock("./acasalamento.js", () => ({
+  AcasalamentoError: class AcasalamentoError extends Error {
+    constructor(public code: "NAO_ENCONTRADO", message: string) {
+      super(message);
+    }
+  },
   recomendarParaAnimais: mocks.recomendarParaAnimais,
 }));
 
@@ -356,6 +361,26 @@ describe("recalcularPlanoAcasalamento", () => {
     expect(mocks.txVersaoDeleteMany).not.toHaveBeenCalled();
   });
 
+  it("mapeia combinação inativada depois da criação para erro de domínio", async () => {
+    const { AcasalamentoError } = await import("./acasalamento.js");
+    mocks.planoFindFirst.mockResolvedValueOnce({
+      id: 100,
+      grupoId: 8,
+      combinacaoId: 9,
+    });
+    mocks.recomendarParaAnimais.mockRejectedValueOnce(
+      new AcasalamentoError("NAO_ENCONTRADO", "combinação não encontrada"),
+    );
+
+    await expect(recalcularPlanoAcasalamento(100, 3)).rejects.toEqual(
+      new PlanoAcasalamentoError(
+        "NAO_ENCONTRADO",
+        "combinação do plano indisponível",
+      ),
+    );
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it("mapeia P2002 de versão concorrente para conflito operacional", async () => {
     mocks.planoFindFirst.mockResolvedValueOnce({ id: 100, grupoId: 8, combinacaoId: 9 });
     mocks.txVersaoCreate.mockRejectedValue(new Prisma.PrismaClientKnownRequestError(
@@ -532,6 +557,19 @@ describe("escolherReprodutorPlano", () => {
       },
     }));
     expect(mocks.estoqueUpdate).not.toHaveBeenCalled();
+  });
+
+  it("soma todo o estoque do reprodutor no escopo consolidado", async () => {
+    await expect(escolherReprodutorPlano(
+      301,
+      { reprodutorId: 10, confirmadoNaoVerificavel: false },
+      null,
+    )).resolves.toMatchObject({ aviso: null });
+
+    expect(mocks.estoqueAggregate).toHaveBeenCalledWith({
+      where: { reprodutorId: 10 },
+      _sum: { dosesDisponiveis: true },
+    });
   });
 
   it("trata linha de outro sítio como não encontrada", async () => {
