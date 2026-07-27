@@ -77,6 +77,7 @@ describe("render smoke", () => {
     // (título de topo removido do produto)
     expect(html).toContain("Produtos");       // sub-aba
     expect(html).toContain("Fornecedores");   // sub-aba
+    expect(html).toContain("Medidas de acasalamento"); // cadastro compartilhado do Bloco D
     expect(html).toContain("Carregando");     // shell de loading (sem fetch no SSR)
   });
 

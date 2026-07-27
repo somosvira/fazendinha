@@ -1459,6 +1459,36 @@ export const listarEstoqueSemen = (reprodutorId: number) => req<EstoqueSemenDTO[
 export const criarLoteSemen = (reprodutorId: number, body: LoteSemenInput) => req<EstoqueSemenDTO>(`/rebanho/reprodutores/${reprodutorId}/semen`, { method: "POST", body: JSON.stringify(body) });
 export const ajustarDoses = (estoqueId: number, delta: number) => req<EstoqueSemenDTO>(`/rebanho/semen/${estoqueId}/doses`, { method: "PATCH", body: JSON.stringify({ delta }) });
 
+// ── Medidas, combinações e planos de acasalamento dirigido ────────────────────
+export type TipoMedidaAcasalamento = "MERITO" | "RESTRICAO_INDICADOR" | "CONSANGUINIDADE" | "PEDIGREE" | "SEMEN";
+export type StatusCandidatoAcasalamento = "ok" | "consanguineo" | "restrito" | "nao_verificavel";
+export interface ItemMedidaAcasalamentoDTO { indicadorId: number; indicadorSigla: string; peso: number; minimo: number | null; maximo: number | null }
+export interface MedidaAcasalamentoDTO { id: number; nome: string; tipo: TipoMedidaAcasalamento; consanguinidadeMax: number | null; exigePedigree: boolean; ativo: boolean; itens: ItemMedidaAcasalamentoDTO[] }
+export interface MedidaAcasalamentoInput { nome: string; tipo: TipoMedidaAcasalamento; consanguinidadeMax: number | null; exigePedigree: boolean; ativo: boolean; itens: { indicadorId: number; peso: number; minimo: number | null; maximo: number | null }[] }
+export interface ItemCombinacaoMedidaDTO { medidaId: number; medidaNome: string; medidaTipo: TipoMedidaAcasalamento; peso: number; obrigatoria: boolean; ordem: number }
+export interface CombinacaoMedidaDTO { id: number; nome: string; ativo: boolean; itens: ItemCombinacaoMedidaDTO[] }
+export interface CombinacaoMedidaInput { nome: string; ativo: boolean; itens: { medidaId: number; peso: number; obrigatoria: boolean; ordem: number }[] }
+export interface ResumoPlanoAcasalamentoDTO { id: number; nome: string; grupoId: number; grupoNome: string; combinacaoId: number; combinacaoNome: string; ultimaVersao: number | null; totalFemeas: number; totalEscolhas: number; createdAt: string; updatedAt: string }
+export interface CandidatoSnapshotDTO { reprodutorId: number; nome: string; merito: number; parentesco: number; status: StatusCandidatoAcasalamento; score: number; motivos: string[]; indicadoresPontuados: number }
+export interface LinhaPlanoAcasalamentoDTO { id: number; femeaId: number; femeaNumero: string; femeaNome: string | null; ranking: CandidatoSnapshotDTO[]; reprodutorEscolhidoId: number | null; reprodutorEscolhidoNome: string | null; confirmadoNaoVerificavel: boolean }
+export interface ConfigRecomendacaoDTO { termos: { indicadorId: number; peso: number; direcao: DirecaoIndicadorGenetico; minimo: number | null; maximo: number | null; obrigatoria: boolean }[]; consanguinidadeMax: number; exigePedigree: boolean }
+export interface VersaoPlanoAcasalamentoDTO { id: number; versao: number; configSnapshot: ConfigRecomendacaoDTO; createdAt: string; linhas: LinhaPlanoAcasalamentoDTO[] }
+export interface PlanoAcasalamentoDTO extends ResumoPlanoAcasalamentoDTO { versoes: VersaoPlanoAcasalamentoDTO[] }
+
+export const listarMedidasAcasalamento = (incluirInativas = false) => req<MedidaAcasalamentoDTO[]>(`/rebanho/acasalamento/medidas${incluirInativas ? "?inativas=1" : ""}`);
+export const criarMedidaAcasalamento = (body: MedidaAcasalamentoInput) => req<MedidaAcasalamentoDTO>(`/rebanho/acasalamento/medidas`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarMedidaAcasalamento = (id: number, body: Partial<MedidaAcasalamentoInput>) => req<MedidaAcasalamentoDTO>(`/rebanho/acasalamento/medidas/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirMedidaAcasalamento = (id: number) => req<{ ok: true }>(`/rebanho/acasalamento/medidas/${id}`, { method: "DELETE" });
+export const listarCombinacoesMedida = (incluirInativas = false) => req<CombinacaoMedidaDTO[]>(`/rebanho/acasalamento/combinacoes${incluirInativas ? "?inativas=1" : ""}`);
+export const criarCombinacaoMedida = (body: CombinacaoMedidaInput) => req<CombinacaoMedidaDTO>(`/rebanho/acasalamento/combinacoes`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarCombinacaoMedida = (id: number, body: Partial<CombinacaoMedidaInput>) => req<CombinacaoMedidaDTO>(`/rebanho/acasalamento/combinacoes/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirCombinacaoMedida = (id: number) => req<{ ok: true }>(`/rebanho/acasalamento/combinacoes/${id}`, { method: "DELETE" });
+export const listarPlanosAcasalamento = () => req<ResumoPlanoAcasalamentoDTO[]>(`/rebanho/acasalamento/planos`);
+export const obterPlanoAcasalamento = (id: number) => req<PlanoAcasalamentoDTO>(`/rebanho/acasalamento/planos/${id}`);
+export const criarPlanoAcasalamento = (body: { nome: string; grupoId: number; combinacaoId: number }) => req<PlanoAcasalamentoDTO>(`/rebanho/acasalamento/planos`, { method: "POST", body: JSON.stringify(body) });
+export const recalcularPlanoAcasalamento = (id: number) => req<PlanoAcasalamentoDTO>(`/rebanho/acasalamento/planos/${id}/recalcular`, { method: "POST" });
+export const escolherReprodutorPlano = (linhaId: number, body: { reprodutorId: number; confirmadoNaoVerificavel: boolean }) => req<{ linha: LinhaPlanoAcasalamentoDTO; aviso: string | null }>(`/rebanho/acasalamento/linhas/${linhaId}/escolha`, { method: "PATCH", body: JSON.stringify(body) });
+
 export function useReprodutores(incluirInativos = false) {
   const [data, setData] = useState<BibliotecaReprodutoresDTO | null>(null);
   const [loading, setLoading] = useState(true);
