@@ -1395,6 +1395,68 @@ export const criarReprodutor = (body: ReprodutorInput) => req<ReprodutorDTO>(`/r
 export const atualizarReprodutor = (id: number, body: Partial<ReprodutorInput>) => req<ReprodutorDTO>(`/rebanho/reprodutores/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 export const excluirReprodutor = (id: number) => req<{ ok: true }>(`/rebanho/reprodutores/${id}`, { method: "DELETE" });
 
+export type DirecaoIndicadorGenetico = "maior_melhor" | "menor_melhor";
+export type ColunaLegadaIndicador = "ptaLeite" | "ptaGordura" | "ptaProteina" | "tpi";
+export interface IndicadorGeneticoDTO {
+  id: number; sigla: string; nome: string; unidade: string | null;
+  direcao: DirecaoIndicadorGenetico; colunaLegada: ColunaLegadaIndicador | null;
+  ranking: boolean; ativo: boolean;
+}
+export interface IndicadorGeneticoInput {
+  sigla: string; nome: string; unidade?: string | null;
+  direcao?: DirecaoIndicadorGenetico; colunaLegada?: ColunaLegadaIndicador | null;
+  ranking?: boolean; ativo?: boolean;
+}
+export interface DicionarioGeneticoDTO { id: number; sigla: string; nome: string }
+export interface DicionarioGeneticoInput { sigla: string; nome: string }
+export interface ValorIndicadorGeneticoInput { indicadorId: number; valor: number }
+export interface ValorMarcadorGeneticoInput { marcadorId: number; resultado: string }
+export interface ValorCaseinaInput { caseinaId: number; genotipo: string }
+export interface PedigreeReprodutorDTO {
+  paiNome: string | null; paiCodigo: string | null;
+  maeNome: string | null; maeCodigo: string | null;
+  avoMaternoNome: string | null; avoMaternoCodigo: string | null;
+  avoPaternoNome: string | null; avoPaternoCodigo: string | null;
+}
+export interface FichaGeneticaDTO {
+  valoresIndicador: ValorIndicadorGeneticoInput[];
+  valoresMarcador: ValorMarcadorGeneticoInput[];
+  valoresCaseina: ValorCaseinaInput[];
+  pedigree: PedigreeReprodutorDTO | null;
+}
+export interface SalvarFichaGeneticaInput {
+  valoresIndicador: ValorIndicadorGeneticoInput[];
+  valoresMarcador: ValorMarcadorGeneticoInput[];
+  valoresCaseina: ValorCaseinaInput[];
+  pedigree?: PedigreeReprodutorDTO | null;
+}
+export interface RankingReprodutoresDTO { ordem: number[]; indicadorId: number | null }
+export interface TipoSemenDTO { id: number; sigla: string; nome: string }
+export interface EstoqueSemenDTO {
+  id: number; reprodutorId: number; tipoSemenId: number | null; tipoSemenNome: string | null;
+  lote: string | null; localizacao: string | null; dosesDisponiveis: number;
+}
+export interface LoteSemenInput {
+  tipoSemenId?: number | null; lote?: string | null; localizacao?: string | null; dosesDisponiveis: number;
+}
+
+export const listarIndicadores = () => req<IndicadorGeneticoDTO[]>(`/rebanho/genetica/indicadores`);
+export const criarIndicador = (body: IndicadorGeneticoInput) => req<IndicadorGeneticoDTO>(`/rebanho/genetica/indicadores`, { method: "POST", body: JSON.stringify(body) });
+export const atualizarIndicador = (id: number, body: Partial<IndicadorGeneticoInput>) => req<IndicadorGeneticoDTO>(`/rebanho/genetica/indicadores/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirIndicador = (id: number) => req<{ ok: true }>(`/rebanho/genetica/indicadores/${id}`, { method: "DELETE" });
+export const listarMarcadores = () => req<DicionarioGeneticoDTO[]>(`/rebanho/genetica/marcadores`);
+export const criarMarcador = (body: DicionarioGeneticoInput) => req<DicionarioGeneticoDTO>(`/rebanho/genetica/marcadores`, { method: "POST", body: JSON.stringify(body) });
+export const listarCaseinas = () => req<DicionarioGeneticoDTO[]>(`/rebanho/genetica/caseinas`);
+export const criarCaseina = (body: DicionarioGeneticoInput) => req<DicionarioGeneticoDTO>(`/rebanho/genetica/caseinas`, { method: "POST", body: JSON.stringify(body) });
+export const obterFichaGenetica = (reprodutorId: number) => req<FichaGeneticaDTO>(`/rebanho/reprodutores/${reprodutorId}/genetica`);
+export const salvarFichaGenetica = (reprodutorId: number, body: SalvarFichaGeneticaInput) => req<FichaGeneticaDTO>(`/rebanho/reprodutores/${reprodutorId}/genetica`, { method: "PUT", body: JSON.stringify(body) });
+export const rankingReprodutores = (indicadorId?: number) => req<RankingReprodutoresDTO>(`/rebanho/reprodutores/ranking${indicadorId == null ? "" : `?indicadorId=${indicadorId}`}`);
+export const listarTiposSemen = () => req<TipoSemenDTO[]>(`/rebanho/semen/tipos`);
+export const criarTipoSemen = (body: DicionarioGeneticoInput) => req<TipoSemenDTO>(`/rebanho/semen/tipos`, { method: "POST", body: JSON.stringify(body) });
+export const listarEstoqueSemen = (reprodutorId: number) => req<EstoqueSemenDTO[]>(`/rebanho/reprodutores/${reprodutorId}/semen`);
+export const criarLoteSemen = (reprodutorId: number, body: LoteSemenInput) => req<EstoqueSemenDTO>(`/rebanho/reprodutores/${reprodutorId}/semen`, { method: "POST", body: JSON.stringify(body) });
+export const ajustarDoses = (estoqueId: number, delta: number) => req<EstoqueSemenDTO>(`/rebanho/semen/${estoqueId}/doses`, { method: "PATCH", body: JSON.stringify({ delta }) });
+
 export function useReprodutores(incluirInativos = false) {
   const [data, setData] = useState<BibliotecaReprodutoresDTO | null>(null);
   const [loading, setLoading] = useState(true);
