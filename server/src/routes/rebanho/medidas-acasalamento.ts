@@ -1,5 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import { ZodError } from "zod";
 import {
   atualizarCombinacaoMedidaSchema,
   atualizarMedidaAcasalamentoSchema,
@@ -8,12 +9,15 @@ import {
 } from "../../services/rebanho/medidas-acasalamento.schemas.js";
 import * as svc from "../../services/rebanho/medidas-acasalamento.js";
 
-function fail(error: unknown): { status: 404 | 409 | 500; body: { error: string } } {
+function fail(error: unknown): { status: 400 | 404 | 409 | 500; body: { error: string } } {
   if (error instanceof svc.MedidaAcasalamentoError) {
     return {
       status: error.code === "NAO_ENCONTRADO" ? 404 : 409,
       body: { error: error.message },
     };
+  }
+  if (error instanceof ZodError) {
+    return { status: 400, body: { error: error.issues[0]?.message ?? "Configuração inválida." } };
   }
   console.error("[medidas-acasalamento]", error);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
