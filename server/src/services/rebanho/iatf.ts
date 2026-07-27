@@ -330,7 +330,9 @@ export async function atualizarExecucaoNaTransacao(
     const data = dataExecucao ?? ex.dataPlanejada;
     const loteAnterior = eventoTerminal?.estoqueSemenId ?? null;
     const doseAnteriorBaixada = eventoTerminal?.estoqueSemenDoseBaixada ?? false;
-    // Campo ausente em PATCH preserva o vínculo anterior. TETF ignora lote de sêmen.
+    // A execução terminal individual pode informar estoqueSemenId. O schema do lote não
+    // expõe esse campo: em lote, não há seleção/consumo de lote novo — só preservação e
+    // reconciliação idempotente de eventual vínculo terminal já existente. TETF sempre ignora lote.
     const loteInput = tipo === "INSEMINACAO"
       ? (input.estoqueSemenId === undefined ? loteAnterior : input.estoqueSemenId)
       : null;
