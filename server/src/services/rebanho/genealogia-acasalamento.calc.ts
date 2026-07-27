@@ -48,6 +48,25 @@ function adicionar(
   return true;
 }
 
+function adicionarAliases(
+  ancestrais: Ancestral[],
+  grau: number,
+  ...opcoes: (string | null | undefined)[]
+): boolean {
+  const normalizadas = new Set<string>();
+  let adicionou = false;
+
+  for (const chave of opcoes) {
+    const normalizada = normalizarChaveGenealogica(chave);
+    if (!chave || !normalizada || normalizadas.has(normalizada)) continue;
+    ancestrais.push({ chave, grau });
+    normalizadas.add(normalizada);
+    adicionou = true;
+  }
+
+  return adicionou;
+}
+
 export function genealogiaDaFemea(animal: AnimalGenealogia): Genealogia {
   const ancestrais: Ancestral[] = [];
   const temPai = adicionar(
@@ -97,7 +116,7 @@ export function genealogiaDoTouro(
   codigoFallback: string | null,
 ): Genealogia {
   const ancestrais: Ancestral[] = [];
-  const touroIdentificavel = adicionar(
+  const touroIdentificavel = adicionarAliases(
     ancestrais,
     1,
     codigoFallback,

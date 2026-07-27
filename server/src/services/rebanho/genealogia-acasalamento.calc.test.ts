@@ -72,7 +72,7 @@ describe("genealogiaDaFemea", () => {
 });
 
 describe("genealogiaDoTouro", () => {
-  it("inclui o próprio touro uma vez, une nome e código de cada ancestral e inclui avós", () => {
+  it("inclui aliases do próprio touro e uma chave por ancestral do pedigree", () => {
     const resultado = genealogiaDoTouro(pedigree({
       paiNome: "Pai por nome",
       paiCodigo: "PAI-01",
@@ -87,6 +87,7 @@ describe("genealogiaDoTouro", () => {
     expect(resultado).toEqual({
       ancestrais: [
         { chave: "TOURO-01", grau: 1 },
+        { chave: "Touro próprio", grau: 1 },
         { chave: "PAI-01", grau: 0.5 },
         { chave: "MAE-01", grau: 0.5 },
         { chave: "AM-01", grau: 0.25 },
@@ -102,17 +103,33 @@ describe("genealogiaDoTouro", () => {
     const touro = genealogiaDoTouro(null, "Touro sem pedigree", "TS-01");
 
     expect(touro).toEqual({
-      ancestrais: [{ chave: "TS-01", grau: 1 }],
+      ancestrais: [
+        { chave: "TS-01", grau: 1 },
+        { chave: "Touro sem pedigree", grau: 1 },
+      ],
       profundidade: 0,
       paiConhecido: false,
     });
     expect(pedigreeVerificavel(femea, touro)).toBe(false);
   });
 
-  it("detecta parentesco direto quando o pai textual da fêmea identifica o touro", () => {
+  it("detecta parentesco direto pelo código do próprio touro", () => {
     const femea = genealogiaDaFemea(animal({ paiNome: " touro-compat " }));
     const touro = genealogiaDoTouro(null, "Outro nome", "TOURO-COMPAT");
 
     expect(coeficienteParentesco(femea, touro)).toBe(0.5);
+  });
+
+  it("detecta parentesco direto pelo nome mesmo quando o touro tem código distinto", () => {
+    const femea = genealogiaDaFemea(animal({ paiNome: "BARTOLOMEU" }));
+    const touro = genealogiaDoTouro(null, "Bartolomeu", "HOL123");
+
+    expect(coeficienteParentesco(femea, touro)).toBe(0.5);
+  });
+
+  it("não duplica aliases do touro que normalizam para a mesma chave", () => {
+    const touro = genealogiaDoTouro(null, " HOL 123 ", "HOL123");
+
+    expect(touro.ancestrais).toEqual([{ chave: "HOL123", grau: 1 }]);
   });
 });
