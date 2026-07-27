@@ -28,7 +28,11 @@ export const estoqueRouter = new Hono()
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/estoque/movimentos/:id", async (c) => {
-    try { await svc.excluirMovimento(Number(c.req.param("id"))); return c.json({ ok: true }); }
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await svc.excluirMovimento(Number(c.req.param("id")), propriedadeId);
+      return c.json({ ok: true });
+    }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .get("/rebanho/estoque/custo-vaca-dia", async (c) => {
