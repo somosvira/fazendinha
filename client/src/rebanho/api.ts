@@ -1521,13 +1521,18 @@ export const obterAcasalamento = (animalId: string) => req<RecomendacaoAcasalame
 export function useAcasalamento(animalId: string | null) {
   const [data, setData] = useState<RecomendacaoAcasalamentoDTO | null>(null);
   const [loading, setLoading] = useState(true);
-  const recarregar = () => {
-    if (!animalId) { setData(null); setLoading(false); return; }
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    if (!animalId) { setData(null); setErro(null); setLoading(false); return; }
     setLoading(true);
-    obterAcasalamento(animalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
-  };
-  useEffect(recarregar, [animalId]);
-  return { data, loading, recarregar };
+    setErro(null);
+    obterAcasalamento(animalId)
+      .then(setData)
+      .catch((e) => { setData(null); setErro(e instanceof Error ? e.message : "Falha ao carregar recomendação de acasalamento"); })
+      .finally(() => setLoading(false));
+  }, [animalId]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
 }
 
 export type { ResumoAnimal };

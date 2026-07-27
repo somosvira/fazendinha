@@ -10,6 +10,7 @@ describe("roteamento do rebanho", () => {
   it.each([
     ["reb-dashboard", "/rebanho/dashboard"],
     ["reb-reproducao", "/rebanho/reproducao"],
+    ["reb-acasalamento", "/rebanho/acasalamento"],
     ["reb-sanidade", "/rebanho/sanidade"],
   ] as const)("converte %s para o pathname canônico", (tab, path) => {
     expect(tabToPath(tab)).toBe(path);

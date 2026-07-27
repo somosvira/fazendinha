@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import {
   atualizarMedidaAcasalamento,
   criarCombinacaoMedida,
@@ -11,6 +11,7 @@ import {
   listarCombinacoesMedida,
   listarMedidasAcasalamento,
   recalcularPlanoAcasalamento,
+  useAcasalamento,
 } from "./api";
 import {
   coeficienteParaPercentual,
@@ -138,6 +139,17 @@ describe("API de acasalamento dirigido", () => {
       method: "PATCH",
       body: JSON.stringify(input),
     }));
+  });
+
+  it("expõe no hook o erro ao carregar recomendação individual", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => resposta({ error: "Falha ao calcular acasalamento" }, 500)));
+
+    const { result } = renderHook(() => useAcasalamento("145"));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toBeNull();
+    expect(result.current.erro).toBe("Falha ao calcular acasalamento");
+    expect(typeof result.current.recarregar).toBe("function");
   });
 });
 

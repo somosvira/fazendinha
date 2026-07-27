@@ -19,6 +19,7 @@ import { SaudeUbereSection } from "../components/SaudeUbereSection";
 import { AnimalTab } from "../components/AnimalTab";
 import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
+import { AcasalamentoPlanosTab } from "../components/AcasalamentoPlanosTab";
 
 describe("render smoke", () => {
   it("AppSidebar renders both groups", () => {
@@ -48,6 +49,16 @@ describe("render smoke", () => {
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
     const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
+  });
+
+  it("AcasalamentoPlanosTab renders the loading shell without crashing", () => {
+    const html = renderToString(h(AcasalamentoPlanosTab, { onAbrirFicha: () => {} }));
+    expect(html).toContain("Carregando");
+  });
+
+  it("RebanhoContent renders the acasalamento branch without crashing", () => {
+    const html = renderToString(h(RebanhoContent, { aba: "acasalamento" }));
+    expect(html).toContain("Carregando");
   });
 
   it("SaudeUbereSection renders the úbere map (loading shell in SSR)", () => {

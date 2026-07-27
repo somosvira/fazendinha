@@ -87,6 +87,17 @@ describe("AppSidebar", () => {
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 
+  it("mostra Acasalamento depois de Reprodução e navega para a Tab dedicada", () => {
+    const props = baseProps();
+    render(h(AppSidebar, props));
+
+    const reproducao = screen.getByText("Reprodução");
+    const acasalamento = screen.getByText("Acasalamento");
+    expect(reproducao.compareDocumentPosition(acasalamento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(acasalamento);
+    expect(props.onNav).toHaveBeenCalledWith("reb-acasalamento");
+  });
+
   it("esconde o módulo Equipe & Ponto quando podeVerFolha=false", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: false })));
     expect(screen.queryByText("Equipe & Ponto")).toBeNull();
