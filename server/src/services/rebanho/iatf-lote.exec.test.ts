@@ -2,25 +2,53 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   programacaoFindFirst: vi.fn(),
+  programacaoFindUniqueNaTx: vi.fn(),
   programacaoFindMany: vi.fn(),
+  programacaoDeleteForaTx: vi.fn(),
+  programacaoDeleteNaTx: vi.fn(),
   aplicacaoFindMany: vi.fn(),
+  eventoFindMany: vi.fn(),
+  eventoDeleteMany: vi.fn(),
+  estoqueUpdateMany: vi.fn(),
   atualizarExecucao: vi.fn(),
+  recomputarAnimal: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
   prisma: {
-    programacaoIATFLote: { findFirst: mocks.programacaoFindFirst, findMany: mocks.programacaoFindMany },
+    programacaoIATFLote: {
+      findFirst: mocks.programacaoFindFirst,
+      findMany: mocks.programacaoFindMany,
+      delete: mocks.programacaoDeleteForaTx,
+    },
     aplicacaoProtocoloIATF: { findMany: mocks.aplicacaoFindMany },
-    $transaction: (fn: (tx: unknown) => unknown) => fn({}),
+    $transaction: (fn: (tx: unknown) => unknown) => fn({
+      programacaoIATFLote: {
+        findUniqueOrThrow: mocks.programacaoFindUniqueNaTx,
+        delete: mocks.programacaoDeleteNaTx,
+      },
+      aplicacaoProtocoloIATF: { findMany: mocks.aplicacaoFindMany },
+      eventoReprodutivo: {
+        findMany: mocks.eventoFindMany,
+        deleteMany: mocks.eventoDeleteMany,
+      },
+      estoqueSemen: { updateMany: mocks.estoqueUpdateMany },
+    }),
   },
 }));
 
-vi.mock("./iatf.js", () => ({
-  materializarExecucoes: vi.fn(() => []),
-  atualizarExecucaoNaTransacao: mocks.atualizarExecucao,
-}));
+vi.mock("./eventos.js", () => ({ recomputarAnimal: mocks.recomputarAnimal }));
 
-import { executarEtapaLote, listarProgramacoes } from "./iatf-lote.js";
+vi.mock("./iatf.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./iatf.js")>();
+  return {
+    ...original,
+    materializarExecucoes: vi.fn(() => []),
+    atualizarExecucaoNaTransacao: mocks.atualizarExecucao,
+  };
+});
+
+import { executarEtapaLote, excluirProgramacao, listarProgramacoes } from "./iatf-lote.js";
 
 const exec = (id: number, status: "PENDENTE" | "CONCLUIDA" = "PENDENTE") => ({
   id,
@@ -60,6 +88,10 @@ const app = (id: number, animalId: number, status: "PENDENTE" | "CONCLUIDA" = "P
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.programacaoFindFirst.mockResolvedValue({ id: 3 });
+  mocks.programacaoFindUniqueNaTx.mockResolvedValue({ propriedadeId: 7 });
+  mocks.eventoFindMany.mockResolvedValue([]);
+  mocks.eventoDeleteMany.mockResolvedValue({ count: 0 });
+  mocks.estoqueUpdateMany.mockResolvedValue({ count: 1 });
   mocks.atualizarExecucao.mockResolvedValue(false);
 });
 
@@ -87,6 +119,88 @@ describe("listarProgramacoes", () => {
     });
     expect(r.etapasConcluidas).toBe(0);
     expect(r.concluido).toBe(false);
+  });
+});
+
+describe("excluirProgramacao — estorno de sêmen antes do cascade", () => {
+  it("devolve todas as doses dos filhos, somando dois eventos do mesmo lote", async () => {
+    mocks.aplicacaoFindMany.mockResolvedValue([
+      { execucoes: [{ id: 11 }] },
+      { execucoes: [{ id: 21 }] },
+      { execucoes: [{ id: 31 }] },
+    ]);
+    mocks.eventoFindMany
+      .mockResolvedValueOnce([
+        { estoqueSemenId: 18 },
+        { estoqueSemenId: 18 },
+        { estoqueSemenId: 22 },
+      ])
+      .mockResolvedValueOnce([
+        { id: 91, animalId: 101, tipo: "INSEMINACAO", data: new Date("2026-07-17T00:00:00Z") },
+        { id: 92, animalId: 102, tipo: "INSEMINACAO", data: new Date("2026-07-17T00:00:00Z") },
+        { id: 93, animalId: 103, tipo: "INSEMINACAO", data: new Date("2026-07-17T00:00:00Z") },
+      ]);
+
+    await excluirProgramacao(3, 7);
+
+    expect(mocks.programacaoFindFirst).toHaveBeenCalledWith({
+      where: { id: 3, OR: [{ propriedadeId: 7 }, { propriedadeId: null }] },
+      select: { id: true },
+    });
+    expect(mocks.programacaoFindUniqueNaTx).toHaveBeenCalledWith({
+      where: { id: 3 },
+      select: { propriedadeId: true },
+    });
+    expect(mocks.aplicacaoFindMany).toHaveBeenCalledWith({
+      where: { programacaoId: 3 },
+      select: { execucoes: { select: { id: true } } },
+    });
+    expect(mocks.eventoFindMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        origemExecucaoId: { in: [11, 21, 31] },
+        estoqueSemenId: { not: null },
+        estoqueSemenDoseBaixada: true,
+      },
+      select: { estoqueSemenId: true },
+      orderBy: { id: "asc" },
+    });
+    expect(mocks.eventoFindMany).toHaveBeenNthCalledWith(2, {
+      where: { origemExecucaoId: { in: [11, 21, 31] } },
+      select: { id: true, animalId: true, tipo: true, data: true },
+      orderBy: { id: "asc" },
+    });
+    expect(mocks.estoqueUpdateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: 18, propriedadeId: 7 },
+      data: { dosesDisponiveis: { increment: 2 } },
+    });
+    expect(mocks.estoqueUpdateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: 22, propriedadeId: 7 },
+      data: { dosesDisponiveis: { increment: 1 } },
+    });
+    expect(mocks.eventoDeleteMany).toHaveBeenCalledWith({
+      where: { origemExecucaoId: { in: [11, 21, 31] } },
+    });
+    expect(mocks.recomputarAnimal).toHaveBeenCalledTimes(3);
+    expect(mocks.recomputarAnimal).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      101,
+      { tipo: "EXCLUSAO", evento: { id: 91, tipo: "INSEMINACAO", data: "2026-07-17" } },
+    );
+    expect(mocks.recomputarAnimal).toHaveBeenNthCalledWith(
+      3,
+      expect.anything(),
+      103,
+      { tipo: "EXCLUSAO", evento: { id: 93, tipo: "INSEMINACAO", data: "2026-07-17" } },
+    );
+    expect(mocks.programacaoDeleteNaTx).toHaveBeenCalledWith({ where: { id: 3 } });
+    expect(mocks.programacaoDeleteForaTx).not.toHaveBeenCalled();
+    expect(mocks.estoqueUpdateMany.mock.invocationCallOrder[1])
+      .toBeLessThan(mocks.eventoDeleteMany.mock.invocationCallOrder[0]);
+    expect(mocks.eventoDeleteMany.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.recomputarAnimal.mock.invocationCallOrder[0]);
+    expect(mocks.recomputarAnimal.mock.invocationCallOrder[2])
+      .toBeLessThan(mocks.programacaoDeleteNaTx.mock.invocationCallOrder[0]);
   });
 });
 

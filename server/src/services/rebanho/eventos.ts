@@ -13,6 +13,7 @@ import {
 import { calcularTaxaConcepcao, type TaxaConcepcaoMetodo } from "./reproducao.concepcao.js";
 import { getNumero } from "./parametros.js";
 import { planejarCrias, type NovaCriaPlano } from "./parto-cria.calc.js";
+import { planejarBaixaDose, planejarDevolucaoDose } from "./semen-baixa.calc.js";
 
 export { ConflitoLactacaoError } from "./reproducao.recompute.js";
 
@@ -202,7 +203,7 @@ export async function registrarEvento(
   animalId: number,
   input: CriarEventoInput,
   propriedadeId: number | null = null,
-): Promise<EventoTimelineDTO> {
+): Promise<EventoTimelineDTO & { aviso?: string }> {
   const animal = await prisma.animal.findFirst({
     where: animalNoEscopo(animalId, propriedadeId),
     select: { id: true, propriedadeId: true },
@@ -229,9 +230,38 @@ export async function registrarEvento(
     });
     if (!resultado) throw new EventoError("NAO_ENCONTRADO", "resultado ginecológico não encontrado");
   }
-  // Evento + crias + sincronização de lactações + resumo na mesma transação: se qualquer
-  // etapa recusar, nada é gravado — o evento não vaza sem genealogia/read-model coerentes.
+  // Evento + baixa de dose + crias + sincronização de lactações + resumo na mesma
+  // transação: se qualquer etapa recusar, nada é gravado — o evento não vaza sem
+  // estoque, genealogia e read-model coerentes.
   return prisma.$transaction(async (tx) => {
+    let estoqueSemenDoseBaixada = false;
+    let aviso: string | null = null;
+    const estoqueSemenId = input.tipo === "INSEMINACAO" ? input.estoqueSemenId : undefined;
+    const propriedadeEstoqueId = animal.propriedadeId ?? propriedadeId;
+    if (estoqueSemenId != null) {
+      const estoque = await tx.estoqueSemen.findFirst({
+        where: { id: estoqueSemenId, ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}) },
+        select: { id: true, dosesDisponiveis: true },
+      });
+      if (!estoque) throw new EventoError("NAO_ENCONTRADO", "lote de sêmen não encontrado");
+      const plano = planejarBaixaDose({ estoqueSemenId, dosesDisponiveis: estoque.dosesDisponiveis });
+      aviso = plano.aviso;
+      if (plano.consumir) {
+        const baixa = await tx.estoqueSemen.updateMany({
+          where: {
+            id: estoqueSemenId,
+            ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}),
+            dosesDisponiveis: { gte: 1 },
+          },
+          data: { dosesDisponiveis: { decrement: 1 } },
+        });
+        estoqueSemenDoseBaixada = baixa.count === 1;
+        if (!estoqueSemenDoseBaixada) {
+          aviso = planejarBaixaDose({ estoqueSemenId, dosesDisponiveis: 0 }).aviso;
+        }
+      }
+    }
+
     let criaId: number | undefined;
     if (input.tipo === "PARTO") {
       const dataParto = new Date(`${input.data}T00:00:00Z`);
@@ -263,6 +293,8 @@ export async function registrarEvento(
         numCrias: (input as any).numCrias, criasVivas: (input as any).criasVivas, criasNatimortas: (input as any).criasNatimortas,
         sexoCria: (input as any).sexoCria,
         criaId,
+        estoqueSemenId,
+        estoqueSemenDoseBaixada,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },
     });
@@ -270,7 +302,8 @@ export async function registrarEvento(
     // (barriga de aluguel). Flag sticky: fica marcada mesmo que o evento seja excluído.
     if (input.tipo === "TRANSFERENCIA_EMBRIAO") await tx.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
     await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
-    return toTimeline(e);
+    const timeline = toTimeline(e);
+    return aviso ? { ...timeline, aviso } : timeline;
   });
 }
 
@@ -280,9 +313,28 @@ export async function excluirEvento(eventoId: number, propriedadeId: number | nu
       id: eventoId,
       ...viaAnimal(propriedadeId),
     },
+    include: { animal: { select: { propriedadeId: true } } },
   });
   if (!e) throw new EventoError("NAO_ENCONTRADO", "evento não encontrado");
   await prisma.$transaction(async (tx) => {
+    if (e.estoqueSemenId != null && e.estoqueSemenDoseBaixada) {
+      const propriedadeEstoqueId = e.animal.propriedadeId ?? propriedadeId;
+      const estoque = await tx.estoqueSemen.findFirst({
+        where: { id: e.estoqueSemenId, ...(propriedadeEstoqueId != null ? { propriedadeId: propriedadeEstoqueId } : {}) },
+        select: { id: true, dosesDisponiveis: true },
+      });
+      if (!estoque) throw new EventoError("NAO_ENCONTRADO", "lote de sêmen não encontrado");
+      const plano = planejarDevolucaoDose({
+        doseBaixada: e.estoqueSemenDoseBaixada,
+        dosesDisponiveis: estoque.dosesDisponiveis,
+      });
+      if (plano.devolver) {
+        await tx.estoqueSemen.update({
+          where: { id: e.estoqueSemenId },
+          data: { dosesDisponiveis: { increment: 1 } },
+        });
+      }
+    }
     await tx.eventoReprodutivo.delete({ where: { id: eventoId } });
     await recomputarAnimal(tx, e.animalId, { tipo: "EXCLUSAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
   });

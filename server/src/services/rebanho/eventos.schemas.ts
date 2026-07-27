@@ -32,7 +32,7 @@ const partoObject = z.object({
 
 const criarEventoBase = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("CIO"), ...comum }),
-  z.object({ tipo: z.literal("INSEMINACAO"), ...comum, reprodutor: z.string().min(1, "reprodutor é obrigatório").max(60), protocolo: z.string().max(40).optional() }),
+  z.object({ tipo: z.literal("INSEMINACAO"), ...comum, reprodutor: z.string().min(1, "reprodutor é obrigatório").max(60), protocolo: z.string().max(40).optional(), estoqueSemenId: z.number().int().positive().optional() }),
   // Monta natural (IDEAGRI=2). Reprodutor opcional — 40/61 na 777 vêm sem touro.
   z.object({ tipo: z.literal("COBERTURA"), ...comum, reprodutor: z.string().max(60).optional() }),
   // TE: embrião numa receptora. `doadoraId` = animal doador da genética (opcional);

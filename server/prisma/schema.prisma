@@ -509,26 +509,150 @@ model CentralSemen {
 // Biblioteca de reprodutores (touros) com origem e índices genéticos (PTAs). Espelha
 // ANIMALINFO_REPRODUTOR + GENCATALOGOINDICADOR do IDEagri (índices operacionais como colunas).
 model Reprodutor {
-  id             Int           @id @default(autoincrement())
-  nome           String
-  codigo         String? // registro/código do touro
-  raca           Raca?         @relation(fields: [racaId], references: [id])
-  racaId         Int?
-  centralSemen   CentralSemen? @relation(fields: [centralSemenId], references: [id])
-  centralSemenId Int?
-  ptaLeite       Decimal?      @db.Decimal(8, 2) // PTA leite (kg)
-  ptaGordura     Decimal?      @db.Decimal(6, 2) // PTA gordura (kg ou %)
-  ptaProteina    Decimal?      @db.Decimal(6, 2) // PTA proteína
-  tpi            Int? // índice composto (TPI/mérito líquido)
-  ativo          Boolean       @default(true)
-  propriedade    Propriedade?  @relation(fields: [propriedadeId], references: [id])
-  propriedadeId  Int?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id               Int                        @id @default(autoincrement())
+  ideagriId        Int?                       @unique
+  nome             String
+  codigo           String? // registro/código do touro
+  raca             Raca?                      @relation(fields: [racaId], references: [id])
+  racaId           Int?
+  centralSemen     CentralSemen?              @relation(fields: [centralSemenId], references: [id])
+  centralSemenId   Int?
+  ptaLeite         Decimal?                   @db.Decimal(8, 2) // PTA leite (kg)
+  ptaGordura       Decimal?                   @db.Decimal(6, 2) // PTA gordura (kg ou %)
+  ptaProteina      Decimal?                   @db.Decimal(6, 2) // PTA proteína
+  tpi              Int? // índice composto (TPI/mérito líquido)
+  ativo            Boolean                    @default(true)
+  propriedade      Propriedade?               @relation(fields: [propriedadeId], references: [id])
+  propriedadeId    Int?
+  valoresIndicador ValorIndicadorReprodutor[]
+  valoresMarcador  ValorMarcadorReprodutor[]
+  valoresCaseina   ValorCaseinaReprodutor[]
+  pedigree         PedigreeReprodutor?
+  estoquesSemen    EstoqueSemen[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
   @@index([propriedadeId])
   @@index([racaId])
   @@index([centralSemenId])
+}
+
+// Catálogo genético flexível (GENCATALOGOINDICADOR do IDEAGRI, 271). Compartilhado entre
+// propriedades. `colunaLegada` espelha siglas conhecidas nas colunas PTA de Reprodutor (retrocompat).
+model IndicadorGenetico {
+  id           Int                        @id @default(autoincrement())
+  ideagriId    Int?                       @unique
+  sigla        String                     @unique
+  nome         String
+  unidade      String?
+  direcao      String                     @default("maior_melhor") // maior_melhor | menor_melhor
+  colunaLegada String? // ptaLeite | ptaGordura | ptaProteina | tpi | null
+  ranking      Boolean                    @default(false)
+  ativo        Boolean                    @default(true)
+  valores      ValorIndicadorReprodutor[]
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+}
+
+model ValorIndicadorReprodutor {
+  id           Int               @id @default(autoincrement())
+  reprodutor   Reprodutor        @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
+  reprodutorId Int
+  indicador    IndicadorGenetico @relation(fields: [indicadorId], references: [id], onDelete: Cascade)
+  indicadorId  Int
+  valor        Decimal           @db.Decimal(12, 3)
+
+  @@unique([reprodutorId, indicadorId])
+  @@index([indicadorId])
+}
+
+// Dicionário de marcadores genéticos (20). Compartilhado. Resultado por touro é texto (ex.: TT/TC/CC).
+model MarcadorGenetico {
+  id        Int                       @id @default(autoincrement())
+  ideagriId Int?                      @unique
+  sigla     String                    @unique
+  nome      String
+  valores   ValorMarcadorReprodutor[]
+}
+
+model ValorMarcadorReprodutor {
+  id           Int              @id @default(autoincrement())
+  reprodutor   Reprodutor       @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
+  reprodutorId Int
+  marcador     MarcadorGenetico @relation(fields: [marcadorId], references: [id], onDelete: Cascade)
+  marcadorId   Int
+  resultado    String
+
+  @@unique([reprodutorId, marcadorId])
+  @@index([marcadorId])
+}
+
+// Dicionário de variantes de caseína (15). Compartilhado. Genótipo por touro é texto (ex.: A2A2).
+model Caseina {
+  id        Int                      @id @default(autoincrement())
+  ideagriId Int?                     @unique
+  sigla     String                   @unique
+  nome      String
+  valores   ValorCaseinaReprodutor[]
+}
+
+model ValorCaseinaReprodutor {
+  id           Int        @id @default(autoincrement())
+  reprodutor   Reprodutor @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
+  reprodutorId Int
+  caseina      Caseina    @relation(fields: [caseinaId], references: [id], onDelete: Cascade)
+  caseinaId    Int
+  genotipo     String
+
+  @@unique([reprodutorId, caseinaId])
+  @@index([caseinaId])
+}
+
+// Pedigree do reprodutor (1:1). Genealogia textual (pai/mãe/avós), sem FK a Animal.
+model PedigreeReprodutor {
+  id               Int        @id @default(autoincrement())
+  reprodutor       Reprodutor @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
+  reprodutorId     Int        @unique
+  ideagriId        Int?       @unique
+  paiNome          String?
+  paiCodigo        String?
+  maeNome          String?
+  maeCodigo        String?
+  avoMaternoNome   String?
+  avoMaternoCodigo String?
+  avoPaternoNome   String?
+  avoPaternoCodigo String?
+}
+
+// Dicionário de tipos de sêmen (3: convencional/sexado/etc.). Compartilhado.
+model TipoSemen {
+  id        Int            @id @default(autoincrement())
+  ideagriId Int?           @unique
+  sigla     String         @unique
+  nome      String
+  estoques  EstoqueSemen[]
+}
+
+// Estoque de doses de sêmen por reprodutor (fato de sítio). `dosesDisponiveis` nunca fica negativo.
+model EstoqueSemen {
+  id               Int                 @id @default(autoincrement())
+  reprodutor       Reprodutor          @relation(fields: [reprodutorId], references: [id], onDelete: Cascade)
+  reprodutorId     Int
+  tipoSemen        TipoSemen?          @relation(fields: [tipoSemenId], references: [id], onDelete: SetNull)
+  tipoSemenId      Int?
+  lote             String?
+  localizacao      String?
+  dosesDisponiveis Int                 @default(0)
+  ideagriId        Int?                @unique
+  propriedade      Propriedade?        @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId    Int?
+  eventos          EventoReprodutivo[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([reprodutorId])
+  @@index([tipoSemenId])
+  @@index([propriedadeId])
 }
 
 model Grupo {
@@ -581,6 +705,7 @@ model Propriedade {
   aplicacoesSanitarias AplicacaoProtocoloSanitario[]
   centraisSemen        CentralSemen[]
   reprodutores         Reprodutor[]
+  estoquesSemen        EstoqueSemen[]
   locaisArmazenamento  LocalArmazenamento[]
   lotesProduto         LoteProduto[]
   examesQuarto         ExameQuarto[]
@@ -867,6 +992,11 @@ model EventoReprodutivo {
   ideagriId        Int?                  @unique
   // Etapa terminal de IATF/TETF que gerou este evento. Unique = reconcluir não duplica o fato.
   origemExecucaoId Int?                  @unique
+  // IA: lote de sêmen consumido (baixa opcional-com-aviso). Nullable — IA por texto livre não referencia lote.
+  estoqueSemen            EstoqueSemen? @relation(fields: [estoqueSemenId], references: [id], onDelete: SetNull)
+  estoqueSemenId          Int?
+  // true só quando a baixa efetivamente decrementou o estoque (saldo ≥ 1). Estorno devolve a dose sse true.
+  estoqueSemenDoseBaixada Boolean       @default(false)
   // EXAME_GINECOLOGICO: resultado oficial do dicionário IDEAGRI (além do achado condensado em `resultado`).
   resultadoGinecologico   ResultadoExameGinecologico? @relation(fields: [resultadoGinecologicoId], references: [id])
   resultadoGinecologicoId Int?
@@ -885,6 +1015,7 @@ model EventoReprodutivo {
 
   @@index([animalId, data])
   @@index([ideagriEmbriaoId])
+  @@index([estoqueSemenId])
 }
 
 model Lactacao {

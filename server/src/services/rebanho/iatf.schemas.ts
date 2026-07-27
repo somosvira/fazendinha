@@ -48,5 +48,7 @@ export const executarEtapaSchema = z.object({
   produto: z.string().max(120).nullable().optional(),
   dose: z.string().max(40).nullable().optional(),
   observacao: z.string().max(500).nullable().optional(),
+  // Lote de sêmen consumido na etapa terminal (IATF). Opcional: sem lote a baixa não acontece.
+  estoqueSemenId: z.number().int().positive().optional(),
 });
 export type ExecutarEtapaInput = z.infer<typeof executarEtapaSchema>;

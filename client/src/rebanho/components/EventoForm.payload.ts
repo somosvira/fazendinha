@@ -2,6 +2,20 @@ import type { AchadoGinecologico, EventoPayload } from "../api";
 
 const numeroOpcional = (valor: string): number | undefined => valor.trim() === "" ? undefined : Number(valor);
 
+export function camposInseminacao(form: {
+  reprodutor: string;
+  protocolo: string | undefined;
+  estoqueSemenId: string;
+}): Partial<EventoPayload> {
+  const estoqueSemenId = Number(form.estoqueSemenId);
+  const loteValido = Number.isInteger(estoqueSemenId) && estoqueSemenId > 0;
+  return {
+    reprodutor: form.reprodutor,
+    protocolo: form.protocolo,
+    ...(loteValido ? { estoqueSemenId } : {}),
+  };
+}
+
 export interface CamposPartoForm {
   tipoParto: string;
   auxilioParto: string;
