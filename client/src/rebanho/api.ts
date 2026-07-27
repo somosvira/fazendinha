@@ -105,7 +105,7 @@ export type AchadoGinecologico = (typeof ACHADOS_GINECOLOGICOS)[number];
 export interface EventoPayload {
   tipo: "CIO" | "INSEMINACAO" | "COBERTURA" | "DIAGNOSTICO" | "PARTO" | "SECAGEM" | "TRANSFERENCIA_EMBRIAO" | "EXAME_GINECOLOGICO" | "DESMAME";
   data: string; observacao?: string;
-  reprodutor?: string; protocolo?: string;
+  reprodutor?: string; protocolo?: string; estoqueSemenId?: number;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; criasVivas?: number; criasNatimortas?: number;
   sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
@@ -173,8 +173,10 @@ export function useResultadosGinecologicos(ativo = true) {
   return { data, loading };
 }
 
+export type EventoRegistrado = EventoTimeline & { aviso?: string };
+
 export const listarEventos = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/eventos`);
-export const registrarEvento = (id: string, p: EventoPayload) => req<EventoTimeline>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
+export const registrarEvento = (id: string, p: EventoPayload) => req<EventoRegistrado>(`/rebanho/animais/${id}/eventos`, { method: "POST", body: JSON.stringify(p) });
 export const excluirEvento = (eventoId: string) => req<{ ok: true }>(`/rebanho/eventos/${eventoId}`, { method: "DELETE" });
 
 // ── Taxa de concepção por método (IA × monta natural × TE) — KPI de reprodução ──

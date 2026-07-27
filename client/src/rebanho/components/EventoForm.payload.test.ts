@@ -1,5 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { camposExameGinecologico, camposParto } from "./EventoForm.payload";
+import { camposExameGinecologico, camposInseminacao, camposParto } from "./EventoForm.payload";
+
+describe("camposInseminacao", () => {
+  it("inclui o lote selecionado como número", () => {
+    expect(camposInseminacao({
+      reprodutor: "Holandês 8/8",
+      protocolo: "IATF 11 dias",
+      estoqueSemenId: "42",
+    })).toEqual({
+      reprodutor: "Holandês 8/8",
+      protocolo: "IATF 11 dias",
+      estoqueSemenId: 42,
+    });
+  });
+
+  it("omite o lote vazio e mantém reprodutor e protocolo", () => {
+    expect(camposInseminacao({
+      reprodutor: "Gir 3/4 + Holandês 1/4",
+      protocolo: undefined,
+      estoqueSemenId: "",
+    })).toEqual({
+      reprodutor: "Gir 3/4 + Holandês 1/4",
+      protocolo: undefined,
+    });
+  });
+
+  it("ignora lote não inteiro positivo em vez de mandar payload inválido", () => {
+    for (const invalido of ["abc", "1.5", "-2", "0"]) {
+      expect(camposInseminacao({
+        reprodutor: "Holandês 8/8",
+        protocolo: "Ovsynch",
+        estoqueSemenId: invalido,
+      })).toEqual({ reprodutor: "Holandês 8/8", protocolo: "Ovsynch" });
+    }
+  });
+});
 
 describe("camposParto", () => {
   it("monta cadastro de cria viva com número e sexo", () => {
