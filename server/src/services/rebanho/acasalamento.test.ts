@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   animalFindFirst: vi.fn(),
+  animalFindMany: vi.fn(),
   reprodutorFindMany: vi.fn(),
   indicadorFindMany: vi.fn(),
   combinacaoFindFirst: vi.fn(),
@@ -10,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../db.js", () => ({
   prisma: {
-    animal: { findFirst: mocks.animalFindFirst },
+    animal: {
+      findFirst: mocks.animalFindFirst,
+      findMany: mocks.animalFindMany,
+    },
     reprodutor: { findMany: mocks.reprodutorFindMany },
     indicadorGenetico: { findMany: mocks.indicadorFindMany },
     combinacaoMedidaAcasalamento: { findFirst: mocks.combinacaoFindFirst },
@@ -20,6 +24,7 @@ vi.mock("../../db.js", () => ({
 import {
   AcasalamentoError,
   recomendarParaAnimal,
+  recomendarParaAnimais,
 } from "./acasalamento.js";
 
 const pedigreeCompleto = {
@@ -77,6 +82,15 @@ const indicadores = [
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.animalFindFirst.mockResolvedValue(vaca);
+  mocks.animalFindMany.mockResolvedValue([
+    vaca,
+    {
+      id: 8,
+      paiNome: null,
+      pai: null,
+      mae: null,
+    },
+  ]);
   mocks.reprodutorFindMany.mockResolvedValue(reprodutores);
   mocks.indicadorFindMany.mockResolvedValue(indicadores);
   mocks.combinacaoFindFirst.mockResolvedValue(null);
@@ -266,5 +280,58 @@ describe("recomendarParaAnimal", () => {
     expect(mocks.reprodutorFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { ativo: true },
     }));
+  });
+});
+
+describe("recomendarParaAnimais", () => {
+  it("carrega fêmeas e contexto uma única vez e mantém resultado por animal", async () => {
+    mocks.combinacaoFindFirst.mockResolvedValue({
+      id: 44,
+      itens: [{
+        peso: new Prisma.Decimal(1),
+        obrigatoria: false,
+        ordem: 1,
+        medida: {
+          tipo: "CONSANGUINIDADE",
+          consanguinidadeMax: new Prisma.Decimal("0.125"),
+          exigePedigree: false,
+          itens: [],
+        },
+      }],
+    });
+
+    const resultado = await recomendarParaAnimais([7, 8], 3, 44);
+
+    expect(mocks.animalFindMany).toHaveBeenCalledTimes(1);
+    expect(mocks.animalFindMany).toHaveBeenCalledWith({
+      where: { id: { in: [7, 8] }, propriedadeId: 3 },
+      select: {
+        id: true,
+        paiNome: true,
+        pai: {
+          select: {
+            nome: true,
+            numero: true,
+            paiNome: true,
+            mae: { select: { nome: true, numero: true } },
+          },
+        },
+        mae: {
+          select: {
+            nome: true,
+            numero: true,
+            paiNome: true,
+            mae: { select: { nome: true, numero: true } },
+          },
+        },
+      },
+    });
+    expect(mocks.reprodutorFindMany).toHaveBeenCalledTimes(1);
+    expect(mocks.indicadorFindMany).toHaveBeenCalledTimes(1);
+    expect(mocks.combinacaoFindFirst).toHaveBeenCalledTimes(1);
+    expect(resultado.config).toMatchObject({ consanguinidadeMax: 0.125 });
+    expect([...resultado.resultados.keys()]).toEqual([7, 8]);
+    expect(resultado.resultados.get(7)).toHaveLength(2);
+    expect(resultado.resultados.get(8)).toHaveLength(2);
   });
 });

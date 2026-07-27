@@ -7,11 +7,14 @@ import {
 import {
   genealogiaDaFemea,
   genealogiaDoTouro,
+  type AnimalGenealogia,
 } from "./genealogia-acasalamento.calc.js";
 import type { DirecaoIndicadorAcasalamento } from "./merito-acasalamento.calc.js";
 import {
   recomendarAcasalamento,
   type CandidatoAcasalamento,
+  type CandidatoRecomendado,
+  type ConfigRecomendacao,
   type StatusCandidatoAcasalamento,
 } from "./recomendar-acasalamento.calc.js";
 
@@ -123,42 +126,31 @@ async function resolverConfiguracao(
   return configDaCombinacao(medidas, direcoes);
 }
 
-// Recomenda touros por indicadores genéticos e parentesco, sem reservar nem baixar doses.
-export async function recomendarParaAnimal(
-  animalId: number,
-  propriedadeId: number | null,
-  combinacaoId?: number | null,
-): Promise<RecomendacaoAcasalamentoDTO> {
-  const vaca = await prisma.animal.findFirst({
-    where: {
-      id: animalId,
-      ...(propriedadeId != null ? { propriedadeId } : {}),
-    },
+const animalGenealogiaSelect = {
+  id: true,
+  paiNome: true,
+  pai: {
     select: {
-      id: true,
+      nome: true,
+      numero: true,
       paiNome: true,
-      pai: {
-        select: {
-          nome: true,
-          numero: true,
-          paiNome: true,
-          mae: { select: { nome: true, numero: true } },
-        },
-      },
-      mae: {
-        select: {
-          nome: true,
-          numero: true,
-          paiNome: true,
-          mae: { select: { nome: true, numero: true } },
-        },
-      },
+      mae: { select: { nome: true, numero: true } },
     },
-  });
-  if (!vaca) {
-    throw new AcasalamentoError("NAO_ENCONTRADO", "animal não encontrado");
-  }
+  },
+  mae: {
+    select: {
+      nome: true,
+      numero: true,
+      paiNome: true,
+      mae: { select: { nome: true, numero: true } },
+    },
+  },
+} as const;
 
+async function carregarContextoRecomendacao(
+  propriedadeId: number | null,
+  combinacaoId: number | null | undefined,
+): Promise<{ config: ConfigRecomendacao; candidatos: CandidatoAcasalamento[] }> {
   const [reprodutores, indicadores] = await Promise.all([
     prisma.reprodutor.findMany({
       where: {
@@ -210,10 +202,76 @@ export async function recomendarParaAnimal(
     })),
   }));
 
-  const recomendacoes = recomendarAcasalamento(
-    genealogiaDaFemea(vaca),
-    candidatos,
-    config,
+  return { config, candidatos };
+}
+
+function recomendarComContexto(
+  femea: AnimalGenealogia,
+  config: ConfigRecomendacao,
+  candidatos: CandidatoAcasalamento[],
+): CandidatoRecomendado[] {
+  return recomendarAcasalamento(genealogiaDaFemea(femea), candidatos, config);
+}
+
+export async function recomendarParaAnimais(
+  animalIds: readonly number[],
+  propriedadeId: number | null,
+  combinacaoId: number,
+): Promise<{
+  config: ConfigRecomendacao;
+  resultados: Map<number, CandidatoRecomendado[]>;
+}> {
+  const [femeas, contexto] = await Promise.all([
+    prisma.animal.findMany({
+      where: {
+        id: { in: [...animalIds] },
+        ...(propriedadeId != null ? { propriedadeId } : {}),
+      },
+      select: animalGenealogiaSelect,
+    }),
+    carregarContextoRecomendacao(propriedadeId, combinacaoId),
+  ]);
+  const femeasPorId = new Map(femeas.map((femea) => [femea.id, femea]));
+  const resultados = new Map<number, CandidatoRecomendado[]>();
+
+  for (const animalId of animalIds) {
+    const femea = femeasPorId.get(animalId);
+    if (femea) {
+      resultados.set(
+        animalId,
+        recomendarComContexto(femea, contexto.config, contexto.candidatos),
+      );
+    }
+  }
+
+  return { config: contexto.config, resultados };
+}
+
+// Recomenda touros por indicadores genéticos e parentesco, sem reservar nem baixar doses.
+export async function recomendarParaAnimal(
+  animalId: number,
+  propriedadeId: number | null,
+  combinacaoId?: number | null,
+): Promise<RecomendacaoAcasalamentoDTO> {
+  const vaca = await prisma.animal.findFirst({
+    where: {
+      id: animalId,
+      ...(propriedadeId != null ? { propriedadeId } : {}),
+    },
+    select: animalGenealogiaSelect,
+  });
+  if (!vaca) {
+    throw new AcasalamentoError("NAO_ENCONTRADO", "animal não encontrado");
+  }
+  const contexto = await carregarContextoRecomendacao(
+    propriedadeId,
+    combinacaoId,
+  );
+
+  const recomendacoes = recomendarComContexto(
+    vaca,
+    contexto.config,
+    contexto.candidatos,
   ).map((recomendacao): ItemRecomendacaoAcasalamentoDTO => ({
     id: recomendacao.reprodutorId,
     nome: recomendacao.nome,
