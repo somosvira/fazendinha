@@ -12,6 +12,9 @@ import {
   parseResultadoGinecologico, parseReprodutorGenetico, parseIndicadorGenetico,
   parseValorIndicador, parseMarcador, parseValorMarcador, parseCaseina, parseValorCaseina,
   parseTipoSemen, parseEstoqueSemen, parsePedigree,
+  parseMedidaAcasalamento, parseItemMedidaAcasalamento,
+  parseCombinacaoAcasalamento, parseItemCombinacaoAcasalamento,
+  parseCasoDouradoAcasalamento,
 } from "./build-rebanho-json.mjs";
 
 const SCRIPT_PATH = fileURLToPath(new URL("./build-rebanho-json.mjs", import.meta.url));
@@ -366,6 +369,141 @@ test("parsePedigree exige reprodutor e preserva nomes/códigos opcionais", () =>
     avoPaternoCodigo: null,
   });
   assert.equal(parsePedigree("~|~Pai~|~~|~~|~~|~~|~~|~~|~"), null);
+});
+
+test("parseMedidaAcasalamento valida tipo, limite e coerência", () => {
+  assert.deepEqual(parseMedidaAcasalamento("10~|~Mérito leiteiro~|~MERITO~|~~|~0~|~1"), {
+    ideagriId: 10,
+    nome: "Mérito leiteiro",
+    tipo: "MERITO",
+    consanguinidadeMax: null,
+    exigePedigree: false,
+    ativo: true,
+  });
+  assert.deepEqual(parseMedidaAcasalamento("11~|~Limite de parentesco~|~CONSANGUINIDADE~|~0.125~|~0~|~1"), {
+    ideagriId: 11,
+    nome: "Limite de parentesco",
+    tipo: "CONSANGUINIDADE",
+    consanguinidadeMax: 0.125,
+    exigePedigree: false,
+    ativo: true,
+  });
+  assert.equal(parseMedidaAcasalamento("0~|~Sem id~|~MERITO~|~~|~0~|~1"), null);
+  assert.equal(parseMedidaAcasalamento("10~|~Tipo aberto~|~OUTRO~|~~|~0~|~1"), null);
+  assert.equal(parseMedidaAcasalamento("10~|~Mérito com limite~|~MERITO~|~0.1~|~0~|~1"), null);
+  assert.equal(parseMedidaAcasalamento("10~|~Consanguinidade sem limite~|~CONSANGUINIDADE~|~~|~0~|~1"), null);
+  assert.equal(parseMedidaAcasalamento("10~|~Pedigree frouxo~|~PEDIGREE~|~~|~0~|~1"), null);
+  assert.equal(parseMedidaAcasalamento("10~|~Flag inválida~|~SEMEN~|~~|~2~|~1"), null);
+});
+
+test("parseItemMedidaAcasalamento valida peso, limites e indicador", () => {
+  assert.deepEqual(parseItemMedidaAcasalamento("10~|~PTAL~|~2.5~|~100~|~900"), {
+    medidaIdeagriId: 10,
+    indicadorSigla: "PTAL",
+    peso: 2.5,
+    minimo: 100,
+    maximo: 900,
+  });
+  assert.equal(parseItemMedidaAcasalamento("10~|~~|~1~|~~|~"), null);
+  assert.equal(parseItemMedidaAcasalamento("10~|~PTAL~|~0~|~~|~"), null);
+  assert.equal(parseItemMedidaAcasalamento("10~|~PTAL~|~1~|~2~|~1"), null);
+  assert.equal(parseItemMedidaAcasalamento("10~|~PTAL~|~1~|~Infinity~|~"), null);
+});
+
+test("parseCombinacaoAcasalamento valida identidade, nome e flag", () => {
+  assert.deepEqual(parseCombinacaoAcasalamento("20~|~Índice leite~|~1"), {
+    ideagriId: 20,
+    nome: "Índice leite",
+    ativo: true,
+  });
+  assert.equal(parseCombinacaoAcasalamento("-1~|~Inválida~|~1"), null);
+  assert.equal(parseCombinacaoAcasalamento("20~|~~|~1"), null);
+  assert.equal(parseCombinacaoAcasalamento("20~|~Inválida~|~sim"), null);
+});
+
+test("parseItemCombinacaoAcasalamento valida referências, peso, flag e ordem", () => {
+  assert.deepEqual(parseItemCombinacaoAcasalamento("20~|~10~|~1.5~|~1~|~0"), {
+    combinacaoIdeagriId: 20,
+    medidaIdeagriId: 10,
+    peso: 1.5,
+    obrigatoria: true,
+    ordem: 0,
+  });
+  assert.equal(parseItemCombinacaoAcasalamento("20~|~0~|~1~|~1~|~0"), null);
+  assert.equal(parseItemCombinacaoAcasalamento("20~|~10~|~0~|~1~|~0"), null);
+  assert.equal(parseItemCombinacaoAcasalamento("20~|~10~|~1~|~2~|~0"), null);
+  assert.equal(parseItemCombinacaoAcasalamento("20~|~10~|~1~|~1~|~-1"), null);
+  assert.equal(parseItemCombinacaoAcasalamento("20~|~10~|~1~|~1~|~"), null);
+});
+
+test("parseCasoDouradoAcasalamento valida JSON e shapes do motor", () => {
+  const entrada = {
+    femea: { ancestrais: [{ chave: "pai-a", grau: 0.5 }], profundidade: 1, paiConhecido: true },
+    candidatos: [{
+      id: 7,
+      nome: "Atlas",
+      genealogia: { ancestrais: [{ chave: "pai-b", grau: 0.5 }], profundidade: 1, paiConhecido: true },
+      valores: [{ indicadorId: 42, valor: 900.5 }],
+    }],
+    config: {
+      termos: [{ indicadorId: 42, peso: 1, direcao: "maior_melhor", minimo: null, maximo: null, obrigatoria: false }],
+      consanguinidadeMax: 0.125,
+      exigePedigree: true,
+    },
+  };
+  const esperado = { rankingEsperado: [7], statusEsperado: { "7": "ok" } };
+  assert.deepEqual(
+    parseCasoDouradoAcasalamento(`30~|~Caso Atlas~|~${JSON.stringify(entrada)}~|~${JSON.stringify(esperado)}`),
+    { ideagriId: 30, nome: "Caso Atlas", ...entrada, ...esperado },
+  );
+  assert.equal(parseCasoDouradoAcasalamento("30~|~JSON inválido~|~{~|~{}"), null);
+  assert.equal(parseCasoDouradoAcasalamento(`30~|~Limiar inválido~|~${JSON.stringify({ ...entrada, config: { ...entrada.config, consanguinidadeMax: 2 } })}~|~${JSON.stringify(esperado)}`), null);
+  assert.equal(parseCasoDouradoAcasalamento(`30~|~Status aberto~|~${JSON.stringify(entrada)}~|~${JSON.stringify({ ...esperado, statusEsperado: { "7": "outro" } })}`), null);
+  assert.equal(parseCasoDouradoAcasalamento(`30~|~Ranking inválido~|~${JSON.stringify(entrada)}~|~${JSON.stringify({ ...esperado, rankingEsperado: [0] })}`), null);
+  assert.equal(parseCasoDouradoAcasalamento(`30~|~Shape textual inválido~|~${JSON.stringify({ ...entrada, femea: { ...entrada.femea, ancestrais: [{ chave: 7, grau: 0.5 }] } })}~|~${JSON.stringify(esperado)}`), null);
+});
+
+test("main coleta os cinco prefixos de acasalamento, emite arrays e contagens", (t) => {
+  const entradaCaso = {
+    femea: { ancestrais: [{ chave: "pai-a", grau: 0.5 }], profundidade: 1, paiConhecido: true },
+    candidatos: [{
+      id: 7,
+      nome: "Atlas",
+      genealogia: { ancestrais: [{ chave: "pai-b", grau: 0.5 }], profundidade: 1, paiConhecido: true },
+      valores: [{ indicadorId: 42, valor: 900.5 }],
+    }],
+    config: {
+      termos: [{ indicadorId: 42, peso: 1, direcao: "maior_melhor", minimo: null, maximo: null, obrigatoria: false }],
+      consanguinidadeMax: 0.125,
+      exigePedigree: false,
+    },
+  };
+  const esperado = { rankingEsperado: [7], statusEsperado: { "7": "ok" } };
+  const linhas = [
+    "@MEDACAS@10~|~Mérito leiteiro~|~MERITO~|~~|~0~|~1",
+    "@ITEMMEDACAS@10~|~PTAL~|~2~|~100~|~900",
+    "@COMBACAS@20~|~Índice leite~|~1",
+    "@ITEMCOMBACAS@20~|~10~|~1~|~1~|~0",
+    `@CASOACAS@30~|~Caso Atlas~|~${JSON.stringify(entradaCaso)}~|~${JSON.stringify(esperado)}`,
+  ];
+  const { execucao, destino } = executarMainIsolado(t, linhas);
+  assert.equal(execucao.status, 0, execucao.stderr);
+  const out = JSON.parse(readFileSync(destino, "utf8"));
+  assert.equal(out.medidasAcasalamento.length, 1);
+  assert.equal(out.itensMedidaAcasalamento.length, 1);
+  assert.equal(out.combinacoesAcasalamento.length, 1);
+  assert.equal(out.itensCombinacaoAcasalamento.length, 1);
+  assert.equal(out.casosDouradosAcasalamento.length, 1);
+  assert.match(execucao.stderr, /acasalamento: medidas=1 itensMedida=1 combinações=1 itensCombinacao=1 casosDourados=1/);
+});
+
+test("main aborta antes de emitir JSON quando há acasalamento inválido e reporta amostra", (t) => {
+  const linhaInvalida = "@ITEMCOMBACAS@20~|~10~|~0~|~1~|~0";
+  const { execucao, destino } = executarMainIsolado(t, [linhaInvalida]);
+  assert.equal(execucao.status, 1);
+  assert.equal(existsSync(destino), false);
+  assert.match(execucao.stderr, /ERRO: 1 registros de acasalamento inválidos\./);
+  assert.match(execucao.stderr, new RegExp(linhaInvalida));
 });
 
 test("main coleta todos os prefixos genéticos, emite arrays e contagens", (t) => {

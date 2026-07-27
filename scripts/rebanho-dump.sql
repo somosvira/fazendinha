@@ -15,6 +15,19 @@ SET HEADING OFF;
 -- margem p/ nomes/setores/pelagens longos sem truncar campos (isql trunca calado).
 SET WIDTH LINHA 2000;
 
+/* ── CONTRATO INTERMEDIÁRIO DO ACASALAMENTO (BLOCO D) ────────────────────────
+ * Delimitador ~|~; prefixos/campos esperados pelo build-rebanho-json:
+ * @MEDACAS@     ideagriId | nome | tipo | consanguinidadeMax | exigePedigree(0|1) | ativo(0|1)
+ * @ITEMMEDACAS@ medidaIdeagriId | indicadorSigla | peso | minimo | maximo
+ * @COMBACAS@    ideagriId | nome | ativo(0|1)
+ * @ITEMCOMBACAS@ combinacaoIdeagriId | medidaIdeagriId | peso | obrigatoria(0|1) | ordem
+ * @CASOACAS@    ideagriId | nome | entradaJson | rankingEsperadoJson
+ *
+ * NÃO há SELECTs para estes prefixos nesta versão: as relações/colunas físicas ainda
+ * precisam ser confirmadas pelo @ACASALTAB@/@COL@ do inventário na máquina-fonte.
+ * Escrever os SELECTs reais somente depois dessa descoberta; nunca inferir nomes.
+ */
+
 /* ── ANIMAIS (631) ────────────────────────────────────────────────────────── */
 SELECT '@A@' || a.NUMERO
   || '~|~' || COALESCE(a.NOME,'')

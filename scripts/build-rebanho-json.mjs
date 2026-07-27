@@ -129,6 +129,12 @@ const TIPO_EV = {
 const FINALIDADES_IATF = new Set(["IATF", "TETF"]);
 const DIRECOES_INDICADOR = new Set(["maior_melhor", "menor_melhor"]);
 const COLUNAS_LEGADAS_INDICADOR = new Set(["ptaLeite", "ptaGordura", "ptaProteina", "tpi"]);
+const TIPOS_MEDIDA_ACASALAMENTO = new Set([
+  "MERITO", "RESTRICAO_INDICADOR", "CONSANGUINIDADE", "PEDIGREE", "SEMEN",
+]);
+const STATUS_CANDIDATO_ACASALAMENTO = new Set([
+  "ok", "consanguineo", "restrito", "nao_verificavel",
+]);
 
 function inteiroPositivo(valor) {
   const numero = n(valor);
@@ -136,8 +142,170 @@ function inteiroPositivo(valor) {
 }
 
 function textoObrigatorio(valor) {
+  if (typeof valor !== "string") return null;
   const texto = s(valor);
   return texto && texto.trim() ? texto : null;
+}
+
+function booleanoBinario(valor) {
+  if (valor === "0") return false;
+  if (valor === "1") return true;
+  return null;
+}
+
+function numeroFinitoOuNull(valor) {
+  if (valor == null || valor === "") return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : undefined;
+}
+
+export function parseMedidaAcasalamento(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const nome = textoObrigatorio(f[1]);
+  const tipo = s(f[2]);
+  const consanguinidadeMax = numeroFinitoOuNull(f[3]);
+  const exigePedigree = booleanoBinario(f[4]);
+  const ativo = booleanoBinario(f[5]);
+  if (
+    ideagriId == null || !nome || !TIPOS_MEDIDA_ACASALAMENTO.has(tipo)
+    || consanguinidadeMax === undefined
+    || (consanguinidadeMax != null && (consanguinidadeMax < 0 || consanguinidadeMax > 1))
+    || exigePedigree == null || ativo == null
+    || (tipo === "CONSANGUINIDADE" && consanguinidadeMax == null)
+    || (tipo !== "CONSANGUINIDADE" && consanguinidadeMax != null)
+    || (tipo === "PEDIGREE" && !exigePedigree)
+  ) return null;
+  return { ideagriId, nome, tipo, consanguinidadeMax, exigePedigree, ativo };
+}
+
+export function parseItemMedidaAcasalamento(linha) {
+  const f = linha.split(SEP);
+  const medidaIdeagriId = inteiroPositivo(f[0]);
+  const indicadorSigla = textoObrigatorio(f[1]);
+  const peso = Number(f[2]);
+  const minimo = numeroFinitoOuNull(f[3]);
+  const maximo = numeroFinitoOuNull(f[4]);
+  if (
+    medidaIdeagriId == null || !indicadorSigla || !Number.isFinite(peso) || peso <= 0
+    || minimo === undefined || maximo === undefined
+    || (minimo != null && maximo != null && minimo > maximo)
+  ) return null;
+  return { medidaIdeagriId, indicadorSigla, peso, minimo, maximo };
+}
+
+export function parseCombinacaoAcasalamento(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const nome = textoObrigatorio(f[1]);
+  const ativo = booleanoBinario(f[2]);
+  if (ideagriId == null || !nome || ativo == null) return null;
+  return { ideagriId, nome, ativo };
+}
+
+export function parseItemCombinacaoAcasalamento(linha) {
+  const f = linha.split(SEP);
+  const combinacaoIdeagriId = inteiroPositivo(f[0]);
+  const medidaIdeagriId = inteiroPositivo(f[1]);
+  const peso = Number(f[2]);
+  const obrigatoria = booleanoBinario(f[3]);
+  const ordem = numeroFinitoOuNull(f[4]);
+  if (
+    combinacaoIdeagriId == null || medidaIdeagriId == null
+    || !Number.isFinite(peso) || peso <= 0 || obrigatoria == null
+    || ordem == null || !Number.isInteger(ordem) || ordem < 0
+  ) return null;
+  return { combinacaoIdeagriId, medidaIdeagriId, peso, obrigatoria, ordem };
+}
+
+function objeto(valor) {
+  return valor != null && typeof valor === "object" && !Array.isArray(valor);
+}
+
+function inteiroPositivoJson(valor) {
+  return Number.isInteger(valor) && valor > 0;
+}
+
+function numeroFinitoJson(valor) {
+  return typeof valor === "number" && Number.isFinite(valor);
+}
+
+function genealogiaValida(valor) {
+  return objeto(valor)
+    && Array.isArray(valor.ancestrais)
+    && valor.ancestrais.every((ancestral) => objeto(ancestral)
+      && textoObrigatorio(ancestral.chave) != null
+      && numeroFinitoJson(ancestral.grau)
+      && ancestral.grau > 0)
+    && Number.isInteger(valor.profundidade)
+    && valor.profundidade >= 0
+    && typeof valor.paiConhecido === "boolean";
+}
+
+function candidatoValido(valor) {
+  return objeto(valor)
+    && inteiroPositivoJson(valor.id)
+    && textoObrigatorio(valor.nome) != null
+    && genealogiaValida(valor.genealogia)
+    && Array.isArray(valor.valores)
+    && valor.valores.every((item) => objeto(item)
+      && inteiroPositivoJson(item.indicadorId)
+      && numeroFinitoJson(item.valor));
+}
+
+function termoValido(valor) {
+  return objeto(valor)
+    && inteiroPositivoJson(valor.indicadorId)
+    && numeroFinitoJson(valor.peso)
+    && valor.peso > 0
+    && DIRECOES_INDICADOR.has(valor.direcao)
+    && (valor.minimo === null || numeroFinitoJson(valor.minimo))
+    && (valor.maximo === null || numeroFinitoJson(valor.maximo))
+    && !(valor.minimo != null && valor.maximo != null && valor.minimo > valor.maximo)
+    && typeof valor.obrigatoria === "boolean";
+}
+
+function configRecomendacaoValida(valor) {
+  return objeto(valor)
+    && Array.isArray(valor.termos)
+    && valor.termos.every(termoValido)
+    && numeroFinitoJson(valor.consanguinidadeMax)
+    && valor.consanguinidadeMax >= 0
+    && valor.consanguinidadeMax <= 1
+    && typeof valor.exigePedigree === "boolean";
+}
+
+export function parseCasoDouradoAcasalamento(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const nome = textoObrigatorio(f[1]);
+  let entrada;
+  let esperado;
+  try {
+    entrada = JSON.parse(f[2]);
+    esperado = JSON.parse(f[3]);
+  } catch {
+    return null;
+  }
+  if (
+    ideagriId == null || !nome || !objeto(entrada) || !objeto(esperado)
+    || !genealogiaValida(entrada.femea)
+    || !Array.isArray(entrada.candidatos) || !entrada.candidatos.every(candidatoValido)
+    || !configRecomendacaoValida(entrada.config)
+    || !Array.isArray(esperado.rankingEsperado)
+    || !esperado.rankingEsperado.every(inteiroPositivoJson)
+    || !objeto(esperado.statusEsperado)
+    || !Object.keys(esperado.statusEsperado).every((id) => inteiroPositivoJson(Number(id)))
+    || !Object.values(esperado.statusEsperado).every((status) => STATUS_CANDIDATO_ACASALAMENTO.has(status))
+  ) return null;
+  return {
+    ideagriId, nome,
+    femea: entrada.femea,
+    candidatos: entrada.candidatos,
+    config: entrada.config,
+    rankingEsperado: esperado.rankingEsperado,
+    statusEsperado: esperado.statusEsperado,
+  };
 }
 
 export function parseReprodutorGenetico(linha) {
@@ -503,10 +671,16 @@ function main() {
   const tiposSemen = [];
   const estoquesSemen = [];
   const pedigrees = [];
+  const medidasAcasalamento = [];
+  const itensMedidaAcasalamento = [];
+  const combinacoesAcasalamento = [];
+  const itensCombinacaoAcasalamento = [];
+  const casosDouradosAcasalamento = [];
   const eventosInvalidos = [];
   const iatfInvalidos = [];
   const resultadosGinecologicosInvalidos = [];
   const geneticaInvalidos = [];
+  const acasalamentoInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -584,6 +758,26 @@ function main() {
       const row = parsePedigree(l.slice("@PEDIGREE@".length));
       if (row) pedigrees.push(row); else geneticaInvalidos.push(l);
     }
+    else if (l.startsWith("@MEDACAS@")) {
+      const row = parseMedidaAcasalamento(l.slice("@MEDACAS@".length));
+      if (row) medidasAcasalamento.push(row); else acasalamentoInvalidos.push(l);
+    }
+    else if (l.startsWith("@ITEMMEDACAS@")) {
+      const row = parseItemMedidaAcasalamento(l.slice("@ITEMMEDACAS@".length));
+      if (row) itensMedidaAcasalamento.push(row); else acasalamentoInvalidos.push(l);
+    }
+    else if (l.startsWith("@COMBACAS@")) {
+      const row = parseCombinacaoAcasalamento(l.slice("@COMBACAS@".length));
+      if (row) combinacoesAcasalamento.push(row); else acasalamentoInvalidos.push(l);
+    }
+    else if (l.startsWith("@ITEMCOMBACAS@")) {
+      const row = parseItemCombinacaoAcasalamento(l.slice("@ITEMCOMBACAS@".length));
+      if (row) itensCombinacaoAcasalamento.push(row); else acasalamentoInvalidos.push(l);
+    }
+    else if (l.startsWith("@CASOACAS@")) {
+      const row = parseCasoDouradoAcasalamento(l.slice("@CASOACAS@".length));
+      if (row) casosDouradosAcasalamento.push(row); else acasalamentoInvalidos.push(l);
+    }
   }
 
   if (eventosInvalidos.length) {
@@ -610,6 +804,12 @@ function main() {
   if (geneticaInvalidos.length) {
     console.error(`ERRO: ${geneticaInvalidos.length} registros de genética/sêmen inválidos.`);
     console.error(JSON.stringify(geneticaInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
+  if (acasalamentoInvalidos.length) {
+    console.error(`ERRO: ${acasalamentoInvalidos.length} registros de acasalamento inválidos.`);
+    console.error(JSON.stringify(acasalamentoInvalidos.slice(0, 5)));
     process.exit(1);
   }
 
@@ -644,6 +844,11 @@ function main() {
     tiposSemen,
     estoquesSemen,
     pedigrees,
+    medidasAcasalamento,
+    itensMedidaAcasalamento,
+    combinacoesAcasalamento,
+    itensCombinacaoAcasalamento,
+    casosDouradosAcasalamento,
   };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
@@ -661,6 +866,7 @@ function main() {
   console.error(`  IATF: protocolos=${protocolosIatf.length} princípios=${principiosProtocolo.length} programações=${programacoesIatf.length} associações=${associacoesProgramacao.length}`);
   console.error(`  resultados ginecológicos=${resultadosGinecologicos.length}`);
   console.error(`  genética/sêmen: reprodutores=${reprodutoresGeneticos.length} indicadores=${indicadores.length} valoresIndicador=${valoresIndicador.length} marcadores=${marcadores.length} valoresMarcador=${valoresMarcador.length} caseínas=${caseinas.length} valoresCaseina=${valoresCaseina.length} tiposSemen=${tiposSemen.length} estoques=${estoquesSemen.length} pedigrees=${pedigrees.length}`);
+  console.error(`  acasalamento: medidas=${medidasAcasalamento.length} itensMedida=${itensMedidaAcasalamento.length} combinações=${combinacoesAcasalamento.length} itensCombinacao=${itensCombinacaoAcasalamento.length} casosDourados=${casosDouradosAcasalamento.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

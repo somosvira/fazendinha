@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
 import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
 import { importarGeneticaLegado, type DadosGeneticaLegado } from "../src/services/rebanho/import-genetica.js";
+import { importarAcasalamentoLegado, type DadosAcasalamentoLegado } from "../src/services/rebanho/import-acasalamento.js";
 import { semearResultadosGinecologicos, type ResultadoGinecologicoSeed } from "../src/services/rebanho/exame-ginecologico.js";
 
 const prisma = new PrismaClient();
@@ -120,7 +121,7 @@ interface LactacaoJson {
   producao305: number | null;
   duracaoDias: number | null;
 }
-interface RebanhoJson extends DadosIatfLegado, DadosGeneticaLegado {
+interface RebanhoJson extends DadosIatfLegado, DadosGeneticaLegado, DadosAcasalamentoLegado {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
@@ -367,6 +368,21 @@ async function main() {
       `Genética/sêmen importados: ${genetica.reprodutores} reprodutores, ${genetica.indicadores} indicadores, `
       + `${genetica.valores} valores, ${genetica.marcadores} marcadores, ${genetica.caseinas} caseínas, `
       + `${genetica.tiposSemen} tipos de sêmen, ${genetica.estoques} estoques, ${genetica.pedigrees} pedigrees.`,
+    );
+  }
+
+  // --- Acasalamento dirigido (após genética: itens resolvem indicadores por sigla) ---
+  const temBlocoAcasalamento = [
+    dados.medidasAcasalamento, dados.itensMedidaAcasalamento,
+    dados.combinacoesAcasalamento, dados.itensCombinacaoAcasalamento,
+    dados.casosDouradosAcasalamento,
+  ].some((bloco) => bloco != null);
+  if (temBlocoAcasalamento) {
+    const acasalamento = await importarAcasalamentoLegado(prisma, dados);
+    console.log(
+      `Acasalamento importado: ${acasalamento.medidas} medidas, ${acasalamento.itensMedida} itens de medida, `
+      + `${acasalamento.combinacoes} combinações, ${acasalamento.itensCombinacao} itens de combinação, `
+      + `${acasalamento.casosDourados} casos dourados no JSON.`,
     );
   }
 

@@ -100,8 +100,44 @@ Também permanecem pendentes de extração e reconciliação **os valores por to
 
 Até a reextração do `DADOS777.FDB`, a biblioteca de genética/sêmen opera somente com o que o usuário cadastrar no Fazendinha. Quando a fonte estiver disponível, o SQL deve emitir os dez prefixos do contrato intermediário, o parser deve regenerar o JSON e o import deve ser executado de forma idempotente; só então as contagens e os valores por touro poderão ser declarados reconciliados.
 
+## 7. Gate de paridade do acasalamento dirigido (Bloco D)
+
+**A paridade real do Bloco D continua pendente.** Esta máquina não possui o `DADOS777.FDB`; portanto, ainda não foram confirmados os nomes físicos de tabelas/colunas, o catálogo de medidas/combinações nem casos dourados reais do IDEAGRI.
+
+O inventário agora emite `@ACASALTAB@<relação>` para cada tabela candidata cujo nome normalizado contenha `ACASAL` (ou `MEDIDA` com indício nominal de relação com genética/reprodução/sêmen) e amplia `@COL@` com suas colunas. Essa saída é descoberta, não confirmação de schema.
+
+### Contrato intermediário pendente de mapear na fonte
+
+Delimitador `~|~`. Os SELECTs reais só podem ser escritos em `scripts/rebanho-dump.sql` **depois** de conferir `@ACASALTAB@` e `@COL@` na máquina-fonte.
+
+| Prefixo | Campos (na ordem) |
+|---|---|
+| `@MEDACAS@` | ideagriId · nome · tipo · consanguinidadeMax · exigePedigree(`0`\|`1`) · ativo(`0`\|`1`) |
+| `@ITEMMEDACAS@` | medidaIdeagriId · indicadorSigla · peso · minimo · maximo |
+| `@COMBACAS@` | ideagriId · nome · ativo(`0`\|`1`) |
+| `@ITEMCOMBACAS@` | combinacaoIdeagriId · medidaIdeagriId · peso · obrigatoria(`0`\|`1`) · ordem |
+| `@CASOACAS@` | ideagriId · nome · entradaJson · rankingEsperadoJson |
+
+Tipos permitidos de medida: `MERITO`, `RESTRICAO_INDICADOR`, `CONSANGUINIDADE`, `PEDIGREE`, `SEMEN`. O parser e o import são fail-closed: registro inválido, duplicata ou referência ausente aborta a carga; casos dourados permanecem no JSON e não criam plano/snapshot fictício no banco.
+
+### Fluxo obrigatório na máquina do IDEAGRI
+
+1. Rodar `bash scripts/extract-ideagri-repro-inventory.sh` contra uma cópia do `DADOS777.FDB`.
+2. Conferir as linhas `@ACASALTAB@` e as respectivas `@COL@`; identificar as relações e campos reais de medidas, combinações e casos de referência.
+3. Só então preencher os cinco SELECTs em `scripts/rebanho-dump.sql`, sem inferir nomes físicos.
+4. Gerar o dump e executar `node scripts/build-rebanho-json.mjs <dump.txt> $(date +%F)`; qualquer registro inválido deve bloquear a escrita do JSON.
+5. Executar `pnpm --filter rionovo-server run import:rebanho`; genética é importada antes do acasalamento para resolver indicadores por sigla.
+6. Rodar o gate real:
+
+```bash
+ACASALAMENTO_CASOS_DOURADOS_PATH=server/prisma/rebanho_real.json pnpm --filter rionovo-server exec vitest run src/services/rebanho/acasalamento-casos-dourados.test.ts
+```
+
+A fixture sintética continua sendo o default em qualquer máquina. Quando a env acima é informada, caminho ausente, JSON inválido ou `casosDouradosAcasalamento` ausente/vazio fazem o teste falhar — nunca há fallback silencioso. Só declarar a paridade concluída depois que **todos** os casos reais reproduzirem ranking e status no motor.
+
 ## Pendências dos próximos blocos
 
 - **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): **ENTREGUE** (commits `007633d`→`a9944ee`). Operando com o conjunto-semente de 9 resultados ginecológicos (códigos negativos) até a reextração. **Pendente na máquina:** reconciliar `RESULTADOEXAMEGINECOLOGICO` (44) e `EXAMEANIMAL` (248) a partir do `DADOS777.FDB` — adicionar o contrato `@RESULTGINE@` ao dump, rodar `build-rebanho-json` + `import:rebanho` e conferir que os códigos oficiais positivos substituem os seeds na listagem.
 - **Bloco C** (sêmen/genética): operação entregue; a reconciliação real permanece pendente nos termos da seção 6.
-- **Blocos D–F** (acasalamento, FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.
+- **Bloco D** (acasalamento dirigido): operação e gate sintético entregues; contrato físico, catálogo e casos dourados reais permanecem pendentes conforme seção 7.
+- **Blocos E–F** (FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.
