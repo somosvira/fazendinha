@@ -165,4 +165,14 @@ O import é **fail-closed**: linha inválida aborta `main()`; doadora/reprodutor
 - **Bloco C** (sêmen/genética): operação entregue; a reconciliação real permanece pendente nos termos da seção 6.
 - **Bloco D** (acasalamento dirigido): operação e gate sintético entregues; contrato físico, catálogo e casos dourados reais permanecem pendentes conforme seção 7.
 - **Bloco E** (FIV/TE, pool de doadoras): operação entregue; a reconciliação real (7 coletas + estágios + 6 classificações) permanece pendente nos termos da seção 8.
-- **Bloco F** (relatórios reprodutivos, reconciliação e aceite): descrito na especificação; entra em PR próprio.
+- **Bloco F** (relatórios reprodutivos, reconciliação e aceite): **ENTREGUE**. Relatório reprodutivo por período (coberturas, prenhezes, partos, taxa de concepção por método IA/MN/TE) via `GET /api/rebanho/reproducao/relatorio?de=&ate=`, cálculo puro `agregarRelatorioReproducao` (reusa `calcularTaxaConcepcao`). *Receber coletas / Receber dados IATF* = **N/A arquitetural**: a arquitetura desktop→cloud não replica a sincronização; o equivalente web é o import idempotente + o lançamento/execução web, já entregues.
+
+## Reconciliação de contagens (Bloco F)
+
+O cálculo puro `reconciliarContagens(observado, baseline)` compara as contagens do app com o baseline colado do IDEAGRI e lista as divergências (`observado - baseline`, ordenadas por magnitude); `haDivergencia` sinaliza qualquer diferença. Fluxo na máquina:
+
+1. Levantar no IDEAGRI as contagens por tipo (ex.: IA 832 · cobertura 61 · TE 146 · DG 1843 · parto 352) e montar o `baseline`.
+2. No app, `contarEventosPorTipo(propriedadeId)` fornece o `observado`.
+3. Rodar `reconciliarContagens(observado, baseline)`; qualquer linha com `divergencia !== 0` sem explicação **reprova** a reconciliação (contrato de aceite: contagens por tipo e por animal sem divergência não explicada).
+
+O baseline não é embutido no código — é sempre informado pelo operador na máquina que tem a fonte.
