@@ -3,7 +3,11 @@ import { importarFivLegado, type DadosFivLegado, type DbFiv } from "./import-fiv
 
 function criarDb() {
   const embriaoClassificacao = { upsert: vi.fn(async ({ create }) => ({ id: 900, ...create })) };
-  const animal = { findFirst: vi.fn<() => Promise<{ id: number } | null>>(async () => ({ id: 31 })) };
+  const animal = {
+    findFirst: vi.fn<(args?: { select?: { propriedadeId?: boolean } }) => Promise<{ id?: number; propriedadeId?: number | null } | null>>(
+      async (args) => args?.select?.propriedadeId ? { propriedadeId: 1 } : { id: 31 },
+    ),
+  };
   const reprodutor = { findFirst: vi.fn(async () => ({ id: 44 })) };
   const coleta = { upsert: vi.fn(async ({ where }) => ({ id: 10, ideagriId: where.ideagriId })) };
   const oocitoColeta = { deleteMany: vi.fn(async () => ({})), createMany: vi.fn(async () => ({})) };
@@ -38,7 +42,7 @@ describe("importarFivLegado", () => {
   });
 
   it("aborta quando a doadora da coleta não existe", async () => {
-    mocks.animal.findFirst.mockResolvedValue(null);
+    mocks.animal.findFirst.mockImplementation(async (args?: { select?: { propriedadeId?: boolean } }) => args?.select?.propriedadeId ? { propriedadeId: 1 } : null);
     await expect(importarFivLegado(db, dados)).rejects.toThrow(/doadora/i);
   });
 

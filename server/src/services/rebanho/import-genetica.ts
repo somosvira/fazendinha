@@ -357,5 +357,5 @@ export async function importarGeneticaLegado(
       estoques: estoques.length,
       pedigrees: pedigrees.length,
     };
-  });
+  }, { maxWait: 20_000, timeout: 120_000 });
 }

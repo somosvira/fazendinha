@@ -44,6 +44,12 @@ export async function importarFivLegado(db: DbFiv, dados: DadosFivLegado): Promi
   const temAlgo = [dados.embriaoClassificacoes, dados.coletas, dados.oocitosColeta, dados.fertilizacoes, dados.embrioesColeta, dados.gruposPool, dados.itensGrupoPool].some((a) => a && a.length);
   if (!temAlgo) return { ...VAZIO };
   const res = { ...VAZIO };
+  const propriedade =
+    (await db.animal.findFirst({
+      where: { propriedadeId: { not: null } },
+      orderBy: { id: "asc" },
+      select: { propriedadeId: true },
+    }))?.propriedadeId ?? null;
 
   const classificacaoIdPorSigla = new Map<string, number>();
   for (const c of dados.embriaoClassificacoes ?? []) {
@@ -68,8 +74,8 @@ export async function importarFivLegado(db: DbFiv, dados: DadosFivLegado): Promi
     const doadoraId = await doadoraIdPorNumero(c.doadoraNumero);
     const row = await db.coleta.upsert({
       where: { ideagriId: c.ideagriId },
-      update: { doadoraId, data: dataUtc(c.data), tecnico: c.tecnico, metodo: c.metodo, laboratorio: c.laboratorio, status: c.status },
-      create: { ideagriId: c.ideagriId, doadoraId, data: dataUtc(c.data), tecnico: c.tecnico, metodo: c.metodo, laboratorio: c.laboratorio, status: c.status },
+      update: { doadoraId, data: dataUtc(c.data), tecnico: c.tecnico, metodo: c.metodo, laboratorio: c.laboratorio, status: c.status, propriedadeId: propriedade },
+      create: { ideagriId: c.ideagriId, doadoraId, data: dataUtc(c.data), tecnico: c.tecnico, metodo: c.metodo, laboratorio: c.laboratorio, status: c.status, propriedadeId: propriedade },
     });
     coletaIdPorIdeagri.set(c.ideagriId, row.id);
     res.coletas++;
