@@ -1,0 +1,26 @@
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
+import { resolverEscopoEscrita, resolverEscopoLeitura } from "../../services/propriedade.js";
+import * as svc from "../../services/rebanho/fiv.js";
+import { adicionarEmbriaoSchema, adicionarFertilizacaoSchema, atualizarColetaSchema, cancelarColetaSchema, cancelarFertilizacaoSchema, criarClassificacaoEmbriaoSchema, criarColetaSchema } from "../../services/rebanho/fiv.schemas.js";
+
+const idPositivo = (raw: string) => { const id = Number(raw); return Number.isInteger(id) && id > 0 ? id : null; };
+function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
+  if (e instanceof svc.FivError) return { status: e.code === "NAO_ENCONTRADO" ? 404 : 409, body: { error: e.message } };
+  console.error("[fiv]", e); return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
+}
+
+export const fivRouter = new Hono()
+  .get("/rebanho/fiv/classificacoes", async (c) => c.json(await svc.listarClassificacoesEmbriao()))
+  .post("/rebanho/fiv/classificacoes", zValidator("json", criarClassificacaoEmbriaoSchema), async (c) => { try { return c.json(await svc.criarClassificacaoEmbriao(c.req.valid("json")), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .get("/rebanho/fiv/embrioes/disponiveis", async (c) => { try { return c.json(await svc.listarEmbrioesDisponiveis(await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .get("/rebanho/fiv/coletas", async (c) => { try { return c.json(await svc.listarColetas(await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/coletas", zValidator("json", criarColetaSchema), async (c) => { try { return c.json(await svc.criarColeta(c.req.valid("json"), await resolverEscopoEscrita(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .get("/rebanho/fiv/coletas/:id", async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "coleta não encontrada"); return c.json(await svc.obterColeta(id, await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .patch("/rebanho/fiv/coletas/:id", zValidator("json", atualizarColetaSchema), async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "coleta não encontrada"); return c.json(await svc.atualizarColeta(id, c.req.valid("json"), await resolverEscopoEscrita(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .delete("/rebanho/fiv/coletas/:id", async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "coleta não encontrada"); await svc.excluirColeta(id, await resolverEscopoEscrita(c)); return c.body(null, 204); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/coletas/:id/cancelar", zValidator("json", cancelarColetaSchema), async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "coleta não encontrada"); return c.json(await svc.cancelarColeta(id, c.req.valid("json").motivo, await resolverEscopoEscrita(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/coletas/:id/fertilizacoes", zValidator("json", adicionarFertilizacaoSchema), async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "coleta não encontrada"); return c.json(await svc.adicionarFertilizacao(id, c.req.valid("json"), await resolverEscopoEscrita(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/fertilizacoes/:id/cancelar", zValidator("json", cancelarFertilizacaoSchema), async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "fertilização não encontrada"); return c.json(await svc.cancelarFertilizacao(id, c.req.valid("json"), await resolverEscopoEscrita(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/fertilizacoes/:id/embrioes", zValidator("json", adicionarEmbriaoSchema), async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "fertilização não encontrada"); return c.json(await svc.adicionarEmbriao(id, c.req.valid("json"), await resolverEscopoEscrita(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
+  .post("/rebanho/fiv/embrioes/:id/descartar", async (c) => { try { const id = idPositivo(c.req.param("id")); if (id == null) throw new svc.FivError("NAO_ENCONTRADO", "embrião não encontrado"); return c.json(await svc.descartarEmbriao(id, await resolverEscopoEscrita(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });
