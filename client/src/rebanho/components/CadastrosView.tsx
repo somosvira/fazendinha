@@ -12,8 +12,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { Package, Users } from "lucide-react";
 import { fmtMoneyExact } from "@/components/charts";
 import { IndicadoresGeneticosSection } from "./IndicadoresGeneticosSection";
+import { MedidasAcasalamentoSection } from "./MedidasAcasalamentoSection";
 
-type Sub = "produtos" | "fornecedores" | "indicadores";
+type Sub = "produtos" | "fornecedores" | "indicadores" | "acasalamento";
 
 const TIPO_PRODUTO: { id: TipoProduto; label: string }[] = [
   { id: "MEDICAMENTO", label: "Medicamento" },
@@ -42,8 +43,9 @@ export function CadastrosView() {
         <button className={REB_CHIP_Q} onClick={() => setSub("produtos")} aria-pressed={sub === "produtos"} style={sub === "produtos" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Produtos</button>
         <button className={REB_CHIP_Q} onClick={() => setSub("fornecedores")} aria-pressed={sub === "fornecedores"} style={sub === "fornecedores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Fornecedores</button>
         <button className={REB_CHIP_Q} onClick={() => setSub("indicadores")} aria-pressed={sub === "indicadores"} style={sub === "indicadores" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Indicadores</button>
+        <button className={REB_CHIP_Q} onClick={() => setSub("acasalamento")} aria-pressed={sub === "acasalamento"} style={sub === "acasalamento" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Medidas de acasalamento</button>
       </div>
-      {sub === "produtos" ? <Produtos /> : sub === "fornecedores" ? <Fornecedores /> : <IndicadoresGeneticosSection />}
+      {sub === "produtos" ? <Produtos /> : sub === "fornecedores" ? <Fornecedores /> : sub === "indicadores" ? <IndicadoresGeneticosSection /> : <MedidasAcasalamentoSection />}
     </RebMain>
   );
 }

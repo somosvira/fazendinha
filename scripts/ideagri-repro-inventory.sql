@@ -67,7 +67,35 @@ WHERE TRIM(rf.RDB$RELATION_NAME) IN (
   'DADOSCOLETA', 'DADOSCOLETAITEMINSEMINACAO', 'DADOSCOLETAITEMDIAGNOSTICO',
   'DADOSCOLETAITEMPARTO', 'DADOSCOLETAITEMSEMEN'
 )
+OR UPPER(REPLACE(REPLACE(TRIM(rf.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%ACASAL%'
+OR (
+  UPPER(REPLACE(REPLACE(TRIM(rf.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%MEDIDA%'
+  AND (
+    UPPER(REPLACE(REPLACE(TRIM(rf.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%GEN%'
+    OR UPPER(REPLACE(REPLACE(TRIM(rf.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%REPRO%'
+    OR UPPER(REPLACE(REPLACE(TRIM(rf.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%SEMEN%'
+  )
+)
 ORDER BY rf.RDB$RELATION_NAME, rf.RDB$FIELD_POSITION;
+
+/* Descoberta fail-closed do Bloco D: somente nomes de tabelas candidatas. O inventário
+ * da máquina-fonte define quais relações e colunas poderão alimentar o contrato. */
+SELECT '@ACASALTAB@' || TRIM(r.RDB$RELATION_NAME) AS "LINHA"
+FROM RDB$RELATIONS r
+WHERE COALESCE(r.RDB$SYSTEM_FLAG, 0) = 0
+  AND r.RDB$VIEW_BLR IS NULL
+  AND (
+    UPPER(REPLACE(REPLACE(TRIM(r.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%ACASAL%'
+    OR (
+      UPPER(REPLACE(REPLACE(TRIM(r.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%MEDIDA%'
+      AND (
+        UPPER(REPLACE(REPLACE(TRIM(r.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%GEN%'
+        OR UPPER(REPLACE(REPLACE(TRIM(r.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%REPRO%'
+        OR UPPER(REPLACE(REPLACE(TRIM(r.RDB$RELATION_NAME), '_', ''), ' ', '')) LIKE '%SEMEN%'
+      )
+    )
+  )
+ORDER BY r.RDB$RELATION_NAME;
 
 /* Tipos históricos — prova a distinção IA / cobrição / TE / DG / parto. */
 SELECT '@TIPOREPRO@' || CAST(tr.CDTIPOREPRODUCAO AS VARCHAR(10))

@@ -19,6 +19,7 @@ import { SaudeUbereSection } from "../components/SaudeUbereSection";
 import { AnimalTab } from "../components/AnimalTab";
 import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
+import { AcasalamentoPlanosTab } from "../components/AcasalamentoPlanosTab";
 
 describe("render smoke", () => {
   it("AppSidebar renders both groups", () => {
@@ -50,6 +51,16 @@ describe("render smoke", () => {
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
+  it("AcasalamentoPlanosTab renders the loading shell without crashing", () => {
+    const html = renderToString(h(AcasalamentoPlanosTab, { onAbrirFicha: () => {} }));
+    expect(html).toContain("Carregando");
+  });
+
+  it("RebanhoContent renders the acasalamento branch without crashing", () => {
+    const html = renderToString(h(RebanhoContent, { aba: "acasalamento" }));
+    expect(html).toContain("Carregando");
+  });
+
   it("SaudeUbereSection renders the úbere map (loading shell in SSR)", () => {
     // No SSR o hook fica em loading e o componente retorna null — não pode crashar.
     expect(() => renderToString(h(SaudeUbereSection, { animalId: "1" }))).not.toThrow();
@@ -77,6 +88,7 @@ describe("render smoke", () => {
     // (título de topo removido do produto)
     expect(html).toContain("Produtos");       // sub-aba
     expect(html).toContain("Fornecedores");   // sub-aba
+    expect(html).toContain("Medidas de acasalamento"); // cadastro compartilhado do Bloco D
     expect(html).toContain("Carregando");     // shell de loading (sem fetch no SSR)
   });
 

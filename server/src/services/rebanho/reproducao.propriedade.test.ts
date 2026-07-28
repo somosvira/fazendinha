@@ -161,7 +161,26 @@ describe("autorização por propriedade em operações por id", () => {
     );
     expect(mocks.animalFindFirst).toHaveBeenCalledWith({
       where: { id: 31, propriedadeId: 7 },
-      select: { id: true, paiNome: true },
+      select: {
+        id: true,
+        paiNome: true,
+        pai: {
+          select: {
+            nome: true,
+            numero: true,
+            paiNome: true,
+            mae: { select: { nome: true, numero: true } },
+          },
+        },
+        mae: {
+          select: {
+            nome: true,
+            numero: true,
+            paiNome: true,
+            mae: { select: { nome: true, numero: true } },
+          },
+        },
+      },
     });
   });
 });

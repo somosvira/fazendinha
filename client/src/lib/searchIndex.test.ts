@@ -43,6 +43,12 @@ describe("buscar()", () => {
     expect(ids("vaca")).toContain("reb-animal");
   });
 
+  it("indexa Acasalamento e seus sinônimos operacionais", () => {
+    for (const termo of ["cruzamento", "touro", "genética", "consanguinidade", "plano", "pedigree"]) {
+      expect(ids(termo)).toContain("reb-acasalamento");
+    }
+  });
+
   it('ranking: prefixo de label vem antes de match por sinônimo', () => {
     // "rel" começa o label "Relatório" → deve vir antes de qualquer match indireto
     const r = labels("rel");

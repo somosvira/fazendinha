@@ -84,6 +84,7 @@ const REB: Record<string, RebSub> = {
   "reb-dashboard": "dashboard",
   "reb-animal": "animal",
   "reb-reproducao": "reproducao",
+  "reb-acasalamento": "acasalamento",
   "reb-sanidade": "sanidade",
   "reb-nutricao": "nutricao",
   "reb-producao": "producao",

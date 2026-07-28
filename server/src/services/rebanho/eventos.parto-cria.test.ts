@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   txAnimalUpdate: vi.fn(),
   txAnimalFindUnique: vi.fn(),
   lactacaoFindMany: vi.fn(),
+  controleFindMany: vi.fn(),
   resumoUpsert: vi.fn(),
   getNumero: vi.fn(),
 }));
@@ -54,6 +55,7 @@ beforeEach(() => {
     eventosReprodutivos: [],
   });
   mocks.lactacaoFindMany.mockResolvedValue([]);
+  mocks.controleFindMany.mockResolvedValue([]);
   mocks.resumoUpsert.mockResolvedValue({});
   mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({
     eventoReprodutivo: {
@@ -72,6 +74,7 @@ beforeEach(() => {
       create: vi.fn(),
       update: vi.fn(),
     },
+    controleLeiteiro: { findMany: mocks.controleFindMany },
     resumoAnimal: { upsert: mocks.resumoUpsert },
   }));
 });
