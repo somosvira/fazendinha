@@ -1536,3 +1536,35 @@ export function useAcasalamento(animalId: string | null) {
 }
 
 export type { ResumoAnimal };
+
+// ─── FIV / TE e pool de doadoras (Bloco E) ────────────────────────────────
+export type EmbriaoClassificacaoDTO = { id: number; sigla: string; nome: string; ordem: number; ativo: boolean };
+export type OocitoInput = { qualidade: string; viavel: boolean; quantidade: number };
+export type CriarColetaInput = { doadoraId: number; data: string; metodo: "FIV" | "TE_CONVENCIONAL"; tecnico?: string; laboratorio?: string; observacao?: string; oocitos: OocitoInput[] };
+export type FertilizacaoInput = { reprodutorId: number; estoqueSemenId?: number; data?: string; tecnica?: string };
+export type EmbriaoInput = { classificacaoId?: number; codigoInterno?: string; estagio?: string; viavel: boolean };
+export type EmbriaoDisponivelDTO = {
+  id: number; estagio: string | null; viavel: boolean;
+  classificacao: { sigla: string; nome: string } | null;
+  fertilizacao: { reprodutor: { id: number; nome: string; codigo: string | null }; coleta: { doadora: { id: number; numero: string; nome: string | null } } };
+};
+export type ColetaDTO = { id: number; doadoraId: number; data: string; metodo: string; status: string } & Record<string, unknown>;
+export type GrupoPoolDTO = { id: number; nome: string; ativo: boolean } & Record<string, unknown>;
+
+export const listarClassificacoesEmbriao = () => req<EmbriaoClassificacaoDTO[]>(`/rebanho/fiv/classificacoes`);
+export const criarClassificacaoEmbriao = (input: { sigla: string; nome: string; ordem?: number }) =>
+  req<EmbriaoClassificacaoDTO>(`/rebanho/fiv/classificacoes`, { method: "POST", body: JSON.stringify(input) });
+export const listarColetas = () => req<ColetaDTO[]>(`/rebanho/fiv/coletas`);
+export const obterColeta = (id: number) => req<ColetaDTO>(`/rebanho/fiv/coletas/${id}`);
+export const criarColeta = (input: CriarColetaInput) => req<ColetaDTO>(`/rebanho/fiv/coletas`, { method: "POST", body: JSON.stringify(input) });
+export const atualizarColeta = (id: number, input: Partial<CriarColetaInput>) => req<ColetaDTO>(`/rebanho/fiv/coletas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const cancelarColeta = (id: number, motivo: string) => req<ColetaDTO>(`/rebanho/fiv/coletas/${id}/cancelar`, { method: "POST", body: JSON.stringify({ motivo }) });
+export const adicionarFertilizacao = (coletaId: number, input: FertilizacaoInput) => req<Record<string, unknown> & { aviso?: string }>(`/rebanho/fiv/coletas/${coletaId}/fertilizacoes`, { method: "POST", body: JSON.stringify(input) });
+export const cancelarFertilizacao = (id: number, motivo: string) => req<Record<string, unknown>>(`/rebanho/fiv/fertilizacoes/${id}/cancelar`, { method: "POST", body: JSON.stringify({ motivo }) });
+export const adicionarEmbriao = (fertilizacaoId: number, input: EmbriaoInput) => req<Record<string, unknown>>(`/rebanho/fiv/fertilizacoes/${fertilizacaoId}/embrioes`, { method: "POST", body: JSON.stringify(input) });
+export const descartarEmbriao = (id: number) => req<Record<string, unknown>>(`/rebanho/fiv/embrioes/${id}/descartar`, { method: "POST" });
+export const listarEmbrioesDisponiveis = () => req<EmbriaoDisponivelDTO[]>(`/rebanho/fiv/embrioes/disponiveis`);
+export const listarGruposPool = () => req<GrupoPoolDTO[]>(`/rebanho/fiv/pools`);
+export const criarGrupoPool = (input: { nome: string; doadoraIds: number[] }) => req<GrupoPoolDTO>(`/rebanho/fiv/pools`, { method: "POST", body: JSON.stringify(input) });
+export const salvarItensGrupoPool = (id: number, doadoraIds: number[]) => req<GrupoPoolDTO>(`/rebanho/fiv/pools/${id}/itens`, { method: "PUT", body: JSON.stringify({ doadoraIds }) });
+export const aplicarPool = (id: number, input: { data: string; tecnico?: string }) => req<{ aplicacaoId: number; coletasCriadas: number }>(`/rebanho/fiv/pools/${id}/aplicar`, { method: "POST", body: JSON.stringify(input) });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimalCockpit } from "./components/AnimalCockpit";
 import { AnimalTab } from "./components/AnimalTab";
 import { ReproducaoTab } from "./components/ReproducaoTab";
+import { FivTab } from "./components/FivTab";
 import { SanidadeTab } from "./components/SanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ProducaoTab } from "./components/ProducaoTab";
@@ -18,7 +19,7 @@ import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, Workli
 import type { AcaoItemWorklist } from "./components/WorklistCanonica";
 import { HOJE } from "./HOJE";
 
-export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
+export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "fiv" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
 
 export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, worklistSnapshot, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
@@ -86,6 +87,8 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
             ? <ReproducaoTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
             : aba === "acasalamento"
               ? <AcasalamentoPlanosTab onAbrirFicha={setAnimalId} />
+            : aba === "fiv"
+              ? <FivTab key={recarga} />
             : aba === "sanidade"
               ? <SanidadeTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
               : aba === "nutricao"
