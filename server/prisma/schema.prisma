@@ -530,10 +530,11 @@ model Reprodutor {
   valoresIndicador ValorIndicadorReprodutor[]
   valoresMarcador  ValorMarcadorReprodutor[]
   valoresCaseina   ValorCaseinaReprodutor[]
-  pedigree              PedigreeReprodutor?
-  estoquesSemen         EstoqueSemen[]
+  pedigree             PedigreeReprodutor?
+  estoquesSemen        EstoqueSemen[]
   escolhasAcasalamento LinhaPlanoAcasalamento[]
-  createdAt             DateTime                   @default(now())
+  fertilizacoes        FertilizacaoColeta[]
+  createdAt            DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
 
   @@index([propriedadeId])
@@ -652,6 +653,7 @@ model EstoqueSemen {
   propriedade      Propriedade?        @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
   propriedadeId    Int?
   eventos          EventoReprodutivo[]
+  fertilizacoes    FertilizacaoColeta[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -759,6 +761,144 @@ model LinhaPlanoAcasalamento {
   @@index([reprodutorEscolhidoId])
 }
 
+// Dicionário oficial compartilhado das classificações de embrião do IDEAGRI.
+model EmbriaoClassificacao {
+  id        Int              @id @default(autoincrement())
+  ideagriId Int?             @unique
+  sigla     String           @unique
+  nome      String
+  ordem     Int              @default(0)
+  ativo     Boolean          @default(true)
+  embrioes  EmbriaoColeta[]
+}
+
+// Coleta FIV/TE por doadora. Fato de sítio; resultados ficam separados por animal.
+model Coleta {
+  id                 Int                     @id @default(autoincrement())
+  ideagriId          Int?                    @unique
+  doadora            Animal                  @relation("DoadoraColeta", fields: [doadoraId], references: [id], onDelete: Restrict)
+  doadoraId          Int
+  data               DateTime                @db.Date
+  tecnico            String?
+  metodo             String
+  laboratorio        String?
+  status             String                  @default("RASCUNHO")
+  canceladaEm        DateTime?
+  motivoCancelamento String?
+  observacao         String?
+  aplicacaoPool      AplicacaoPoolDoadora?   @relation(fields: [aplicacaoPoolId], references: [id], onDelete: SetNull)
+  aplicacaoPoolId    Int?
+  propriedade        Propriedade?            @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId      Int?
+  oocitos            OocitoColeta[]
+  fertilizacoes      FertilizacaoColeta[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([doadoraId])
+  @@index([propriedadeId])
+  @@index([aplicacaoPoolId])
+}
+
+model OocitoColeta {
+  id         Int     @id @default(autoincrement())
+  coleta    Coleta  @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  coletaId  Int
+  qualidade String
+  viavel    Boolean
+  quantidade Int
+
+  @@unique([coletaId, qualidade, viavel])
+}
+
+model FertilizacaoColeta {
+  id                 Int              @id @default(autoincrement())
+  ideagriId          Int?             @unique
+  coleta             Coleta           @relation(fields: [coletaId], references: [id], onDelete: Cascade)
+  coletaId           Int
+  reprodutor         Reprodutor       @relation(fields: [reprodutorId], references: [id], onDelete: Restrict)
+  reprodutorId       Int
+  estoqueSemen       EstoqueSemen?    @relation(fields: [estoqueSemenId], references: [id], onDelete: SetNull)
+  estoqueSemenId     Int?
+  doseBaixada        Boolean          @default(false)
+  data               DateTime?        @db.Date
+  tecnica            String?
+  status             String           @default("ATIVA")
+  canceladaEm        DateTime?
+  motivoCancelamento String?
+  embrioes           EmbriaoColeta[]
+
+  @@index([coletaId])
+  @@index([reprodutorId])
+  @@index([estoqueSemenId])
+}
+
+model EmbriaoColeta {
+  id              Int                   @id @default(autoincrement())
+  ideagriId       Int?                  @unique
+  fertilizacao    FertilizacaoColeta    @relation(fields: [fertilizacaoId], references: [id], onDelete: Cascade)
+  fertilizacaoId  Int
+  classificacao   EmbriaoClassificacao? @relation(fields: [classificacaoId], references: [id], onDelete: SetNull)
+  classificacaoId Int?
+  codigoInterno   String?
+  estagio         String?
+  viavel          Boolean               @default(true)
+  estado          String                @default("DISPONIVEL")
+  propriedade     Propriedade?          @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId   Int?
+  evento          EventoReprodutivo?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([fertilizacaoId])
+  @@index([classificacaoId])
+  @@index([estado])
+  @@index([propriedadeId])
+}
+
+model GrupoPoolDoadora {
+  id            Int                    @id @default(autoincrement())
+  ideagriId     Int?                   @unique
+  nome          String
+  ativo         Boolean                @default(true)
+  propriedade   Propriedade?           @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId Int?
+  itens         ItemGrupoPoolDoadora[]
+  aplicacoes    AplicacaoPoolDoadora[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([propriedadeId])
+}
+
+model ItemGrupoPoolDoadora {
+  id        Int              @id @default(autoincrement())
+  grupo     GrupoPoolDoadora @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  grupoId   Int
+  doadora   Animal           @relation("DoadoraPool", fields: [doadoraId], references: [id], onDelete: Cascade)
+  doadoraId Int
+  ativo     Boolean          @default(true)
+
+  @@unique([grupoId, doadoraId])
+}
+
+model AplicacaoPoolDoadora {
+  id            Int              @id @default(autoincrement())
+  grupo         GrupoPoolDoadora @relation(fields: [grupoId], references: [id], onDelete: Restrict)
+  grupoId       Int
+  data          DateTime         @db.Date
+  tecnico       String?
+  propriedade   Propriedade?     @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId Int?
+  coletas       Coleta[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([grupoId, data])
+  @@index([grupoId])
+  @@index([propriedadeId])
+}
+
 model Grupo {
   id                Int                   @id @default(autoincrement())
   nome              String                @unique
@@ -816,10 +956,14 @@ model Propriedade {
   lotesProduto         LoteProduto[]
   examesQuarto         ExameQuarto[]
   registrosChuva       RegistroChuva[]
-  aptidoes             AptidaoAnimal[]
-  planosAcasalamento   PlanoAcasalamento[]
-  createdAt            DateTime                      @default(now())
-  updatedAt            DateTime                      @updatedAt
+  aptidoes              AptidaoAnimal[]
+  planosAcasalamento    PlanoAcasalamento[]
+  coletas               Coleta[]
+  embrioesColeta        EmbriaoColeta[]
+  gruposPoolDoadora     GrupoPoolDoadora[]
+  aplicacoesPoolDoadora AplicacaoPoolDoadora[]
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
 }
 
 model Dieta {
@@ -901,6 +1045,8 @@ model Animal {
   vacinasAgendadas     VacinaAgendada[]
   aplicacoesIATF       AplicacaoProtocoloIATF[]
   aplicacoesSanitarias AplicacaoProtocoloSanitario[]
+  coletasComoDoadora   Coleta[]                      @relation("DoadoraColeta")
+  poolsComoDoadora     ItemGrupoPoolDoadora[]        @relation("DoadoraPool")
   lactacoes            Lactacao[]
   controlesLeiteiros   ControleLeiteiro[]
   pesagens             Pesagem[]
@@ -1111,6 +1257,9 @@ model EventoReprodutivo {
   // PARTO: cria criada/vinculada por este parto (genealogia). Nullable — nem todo parto cadastra a cria.
   cria            Animal?               @relation("CriaDoParto", fields: [criaId], references: [id])
   criaId          Int?                  @unique
+  // TE operacional: um embrião interno só pode originar um evento de transferência.
+  embriaoColeta   EmbriaoColeta? @relation(fields: [embriaoColetaId], references: [id], onDelete: SetNull)
+  embriaoColetaId Int?            @unique
   // TE: preserva o embrião e a doadora externos mesmo quando não pertencem ao rebanho 777.
   ideagriEmbriaoId Int?
   doadoraNumero    String?
