@@ -6,6 +6,7 @@ import { ProtocolosIatf } from "./ProtocolosIatf";
 import { ProgramacaoIatfLote } from "./ProgramacaoIatfLote";
 import { ReprodutoresSection } from "./ReprodutoresSection";
 import { AptidaoSection } from "./AptidaoSection";
+import { RelatorioReproducaoSection } from "./RelatorioReproducaoSection";
 import { RebHeader } from "./RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -73,5 +74,5 @@ export function ReproducaoTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirF
     const animal = data.find((a) => a.id === id);
     if (animal) onRegistrarEvento(animal);
   };
-  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" topo={<><TaxaConcepcaoStrip /><AptidaoSection novilhas={data.filter((a) => a.categoria === "NOVILHA")} idadeMinMeses={idadeMinAptidao} pesoMinKg={pesoMinAptidao} /><ProtocolosIatf /><ProgramacaoIatfLote /><ReprodutoresSection /></>} />;
+  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" topo={<><TaxaConcepcaoStrip /><RelatorioReproducaoSection /><AptidaoSection novilhas={data.filter((a) => a.categoria === "NOVILHA")} idadeMinMeses={idadeMinAptidao} pesoMinKg={pesoMinAptidao} /><ProtocolosIatf /><ProgramacaoIatfLote /><ReprodutoresSection /></>} />;
 }

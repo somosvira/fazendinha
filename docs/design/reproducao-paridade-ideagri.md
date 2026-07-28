@@ -120,8 +120,8 @@ Cada fatia só muda para `✅` quando possui todos os itens:
 | Medidas/recomendação de acasalamento | pendente | parcial | parcial | parcial | casos dourados do IDEAGRI | 🟡 |
 | Coleta FIV/TE e embriões | pendente | pendente | pendente | pendente | 7 coletas + estágios | ⬜ |
 | Pool de doadoras | pendente | pendente | pendente | pendente | fluxo com fixture (777 vazio) | ⬜ |
-| Receber coletas/mobile | pendente | pendente | pendente | pendente | sincronização ou N/A assinado | ⬜ |
-| Relatórios reprodutivos/IATF | pendente | conforme fonte | pendente | pendente | valores lado a lado | ⬜ |
+| Receber coletas/mobile | N/A | N/A | N/A | N/A | equivalente web = import idempotente + lançamento/execução | N/A |
+| Relatórios reprodutivos/IATF | conforme fonte | reusa EventoReprodutivo | relatório por período + método (IA/MN/TE) + reconciliação de contagens | seção no ReproducaoTab | por método entregue; cortes IATF avançados (estímulo/CIDR/ordem) dependem de A/D em main | 🟡 |
 
 ## Gate para declarar “100%”
 

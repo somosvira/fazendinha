@@ -20,6 +20,7 @@ import { AnimalTab } from "../components/AnimalTab";
 import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
 import { AcasalamentoPlanosTab } from "../components/AcasalamentoPlanosTab";
+import { RelatorioReproducaoSection } from "../components/RelatorioReproducaoSection";
 
 describe("render smoke", () => {
   it("AppSidebar renders both groups", () => {
@@ -50,6 +51,12 @@ describe("render smoke", () => {
     const html = renderToString(h(RebanhoContent, { aba: "fiv" }));
     expect(html).toContain("Coletas");
     expect(html).toContain("Pool de doadoras");
+  });
+
+  it("RelatorioReproducaoSection renders the period filter and loading shell", () => {
+    const html = renderToString(h(RelatorioReproducaoSection));
+    expect(html).toContain("Relatório reprodutivo");
+    expect(html).toContain("Aplicar período");
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {

@@ -1569,3 +1569,19 @@ export const listarGruposPool = () => req<GrupoPoolDTO[]>(`/rebanho/fiv/pools`);
 export const criarGrupoPool = (input: { nome: string; doadoraIds: number[] }) => req<GrupoPoolDTO>(`/rebanho/fiv/pools`, { method: "POST", body: JSON.stringify(input) });
 export const salvarItensGrupoPool = (id: number, doadoraIds: number[]) => req<GrupoPoolDTO>(`/rebanho/fiv/pools/${id}/itens`, { method: "PUT", body: JSON.stringify({ doadoraIds }) });
 export const aplicarPool = (id: number, input: { data: string; tecnico?: string }) => req<{ aplicacaoId: number; coletasCriadas: number }>(`/rebanho/fiv/pools/${id}/aplicar`, { method: "POST", body: JSON.stringify(input) });
+
+// ─── Relatório reprodutivo (Bloco F) ──────────────────────────────────────
+export type TaxaConcepcaoMetodoDTO = { metodo: "IA" | "MN" | "TE"; coberturas: number; prenhes: number; taxa: number | null };
+export type RelatorioReproducaoDTO = {
+  periodo: { de: string | null; ate: string | null };
+  coberturas: number; prenhes: number; partos: number;
+  taxaConcepcao: number | null;
+  porMetodo: TaxaConcepcaoMetodoDTO[];
+};
+export const obterRelatorioReproducao = (de?: string, ate?: string) => {
+  const qs = new URLSearchParams();
+  if (de) qs.set("de", de);
+  if (ate) qs.set("ate", ate);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return req<RelatorioReproducaoDTO>(`/rebanho/reproducao/relatorio${suffix}`);
+};

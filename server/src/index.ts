@@ -55,6 +55,7 @@ import { indicadoresEmbrapaRouter } from "./routes/rebanho/indicadores-embrapa.j
 import { carteiraRouter } from "./routes/rebanho/carteira.js";
 import { chuvaRouter } from "./routes/rebanho/chuva.js";
 import { sugestoesRouter } from "./routes/rebanho/sugestoes.js";
+import { relatorioReproducaoRouter } from "./routes/rebanho/relatorio-reproducao.js";
 import { plantioTalhoesRouter } from "./routes/plantio/talhoes.js";
 import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
 import { plantioCadastrosRouter } from "./routes/plantio/cadastros.js";
@@ -161,6 +162,7 @@ app.route("/api", indicadoresEmbrapaRouter);
 app.route("/api", carteiraRouter);
 app.route("/api", chuvaRouter);
 app.route("/api", sugestoesRouter);
+app.route("/api", relatorioReproducaoRouter);
 app.route("/api", plantioTalhoesRouter);
 app.route("/api", plantioDashboardRouter);
 app.route("/api", plantioCadastrosRouter);
