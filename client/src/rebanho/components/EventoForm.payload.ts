@@ -16,6 +16,27 @@ export function camposInseminacao(form: {
   };
 }
 
+export function camposTransferenciaEmbriao(form: {
+  embriaoColetaId: string;
+  doadoraId: string;
+  semenTE: string;
+  protocolo: string | undefined;
+}): Partial<EventoPayload> {
+  const protocolo = form.protocolo || undefined;
+  const embriaoColetaId = Number(form.embriaoColetaId);
+  if (Number.isInteger(embriaoColetaId) && embriaoColetaId > 0) {
+    // Embrião do estoque FIV manda a genética: doadora/touro não vão no payload.
+    return { protocolo, embriaoColetaId };
+  }
+  const doadoraId = numeroOpcional(form.doadoraId);
+  const reprodutor = form.semenTE.trim() || undefined;
+  return {
+    protocolo,
+    ...(doadoraId != null ? { doadoraId } : {}),
+    ...(reprodutor ? { reprodutor } : {}),
+  };
+}
+
 export interface CamposPartoForm {
   tipoParto: string;
   auxilioParto: string;

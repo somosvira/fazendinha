@@ -38,6 +38,8 @@ import { protocoloSanitarioRouter } from "./routes/rebanho/protocolo-sanitario.j
 import { reprodutoresRouter } from "./routes/rebanho/reprodutores.js";
 import { geneticaRouter } from "./routes/rebanho/genetica.js";
 import { semenRouter } from "./routes/rebanho/semen.js";
+import { fivRouter } from "./routes/rebanho/fiv.js";
+import { poolDoadoraRouter } from "./routes/rebanho/pool-doadora.js";
 import { acasalamentoRouter } from "./routes/rebanho/acasalamento.js";
 import { medidasAcasalamentoRouter } from "./routes/rebanho/medidas-acasalamento.js";
 import { planosAcasalamentoRouter } from "./routes/rebanho/planos-acasalamento.js";
@@ -142,6 +144,8 @@ app.route("/api", protocoloSanitarioRouter);
 app.route("/api", reprodutoresRouter);
 app.route("/api", geneticaRouter);
 app.route("/api", semenRouter);
+app.route("/api", fivRouter);
+app.route("/api", poolDoadoraRouter);
 app.route("/api", acasalamentoRouter);
 app.route("/api", medidasAcasalamentoRouter);
 app.route("/api", planosAcasalamentoRouter);

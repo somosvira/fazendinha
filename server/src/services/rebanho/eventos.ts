@@ -15,6 +15,7 @@ import { calcularTaxaConcepcao, type TaxaConcepcaoMetodo } from "./reproducao.co
 import { getNumero } from "./parametros.js";
 import { planejarCrias, type NovaCriaPlano } from "./parto-cria.calc.js";
 import { planejarBaixaDose, planejarDevolucaoDose } from "./semen-baixa.calc.js";
+import { planejarDevolucaoEmbriao, planejarTransferenciaEmbriao } from "./embriao-estoque.calc.js";
 
 export { ConflitoLactacaoError } from "./reproducao.recompute.js";
 
@@ -255,10 +256,11 @@ export async function registrarEvento(
   if (input.tipo === "PARTO" && input.criaId === animalId) {
     throw new EventoError("CONFLITO", "a paridora não pode ser vinculada como própria cria");
   }
-  const doadoraId = (input as any).doadoraId as number | undefined;
-  if (doadoraId != null) {
+  const doadoraIdInformada = (input as any).doadoraId as number | undefined;
+  const embriaoColetaId = input.tipo === "TRANSFERENCIA_EMBRIAO" ? input.embriaoColetaId : undefined;
+  if (doadoraIdInformada != null && embriaoColetaId == null) {
     const doadora = await prisma.animal.findFirst({
-      where: animalNoEscopo(doadoraId, propriedadeId),
+      where: animalNoEscopo(doadoraIdInformada, propriedadeId),
       select: { id: true },
     });
     if (!doadora) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
@@ -279,6 +281,37 @@ export async function registrarEvento(
   return prisma.$transaction(async (tx) => {
     let estoqueSemenDoseBaixada = false;
     let aviso: string | null = null;
+    let doadoraId = doadoraIdInformada;
+    let doadoraNumero: string | undefined;
+    let doadoraNome: string | undefined;
+    let reprodutor = (input as any).reprodutor as string | undefined;
+    const propriedadeEventoId = animal.propriedadeId ?? propriedadeId;
+    if (embriaoColetaId != null) {
+      const embriao = await tx.embriaoColeta.findFirst({
+        where: { id: embriaoColetaId, ...(propriedadeEventoId != null ? { propriedadeId: propriedadeEventoId } : {}) },
+        include: {
+          fertilizacao: {
+            include: {
+              reprodutor: { select: { nome: true, codigo: true } },
+              coleta: { include: { doadora: { select: { numero: true, nome: true } } } },
+            },
+          },
+        },
+      });
+      if (!embriao) throw new EventoError("NAO_ENCONTRADO", "embrião não encontrado");
+      const plano = planejarTransferenciaEmbriao({ estadoAtual: embriao.estado as "DISPONIVEL" | "TRANSFERIDO" | "DESCARTADO" });
+      if (!plano.transferir) throw new EventoError("CONFLITO", "embrião indisponível para transferência");
+      const baixa = await tx.embriaoColeta.updateMany({
+        where: { id: embriaoColetaId, ...(propriedadeEventoId != null ? { propriedadeId: propriedadeEventoId } : {}), estado: "DISPONIVEL", viavel: true },
+        data: { estado: "TRANSFERIDO" },
+      });
+      if (baixa.count !== 1) throw new EventoError("CONFLITO", "embrião indisponível para transferência");
+      doadoraId = embriao.fertilizacao.coleta.doadoraId;
+      doadoraNumero = embriao.fertilizacao.coleta.doadora.numero;
+      doadoraNome = embriao.fertilizacao.coleta.doadora.nome ?? undefined;
+      const touro = embriao.fertilizacao.reprodutor;
+      reprodutor = [touro.nome, touro.codigo].filter(Boolean).join(" · ");
+    }
     const estoqueSemenId = input.tipo === "INSEMINACAO" ? input.estoqueSemenId : undefined;
     const propriedadeEstoqueId = animal.propriedadeId ?? propriedadeId;
     if (estoqueSemenId != null) {
@@ -327,7 +360,7 @@ export async function registrarEvento(
     const e = await tx.eventoReprodutivo.create({
       data: {
         animalId, tipo: input.tipo, data: new Date(input.data), observacao: (input as any).observacao,
-        reprodutor: (input as any).reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
+        reprodutor, protocolo: (input as any).protocolo ?? (input as any).metodo,
         // DESMAME guarda o peso opcional no campo livre `resultado` (sem coluna nova).
         resultado: (input as any).resultado ?? ((input as any).pesoKg != null ? String((input as any).pesoKg) : undefined),
         resultadoGinecologicoId,
@@ -338,6 +371,9 @@ export async function registrarEvento(
         criaId,
         estoqueSemenId,
         estoqueSemenDoseBaixada,
+        embriaoColetaId,
+        doadoraNumero,
+        doadoraNome,
         motivoSecagem: (input as any).motivoSecagem, doadoraId,
       },
     });
@@ -360,6 +396,16 @@ export async function excluirEvento(eventoId: number, propriedadeId: number | nu
   });
   if (!e) throw new EventoError("NAO_ENCONTRADO", "evento não encontrado");
   await prisma.$transaction(async (tx) => {
+    if (e.embriaoColetaId != null) {
+      const propriedadeEmbriaoId = e.animal.propriedadeId ?? propriedadeId;
+      const embriao = await tx.embriaoColeta.findFirst({
+        where: { id: e.embriaoColetaId, ...(propriedadeEmbriaoId != null ? { propriedadeId: propriedadeEmbriaoId } : {}) },
+        select: { id: true, estado: true },
+      });
+      if (!embriao) throw new EventoError("NAO_ENCONTRADO", "embrião não encontrado");
+      const plano = planejarDevolucaoEmbriao({ estadoAtual: embriao.estado as "DISPONIVEL" | "TRANSFERIDO" | "DESCARTADO" });
+      if (plano.devolver) await tx.embriaoColeta.update({ where: { id: e.embriaoColetaId }, data: { estado: "DISPONIVEL" } });
+    }
     if (e.estoqueSemenId != null && e.estoqueSemenDoseBaixada) {
       const propriedadeEstoqueId = e.animal.propriedadeId ?? propriedadeId;
       const estoque = await tx.estoqueSemen.findFirst({

@@ -15,6 +15,8 @@ import {
   parseMedidaAcasalamento, parseItemMedidaAcasalamento,
   parseCombinacaoAcasalamento, parseItemCombinacaoAcasalamento,
   parseCasoDouradoAcasalamento,
+  parseEmbriaoClassificacao, parseColeta, parseOocitoColeta, parseFertilizacao,
+  parseEmbriaoColeta, parseGrupoPool, parseItemGrupoPool,
 } from "./build-rebanho-json.mjs";
 
 const SCRIPT_PATH = fileURLToPath(new URL("./build-rebanho-json.mjs", import.meta.url));
@@ -624,4 +626,69 @@ test("parseLactacao — lactação anterior sem produção, campos vazios → nu
   assert.equal(l.producaoTotal, null);
   assert.equal(l.producao305, null);
   assert.equal(l.duracaoDias, null);
+});
+
+test("parseEmbriaoClassificacao exige identidade/sigla/nome e preserva ordem", () => {
+  assert.deepEqual(parseEmbriaoClassificacao("3~|~BX~|~Blastocisto~|~4"), { ideagriId: 3, sigla: "BX", nome: "Blastocisto", ordem: 4 });
+  assert.equal(parseEmbriaoClassificacao("~|~BX~|~Blastocisto~|~4"), null);
+  assert.equal(parseEmbriaoClassificacao("3~|~~|~Blastocisto~|~4"), null);
+});
+
+test("parseColeta exige doadora/data/metodo válidos", () => {
+  assert.deepEqual(parseColeta("7~|~D-44~|~2026-07-27~|~Dra. Ana~|~FIV~|~Lab X~|~CONCLUIDA"), { ideagriId: 7, doadoraNumero: "D-44", data: "2026-07-27", tecnico: "Dra. Ana", metodo: "FIV", laboratorio: "Lab X", status: "CONCLUIDA" });
+  assert.equal(parseColeta("7~|~~|~2026-07-27~|~~|~FIV~|~~|~"), null);
+  assert.equal(parseColeta("7~|~D-44~|~2026-07-27~|~~|~QUALQUER~|~~|~"), null);
+});
+
+test("parseOocitoColeta exige coleta, qualidade e quantidade positiva", () => {
+  assert.deepEqual(parseOocitoColeta("7~|~A~|~1~|~8"), { coletaIdeagriId: 7, qualidade: "A", viavel: true, quantidade: 8 });
+  assert.equal(parseOocitoColeta("7~|~A~|~1~|~0"), null);
+  assert.equal(parseOocitoColeta("7~|~~|~1~|~8"), null);
+});
+
+test("parseFertilizacao exige coleta e reprodutor, tipo de sêmen opcional", () => {
+  assert.deepEqual(parseFertilizacao("20~|~7~|~44~|~SEX~|~2026-07-27~|~ICSI"), { ideagriId: 20, coletaIdeagriId: 7, reprodutorIdeagriId: 44, tipoSemenSigla: "SEX", data: "2026-07-27", tecnica: "ICSI" });
+  assert.equal(parseFertilizacao("20~|~~|~44~|~SEX~|~2026-07-27~|~ICSI"), null);
+  assert.equal(parseFertilizacao("20~|~7~|~~|~SEX~|~2026-07-27~|~ICSI"), null);
+});
+
+test("parseEmbriaoColeta exige fertilização e sigla de classificação", () => {
+  assert.deepEqual(parseEmbriaoColeta("70~|~20~|~BX~|~E-70~|~BLASTOCISTO~|~1"), { ideagriId: 70, fertilizacaoIdeagriId: 20, classificacaoSigla: "BX", codigoInterno: "E-70", estagio: "BLASTOCISTO", viavel: true });
+  assert.equal(parseEmbriaoColeta("70~|~~|~BX~|~E-70~|~BLASTOCISTO~|~1"), null);
+  assert.equal(parseEmbriaoColeta("70~|~20~|~~|~E-70~|~BLASTOCISTO~|~1"), null);
+});
+
+test("parseGrupoPool e parseItemGrupoPool exigem identidade e doadora", () => {
+  assert.deepEqual(parseGrupoPool("2~|~Elite"), { ideagriId: 2, nome: "Elite" });
+  assert.equal(parseGrupoPool("2~|~"), null);
+  assert.deepEqual(parseItemGrupoPool("2~|~D-44"), { grupoIdeagriId: 2, doadoraNumero: "D-44" });
+  assert.equal(parseItemGrupoPool("~|~D-44"), null);
+});
+
+test("main coleta os prefixos de FIV/pool, emite arrays e contagens", (t) => {
+  const linhas = [
+    "@EMBCLASS@3~|~BX~|~Blastocisto~|~4",
+    "@COLETA@7~|~D-44~|~2026-07-27~|~Dra. Ana~|~FIV~|~Lab X~|~CONCLUIDA",
+    "@OOCITO@7~|~A~|~1~|~8",
+    "@FERTCOL@20~|~7~|~44~|~SEX~|~2026-07-27~|~ICSI",
+    "@EMBRIAO@70~|~20~|~BX~|~E-70~|~BLASTOCISTO~|~1",
+    "@POOLGRP@2~|~Elite",
+    "@POOLITEM@2~|~D-44",
+  ];
+  const { execucao, destino } = executarMainIsolado(t, linhas);
+  assert.equal(execucao.status, 0, execucao.stderr);
+  const out = JSON.parse(readFileSync(destino, "utf8"));
+  assert.equal(out.embriaoClassificacoes.length, 1);
+  assert.equal(out.coletas.length, 1);
+  assert.equal(out.oocitosColeta.length, 1);
+  assert.equal(out.fertilizacoes.length, 1);
+  assert.equal(out.embrioesColeta.length, 1);
+  assert.equal(out.gruposPool.length, 1);
+  assert.equal(out.itensGrupoPool.length, 1);
+});
+
+test("main aborta sem emitir JSON quando encontra registro FIV inválido", (t) => {
+  const { execucao, destino } = executarMainIsolado(t, ["@COLETA@7~|~~|~2026-07-27~|~~|~FIV~|~~|~"]);
+  assert.equal(execucao.status, 1);
+  assert.equal(existsSync(destino), false);
 });

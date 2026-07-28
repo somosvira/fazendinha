@@ -59,6 +59,7 @@ export const COMANDOS: Comando[] = [
   { id: "reb-animal", tab: "reb-animal", label: "Animal", grupo: "Rebanho", sinonimos: ["vaca", "vacas", "boi", "gado", "rebanho", "bovino", "brinco", "ficha do animal"] },
   { id: "reb-reproducao", tab: "reb-reproducao", label: "Reprodução", grupo: "Rebanho", sinonimos: ["cio", "inseminação", "iatf", "prenhez", "gestação", "dg", "diagnóstico", "parto", "secagem"] },
   { id: "reb-acasalamento", tab: "reb-acasalamento", label: "Acasalamento", grupo: "Rebanho", sinonimos: ["cruzamento", "touro", "genética", "consanguinidade", "plano", "pedigree"] },
+  { id: "reb-fiv", tab: "reb-fiv", label: "FIV / TE", grupo: "Rebanho", sinonimos: ["fiv", "te", "transferência de embrião", "coleta", "oócito", "embrião", "doadora", "pool", "aspiração"] },
   { id: "reb-sanidade", tab: "reb-sanidade", label: "Sanidade", grupo: "Rebanho", sinonimos: ["vacina", "vacinação", "doença", "carência", "tratamento", "mastite", "ccs", "saúde"] },
   { id: "reb-nutricao", tab: "reb-nutricao", label: "Nutrição", grupo: "Rebanho", sinonimos: ["dieta", "ração", "alimentação", "lote", "trato", "concentrado", "volumoso"] },
   { id: "reb-producao", tab: "reb-producao", label: "Produção", grupo: "Rebanho", sinonimos: ["leite", "litros", "ordenha", "tanque", "controle leiteiro"] },

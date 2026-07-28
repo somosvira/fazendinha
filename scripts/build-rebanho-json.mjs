@@ -642,6 +642,70 @@ function montarResumo(prod, repro, hoje) {
   };
 }
 
+const METODOS_COLETA = new Set(["FIV", "TE_CONVENCIONAL"]);
+
+export function parseEmbriaoClassificacao(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const sigla = textoObrigatorio(f[1]);
+  const nome = textoObrigatorio(f[2]);
+  if (ideagriId == null || !sigla || !nome) return null;
+  return { ideagriId, sigla, nome, ordem: n(f[3]) ?? 0 };
+}
+
+export function parseColeta(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const doadoraNumero = textoObrigatorio(f[1]);
+  const data = s(f[2]);
+  const metodo = textoObrigatorio(f[4]);
+  if (ideagriId == null || !doadoraNumero || !data || !METODOS_COLETA.has(metodo)) return null;
+  return { ideagriId, doadoraNumero, data, tecnico: s(f[3]), metodo, laboratorio: s(f[5]), status: s(f[6]) ?? "RASCUNHO" };
+}
+
+export function parseOocitoColeta(linha) {
+  const f = linha.split(SEP);
+  const coletaIdeagriId = inteiroPositivo(f[0]);
+  const qualidade = textoObrigatorio(f[1]);
+  const quantidade = inteiroPositivo(f[3]);
+  if (coletaIdeagriId == null || !qualidade || quantidade == null) return null;
+  return { coletaIdeagriId, qualidade, viavel: f[2] === "1", quantidade };
+}
+
+export function parseFertilizacao(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const coletaIdeagriId = inteiroPositivo(f[1]);
+  const reprodutorIdeagriId = inteiroPositivo(f[2]);
+  if (ideagriId == null || coletaIdeagriId == null || reprodutorIdeagriId == null) return null;
+  return { ideagriId, coletaIdeagriId, reprodutorIdeagriId, tipoSemenSigla: s(f[3]), data: s(f[4]), tecnica: s(f[5]) };
+}
+
+export function parseEmbriaoColeta(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const fertilizacaoIdeagriId = inteiroPositivo(f[1]);
+  const classificacaoSigla = textoObrigatorio(f[2]);
+  if (ideagriId == null || fertilizacaoIdeagriId == null || !classificacaoSigla) return null;
+  return { ideagriId, fertilizacaoIdeagriId, classificacaoSigla, codigoInterno: s(f[3]), estagio: s(f[4]), viavel: f[5] === "1" };
+}
+
+export function parseGrupoPool(linha) {
+  const f = linha.split(SEP);
+  const ideagriId = inteiroPositivo(f[0]);
+  const nome = textoObrigatorio(f[1]);
+  if (ideagriId == null || !nome) return null;
+  return { ideagriId, nome };
+}
+
+export function parseItemGrupoPool(linha) {
+  const f = linha.split(SEP);
+  const grupoIdeagriId = inteiroPositivo(f[0]);
+  const doadoraNumero = textoObrigatorio(f[1]);
+  if (grupoIdeagriId == null || !doadoraNumero) return null;
+  return { grupoIdeagriId, doadoraNumero };
+}
+
 function main() {
   const dumpPath = process.argv[2];
   const geradoEm = process.argv[3] ?? "2026-06-17";
@@ -676,11 +740,19 @@ function main() {
   const combinacoesAcasalamento = [];
   const itensCombinacaoAcasalamento = [];
   const casosDouradosAcasalamento = [];
+  const embriaoClassificacoes = [];
+  const coletas = [];
+  const oocitosColeta = [];
+  const fertilizacoes = [];
+  const embrioesColeta = [];
+  const gruposPool = [];
+  const itensGrupoPool = [];
   const eventosInvalidos = [];
   const iatfInvalidos = [];
   const resultadosGinecologicosInvalidos = [];
   const geneticaInvalidos = [];
   const acasalamentoInvalidos = [];
+  const fivInvalidos = [];
 
   for (const l of linhas) {
     if (l.startsWith("@A@")) animais.push(parseAnimal(l.slice(3)));
@@ -778,6 +850,34 @@ function main() {
       const row = parseCasoDouradoAcasalamento(l.slice("@CASOACAS@".length));
       if (row) casosDouradosAcasalamento.push(row); else acasalamentoInvalidos.push(l);
     }
+    else if (l.startsWith("@EMBCLASS@")) {
+      const row = parseEmbriaoClassificacao(l.slice("@EMBCLASS@".length));
+      if (row) embriaoClassificacoes.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@COLETA@")) {
+      const row = parseColeta(l.slice("@COLETA@".length));
+      if (row) coletas.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@OOCITO@")) {
+      const row = parseOocitoColeta(l.slice("@OOCITO@".length));
+      if (row) oocitosColeta.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@FERTCOL@")) {
+      const row = parseFertilizacao(l.slice("@FERTCOL@".length));
+      if (row) fertilizacoes.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@EMBRIAO@")) {
+      const row = parseEmbriaoColeta(l.slice("@EMBRIAO@".length));
+      if (row) embrioesColeta.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@POOLGRP@")) {
+      const row = parseGrupoPool(l.slice("@POOLGRP@".length));
+      if (row) gruposPool.push(row); else fivInvalidos.push(l);
+    }
+    else if (l.startsWith("@POOLITEM@")) {
+      const row = parseItemGrupoPool(l.slice("@POOLITEM@".length));
+      if (row) itensGrupoPool.push(row); else fivInvalidos.push(l);
+    }
   }
 
   if (eventosInvalidos.length) {
@@ -810,6 +910,12 @@ function main() {
   if (acasalamentoInvalidos.length) {
     console.error(`ERRO: ${acasalamentoInvalidos.length} registros de acasalamento inválidos.`);
     console.error(JSON.stringify(acasalamentoInvalidos.slice(0, 5)));
+    process.exit(1);
+  }
+
+  if (fivInvalidos.length) {
+    console.error(`ERRO: ${fivInvalidos.length} registros de FIV/pool inválidos.`);
+    console.error(JSON.stringify(fivInvalidos.slice(0, 5)));
     process.exit(1);
   }
 
@@ -849,6 +955,13 @@ function main() {
     combinacoesAcasalamento,
     itensCombinacaoAcasalamento,
     casosDouradosAcasalamento,
+    embriaoClassificacoes,
+    coletas,
+    oocitosColeta,
+    fertilizacoes,
+    embrioesColeta,
+    gruposPool,
+    itensGrupoPool,
   };
   const dest = fileURLToPath(new URL("../server/prisma/rebanho_real.json", import.meta.url));
   writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
@@ -867,6 +980,7 @@ function main() {
   console.error(`  resultados ginecológicos=${resultadosGinecologicos.length}`);
   console.error(`  genética/sêmen: reprodutores=${reprodutoresGeneticos.length} indicadores=${indicadores.length} valoresIndicador=${valoresIndicador.length} marcadores=${marcadores.length} valoresMarcador=${valoresMarcador.length} caseínas=${caseinas.length} valoresCaseina=${valoresCaseina.length} tiposSemen=${tiposSemen.length} estoques=${estoquesSemen.length} pedigrees=${pedigrees.length}`);
   console.error(`  acasalamento: medidas=${medidasAcasalamento.length} itensMedida=${itensMedidaAcasalamento.length} combinações=${combinacoesAcasalamento.length} itensCombinacao=${itensCombinacaoAcasalamento.length} casosDourados=${casosDouradosAcasalamento.length}`);
+  console.error(`  FIV/pool: classificações=${embriaoClassificacoes.length} coletas=${coletas.length} oócitos=${oocitosColeta.length} fertilizações=${fertilizacoes.length} embriões=${embrioesColeta.length} grupos=${gruposPool.length} itensGrupo=${itensGrupoPool.length}`);
 }
 
 // roda main() só quando executado direto (não nos testes)

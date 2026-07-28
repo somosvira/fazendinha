@@ -22,6 +22,7 @@ import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodut
 import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
 import { importarGeneticaLegado, type DadosGeneticaLegado } from "../src/services/rebanho/import-genetica.js";
 import { importarAcasalamentoLegado, type DadosAcasalamentoLegado } from "../src/services/rebanho/import-acasalamento.js";
+import { importarFivLegado, type DadosFivLegado } from "../src/services/rebanho/import-fiv.js";
 import { semearResultadosGinecologicos, type ResultadoGinecologicoSeed } from "../src/services/rebanho/exame-ginecologico.js";
 
 const prisma = new PrismaClient();
@@ -121,7 +122,7 @@ interface LactacaoJson {
   producao305: number | null;
   duracaoDias: number | null;
 }
-interface RebanhoJson extends DadosIatfLegado, DadosGeneticaLegado, DadosAcasalamentoLegado {
+interface RebanhoJson extends DadosIatfLegado, DadosGeneticaLegado, DadosAcasalamentoLegado, DadosFivLegado {
   geradoEm: string;
   animais: AnimalJson[];
   controles: ControleJson[];
@@ -383,6 +384,19 @@ async function main() {
       `Acasalamento importado: ${acasalamento.medidas} medidas, ${acasalamento.itensMedida} itens de medida, `
       + `${acasalamento.combinacoes} combinações, ${acasalamento.itensCombinacao} itens de combinação, `
       + `${acasalamento.casosDourados} casos dourados no JSON.`,
+    );
+  }
+
+  const temBlocoFiv = [
+    dados.embriaoClassificacoes, dados.coletas, dados.oocitosColeta, dados.fertilizacoes,
+    dados.embrioesColeta, dados.gruposPool, dados.itensGrupoPool,
+  ].some((bloco) => bloco != null);
+  if (temBlocoFiv) {
+    const fiv = await importarFivLegado(prisma, dados);
+    console.log(
+      `FIV/pool importados: ${fiv.classificacoes} classificações, ${fiv.coletas} coletas, ${fiv.oocitos} oócitos, `
+      + `${fiv.fertilizacoes} fertilizações, ${fiv.embrioes} embriões (${fiv.embrioesReconciliados} reconciliados com TE), `
+      + `${fiv.grupos} grupos de pool, ${fiv.itens} itens de pool.`,
     );
   }
 

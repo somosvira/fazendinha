@@ -46,6 +46,12 @@ describe("render smoke", () => {
     expect(html).toContain("Custo");
   });
 
+  it("RebanhoContent renders the FIV/TE tab shell", () => {
+    const html = renderToString(h(RebanhoContent, { aba: "fiv" }));
+    expect(html).toContain("Coletas");
+    expect(html).toContain("Pool de doadoras");
+  });
+
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
     const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
