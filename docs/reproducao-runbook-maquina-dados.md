@@ -52,8 +52,8 @@ Compare o que entrou no app com o baseline levantado no IDEAGRI. **Você cola o 
 
 | Bloco | Fonte | Baseline |
 |---|---|---:|
-| A | `PROTOCOLOIATF` / `PROTOCOLOIATFPRINCIPIOATIVO` / `PROGRAMACAOIATF` / `PROGRAMACAOIATFASSOCIACAO` | 5 / 31 / 74 / 466 |
-| A | `REPRODUCAO` por tipo (IA / cobertura / TE / DG / parto) | 832 / 61 / 146 / 1843 / 352 |
+| A | `PROTOCOLOIATF` / `PROTOCOLOIATFPRINCIPIOATIVO` / `PROGRAMACAOIATF` / `PROGRAMACAOIATFASSOCIACAO` | 5 / 31 / 75 / 469 |
+| A | `REPRODUCAO` por tipo (IA / cobertura / TE / DG / parto) | 837 / 61 / 146 / 1843 / 353 |
 | B | `RESULTADOEXAMEGINECOLOGICO` / `EXAMEANIMAL` | 44 / 248 |
 | C | `ANIMALINFO_REPRODUTOR` / `GENCATALOGOINDICADOR` / `GENCATALOGOMARCADOR` / `GENCATALOGOCASEINA` / `TIPOSEMEN` | 67 / 271 / 20 / 15 / 3 |
 | E | `COLETA` / `EMBRIAOCLASSIFICACAO` / `GRUPOPOOLDOADORA` | 7 / 6 / 0 (vazio) |
@@ -64,9 +64,11 @@ Além das contagens, C tem **valores por touro** (indicadores, marcadores, case�
 
 O relatório usa o cálculo puro `reconciliarContagens(observado, baseline)`:
 
-1. `observado` = `contarEventosPorTipo(propriedadeId)` (contagem por tipo de `EventoReprodutivo` no app).
-2. `baseline` = as contagens por tipo levantadas no IDEAGRI (ex.: `{ INSEMINACAO: 832, COBERTURA: 61, TRANSFERENCIA_EMBRIAO: 146, DIAGNOSTICO: 1843, PARTO: 352 }`).
+1. `observado` = contagem por tipo de `EventoReprodutivo` restrita a `ideagriId IS NOT NULL` (idealmente, aos IDs presentes no JSON corrente). Não use a contagem global: ela pode incluir lançamentos manuais; o filtro por propriedade também não substitui o filtro de origem.
+2. `baseline` = as contagens por tipo levantadas no IDEAGRI (ex.: `{ INSEMINACAO: 837, COBERTURA: 61, TRANSFERENCIA_EMBRIAO: 146, DIAGNOSTICO: 1843, PARTO: 353 }`).
 3. `reconciliarContagens(observado, baseline)` lista as divergências (`observado - baseline`); qualquer linha com `divergencia !== 0` sem explicação **reprova** — regenere o dump/import antes de aprovar.
+
+O script operacional `server/scripts/reconciliar-ideagri.mts` aplica esse escopo de origem tanto aos eventos quanto aos catálogos que possuem `ideagriId`.
 
 ### 3.3 Gate dos casos dourados do acasalamento (Bloco D)
 
@@ -93,11 +95,22 @@ Suba o app (`pnpm dev`) e valide, em Rebanho:
 
 - **Receber coletas / Receber dados IATF:** N/A arquitetural. A sincronização desktop→cloud não é replicada; o equivalente web é o import idempotente (passos 1–2) + o lançamento/execução na tela, já entregues.
 
+## 6. Estado apurado no backup de 2026-07-28 — lacunas A→F
+
+- **A — IATF/TETF:** dump, JSON e banco reconciliam 5 protocolos, 31 princípios, 75 programações e 469 associações, sem divergência.
+- **B — ciclo reprodutivo:** os eventos de origem reconciliam sem divergência: 837 IA, 61 coberturas, 146 TE, 1.843 DG e 353 partos. O dicionário ginecológico tem 44 resultados; faltam extrair/reconciliar os 248 exames e os dicionários de parto/auxílio.
+- **C — genética/sêmen:** fonte e banco reconciliam 67 reprodutores e catálogos de 271 indicadores, 20 marcadores, 15 caseínas e 3 tipos de sêmen. `GENPROVA`, valores, pedigree e estoque estão vazios nesta base.
+- **D — acasalamento:** `ESQUEMAMEDIDA`, itens, medidas combinadas e recomendações estão vazios; não há casos dourados reais extraíveis. Reconciliação de dados reais é `N/A`; motor e fluxo web permanecem cobertos por fixture/testes.
+- **E — FIV/TE:** fonte e banco reconciliam 6 classificações, 7 coletas e 7 buckets de oócitos. Os 171 embriões não têm classificação/estágio preenchido; fertilizações e pools estão vazios.
+- **F — relatório/aceite:** cálculo, testes, API e reconciliação dos eventos de origem estão verdes. O aceite visual por operador/veterinário continua pendente.
+
+> Estado importado em 2026-07-28: 644 animais — os 638 do rebanho mais 6 doadoras externas referenciadas pelas coletas —, 3.240 eventos e todos os catálogos A/C/E comprovados. Duas execuções completas convergiram após corrigir a limpeza das coletas e o escopo da propriedade; a reconciliação final não possui divergências.
+
 ## Checklist final de "100%"
 
-- [ ] Contagens da §3.1 conferidas sem divergência não explicada.
-- [ ] `reconciliarContagens` (§3.2) sem divergência residual.
-- [ ] Casos dourados reais (§3.3) verdes.
-- [ ] Valores por touro (C) e estágios de embrião (E) conferidos.
-- [ ] Smoke dos fluxos (§4) aprovado pelo operador/veterinário.
-- [ ] Matriz do contrato ([`design/reproducao-paridade-ideagri.md`](design/reproducao-paridade-ideagri.md)) atualizada para `✅`/`N/A`.
+- [x] Contagens disponíveis da §3.1 conferidas sem divergência não explicada.
+- [x] `reconciliarContagens` (§3.2) sem divergência residual.
+- [x] Casos dourados reais (§3.3): `N/A` — fonte sem motor/casos persistidos; fixture sintética verde.
+- [x] Valores por touro (C) e estágios de embrião (E): conferidos vazios na fonte; catálogos/coletas reconciliados.
+- [ ] Smoke visual dos fluxos (§4) aprovado pelo operador/veterinário. Smoke autenticado de API aprovado.
+- [ ] Matriz do contrato ([`design/reproducao-paridade-ideagri.md`](design/reproducao-paridade-ideagri.md)) integralmente em `✅`/`N/A` — aguarda somente aceite visual onde aplicável.

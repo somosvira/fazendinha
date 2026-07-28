@@ -80,7 +80,7 @@ Funções customizadas da fazenda 777 também existem para biblioteca de reprodu
 4. Diagnóstico reprodutivo
 7. Parto
 
-**Defeito atual bloqueante:** `scripts/build-rebanho-json.mjs` transforma 1/2/3 em `INSEMINACAO`. A reconciliação não pode ser aprovada antes de separar os três fatos e rejeitar códigos desconhecidos.
+**Parser corrigido:** `scripts/build-rebanho-json.mjs` preserva 1/2/3 como IA/cobertura/TE e rejeita códigos desconhecidos. No backup de 2026-07-28, o JSON e os eventos de origem no banco reconciliam em 837/61/146; permanece pendente concluir os demais blocos do import e o aceite operacional.
 
 ### IATF/TETF
 
@@ -110,18 +110,19 @@ Cada fatia só muda para `✅` quando possui todos os itens:
 |---|---|---|---|---|---|---|
 | Escopo multi-propriedade | N/A | herda via animal | queries/mutações isoladas | header já existe | teste 2 propriedades | Em execução |
 | Worklists/KPIs/DTO | N/A | sem mudança necessária | chaves/regras únicas | tabela coerente | unit + route/client | Em execução |
-| IA × cobrição × TE histórico | pendente | pendente | pendente | pendente | 832/61/146 reconciliados | ⬜ |
-| Aptidão de novilhas | pendente | pendente | pendente | pendente | lista IDEAGRI × app | ⬜ |
-| DG/exame ginecológico | pendente | pendente | pendente | pendente | 248 exames + 44 resultados | ⬜ |
-| Parto/auxílio/crias/perdas | pendente | pendente | pendente | pendente | 352 partos por tipo | ⬜ |
-| Protocolo/programação IATF/TETF | pendente | parcial | parcial | parcial | 74/466 + 5/31 reconciliados | 🟡 |
-| Execução/sincronização IATF | pendente | pendente | pendente | pendente | fluxo IDEAGRI lado a lado | ⬜ |
-| Reprodutor/sêmen/genética | pendente | parcial | parcial | parcial | 67/25 + catálogos genéticos | 🟡 |
-| Medidas/recomendação de acasalamento | pendente | parcial | parcial | parcial | casos dourados do IDEAGRI | 🟡 |
-| Coleta FIV/TE e embriões | pendente | pendente | pendente | pendente | 7 coletas + estágios | ⬜ |
-| Pool de doadoras | pendente | pendente | pendente | pendente | fluxo com fixture (777 vazio) | ⬜ |
+| IA × cobrição × TE histórico | JSON real gerado | entregue | entregue | entregue | eventos de origem 837/61/146 sem divergência; aceite visual pendente | 🟡 |
+| Aptidão de novilhas | ausente na fonte extraída | entregue | entregue | entregue | lista/histórico IDEAGRI não extraídos | 🟡 |
+| DG/exame ginecológico | parcial | entregue | entregue | entregue | 1.843 DG + 44 resultados; faltam 248 exames | 🟡 |
+| Parto/auxílio/crias/perdas | parcial | entregue | entregue | entregue | 353 partos; faltam dicionários e conferência de crias/perdas | 🟡 |
+| Protocolo/programação IATF/TETF | JSON 5/31/75/469 | entregue | entregue | entregue | banco reconciliado em 5/31/75/469; API verde | ✅ |
+| Execução IATF/TETF | carga completa | entregue | entregue | entregue | testes e API verdes; aceite visual pendente | 🟡 |
+| Receber dados IATF/mobile | N/A | N/A | N/A | N/A | equivalente web = import idempotente + execução IATF/TETF | N/A |
+| Reprodutor/sêmen/genética | catálogos no JSON | entregue | entregue | entregue | banco reconciliado em 67/271/20/15/3; valores/pedigree/estoque vazios na fonte | ✅ |
+| Medidas/recomendação de acasalamento | N/A (fonte vazia) | entregue | entregue | entregue | sem casos dourados reais; motor coberto por fixture; aceite visual pendente | 🟡 |
+| Coleta FIV/TE e embriões | parcial no JSON | entregue | entregue | entregue | banco reconciliado em 7 coletas + 6 classificações + 7 buckets; estágios vazios na fonte | ✅ |
+| Pool de doadoras | N/A (fonte 777 vazia) | entregue | entregue | entregue | fluxo coberto por fixture; aceite visual pendente | 🟡 |
 | Receber coletas/mobile | N/A | N/A | N/A | N/A | equivalente web = import idempotente + lançamento/execução | N/A |
-| Relatórios reprodutivos/IATF | conforme fonte | reusa EventoReprodutivo | relatório por período + método (IA/MN/TE) + reconciliação de contagens | seção no ReproducaoTab | por método entregue; cortes IATF avançados (estímulo/CIDR/ordem) dependem de A/D em main | 🟡 |
+| Relatórios reprodutivos/IATF | conforme fonte | reusa EventoReprodutivo | relatório por período + método (IA/MN/TE) + reconciliação de contagens | seção no ReproducaoTab | eventos de origem reconciliados; navegador, escopo e aceite pendentes | 🟡 |
 
 ## Gate para declarar “100%”
 

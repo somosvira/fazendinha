@@ -141,10 +141,12 @@ async function main() {
   console.log(`Lendo rebanho real (geradoEm ${dados.geradoEm}): ${dados.animais.length} animais, ${dados.controles.length} controles.`);
 
   // --- Limpa o rebanho atual (cascatas cuidam dos filhos de Animal) ---------
+  // Coleta restringe a exclusão da doadora; removê-la primeiro (filhos em cascata).
   // ProducaoLote é dado de tanque (não ligado a Animal) → limpar à parte.
   // NÃO tocamos em Produto / MovimentoEstoque / Lancamento / Dieta.
   // NÃO deletamos Grupo (referenciado por MovimentoEstoque.grupoId) — só upsert por nome.
   console.log("Limpando rebanho de demonstração...");
+  await prisma.coleta.deleteMany({});
   await prisma.producaoLote.deleteMany({});
   await prisma.animal.deleteMany({}); // cascade → controleLeiteiro/eventos/lactacao/resumo
 
@@ -185,6 +187,10 @@ async function main() {
   // --- Animais (createMany) -------------------------------------------------
   // Se a string crua não bate exato com o nome de uma raça pura, ela é um grau de sangue ("5/8 GL, HO")
   // e vai pro campo grauSangue. Caso contrário (ex.: "Holandês"), grauSangue fica null.
+  const propriedade =
+    (await prisma.propriedade.findFirst({ where: { principal: true }, orderBy: { id: "asc" }, select: { id: true } }))
+    ?? (await prisma.propriedade.findFirst({ orderBy: { id: "asc" }, select: { id: true } }));
+  if (!propriedade) throw new Error("nenhuma propriedade cadastrada");
   const animaisRows = dados.animais.map((a) => ({
     numero: a.numero,
     nome: a.nome ?? null,
@@ -193,6 +199,7 @@ async function main() {
     racaId: a.raca ? racaId.get(a.raca) ?? null : null,
     grauSangue: a.raca && !idPorNome.has(a.raca) ? a.raca : null,
     grupoId: a.grupo ? grupoId.get(a.grupo)! : null,
+    propriedadeId: propriedade.id,
     setor: a.setor ?? null,
     dataNascimento: d(a.dataNascimento),
     // dataEntrada é obrigatória: fallback nascimento → geradoEm
