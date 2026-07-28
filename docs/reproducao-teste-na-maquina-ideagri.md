@@ -135,9 +135,34 @@ ACASALAMENTO_CASOS_DOURADOS_PATH=server/prisma/rebanho_real.json pnpm --filter r
 
 A fixture sintética continua sendo o default em qualquer máquina. Quando a env acima é informada, caminho ausente, JSON inválido ou `casosDouradosAcasalamento` ausente/vazio fazem o teste falhar — nunca há fallback silencioso. Só declarar a paridade concluída depois que **todos** os casos reais reproduzirem ranking e status no motor.
 
+## 8. Reconciliação pendente de FIV/TE e pool de doadoras (Bloco E)
+
+**Não houve reconciliação real do Bloco E neste ambiente.** A fonte `DADOS777.FDB` não existe nesta máquina; as quantidades abaixo são o baseline a conferir, não contagens observadas.
+
+O import consome sete prefixos do contrato intermediário (delimitador `~|~`):
+
+| Prefixo | Origem IDEAGRI | Campos |
+|---|---|---|
+| `@EMBCLASS@` | `EMBRIAOCLASSIFICACAO` (6) | ideagriId · sigla · nome · ordem |
+| `@COLETA@` | `COLETA` (7) | ideagriId · doadoraNumero · data · tecnico · metodo · laboratorio · status |
+| `@OOCITO@` | oócitos por coleta | coletaIdeagriId · qualidade · viavel(0\|1) · quantidade |
+| `@FERTCOL@` | fertilização por reprodutor | ideagriId · coletaIdeagriId · reprodutorIdeagriId · tipoSemenSigla · data · tecnica |
+| `@EMBRIAO@` | embriões da coleta | ideagriId · fertilizacaoIdeagriId · classificacaoSigla · codigoInterno · estagio · viavel(0\|1) |
+| `@POOLGRP@` | `GRUPOPOOLDOADORA` (vazio na 777) | ideagriId · nome |
+| `@POOLITEM@` | itens do grupo | grupoIdeagriId · doadoraNumero |
+
+| Fonte | Baseline pendente | Inclui |
+|---|---:|---|
+| `COLETA` | **7** | coletas + estágios de embrião por coleta |
+| `EMBRIAOCLASSIFICACAO` | **6** | dicionário oficial de classificação |
+| `GRUPOPOOLDOADORA` | **0 (vazio)** | validado por fixture sintética, sem seed inventado |
+
+O import é **fail-closed**: linha inválida aborta `main()`; doadora/reprodutor/coleta/fertilização/classificação ausente aborta `importarFivLegado`. Ao importar, cada `@EMBRIAO@` cujo `ideagriId` case com o `ideagriEmbriaoId` de uma TE existente vincula `EventoReprodutivo.embriaoColetaId` e marca o embrião `TRANSFERIDO`; múltiplos eventos para a mesma origem **abortam** (origem ambígua). Até a reextração, a biblioteca FIV opera só com o que o usuário cadastrar no Fazendinha.
+
 ## Pendências dos próximos blocos
 
 - **Bloco B** (aptidão, dicionário ginecológico de 44 resultados, parto→cria): **ENTREGUE** (commits `007633d`→`a9944ee`). Operando com o conjunto-semente de 9 resultados ginecológicos (códigos negativos) até a reextração. **Pendente na máquina:** reconciliar `RESULTADOEXAMEGINECOLOGICO` (44) e `EXAMEANIMAL` (248) a partir do `DADOS777.FDB` — adicionar o contrato `@RESULTGINE@` ao dump, rodar `build-rebanho-json` + `import:rebanho` e conferir que os códigos oficiais positivos substituem os seeds na listagem.
 - **Bloco C** (sêmen/genética): operação entregue; a reconciliação real permanece pendente nos termos da seção 6.
 - **Bloco D** (acasalamento dirigido): operação e gate sintético entregues; contrato físico, catálogo e casos dourados reais permanecem pendentes conforme seção 7.
-- **Blocos E–F** (FIV/TE, relatórios/aceite): descritos na especificação; entram em PRs próprios.
+- **Bloco E** (FIV/TE, pool de doadoras): operação entregue; a reconciliação real (7 coletas + estágios + 6 classificações) permanece pendente nos termos da seção 8.
+- **Bloco F** (relatórios reprodutivos, reconciliação e aceite): descrito na especificação; entra em PR próprio.
