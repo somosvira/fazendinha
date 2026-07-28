@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO } from "../api";
-import { camposExameGinecologico, camposInseminacao, camposParto } from "./EventoForm.payload";
+import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
+import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
@@ -80,6 +80,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>(() => tipoInicial?.dominio === "sanidade" ? tipoInicial.tipo : "EXAME");
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]); // catálogo p/ escolher a doadora na TE
+  const [embrioes, setEmbrioes] = useState<EmbriaoDisponivelDTO[]>([]); // estoque FIV disponível p/ TE
   const [reprodutores, setReprodutores] = useState<ReprodutorDTO[]>([]);
   const [carregandoReprodutores, setCarregandoReprodutores] = useState(false);
   const [estoquesSemen, setEstoquesSemen] = useState<EstoqueSemenDTO[]>([]);
@@ -92,7 +93,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     protocolo: PROTOCOLOS[0], protocoloOutro: "",
     deteccaoCio: DETECCAO_CIO[0],
     // Transferência de embrião (TE): doadora da genética + touro/sêmen do embrião.
-    doadoraId: "", semenTE: "",
+    doadoraId: "", semenTE: "", embriaoColetaId: "",
     resultado: "positivo", dtPartoPrevista: "",
     numCrias: "1", criasVivas: "1", criasNatimortas: "0", sexoCria: "F", tipoParto: "1", auxilioParto: "1",
     criaAcao: "nenhuma", criaNumero: "", criaId: "",
@@ -161,6 +162,12 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
       listarAnimais({ status: "ATIVO" }).then(setAnimais).catch(() => {});
     }
   }, [tipo, f.criaAcao, animais.length]);
+  // Estoque de embriões FIV disponível — só busca ao entrar na TE.
+  useEffect(() => {
+    if (tipo === "TRANSFERENCIA_EMBRIAO" && embrioes.length === 0) {
+      listarEmbrioesDisponiveis().then(setEmbrioes).catch(() => {});
+    }
+  }, [tipo, embrioes.length]);
   const resultadosGinecologicos = useResultadosGinecologicos(tipo === "EXAME_GINECOLOGICO");
 
   // Espécie da fêmea — filtra raças do reprodutor pra mesma espécie.
@@ -207,10 +214,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
         }
         if (tipo === "TRANSFERENCIA_EMBRIAO") {
-          if (f.doadoraId) p.doadoraId = Number(f.doadoraId);
-          if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
           const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
-          p.protocolo = proto || undefined;
+          Object.assign(p, camposTransferenciaEmbriao({ embriaoColetaId: f.embriaoColetaId, doadoraId: f.doadoraId, semenTE: f.semenTE, protocolo: proto }));
         }
         if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
         if (tipo === "PARTO") Object.assign(p, camposParto(f));
@@ -398,19 +403,34 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           {tipo === "COBERTURA" && (
             <RebField label="Touro (opcional)"><input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Touro do pasto" /></RebField>
           )}
-          {tipo === "TRANSFERENCIA_EMBRIAO" && <>
+          {tipo === "TRANSFERENCIA_EMBRIAO" && (() => {
+            const usaEstoque = !!f.embriaoColetaId;
+            return <>
             <p style={{ margin: "-4px 0 8px", fontSize: 12, opacity: 0.75 }}>
               A receptora (este animal) carrega o embrião; a genética do bezerro vem da <b>doadora</b>.
             </p>
+            {embrioes.length > 0 && (
+              <RebField label="Embrião do estoque (FIV/TE)">
+                <select className="rb-field-select" value={f.embriaoColetaId} onChange={(e) => set("embriaoColetaId", e.target.value)}>
+                  <option value="">— usar doadora/touro manualmente —</option>
+                  {embrioes.map((emb) => (
+                    <option key={emb.id} value={emb.id}>
+                      {`doadora ${emb.fertilizacao.coleta.doadora.nome ?? emb.fertilizacao.coleta.doadora.numero} · touro ${emb.fertilizacao.reprodutor.nome}${emb.classificacao ? ` · ${emb.classificacao.sigla}` : ""}`}
+                    </option>
+                  ))}
+                </select>
+              </RebField>
+            )}
+            {usaEstoque && <p style={{ margin: "-4px 0 8px", fontSize: 12, color: "var(--leite)" }}>Doadora e touro vêm do embrião selecionado.</p>}
             <RebField label="Doadora (genética)">
-              <select className="rb-field-select" value={f.doadoraId} onChange={(e) => set("doadoraId", e.target.value)}>
+              <select className="rb-field-select" value={f.doadoraId} disabled={usaEstoque} onChange={(e) => set("doadoraId", e.target.value)}>
                 <option value="">— selecionar —</option>
                 {animais.filter((a) => a.id !== animalId).map((a) => (
                   <option key={a.id} value={a.id}>{rotuloAnimal(a.numero, a.nome)}</option>
                 ))}
               </select>
             </RebField>
-            <RebField label="Touro / sêmen do embrião"><input value={f.semenTE} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></RebField>
+            <RebField label="Touro / sêmen do embrião"><input value={f.semenTE} disabled={usaEstoque} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></RebField>
             <RebField label="Protocolo">
               <RebSelect value={f.protocolo} onChange={(v) => set("protocolo", v)}>
                 {PROTOCOLOS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -420,7 +440,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             {f.protocolo === "Outro" && (
               <RebField label="Descrever protocolo"><input value={f.protocoloOutro} onChange={(e) => set("protocoloOutro", e.target.value)} placeholder="ex.: sincronização de receptoras" /></RebField>
             )}
-          </>}
+          </>;
+          })()}
           {tipo === "DIAGNOSTICO" && <>
             <RebField label="Resultado"><select className="rb-field-select" value={f.resultado} onChange={(e) => set("resultado", e.target.value)}><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></RebField>
             <RebField label="Parto previsto"><input type="date" value={f.dtPartoPrevista} onChange={(e) => set("dtPartoPrevista", e.target.value)} /></RebField>

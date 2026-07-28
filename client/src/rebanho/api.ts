@@ -111,6 +111,7 @@ export interface EventoPayload {
   sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
   criarCria?: boolean; criaNumero?: string; criaId?: number;
   doadoraId?: number; // TE: animal doador da genética
+  embriaoColetaId?: number; // TE: embrião interno do estoque FIV (deriva doadora/touro)
   resultadoGinecologicoId?: number;
   metodo?: string; // exame ginecológico: palpação/US
   pesoKg?: number; // desmame: peso opcional ao desmame

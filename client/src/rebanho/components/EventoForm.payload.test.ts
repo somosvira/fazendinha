@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { camposExameGinecologico, camposInseminacao, camposParto } from "./EventoForm.payload";
+import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
+
+describe("camposTransferenciaEmbriao", () => {
+  it("envia embriaoColetaId e omite doadora/touro quando um embrião é escolhido", () => {
+    expect(camposTransferenciaEmbriao({ embriaoColetaId: "70", doadoraId: "44", semenTE: "Touro X", protocolo: "P36" }))
+      .toEqual({ protocolo: "P36", embriaoColetaId: 70 });
+  });
+  it("cai no fluxo manual (doadora/touro) quando não há embrião", () => {
+    expect(camposTransferenciaEmbriao({ embriaoColetaId: "", doadoraId: "44", semenTE: " Touro X ", protocolo: "P36" }))
+      .toEqual({ protocolo: "P36", doadoraId: 44, reprodutor: "Touro X" });
+  });
+  it("omite doadora e touro vazios no fluxo manual", () => {
+    expect(camposTransferenciaEmbriao({ embriaoColetaId: "", doadoraId: "", semenTE: "  ", protocolo: undefined }))
+      .toEqual({ protocolo: undefined });
+  });
+});
 
 describe("camposInseminacao", () => {
   it("inclui o lote selecionado como número", () => {
