@@ -37,7 +37,7 @@ const criarEventoBase = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("COBERTURA"), ...comum, reprodutor: z.string().max(60).optional() }),
   // TE: embrião numa receptora. `doadoraId` = animal doador da genética (opcional);
   // `reprodutor` = touro/sêmen do embrião (opcional); `protocolo` = sincronização.
-  z.object({ tipo: z.literal("TRANSFERENCIA_EMBRIAO"), ...comum, doadoraId: z.number().int().positive().optional(), reprodutor: z.string().max(60).optional(), protocolo: z.string().max(40).optional() }),
+  z.object({ tipo: z.literal("TRANSFERENCIA_EMBRIAO"), ...comum, doadoraId: z.number().int().positive().optional(), reprodutor: z.string().max(60).optional(), protocolo: z.string().max(40).optional(), embriaoColetaId: z.number().int().positive().optional() }),
   z.object({ tipo: z.literal("DIAGNOSTICO"), ...comum, resultado: z.enum(["positivo", "negativo"]), dtPartoPrevista: isoDate.optional() }),
   partoObject,
   z.object({ tipo: z.literal("SECAGEM"), ...comum, motivoSecagem: z.string().max(40).optional() }),
