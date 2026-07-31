@@ -31,7 +31,7 @@ A primeira propriedade rodando o produto é a **Fazenda Rio Novo**, que migrou s
 |---|---|
 | **Financeiro** | DRE em regime de caixa, fluxo de 23 meses, top categorias, projeção de saldo, importação de notas fiscais por OCR e WhatsApp, reclassificação custeio/investimento. |
 | **Rebanho** | Cadastro de animais (bovinos e caprinos), genealogia, ficha individual, painel executivo, baixa, busca e filtros. |
-| **Reprodução** | Ciclos, IATF, diagnósticos, partos, secagem, IEP projetado, worklists de "a inseminar" e "DG pendente". |
+| **Reprodução** | Ciclos, IATF, diagnósticos, partos, secagem, IEP projetado, worklists e relatórios configuráveis por período, lote, setor e categoria, com PDF/CSV. |
 | **Sanidade** | CCS e tendência, mastite por quarto, aplicações com carência, vacinas, exames laboratoriais. |
 | **Produção** | Três modos: ordenha individual, total diário, tanque/lote. Curva de lactação, projeção 305d, ranking. |
 | **Nutrição** | Dietas (PB%, ED Mcal/kg), atribuição por lote, integração com consumo de estoque. |

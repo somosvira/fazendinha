@@ -41,6 +41,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "reb-carteira": <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
   "reb-sugestoes": <><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></>,
   "reb-fiv": <><path d="M9 2h6"/><path d="M10 2v6.3a2 2 0 0 1-.4 1.2L5 16a2 2 0 0 0 1.6 3.2h10.8A2 2 0 0 0 19 16l-4.6-6.5a2 2 0 0 1-.4-1.2V2"/><path d="M7.5 14h9"/></>,
+  "reb-relatorios": <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></>,
   // — Plantio — ícones simbólicos para cada sub-aba.
   "pla-dashboard": <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
   "pla-talhao": <><path d="M3 12h18M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/></>,
@@ -92,6 +93,7 @@ const MODULOS: Modulo[] = [
       { id: "reb-reproducao", label: "Reprodução" },
       { id: "reb-acasalamento", label: "Acasalamento" },
       { id: "reb-fiv", label: "FIV / TE" },
+      { id: "reb-relatorios", label: "Relatórios" },
       { id: "reb-sanidade", label: "Sanidade" },
       { id: "reb-nutricao", label: "Nutrição" },
       { id: "reb-producao", label: "Produção" },

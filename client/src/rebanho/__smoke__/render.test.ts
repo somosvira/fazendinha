@@ -21,6 +21,7 @@ import { NutricaoTab } from "../components/NutricaoTab";
 import { ConsumoLoteDrawer } from "../components/ConsumoLoteDrawer";
 import { AcasalamentoPlanosTab } from "../components/AcasalamentoPlanosTab";
 import { RelatorioReproducaoSection } from "../components/RelatorioReproducaoSection";
+import { RelatoriosTab } from "../components/RelatoriosTab";
 
 describe("render smoke", () => {
   it("AppSidebar renders both groups", () => {
@@ -57,6 +58,18 @@ describe("render smoke", () => {
     const html = renderToString(h(RelatorioReproducaoSection));
     expect(html).toContain("Relatório reprodutivo");
     expect(html).toContain("Aplicar período");
+  });
+
+  it("RelatoriosTab renders the guided report builder", () => {
+    const html = renderToString(h(RelatoriosTab, { onAbrirFicha: () => {}, onRegistrar: () => {} }));
+    expect(html).toContain("Relatórios");
+    expect(html).toContain("Modelo de relatório");
+    expect(html).toContain("Gerar relatório");
+  });
+
+  it("RebanhoContent renders the reports branch", () => {
+    const html = renderToString(h(RebanhoContent, { aba: "relatorios" }));
+    expect(html).toContain("Modelo de relatório");
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {

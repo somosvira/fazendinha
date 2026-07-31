@@ -839,6 +839,25 @@ body.no-scroll { overflow: hidden; }
   }
 }
 
+/* Relatórios exportados: documento administrativo em preto e branco. A classe
+   também é usada pela cópia isolada entregue ao html2pdf. */
+.relatorio-export-pdf,
+.relatorio-export-pdf * {
+  color: #000 !important;
+  background-color: #fff !important;
+  border-color: #777 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.relatorio-export-pdf [data-export-ignore] { display: none !important; }
+.relatorio-export-pdf .relatorio-export-table { table-layout: auto !important; width: 100% !important; }
+.relatorio-export-pdf .relatorio-animal { min-width: 44mm !important; width: 26% !important; }
+.relatorio-export-pdf .relatorio-animal button,
+.relatorio-export-pdf .relatorio-animal span { overflow: visible !important; text-overflow: clip !important; }
+.relatorio-export-pdf .relatorio-animal span { white-space: normal !important; overflow-wrap: anywhere !important; }
+.relatorio-export-pdf th,
+.relatorio-export-pdf td { padding: 7px 8px !important; }
+
 @media print {
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
   .toast-viewport,
