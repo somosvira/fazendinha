@@ -1,0 +1,201 @@
+import type { Prisma } from "@prisma/client";
+import { prisma } from "../../db.js";
+import {
+  extrairCelulas,
+  obterTemplateRelatorio,
+  type AcaoTemplateRelatorio,
+  type GranularidadeRelatorio,
+  type TipoColunaRelatorio,
+  type ValorCelulaRelatorio,
+} from "./relatorios.catalogo.js";
+import type { RelatorioQuery } from "./relatorios.schemas.js";
+import { getNumero } from "./parametros.js";
+
+const LIMITE = 2000;
+const GESTACAO_DIAS_PADRAO = 283;
+const MS_DIA = 86_400_000;
+const dataUtc = (iso: string) => new Date(`${iso}T00:00:00Z`);
+const iso = (data?: Date | null) => data ? new Date(data).toISOString().slice(0, 10) : null;
+const somarDias = (data: Date, dias: number) => new Date(data.getTime() + dias * MS_DIA);
+
+export interface ColunaRelatorioDTO {
+  chave: string;
+  rotulo: string;
+  tipo: TipoColunaRelatorio;
+}
+
+export interface LinhaRelatorioDTO {
+  animalId: number;
+  numero: string;
+  nome: string | null;
+  categoria: string;
+  grupo: string | null;
+  setor: string | null;
+  eventoId: number | null;
+  data: string | null;
+  celulas: ValorCelulaRelatorio[];
+}
+
+export interface ResultadoRelatorioDTO {
+  templateId: string;
+  titulo: string;
+  descricao: string;
+  granularidade: GranularidadeRelatorio;
+  colunas: ColunaRelatorioDTO[];
+  acao: AcaoTemplateRelatorio | null;
+  linhas: LinhaRelatorioDTO[];
+  total: number;
+  truncado: boolean;
+  meta: {
+    geradoEm: string;
+    periodo: { inicio: string | null; fim: string | null };
+    propriedadeId: number | null;
+  };
+}
+
+function filtroAnimal(query: RelatorioQuery, propriedadeId: number | null) {
+  return {
+    ...(propriedadeId != null ? { propriedadeId } : {}),
+    ...(query.status !== "TODOS" ? { status: query.status } : {}),
+    ...(query.grupoId != null ? { grupoId: query.grupoId } : {}),
+    ...(query.setor ? { setor: query.setor } : {}),
+    ...(query.categoria ? { categoria: query.categoria } : {}),
+  };
+}
+
+function baseResultado(query: RelatorioQuery, propriedadeId: number | null, total: number, linhas: LinhaRelatorioDTO[]): ResultadoRelatorioDTO {
+  const template = obterTemplateRelatorio(query.templateId);
+  return {
+    templateId: template.id,
+    titulo: template.titulo,
+    descricao: template.descricao,
+    granularidade: template.granularidade,
+    colunas: template.colunas.map(({ chave, rotulo, tipo }) => ({ chave, rotulo, tipo })),
+    acao: template.acao,
+    linhas,
+    total,
+    truncado: total > LIMITE,
+    meta: {
+      geradoEm: new Date().toISOString(),
+      periodo: { inicio: query.dataInicio ?? null, fim: query.dataFim ?? null },
+      propriedadeId,
+    },
+  };
+}
+
+async function gerarPorEvento(query: RelatorioQuery, propriedadeId: number | null): Promise<ResultadoRelatorioDTO> {
+  const template = obterTemplateRelatorio(query.templateId);
+  const where: Prisma.EventoReprodutivoWhereInput = {
+    tipo: template.tipoEvento,
+    data: { gte: dataUtc(query.dataInicio!), lte: dataUtc(query.dataFim!) },
+    ...(query.reprodutor ? { reprodutor: { contains: query.reprodutor, mode: "insensitive" } } : {}),
+    ...(query.protocolo ? { protocolo: { contains: query.protocolo, mode: "insensitive" } } : {}),
+    ...(query.resultado ? { resultado: query.resultado } : {}),
+    animal: filtroAnimal(query, propriedadeId),
+  };
+  const [total, eventos] = await Promise.all([
+    prisma.eventoReprodutivo.count({ where }),
+    prisma.eventoReprodutivo.findMany({
+      where,
+      select: {
+        id: true,
+        animalId: true,
+        data: true,
+        reprodutor: true,
+        protocolo: true,
+        resultado: true,
+        dtPartoPrevista: true,
+        tipoParto: true,
+        auxilioParto: true,
+        numCrias: true,
+        criasVivas: true,
+        criasNatimortas: true,
+        sexoCria: true,
+        motivoSecagem: true,
+        observacao: true,
+        doadoraNumero: true,
+        doadoraNome: true,
+        animal: { select: { numero: true, nome: true, categoria: true, setor: true, grupo: { select: { nome: true } } } },
+      },
+      orderBy: [{ data: "desc" }, { id: "desc" }],
+      take: LIMITE,
+    }),
+  ]);
+  const linhas = eventos.map((evento) => ({
+    animalId: evento.animalId,
+    numero: evento.animal.numero,
+    nome: evento.animal.nome,
+    categoria: evento.animal.categoria,
+    grupo: evento.animal.grupo?.nome ?? null,
+    setor: evento.animal.setor,
+    eventoId: evento.id,
+    data: iso(evento.data),
+    celulas: extrairCelulas(template, evento),
+  }));
+  return baseResultado(query, propriedadeId, total, linhas);
+}
+
+function janelaConcepcao(query: RelatorioQuery, gestacaoDias: number) {
+  if (query.templateId !== "partos-previstos") return null;
+  return {
+    // Previsão do parto = última tentativa + duração configurada do manejo.
+    gte: somarDias(dataUtc(query.dataInicio!), -gestacaoDias),
+    lte: somarDias(dataUtc(query.dataFim!), -gestacaoDias),
+  };
+}
+
+async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | null): Promise<ResultadoRelatorioDTO> {
+  const template = obterTemplateRelatorio(query.templateId);
+  const gestacaoDias = query.templateId === "partos-previstos"
+    ? await getNumero("GESTACAO_DIAS") ?? GESTACAO_DIAS_PADRAO
+    : GESTACAO_DIAS_PADRAO;
+  const janela = janelaConcepcao(query, gestacaoDias);
+  const where: Prisma.AnimalWhereInput = {
+    ...filtroAnimal(query, propriedadeId),
+    resumo: {
+      statusReprodutivo: template.statusReprodutivo,
+      ...(janela ? { ultimaInseminacao: janela } : {}),
+    },
+  };
+  const [total, animais] = await Promise.all([
+    prisma.animal.count({ where }),
+    prisma.animal.findMany({
+      where,
+      select: {
+        id: true,
+        numero: true,
+        nome: true,
+        categoria: true,
+        setor: true,
+        grupo: { select: { nome: true } },
+        resumo: { select: { statusReprodutivo: true, diasGestacao: true, ultimaInseminacao: true, previsaoSecagem: true } },
+      },
+      orderBy: [{ numero: "asc" }, { id: "asc" }],
+      take: LIMITE,
+    }),
+  ]);
+  const linhas = animais.map((animal) => {
+    const resumo = animal.resumo!;
+    const partoPrevisto = janela && resumo.ultimaInseminacao ? somarDias(resumo.ultimaInseminacao, gestacaoDias) : null;
+    const fonte = { ...resumo, dtPartoPrevista: partoPrevisto };
+    return {
+      animalId: animal.id,
+      numero: animal.numero,
+      nome: animal.nome,
+      categoria: animal.categoria,
+      grupo: animal.grupo?.nome ?? null,
+      setor: animal.setor,
+      eventoId: null,
+      data: iso(partoPrevisto),
+      celulas: extrairCelulas(template, fonte),
+    };
+  });
+  return baseResultado(query, propriedadeId, total, linhas);
+}
+
+export async function gerarRelatorio(query: RelatorioQuery, propriedadeId: number | null): Promise<ResultadoRelatorioDTO> {
+  const template = obterTemplateRelatorio(query.templateId);
+  return template.granularidade === "evento"
+    ? gerarPorEvento(query, propriedadeId)
+    : gerarPorAnimal(query, propriedadeId);
+}

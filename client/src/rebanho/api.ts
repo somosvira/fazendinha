@@ -30,7 +30,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
-function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
+function qs(f?: object): string {
   if (!f) return "";
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(f)) if (v != null && v !== "") p.set(k, String(v));
@@ -73,6 +73,14 @@ export function useFiltrosAnimais() {
   return { data, loading, recarregar };
 }
 export const listarGrupos = () => req<GrupoDTO[]>(`/rebanho/grupos`);
+export function useGrupos() {
+  const [data, setData] = useState<GrupoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarGrupos().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
 export const listarRacas = () => req<RacaDTO[]>(`/rebanho/racas`);
 export const listarSetores = () => req<string[]>(`/rebanho/setores`);
 
@@ -1585,3 +1593,70 @@ export const obterRelatorioReproducao = (de?: string, ate?: string) => {
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return req<RelatorioReproducaoDTO>(`/rebanho/reproducao/relatorio${suffix}`);
 };
+
+// ─── Relatórios configuráveis do rebanho ───────────────────────────────────
+export type IdTemplateRelatorioRebanho = "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo";
+export type TipoEventoRelatorioRebanho = EventoPayload["tipo"];
+export interface TemplateRelatorioRebanhoDTO {
+  id: IdTemplateRelatorioRebanho;
+  titulo: string;
+  descricao: string;
+  fase: "Serviços" | "Gestação" | "Parto e secagem";
+  granularidade: "evento" | "animal";
+  filtrosEspecificos: readonly ("reprodutor" | "protocolo" | "resultado")[];
+}
+export interface FiltrosRelatorioRebanho {
+  templateId: IdTemplateRelatorioRebanho;
+  dataInicio?: string;
+  dataFim?: string;
+  status: "ATIVO" | "BAIXADO" | "TODOS";
+  grupoId?: number;
+  setor?: string;
+  categoria?: string;
+  reprodutor?: string;
+  protocolo?: string;
+  resultado?: "positivo" | "negativo";
+}
+export interface ColunaRelatorioRebanhoDTO { chave: string; rotulo: string; tipo: "texto" | "numero" | "data" }
+export interface LinhaRelatorioRebanhoDTO {
+  animalId: number; numero: string; nome: string | null; categoria: string;
+  grupo: string | null; setor: string | null; eventoId: number | null; data: string | null;
+  celulas: (string | number | null)[];
+}
+export interface ResultadoRelatorioRebanhoDTO {
+  templateId: IdTemplateRelatorioRebanho;
+  titulo: string;
+  descricao: string;
+  granularidade: "evento" | "animal";
+  colunas: ColunaRelatorioRebanhoDTO[];
+  acao: { tipoEvento: TipoEventoRelatorioRebanho; rotulo: string } | null;
+  linhas: LinhaRelatorioRebanhoDTO[];
+  total: number;
+  truncado: boolean;
+  meta: { geradoEm: string; periodo: { inicio: string | null; fim: string | null }; propriedadeId: number | null };
+}
+
+export const listarTemplatesRelatorioRebanho = () => req<TemplateRelatorioRebanhoDTO[]>(`/rebanho/relatorios/templates`);
+export const gerarRelatorioRebanho = (filtros: FiltrosRelatorioRebanho, signal?: AbortSignal) =>
+  req<ResultadoRelatorioRebanhoDTO>(`/rebanho/relatorios${qs(filtros)}`, { signal });
+
+export function useRelatorioRebanho(filtros: FiltrosRelatorioRebanho | null) {
+  const [data, setData] = useState<ResultadoRelatorioRebanhoDTO | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
+  const key = filtros ? JSON.stringify(filtros) : "";
+  useEffect(() => {
+    if (!filtros) { setData(null); setLoading(false); setErro(null); return; }
+    const ctrl = new AbortController();
+    setLoading(true); setErro(null);
+    gerarRelatorioRebanho(filtros, ctrl.signal)
+      .then(setData)
+      .catch((e) => { if (e?.name !== "AbortError") setErro(e instanceof Error ? e.message : "Falha ao gerar relatório."); })
+      .finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, tentativa]);
+  return { data, loading, erro, recarregar };
+}

@@ -11,15 +11,16 @@ import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
 import { AcasalamentoPlanosTab } from "./components/AcasalamentoPlanosTab";
+import { RelatoriosTab } from "./components/RelatoriosTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
 import type { Animal } from "./types";
-import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, WorklistRebanho } from "./api";
+import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, LinhaRelatorioRebanhoDTO, ResultadoRelatorioRebanhoDTO, WorklistRebanho } from "./api";
 import type { AcaoItemWorklist } from "./components/WorklistCanonica";
 import { HOJE } from "./HOJE";
 
-export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "fiv" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
+export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "fiv" | "relatorios" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
 
 export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, worklistSnapshot, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
@@ -29,13 +30,14 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     dominio: "reproducao" | "sanidade";
     tipoInicial?: { dominio: "reproducao"; tipo: EventoPayload["tipo"] } | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
     dataInicial?: string;
-    // Para onde ir após salvar: "lista" mantém a fila (registro vindo de worklist),
+    // Para onde ir após salvar: lista/relatório mantêm o contexto operacional;
     // "cockpit" abre a ficha do animal (registro genérico). Ausente = "cockpit".
-    retorno?: "lista" | "cockpit";
+    retorno?: "lista" | "relatorio" | "cockpit";
   } | null>(null);
   const [flashEventoId, setFlashEventoId] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
+  const [recargaRelatorio, setRecargaRelatorio] = useState(0);
   // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
   // remonta este conteúdo inteiro via `key`, então aqui não há estado de escopo.
 
@@ -77,6 +79,13 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     setRegistroInline({ animal, dominio: worklist.acao.dominio, tipoInicial, dataInicial, retorno: "lista" });
   };
 
+  const registrarDoRelatorio = ({ linha, acao }: { linha: LinhaRelatorioRebanhoDTO; acao: NonNullable<ResultadoRelatorioRebanhoDTO["acao"]> }) => {
+    const animal = { id: String(linha.animalId), numero: linha.numero, nome: linha.nome ?? "", categoria: linha.categoria as Animal["categoria"] };
+    const tipoInicial = { dominio: "reproducao" as const, tipo: acao.tipoEvento as EventoPayload["tipo"] };
+    const dataInicial = acao.tipoEvento === "SECAGEM" ? HOJE : undefined;
+    setRegistroInline({ animal, dominio: "reproducao", tipoInicial, dataInicial, retorno: "relatorio" });
+  };
+
   return (
     <div className="rb">
       {animalId
@@ -89,6 +98,8 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
               ? <AcasalamentoPlanosTab onAbrirFicha={setAnimalId} />
             : aba === "fiv"
               ? <FivTab key={recarga} />
+            : aba === "relatorios"
+              ? <RelatoriosTab onAbrirFicha={setAnimalId} onRegistrar={registrarDoRelatorio} refreshToken={recargaRelatorio} />
             : aba === "sanidade"
               ? <SanidadeTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
               : aba === "nutricao"
@@ -121,6 +132,11 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
               // Permanece na fila; remontar a aba (via key=recarga) refaz o fetch da worklist,
               // e o animal recém-tratado sai da lista porque o resumo não satisfaz mais a regra.
               setRecarga((n) => n + 1);
+              return;
+            }
+            if (retorno === "relatorio") {
+              // Mantém o formulário e os filtros; só repete a consulta já aplicada.
+              setRecargaRelatorio((n) => n + 1);
               return;
             }
             setFlashEventoId(evento?.id ?? null);
