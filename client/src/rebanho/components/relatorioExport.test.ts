@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { prepararRelatorioParaPdf, relatorioParaCsv } from "./relatorioExport";
+import { montarRelatorioParaPdf, relatorioParaCsv } from "./relatorioExport";
 import type { ResultadoRelatorioRebanhoDTO } from "../api";
 
 const data: ResultadoRelatorioRebanhoDTO = {
@@ -33,24 +33,42 @@ describe("exportação dos relatórios configuráveis", () => {
     expect(csv).toContain("\r\n");
   });
 
-  it("prepara uma cópia monocromática para PDF sem ações nem nomes truncados", () => {
-    const origem = document.createElement("div");
-    origem.innerHTML = `
-      <table>
-        <thead><tr><th>Animal</th><th data-export-ignore>Ações</th></tr></thead>
-        <tbody><tr><td class="relatorio-animal"><span><strong>#1001</strong><span>·</span><span class="truncate">CAROLINA</span></span></td><td data-export-ignore>Registrar DG</td></tr></tbody>
-      </table>`;
+  it("monta PDF estático sem a marcação interativa e acessível duplicada do animal", () => {
+    const documento = montarRelatorioParaPdf(data);
 
-    const copia = prepararRelatorioParaPdf(origem);
+    expect(documento.classList.contains("relatorio-export-pdf")).toBe(true);
+    expect(documento.querySelector("button")).toBeNull();
+    expect(documento.querySelector(".sr-only")).toBeNull();
+    expect(documento.querySelector("[data-export-ignore]")).toBeNull();
+    expect(documento.textContent).not.toContain("Animal número");
+    expect(documento.textContent).not.toContain("Ações");
+    expect(documento.textContent).not.toContain("Registrar DG");
 
-    expect(copia.textContent).toContain("CAROLINA");
-    expect(copia.textContent).not.toContain("Ações");
-    expect(copia.textContent).not.toContain("Registrar DG");
-    expect(copia.querySelector("[data-export-ignore]")).toBeNull();
-    expect(copia.classList.contains("relatorio-export-pdf")).toBe(true);
-    const nome = copia.querySelector(".truncate") as HTMLElement;
-    expect(nome.style.whiteSpace).toBe("normal");
-    expect(nome.style.overflow).toBe("visible");
-    expect(nome.style.textOverflow).toBe("clip");
+    const animal = documento.querySelector("tbody .relatorio-pdf-animal");
+    expect(animal?.textContent).toBe('#150 · Lua, "FIV"');
+    expect(animal?.children).toHaveLength(0);
+  });
+
+  it("define uma geometria fixa e preserva metadados e valores zero", () => {
+    const documento = montarRelatorioParaPdf(data);
+    const tabela = documento.querySelector("table");
+    const colunas = Array.from(documento.querySelectorAll<HTMLTableColElement>("colgroup col"));
+
+    expect(tabela?.classList.contains("relatorio-export-table")).toBe(true);
+    expect(colunas).toHaveLength(3 + data.colunas.length);
+    expect(colunas.map((coluna) => coluna.style.width)).toEqual(["24%", "18%", "12%", "23%", "23%"]);
+    expect(documento.textContent).toContain("Inseminações no período");
+    expect(documento.textContent).toContain("Uma linha por tentativa. · 1 linha · 2026-06-01 a 2026-06-30");
+    expect(documento.querySelectorAll("tbody td")[4]?.textContent).toBe("0");
+  });
+
+  it("usa travessão para ausências sem inventar nome ou grupo", () => {
+    const documento = montarRelatorioParaPdf({
+      ...data,
+      linhas: [{ ...data.linhas[0], nome: null, grupo: null, setor: null, data: null, celulas: [null, 0] }],
+    });
+    const celulas = Array.from(documento.querySelectorAll("tbody td"), (celula) => celula.textContent);
+
+    expect(celulas).toEqual(["#150", "—", "—", "—", "0"]);
   });
 });

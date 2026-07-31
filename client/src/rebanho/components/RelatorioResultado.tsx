@@ -1,4 +1,3 @@
-import type { RefObject } from "react";
 import { Loader } from "../../components/Loading";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebEmpty } from "@/components/rb/RebPrimitives";
@@ -9,12 +8,11 @@ import { AnimalIdentity } from "./AnimalIdentity";
 type AcaoRelatorio = NonNullable<ResultadoRelatorioRebanhoDTO["acao"]>;
 
 export function RelatorioResultado({
-  data, loading, erro, printRef, onAbrirFicha, onRegistrar, onExportarCsv, onExportarPdf, exportandoPdf,
+  data, loading, erro, onAbrirFicha, onRegistrar, onExportarCsv, onExportarPdf, exportandoPdf,
 }: {
   data: ResultadoRelatorioRebanhoDTO | null;
   loading: boolean;
   erro: string | null;
-  printRef: RefObject<HTMLDivElement>;
   onAbrirFicha: (id: string) => void;
   onRegistrar: (payload: { linha: LinhaRelatorioRebanhoDTO; acao: AcaoRelatorio }) => void;
   onExportarCsv: () => void;
@@ -39,7 +37,7 @@ export function RelatorioResultado({
       </div>
       {data.truncado && <p role="status" className="mb-3 text-sm text-prejuizo">Exibindo as primeiras 2.000 linhas de {data.total}. Refine os filtros antes de exportar.</p>}
       {!data.linhas.length ? <RebEmpty>Nenhum animal encontrado com estes filtros.</RebEmpty> : (
-        <div ref={printRef} className="bg-[color:var(--bg)] p-1 print:p-0">
+        <div className="bg-[color:var(--bg)] p-1 print:p-0">
           <div className="mb-4 hidden print:block">
             <p className="text-xs uppercase tracking-[.12em] text-ink-3">Rebanho · Relatório</p>
             <h1 className="font-serif text-2xl">{data.titulo}</h1>

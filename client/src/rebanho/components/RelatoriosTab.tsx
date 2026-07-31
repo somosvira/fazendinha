@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateRangePicker, type DateRange } from "../../components/DateRangePicker";
 import { getHoje } from "../../lib/hoje";
 import { RebButton } from "@/components/rb/RebButton";
@@ -55,7 +55,6 @@ export function RelatoriosTab({
   const grupos = useGrupos();
   const setores = useSetores();
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosRelatorioRebanho | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   const relatorio = useRelatorioRebanho(filtrosAplicados);
 
@@ -83,9 +82,9 @@ export function RelatoriosTab({
   }
 
   async function exportarPdf() {
-    if (!printRef.current || !relatorio.data) return;
+    if (!relatorio.data) return;
     setExportandoPdf(true);
-    try { await exportarRelatorioPdf(printRef.current, relatorio.data); }
+    try { await exportarRelatorioPdf(relatorio.data); }
     finally { setExportandoPdf(false); }
   }
 
@@ -118,7 +117,7 @@ export function RelatoriosTab({
         <RebButton variant="pri" aria-label="Gerar relatório" onClick={gerar}>Gerar relatório</RebButton>
       </RebBox>
       <RelatorioResultado
-        data={relatorio.data} loading={relatorio.loading} erro={relatorio.erro} printRef={printRef}
+        data={relatorio.data} loading={relatorio.loading} erro={relatorio.erro}
         onAbrirFicha={onAbrirFicha} onRegistrar={onRegistrar}
         onExportarCsv={() => { if (relatorio.data) baixarRelatorioCsv(relatorio.data); }}
         onExportarPdf={exportarPdf} exportandoPdf={exportandoPdf}

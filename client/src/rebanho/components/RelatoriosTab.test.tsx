@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { RelatoriosTab } from "./RelatoriosTab";
 
+const exportacoes = vi.hoisted(() => ({
+  baixarRelatorioCsv: vi.fn(),
+  exportarRelatorioPdf: vi.fn(async () => {}),
+}));
+vi.mock("./relatorioExport", () => exportacoes);
+
 const templates = [
   { id: "ia-periodo", titulo: "Inseminações no período", descricao: "Uma linha por tentativa.", fase: "Serviços", granularidade: "evento", filtrosEspecificos: ["reprodutor", "protocolo"] },
   { id: "gestantes-atual", titulo: "Gestantes atualmente", descricao: "Foto atual.", fase: "Gestação", granularidade: "animal", filtrosEspecificos: [] },
@@ -26,7 +32,7 @@ function stubFetch() {
   return spy;
 }
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 describe("RelatoriosTab", () => {
   it("monta o formulário com templates e não consulta antes de Gerar", async () => {
@@ -59,5 +65,22 @@ describe("RelatoriosTab", () => {
     expect(screen.getByLabelText("Protocolo")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Modelo de relatório"), { target: { value: "gestantes-atual" } });
     await waitFor(() => expect(screen.queryByLabelText("Touro ou sêmen")).toBeNull());
+  });
+
+  it("exporta o PDF diretamente a partir do resultado do relatório", async () => {
+    stubFetch();
+    render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
+    await screen.findByRole("option", { name: "Inseminações no período" });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
+    await screen.findByText("Lua");
+
+    fireEvent.click(screen.getByRole("button", { name: "↓ PDF" }));
+
+    await waitFor(() => expect(exportacoes.exportarRelatorioPdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateId: "ia-periodo",
+        linhas: [expect.objectContaining({ animalId: 5, numero: "150", nome: "Lua" })],
+      }),
+    ));
   });
 });
