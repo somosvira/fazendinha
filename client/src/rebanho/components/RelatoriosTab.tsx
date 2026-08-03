@@ -9,14 +9,20 @@ import {
   useSetores,
   listarTemplatesRelatorioRebanho,
   useRelatorioRebanho,
+  useFolhasCampo,
+  listarCamposFormulario,
   type FiltrosRelatorioRebanho,
   type LinhaRelatorioRebanhoDTO,
   type ResultadoRelatorioRebanhoDTO,
   type TemplateRelatorioRebanhoDTO,
+  type FolhaCampoDTO,
 } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RelatorioResultado } from "./RelatorioResultado";
 import { baixarRelatorioCsv, exportarRelatorioPdf } from "./relatorioExport";
+import { FormularioCampoModal } from "./FormularioCampoModal";
+import { FolhaCampoView } from "./FolhaCampoView";
+import { exportarFormularioCampoPdf } from "./formularioCampoExport";
 
 type AcaoRelatorio = NonNullable<ResultadoRelatorioRebanhoDTO["acao"]>;
 
@@ -56,7 +62,10 @@ export function RelatoriosTab({
   const setores = useSetores();
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosRelatorioRebanho | null>(null);
   const [exportandoPdf, setExportandoPdf] = useState(false);
+  const [montandoFormulario, setMontandoFormulario] = useState(false);
+  const [folhaAberta, setFolhaAberta] = useState<FolhaCampoDTO | null>(null);
   const relatorio = useRelatorioRebanho(filtrosAplicados);
+  const folhas = useFolhasCampo(true);
 
   useEffect(() => {
     listarTemplatesRelatorioRebanho().then(setTemplates).catch(() => setTemplates([]));
@@ -88,6 +97,16 @@ export function RelatoriosTab({
     finally { setExportandoPdf(false); }
   }
 
+  if (folhaAberta) {
+    return <FolhaCampoView folhaInicial={folhaAberta} onVoltar={() => setFolhaAberta(null)} onAtualizada={(folha) => { setFolhaAberta(folha); folhas.recarregar(); }} />;
+  }
+
+  async function imprimirFolha(folha: FolhaCampoDTO) {
+    setExportandoPdf(true);
+    try { await exportarFormularioCampoPdf(folha, await listarCamposFormulario(folha.templateId)); }
+    finally { setExportandoPdf(false); }
+  }
+
   return (
     <RebMain>
       <RebHeader eyebrow="Rebanho · Consultas operacionais" title="Relatórios" />
@@ -96,6 +115,12 @@ export function RelatoriosTab({
         <h1 className="mt-1 font-serif text-[30px] font-medium">Relatórios</h1>
         <p className="mt-2 max-w-3xl text-sm text-ink-3">Escolha um formulário pronto, ajuste os filtros e gere a lista. Os modelos desta primeira etapa acompanham reprodução, gestação, parto e secagem.</p>
       </div>
+      {folhas.data.length > 0 && <section className="mb-5" aria-labelledby="folhas-campo-titulo">
+        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="folhas-campo-titulo" className="m-0 font-serif text-xl font-medium">Folhas em aberto</h2><p className="mb-0 mt-1 text-sm text-ink-3">Retome o lançamento dos dados que voltaram do campo.</p></div></div>
+        <div className="grid gap-3 md:grid-cols-2">{folhas.data.map((folha) => <RebBox key={folha.id} className="mb-0">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><strong className="text-sm text-foreground">{folha.nome}</strong><p className="mb-0 mt-1 text-xs text-ink-3">{folha.linhasProntas}/{folha.totalLinhas} resolvidas · {folha.status.replaceAll("_", " ")}</p></div><div className="flex gap-2"><RebButton onClick={() => void imprimirFolha(folha)} disabled={exportandoPdf}>Imprimir</RebButton><RebButton variant="pri" onClick={() => setFolhaAberta(folha)}>Lançar dados</RebButton></div></div>
+        </RebBox>)}</div>
+      </section>}
       <RebBox className="p-5">
         <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 xl:grid-cols-4">
           <RebField label="Modelo de relatório" className="md:col-span-2">
@@ -120,8 +145,14 @@ export function RelatoriosTab({
         data={relatorio.data} loading={relatorio.loading} erro={relatorio.erro}
         onAbrirFicha={onAbrirFicha} onRegistrar={onRegistrar}
         onExportarCsv={() => { if (relatorio.data) baixarRelatorioCsv(relatorio.data); }}
-        onExportarPdf={exportarPdf} exportandoPdf={exportandoPdf}
+        onExportarPdf={exportarPdf} onMontarFormulario={() => setMontandoFormulario(true)} exportandoPdf={exportandoPdf}
       />
+      {montandoFormulario && relatorio.data && filtrosAplicados && <FormularioCampoModal
+        relatorio={relatorio.data}
+        filtros={filtrosAplicados}
+        onClose={() => setMontandoFormulario(false)}
+        onCriada={(folha) => { folhas.recarregar(); setFolhaAberta(folha); }}
+      />}
     </RebMain>
   );
 }

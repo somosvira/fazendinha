@@ -958,6 +958,8 @@ model Propriedade {
   registrosChuva       RegistroChuva[]
   aptidoes              AptidaoAnimal[]
   planosAcasalamento    PlanoAcasalamento[]
+  modelosFormularioCampo ModeloFormularioCampo[]
+  folhasCampo            FolhaCampo[]
   coletas               Coleta[]
   embrioesColeta        EmbriaoColeta[]
   gruposPoolDoadora     GrupoPoolDoadora[]
@@ -1052,6 +1054,7 @@ model Animal {
   pesagens             Pesagem[]
   movimentacoes        MovimentacaoAnimal[]
   linhasAcasalamento   LinhaPlanoAcasalamento[]
+  linhasFolhaCampo     LinhaFolhaCampo[]
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
 
@@ -1107,6 +1110,79 @@ model FiltroAnimal {
   updatedAt     DateTime     @updatedAt
 
   @@index([propriedadeId])
+}
+
+enum StatusFolhaCampo {
+  RASCUNHO
+  EM_CAMPO
+  AGUARDANDO_LANCAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum StatusLinhaFolha {
+  PENDENTE
+  PREENCHIDA
+  NAO_REALIZADO
+  REGISTRADA
+}
+
+model ModeloFormularioCampo {
+  id            Int          @id @default(autoincrement())
+  nome          String
+  templateId    String
+  config        Json
+  propriedade   Propriedade? @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId Int?
+  folhas        FolhaCampo[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([propriedadeId, templateId])
+}
+
+model FolhaCampo {
+  id              Int               @id @default(autoincrement())
+  nome            String
+  templateId      String
+  status          StatusFolhaCampo  @default(EM_CAMPO)
+  filtrosSnapshot Json
+  configSnapshot  Json
+  modelo          ModeloFormularioCampo? @relation(fields: [modeloId], references: [id], onDelete: SetNull)
+  modeloId        Int?
+  totalLinhas     Int
+  linhasProntas   Int               @default(0)
+  propriedade     Propriedade?      @relation(fields: [propriedadeId], references: [id], onDelete: SetNull)
+  propriedadeId   Int?
+  geradoEm        DateTime          @default(now())
+  concluidoEm     DateTime?
+  linhas          LinhaFolhaCampo[]
+
+  @@index([propriedadeId, status])
+  @@index([templateId])
+}
+
+model LinhaFolhaCampo {
+  id                  Int                @id @default(autoincrement())
+  folha               FolhaCampo         @relation(fields: [folhaId], references: [id], onDelete: Cascade)
+  folhaId             Int
+  ordem               Int
+  animal              Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animalId            Int
+  eventoOrigem        EventoReprodutivo? @relation("EventoOrigemFolha", fields: [eventoOrigemId], references: [id], onDelete: SetNull)
+  eventoOrigemId      Int?
+  snapshot            Json
+  status              StatusLinhaFolha   @default(PENDENTE)
+  respostas           Json?
+  motivoNaoRealizado  String?
+  eventoGerado        EventoReprodutivo? @relation("EventoGeradoFolha", fields: [eventoGeradoId], references: [id], onDelete: SetNull)
+  eventoGeradoId      Int?               @unique
+  updatedAt           DateTime            @updatedAt
+
+  @@unique([folhaId, ordem])
+  @@index([folhaId, status])
+  @@index([animalId])
+  @@index([eventoOrigemId])
 }
 
 model ResumoAnimal {
@@ -1269,6 +1345,9 @@ model EventoReprodutivo {
   doadoraId       Int?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
+
+  linhasFolhaOrigem LinhaFolhaCampo[] @relation("EventoOrigemFolha")
+  linhaFolhaGerada  LinhaFolhaCampo?  @relation("EventoGeradoFolha")
 
   @@index([animalId, data])
   @@index([ideagriEmbriaoId])

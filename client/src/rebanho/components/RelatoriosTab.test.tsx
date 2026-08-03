@@ -20,6 +20,7 @@ function stubFetch() {
     if (url.includes("/templates")) return new Response(JSON.stringify(templates), { status: 200, headers: { "content-type": "application/json" } });
     if (url.includes("/grupos")) return new Response(JSON.stringify([{ id: 4, nome: "Alta" }]), { status: 200, headers: { "content-type": "application/json" } });
     if (url.includes("/setores")) return new Response(JSON.stringify(["Compost"]), { status: 200, headers: { "content-type": "application/json" } });
+    if (url.includes("/formularios/folhas")) return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
     return new Response(JSON.stringify({
       templateId: "ia-periodo", titulo: "Inseminações no período", descricao: "Uma linha por tentativa.", granularidade: "evento",
       colunas: [{ chave: "reprodutor", rotulo: "Touro / sêmen", tipo: "texto" }],

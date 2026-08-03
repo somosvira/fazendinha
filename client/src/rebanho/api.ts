@@ -1660,3 +1660,76 @@ export function useRelatorioRebanho(filtros: FiltrosRelatorioRebanho | null) {
   }, [key, tentativa]);
   return { data, loading, erro, recarregar };
 }
+
+// ─── Formulários de campo — modelos, folhas e lançamento em grade ───────────
+export type ChaveCampoFormulario = "resultado_dg" | "data_evento" | "metodo_dg" | "dt_parto_prevista" | "tipo_parto" | "auxilio_parto" | "num_crias" | "crias_vivas" | "crias_natimortas" | "sexo_cria" | "observacao";
+export type ChaveColunaSistemaFormulario = "animal" | "categoria" | "grupo_setor" | "data" | "reprodutor" | "protocolo" | "doadora" | "resultado" | "partoPrevisto" | "diasGestacao" | "ultimaTentativa" | "previsaoSecagem" | "tipoParto" | "auxilio" | "crias" | "vivas" | "natimortas" | "sexo" | "motivo" | "observacao";
+export interface ConfigFormularioCampo { colunasSistema: ChaveColunaSistemaFormulario[]; camposPapel: ChaveCampoFormulario[] }
+export interface CampoFormularioCampoDTO {
+  chave: ChaveCampoFormulario;
+  rotulo: string;
+  tipoUi: "opcoes" | "data" | "texto" | "numero";
+  obrigatorio: boolean;
+  eventoAlvo: TipoEventoRelatorioRebanho;
+  opcoes?: readonly { valor: string; rotulo: string }[];
+}
+export interface ModeloFormularioCampoDTO {
+  id: number; nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo;
+  propriedadeId: number | null; createdAt: string; updatedAt: string;
+}
+export type StatusFolhaCampo = "RASCUNHO" | "EM_CAMPO" | "AGUARDANDO_LANCAMENTO" | "CONCLUIDA" | "CANCELADA";
+export type StatusLinhaFolha = "PENDENTE" | "PREENCHIDA" | "NAO_REALIZADO" | "REGISTRADA";
+export interface SnapshotLinhaFolhaCampo {
+  numero: string; nome: string | null; categoria: string; grupo: string | null; setor: string | null; data: string | null;
+  valores: Record<string, string | number | null>;
+}
+export interface LinhaFolhaCampoDTO {
+  id: number; ordem: number; animalId: number; eventoOrigemId: number | null; snapshot: SnapshotLinhaFolhaCampo;
+  status: StatusLinhaFolha; respostas: Record<string, unknown> | null; motivoNaoRealizado: string | null; eventoGeradoId: number | null;
+}
+export interface FolhaCampoDTO {
+  id: number; nome: string; templateId: IdTemplateRelatorioRebanho; status: StatusFolhaCampo;
+  filtros: Record<string, unknown>; config: ConfigFormularioCampo; modeloId: number | null;
+  totalLinhas: number; linhasProntas: number; propriedadeId: number | null; geradoEm: string; concluidoEm: string | null;
+  linhas: LinhaFolhaCampoDTO[];
+}
+export type AtualizacaoLinhaFolha =
+  | { id: number; status: "PENDENTE"; respostas?: Record<string, unknown> }
+  | { id: number; status: "PREENCHIDA"; respostas: Record<string, unknown> }
+  | { id: number; status: "NAO_REALIZADO"; motivoNaoRealizado: string };
+
+export const listarCamposFormulario = (templateId: IdTemplateRelatorioRebanho) =>
+  req<CampoFormularioCampoDTO[]>(`/rebanho/formularios/campos${qs({ templateId })}`);
+export const listarModelosFormularioCampo = (templateId?: IdTemplateRelatorioRebanho) =>
+  req<ModeloFormularioCampoDTO[]>(`/rebanho/formularios/modelos${qs({ templateId })}`);
+export const criarModeloFormularioCampo = (body: { nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo }) =>
+  req<ModeloFormularioCampoDTO>(`/rebanho/formularios/modelos`, { method: "POST", body: JSON.stringify(body) });
+export const editarModeloFormularioCampo = (id: number, body: Partial<{ nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo }>) =>
+  req<ModeloFormularioCampoDTO>(`/rebanho/formularios/modelos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirModeloFormularioCampo = (id: number) =>
+  req<{ ok: true }>(`/rebanho/formularios/modelos/${id}`, { method: "DELETE" });
+export const listarFolhasCampo = (status?: StatusFolhaCampo) =>
+  req<FolhaCampoDTO[]>(`/rebanho/formularios/folhas${qs({ status })}`);
+export const obterFolhaCampo = (id: number) => req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}`);
+export const criarFolhaCampo = (body: { nome: string; filtros: FiltrosRelatorioRebanho; config: ConfigFormularioCampo; modeloId?: number }) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas`, { method: "POST", body: JSON.stringify(body) });
+export const salvarLinhasFolhaCampo = (id: number, linhas: AtualizacaoLinhaFolha[]) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/linhas`, { method: "PATCH", body: JSON.stringify({ linhas }) });
+export const concluirFolhaCampo = (id: number) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/concluir`, { method: "POST" });
+export const cancelarFolhaCampo = (id: number) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/cancelar`, { method: "POST" });
+
+export function useFolhasCampo(abertas = true) {
+  const [data, setData] = useState<FolhaCampoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarFolhasCampo().then((folhas) => setData(abertas ? folhas.filter((f) => !["CONCLUIDA", "CANCELADA"].includes(f.status)) : folhas))
+      .catch((e) => setErro(e instanceof Error ? e.message : "Falha ao listar folhas."))
+      .finally(() => setLoading(false));
+  }, [abertas]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}

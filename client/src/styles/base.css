@@ -898,6 +898,38 @@ body.no-scroll { overflow: hidden; }
 }
 .relatorio-export-pdf tr { break-inside: avoid; page-break-inside: avoid; }
 
+/* Formulários de campo — a mesma árvore alimenta a prévia e o PDF. */
+.formulario-campo-pdf { color: #111; background: #fff; }
+.formulario-campo-table th { vertical-align: bottom !important; }
+.formulario-campo-table td {
+  min-height: 14mm;
+  height: 14mm;
+  vertical-align: middle !important;
+}
+.formulario-campo-preenchivel { min-width: 25mm; }
+.formulario-campo-resposta {
+  min-height: 9mm;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.formulario-campo-opcoes { white-space: nowrap; }
+.formulario-campo-linha {
+  display: block;
+  width: 100%;
+  height: 8mm;
+  border-bottom: 1px solid #555;
+}
+.formulario-campo-preview .relatorio-export-pdf {
+  width: 277mm;
+  transform: scale(.72);
+  transform-origin: top left;
+}
+.formulario-campo-preview {
+  min-height: 430px;
+}
+
 @media print {
   /* esconde shell — só conteúdo importa (Header já usa print:hidden direto) */
   .toast-viewport,

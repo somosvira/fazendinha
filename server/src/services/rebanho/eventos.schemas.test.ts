@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { criarEventoSchema } from "./eventos.schemas.js";
 
 describe("criarEventoSchema", () => {
-  it("DIAGNOSTICO exige resultado válido", () => {
-    expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "positivo" }).success).toBe(true);
+  it("DIAGNOSTICO exige resultado válido e aceita método estruturado", () => {
+    expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "positivo", metodo: "Ultrassom" }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "talvez" }).success).toBe(false);
   });
   it("INSEMINACAO exige reprodutor", () => {

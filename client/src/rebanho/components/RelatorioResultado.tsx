@@ -8,7 +8,7 @@ import { AnimalIdentity } from "./AnimalIdentity";
 type AcaoRelatorio = NonNullable<ResultadoRelatorioRebanhoDTO["acao"]>;
 
 export function RelatorioResultado({
-  data, loading, erro, onAbrirFicha, onRegistrar, onExportarCsv, onExportarPdf, exportandoPdf,
+  data, loading, erro, onAbrirFicha, onRegistrar, onExportarCsv, onExportarPdf, onMontarFormulario, exportandoPdf,
 }: {
   data: ResultadoRelatorioRebanhoDTO | null;
   loading: boolean;
@@ -17,6 +17,7 @@ export function RelatorioResultado({
   onRegistrar: (payload: { linha: LinhaRelatorioRebanhoDTO; acao: AcaoRelatorio }) => void;
   onExportarCsv: () => void;
   onExportarPdf: () => void;
+  onMontarFormulario: () => void;
   exportandoPdf: boolean;
 }) {
   if (loading && !data) return <div className="mt-8"><Loader /></div>;
@@ -30,7 +31,8 @@ export function RelatorioResultado({
           <h2 className="m-0 font-serif text-2xl font-medium">{data.titulo}</h2>
           <p className="mt-1 text-sm text-ink-3">{data.total} {data.total === 1 ? "linha" : "linhas"} · {data.granularidade === "evento" ? "uma por evento" : "uma por animal"}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <RebButton variant="pri" onClick={onMontarFormulario} disabled={!data.linhas.length || data.truncado}>Montar formulário</RebButton>
           <RebButton onClick={onExportarCsv} disabled={!data.linhas.length}>↓ CSV</RebButton>
           <RebButton onClick={onExportarPdf} disabled={!data.linhas.length || exportandoPdf}>{exportandoPdf ? "Gerando PDF…" : "↓ PDF"}</RebButton>
         </div>
