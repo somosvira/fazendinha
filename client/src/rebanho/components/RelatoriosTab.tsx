@@ -58,6 +58,7 @@ export function RelatoriosTab({
   const [reprodutor, setReprodutor] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [resultado, setResultado] = useState("");
+  const [colunasVisiveis, setColunasVisiveis] = useState<string[]>([]);
   const grupos = useGrupos();
   const setores = useSetores();
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosRelatorioRebanho | null>(null);
@@ -77,6 +78,7 @@ export function RelatoriosTab({
   const fases = useMemo(() => Array.from(new Set(templates.map((t) => t.fase))), [templates]);
 
   function gerar() {
+    setColunasVisiveis([]);
     setFiltrosAplicados({
       templateId,
       ...(exigePeriodo ? { dataInicio: isoLocal(range.start), dataFim: isoLocal(range.end) } : {}),
@@ -90,10 +92,10 @@ export function RelatoriosTab({
     });
   }
 
-  async function exportarPdf() {
+  async function exportarPdf(colunas: string[]) {
     if (!relatorio.data) return;
     setExportandoPdf(true);
-    try { await exportarRelatorioPdf(relatorio.data); }
+    try { await exportarRelatorioPdf(relatorio.data, colunas); }
     finally { setExportandoPdf(false); }
   }
 
@@ -113,7 +115,7 @@ export function RelatoriosTab({
       <div className="mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[.12em] text-leite">Rebanho · Consultas operacionais</p>
         <h1 className="mt-1 font-serif text-[30px] font-medium">Relatórios</h1>
-        <p className="mt-2 max-w-3xl text-sm text-ink-3">Escolha um formulário pronto, ajuste os filtros e gere a lista. Os modelos desta primeira etapa acompanham reprodução, gestação, parto e secagem.</p>
+        <p className="mt-2 max-w-3xl text-sm text-ink-3">Parta de um modelo, cruze os filtros e monte a lista com as colunas que fazem sentido para o manejo. A mesma composição segue para a tela, CSV e PDF.</p>
       </div>
       {folhas.data.length > 0 && <section className="mb-5" aria-labelledby="folhas-campo-titulo">
         <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="folhas-campo-titulo" className="m-0 font-serif text-xl font-medium">Folhas em aberto</h2><p className="mb-0 mt-1 text-sm text-ink-3">Retome o lançamento dos dados que voltaram do campo.</p></div></div>
@@ -144,8 +146,9 @@ export function RelatoriosTab({
       <RelatorioResultado
         data={relatorio.data} loading={relatorio.loading} erro={relatorio.erro}
         onAbrirFicha={onAbrirFicha} onRegistrar={onRegistrar}
-        onExportarCsv={() => { if (relatorio.data) baixarRelatorioCsv(relatorio.data); }}
+        onExportarCsv={(colunas) => { if (relatorio.data) baixarRelatorioCsv(relatorio.data, colunas); }}
         onExportarPdf={exportarPdf} onMontarFormulario={() => setMontandoFormulario(true)} exportandoPdf={exportandoPdf}
+        colunasVisiveis={colunasVisiveis} onColunasVisiveis={setColunasVisiveis}
       />
       {montandoFormulario && relatorio.data && filtrosAplicados && <FormularioCampoModal
         relatorio={relatorio.data}

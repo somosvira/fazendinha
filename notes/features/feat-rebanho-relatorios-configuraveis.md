@@ -6,7 +6,7 @@ Criar relatórios do rebanho como formulários guiados por templates e filtros q
 
 ## Decisões do usuário
 
-- Templates prontos com filtros ajustáveis, não construtor totalmente livre.
+- Templates prontos como ponto de partida, com escolha, remoção e ordenação livre das colunas no resultado.
 - Primeira entrega: fundação reutilizável + reprodução.
 - Resultado em tela, PDF e CSV.
 - A lista permite abrir ficha e registrar ação por animal.
@@ -20,4 +20,4 @@ Criar relatórios do rebanho como formulários guiados por templates e filtros q
 
 ## Limites v1
 
-Sem persistência de templates/filtros, sem schema novo, sem construtor livre e sem relatórios sofisticados de taxas por faixas.
+Sem persistência de templates/filtros e sem schema novo. O compositor v1 personaliza as colunas do modelo; filtros calculados entre domínios (por exemplo taxa de prenhez por animal) entram na próxima evolução do motor.

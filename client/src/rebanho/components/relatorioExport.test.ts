@@ -26,8 +26,8 @@ describe("exportação dos relatórios configuráveis", () => {
   it("gera CSV compatível com Excel, acentos e valores zero, sem ações", () => {
     const csv = relatorioParaCsv(data);
     expect(csv.charCodeAt(0)).toBe(0xfeff);
-    expect(csv).toContain('"Animal";"Nome";"Categoria";"Grupo";"Setor";"Data";"Touro / sêmen";"Tentativas"');
-    expect(csv).toContain('"150";"Lua, ""FIV""";"VACA";"Alta";;"2026-06-20";"Lance";"0"');
+    expect(csv).toContain('"Número / animal";"Categoria";"Grupo";"Setor";"Data";"Touro / sêmen";"Tentativas"');
+    expect(csv).toContain('"#150 · Lua, ""FIV""";"VACA";"Alta";;"2026-06-20";"Lance";"0"');
     expect(csv).not.toContain("Ações");
     expect(csv).not.toContain("Registrar DG");
     expect(csv).toContain("\r\n");
@@ -55,11 +55,11 @@ describe("exportação dos relatórios configuráveis", () => {
     const colunas = Array.from(documento.querySelectorAll<HTMLTableColElement>("colgroup col"));
 
     expect(tabela?.classList.contains("relatorio-export-table")).toBe(true);
-    expect(colunas).toHaveLength(3 + data.colunas.length);
-    expect(colunas.map((coluna) => coluna.style.width)).toEqual(["24%", "18%", "12%", "23%", "23%"]);
+    expect(colunas).toHaveLength(5 + data.colunas.length);
+    expect(colunas.map((coluna) => coluna.style.width)).toEqual(["15%", "15%", "14%", "14%", "14%", "14%", "14%"]);
     expect(documento.textContent).toContain("Inseminações no período");
     expect(documento.textContent).toContain("Uma linha por tentativa. · 1 linha · 2026-06-01 a 2026-06-30");
-    expect(documento.querySelectorAll("tbody td")[4]?.textContent).toBe("0");
+    expect(documento.querySelectorAll("tbody td")[6]?.textContent).toBe("0");
   });
 
   it("usa travessão para ausências sem inventar nome ou grupo", () => {
@@ -69,6 +69,14 @@ describe("exportação dos relatórios configuráveis", () => {
     });
     const celulas = Array.from(documento.querySelectorAll("tbody td"), (celula) => celula.textContent);
 
-    expect(celulas).toEqual(["#150", "—", "—", "—", "0"]);
+    expect(celulas).toEqual(["#150", "VACA", "—", "—", "—", "—", "0"]);
+  });
+
+  it("exporta somente as colunas escolhidas e na ordem definida", () => {
+    const ordem = ["d:tentativas", "animal", "setor"];
+    expect(relatorioParaCsv(data, ordem)).toContain('"Tentativas";"Número / animal";"Setor"\r\n"0";"#150 · Lua, ""FIV""";');
+    const documento = montarRelatorioParaPdf(data, ordem);
+    expect(Array.from(documento.querySelectorAll("th"), (th) => th.textContent)).toEqual(["Tentativas", "Número / animal", "Setor"]);
+    expect(Array.from(documento.querySelectorAll("tbody td"), (td) => td.textContent)).toEqual(["0", '#150 · Lua, "FIV"', "—"]);
   });
 });

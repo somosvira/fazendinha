@@ -82,6 +82,25 @@ describe("RelatoriosTab", () => {
         templateId: "ia-periodo",
         linhas: [expect.objectContaining({ animalId: 5, numero: "150", nome: "Lua" })],
       }),
+      ["animal", "categoria", "grupo", "setor", "data", "d:reprodutor"],
     ));
+  });
+
+  it("permite remover e reordenar colunas antes de exportar", async () => {
+    stubFetch();
+    render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
+    await screen.findByRole("option", { name: "Inseminações no período" });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
+    await screen.findByText("Lua");
+
+    fireEvent.click(screen.getByLabelText("Mover Touro / sêmen para a esquerda"));
+    fireEvent.click(screen.getByLabelText("Mover Touro / sêmen para a esquerda"));
+    fireEvent.click(screen.getByLabelText("Mover Touro / sêmen para a esquerda"));
+    fireEvent.click(screen.getByLabelText("Mover Touro / sêmen para a esquerda"));
+    fireEvent.click(screen.getByLabelText("Mover Touro / sêmen para a esquerda"));
+    fireEvent.click(screen.getAllByLabelText("Categoria").find((elemento) => elemento.getAttribute("type") === "checkbox")!);
+    fireEvent.click(screen.getByRole("button", { name: "↓ CSV" }));
+
+    expect(exportacoes.baixarRelatorioCsv).toHaveBeenCalledWith(expect.any(Object), ["d:reprodutor", "animal", "grupo", "setor", "data"]);
   });
 });
