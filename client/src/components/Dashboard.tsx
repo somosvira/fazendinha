@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchDashboard, reclassificarCategoria, fetchLancamentos, type LancamentoDrill } from "../api";
+import { fetchDashboard, fetchResumoMensalRebanho, reclassificarCategoria, fetchLancamentos, type LancamentoDrill, type ResumoMensalRebanho } from "../api";
 import { reconciliarTotais } from "../lib/reconciliacao";
 import { getHoje } from "../lib/hoje";
 import { type DateRange } from "./DateRangePicker";
@@ -1237,6 +1237,239 @@ function ValueMaskNotice({ user }: { user: User }) {
   );
 }
 
+/* ========== VISÃO MENSAL DA FAZENDA ========== */
+
+function rangeMesAnterior(range: DateRange): DateRange {
+  const inicio = range.start ?? DEFAULT_RANGE.start!;
+  return {
+    start: new Date(inicio.getFullYear(), inicio.getMonth() - 1, 1),
+    end: new Date(inicio.getFullYear(), inicio.getMonth(), 0),
+  };
+}
+
+function pctVariacao(atual: number, anterior: number): number | null {
+  if (!Number.isFinite(atual) || !Number.isFinite(anterior) || anterior === 0) return null;
+  return Math.round(((atual - anterior) / Math.abs(anterior)) * 100);
+}
+
+function Comparacao({ atual, anterior, unidade = "%", favoravelQuandoSobe = true }: { atual: number; anterior: number; unidade?: "%" | "un"; favoravelQuandoSobe?: boolean }) {
+  if (unidade === "%" && anterior === 0) {
+    return <span className="text-[14px] text-ink-3">{atual === 0 ? "igual ao mês anterior" : "sem base no mês anterior"}</span>;
+  }
+  const delta = unidade === "%" ? pctVariacao(atual, anterior) : atual - anterior;
+  if (delta == null) return <span className="text-[14px] text-ink-3">sem comparação disponível</span>;
+  if (delta === 0) return <span className="text-[14px] text-ink-3">igual ao mês anterior</span>;
+  const melhor = favoravelQuandoSobe ? delta > 0 : delta < 0;
+  return (
+    <span className={cn("text-[14px] font-medium", melhor ? "text-lucro" : "text-prejuizo")}>
+      {melhor ? "↑" : "↓"} {Math.abs(delta)}{unidade === "%" ? "%" : ""} vs. mês anterior
+    </span>
+  );
+}
+
+function KpiMensal({
+  label,
+  valor,
+  atual,
+  anterior,
+  comparacao = "%",
+  favoravelQuandoSobe = true,
+  tom,
+  onClick,
+}: {
+  label: string;
+  valor: string;
+  atual: number;
+  anterior: number;
+  comparacao?: "%" | "un";
+  favoravelQuandoSobe?: boolean;
+  tom?: "positivo" | "negativo";
+  onClick?: () => void;
+}) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      className={cn(
+        "flex min-h-[150px] flex-col items-start border border-border bg-card px-5 py-5 text-left",
+        onClick && "cursor-pointer transition-colors hover:bg-[var(--bg-card-2)]",
+      )}
+      onClick={onClick}
+    >
+      <span className="text-[14px] font-semibold uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className={cn(
+        "mono-nums mt-4 font-serif text-[34px] font-medium leading-none tracking-[-0.025em]",
+        tom === "positivo" ? "text-lucro" : tom === "negativo" ? "text-prejuizo" : "text-foreground",
+      )}>{valor}</span>
+      <span className="mt-auto pt-4"><Comparacao atual={atual} anterior={anterior} unidade={comparacao} favoravelQuandoSobe={favoravelQuandoSobe} /></span>
+    </Tag>
+  );
+}
+
+const detalheRebanhoPorTab: Record<ResumoMensalRebanho["alertasAtuais"][number]["tab"], Tab> = {
+  reproducao: "reb-reproducao",
+  sanidade: "reb-sanidade",
+  nutricao: "reb-nutricao",
+  animal: "reb-animal",
+  producao: "reb-producao",
+};
+
+function VisaoMensalFazenda({
+  financeiro,
+  financeiroAnterior,
+  rebanho,
+  range,
+  onRangeChange,
+  onNav,
+}: {
+  financeiro: R;
+  financeiroAnterior: R;
+  rebanho: ResumoMensalRebanho;
+  range: DateRange;
+  onRangeChange: (range: DateRange) => void;
+  onNav: (tab: Tab) => void;
+}) {
+  const atual = reconciliarTotais(financeiro.totals23m);
+  const anterior = reconciliarTotais(financeiroAnterior.totals23m);
+  const hoje = getHoje();
+  const inicio = range.start ?? DEFAULT_RANGE.start!;
+  const mesAberto = inicio.getFullYear() === hoje.getFullYear() && inicio.getMonth() === hoje.getMonth();
+  const maiorFluxo = Math.max(atual.entrada, atual.gastoTotal, 1);
+  const categorias = (financeiro.categoriasReais ?? []).slice(0, 3);
+  const alertasFinanceiros = (financeiro.inconsistencias ?? []).slice(0, 2);
+  const dataRebanho = rebanho.meta.dadoRebanhoMaisRecente
+    ? new Date(`${rebanho.meta.dadoRebanhoMaisRecente}T12:00:00`).toLocaleDateString("pt-BR")
+    : "sem registro recente";
+
+  return (
+    <div className="shell-wide pb-16 pt-[26px]">
+      <div className="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-6">
+        <div>
+          <span className="text-[14px] font-semibold uppercase tracking-[0.16em] text-ink-3">Visão mensal da fazenda</span>
+          <h1 className="mt-2 font-serif text-[38px] font-medium leading-tight tracking-[-0.02em] text-foreground">O que aconteceu no mês</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px] text-ink-3">
+            <span className={cn("border px-2.5 py-1 font-semibold uppercase tracking-[0.1em]", mesAberto ? "border-atencao text-atencao" : "border-lucro text-lucro")}>{mesAberto ? "Mês em andamento" : "Mês fechado"}</span>
+            <span>Financeiro por liquidação · Rebanho atualizado em {dataRebanho}</span>
+          </div>
+        </div>
+        <MonthRangePicker value={range} onChange={onRangeChange} min={FILTRO_MIN} max={FILTRO_MAX} />
+      </div>
+
+      <section className="pt-6" aria-label="Indicadores principais do mês">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiMensal
+            label="Resultado do mês"
+            valor={`${atual.liquido >= 0 ? "+" : "−"}${fmtBRL(Math.abs(atual.liquido))}`}
+            atual={atual.liquido}
+            anterior={anterior.liquido}
+            tom={atual.liquido >= 0 ? "positivo" : "negativo"}
+            onClick={() => onNav("gastos")}
+          />
+          <KpiMensal label="Entradas" valor={fmtBRL(atual.entrada)} atual={atual.entrada} anterior={anterior.entrada} />
+          <KpiMensal label="Gastos" valor={fmtBRL(atual.gastoTotal)} atual={atual.gastoTotal} anterior={anterior.gastoTotal} favoravelQuandoSobe={false} />
+          <KpiMensal
+            label="Partos"
+            valor={`${rebanho.atual.partos} ${rebanho.atual.partos === 1 ? "vaca" : "vacas"}`}
+            atual={rebanho.atual.partos}
+            anterior={rebanho.anterior.partos}
+            comparacao="un"
+            onClick={() => onNav("reb-reproducao")}
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 pt-8 lg:grid-cols-2">
+        <article className="border border-border bg-card p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="text-[14px] font-semibold uppercase tracking-[0.14em] text-ink-3">Financeiro</span>
+              <h2 className="mt-1 font-serif text-[28px] font-medium">Entrou, saiu e onde foi gasto</h2>
+            </div>
+            <button className={CRUMB_BTN} onClick={() => onNav("gastos")}>ver detalhes →</button>
+          </div>
+          <div className="mt-7 space-y-4">
+            {[
+              { label: "Entradas", valor: atual.entrada, cor: "bg-lucro" },
+              { label: "Gastos", valor: atual.gastoTotal, cor: "bg-prejuizo" },
+            ].map((linha) => (
+              <div key={linha.label}>
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <span className="text-[15px] font-medium text-ink-2">{linha.label}</span>
+                  <span className="mono-nums font-serif text-[20px] font-medium">{fmtBRL(linha.valor)}</span>
+                </div>
+                <div className="h-2 bg-[var(--rule-soft)]"><div className={cn("h-full", linha.cor)} style={{ width: `${Math.max(2, (linha.valor / maiorFluxo) * 100)}%` }} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-7 border-t border-border pt-5">
+            <span className="text-[14px] font-semibold uppercase tracking-[0.12em] text-ink-3">Maiores gastos</span>
+            <div className="mt-3 divide-y divide-[var(--rule-soft)]">
+              {categorias.length ? categorias.map((categoria: R) => (
+                <button key={categoria.id} className="flex w-full items-center justify-between gap-4 py-3 text-left hover:text-lucro" onClick={() => onNav("gastos")}>
+                  <span className="text-[15px] font-medium">{categoria.nome}</span>
+                  <span className="mono-nums font-serif text-[17px]">{fmtBRL(categoria.total23m)}</span>
+                </button>
+              )) : <p className="py-3 text-[15px] text-ink-3">Sem gastos classificados neste mês.</p>}
+            </div>
+          </div>
+        </article>
+
+        <article className="border border-border bg-card p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <span className="text-[14px] font-semibold uppercase tracking-[0.14em] text-ink-3">Rebanho</span>
+              <h2 className="mt-1 font-serif text-[28px] font-medium">Situação e eventos do mês</h2>
+            </div>
+            <button className={CRUMB_BTN} onClick={() => onNav("reb-dashboard")}>ver rebanho →</button>
+          </div>
+          <div className="mt-7 grid grid-cols-2 border border-border sm:grid-cols-3">
+            {[
+              ["Animais ativos", rebanho.atual.rebanhoAtivo],
+              ["Vacas ativas", rebanho.atual.vacasAtivas],
+              ["Em lactação", rebanho.atual.vacasEmLactacao],
+              ["Prenhezes", rebanho.atual.prenhezes],
+              ["Secagens", rebanho.atual.secagens],
+              ["Baixas", rebanho.atual.baixas],
+            ].map(([label, valor], index) => (
+              <div key={String(label)} className={cn("min-h-[112px] p-4", index % 3 !== 2 && "sm:border-r sm:border-border", index < 3 && "border-b border-border", index % 2 === 0 && "max-sm:border-r max-sm:border-border")}>
+                <span className="text-[14px] font-medium text-ink-3">{label}</span>
+                <div className="mono-nums mt-3 font-serif text-[30px] font-medium leading-none">{valor}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-[14px] leading-relaxed text-ink-3">Animais ativos e lactação representam a situação no fim do mês selecionado — ou a situação atual, quando o mês ainda está em andamento. Os demais números são eventos registrados dentro do período.</p>
+        </article>
+      </section>
+
+      <section className="pt-8">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+          <div>
+            <span className="text-[14px] font-semibold uppercase tracking-[0.14em] text-ink-3">Precisa de atenção agora</span>
+            <h2 className="mt-1 font-serif text-[28px] font-medium">Pendências para agir</h2>
+          </div>
+          <span className="text-[14px] text-ink-3">Alertas do rebanho são atuais, independentemente do mês selecionado.</span>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {rebanho.alertasAtuais.map((alerta) => (
+            <button key={alerta.chave} className="flex items-center gap-4 border border-border bg-card p-4 text-left transition-colors hover:bg-[var(--bg-card-2)]" onClick={() => onNav(detalheRebanhoPorTab[alerta.tab])}>
+              <span className={cn("mono-nums flex h-11 min-w-11 items-center justify-center border font-serif text-[21px]", alerta.severidade === "alta" ? "border-prejuizo text-prejuizo" : alerta.severidade === "media" ? "border-atencao text-atencao" : "border-ink-3 text-ink-3")}>{alerta.quantidade}</span>
+              <span className="flex-1"><strong className="block font-serif text-[18px] font-medium">{alerta.titulo}</strong><span className="mt-1 block text-[14px] text-ink-3">Abrir lista de animais</span></span>
+              <span aria-hidden="true">→</span>
+            </button>
+          ))}
+          {alertasFinanceiros.map((alerta: R) => (
+            <button key={alerta.id} className="flex items-center gap-4 border border-border bg-card p-4 text-left transition-colors hover:bg-[var(--bg-card-2)]" onClick={() => onNav("gastos")}>
+              <span className="flex h-11 min-w-11 items-center justify-center border border-atencao text-[18px] text-atencao">R$</span>
+              <span className="flex-1"><strong className="block font-serif text-[18px] font-medium">{alerta.titulo}</strong><span className="mt-1 block text-[14px] text-ink-3">Impacto de {fmtBRL(alerta.valor)} no mês</span></span>
+              <span aria-hidden="true">→</span>
+            </button>
+          ))}
+          {!rebanho.alertasAtuais.length && !alertasFinanceiros.length ? <p className="border border-border bg-card p-5 text-[15px] text-ink-3">Nenhuma pendência relevante encontrada.</p> : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function LoadingShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell-wide">
@@ -1265,24 +1498,43 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
     const m = mes && /^\d{4}-\d{2}$/.test(mes) ? mes.split("-").map(Number) : null;
     return m ? { start: new Date(m[0], m[1] - 1, 1), end: new Date(m[0], m[1], 0) } : null;
   });
-  const [drillCat, setDrillCat] = useState<CatId | null>(null);
   const [data, setData] = useState<R | null>(null);
+  const [dataAnterior, setDataAnterior] = useState<R | null>(null);
+  const [resumoRebanho, setResumoRebanho] = useState<ResumoMensalRebanho | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const requestId = useRef(0);
 
   // Refaz a busca sempre que o range muda → o servidor devolve o bloco `periodo`
-  // (KPIs do intervalo). Mantém `data` anterior durante o fetch (sem flash).
+  // (KPIs do intervalo). As três fontes trocam juntas para não misturar meses.
   // range null (não-resolvido) → busca a janela cheia p/ mostrar algo já e
   // descobrir o último mês com dados; setRange então dispara o fetch filtrado.
   const recarregar = useCallback(() => {
+    const id = ++requestId.current;
     if (range) {
-      fetchDashboard({ from: ymd(range.start), to: ymd(range.end) }).then(setData).catch(setError);
+      const anterior = rangeMesAnterior(range);
+      const from = ymd(range.start)!;
+      const to = ymd(range.end)!;
+      setDataAnterior(null);
+      setResumoRebanho(null);
+      Promise.all([
+        fetchDashboard({ from, to }),
+        fetchDashboard({ from: ymd(anterior.start), to: ymd(anterior.end) }),
+        fetchResumoMensalRebanho(from, to),
+      ]).then(([financeiro, financeiroAnterior, rebanho]) => {
+        if (id !== requestId.current) return;
+        setData(financeiro);
+        setDataAnterior(financeiroAnterior);
+        setResumoRebanho(rebanho);
+        setError(null);
+      }).catch((e) => { if (id === requestId.current) setError(e); });
     } else {
       fetchDashboard()
         .then((d) => {
+          if (id !== requestId.current) return;
           setData(d);
           setRange(ultimoMesComDados(d) ?? DEFAULT_RANGE);
         })
-        .catch(setError);
+        .catch((e) => { if (id === requestId.current) setError(e); });
     }
   }, [range]);
   useEffect(() => { recarregar(); }, [recarregar]);
@@ -1303,30 +1555,19 @@ export function Dashboard({ onNav, user, filtrosIniciais }: { onNav: (t: Tab) =>
 
   const maskVals = !!user && !user.flags.includes("verValores");
 
-  if (drillCat !== null) {
-    return (
-      <div className={maskVals ? "mask-values" : ""}>
-        {maskVals && user && <ValueMaskNotice user={user} />}
-        <CategoryDrill R={data} catId={drillCat} onBack={() => setDrillCat(null)} onNav={onNav} />
-      </div>
-    );
-  }
+  if (!range || !dataAnterior || !resumoRebanho) return <DashboardSkeleton />;
 
   return (
-    <div className={"shell-wide " + (maskVals ? "mask-values" : "")}>
+    <div className={maskVals ? "mask-values" : ""}>
       {maskVals && user && <ValueMaskNotice user={user} />}
-      <KpiCockpit R={data} range={range} setRange={setRange} />
-      <FolegoCaixa R={data} />
-      <GastoPorCategoria R={data} onDrill={setDrillCat} />
-      <ExplorarCategoria R={data} onDrill={setDrillCat} />
-      <AtividadeSplit R={data} />
-      <InconsistenciasSection R={data} onReclassificar={recarregar} />
-      <div style={{ padding: "28px 0 60px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span className="caption" style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}>
-          Agregado em runtime (via /api/dashboard)
-        </span>
-        <button className={CRUMB_BTN} onClick={() => onNav("relatorio")}>ver Relatório editorial →</button>
-      </div>
+      <VisaoMensalFazenda
+        financeiro={data}
+        financeiroAnterior={dataAnterior}
+        rebanho={resumoRebanho}
+        range={range}
+        onRangeChange={setRange}
+        onNav={onNav}
+      />
     </div>
   );
 }
