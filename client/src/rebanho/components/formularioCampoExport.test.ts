@@ -26,6 +26,9 @@ describe("impressão de formulário de campo", () => {
     expect(documento.textContent).toContain("☐ Vazia");
     expect(documento.textContent).toContain("____/____/______");
     expect(documento.querySelector(".formulario-campo-linha")).toBeTruthy();
+    expect(documento.querySelectorAll(".formulario-campo-linha-respostas")).toHaveLength(1);
+    expect(documento.querySelectorAll(".formulario-campo-bloco")).toHaveLength(3);
+    expect(documento.querySelector(".formulario-campo-preenchivel")?.getAttribute("colspan")).toBe("3");
     expect(documento.querySelector("button")).toBeNull();
   });
 

@@ -902,19 +902,43 @@ body.no-scroll { overflow: hidden; }
 .formulario-campo-pdf { color: #111; background: #fff; }
 .formulario-campo-table th { vertical-align: bottom !important; }
 .formulario-campo-table td {
-  min-height: 14mm;
-  height: 14mm;
   vertical-align: middle !important;
 }
-.formulario-campo-preenchivel { min-width: 25mm; }
+.formulario-campo-table { table-layout: fixed; }
+.formulario-campo-linha-respostas { break-inside: avoid; page-break-inside: avoid; }
+.formulario-campo-preenchivel {
+  padding: 3mm !important;
+  background: #fafafa;
+}
+.formulario-campo-campos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(38mm, 1fr));
+  gap: 3mm;
+}
+.formulario-campo-bloco {
+  min-width: 0;
+  min-height: 15mm;
+  padding: 2mm 2.5mm;
+  border: 1px solid #aaa;
+  background: #fff;
+}
+.formulario-campo-rotulo {
+  display: block;
+  margin-bottom: 1.5mm;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 10px;
+  font-style: italic;
+}
 .formulario-campo-resposta {
-  min-height: 9mm;
+  min-height: 7mm;
   display: flex;
   align-items: center;
-  font-size: 10px;
-  line-height: 1.5;
+  flex-wrap: wrap;
+  gap: 1.5mm 3mm;
+  font-size: 9px;
+  line-height: 1.3;
 }
-.formulario-campo-opcoes { white-space: nowrap; }
+.formulario-campo-opcao { white-space: nowrap; }
 .formulario-campo-linha {
   display: block;
   width: 100%;
@@ -923,7 +947,7 @@ body.no-scroll { overflow: hidden; }
 }
 .formulario-campo-preview .relatorio-export-pdf {
   width: 277mm;
-  transform: scale(.72);
+  transform: scale(.68);
   transform-origin: top left;
 }
 .formulario-campo-preview {
@@ -1144,4 +1168,3 @@ body.no-scroll { overflow: hidden; }
 @media (max-width: 720px) {
   .dash-skeleton-kpis { grid-template-columns: repeat(2, 1fr); }
 }
-

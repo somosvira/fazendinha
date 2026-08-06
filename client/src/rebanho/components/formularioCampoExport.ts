@@ -53,7 +53,7 @@ function valorSistema(snapshot: SnapshotLinhaFolhaCampo, chave: string): string 
 function conteudoCampo(campo: CampoFormularioCampoDTO): HTMLElement {
   const container = el("div", undefined, `formulario-campo-resposta formulario-campo-${campo.tipoUi}`);
   if (campo.tipoUi === "opcoes") {
-    container.textContent = (campo.opcoes ?? []).map((opcao) => `☐ ${opcao.rotulo}`).join("   ");
+    (campo.opcoes ?? []).forEach((opcao) => container.append(el("span", `☐ ${opcao.rotulo}`, "formulario-campo-opcao")));
   } else if (campo.tipoUi === "data") {
     container.textContent = "____/____/______";
   } else if (campo.tipoUi === "numero") {
@@ -84,7 +84,6 @@ function montarDocumento(
   const thead = el("thead");
   const trh = el("tr");
   config.colunasSistema.forEach((chave) => trh.append(el("th", ROTULOS_SISTEMA[chave] ?? chave)));
-  ativos.forEach((campo) => trh.append(el("th", campo.rotulo)));
   thead.append(trh);
   tabela.append(thead);
 
@@ -92,12 +91,19 @@ function montarDocumento(
   linhas.forEach(({ snapshot }) => {
     const tr = el("tr");
     config.colunasSistema.forEach((chave) => tr.append(el("td", valorSistema(snapshot, chave), chave === "animal" ? "relatorio-pdf-animal" : undefined)));
-    ativos.forEach((campo) => {
-      const td = el("td", undefined, "formulario-campo-preenchivel");
-      td.append(conteudoCampo(campo));
-      tr.append(td);
-    });
     tbody.append(tr);
+    const trCampos = el("tr", undefined, "formulario-campo-linha-respostas");
+    const tdCampos = el("td", undefined, "formulario-campo-preenchivel");
+    tdCampos.colSpan = Math.max(1, config.colunasSistema.length);
+    const grade = el("div", undefined, "formulario-campo-campos-grid");
+    ativos.forEach((campo) => {
+      const bloco = el("div", undefined, "formulario-campo-bloco");
+      bloco.append(el("strong", campo.rotulo, "formulario-campo-rotulo"), conteudoCampo(campo));
+      grade.append(bloco);
+    });
+    tdCampos.append(grade);
+    trCampos.append(tdCampos);
+    tbody.append(trCampos);
   });
   tabela.append(tbody);
   documento.append(tabela);
