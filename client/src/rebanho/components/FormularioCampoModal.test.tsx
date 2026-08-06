@@ -68,4 +68,19 @@ describe("montador de formulário de campo", () => {
     });
     expect(exportacoes.exportarFormularioCampoPdf).toHaveBeenCalled();
   });
+
+  it("mantém campos e prévia disponíveis quando apenas os modelos salvos falham", async () => {
+    const fetch = stubFetch();
+    fetch.mockImplementation(async (url: string) => {
+      if (url.includes("/campos")) return new Response(JSON.stringify(campos), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response(JSON.stringify({ error: "falha temporária" }), { status: 500, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    render(<FormularioCampoModal relatorio={relatorio} filtros={filtros} onClose={() => {}} onCriada={() => {}} />);
+
+    expect(await screen.findByLabelText("Resultado do toque")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("ainda pode montar uma nova folha");
+    expect(screen.getAllByText(/Resultado do toque/).length).toBeGreaterThan(1);
+  });
 });

@@ -55,13 +55,26 @@ export function FormularioCampoModal({
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.all([listarCamposFormulario(relatorio.templateId), listarModelosFormularioCampo(relatorio.templateId)])
-      .then(([novosCampos, novosModelos]) => {
+    let ativo = true;
+    Promise.allSettled([listarCamposFormulario(relatorio.templateId), listarModelosFormularioCampo(relatorio.templateId)])
+      .then(([resultadoCampos, resultadoModelos]) => {
+        if (!ativo) return;
+        if (resultadoCampos.status === "rejected") {
+          setErro(resultadoCampos.reason instanceof Error ? resultadoCampos.reason.message : "Não foi possível carregar os campos do formulário.");
+          return;
+        }
+        const novosCampos = resultadoCampos.value;
         setCampos(novosCampos);
         setCamposPapel(novosCampos.map((campo) => campo.chave));
-        setModelos(novosModelos);
+        if (resultadoModelos.status === "fulfilled") {
+          setModelos(resultadoModelos.value);
+        } else {
+          setModelos([]);
+          setErro("Os modelos salvos estão indisponíveis, mas você ainda pode montar uma nova folha.");
+        }
       })
       .catch((e) => setErro(e instanceof Error ? e.message : "Não foi possível carregar o montador."));
+    return () => { ativo = false; };
   }, [relatorio.templateId]);
 
   const config = useMemo<ConfigFormularioCampo>(() => ({ colunasSistema, camposPapel }), [colunasSistema, camposPapel]);
