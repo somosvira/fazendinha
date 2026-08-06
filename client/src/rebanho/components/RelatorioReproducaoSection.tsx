@@ -15,6 +15,7 @@ export function RelatorioReproducaoSection() {
   const [dados, setDados] = useState<RelatorioReproducaoDTO | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const metodosUtilizados = dados?.porMetodo.filter((metodo) => metodo.coberturas > 0) ?? [];
 
   const carregar = () => {
     setCarregando(true); setErro(null);
@@ -44,7 +45,7 @@ export function RelatorioReproducaoSection() {
             </p>
             <RebTable>
               <thead><tr><th>Método</th><th>Coberturas</th><th>Prenhezes</th><th>Taxa</th></tr></thead>
-              <tbody>{dados.porMetodo.map((m) => (
+              <tbody>{metodosUtilizados.map((m) => (
                 <tr key={m.metodo}>
                   <td>{METODO_LABEL[m.metodo] ?? m.metodo}</td>
                   <td>{m.coberturas}</td>
