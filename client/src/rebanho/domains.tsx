@@ -3,6 +3,14 @@ import { aInseminar, dgPendente, aSecar, partosPrevistos, aDesmamar, type Criter
 import { HOJE } from "./HOJE";
 import { RebPill } from "@/components/rb/RebPrimitives";
 
+const fmtData = (iso?: string | null) => iso ? new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("pt-BR") : "—";
+const diasDesde = (iso?: string | null) => {
+  if (!iso) return "—";
+  const inicio = new Date(`${iso.slice(0, 10)}T00:00:00Z`).getTime();
+  const hoje = new Date(`${HOJE}T00:00:00Z`).getTime();
+  return Math.max(0, Math.floor((hoje - inicio) / 86_400_000));
+};
+
 export interface Kpi { lab: string; val: string; sufixo?: string; d?: string; tom?: "up" | "ok"; }
 export interface Coluna { nome: string; render: (r: ResumoAnimal) => React.ReactNode; }
 export interface WorkList { id: string; label: string; alerta?: boolean; selecionar: (rs: ResumoAnimal[]) => ResumoAnimal[]; }
@@ -39,14 +47,19 @@ export const reproducao: DomainConfig = {
   },
   worklists: [
     { id: "inseminar", label: "A inseminar", selecionar: aInseminar },
-    { id: "dg", label: "DG pendente", selecionar: dgPendente },
+    { id: "dg", label: "Inseminadas · aguardando DG", selecionar: dgPendente },
     { id: "secar", label: "A secar (atrasadas)", alerta: true, selecionar: (rs) => aSecar(rs, HOJE) },
     { id: "partos", label: "Partos ≤ 30d", selecionar: partosPrevistos },
+    { id: "todas", label: "Todas", selecionar: (rs) => rs },
   ],
   colunas: [
+    { nome: "Tipo", render: (r) => r.categoria ? r.categoria.toLowerCase() : "—" },
+    { nome: "Grupo atual", render: (r) => r.grupoNome ?? "—" },
+    { nome: "Lactação", render: (r) => r.ordemLactacao ? `${r.ordemLactacao}ª` : "—" },
     { nome: "DEL", render: (r) => r.del ?? "—" },
-    { nome: "Status", render: (r) => r.statusReprodutivo === "PEV" ? pill("apta · PEV") : r.statusReprodutivo === "VAZIA" ? pill("vazia", "bad") : pill(r.statusReprodutivo.toLowerCase()) },
-    { nome: "Última tentativa", render: (r) => r.ultimaInseminacao ?? (r.ultimoDgData ? `${r.ultimoDgData} · ${r.ultimoDgResultado}` : "—") },
+    { nome: "Dias pós-IA", render: (r) => diasDesde(r.ultimaInseminacao) },
+    { nome: "Situação reprodutiva", render: (r) => r.statusReprodutivo === "PEV" ? pill("apta · PEV") : r.statusReprodutivo === "VAZIA" ? pill("vazia", "bad") : pill(r.statusReprodutivo.toLowerCase()) },
+    { nome: "Data da IA", render: (r) => fmtData(r.ultimaInseminacao) },
     { nome: "Protocolo", render: (r) => r.protocoloAtual ?? "Reservar" },
   ],
 };

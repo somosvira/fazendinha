@@ -57,6 +57,8 @@ export function ReproducaoTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirF
     ...(a.resumo ?? { statusReprodutivo: "VAZIA" }),
     animalId: a.id,
     categoria: a.categoria,
+    grupoNome: a.grupoNome ?? a.grupoAtual ?? null,
+    setor: a.setor ?? null,
     dataNascimento: a.dataNascimento,
     ultimoPesoKg: a.ultimoPesoKg ?? null,
   }) as ResumoAnimal);

@@ -61,6 +61,8 @@ export interface ResumoAnimal {
   categoria?: CategoriaAnimal | null;
   dataNascimento?: string | null; // ISO "YYYY-MM-DD"
   ultimoPesoKg?: number | null;   // última pesagem corporal (kg)
+  grupoNome?: string | null;      // lote/grupo atual, enriquecido a partir do Animal
+  setor?: string | null;
 }
 
 // Evento normalizado — única forma consumida pela timeline no protótipo.

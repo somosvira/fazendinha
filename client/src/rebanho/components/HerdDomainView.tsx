@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Columns3 } from "lucide-react";
 import type { DomainConfig } from "../domains";
 import type { ResumoAnimal, IaInsight } from "../types";
 import { getAnimal } from "../mock";
@@ -8,6 +9,7 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { AnimalIdentity } from "./AnimalIdentity";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Toolbar do header (filtros/controles) — reaproveitada por AnimalTab etc.
 export const RB_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -25,9 +27,32 @@ export function HerdDomainView({
   topo?: React.ReactNode; // bloco extra logo abaixo do título (ex.: KPI de taxa de concepção)
 }) {
   const [wlId, setWlId] = useState(config.worklists[0]?.id);
+  const storageKey = `rionovo:tarefas-colunas:${config.titulo.toLowerCase()}`;
+  const nomesColunas = useMemo(() => config.colunas.map((c) => c.nome), [config.colunas]);
+  const [colunasVisiveis, setColunasVisiveis] = useState<string[]>(() => {
+    try {
+      const salvas = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+      return Array.isArray(salvas) ? salvas : config.colunas.map((c) => c.nome);
+    } catch {
+      return config.colunas.map((c) => c.nome);
+    }
+  });
+  useEffect(() => {
+    setColunasVisiveis((atuais) => {
+      const validas = atuais.filter((nome) => nomesColunas.includes(nome));
+      return validas.length ? validas : nomesColunas;
+    });
+  }, [nomesColunas]);
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(colunasVisiveis));
+  }, [colunasVisiveis, storageKey]);
   const wl = config.worklists.find((w) => w.id === wlId);
   const linhas = wl ? wl.selecionar(resumos) : [];
   const kpis = config.kpis(resumos);
+  const colunas = config.colunas.filter((c) => colunasVisiveis.includes(c.nome));
+  const alternarColuna = (nome: string) => setColunasVisiveis((atuais) =>
+    atuais.includes(nome) ? atuais.filter((item) => item !== nome) : [...atuais, nome]
+  );
 
   return (
     <RebMain>
@@ -83,14 +108,39 @@ export function HerdDomainView({
             })}
           </div>
 
-          <div className="mb-2 flex items-baseline justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h3 className="m-0 font-serif text-lg font-medium">
               {wl?.label} — {linhas.length} {linhas.length === 1 ? "animal" : "animais"}
             </h3>
-            <span className="text-sm text-ink-3">{dicaLinha ?? "use o botão do animal para abrir a ficha"}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-ink-3">{dicaLinha ?? "use o botão do animal para abrir a ficha"}</span>
+              {config.colunas.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="inline-flex items-center gap-2 border border-[color:var(--rule)] bg-transparent px-3 py-2 text-sm text-[color:var(--ink)] hover:bg-[color:var(--paper-2)]">
+                      <Columns3 size={16} aria-hidden="true" /> Colunas ({colunas.length}/{config.colunas.length})
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-3">
+                    <div className="mb-2 text-sm font-semibold">Personalizar tabela</div>
+                    <div className="space-y-1">
+                      {config.colunas.map((c) => (
+                        <label key={c.nome} className="flex cursor-pointer items-center gap-2 px-1 py-1.5 text-sm">
+                          <input type="checkbox" checked={colunasVisiveis.includes(c.nome)} onChange={() => alternarColuna(c.nome)} />
+                          {c.nome}
+                        </label>
+                      ))}
+                    </div>
+                    <button type="button" className="mt-2 text-sm font-medium text-cafe underline underline-offset-2" onClick={() => setColunasVisiveis(nomesColunas)}>
+                      Mostrar todas
+                    </button>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
           </div>
           <RebTable>
-            <thead><tr><th>Animal</th>{config.colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
+            <thead><tr><th>Animal</th>{colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
               {linhas.map((r) => {
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
@@ -108,7 +158,7 @@ export function HerdDomainView({
                         </button>
                       ) : "—"}
                     </td>
-                    {config.colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
+                    {colunas.map((c) => <td key={c.nome}>{c.render(r)}</td>)}
                   </tr>
                 );
               })}
