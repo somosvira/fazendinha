@@ -8,6 +8,8 @@ export type Flag =
   | "exportar"
   | "gerenciarAcessos";
 
+// `relatorio` é o identificador persistido por compatibilidade; na interface ele
+// representa a Central de Relatórios geral, não apenas o antigo fechamento.
 export const ABAS_IDS = ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"];
 export const FLAGS_IDS: Flag[] = ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"];
 

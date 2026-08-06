@@ -93,7 +93,6 @@ const MODULOS: Modulo[] = [
       { id: "reb-reproducao", label: "Reprodução" },
       { id: "reb-acasalamento", label: "Acasalamento" },
       { id: "reb-fiv", label: "FIV / TE" },
-      { id: "reb-relatorios", label: "Relatórios" },
       { id: "reb-sanidade", label: "Sanidade" },
       { id: "reb-nutricao", label: "Nutrição" },
       { id: "reb-producao", label: "Produção" },

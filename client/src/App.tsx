@@ -14,7 +14,7 @@ import { Gastos } from "./components/Gastos";
 import { Lancar } from "./components/Lancar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
-import { Relatorio } from "./components/Relatorio";
+import { Relatorios } from "./components/Relatorios";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -487,7 +487,7 @@ export function App() {
             : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {tab === "relatorio" &&
-          (canSee("relatorio") ? <Relatorio onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatório" />)}
+          (canSee("relatorio") ? <Relatorios onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatórios" />)}
         {tab === "lancar" &&
           (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
         {/* Configurações vira hub: Geral · Cadastros · Categorias · Acessos.

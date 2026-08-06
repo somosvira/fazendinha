@@ -7,6 +7,11 @@ import {
 } from "./router";
 
 describe("roteamento do rebanho", () => {
+  it("usa /relatorios como rota canônica e mantém o endereço antigo compatível", () => {
+    expect(tabToPath("relatorio")).toBe("/relatorios");
+    expect(pathToTab("/relatorios")).toBe("relatorio");
+    expect(pathToTab("/relatorio")).toBe("relatorio");
+  });
   it.each([
     ["reb-dashboard", "/rebanho/dashboard"],
     ["reb-reproducao", "/rebanho/reproducao"],

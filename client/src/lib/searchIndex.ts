@@ -52,7 +52,7 @@ export const COMANDOS: Comando[] = [
   { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   // "fin-plano"/"fin-ia" removidos: abas Categorias e IA financeira ocultas até
   // terem backend real (ver data/acessos.ts).
-  { id: "fin-relatorio", tab: "relatorio", label: "Relatório", grupo: "Financeiro", sinonimos: ["relatório gerencial", "editorial", "executivo", "dre", "fluxo de caixa", "leite paga o leite"], descricao: "Relatório gerencial editorial" },
+  { id: "fin-relatorio", tab: "relatorio", label: "Relatórios", grupo: "Financeiro", sinonimos: ["central de relatórios", "relatório gerencial", "rebanho", "reprodução", "sanidade", "produção", "dre", "fluxo de caixa"], descricao: "Central de relatórios de toda a fazenda" },
 
   // — Rebanho leiteiro (MODULOS[rebanho].subs) —
   { id: "reb-dashboard", tab: "reb-dashboard", label: "Painel", grupo: "Rebanho", sinonimos: ["rebanho", "leite", "leiteiro", "visão geral", "início"], descricao: "Painel do rebanho leiteiro" },
@@ -108,7 +108,7 @@ export const COMANDOS: Comando[] = [
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
   { id: "acao-novo-talhao", tab: "pla-talhao", label: "Novo talhão", grupo: "Ações", acao: true, sinonimos: ["cadastrar talhão", "nova lavoura", "nova gleba", "novo plantio", "nova área"], descricao: "Cadastrar um novo talhão" },
   { id: "acao-novo-animal", tab: "reb-animal", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal" },
-  { id: "acao-relatorio", tab: "relatorio", label: "Relatório executivo", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "exportar relatório", "dre", "fluxo de caixa"], descricao: "Abrir o relatório gerencial" },
+  { id: "acao-relatorio", tab: "relatorio", label: "Abrir relatórios", grupo: "Ações", acao: true, sinonimos: ["criar relatório", "exportar", "pdf", "csv", "fechamento"], descricao: "Abrir a central de relatórios" },
   { id: "acao-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Ações", acao: true, sinonimos: ["produtos", "fornecedores", "registrar cadastro"], descricao: "Abrir os cadastros" },
 ];
 

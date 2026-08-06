@@ -21,7 +21,7 @@ const PATH_BY_TAB: Partial<Record<Tab, string>> = {
   caixinha: "/caixinha",
   plano: "/categorias",
   ia: "/ia",
-  relatorio: "/relatorio",
+  relatorio: "/relatorios",
   acessos: "/acessos",
   config: "/configuracoes",
   cadastros: "/cadastros",
@@ -102,6 +102,8 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
   if (path === "/" || path === "") return DEFAULT_TAB;
+  // Compatibilidade com links e favoritos anteriores à Central de Relatórios.
+  if (path === "/relatorio") return "relatorio";
 
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;

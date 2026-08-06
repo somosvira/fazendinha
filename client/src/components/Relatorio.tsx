@@ -511,7 +511,7 @@ function AtencaoCard({
 
 /* ============ PÁGINA ============ */
 
-export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
+export function FechamentoMensalRelatorio({ onNav, onVoltar }: { onNav: (t: Tab) => void; onVoltar?: () => void }) {
   const toast = useToast();
   // Dado REAL do fechamento — mesmo payload que o Dashboard usa (fetchDashboard).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -655,6 +655,7 @@ export function Relatorio({ onNav }: { onNav: (t: Tab) => void }) {
         prevMes={prevMes}
         nextMes={nextMes}
       />
+      {onVoltar && !exportando && <button type="button" className="btn-ghost mb-4 font-sans text-sm print:hidden" onClick={onVoltar}>← Voltar para relatórios</button>}
 
       <div className="grid grid-cols-1 gap-4 print:gap-4 min-[1080px]:grid-cols-[minmax(0,1fr)_320px] min-[1080px]:items-start">
         {/* Coluna principal: os veredictos (métrica + gráfico) --------------- */}

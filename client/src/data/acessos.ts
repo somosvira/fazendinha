@@ -29,7 +29,7 @@ export const ABAS: Aba[] = [
   { id: "caixinha", label: "Caixinha", desc: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   // "plano" (Categorias) e "ia" (IA financeira) ocultos até terem backend real —
   // as telas ainda usam dados mock. Reversível: reinserir aqui religa a aba.
-  { id: "relatorio", label: "Relatório", desc: "Relatório gerencial editorial" },
+  { id: "relatorio", label: "Relatórios", desc: "Central de relatórios de toda a fazenda" },
 ];
 
 // Permissões sensíveis (além da visibilidade de abas)
