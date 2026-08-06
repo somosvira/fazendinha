@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   animalFindMany: vi.fn(),
   animalCount: vi.fn(),
   getNumero: vi.fn(),
+  sugerirAptidao: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
@@ -15,6 +16,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 vi.mock("./parametros.js", () => ({ getNumero: mocks.getNumero }));
+vi.mock("./aptidao.js", () => ({ sugerirAptidaoAutomatica: mocks.sugerirAptidao }));
 
 import { gerarRelatorio } from "./relatorios.js";
 
@@ -25,9 +27,27 @@ beforeEach(() => {
   mocks.animalFindMany.mockResolvedValue([]);
   mocks.animalCount.mockResolvedValue(0);
   mocks.getNumero.mockResolvedValue(283);
+  mocks.sugerirAptidao.mockResolvedValue([]);
 });
 
 describe("consulta de relatórios por propriedade", () => {
+  it("gera a lista predefinida de novilhas aptas pelos critérios de manejo", async () => {
+    mocks.sugerirAptidao.mockResolvedValue([{ animalId: 31, numero: "301", apta: true, motivo: "Atinge idade (13m) e peso (320kg) mínimos." }]);
+    mocks.animalFindMany.mockResolvedValue([{
+      id: 31, numero: "301", nome: "Jade", categoria: "NOVILHA", setor: "Recria", dataNascimento: new Date("2024-01-01T00:00:00Z"),
+      grupo: { nome: "Novilhas" }, pesagens: [{ peso: 358 }],
+    }]);
+
+    const r = await gerarRelatorio({ templateId: "novilhas-aptas", status: "ATIVO" }, 7);
+
+    expect(mocks.sugerirAptidao).toHaveBeenCalledWith(7, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(mocks.animalFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: [31] }, propriedadeId: 7, status: "ATIVO" },
+    }));
+    expect(r).toMatchObject({ templateId: "novilhas-aptas", total: 1 });
+    expect(r.linhas[0]?.celulas).toEqual([expect.any(Number), 358, "Atinge idade (13m) e peso (320kg) mínimos."]);
+  });
+
   it("consulta inseminações no período com uma linha por tentativa e todos os filtros", async () => {
     mocks.eventoCount.mockResolvedValue(2);
     mocks.eventoFindMany.mockResolvedValue([

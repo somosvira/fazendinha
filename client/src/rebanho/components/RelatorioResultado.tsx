@@ -38,7 +38,7 @@ export function RelatorioResultado({
           <p className="mt-1 text-sm text-ink-3">{data.total} {data.total === 1 ? "linha" : "linhas"} · {data.granularidade === "evento" ? "uma por evento" : "uma por animal"}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <RebButton variant="pri" onClick={onMontarFormulario} disabled={!data.linhas.length || data.truncado}>Montar formulário</RebButton>
+          {data.templateId !== "novilhas-aptas" && <RebButton variant="pri" onClick={onMontarFormulario} disabled={!data.linhas.length || data.truncado}>Montar formulário</RebButton>}
           <RebButton onClick={() => onExportarCsv(ordem)} disabled={!data.linhas.length || !colunas.length}>↓ CSV</RebButton>
           <RebButton onClick={() => onExportarPdf(ordem)} disabled={!data.linhas.length || !colunas.length || exportandoPdf}>{exportandoPdf ? "Gerando PDF…" : "↓ PDF"}</RebButton>
         </div>

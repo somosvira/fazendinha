@@ -1595,7 +1595,7 @@ export const obterRelatorioReproducao = (de?: string, ate?: string) => {
 };
 
 // ─── Relatórios configuráveis do rebanho ───────────────────────────────────
-export type IdTemplateRelatorioRebanho = "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo";
+export type IdTemplateRelatorioRebanho = "novilhas-aptas" | "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo";
 export type TipoEventoRelatorioRebanho = EventoPayload["tipo"];
 export interface TemplateRelatorioRebanhoDTO {
   id: IdTemplateRelatorioRebanho;
@@ -1663,7 +1663,7 @@ export function useRelatorioRebanho(filtros: FiltrosRelatorioRebanho | null) {
 
 // ─── Formulários de campo — modelos, folhas e lançamento em grade ───────────
 export type ChaveCampoFormulario = "resultado_dg" | "data_evento" | "metodo_dg" | "dt_parto_prevista" | "tipo_parto" | "auxilio_parto" | "num_crias" | "crias_vivas" | "crias_natimortas" | "sexo_cria" | "observacao";
-export type ChaveColunaSistemaFormulario = "animal" | "categoria" | "grupo_setor" | "data" | "reprodutor" | "protocolo" | "doadora" | "resultado" | "partoPrevisto" | "diasGestacao" | "ultimaTentativa" | "previsaoSecagem" | "tipoParto" | "auxilio" | "crias" | "vivas" | "natimortas" | "sexo" | "motivo" | "observacao";
+export type ChaveColunaSistemaFormulario = "animal" | "categoria" | "grupo_setor" | "data" | "idadeMeses" | "ultimoPeso" | "criterioAptidao" | "reprodutor" | "protocolo" | "doadora" | "resultado" | "partoPrevisto" | "diasGestacao" | "ultimaTentativa" | "previsaoSecagem" | "tipoParto" | "auxilio" | "crias" | "vivas" | "natimortas" | "sexo" | "motivo" | "observacao";
 export interface ConfigFormularioCampo { colunasSistema: ChaveColunaSistemaFormulario[]; camposPapel: ChaveCampoFormulario[] }
 export interface CampoFormularioCampoDTO {
   chave: ChaveCampoFormulario;

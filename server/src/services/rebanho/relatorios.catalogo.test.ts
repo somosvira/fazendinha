@@ -23,6 +23,7 @@ const evento = {
 describe("catálogo de relatórios configuráveis", () => {
   it("oferece os templates reprodutivos em ordem editorial", () => {
     expect(listarTemplatesRelatorio().map((t) => t.id)).toEqual([
+      "novilhas-aptas",
       "ia-periodo",
       "cobertura-periodo",
       "te-periodo",
@@ -64,6 +65,10 @@ describe("catálogo de relatórios configuráveis", () => {
   });
 
   it("distingue templates de estado atual dos históricos", () => {
+    expect(obterTemplateRelatorio("novilhas-aptas")).toMatchObject({
+      granularidade: "animal",
+      titulo: "Novilhas aptas à reprodução",
+    });
     expect(obterTemplateRelatorio("gestantes-atual").granularidade).toBe("animal");
     expect(obterTemplateRelatorio("partos-previstos").granularidade).toBe("animal");
   });

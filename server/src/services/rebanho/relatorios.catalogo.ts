@@ -1,6 +1,7 @@
 import { labelAuxilioParto, labelTipoParto } from "./parto.dict.js";
 
 export const IDS_TEMPLATE_RELATORIO = [
+  "novilhas-aptas",
   "ia-periodo",
   "cobertura-periodo",
   "te-periodo",
@@ -78,6 +79,20 @@ const texto = (valor?: string | null) => valor?.trim() || null;
 const resultadoLabel = (valor?: string | null) => valor ? valor.charAt(0).toUpperCase() + valor.slice(1).toLowerCase() : null;
 
 const TEMPLATES: readonly TemplateRelatorio[] = [
+  {
+    id: "novilhas-aptas",
+    titulo: "Novilhas aptas à reprodução",
+    descricao: "Novilhas que atingiram simultaneamente a idade e o peso mínimos definidos no manejo.",
+    fase: "Serviços",
+    granularidade: "animal",
+    colunas: [
+      { chave: "idadeMeses", rotulo: "Idade (meses)", tipo: "numero", extrair: () => null },
+      { chave: "ultimoPeso", rotulo: "Último peso (kg)", tipo: "numero", extrair: () => null },
+      { chave: "criterioAptidao", rotulo: "Critério atendido", tipo: "texto", extrair: () => null },
+    ],
+    acao: null,
+    filtrosEspecificos: [],
+  },
   {
     id: "ia-periodo",
     titulo: "Inseminações no período",

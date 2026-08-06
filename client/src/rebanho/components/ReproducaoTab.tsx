@@ -5,7 +5,6 @@ import { WorklistCanonica, type AcaoItemWorklist } from "./WorklistCanonica";
 import { ProtocolosIatf } from "./ProtocolosIatf";
 import { ProgramacaoIatfLote } from "./ProgramacaoIatfLote";
 import { ReprodutoresSection } from "./ReprodutoresSection";
-import { AptidaoSection } from "./AptidaoSection";
 import { RelatorioReproducaoSection } from "./RelatorioReproducaoSection";
 import { RebHeader } from "./RebHeader";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -34,8 +33,6 @@ export function ReproducaoTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirF
   }) as ResumoAnimal);
   const nomes = Object.fromEntries(data.map((a) => [a.id, { nome: a.nome, numero: a.numero }]));
   const criterio = criterioDesmame(params.data);
-  const idadeMinAptidao = params.data?.find((p) => p.chave === "APTIDAO_IDADE_MIN_MESES")?.valorNumero ?? 13;
-  const pesoMinAptidao = params.data?.find((p) => p.chave === "APTIDAO_PESO_MIN_KG")?.valorNumero ?? 320;
   const config = {
     ...DOMAINS.reproducao,
     worklists: [...DOMAINS.reproducao.worklists, worklistDesmame(criterio, aDesmamar(resumos, criterio, HOJE).semPeso)],
@@ -46,5 +43,5 @@ export function ReproducaoTab({ onRegistrarEvento, onRegistrarWorklist, onAbrirF
     const animal = data.find((a) => a.id === id);
     if (animal) onRegistrarEvento(animal);
   };
-  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" topo={<><RelatorioReproducaoSection /><AptidaoSection novilhas={data.filter((a) => a.categoria === "NOVILHA")} idadeMinMeses={idadeMinAptidao} pesoMinKg={pesoMinAptidao} /><ProtocolosIatf /><ProgramacaoIatfLote /><ReprodutoresSection /></>} />;
+  return <HerdDomainView key="reproducao" config={config} resumos={resumos} insight={insightDoRebanho("reproducao")} nomes={nomes} onAbrirAnimal={abrirRegistro} dicaLinha="clique numa linha pra registrar evento de reprodução" topo={<><RelatorioReproducaoSection /><ProtocolosIatf /><ProgramacaoIatfLote /><ReprodutoresSection /></>} />;
 }

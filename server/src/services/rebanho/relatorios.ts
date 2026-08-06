@@ -10,6 +10,7 @@ import {
 } from "./relatorios.catalogo.js";
 import type { RelatorioQuery } from "./relatorios.schemas.js";
 import { getNumero } from "./parametros.js";
+import { sugerirAptidaoAutomatica } from "./aptidao.js";
 
 const LIMITE = 2000;
 const GESTACAO_DIAS_PADRAO = 283;
@@ -193,8 +194,42 @@ async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | nul
   return baseResultado(query, propriedadeId, total, linhas);
 }
 
+async function gerarNovilhasAptas(query: RelatorioQuery, propriedadeId: number | null): Promise<ResultadoRelatorioDTO> {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const sugestoes = await sugerirAptidaoAutomatica(propriedadeId, hoje);
+  const ids = sugestoes.map((item) => item.animalId);
+  const animais = ids.length ? await prisma.animal.findMany({
+    where: { id: { in: ids }, ...filtroAnimal(query, propriedadeId) },
+    select: {
+      id: true, numero: true, nome: true, categoria: true, dataNascimento: true, setor: true,
+      grupo: { select: { nome: true } },
+      pesagens: { orderBy: { data: "desc" }, take: 1, select: { peso: true } },
+    },
+    orderBy: [{ numero: "asc" }, { id: "asc" }],
+  }) : [];
+  const motivoPorAnimal = new Map(sugestoes.map((item) => [item.animalId, item.motivo]));
+  const hojeMs = dataUtc(hoje).getTime();
+  const linhas = animais.map((animal) => ({
+    animalId: animal.id,
+    numero: animal.numero,
+    nome: animal.nome,
+    categoria: animal.categoria,
+    grupo: animal.grupo?.nome ?? null,
+    setor: animal.setor,
+    eventoId: null,
+    data: hoje,
+    celulas: [
+      animal.dataNascimento ? Math.floor((hojeMs - animal.dataNascimento.getTime()) / (30.436875 * MS_DIA)) : null,
+      animal.pesagens[0]?.peso == null ? null : Number(animal.pesagens[0].peso),
+      motivoPorAnimal.get(animal.id) ?? null,
+    ],
+  }));
+  return baseResultado(query, propriedadeId, linhas.length, linhas);
+}
+
 export async function gerarRelatorio(query: RelatorioQuery, propriedadeId: number | null): Promise<ResultadoRelatorioDTO> {
   const template = obterTemplateRelatorio(query.templateId);
+  if (template.id === "novilhas-aptas") return gerarNovilhasAptas(query, propriedadeId);
   return template.granularidade === "evento"
     ? gerarPorEvento(query, propriedadeId)
     : gerarPorAnimal(query, propriedadeId);
