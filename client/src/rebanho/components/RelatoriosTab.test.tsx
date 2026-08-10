@@ -12,7 +12,7 @@ vi.mock("./relatorioExport", () => exportacoes);
 
 const templates = [
   { id: "ia-periodo", titulo: "Inseminações no período", descricao: "Uma linha por tentativa.", fase: "Serviços", granularidade: "evento", filtrosEspecificos: ["reprodutor", "protocolo"] },
-  { id: "gestantes-atual", titulo: "Gestantes atualmente", descricao: "Foto atual.", fase: "Gestação", granularidade: "animal", filtrosEspecificos: [] },
+  { id: "gestantes-atual", titulo: "Gestantes atualmente", descricao: "Foto atual.", fase: "Gestação", granularidade: "animal", filtrosEspecificos: [], colunas: [{ chave: "diasGestacao", rotulo: "Dias de gestação", tipo: "numero" }] },
 ];
 
 function stubFetch() {
@@ -66,6 +66,20 @@ describe("RelatoriosTab", () => {
     expect(screen.getByLabelText("Protocolo")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Modelo de relatório"), { target: { value: "gestantes-atual" } });
     await waitFor(() => expect(screen.queryByLabelText("Touro ou sêmen")).toBeNull());
+  });
+
+  it("permite delimitar parâmetros numéricos por mínimo e máximo", async () => {
+    const spy = stubFetch();
+    render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
+    await screen.findByRole("option", { name: "Gestantes atualmente" });
+    fireEvent.change(screen.getByLabelText("Modelo de relatório"), { target: { value: "gestantes-atual" } });
+    fireEvent.change(screen.getByLabelText("Dias de gestação mínimo"), { target: { value: "63" } });
+    fireEvent.change(screen.getByLabelText("Dias de gestação máximo"), { target: { value: "70" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
+    await waitFor(() => {
+      const url = String(spy.mock.calls.find(([chamada]) => String(chamada).includes("/rebanho/relatorios?"))?.[0]);
+      expect(decodeURIComponent(url)).toContain('filtrosColunas=[{"chave":"diasGestacao","tipo":"numero","minimo":"63","maximo":"70"}]');
+    });
   });
 
   it("exporta o PDF diretamente a partir do resultado do relatório", async () => {

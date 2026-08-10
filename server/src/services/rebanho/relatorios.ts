@@ -19,6 +19,23 @@ const dataUtc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const iso = (data?: Date | null) => data ? new Date(data).toISOString().slice(0, 10) : null;
 const somarDias = (data: Date, dias: number) => new Date(data.getTime() + dias * MS_DIA);
 
+function filtrarLinhas(query: RelatorioQuery, linhas: LinhaRelatorioDTO[], colunas: ColunaRelatorioDTO[]) {
+  if (!query.filtrosColunas?.length) return linhas;
+  const indicePorChave = new Map(colunas.map((coluna, indice) => [coluna.chave, { indice, tipo: coluna.tipo }]));
+  return linhas.filter((linha) => query.filtrosColunas!.every((filtro) => {
+    const coluna = indicePorChave.get(filtro.chave);
+    if (!coluna || coluna.tipo !== filtro.tipo) return false;
+    const valor = linha.celulas[coluna.indice];
+    if (valor == null) return false;
+    if (filtro.tipo === "texto") return String(valor).toLocaleLowerCase("pt-BR").includes((filtro.valor ?? "").toLocaleLowerCase("pt-BR"));
+    const atual = filtro.tipo === "numero" ? Number(valor) : String(valor);
+    const minimo = filtro.tipo === "numero" ? Number(filtro.minimo) : String(filtro.minimo ?? "");
+    const maximo = filtro.tipo === "numero" ? Number(filtro.maximo) : String(filtro.maximo ?? "");
+    return (filtro.minimo == null || filtro.minimo === "" || atual >= minimo)
+      && (filtro.maximo == null || filtro.maximo === "" || atual <= maximo);
+  }));
+}
+
 export interface ColunaRelatorioDTO {
   chave: string;
   rotulo: string;
@@ -61,21 +78,28 @@ function filtroAnimal(query: RelatorioQuery, propriedadeId: number | null) {
     ...(query.grupoId != null ? { grupoId: query.grupoId } : {}),
     ...(query.setor ? { setor: query.setor } : {}),
     ...(query.categoria ? { categoria: query.categoria } : {}),
+    ...(query.animal ? { OR: [
+      { numero: { contains: query.animal, mode: "insensitive" as const } },
+      { nome: { contains: query.animal, mode: "insensitive" as const } },
+    ] } : {}),
   };
 }
 
 function baseResultado(query: RelatorioQuery, propriedadeId: number | null, total: number, linhas: LinhaRelatorioDTO[]): ResultadoRelatorioDTO {
   const template = obterTemplateRelatorio(query.templateId);
+  const colunas = template.colunas.map(({ chave, rotulo, tipo }) => ({ chave, rotulo, tipo }));
+  const filtradas = filtrarLinhas(query, linhas, colunas);
+  const totalFiltrado = query.filtrosColunas?.length ? filtradas.length : total;
   return {
     templateId: template.id,
     titulo: template.titulo,
     descricao: template.descricao,
     granularidade: template.granularidade,
-    colunas: template.colunas.map(({ chave, rotulo, tipo }) => ({ chave, rotulo, tipo })),
+    colunas,
     acao: template.acao,
-    linhas,
-    total,
-    truncado: total > LIMITE,
+    linhas: filtradas.slice(0, LIMITE),
+    total: totalFiltrado,
+    truncado: totalFiltrado > LIMITE,
     meta: {
       geradoEm: new Date().toISOString(),
       periodo: { inicio: query.dataInicio ?? null, fim: query.dataFim ?? null },
@@ -119,7 +143,7 @@ async function gerarPorEvento(query: RelatorioQuery, propriedadeId: number | nul
         animal: { select: { numero: true, nome: true, categoria: true, setor: true, grupo: { select: { nome: true } } } },
       },
       orderBy: [{ data: "desc" }, { id: "desc" }],
-      take: LIMITE,
+      ...(query.filtrosColunas?.length ? {} : { take: LIMITE }),
     }),
   ]);
   const linhas = eventos.map((evento) => ({
@@ -172,7 +196,7 @@ async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | nul
         resumo: { select: { statusReprodutivo: true, diasGestacao: true, ultimaInseminacao: true, previsaoSecagem: true } },
       },
       orderBy: [{ numero: "asc" }, { id: "asc" }],
-      take: LIMITE,
+      ...(query.filtrosColunas?.length ? {} : { take: LIMITE }),
     }),
   ]);
   const linhas = animais.map((animal) => {

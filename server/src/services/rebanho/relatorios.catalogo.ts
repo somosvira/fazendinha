@@ -220,11 +220,13 @@ export interface TemplateRelatorioDTO {
   fase: TemplateRelatorio["fase"];
   granularidade: GranularidadeRelatorio;
   filtrosEspecificos: TemplateRelatorio["filtrosEspecificos"];
+  colunas: { chave: string; rotulo: string; tipo: TipoColunaRelatorio }[];
 }
 
 export function listarTemplatesRelatorio(): TemplateRelatorioDTO[] {
-  return TEMPLATES.map(({ id, titulo, descricao, fase, granularidade, filtrosEspecificos }) => ({
+  return TEMPLATES.map(({ id, titulo, descricao, fase, granularidade, filtrosEspecificos, colunas }) => ({
     id, titulo, descricao, fase, granularidade, filtrosEspecificos,
+    colunas: colunas.map(({ chave, rotulo, tipo }) => ({ chave, rotulo, tipo })),
   }));
 }
 

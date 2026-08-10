@@ -26,6 +26,14 @@ describe("schema de consulta de relatórios", () => {
     });
   });
 
+  it("interpreta limites configuráveis de colunas", () => {
+    const filtrosColunas = JSON.stringify([{ chave: "diasGestacao", tipo: "numero", minimo: "63", maximo: "70" }]);
+    expect(relatorioQuerySchema.parse({ templateId: "gestantes-atual", filtrosColunas }).filtrosColunas).toEqual([
+      { chave: "diasGestacao", tipo: "numero", minimo: "63", maximo: "70" },
+    ]);
+    expect(relatorioQuerySchema.safeParse({ templateId: "gestantes-atual", filtrosColunas: "não-é-json" }).success).toBe(false);
+  });
+
   it("exige período nos templates históricos", () => {
     expect(relatorioQuerySchema.safeParse({ templateId: "ia-periodo" }).success).toBe(false);
   });

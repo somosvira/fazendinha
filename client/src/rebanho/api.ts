@@ -1604,6 +1604,14 @@ export interface TemplateRelatorioRebanhoDTO {
   fase: "Serviços" | "Gestação" | "Parto e secagem";
   granularidade: "evento" | "animal";
   filtrosEspecificos: readonly ("reprodutor" | "protocolo" | "resultado")[];
+  colunas?: ColunaRelatorioRebanhoDTO[];
+}
+export interface FiltroColunaRelatorioRebanho {
+  chave: string;
+  tipo: "texto" | "numero" | "data";
+  valor?: string;
+  minimo?: string | number;
+  maximo?: string | number;
 }
 export interface FiltrosRelatorioRebanho {
   templateId: IdTemplateRelatorioRebanho;
@@ -1613,9 +1621,11 @@ export interface FiltrosRelatorioRebanho {
   grupoId?: number;
   setor?: string;
   categoria?: string;
+  animal?: string;
   reprodutor?: string;
   protocolo?: string;
   resultado?: "positivo" | "negativo";
+  filtrosColunas?: string;
 }
 export interface ColunaRelatorioRebanhoDTO { chave: string; rotulo: string; tipo: "texto" | "numero" | "data" }
 export interface LinhaRelatorioRebanhoDTO {
