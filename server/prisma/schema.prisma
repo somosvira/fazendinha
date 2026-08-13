@@ -2930,6 +2930,7 @@ model Usuario {
   senhaHash    String?
   papel        String
   abas         String[]
+  areas        String[]      @default(["financeiro", "rebanho", "agricultura", "gado_corte", "equipe"])
   flags        String[]
   status       StatusUsuario @default(PENDENTE)
   dono         Boolean       @default(false)

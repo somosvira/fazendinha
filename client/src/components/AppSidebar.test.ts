@@ -57,6 +57,7 @@ function baseProps(overrides: Partial<{
   financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   podeVerFolha: boolean;
+  areas: string[];
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
   propAtiva: number | null;
@@ -71,6 +72,7 @@ function baseProps(overrides: Partial<{
     ],
     isAdmin: true,
     podeVerFolha: true,
+    areas: ["rebanho", "agricultura", "gado_corte", "equipe"],
     mobileOpen: false,
     onMobileToggle: vi.fn(),
     propAtiva: null,
@@ -106,6 +108,15 @@ describe("AppSidebar", () => {
   it("mostra o módulo Equipe & Ponto quando podeVerFolha=true", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: true })));
     expect(screen.getByText("Equipe & Ponto")).toBeTruthy();
+  });
+
+  it("mostra somente módulos pertencentes às áreas autorizadas", () => {
+    render(h(AppSidebar, baseProps({ areas: ["rebanho"] })));
+    expect(screen.getByText("Rebanho leiteiro")).toBeTruthy();
+    expect(screen.queryByText("Plantio · café")).toBeNull();
+    expect(screen.queryByText("Milho")).toBeNull();
+    expect(screen.queryByText("Gado de corte")).toBeNull();
+    expect(screen.queryByText("Equipe & Ponto")).toBeNull();
   });
 
   it("clicar no cabeçalho de um módulo alterna (acordeão) seus sub-itens", () => {

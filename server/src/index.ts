@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
 import { authMiddleware } from "./middleware/auth.js";
+import { exigeArea } from "./middleware/permissao.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { simulacaoRouter } from "./routes/simulacao.js";
 import { categoriasRouter } from "./routes/categorias.js";
@@ -115,6 +116,19 @@ app.route("/api", whatsappRouter);
 app.route("/api", authPublicoRouter);
 
 app.use("/api/*", authMiddleware);
+
+// Autorização por domínio: o frontend também esconde os módulos, mas este gate
+// impede acesso por URL/cURL. Agricultura reúne os módulos Plantio e Cultivo.
+app.use("/api/rebanho/*", exigeArea("rebanho"));
+app.use("/api/plantio/*", exigeArea("agricultura"));
+app.use("/api/cultivo/*", exigeArea("agricultura"));
+app.use("/api/corte/*", exigeArea("gado_corte"));
+app.use("/api/ponto/*", exigeArea("equipe"));
+for (const path of [
+  "/api/dashboard", "/api/dashboard/*", "/api/simulacao/*", "/api/categorias", "/api/categorias/*",
+  "/api/caixinhas", "/api/caixinhas/*", "/api/cadastros", "/api/cadastros/*",
+  "/api/lancamentos", "/api/lancamentos/*", "/api/nota-fiscal/*", "/api/vencimentos", "/api/vencimentos/*",
+]) app.use(path, exigeArea("financeiro"));
 
 // Protegidos (exigem sessão resolvida pelo authMiddleware):
 app.route("/api", authPrivadoRouter);

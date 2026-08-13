@@ -300,19 +300,24 @@ function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: bo
 }
 
 export function AppSidebar({
-  current, onNav, financeiro, isAdmin, podeVerFolha,
+  current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, propAtiva, onTrocarProp,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   // Sem essa flag o módulo Equipe & Ponto (salário/CPF/Pix) não aparece na sidebar.
   podeVerFolha: boolean;
+  areas?: string[];
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
   // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
 }) {
-  // Módulos exibidos = MODULOS - equipe se o user não tem verSalarios.
-  const modulosVisiveis = podeVerFolha ? MODULOS : MODULOS.filter((m) => m.id !== "equipe");
+  const areaDoModulo: Record<string, string> = {
+    rebanho: "rebanho", plantio: "agricultura", cultivo: "agricultura", corte: "gado_corte", equipe: "equipe",
+  };
+  const areasEfetivas = areas ?? ["rebanho", "agricultura", "gado_corte", "equipe"];
+  const modulosVisiveis = MODULOS
+    .filter((m) => areasEfetivas.includes(areaDoModulo[m.id]) && (m.id !== "equipe" || podeVerFolha));
   const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -377,7 +382,7 @@ export function AppSidebar({
         {gestao.map((t) => (
           <Item
             key={t.id} id={t.id} label={t.label} current={current} onNav={nav} chevron
-            activeWhen={t.id === "gastos" ? ["caixinha"] : undefined}
+            activeWhen={t.id === "gastos" ? ["caixinha", "cadastros"] : undefined}
           />
         ))}
       </div>
@@ -410,7 +415,7 @@ export function AppSidebar({
       <div className="flex flex-col gap-px">
         <Item
           id="config" label="Configurações" current={current} onNav={nav} chevron
-          activeWhen={["cadastros", "plano", ...(isAdmin ? (["acessos"] as Tab[]) : [])]}
+          activeWhen={["plano", ...(isAdmin ? (["acessos"] as Tab[]) : [])]}
         />
       </div>
     </div>
