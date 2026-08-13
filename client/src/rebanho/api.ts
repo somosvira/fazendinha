@@ -1595,13 +1595,13 @@ export const obterRelatorioReproducao = (de?: string, ate?: string) => {
 };
 
 // ─── Relatórios configuráveis do rebanho ───────────────────────────────────
-export type IdTemplateRelatorioRebanho = "novilhas-aptas" | "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo";
+export type IdTemplateRelatorioRebanho = "novilhas-aptas" | "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo" | "controle-leiteiro-lote" | "pesagem-corporal-lote" | "vacinacao-lote";
 export type TipoEventoRelatorioRebanho = EventoPayload["tipo"];
 export interface TemplateRelatorioRebanhoDTO {
   id: IdTemplateRelatorioRebanho;
   titulo: string;
   descricao: string;
-  fase: "Serviços" | "Gestação" | "Parto e secagem";
+  fase: "Serviços" | "Gestação" | "Parto e secagem" | "Manejo em lote";
   granularidade: "evento" | "animal";
   filtrosEspecificos: readonly ("reprodutor" | "protocolo" | "resultado")[];
   colunas?: ColunaRelatorioRebanhoDTO[];
@@ -1672,7 +1672,7 @@ export function useRelatorioRebanho(filtros: FiltrosRelatorioRebanho | null) {
 }
 
 // ─── Formulários de campo — modelos, folhas e lançamento em grade ───────────
-export type ChaveCampoFormulario = "resultado_dg" | "data_evento" | "metodo_dg" | "dt_parto_prevista" | "tipo_parto" | "auxilio_parto" | "num_crias" | "crias_vivas" | "crias_natimortas" | "sexo_cria" | "observacao";
+export type ChaveCampoFormulario = "resultado_dg" | "data_evento" | "metodo_dg" | "dt_parto_prevista" | "tipo_parto" | "auxilio_parto" | "num_crias" | "crias_vivas" | "crias_natimortas" | "sexo_cria" | "observacao" | "peso_1" | "peso_2" | "peso_3" | "peso_total" | "peso_corporal" | "vacina";
 export type ChaveColunaSistemaFormulario = "animal" | "categoria" | "grupo_setor" | "data" | "idadeMeses" | "ultimoPeso" | "criterioAptidao" | "reprodutor" | "protocolo" | "doadora" | "resultado" | "partoPrevisto" | "diasGestacao" | "ultimaTentativa" | "previsaoSecagem" | "tipoParto" | "auxilio" | "crias" | "vivas" | "natimortas" | "sexo" | "motivo" | "observacao";
 export interface ConfigFormularioCampo { colunasSistema: ChaveColunaSistemaFormulario[]; camposPapel: ChaveCampoFormulario[] }
 export interface CampoFormularioCampoDTO {
@@ -1680,7 +1680,7 @@ export interface CampoFormularioCampoDTO {
   rotulo: string;
   tipoUi: "opcoes" | "data" | "texto" | "numero";
   obrigatorio: boolean;
-  eventoAlvo: TipoEventoRelatorioRebanho;
+  eventoAlvo: TipoEventoRelatorioRebanho | "CONTROLE_LEITEIRO" | "PESAGEM_CORPORAL" | "VACINA";
   opcoes?: readonly { valor: string; rotulo: string }[];
 }
 export interface ModeloFormularioCampoDTO {
@@ -1695,7 +1695,7 @@ export interface SnapshotLinhaFolhaCampo {
 }
 export interface LinhaFolhaCampoDTO {
   id: number; ordem: number; animalId: number; eventoOrigemId: number | null; snapshot: SnapshotLinhaFolhaCampo;
-  status: StatusLinhaFolha; respostas: Record<string, unknown> | null; motivoNaoRealizado: string | null; eventoGeradoId: number | null;
+  status: StatusLinhaFolha; respostas: Record<string, unknown> | null; motivoNaoRealizado: string | null; eventoGeradoId: number | null; resultadoTipo?: string | null; resultadoId?: number | null;
 }
 export interface FolhaCampoDTO {
   id: number; nome: string; templateId: IdTemplateRelatorioRebanho; status: StatusFolhaCampo;

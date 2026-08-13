@@ -77,7 +77,7 @@ export function RelatoriosTab({
   useEffect(() => { if (filtrosAplicados) relatorio.recarregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [refreshToken]);
 
   const template = templates.find((t) => t.id === templateId);
-  const exigePeriodo = templateId !== "gestantes-atual";
+  const exigePeriodo = !["gestantes-atual", "controle-leiteiro-lote", "pesagem-corporal-lote", "vacinacao-lote"].includes(templateId);
   const fases = useMemo(() => Array.from(new Set(templates.map((t) => t.fase))), [templates]);
 
   function atualizarFiltro(chave: string, campo: "minimo" | "maximo" | "valor", valor: string) {
