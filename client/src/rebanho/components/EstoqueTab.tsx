@@ -54,6 +54,7 @@ export function EstoqueTab() {
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
 
@@ -150,9 +151,12 @@ export function EstoqueTab() {
       {custo.erro && <p className="mt-[7px] text-sm text-prejuizo">Erro no custo: {custo.erro}</p>}
 
       {/* Saldos */}
-      <div className="mt-1 mb-2 flex items-baseline justify-between">
+      <div className="mt-1 mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-xl font-medium m-0">Saldos de estoque</h2>
-        <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
+          <RebButton variant="pri" onClick={() => setCadastrandoProduto(true)}>+ Cadastrar produto</RebButton>
+        </div>
       </div>
       {(saldos.data.length > 0 || setorFiltro) && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
@@ -257,6 +261,7 @@ export function EstoqueTab() {
       <LotesProdutoSection />
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
+      {cadastrandoProduto && <ProdutoForm onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
       {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
       {excluindo && (
         <ConfirmarExclusao
