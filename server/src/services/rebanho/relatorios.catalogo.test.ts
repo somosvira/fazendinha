@@ -32,7 +32,16 @@ describe("catálogo de relatórios configuráveis", () => {
       "partos-previstos",
       "partos-periodo",
       "secagens-periodo",
+      "controle-leiteiro-lote",
+      "pesagem-corporal-lote",
+      "vacinacao-lote",
     ]);
+  });
+
+  it("oferece folhas operacionais para os três lançamentos em lote", () => {
+    for (const id of ["controle-leiteiro-lote", "pesagem-corporal-lote", "vacinacao-lote"] as const) {
+      expect(obterTemplateRelatorio(id)).toMatchObject({ fase: "Manejo em lote", granularidade: "animal" });
+    }
   });
 
   it("preserva uma linha por evento e sugere DG após inseminação", () => {

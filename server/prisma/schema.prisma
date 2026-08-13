@@ -1177,12 +1177,15 @@ model LinhaFolhaCampo {
   motivoNaoRealizado  String?
   eventoGerado        EventoReprodutivo? @relation("EventoGeradoFolha", fields: [eventoGeradoId], references: [id], onDelete: SetNull)
   eventoGeradoId      Int?               @unique
+  resultadoTipo       String?
+  resultadoId         Int?
   updatedAt           DateTime            @updatedAt
 
   @@unique([folhaId, ordem])
   @@index([folhaId, status])
   @@index([animalId])
   @@index([eventoOrigemId])
+  @@index([resultadoTipo, resultadoId])
 }
 
 model ResumoAnimal {

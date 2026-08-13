@@ -177,10 +177,10 @@ async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | nul
   const janela = janelaConcepcao(query, gestacaoDias);
   const where: Prisma.AnimalWhereInput = {
     ...filtroAnimal(query, propriedadeId),
-    resumo: {
-      statusReprodutivo: template.statusReprodutivo,
+    ...(template.statusReprodutivo || janela ? { resumo: {
+      ...(template.statusReprodutivo ? { statusReprodutivo: template.statusReprodutivo } : {}),
       ...(janela ? { ultimaInseminacao: janela } : {}),
-    },
+    } } : {}),
   };
   const [total, animais] = await Promise.all([
     prisma.animal.count({ where }),
@@ -194,15 +194,16 @@ async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | nul
         setor: true,
         grupo: { select: { nome: true } },
         resumo: { select: { statusReprodutivo: true, diasGestacao: true, ultimaInseminacao: true, previsaoSecagem: true } },
+        pesagens: { orderBy: { data: "desc" }, take: 1, select: { peso: true } },
       },
       orderBy: [{ numero: "asc" }, { id: "asc" }],
       ...(query.filtrosColunas?.length ? {} : { take: LIMITE }),
     }),
   ]);
   const linhas = animais.map((animal) => {
-    const resumo = animal.resumo!;
-    const partoPrevisto = janela && resumo.ultimaInseminacao ? somarDias(resumo.ultimaInseminacao, gestacaoDias) : null;
-    const fonte = { ...resumo, dtPartoPrevista: partoPrevisto };
+    const resumo = animal.resumo;
+    const partoPrevisto = janela && resumo?.ultimaInseminacao ? somarDias(resumo.ultimaInseminacao, gestacaoDias) : null;
+    const fonte = { ...(resumo ?? {}), dtPartoPrevista: partoPrevisto };
     return {
       animalId: animal.id,
       numero: animal.numero,
@@ -212,7 +213,9 @@ async function gerarPorAnimal(query: RelatorioQuery, propriedadeId: number | nul
       setor: animal.setor,
       eventoId: null,
       data: iso(partoPrevisto),
-      celulas: extrairCelulas(template, fonte),
+      celulas: template.id === "pesagem-corporal-lote"
+        ? [animal.pesagens[0]?.peso == null ? null : Number(animal.pesagens[0].peso)]
+        : extrairCelulas(template, fonte),
     };
   });
   return baseResultado(query, propriedadeId, total, linhas);
