@@ -7,6 +7,7 @@ import type { User } from "../data/acessos";
 import { ContasAVencer } from "../financeiro/ContasAVencer";
 import { Caixinha } from "../financeiro/Caixinha";
 import { SubTabs, type SubTab } from "./SubTabs";
+import { Fornecedores } from "../rebanho/components/CadastrosView";
 
 export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   if (mix) {
@@ -25,7 +26,7 @@ export function ActivityPill({ atv, mix }: { atv?: string; mix?: boolean }) {
   );
 }
 
-export type GastosSub = "contas" | "caixinha";
+export type GastosSub = "contas" | "caixinha" | "fornecedores";
 
 export function Gastos({
   onNav,
@@ -42,9 +43,10 @@ export function Gastos({
 }) {
   const tabs: SubTab<GastosSub>[] = [
     { id: "contas", label: "Contas" },
+    { id: "fornecedores", label: "Fornecedores e clientes" },
     ...(podeCaixinha ? [{ id: "caixinha" as const, label: "Caixinha" }] : []),
   ];
-  const atual: GastosSub = sub === "caixinha" && podeCaixinha ? "caixinha" : "contas";
+  const atual: GastosSub = sub === "caixinha" && !podeCaixinha ? "contas" : sub;
 
   return (
     <div className={"shell-wide " + (user && !user.flags.includes("verValores") ? "mask-values" : "")}>
@@ -52,12 +54,14 @@ export function Gastos({
         <SubTabs
           tabs={tabs}
           active={atual}
-          onSelect={(id) => onNav(id === "caixinha" ? "caixinha" : "gastos")}
+          onSelect={(id) => onNav(id === "caixinha" ? "caixinha" : id === "fornecedores" ? "cadastros" : "gastos")}
         />
       )}
 
       {atual === "caixinha" ? (
         <Caixinha embedded />
+      ) : atual === "fornecedores" ? (
+        <div className="pt-7"><Fornecedores /></div>
       ) : (
         <ContasAVencer filtrosIniciais={filtrosIniciais} />
       )}

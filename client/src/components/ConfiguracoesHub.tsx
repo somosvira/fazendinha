@@ -1,10 +1,9 @@
 /* Rio Novo — Configurações (hub).
  *
  * Dobra as telas raras de setup/admin numa página só, com sub-abas:
- *   Geral (config do sistema) · Cadastros (produtos/fornecedores) ·
- *   Categorias (plano de contas) · Acessos (admin).
+ *   Geral (config do sistema) · Categorias (plano de contas) · Acessos (admin).
  * Reaproveita as views existentes inteiras — cada uma traz seu próprio cabeçalho;
- * a barra de sub-abas por cima é a navegação. As rotas /configuracoes, /cadastros,
+ * a barra de sub-abas por cima é a navegação. As rotas /configuracoes,
  * /categorias e /acessos continuam válidas: o App roteia todas para cá e o hub
  * abre a sub-aba correspondente (deep-link e ⌘K preservados). */
 
@@ -12,22 +11,19 @@ import { cn } from "@/lib/utils";
 import type { Tab } from "./Shell";
 import { SubTabs, type SubTab } from "./SubTabs";
 import { ConfiguracoesView } from "../rebanho/components/ConfiguracoesView";
-import { CadastrosView } from "../rebanho/components/CadastrosView";
 import { PlanoContas } from "./PlanoContas";
 import { Acessos } from "./Acessos";
 
-type ConfSub = "geral" | "cadastros" | "categorias" | "acessos";
+type ConfSub = "geral" | "categorias" | "acessos";
 
-// mapeamento bidirecional sub-aba <-> Tab (mantém as rotas atuais)
+// mapeamento bidirecional sub-aba <-> Tab
 const TAB_BY_SUB: Record<ConfSub, Tab> = {
   geral: "config",
-  cadastros: "cadastros",
   categorias: "plano",
   acessos: "acessos",
 };
 const SUB_BY_TAB: Partial<Record<Tab, ConfSub>> = {
   config: "geral",
-  cadastros: "cadastros",
   plano: "categorias",
   acessos: "acessos",
 };
@@ -41,7 +37,6 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true }:
 }) {
   const tabs: SubTab<ConfSub>[] = [
     { id: "geral", label: "Geral" },
-    { id: "cadastros", label: "Cadastros" },
     ...(podeCategorias ? [{ id: "categorias" as const, label: "Categorias" }] : []),
     ...(isAdmin ? [{ id: "acessos" as const, label: "Acessos" }] : []),
   ];
@@ -67,7 +62,6 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true }:
         <SubTabs tabs={tabs} active={atual} onSelect={(id) => onNav(TAB_BY_SUB[id])} />
       </div>
       {atual === "geral" && <ConfiguracoesView />}
-      {atual === "cadastros" && <CadastrosView />}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "acessos" && isAdmin && <Acessos />}
     </>

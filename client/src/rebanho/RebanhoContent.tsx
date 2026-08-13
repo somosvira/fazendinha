@@ -10,7 +10,7 @@ import { EstoqueTab } from "./components/EstoqueTab";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
-import { AcasalamentoPlanosTab } from "./components/AcasalamentoPlanosTab";
+import { AcasalamentoHub } from "./components/AcasalamentoHub";
 import { RelatoriosTab } from "./components/RelatoriosTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
@@ -95,7 +95,7 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
           : aba === "reproducao"
             ? <ReproducaoTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
             : aba === "acasalamento"
-              ? <AcasalamentoPlanosTab onAbrirFicha={setAnimalId} />
+              ? <AcasalamentoHub onAbrirFicha={setAnimalId} />
             : aba === "fiv"
               ? <FivTab key={recarga} />
             : aba === "relatorios"

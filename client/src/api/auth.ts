@@ -53,7 +53,7 @@ export async function criarUsuario(nome: string, email: string, papel: string) {
   return ler<{ usuario: UsuarioSessao; conviteLink: string }>(res);
 }
 
-export async function atualizarUsuario(id: number, patch: { papel?: string; abas?: string[]; flags?: string[]; status?: string }) {
+export async function atualizarUsuario(id: number, patch: { papel?: string; abas?: string[]; areas?: string[]; flags?: string[]; status?: string }) {
   const res = await fetch(`/api/usuarios/${id}`, { method: "PATCH", headers: comPropriedade(JSON_H), body: JSON.stringify(patch) });
   const body = await ler<{ usuario: UsuarioSessao }>(res);
   return body.usuario;
