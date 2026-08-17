@@ -153,9 +153,12 @@ export function EstoqueTab() {
       {/* Saldos */}
       <div className="mt-1 mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-xl font-medium m-0">Saldos de estoque</h2>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3">
           <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
-          <RebButton variant="pri" onClick={() => setCadastrandoProduto(true)}>+ Cadastrar produto</RebButton>
+          <div className="flex flex-col items-stretch gap-1.5">
+            <RebButton variant="pri" onClick={() => setCadastrandoProduto(true)}>+ Cadastrar produto</RebButton>
+            <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>
+          </div>
         </div>
       </div>
       {(saldos.data.length > 0 || setorFiltro) && (
@@ -234,7 +237,6 @@ export function EstoqueTab() {
       {/* Movimentos */}
       <div className="mb-2 flex items-baseline justify-between" style={{ marginTop: 26 }}>
         <h3 className="m-0 font-serif text-lg font-medium">Movimentos recentes</h3>
-        <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>
       </div>
       {movimentos.loading ? <Loader />
         : movimentos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {movimentos.erro}</p>

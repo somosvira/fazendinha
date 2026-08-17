@@ -26,7 +26,7 @@ function fmtDia(iso: string) {
   return `${d.getDate().toString().padStart(2, "0")} ${meses[d.getMonth()]}${ano}`;
 }
 
-export function Timeline({ eventos, interpretacao, flashEventoId }: { eventos: EventoTimeline[]; interpretacao?: Record<string, string>; flashEventoId?: string | null }) {
+export function Timeline({ eventos, interpretacao, flashEventoId, onEditar, onExcluir }: { eventos: EventoTimeline[]; interpretacao?: Record<string, string>; flashEventoId?: string | null; onEditar?: (evento: EventoTimeline) => void; onExcluir?: (evento: EventoTimeline) => void }) {
   const [filtro, setFiltro] = useState<FiltroTimeline>("tudo");
   // Barra de filtro só quando há mais de um domínio (senão não há o que separar).
   const dominios = contarPorDominio(eventos);
@@ -90,6 +90,10 @@ export function Timeline({ eventos, interpretacao, flashEventoId }: { eventos: E
               {interp && <p className="mt-2 font-serif text-[15px] font-medium italic text-ink-2"><span className="mr-2 font-sans text-sm font-bold uppercase not-italic tracking-[.08em] text-[color:var(--ink)]">Interpretação</span> {interp}</p>}
               {e.impacto && <p className="mt-1.5 font-sans text-[15px] font-semibold text-[color:var(--ink)] tabular-nums"><span className="mr-2 text-sm font-bold uppercase tracking-[.08em] text-ink-2">Impacto</span> {e.impacto}</p>}
               {e.proximoPasso && <p className="mt-1.5 font-sans text-[15px] font-semibold text-[color:var(--ink)]"><span className="mr-2 text-sm font-bold uppercase tracking-[.08em] text-cafe">Próximo passo</span> {e.proximoPasso}</p>}
+              {e.editavel && (onEditar || onExcluir) && <div className="mt-2 flex gap-3">
+                {onEditar && <button type="button" className="text-sm font-semibold text-cafe hover:underline" onClick={() => onEditar(e)}>Editar</button>}
+                {onExcluir && <button type="button" className="text-sm font-semibold text-prejuizo hover:underline" onClick={() => onExcluir(e)}>Excluir</button>}
+              </div>}
             </div>
           </div>
         );

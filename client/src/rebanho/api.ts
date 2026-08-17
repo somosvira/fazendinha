@@ -225,6 +225,8 @@ export interface EventoSanidadePayload {
 }
 export const montarTimeline = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/timeline`);
 export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/animais/${id}/sanidade`, { method: "POST", body: JSON.stringify(p) });
+export const editarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/sanidade/${id}`, { method: "PUT", body: JSON.stringify(p) });
+export const excluirEventoSanidade = (id: string) => req<{ ok: true }>(`/rebanho/sanidade/${id}`, { method: "DELETE" });
 
 export function useTimeline(id: string | null) {
   const [data, setData] = useState<EventoTimeline[]>([]);

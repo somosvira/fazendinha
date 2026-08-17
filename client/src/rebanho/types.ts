@@ -81,6 +81,8 @@ export interface EventoTimeline {
   responsavel?: string;   // quem realizou (operador / vet / sistema)
   impacto?: string;       // impacto financeiro ou produtivo
   proximoPasso?: string;  // próxima ação ("retorno em 14 dias")
+  editavel?: boolean;
+  dadosEdicao?: Record<string, unknown>;
 }
 
 export interface IaInsight {
