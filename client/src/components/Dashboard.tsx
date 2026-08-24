@@ -23,6 +23,7 @@ import { DashboardSkeleton } from "./Loading";
 import { DashSectionHeader } from "./report/primitives";
 import { fmtBRL } from "./charts";
 import { cn } from "@/lib/utils";
+import { PromoBanner } from "./PromoBanner";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -1342,6 +1343,7 @@ function VisaoMensalFazenda({
 
   return (
     <div className="shell-wide pb-16 pt-[26px]">
+      <PromoBanner />
       <div className="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-6">
         <div>
           <span className="text-[14px] font-semibold uppercase tracking-[0.16em] text-ink-3">Visão mensal da fazenda</span>
