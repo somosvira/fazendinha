@@ -153,8 +153,10 @@ async function processarFila(): Promise<void> {
       pendencias.delete(item.filaId);
       return; // erro real do servidor — para aqui, não roda os próximos fora de ordem
     }
-    if (item.idTemporarioGerado && resposta?.id != null && String(resposta.id) !== item.idTemporarioGerado) {
-      substituirIdNaFila(item.idTemporarioGerado, String(resposta.id));
+    let idReal: string | undefined;
+    if (resposta?.id != null) idReal = String(resposta.id);
+    if (item.idTemporarioGerado && idReal && idReal !== item.idTemporarioGerado) {
+      substituirIdNaFila(item.idTemporarioGerado, idReal);
     }
     fila = fila.slice(1);
     await persistir();
