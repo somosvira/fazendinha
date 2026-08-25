@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient, useMutationState } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
@@ -131,26 +132,64 @@ export function useFuncionarios(ativo?: boolean) {
   return { data, loading, erro, recarregar };
 }
 
+// Chave da query de registros — usada aqui e pra invalidar depois de um
+// upsert (ver useUpsertRegistro). `mes` é "YYYY-MM", casa com o prefixo de
+// `data` ("YYYY-MM-DD") de um RegistroInput.
+const chaveRegistros = (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const;
+
+// Migrado pra TanStack Query (Fatia 3 do plano offline — ver
+// OFFLINE_STRATEGY.md). Mantém o contrato {data, loading, erro, recarregar}
+// pra não precisar tocar em quem já consome o hook. Fica cacheado em
+// IndexedDB (fundação em lib/offline/) — reabre offline com o último dado
+// visto, mesmo sem rede.
 export function useRegistros(funcionarioId: string | null, mes: string) {
-  const [data, setData] = useState<RegistroDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!funcionarioId) { setData([]); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    listarRegistros(funcionarioId, mes).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [funcionarioId, mes]);
-  useEffect(() => {
-    if (!funcionarioId) { setData([]); setLoading(false); return; }
-    let cancelado = false;
-    setLoading(true); setErro(null);
-    listarRegistros(funcionarioId, mes)
-      .then((d) => { if (!cancelado) setData(d); })
-      .catch((e) => { if (!cancelado) setErro(e.message); })
-      .finally(() => { if (!cancelado) setLoading(false); });
-    return () => { cancelado = true; };
-  }, [funcionarioId, mes]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: chaveRegistros(funcionarioId ?? "", mes),
+    queryFn: () => listarRegistros(funcionarioId!, mes),
+    enabled: !!funcionarioId,
+  });
+  return {
+    data: query.data ?? [],
+    loading: funcionarioId ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+// Mutation de upsert de registro — offline-aware por herdar o networkMode
+// default do queryClient (pausa em vez de falhar quando sem rede; fica
+// persistida em IndexedDB até sincronizar de verdade). `mutationKey` fixo
+// (não varia por linha) é o que permite useRegistrosPendentes filtrar
+// "todo upsert de ponto em andamento/pendente", venha de qual componente vier.
+export function useUpsertRegistro() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["ponto", "upsert-registro"],
+    mutationFn: upsertRegistro,
+    onSuccess: (_novo, variaveis) => {
+      queryClient.invalidateQueries({ queryKey: chaveRegistros(variaveis.funcionarioId, variaveis.data.slice(0, 7)) });
+    },
+  });
+}
+
+// Datas com upsert pendente (em voo OU pausado por falta de rede) pro
+// funcionário+mês atual — usado pra marcar a linha como "sincronização
+// pendente" em vez de assumir sucesso/erro binário. `status: "pending"`
+// cobre os dois casos: o TanStack não distingue "mandando agora" de
+// "pausado offline" no `status`, só no `isPaused` (que aqui não precisamos
+// checar — os dois casos são visualmente a mesma badge).
+export function useRegistrosPendentes(funcionarioId: string | null, mes: string): Set<string> {
+  const variaveis = useMutationState({
+    filters: { mutationKey: ["ponto", "upsert-registro"], status: "pending" },
+    select: (m) => m.state.variables as RegistroInput | undefined,
+  });
+  return useMemo(() => {
+    const s = new Set<string>();
+    for (const v of variaveis) {
+      if (v && v.funcionarioId === funcionarioId && v.data.slice(0, 7) === mes) s.add(v.data);
+    }
+    return s;
+  }, [variaveis, funcionarioId, mes]);
 }
 
 export function useFolha(mes: string) {

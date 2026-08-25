@@ -1,7 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { App } from "./App";
 import { ToastProvider } from "./components/Toast";
+import { queryClient } from "./lib/offline/queryClient";
+import { persister } from "./lib/offline/persister";
+import { iniciarRetomadaAutomatica } from "./lib/offline/resume";
 import "./styles/theme.css";
 import "./styles/base.css";
 import "./styles/dashboard.css";
@@ -12,10 +16,20 @@ import "./styles/acessos.css";
 import "./styles/terrano-intro.css";
 import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 
+// Chamado uma vez no boot do módulo (não num useEffect — não é efeito de
+// componente, é assinatura de processo). Ver lib/offline/resume.ts.
+iniciarRetomadaAutomatica(queryClient);
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+      onSuccess={() => queryClient.resumePausedMutations()}
+    >
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </PersistQueryClientProvider>
   </React.StrictMode>,
 );

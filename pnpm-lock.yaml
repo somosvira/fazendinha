@@ -28,6 +28,12 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.3.0
         version: 1.3.0(@types/react@18.3.29)(react@18.3.1)
+      '@tanstack/react-query':
+        specifier: ^5.102.3
+        version: 5.102.3(react@18.3.1)
+      '@tanstack/react-query-persist-client':
+        specifier: ^5.102.3
+        version: 5.102.3(@tanstack/react-query@5.102.3(react@18.3.1))(react@18.3.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -40,6 +46,9 @@ importers:
       html2pdf.js:
         specifier: ^0.14.0
         version: 0.14.0
+      idb-keyval:
+        specifier: ^6.3.0
+        version: 6.3.0
       lucide-react:
         specifier: ^1.23.0
         version: 1.24.0(react@18.3.1)
@@ -1686,6 +1695,23 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
+  '@tanstack/query-core@5.102.3':
+    resolution: {integrity: sha512-5O2VEceonqC4uaTLUGglb0hgPouWCJ4K1ykVWyeV8aThhdNCzwpwu01bYoaRNJ9mgFUXS7Kf9utJ46ysT8m+bw==}
+
+  '@tanstack/query-persist-client-core@5.102.3':
+    resolution: {integrity: sha512-dIPDgRJCFzIOg1mjUkNm6im5VcMhGtbLUU74/0krOx60+1c/jDS1GRI2/E7THdFdk+255SiqQQ9VHIeE0F0Bnw==}
+
+  '@tanstack/react-query-persist-client@5.102.3':
+    resolution: {integrity: sha512-M3Z3L1k2rvZaMnapkhcvISFotI1ZpZRQRGnZ1YIyYnO4H++H5LYG2aW0EknjLZblC40SSdd5pSYqrCk4b+qhvw==}
+    peerDependencies:
+      '@tanstack/react-query': ^5.102.3
+      react: ^18 || ^19
+
+  '@tanstack/react-query@5.102.3':
+    resolution: {integrity: sha512-nHazxUEUQSGJOswGgSL2DI77f2K75WRCowDgaiyEi0ACocZTFKewTv+A/rJfq6QkuE35rVPff1QUT3ClbaePGQ==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
@@ -2053,6 +2079,9 @@ packages:
 
   idb-keyval@6.2.6:
     resolution: {integrity: sha512-FY64UEhw+5liMzMQ1R9Mw6AF0+wyBrg1CIA1z4CjI/EvT5ty/SvQcWZgd8s9sgaNhX10Y8UzScTh89tEAls5nA==}
+
+  idb-keyval@6.3.0:
+    resolution: {integrity: sha512-um+2dgAWmYsu615EXpWVwSmapJhON0G43t3Ka/EVaohzPQXSMqKEqeDK/oIW3Ow+BXaF2PvSc+oBTFp793A5Ow==}
 
   iobuffer@5.4.0:
     resolution: {integrity: sha512-DRebOWuqDvxunfkNJAlc3IzWIPD5xVxwUNbHr7xKB8E6aLJxIPfNX3CoMJghcFjpv6RWQsrcJbghtEwSPoJqMA==}
@@ -3992,6 +4021,23 @@ snapshots:
       tailwindcss: 4.3.2
       vite: 6.4.2(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3)
 
+  '@tanstack/query-core@5.102.3': {}
+
+  '@tanstack/query-persist-client-core@5.102.3':
+    dependencies:
+      '@tanstack/query-core': 5.102.3
+
+  '@tanstack/react-query-persist-client@5.102.3(@tanstack/react-query@5.102.3(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-persist-client-core': 5.102.3
+      '@tanstack/react-query': 5.102.3(react@18.3.1)
+      react: 18.3.1
+
+  '@tanstack/react-query@5.102.3(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.102.3
+      react: 18.3.1
+
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -4437,6 +4483,8 @@ snapshots:
       jspdf: 4.2.1
 
   idb-keyval@6.2.6: {}
+
+  idb-keyval@6.3.0: {}
 
   iobuffer@5.4.0: {}
 

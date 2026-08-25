@@ -11,7 +11,7 @@ export const listRegistrosSchema = z.object({
 });
 
 export const upsertRegistroSchema = z.object({
-  funcionarioId: z.number().int().positive(),
+  funcionarioId: z.coerce.number().int().positive(),
   data: isoDate,
   entrada: hhmm.nullish(),
   saida: hhmm.nullish(),

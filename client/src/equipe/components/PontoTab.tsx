@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
+import { useFuncionarios, useRegistros, useUpsertRegistro, useRegistrosPendentes, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
@@ -8,6 +8,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { REB_INP, RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 import { useToast } from "@/components/Toast";
+import { useOnlineStatus } from "@/lib/offline/useOnlineStatus";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -65,6 +66,9 @@ export function PontoTab() {
   }, [funcionarios, funcionarioId]);
 
   const { data: registros, loading, erro, recarregar } = useRegistros(funcionarioId || null, mes);
+  const upsert = useUpsertRegistro();
+  const pendentes = useRegistrosPendentes(funcionarioId || null, mes);
+  const online = useOnlineStatus();
 
   // Grade = todos os dias do mês, com o registro casado por data.
   const [linhas, setLinhas] = useState<Linha[]>([]);
@@ -110,12 +114,17 @@ export function PontoTab() {
     setLinhas((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch, ...proximoDirty } : l)));
   }
 
-  async function salvar(i: number) {
+  // Offline: `mutate` pausa em vez de rejeitar — nem onSuccess nem onError
+  // rodam até sincronizar de verdade (pode ser numa sessão futura, ver
+  // resumePausedMutations em main.tsx). Por isso o indicador confiável de
+  // "salvo vs. pendente" é `pendentes` (via useMutationState), não o
+  // resultado deste catch — ele só cobre o caso online/rejeição imediata.
+  function salvar(i: number) {
     const l = linhas[i];
     if (!funcionarioId) return;
-    set(i, { salvando: true });
-    try {
-      await upsertRegistro({
+    set(i, { salvando: true, dirty: false });
+    upsert.mutate(
+      {
         funcionarioId,
         data: l.data,
         entrada: l.entrada || undefined,
@@ -123,12 +132,15 @@ export function PontoTab() {
         intervaloMin: l.intervaloMin !== "" ? Number(l.intervaloMin) : undefined,
         tipoDia: l.tipoDia,
         observacao: l.observacao.trim() || undefined,
-      });
-      recarregar(); // refaz o fetch → re-hidrata a grade com horas/extra computados
-    } catch (e: any) {
-      toast.error("Erro ao salvar o ponto", e?.message ?? undefined);
-      set(i, { salvando: false });
-    }
+      },
+      {
+        onSuccess: () => set(i, { salvando: false }),
+        onError: (e: any) => {
+          toast.error("Erro ao salvar o ponto", e?.message ?? undefined);
+          set(i, { salvando: false, dirty: true });
+        },
+      },
+    );
   }
 
   return (
@@ -165,7 +177,11 @@ export function PontoTab() {
           {preenchendo ? "Preenchendo…" : "Preencher grade com horário padrão"}
         </RebButton>
 
-        <div className="ml-auto flex gap-4 text-sm text-ink-3">
+        <div className="ml-auto flex items-center gap-4 text-sm text-ink-3">
+          {!online && <span className="text-[13px] text-atencao">Sem conexão — lançamentos ficam salvos no aparelho até sincronizar</span>}
+          {pendentes.size > 0 && (
+            <span className="text-[13px] text-atencao">{pendentes.size} pendente{pendentes.size > 1 ? "s" : ""} de sincronização</span>
+          )}
           <span>Horas: <b>{horasFmt(totais.horas)}</b></span>
           <span>Extra 50%: <b>{num(totais.extra50, 1)} h</b></span>
           <span>Extra 100%: <b>{num(totais.extra100, 1)} h</b></span>
@@ -219,7 +235,11 @@ export function PontoTab() {
                   <td className="text-right">{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
                   <td className="text-right">{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
                   <td><input className={REB_INP} value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
-                  <td><RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton></td>
+                  <td>
+                    {pendentes.has(l.data)
+                      ? <span className="text-[13px] text-atencao" title="Aguardando conexão pra sincronizar com o servidor">Pendente…</span>
+                      : <RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton>}
+                  </td>
                 </tr>
               );
             })}
