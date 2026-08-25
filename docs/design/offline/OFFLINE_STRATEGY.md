@@ -180,19 +180,30 @@ Toda escrita offline-aware usa a fábrica genérica em
 optimistic update na mão. Cada chamador só declara:
 
 - `mutationKey` — fixo, identifica a mutation na mutation cache.
-- `queryKey(input)` — qual lista em cache a escrita afeta.
+- `queryKeys(input)` — quais listas em cache a escrita afeta com patch
+  otimista de verdade (array — normalmente uma só; mais de uma serve pro
+  caso do mesmo item, sem cálculo nenhum, aparecer em mais de uma lista ao
+  mesmo tempo, ex.: lista geral + lista filtrada).
+- `queryKeysRelacionadas?(input)` — opcional: outras queries que só levam
+  `invalidateQueries` (sem patch, sem chute) — pra dado **derivado**,
+  calculado a partir do que foi escrito (ex.: um resumo agregado
+  recomputado no servidor). Nunca dispara enquanto pausado offline — só
+  roda em `onSettled`, que só acontece quando a mutation sai de `paused`
+  de verdade (já com rede).
 - `op` — `"create" | "update" | "delete" | "upsert"`.
 - `match(item, input)` — identidade do item na lista (chave natural ou id).
 - `criarOtimista(input)` — só pra `create`/`upsert`: monta o item a mostrar
   antes da confirmação do servidor (campos computados pelo backend entram
   aproximados/zerados, corrigem no refetch pós-sync).
 
-A fábrica cuida do resto sozinha: patch otimista da lista em `onMutate`,
-rollback do snapshot anterior em `onError`, `invalidateQueries` em
-`onSettled` pra reconciliar com o servidor (troca o item otimista pelo
-real, com `id` verdadeiro — funciona sem UUID/cuid por causa da decisão
-acima), e `queryClient.setMutationDefaults(mutationKey, {mutationFn})`
-(ver achado abaixo).
+A fábrica cuida do resto sozinha: patch otimista de cada lista em
+`onMutate` (com snapshot por key, pra rollback certo mesmo com mais de uma
+afetada), rollback em `onError`, `invalidateQueries` em `onSettled` (nas
+`queryKeys` e nas `queryKeysRelacionadas`) pra reconciliar com o servidor
+(troca o item otimista pelo real, com `id` verdadeiro — funciona sem
+UUID/cuid por causa da decisão acima), e
+`queryClient.setMutationDefaults(mutationKey, {mutationFn})` (ver achado
+abaixo).
 
 Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
 chave natural `funcionarioId+data`, sem id gerado). A próxima fatia
@@ -223,29 +234,27 @@ literais repetidos em cada hook (risco: duas chamadas montam "a mesma" key
 com formato levemente diferente, viram duas entradas de cache separadas,
 silenciosamente). Repetir esse padrão em cada `api.ts` migrado.
 
-### Limitações conhecidas de `useOfflineMutation` (não construídas — sem
-consumidor real ainda)
+### Escrita afetando mais de uma query
 
-A fábrica hoje só sabe: (1) uma escrita afeta **uma** `queryKey`, e (2) o
-cache alvo é sempre uma **lista** (`TItem[]`, patch via
-create/update/delete/upsert). Dois casos reais do app vão exigir mais que
-isso, mas nenhum é consumidor hoje — registrado aqui pra não reinventar
-quando aparecer:
+Dois casos, dois mecanismos diferentes (implementados, sem consumidor real
+ainda no Ponto — ele só toca uma lista — mas prontos pra próxima fatia):
 
+- **Mesmo dado, sem cálculo, em duas listas** (ex.: `FuncionarioDTO` numa
+  lista geral e numa lista filtrada; provável ao migrar Funcionários ou a
+  ficha do Animal no Rebanho). Usa `queryKeys` retornando mais de uma key
+  — a mesma operação (`op`/`match`/`criarOtimista`) é aplicada em cada
+  uma, com patch otimista de verdade nas duas, porque não tem chute
+  envolvido: é o próprio input.
 - **Dado derivado em outra query** (ex.: Corte > Pesagem escreve na lista
-  de pesagens **e** dispara recompute do `ResumoLote` — o padrão "grava
-  evento bruto → recompute" já descrito acima). Não dá pra patch otimista
-  no resumo (duplicaria a conta do servidor). Extensão prevista: um
-  `queryKeysRelacionadas?(input)` que só chama `invalidateQueries` nessas
-  keys extras em `onSettled`, sem tentar adivinhar o valor — seguro mesmo
-  offline, porque `onSettled` só roda quando a mutation sai de `paused` de
-  verdade (ou seja, o invalidate nunca dispara enquanto ainda sem rede).
-- **Mesmo dado, sem cálculo, em duas queries** (ex.: `FuncionarioDTO` numa
-  lista e numa ficha de detalhe — literal, não derivado; provável ao
-  migrar Funcionários ou a ficha do Animal no Rebanho). Aqui dá pra
-  aplicar o **mesmo patch otimista** nas duas, sem risco, porque não tem
-  chute envolvido — é o próprio input. Diferente do caso anterior, não
-  seria só invalidar.
+  de pesagens **e** dispara recompute do `ResumoLote` no servidor — o
+  padrão "grava evento bruto → recompute" já descrito acima). Não dá pra
+  patch otimista no resumo (duplicaria a conta do servidor). Usa
+  `queryKeysRelacionadas` — só invalida, sem tentar adivinhar o valor.
+
+Limitação que continua real (sem consumidor, não construída): o cache
+alvo do patch otimista é sempre uma **lista** (`TItem[]`). Um write que
+afetasse um objeto único em cache (não uma lista) precisaria de outro
+caminho — não vale generalizar sem um caso de uso real.
 
 ## Piloto recomendado
 

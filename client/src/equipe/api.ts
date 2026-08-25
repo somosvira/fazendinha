@@ -172,7 +172,7 @@ export function useUpsertRegistro() {
   return useOfflineMutation<RegistroInput, RegistroDTO>({
     mutationKey: pontoKeys.upsertRegistro,
     mutationFn: upsertRegistro,
-    queryKey: (input) => pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7)),
+    queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
     op: "upsert",
     match: (item, input) => item.data === input.data,
     // Campos computados pelo backend (horas/extra) entram zerados — o

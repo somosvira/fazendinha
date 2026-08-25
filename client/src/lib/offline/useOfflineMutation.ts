@@ -1,9 +1,9 @@
-/* Fábrica genérica de mutation offline-aware sobre uma lista em cache do
+/* Fábrica genérica de mutation offline-aware sobre listas em cache do
  * TanStack Query (camada 1 do plano offline — ver
  * docs/design/offline/OFFLINE_STRATEGY.md). Cada tela só descreve *o quê*:
- * qual queryKey a escrita afeta, como identificar o item na lista e que
- * operação é (create/update/delete/upsert). O *como* — patch otimista da
- * lista em cache, rollback se der erro, reconciliação com o servidor após
+ * quais queryKeys a escrita afeta, como identificar o item nelas e que
+ * operação é (create/update/delete/upsert). O *como* — patch otimista das
+ * listas em cache, rollback se der erro, reconciliação com o servidor após
  * sync e sobrevivência a fechar o app offline — fica centralizado aqui,
  * escrito uma vez só, em vez de reimplementado por componente.
  *
@@ -24,8 +24,18 @@ export interface UseOfflineMutationConfig<TInput, TItem> {
    * (é o que permite filtrar "toda escrita de X pendente", venha de onde vier). */
   mutationKey: readonly unknown[];
   mutationFn: (input: TInput) => Promise<TItem>;
-  /** Qual lista em cache esta escrita afeta. */
-  queryKey: (input: TInput) => QueryKey;
+  /** Quais listas em cache esta escrita afeta com patch otimista de verdade
+   * (a mesma operação é aplicada em cada uma). Normalmente uma só; mais de
+   * uma serve pro caso do mesmo item, sem cálculo nenhum envolvido, aparecer
+   * em mais de uma lista (ex.: lista geral + lista filtrada). */
+  queryKeys: (input: TInput) => QueryKey[];
+  /** Outras queries que só devem ser invalidadas (sem patch, sem chute) —
+   * pra dado derivado/calculado a partir do que foi escrito (ex.: resumo
+   * agregado recomputado no servidor, tipo ResumoLote após uma pesagem).
+   * Nunca dispara enquanto a mutation está pausada offline: só roda em
+   * `onSettled`, que só acontece quando ela sai de `paused` de verdade —
+   * ou seja, já com rede de novo. */
+  queryKeysRelacionadas?: (input: TInput) => QueryKey[];
   op: OfflineOp;
   /** Identidade do item dentro da lista (chave natural ou id). */
   match: (item: TItem, input: TInput) => boolean;
@@ -56,6 +66,11 @@ function aplicarOtimista<TInput, TItem>(
   }
 }
 
+interface Snapshot<TItem> {
+  queryKey: QueryKey;
+  anterior: TItem[] | undefined;
+}
+
 export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<TInput, TItem>) {
   const queryClient = useQueryClient();
 
@@ -63,21 +78,27 @@ export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<
   // hidratação de mutation pausada vinda do IndexedDB.
   queryClient.setMutationDefaults(cfg.mutationKey as unknown[], { mutationFn: cfg.mutationFn });
 
-  const mutation = useMutation<TItem, Error, TInput, { anterior: TItem[] | undefined; queryKey: QueryKey }>({
+  const mutation = useMutation<TItem, Error, TInput, { snapshots: Snapshot<TItem>[] }>({
     mutationKey: cfg.mutationKey as unknown[],
     mutationFn: cfg.mutationFn,
     onMutate: async (input) => {
-      const queryKey = cfg.queryKey(input);
-      await queryClient.cancelQueries({ queryKey });
-      const anterior = queryClient.getQueryData<TItem[]>(queryKey);
-      queryClient.setQueryData<TItem[]>(queryKey, aplicarOtimista(anterior, input, cfg));
-      return { anterior, queryKey };
+      const queryKeys = cfg.queryKeys(input);
+      await Promise.all(queryKeys.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+      const snapshots: Snapshot<TItem>[] = queryKeys.map((queryKey) => ({
+        queryKey,
+        anterior: queryClient.getQueryData<TItem[]>(queryKey),
+      }));
+      for (const { queryKey, anterior } of snapshots) {
+        queryClient.setQueryData<TItem[]>(queryKey, aplicarOtimista(anterior, input, cfg));
+      }
+      return { snapshots };
     },
     onError: (_err, _input, ctx) => {
-      if (ctx) queryClient.setQueryData(ctx.queryKey, ctx.anterior);
+      for (const { queryKey, anterior } of ctx?.snapshots ?? []) queryClient.setQueryData(queryKey, anterior);
     },
     onSettled: (_data, _err, input) => {
-      queryClient.invalidateQueries({ queryKey: cfg.queryKey(input) });
+      for (const queryKey of cfg.queryKeys(input)) queryClient.invalidateQueries({ queryKey });
+      for (const queryKey of cfg.queryKeysRelacionadas?.(input) ?? []) queryClient.invalidateQueries({ queryKey });
     },
   });
 
