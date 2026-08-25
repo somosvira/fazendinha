@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
+import { req } from "../lib/offline/req";
 
 // ─── Cadastros (GET /api/cadastros) ──────────────────────────────────────
 
@@ -118,29 +119,7 @@ export type ResultadoCriarLancamento =
   | { ok: false; status: number; erro: string; codigo?: "PENDENTE_INVALIDA" | "MES_FECHADO" | string };
 
 // ─── Caixinha (fundo fixo em dinheiro) ───────────────────────────────────
-// Espelha o pattern de cultivo/api.ts: helper `req<T>` + hooks
-// {data, loading, erro, recarregar}. DTOs espelham
-// server/src/services/caixinha/caixinhas.ts — não inventar campos.
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = comPropriedade({
-    ...((init?.headers as Record<string, string>) || {}),
-    ...(init?.body ? { "content-type": "application/json" } : {}),
-  });
-  const res = await fetch(`/api${path}`, { ...init, headers });
-  if (!res.ok) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error; // erro do service (ex.: 409 mês fechado)
-    else if (typeof b?.erro === "string") msg = b.erro; // idem, chave PT (rotas em português)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
+// DTOs espelham server/src/services/caixinha/caixinhas.ts — não inventar campos.
 
 export type TipoMovimentoCaixinha = "ENTRADA" | "SAIDA";
 

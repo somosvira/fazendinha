@@ -19,8 +19,11 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
 - Zero infra de offline hoje: sem service worker, sem IndexedDB, sem fila de
   mutação.
 - Sem TanStack Query. Cada módulo (`rebanho/corte/plantio/cultivo/equipe/financeiro`)
-  tem seu próprio `client/src/<modulo>/api.ts`, com um `req()` **duplicado**
-  (não compartilhado) e hooks hand-rolled (`useState`+`useEffect`+`fetch`).
+  tem seu próprio `client/src/<modulo>/api.ts`, com hooks hand-rolled
+  (`useState`+`useEffect`+`fetch`). **Atualização 2026-08-25:** `req()` era
+  duplicado por módulo até esta mudança — agora é `lib/offline/req.ts`,
+  compartilhado, o choke point único que espera a fila liberar (ver
+  "Fila de escritas pendentes" abaixo).
 - Verificado no código: os hooks são **realmente isolados por módulo** —
   migrar o `api.ts` do rebanho não afeta corte/plantio/etc. Único
   acoplamento cross-module real: `usePropriedades` (seletor de sítio) e
@@ -32,11 +35,13 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
 
 ## As 4 camadas (não pensar em "módulo por módulo")
 
-1. **Fundação** (uma vez): `QueryClient` + persister IndexedDB + `useOfflineMutation`
-   (patch otimista + `resumePausedMutations()` no reconnect, `networkMode`
-   no default `"online"` — pausa em vez de falhar quando sem rede, sem
-   round-trip fadado a falhar; ver seção abaixo) + convenção de UI pra
-   "resumo pendente de sincronizar".
+1. **Fundação** (uma vez): `QueryClient` + persister IndexedDB (leitura) +
+   fila própria de escritas pendentes (`lib/offline/fila.ts`, não mutation
+   do TanStack — ver seção "Padrão de mutation offline" abaixo) + `req()`
+   compartilhado que espera a fila liberar antes de qualquer fetch +
+   `useOfflineMutation` (patch otimista) + convenção de UI pra "resumo
+   pendente de sincronizar" (`ShellOffline` bloqueia a tela durante o
+   replay).
 2. **Dado de referência compartilhado** (uma vez, beneficia todo mundo de
    graça): cache de leitura de `Produto`, `CentroCusto`, `Categoria`,
    `Propriedade`. Leitura não tem custo de id/fila — puro ganho colateral
@@ -133,11 +138,11 @@ fundação, não deixado pra depois.** Apesar de nenhuma candidata da camada
 3 precisar hoje — nem entidade-pai cross-entity (Lote→Pesagem), nem o
 caso mais simples e mais provável de acontecer de verdade (criar um item
 offline e editar esse **mesmo** item de novo, ainda offline, antes de
-sincronizar) — a lógica de reconciliação de id temporário é parte da
-fábrica `useOfflineMutation` desde o início, porque é PR de fundação: a
-lógica base tem que estar certa aqui, não remendada quando o primeiro
-módulo real precisar. Ver seção "Reconciliação de id temporário" abaixo
-pro mecanismo completo (`scope` + mapa `idsResolvidos` + `resolverIds`).
+sincronizar) — a reconciliação de id temporário é parte da fundação desde
+o início, porque é PR de fundação: a lógica base tem que estar certa
+aqui, não remendada quando o primeiro módulo real precisar. Ver seção
+"Reconciliação de id temporário" abaixo pro mecanismo completo (substring
+replace na fila, sem callback nenhum por módulo).
 
 **Pesquisa de "a ordem de id importa" feita antes de decidir (2026-08-24)
 — mantida aqui como contexto, ainda que não seja mais bloqueante:**
@@ -173,13 +178,46 @@ gerado pelo Postgres. A pesquisa fica registrada porque foi o que revelou
 que mexer no tipo de id tinha um custo escondido, o que ajudou a decidir
 não mexer.
 
+## Fila de escritas pendentes (`lib/offline/fila.ts`)
+
+**Mudança de arquitetura em 2026-08-25**, registrada abaixo com o motivo:
+a fundação **não usa mais `useMutation`/`resumePausedMutations`/`scope`
+do TanStack para escrita**. Em vez de uma mutation do TanStack (que
+precisa sobreviver à serialização, retomar sozinha no reconnect e
+serializar via mecanismo interno de terceiro), toda escrita pendente é um
+**item de dado puro** — path/method/body, nenhuma função — numa lista
+persistida em IndexedDB (`idb-keyval`, chave própria, separada do cache
+de leitura). Motivo da virada: um callback por config (`resolverIds`) pra
+resolver id temporário exigia que cada módulo lembrasse de escrever a
+substituição certa; ficando esquecido, quebra silenciosamente. Com a fila
+sendo dado puro, a reconciliação de id vira um mecanismo genérico — roda
+igual pra qualquer módulo, sem nenhum módulo precisar declarar nada a
+mais (ver "Reconciliação de id temporário" abaixo).
+
+- Um único loop (`processarFila`, com `await` sequencial de verdade — não
+  depende de nenhum mecanismo interno de terceiro pra garantir ordem)
+  drena a fila item a item, na ordem em que foram enfileirados.
+- Enquanto drena, `aguardarFilaLivre()` trava qualquer outro `fetch` do
+  app (ver `req.ts`) — nenhum fetch roda fora de ordem, nem os automáticos
+  do TanStack (`refetchOnReconnect`).
+- `ShellOffline` bloqueia a tela inteira (overlay fixo, tela toda) nesse
+  mesmo intervalo — usuário não consegue disparar uma ação nova por cima
+  do que ainda está sincronizando.
+- Todo `req()` de todo módulo (não só quem usa `useOfflineMutation`)
+  espera essa mesma trava — ver `client/src/lib/offline/req.ts`,
+  substituiu as 6 cópias de `req<T>` que cada `api.ts` tinha.
+
 ## Padrão de mutation offline: `useOfflineMutation`
 
 Toda escrita offline-aware usa a fábrica genérica em
 `client/src/lib/offline/useOfflineMutation.ts` — nenhuma tela implementa
 optimistic update na mão. Cada chamador só declara:
 
-- `mutationKey` — fixo, identifica a mutation na mutation cache.
+- `mutationKey` — string fixa, só usada pra filtrar `pendentes` na UI (não
+  é mais chave de mutation cache do TanStack).
+- `path(input)` / `method` / `body?(input)` — a requisição em si. Isso
+  (não uma função arbitrária) é o que vira o item da fila — é o que
+  permite a fila ser dado puro, sem registro de função nenhum por tipo.
 - `queryKeys(input)` — quais listas em cache a escrita afeta com patch
   otimista de verdade (array — normalmente uma só; mais de uma serve pro
   caso do mesmo item, sem cálculo nenhum, aparecer em mais de uma lista ao
@@ -187,106 +225,42 @@ optimistic update na mão. Cada chamador só declara:
 - `queryKeysRelacionadas?(input)` — opcional: outras queries que só levam
   `invalidateQueries` (sem patch, sem chute) — pra dado **derivado**,
   calculado a partir do que foi escrito (ex.: um resumo agregado
-  recomputado no servidor). Nunca dispara enquanto pausado offline — só
-  roda em `onSettled`, que só acontece quando a mutation sai de `paused`
-  de verdade (já com rede).
+  recomputado no servidor).
 - `op` — `"create" | "update" | "delete" | "upsert"`.
 - `match(item, input)` — identidade do item na lista (chave natural ou id).
 - `criarOtimista(input)` — **exigido pelo tipo** quando `op` é
   `"create"`/`"upsert"` (tipo discriminado por `op` — esquecer é erro de
-  compilação, não crash em runtime nem objeto vazio silencioso): monta o
-  item a mostrar antes da confirmação do servidor, `id` sempre via
-  `criarIdTemporario()`. Campos computados pelo backend entram
-  aproximados/zerados, corrigem no refetch pós-sync.
-- `scopeId?` — opcional: agrupa mutations que podem referenciar id gerado
-  por outra da mesma família de entidade (ver "Reconciliação de id
-  temporário" abaixo). Default: isolada por `mutationKey`.
-- `resolverIds?(input)` — opcional: reescreve id temporário no input pro
-  id real já resolvido, antes do `mutationFn` rodar de verdade.
+  compilação): monta o item a mostrar antes da confirmação do servidor,
+  `id` sempre via `criarIdTemporario()`. Campos computados pelo backend
+  entram aproximados/zerados, corrigem no refetch pós-sync.
 
-A fábrica cuida do resto sozinha: patch otimista de cada lista em
-`onMutate` (com snapshot por key, pra rollback certo mesmo com mais de uma
-afetada), rollback em `onError`, `invalidateQueries` em `onSettled` (nas
-`queryKeys` e nas `queryKeysRelacionadas`) pra reconciliar com o servidor
-(troca o item otimista pelo real, com `id` verdadeiro — funciona sem
-UUID/cuid por causa da decisão acima), e a reconciliação de id temporário
-entre mutations relacionadas (`scope` + mapa de resolução — ver seção
-própria abaixo).
+A fábrica cuida do resto: patch otimista de cada lista (com snapshot por
+key, pra rollback certo mesmo com mais de uma afetada), enfileiramento
+(`enfileirarMutation`, em `fila.ts`), rollback em erro real do servidor,
+`invalidateQueries` quando a fila confirma a escrita (nas `queryKeys` e
+nas `queryKeysRelacionadas`).
 
 `TItem` precisa ter `id: string` (convenção já seguida por todo DTO do
-projeto) — é o que permite a fábrica gerenciar reconciliação de id sem
-cada config precisar de um acessor `idDoItem` a mais.
-
-**Passo obrigatório, não automático — fácil de esquecer:** todo módulo que
-usa a fábrica precisa **também** chamar `registrarMutationDefaults(config)`
-(a config inteira, não só `mutationKey`+`mutationFn`) uma vez, **em
-escopo de módulo** (fora de qualquer hook/componente — ex.: logo após
-definir a config em `equipe/api.ts`). O hook sozinho registra de novo a
-cada render, mas isso é só reforço — não cobre o caso "app abriu numa aba
-diferente da que criou a escrita pendente" (ver achado abaixo, é bug real
-que já aconteceu aqui, duas vezes). Sem essa chamada de escopo de módulo,
-a fatia nova reproduz o mesmo bug do zero.
+projeto) — é o que permite a fábrica gerar id temporário e reconciliar
+sem cada config precisar de um acessor `idDoItem` a mais.
 
 Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
-chave natural `funcionarioId+data`, sem `scopeId`/`resolverIds` porque
-nada referencia um registro de Ponto por id). A próxima fatia
-(Pesagem/Sanidade) usa `op:"create"` — mesma fábrica, sem reescrever a
-lógica de optimistic/rollback.
-
-### Achado: `setMutationDefaults` — bug corrigido antes de fechar a fundação
-
-Funções não sobrevivem à serialização pro IndexedDB — a doc oficial do
-TanStack é explícita: "only the state of mutations is persisted, as
-functions cannot be serialized." Sem `setMutationDefaults` registrado por
-`mutationKey` antes da hidratação, uma mutation restaurada do storage após
-um reload fica sem `mutationFn` pra executar (`"No mutationFn found"`). A
-primeira versão do piloto não registrava isso — funcionava no caso
-"reconecta sem fechar a aba" (mutation viva em memória, nunca precisou ser
-reidratada) mas quebraria no caso real "fecha o app offline com algo
-pendente, reabre depois".
-
-**Segunda volta desse mesmo achado:** a primeira correção registrava o
-default só *dentro* do hook `useOfflineMutation` — o que não basta,
-porque o hook só roda se o componente dono estiver montado. Se o app
-reabre numa aba diferente da que criou a mutation pendente (ex.: fecha
-offline na tela de Ponto, reabre e cai no Dashboard), o resume tenta
-rodar no boot e quebra de novo, porque `PontoTab` nunca montou nesta
-sessão pra registrar o default. Corrigido com `registrarMutationDefaults`
-— função **de escopo de módulo**, chamada uma vez no topo de `equipe/api.ts`
-(não dentro de hook nenhum). Funciona porque `App.tsx` importa os módulos
-de tela estaticamente (sem `React.lazy`) — o módulo é avaliado no
-carregamento do bundle, antes de qualquer render, independente de qual
-aba o usuário está vendo. Testado de verdade: salvar offline no Ponto,
-reconectar e abrir o app **direto no Dashboard** (nunca voltando pro
-Ponto) — sincronizou sozinho, confirmado no Postgres.
-
-**Terceira volta — a mais séria: registrar só `mutationFn` não bastava.**
-Verificado no source do TanStack (`queryClient.ts#defaultMutationOptions`):
-o merge que toda mutation passa (nova OU restaurada — ambas passam por
-`mutationCache.build()`) é
-`{...defaults_globais, ...getMutationDefaults(mutationKey), ...options_passadas}`.
-`getMutationDefaults` devolve o **objeto inteiro** que foi registrado, não
-só `mutationFn`. Como `registrarMutationDefaults` registrava só
-`{mutationFn}`, uma mutation restaurada sem componente montado rodava a
-chamada HTTP crua e mais nada — sem `onMutate` (patch otimista), sem
-`onError` (rollback), sem `onSettled` (reconciliar cache). O teste do
-Dashboard acima "passou" porque o `POST` chega no servidor de qualquer
-jeito — mas não provava que o resto da lógica rodava junto. Corrigido:
-`montarOpcoes(config)` monta o objeto completo uma vez, usado tanto pelo
-hook quanto por `registrarMutationDefaults` — nunca mais diverge entre os
-dois caminhos. Testado de novo com log temporário: `onSuccess` e
-`onSettled` disparam no cenário do Dashboard, confirmado.
+chave natural `funcionarioId+data`). A próxima fatia (Pesagem/Sanidade)
+usa `op:"create"` — mesma fábrica, sem reescrever a lógica de
+optimistic/rollback.
 
 ### Convenção: query key factory por módulo
 
-Cada módulo declara suas próprias keys num objeto único (`pontoKeys` em
+Cada módulo declara suas `queryKey`s num objeto único (`pontoKeys` em
 `equipe/api.ts`), `as const` — não um mapa global do app. Módulos não se
 enxergam entre si (verificado — ver "Estado atual" acima), então uma
 factory por app inteiro seria abstração sem uso; o ganho é só dentro do
-módulo, ter uma fonte única pra `queryKey`/`mutationKey` em vez de arrays
-literais repetidos em cada hook (risco: duas chamadas montam "a mesma" key
-com formato levemente diferente, viram duas entradas de cache separadas,
-silenciosamente). Repetir esse padrão em cada `api.ts` migrado.
+módulo, ter uma fonte única em vez de arrays literais repetidos em cada
+hook (risco: duas chamadas montam "a mesma" key com formato levemente
+diferente, viram duas entradas de cache separadas, silenciosamente).
+`mutationKey` é só uma string literal na config (não faz parte da mutation
+cache do TanStack mais — ver seção acima), não precisa de factory.
+Repetir esse padrão em cada `api.ts` migrado.
 
 ### Escrita afetando mais de uma query
 
@@ -325,44 +299,39 @@ client (UUID/cuid) pra mandar como input do create — o Postgres continua
 gerando o `id` real sempre. Sobrando só reconciliação: substituir o id
 temporário pelo real depois que ele existe de verdade.
 
-Dois mecanismos, o segundo só é seguro por causa do primeiro:
+Mecanismo genérico, sem callback por módulo — vive inteiro em `fila.ts`:
 
-1. **`scope: { id: scopeId }`** — opção nativa do `useMutation` (TanStack
-   v5). Mutations com o mesmo `scopeId` rodam **em fila, uma de cada vez,
-   na ordem em que foram criadas** — mesmo que `resumePausedMutations()`
-   dispare `.continue()` em todas via `Promise.all` no reconnect. Fonte
-   verificada em `mutationCache.ts#canRun`: acha a primeira mutation
-   `status:"pending"` do scope (por ordem de inserção no array — a ordem
-   real de criação); só ela pode rodar, as outras ficam bloqueadas até
-   essa resolver. **Testado empiricamente** (não só lido no source): duas
-   mutations do mesmo scope, `mutationFn` com atraso artificial de 2s —
-   confirmado que a segunda só começa (`START`) depois da primeira
-   terminar (`END`) por completo, zero sobreposição de horário.
-   `scopeId` é configurável por `useOfflineMutation`, default isolado por
-   `mutationKey` (mutations sem relação entre si não esperam umas pelas
-   outras à toa — só entram na mesma fila quando o config pede
-   explicitamente, ex.: `criar`/`editar`/`excluir` da mesma entidade
-   compartilhando `scopeId`).
-2. **Mapa `idsResolvidos` (em memória) + `resolverId`/`resolverIds`** —
-   quando uma mutation de `create`/`upsert` resolve de verdade, o
-   `onSuccess` da fábrica grava `idTemporario -> idReal` no mapa. A
-   garantia de ordem do `scope` acima é o que torna isso seguro: a
-   próxima mutation do mesmo `scopeId` só começa a rodar **depois** desse
-   `onSuccess` ter terminado — então quando `resolverIds` (fornecido no
-   config de quem depende do id) roda dentro do `mutationFn` da mutation
-   seguinte, o id já está no mapa.
+1. **Ordem sequencial por construção.** `processarFila` é um único loop
+   com `await` — a próxima escrita só começa depois que a anterior
+   terminou (sucesso, erro real, ou rede caiu de novo). Não depende de
+   nenhuma opção/mecanismo interno do TanStack pra garantir isso — é só a
+   semântica normal de `await` num `while`, o que também é o motivo de
+   não precisar mais de `scope` (removido nesta mudança de arquitetura).
+2. **Substituição por replace, não por callback.** Cada item da fila que
+   *cria* algo carrega `idTemporarioGerado` (o id local usado no item
+   otimista). Quando esse item sincroniza e o servidor devolve o `id`
+   real, `substituirIdNaFila` faz um replace — string em `path`, walk
+   recursivo em `body` — em **todos os itens restantes da fila**, trocando
+   toda ocorrência do id temporário pelo real antes deles serem enviados.
+   Não precisa de registro nenhum por `mutationKey`/módulo: funciona pra
+   qualquer item futuro que referencie o id, sem ninguém precisar
+   declarar `resolverIds` ou equivalente.
 
-Limitação conhecida, não resolvida: `idsResolvidos` é só em memória, não
-persiste em IndexedDB. Se o app fechar bem no meio — depois do create
-resolver, antes da mutation dependente ter rodado — a reconciliação se
-perde nessa janela específica (estreita: só existe enquanto as duas ainda
-estão na fila do mesmo scope). Registrado como próximo passo se aparecer
-um caso real que precise disso (persistir o mapa via `idb-keyval`, mesmo
-mecanismo já usado pro cache de queries).
+Como cada item é dado puro (path/method/body, sem função), a substituição
+funciona mesmo que o app feche e reabra no meio — o id temporário já
+substituído fica persistido na própria fila via `idb-keyval`, não depende
+de um mapa em memória que se perderia num fechamento no meio do processo
+(limitação real da versão anterior, baseada em `scope`+mapa em memória;
+resolvida de graça por esta mudança de arquitetura).
 
 Nenhum consumidor real hoje (Ponto usa chave natural, nunca referencia um
 registro por id) — construído na fundação mesmo assim, porque é PR de
 fundação: a lógica base precisa estar certa aqui, não remendada depois.
+Sem consumidor real, a cobertura vem de `lib/offline/fila.test.ts`: mocka
+`fetch`/`idb-keyval` e prova as duas coisas que Ponto sozinho não
+exercitaria — substituição de id temporário entre dois itens da fila, e
+ordem estritamente sequencial (a segunda escrita só começa depois que a
+primeira responde, não em paralelo).
 
 ## Piloto recomendado
 

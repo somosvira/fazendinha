@@ -1,9 +1,6 @@
-/* Persister do cache (queries lidas com sucesso + mutations pausadas) em
- * IndexedDB via idb-keyval — evita o limite de tamanho do localStorage.
- * Mutation pausada é incluída na persistência por padrão pelo TanStack
- * (`defaultShouldDehydrateMutation` checa só `mutation.state.isPaused`,
- * sem config extra) — é assim que uma escrita feita offline sobrevive a
- * fechar/recarregar o app antes de sincronizar. */
+// Persister da query cache (leitura) em IndexedDB via idb-keyval — evita o
+// limite de tamanho do localStorage. Escrita pendente vive em fila.ts, não
+// aqui (fila própria, não mutation do TanStack).
 import { get, set, del } from "idb-keyval";
 import type { Persister, PersistedClient } from "@tanstack/react-query-persist-client";
 

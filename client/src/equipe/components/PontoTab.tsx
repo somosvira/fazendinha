@@ -120,11 +120,9 @@ export function PontoTab() {
     setLinhas((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch, ...proximoDirty } : l)));
   }
 
-  // Offline: `mutate` pausa em vez de rejeitar — nem onSuccess nem onError
-  // rodam até sincronizar de verdade (pode ser numa sessão futura, ver
-  // resumePausedMutations em main.tsx). Por isso o indicador confiável de
-  // "salvo vs. pendente" é `pendentes` (via useMutationState), não o
-  // resultado deste catch — ele só cobre o caso online/rejeição imediata.
+  // Offline: onSuccess/onError só rodam quando a fila (lib/offline/fila.ts)
+  // sincronizar de verdade — pode ser numa sessão futura. O indicador
+  // confiável de "salvo vs. pendente" é `pendentes`, não este callback.
   function salvar(i: number) {
     const l = linhas[i];
     if (!funcionarioId) return;

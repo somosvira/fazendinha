@@ -1,42 +1,14 @@
-/* Camada de leitura/escrita do módulo Equipe & Ponto.
- *
- * Espelha o pattern do Plantio/Rebanho: cada `useXxx()` bate em `/api/ponto/*`
- * via o helper `req<T>`, que prefixa `/api`, injeta `content-type` quando há
- * corpo e extrai a mensagem de erro de `{error}` (service) ou `{error:{issues}}`
- * (ZodError do zValidator). Os hooks mantêm o contrato `{data, loading, erro,
- * recarregar}`. Os DTOs (./types) não mudam.
- *
- * Formulários enviam `undefined` para opcionais vazios (nunca `null`); enums
- * em UPPERCASE.
+/* Camada de leitura/escrita do módulo Equipe & Ponto. Hooks mantêm o
+ * contrato {data, loading, erro, recarregar}. Formulários enviam
+ * `undefined` para opcionais vazios (nunca `null`); enums em UPPERCASE.
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
-import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
-import {
-  useOfflineMutation,
-  registrarMutationDefaults,
-  criarIdTemporario,
-  type UseOfflineMutationConfig,
-} from "../lib/offline/useOfflineMutation";
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = comPropriedade({
-    ...((init?.headers as Record<string, string>) || {}),
-    ...(init?.body ? { "content-type": "application/json" } : {}),
-  });
-  const res = await fetch(`/api${path}`, { ...init, headers });
-  if (!res.ok) {
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: registro em mês fechado)
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
-  }
-  return res.json();
-}
+import { req } from "../lib/offline/req";
+import { useOfflineMutation, criarIdTemporario, type UseOfflineMutationConfig } from "../lib/offline/useOfflineMutation";
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
@@ -103,8 +75,6 @@ export const preencherGrade = (funcionarioId: string, ano: number, mes: number) 
 
 export const listarRegistros = (funcionarioId: string, mes: string) =>
   req<RegistroDTO[]>(`/ponto/registros${qs({ funcionarioId, mes })}`);
-export const upsertRegistro = (input: RegistroInput) =>
-  req<RegistroDTO>(`/ponto/registros`, { method: "POST", body: JSON.stringify(input) });
 export const excluirRegistro = (id: string) =>
   req<{ ok: true }>(`/ponto/registros/${id}`, { method: "DELETE" });
 
@@ -138,30 +108,24 @@ export function useFuncionarios(ativo?: boolean) {
   return { data, loading, erro, recarregar };
 }
 
-// Query key factory do módulo (padrão TanStack) — fonte única pras keys de
-// Ponto, usada aqui e em useUpsertRegistro. `as const` dá tupla literal, não
-// `unknown[]` — evita duas chamadas montarem "a mesma" key com formato
-// diferente (isso criaria duas entradas de cache separadas, silenciosamente).
-// `mes` em `registros` é "YYYY-MM", casa com o prefixo de `data` ("YYYY-MM-DD").
+// `as const` dá tupla literal — evita duas chamadas montarem "a mesma" key
+// com formato diferente. `mes` em `registros` é "YYYY-MM".
 const pontoKeys = {
   registros: (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const,
-  upsertRegistro: ["ponto", "upsert-registro"] as const,
 };
 
-// Config única — usada tanto pelo registro de escopo de módulo (abaixo)
-// quanto pelo hook (useUpsertRegistro), pra nunca divergir entre os dois
-// caminhos. `op: "upsert"` porque a identidade não é um id — é a chave
-// natural (funcionarioId, data): reenviar a mesma data sobrescreve. Não
-// usa `scopeId`/`resolverIds` (default: isolado por mutationKey) porque
-// nenhuma outra escrita do Ponto referencia um registro por id.
+// `op: "upsert"` porque a identidade é a chave natural (funcionarioId, data),
+// não um id — reenviar a mesma data sobrescreve.
 const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO> = {
-  mutationKey: pontoKeys.upsertRegistro,
-  mutationFn: upsertRegistro,
+  mutationKey: "ponto.upsert-registro",
+  path: () => "/ponto/registros",
+  method: "POST",
+  body: (input) => input,
   queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
   op: "upsert",
   match: (item, input) => item.data === input.data,
-  // Campos computados pelo backend (horas/extra) entram zerados — o
-  // apuramento é feito no servidor; corrige sozinho no refetch pós-sync.
+  // Campos computados pelo backend (horas/extra) entram zerados — corrigem
+  // sozinhos no refetch pós-sync.
   criarOtimista: (input) => ({
     id: criarIdTemporario(),
     funcionarioId: input.funcionarioId,
@@ -177,18 +141,6 @@ const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO>
   }),
 };
 
-// Escopo de módulo, não dentro do hook — garante que uma escrita de Ponto
-// pausada offline consegue retomar no boot mesmo que o app tenha aberto
-// numa aba diferente (PontoTab nunca chegou a montar nesta sessão). Roda
-// garantido: App.tsx importa este módulo estaticamente (sem lazy), então
-// esta linha executa no carregamento do bundle. Ver lib/offline/useOfflineMutation.ts.
-registrarMutationDefaults(configUpsertRegistro);
-
-// Migrado pra TanStack Query (Fatia 3 do plano offline — ver
-// OFFLINE_STRATEGY.md). Mantém o contrato {data, loading, erro, recarregar}
-// pra não precisar tocar em quem já consome o hook. Fica cacheado em
-// IndexedDB (fundação em lib/offline/) — reabre offline com o último dado
-// visto, mesmo sem rede.
 export function useRegistros(funcionarioId: string | null, mes: string) {
   const query = useQuery({
     queryKey: pontoKeys.registros(funcionarioId ?? "", mes),
@@ -203,10 +155,6 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
   };
 }
 
-// Upsert de registro — offline-aware via useOfflineMutation (ver
-// lib/offline/useOfflineMutation.ts): otimista na lista de `registros` do
-// funcionário+mês, sobrevive a fechar o app offline, reconcilia com o
-// servidor (id real + horas apuradas) ao sincronizar.
 export function useUpsertRegistro() {
   return useOfflineMutation(configUpsertRegistro);
 }
