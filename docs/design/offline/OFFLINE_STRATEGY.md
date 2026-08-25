@@ -201,9 +201,16 @@ A fábrica cuida do resto sozinha: patch otimista de cada lista em
 afetada), rollback em `onError`, `invalidateQueries` em `onSettled` (nas
 `queryKeys` e nas `queryKeysRelacionadas`) pra reconciliar com o servidor
 (troca o item otimista pelo real, com `id` verdadeiro — funciona sem
-UUID/cuid por causa da decisão acima), e
-`queryClient.setMutationDefaults(mutationKey, {mutationFn})` (ver achado
-abaixo).
+UUID/cuid por causa da decisão acima).
+
+**Passo obrigatório, não automático — fácil de esquecer:** todo módulo que
+usa a fábrica precisa **também** chamar `registrarMutationDefaults(mutationKey, mutationFn)`
+uma vez, **em escopo de módulo** (fora de qualquer hook/componente — ex.:
+logo após definir `pontoKeys` e o `mutationFn` em `equipe/api.ts`). O hook
+sozinho registra de novo a cada render, mas isso é só reforço — não cobre
+o caso "app abriu numa aba diferente da que criou a escrita pendente" (ver
+achado abaixo, é bug real que já aconteceu aqui). Sem essa chamada de
+escopo de módulo, a fatia nova reproduz o mesmo bug do zero.
 
 Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
 chave natural `funcionarioId+data`, sem id gerado). A próxima fatia
