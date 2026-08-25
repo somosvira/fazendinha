@@ -4,48 +4,97 @@
  * quais queryKeys a escrita afeta, como identificar o item nelas e que
  * operação é (create/update/delete/upsert). O *como* — patch otimista das
  * listas em cache, rollback se der erro, reconciliação com o servidor após
- * sync e sobrevivência a fechar o app offline — fica centralizado aqui,
- * escrito uma vez só, em vez de reimplementado por componente.
+ * sync, sobrevivência a fechar o app offline e reconciliação de id
+ * temporário — fica centralizado aqui, escrito uma vez só.
  *
- * `setMutationDefaults` (doc do TanStack: funções não sobrevivem à
- * serialização pro IndexedDB, então uma mutation restaurada do storage só
- * sabe o que executar se um default tiver sido registrado por mutationKey
- * ANTES do resume) precisa rodar `registrarMutationDefaults` abaixo — de
- * ESCOPO DE MÓDULO, não de dentro do hook. Registrar só dentro do hook não
- * basta: o hook só roda se o componente dono dele estiver montado, e um
- * resume pode acontecer com o app tendo aberto em outra aba (a mutation
- * pausada de uma tela pode ser retomada no boot antes do usuário nunca ter
- * visitado aquela tela nesta sessão). `registrarMutationDefaults` deve ser
- * chamada uma vez, no topo do módulo do domínio (ex.: equipe/api.ts) — isso
- * roda garantidamente no carregamento do bundle, já que os módulos de tela
- * são importados estaticamente (sem `React.lazy`) a partir de App.tsx. O
- * hook também registra de novo a cada render, como reforço — barato e
- * inofensivo, mas não é o que garante correção no caso "app abriu numa
- * tela diferente"; quem garante isso é a chamada de escopo de módulo.
+ * DUAS COISAS SÓ FUNCIONAM SE FOR REGISTRADO CERTO, NÃO SÓ USADO NO HOOK:
+ *
+ * 1. `getMutationDefaults(mutationKey)` — verificado no source do TanStack
+ *    (queryClient.ts, defaultMutationOptions): o merge é
+ *    `{...defaults_globais, ...getMutationDefaults(mutationKey), ...options}`.
+ *    Isso vale tanto pra uma mutation nova (`useMutation`) quanto pra uma
+ *    restaurada do IndexedDB (hydration usa o mesmo `mutationCache.build`).
+ *    Só que se a gente registrar SÓ `mutationFn`, uma mutation restaurada
+ *    sem componente montado roda a chamada HTTP crua e mais nada — sem
+ *    `onMutate`/`onError`/`onSettled`. Por isso `montarOpcoes` monta o
+ *    objeto INTEIRO e `registrarMutationDefaults` registra ele inteiro,
+ *    não só o `mutationFn`.
+ * 2. Registro tem que rodar em ESCOPO DE MÓDULO (não só dentro do hook) —
+ *    o hook só roda se o componente dono estiver montado, e um resume
+ *    pode acontecer com o app aberto numa aba diferente da que criou a
+ *    escrita pendente. `registrarMutationDefaults` deve ser chamada uma
+ *    vez, no topo do módulo de domínio (ex.: equipe/api.ts) — roda
+ *    garantido no carregamento do bundle, já que os módulos de tela são
+ *    importados estaticamente (sem `React.lazy`) a partir de App.tsx.
+ *
+ * RECONCILIAÇÃO DE ID TEMPORÁRIO — pra quando uma mutation cria algo
+ * offline (ganha id local, `ID_TEMPORARIO_PREFIXO`) e outra mutation,
+ * ainda offline, referencia esse id antes dele existir de verdade no
+ * servidor (ex.: cria X, edita esse mesmo X, tudo offline, antes de
+ * sincronizar). Dois mecanismos, um dependendo do outro:
+ *
+ * - `scope: { id: scopeId }` — TanStack serializa mutations do mesmo
+ *   scope: uma de cada vez, na ordem em que foram criadas, mesmo que
+ *   `resumePausedMutations()` dispare `.continue()` em todas via
+ *   `Promise.all` no reconnect. Testado com atraso artificial: confirmado
+ *   que a segunda mutation não começa até a primeira terminar (zero
+ *   sobreposição de horário). Fonte: `mutationCache.ts#canRun` — acha a
+ *   primeira mutation `status:"pending"` do scope, só ela pode rodar; as
+ *   outras ficam bloqueadas até essa resolver.
+ * - `idsResolvidos` (Map global) + `resolverId`/`resolverIds` — quando
+ *   uma mutation de create/upsert resolve de verdade, `onSuccess` grava
+ *   `tempId -> idReal` no mapa. A garantia de ordem do `scope` acima é o
+ *   que torna isso seguro: a próxima mutation do mesmo scope só começa a
+ *   rodar DEPOIS desse `onSuccess`, então quando `resolverIds` (fornecido
+ *   por quem configura a mutation dependente) roda dentro do `mutationFn`
+ *   dela, o id já está resolvido no mapa.
+ *
+ * Limitação conhecida, não resolvida aqui: o mapa `idsResolvidos` é só em
+ * memória (não persiste em IndexedDB). Se o app fechar entre o create
+ * resolver e a mutation dependente ainda não ter rodado (uma janela
+ * estreita — só existe enquanto as duas ainda estão na fila do mesmo
+ * scope), a reconciliação se perde nesse caso específico. Registrado
+ * como próximo passo se aparecer um caso real que precise disso.
  */
 import {
   useMutation,
   useMutationState,
   useQueryClient,
   type QueryKey,
+  type MutationOptions,
 } from "@tanstack/react-query";
 import { queryClient as clienteGlobal } from "./queryClient";
 
-/** Registra o mutationFn default pra uma mutationKey — chamar uma vez, no
- * escopo do módulo que define a mutation (não dentro de um componente/hook).
- * Ver comentário do topo do arquivo. */
-export function registrarMutationDefaults<TInput, TItem>(
-  mutationKey: readonly unknown[],
-  mutationFn: (input: TInput) => Promise<TItem>,
-) {
-  clienteGlobal.setMutationDefaults(mutationKey as unknown[], { mutationFn });
+// RECONCILIAÇÃO DE ID TEMPORÁRIO -------------------------------------------
+
+/** Prefixo de id gerado no client pra um item ainda não confirmado pelo
+ * servidor — nunca colide com id real (sempre numérico, `Int autoincrement`
+ * do Postgres, stringificado sem prefixo nenhum nos DTOs). */
+export const ID_TEMPORARIO_PREFIXO = "local:";
+
+/** Gera um id temporário único — usar dentro de `criarOtimista` pra
+ * create/upsert que podem inserir item novo. */
+export function criarIdTemporario(): string {
+  return `${ID_TEMPORARIO_PREFIXO}${crypto.randomUUID()}`;
 }
+
+const idsResolvidos = new Map<string, string>();
+
+/** Resolve um id — se for temporário e já tiver sido reconciliado, devolve
+ * o real; senão devolve como veio (já é real, ou ainda não resolveu).
+ * Usar dentro de `resolverIds` da mutation dependente. */
+export function resolverId<T extends string | undefined>(id: T): T {
+  if (id == null) return id;
+  return (idsResolvidos.get(id) ?? id) as T;
+}
+
+// CONFIG ---------------------------------------------------------------
 
 export type OfflineOp = "create" | "update" | "delete" | "upsert";
 
 /** Campos comuns a toda operação — o que muda por `op` (`criarOtimista`)
  * fica no tipo discriminado abaixo, não aqui. */
-interface UseOfflineMutationBase<TInput, TItem> {
+interface UseOfflineMutationBase<TInput, TItem extends { id: string }> {
   /** Identifica esta mutation na mutation cache — fixo, não varia por item
    * (é o que permite filtrar "toda escrita de X pendente", venha de onde vier). */
   mutationKey: readonly unknown[];
@@ -64,6 +113,16 @@ interface UseOfflineMutationBase<TInput, TItem> {
   queryKeysRelacionadas?: (input: TInput) => QueryKey[];
   /** Identidade do item dentro da lista (chave natural ou id). */
   match: (item: TItem, input: TInput) => boolean;
+  /** Agrupa mutations que podem referenciar id gerado por outra da mesma
+   * família de entidade (ex.: criar/editar/excluir pesagem) — todas com o
+   * mesmo `scopeId` rodam em fila, uma de cada vez, na ordem de criação,
+   * nunca em paralelo (nem no resume). Default: isolada por `mutationKey`
+   * (comportamento correto quando a mutation nunca depende de outra). */
+  scopeId?: string;
+  /** Reescreve id temporário no input pro id real já resolvido, se houver
+   * — roda logo antes do `mutationFn`, já dentro da garantia de ordem do
+   * `scopeId`. Ex.: `(input) => ({...input, loteId: resolverId(input.loteId)})` */
+  resolverIds?: (input: TInput) => TInput;
 }
 
 /** Discriminado por `op`: `criarOtimista` é exigido pelo *tipo* quando a
@@ -71,13 +130,13 @@ interface UseOfflineMutationBase<TInput, TItem> {
  * ele não dá pra saber o que mostrar otimisticamente antes do servidor
  * confirmar. Errar isso agora é erro de compilação, não um objeto vazio
  * silencioso em runtime nem um crash na primeira escrita. */
-export type UseOfflineMutationConfig<TInput, TItem> =
+export type UseOfflineMutationConfig<TInput, TItem extends { id: string }> =
   | (UseOfflineMutationBase<TInput, TItem> & {
       op: "create" | "upsert";
       /** Constrói o item otimista a mostrar antes da confirmação do
-       * servidor. Campos computados pelo backend (ex.: horas apuradas)
-       * entram aproximados/zerados aqui — corrigem sozinhos no refetch
-       * pós-sync. */
+       * servidor — `id` deve vir de `criarIdTemporario()`. Campos
+       * computados pelo backend (ex.: horas apuradas) entram
+       * aproximados/zerados aqui — corrigem sozinhos no refetch pós-sync. */
       criarOtimista: (input: TInput) => TItem;
     })
   | (UseOfflineMutationBase<TInput, TItem> & {
@@ -87,13 +146,14 @@ export type UseOfflineMutationConfig<TInput, TItem> =
       criarOtimista?: (input: TInput) => TItem;
     });
 
-function aplicarOtimista<TInput, TItem>(
+function aplicarOtimista<TInput, TItem extends { id: string }>(
   anterior: TItem[] | undefined,
   input: TInput,
   cfg: UseOfflineMutationConfig<TInput, TItem>,
+  itemOtimista: TItem | undefined,
+  existe: boolean,
 ): TItem[] {
   const lista = anterior ?? [];
-  const existe = lista.some((item) => cfg.match(item, input));
   const patch = (item: TItem) => ({
     ...item,
     ...(input as unknown as Partial<TItem>),
@@ -102,13 +162,13 @@ function aplicarOtimista<TInput, TItem>(
     case "delete":
       return lista.filter((item) => !cfg.match(item, input));
     case "create":
-      return [...lista, cfg.criarOtimista(input)];
+      return [...lista, itemOtimista!];
     case "update":
       return lista.map((item) => (cfg.match(item, input) ? patch(item) : item));
     case "upsert":
       return existe
         ? lista.map((item) => (cfg.match(item, input) ? patch(item) : item))
-        : [...lista, cfg.criarOtimista(input)];
+        : [...lista, itemOtimista!];
   }
 }
 
@@ -117,7 +177,82 @@ interface Snapshot<TItem> {
   anterior: TItem[] | undefined;
 }
 
-export function useOfflineMutation<TInput, TItem>(
+interface Contexto<TItem> {
+  snapshots: Snapshot<TItem>[];
+  idTemporario: string | undefined;
+}
+
+/** Monta o `options` completo de `useMutation` pra essa config — usado
+ * tanto pelo hook (caminho interativo) quanto registrado em
+ * `setMutationDefaults` (caminho de restauração, sem componente montado).
+ * Precisa ser o MESMO objeto nos dois caminhos — ver comentário do topo. */
+function montarOpcoes<TInput, TItem extends { id: string }>(
+  cfg: UseOfflineMutationConfig<TInput, TItem>,
+): MutationOptions<TItem, Error, TInput, Contexto<TItem>> {
+  return {
+    mutationKey: cfg.mutationKey as unknown[],
+    mutationFn: (input: TInput) =>
+      cfg.mutationFn(cfg.resolverIds ? cfg.resolverIds(input) : input),
+    scope: { id: cfg.scopeId ?? JSON.stringify(cfg.mutationKey) },
+    onMutate: async (input) => {
+      const queryKeys = cfg.queryKeys(input);
+      await Promise.all(
+        queryKeys.map((queryKey) => clienteGlobal.cancelQueries({ queryKey })),
+      );
+      const snapshots: Snapshot<TItem>[] = queryKeys.map((queryKey) => ({
+        queryKey,
+        anterior: clienteGlobal.getQueryData<TItem[]>(queryKey),
+      }));
+      // "upsert" só é criação de verdade se o item ainda não existe em
+      // nenhuma das listas afetadas — computado uma vez aqui (não por
+      // lista) pra ficar consistente com o `itemOtimista` único abaixo.
+      const existe = snapshots.some(({ anterior }) =>
+        (anterior ?? []).some((item) => cfg.match(item, input)),
+      );
+      const vaiCriar = cfg.op === "create" || (cfg.op === "upsert" && !existe);
+      // Calculado uma vez só (não por queryKey) — criarOtimista pode usar
+      // criarIdTemporario() internamente (aleatório); chamar mais de uma
+      // vez pra mesma escrita geraria ids diferentes em cada lista.
+      const itemOtimista = vaiCriar ? cfg.criarOtimista!(input) : undefined;
+      for (const { queryKey, anterior } of snapshots) {
+        clienteGlobal.setQueryData<TItem[]>(
+          queryKey,
+          aplicarOtimista(anterior, input, cfg, itemOtimista, existe),
+        );
+      }
+      return { snapshots, idTemporario: itemOtimista?.id };
+    },
+    onSuccess: (item, _input, ctx) => {
+      if (ctx?.idTemporario && ctx.idTemporario !== item.id) {
+        idsResolvidos.set(ctx.idTemporario, item.id);
+      }
+    },
+    onError: (_err, _input, ctx) => {
+      for (const { queryKey, anterior } of ctx?.snapshots ?? [])
+        clienteGlobal.setQueryData(queryKey, anterior);
+    },
+    onSettled: (_data, _err, input) => {
+      for (const queryKey of cfg.queryKeys(input))
+        clienteGlobal.invalidateQueries({ queryKey });
+      for (const queryKey of cfg.queryKeysRelacionadas?.(input) ?? [])
+        clienteGlobal.invalidateQueries({ queryKey });
+    },
+  };
+}
+
+/** Registra as opções completas (não só `mutationFn`) como default da
+ * `mutationKey` — chamar uma vez, em escopo de módulo (fora de qualquer
+ * componente/hook). Ver comentário do topo do arquivo. */
+export function registrarMutationDefaults<TInput, TItem extends { id: string }>(
+  cfg: UseOfflineMutationConfig<TInput, TItem>,
+) {
+  clienteGlobal.setMutationDefaults(
+    cfg.mutationKey as unknown[],
+    montarOpcoes(cfg),
+  );
+}
+
+export function useOfflineMutation<TInput, TItem extends { id: string }>(
   cfg: UseOfflineMutationConfig<TInput, TItem>,
 ) {
   const queryClient = useQueryClient();
@@ -125,52 +260,16 @@ export function useOfflineMutation<TInput, TItem>(
   // Reforço, não a garantia principal — ver comentário do topo do arquivo.
   // Quem garante correção mesmo com o componente não montado é a chamada
   // de escopo de módulo (registrarMutationDefaults).
-  queryClient.setMutationDefaults(cfg.mutationKey as unknown[], {
-    mutationFn: cfg.mutationFn,
-  });
+  queryClient.setMutationDefaults(
+    cfg.mutationKey as unknown[],
+    montarOpcoes(cfg),
+  );
 
-  const mutation = useMutation<
-    TItem,
-    Error,
-    TInput,
-    { snapshots: Snapshot<TItem>[] }
-  >({
-    mutationKey: cfg.mutationKey as unknown[],
-    mutationFn: cfg.mutationFn,
-    onMutate: async (input) => {
-      const queryKeys = cfg.queryKeys(input);
-      await Promise.all(
-        queryKeys.map((queryKey) => queryClient.cancelQueries({ queryKey })),
-      );
-      const snapshots: Snapshot<TItem>[] = queryKeys.map((queryKey) => ({
-        queryKey,
-        anterior: queryClient.getQueryData<TItem[]>(queryKey),
-      }));
-      for (const { queryKey, anterior } of snapshots) {
-        queryClient.setQueryData<TItem[]>(
-          queryKey,
-          aplicarOtimista(anterior, input, cfg),
-        );
-      }
-      return { snapshots };
-    },
-    onError: (_err, _input, ctx) => {
-      for (const { queryKey, anterior } of ctx?.snapshots ?? [])
-        queryClient.setQueryData(queryKey, anterior);
-    },
-    onSettled: (_data, _err, input) => {
-      for (const queryKey of cfg.queryKeys(input))
-        queryClient.invalidateQueries({ queryKey });
-      for (const queryKey of cfg.queryKeysRelacionadas?.(input) ?? [])
-        queryClient.invalidateQueries({ queryKey });
-    },
-  });
+  const mutation = useMutation(montarOpcoes(cfg));
 
-  // Itens com escrita em voo OU pausada por falta de rede (mesma
-  // mutationKey, de qualquer componente) — "pending" cobre os dois casos,
-  // o TanStack não distingue no status (só em isPaused, que não precisamos
-  // aqui: a UI trata os dois igual). Cada tela filtra pro seu recorte
-  // (ex.: funcionário+mês atual) por cima disso.
+  // Itens com escrita em voo OU pausada (por falta de rede OU esperando a
+  // vez no scope — mesmo status "pending" pros dois, ver comentário do
+  // topo). Cada tela filtra pro seu recorte (ex.: funcionário+mês atual).
   const pendentesRaw = useMutationState({
     filters: { mutationKey: cfg.mutationKey as unknown[], status: "pending" },
     select: (m) => m.state.variables as TInput | undefined,

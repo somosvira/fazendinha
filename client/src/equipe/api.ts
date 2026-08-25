@@ -15,7 +15,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
-import { useOfflineMutation, registrarMutationDefaults } from "../lib/offline/useOfflineMutation";
+import {
+  useOfflineMutation,
+  registrarMutationDefaults,
+  criarIdTemporario,
+  type UseOfflineMutationConfig,
+} from "../lib/offline/useOfflineMutation";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -143,12 +148,41 @@ const pontoKeys = {
   upsertRegistro: ["ponto", "upsert-registro"] as const,
 };
 
+// Config única — usada tanto pelo registro de escopo de módulo (abaixo)
+// quanto pelo hook (useUpsertRegistro), pra nunca divergir entre os dois
+// caminhos. `op: "upsert"` porque a identidade não é um id — é a chave
+// natural (funcionarioId, data): reenviar a mesma data sobrescreve. Não
+// usa `scopeId`/`resolverIds` (default: isolado por mutationKey) porque
+// nenhuma outra escrita do Ponto referencia um registro por id.
+const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO> = {
+  mutationKey: pontoKeys.upsertRegistro,
+  mutationFn: upsertRegistro,
+  queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
+  op: "upsert",
+  match: (item, input) => item.data === input.data,
+  // Campos computados pelo backend (horas/extra) entram zerados — o
+  // apuramento é feito no servidor; corrige sozinho no refetch pós-sync.
+  criarOtimista: (input) => ({
+    id: criarIdTemporario(),
+    funcionarioId: input.funcionarioId,
+    data: input.data,
+    entrada: input.entrada ?? null,
+    saida: input.saida ?? null,
+    intervaloMin: input.intervaloMin ?? 60,
+    tipoDia: input.tipoDia ?? "UTIL",
+    observacao: input.observacao ?? null,
+    horas: 0,
+    extra50: 0,
+    extra100: 0,
+  }),
+};
+
 // Escopo de módulo, não dentro do hook — garante que uma escrita de Ponto
 // pausada offline consegue retomar no boot mesmo que o app tenha aberto
 // numa aba diferente (PontoTab nunca chegou a montar nesta sessão). Roda
 // garantido: App.tsx importa este módulo estaticamente (sem lazy), então
 // esta linha executa no carregamento do bundle. Ver lib/offline/useOfflineMutation.ts.
-registrarMutationDefaults(pontoKeys.upsertRegistro, upsertRegistro);
+registrarMutationDefaults(configUpsertRegistro);
 
 // Migrado pra TanStack Query (Fatia 3 do plano offline — ver
 // OFFLINE_STRATEGY.md). Mantém o contrato {data, loading, erro, recarregar}
@@ -171,33 +205,10 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
 
 // Upsert de registro — offline-aware via useOfflineMutation (ver
 // lib/offline/useOfflineMutation.ts): otimista na lista de `registros` do
-// funcionário+mês, sobrevive a fechar o app offline (setMutationDefaults),
-// reconcilia com o servidor (id real + horas apuradas) ao sincronizar.
-// `op: "upsert"` porque a identidade não é um id — é a chave natural
-// (funcionarioId, data): reenviar a mesma data sobrescreve.
+// funcionário+mês, sobrevive a fechar o app offline, reconcilia com o
+// servidor (id real + horas apuradas) ao sincronizar.
 export function useUpsertRegistro() {
-  return useOfflineMutation<RegistroInput, RegistroDTO>({
-    mutationKey: pontoKeys.upsertRegistro,
-    mutationFn: upsertRegistro,
-    queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
-    op: "upsert",
-    match: (item, input) => item.data === input.data,
-    // Campos computados pelo backend (horas/extra) entram zerados — o
-    // apuramento é feito no servidor; corrige sozinho no refetch pós-sync.
-    criarOtimista: (input) => ({
-      id: `tmp-${input.funcionarioId}-${input.data}`,
-      funcionarioId: input.funcionarioId,
-      data: input.data,
-      entrada: input.entrada ?? null,
-      saida: input.saida ?? null,
-      intervaloMin: input.intervaloMin ?? 60,
-      tipoDia: input.tipoDia ?? "UTIL",
-      observacao: input.observacao ?? null,
-      horas: 0,
-      extra50: 0,
-      extra100: 0,
-    }),
-  });
+  return useOfflineMutation(configUpsertRegistro);
 }
 
 export function useFolha(mes: string) {

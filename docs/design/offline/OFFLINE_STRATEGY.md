@@ -128,16 +128,16 @@ insert (só que atrasado até o sync), o desempate `[data desc, id desc]`
 continua funcionando exatamente igual a hoje. Nenhuma tabela precisa de
 tratamento especial por causa disso.
 
-**Quando isso deixa de ser barato (não é o caso agora, mas registrar pro
-futuro):** se o escopo um dia expandir pra "cadastrar `Animal`/`Lote`/
-`Talhão` novo estando offline" **e** alguém, ainda offline, criar um
-segundo registro que referencia esse pai recém-criado (ex.: cadastrar
-animal → já lançar evento reprodutivo nele, tudo sem sinal) — aí sim vira
-necessário: (1) rastrear no payload da fila que aquele campo é "aponta pro
-id que a mutation N vai gerar", (2) reescrever esse campo quando a
-mutation N sincronizar de verdade, (3) cascatear falha/cancelamento pros
-filhos se a criação do pai for rejeitada. Nenhuma candidata da camada 3
-cai nesse caso hoje.
+**Atualização (2026-08-25): o mecanismo abaixo foi construído na própria
+fundação, não deixado pra depois.** Apesar de nenhuma candidata da camada
+3 precisar hoje — nem entidade-pai cross-entity (Lote→Pesagem), nem o
+caso mais simples e mais provável de acontecer de verdade (criar um item
+offline e editar esse **mesmo** item de novo, ainda offline, antes de
+sincronizar) — a lógica de reconciliação de id temporário é parte da
+fábrica `useOfflineMutation` desde o início, porque é PR de fundação: a
+lógica base tem que estar certa aqui, não remendada quando o primeiro
+módulo real precisar. Ver seção "Reconciliação de id temporário" abaixo
+pro mecanismo completo (`scope` + mapa `idsResolvidos` + `resolverIds`).
 
 **Pesquisa de "a ordem de id importa" feita antes de decidir (2026-08-24)
 — mantida aqui como contexto, ainda que não seja mais bloqueante:**
@@ -192,28 +192,44 @@ optimistic update na mão. Cada chamador só declara:
   de verdade (já com rede).
 - `op` — `"create" | "update" | "delete" | "upsert"`.
 - `match(item, input)` — identidade do item na lista (chave natural ou id).
-- `criarOtimista(input)` — só pra `create`/`upsert`: monta o item a mostrar
-  antes da confirmação do servidor (campos computados pelo backend entram
-  aproximados/zerados, corrigem no refetch pós-sync).
+- `criarOtimista(input)` — **exigido pelo tipo** quando `op` é
+  `"create"`/`"upsert"` (tipo discriminado por `op` — esquecer é erro de
+  compilação, não crash em runtime nem objeto vazio silencioso): monta o
+  item a mostrar antes da confirmação do servidor, `id` sempre via
+  `criarIdTemporario()`. Campos computados pelo backend entram
+  aproximados/zerados, corrigem no refetch pós-sync.
+- `scopeId?` — opcional: agrupa mutations que podem referenciar id gerado
+  por outra da mesma família de entidade (ver "Reconciliação de id
+  temporário" abaixo). Default: isolada por `mutationKey`.
+- `resolverIds?(input)` — opcional: reescreve id temporário no input pro
+  id real já resolvido, antes do `mutationFn` rodar de verdade.
 
 A fábrica cuida do resto sozinha: patch otimista de cada lista em
 `onMutate` (com snapshot por key, pra rollback certo mesmo com mais de uma
 afetada), rollback em `onError`, `invalidateQueries` em `onSettled` (nas
 `queryKeys` e nas `queryKeysRelacionadas`) pra reconciliar com o servidor
 (troca o item otimista pelo real, com `id` verdadeiro — funciona sem
-UUID/cuid por causa da decisão acima).
+UUID/cuid por causa da decisão acima), e a reconciliação de id temporário
+entre mutations relacionadas (`scope` + mapa de resolução — ver seção
+própria abaixo).
+
+`TItem` precisa ter `id: string` (convenção já seguida por todo DTO do
+projeto) — é o que permite a fábrica gerenciar reconciliação de id sem
+cada config precisar de um acessor `idDoItem` a mais.
 
 **Passo obrigatório, não automático — fácil de esquecer:** todo módulo que
-usa a fábrica precisa **também** chamar `registrarMutationDefaults(mutationKey, mutationFn)`
-uma vez, **em escopo de módulo** (fora de qualquer hook/componente — ex.:
-logo após definir `pontoKeys` e o `mutationFn` em `equipe/api.ts`). O hook
-sozinho registra de novo a cada render, mas isso é só reforço — não cobre
-o caso "app abriu numa aba diferente da que criou a escrita pendente" (ver
-achado abaixo, é bug real que já aconteceu aqui). Sem essa chamada de
-escopo de módulo, a fatia nova reproduz o mesmo bug do zero.
+usa a fábrica precisa **também** chamar `registrarMutationDefaults(config)`
+(a config inteira, não só `mutationKey`+`mutationFn`) uma vez, **em
+escopo de módulo** (fora de qualquer hook/componente — ex.: logo após
+definir a config em `equipe/api.ts`). O hook sozinho registra de novo a
+cada render, mas isso é só reforço — não cobre o caso "app abriu numa aba
+diferente da que criou a escrita pendente" (ver achado abaixo, é bug real
+que já aconteceu aqui, duas vezes). Sem essa chamada de escopo de módulo,
+a fatia nova reproduz o mesmo bug do zero.
 
 Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
-chave natural `funcionarioId+data`, sem id gerado). A próxima fatia
+chave natural `funcionarioId+data`, sem `scopeId`/`resolverIds` porque
+nada referencia um registro de Ponto por id). A próxima fatia
 (Pesagem/Sanidade) usa `op:"create"` — mesma fábrica, sem reescrever a
 lógica de optimistic/rollback.
 
@@ -243,6 +259,23 @@ carregamento do bundle, antes de qualquer render, independente de qual
 aba o usuário está vendo. Testado de verdade: salvar offline no Ponto,
 reconectar e abrir o app **direto no Dashboard** (nunca voltando pro
 Ponto) — sincronizou sozinho, confirmado no Postgres.
+
+**Terceira volta — a mais séria: registrar só `mutationFn` não bastava.**
+Verificado no source do TanStack (`queryClient.ts#defaultMutationOptions`):
+o merge que toda mutation passa (nova OU restaurada — ambas passam por
+`mutationCache.build()`) é
+`{...defaults_globais, ...getMutationDefaults(mutationKey), ...options_passadas}`.
+`getMutationDefaults` devolve o **objeto inteiro** que foi registrado, não
+só `mutationFn`. Como `registrarMutationDefaults` registrava só
+`{mutationFn}`, uma mutation restaurada sem componente montado rodava a
+chamada HTTP crua e mais nada — sem `onMutate` (patch otimista), sem
+`onError` (rollback), sem `onSettled` (reconciliar cache). O teste do
+Dashboard acima "passou" porque o `POST` chega no servidor de qualquer
+jeito — mas não provava que o resto da lógica rodava junto. Corrigido:
+`montarOpcoes(config)` monta o objeto completo uma vez, usado tanto pelo
+hook quanto por `registrarMutationDefaults` — nunca mais diverge entre os
+dois caminhos. Testado de novo com log temporário: `onSuccess` e
+`onSettled` disparam no cenário do Dashboard, confirmado.
 
 ### Convenção: query key factory por módulo
 
@@ -276,6 +309,60 @@ Limitação que continua real (sem consumidor, não construída): o cache
 alvo do patch otimista é sempre uma **lista** (`TItem[]`). Um write que
 afetasse um objeto único em cache (não uma lista) precisaria de outro
 caminho — não vale generalizar sem um caso de uso real.
+
+### Reconciliação de id temporário
+
+Cenário: cria um item offline (ganha `id` temporário, via
+`criarIdTemporario()` → `"local:<uuid>"`, prefixo que nunca colide com o
+`id` real, sempre numérico) e **edita esse mesmo item de novo**, ainda
+offline, antes de sincronizar. Quando a rede volta, a criação sincroniza e
+ganha o `id` real do Postgres — mas a edição, se já estava na fila
+referenciando o `id` temporário, precisa saber o `id` novo antes de
+disparar pro servidor, senão o servidor não sabe o que é `"local:<uuid>"`.
+
+Descartado desde a decisão original (seção acima): gerar o id real no
+client (UUID/cuid) pra mandar como input do create — o Postgres continua
+gerando o `id` real sempre. Sobrando só reconciliação: substituir o id
+temporário pelo real depois que ele existe de verdade.
+
+Dois mecanismos, o segundo só é seguro por causa do primeiro:
+
+1. **`scope: { id: scopeId }`** — opção nativa do `useMutation` (TanStack
+   v5). Mutations com o mesmo `scopeId` rodam **em fila, uma de cada vez,
+   na ordem em que foram criadas** — mesmo que `resumePausedMutations()`
+   dispare `.continue()` em todas via `Promise.all` no reconnect. Fonte
+   verificada em `mutationCache.ts#canRun`: acha a primeira mutation
+   `status:"pending"` do scope (por ordem de inserção no array — a ordem
+   real de criação); só ela pode rodar, as outras ficam bloqueadas até
+   essa resolver. **Testado empiricamente** (não só lido no source): duas
+   mutations do mesmo scope, `mutationFn` com atraso artificial de 2s —
+   confirmado que a segunda só começa (`START`) depois da primeira
+   terminar (`END`) por completo, zero sobreposição de horário.
+   `scopeId` é configurável por `useOfflineMutation`, default isolado por
+   `mutationKey` (mutations sem relação entre si não esperam umas pelas
+   outras à toa — só entram na mesma fila quando o config pede
+   explicitamente, ex.: `criar`/`editar`/`excluir` da mesma entidade
+   compartilhando `scopeId`).
+2. **Mapa `idsResolvidos` (em memória) + `resolverId`/`resolverIds`** —
+   quando uma mutation de `create`/`upsert` resolve de verdade, o
+   `onSuccess` da fábrica grava `idTemporario -> idReal` no mapa. A
+   garantia de ordem do `scope` acima é o que torna isso seguro: a
+   próxima mutation do mesmo `scopeId` só começa a rodar **depois** desse
+   `onSuccess` ter terminado — então quando `resolverIds` (fornecido no
+   config de quem depende do id) roda dentro do `mutationFn` da mutation
+   seguinte, o id já está no mapa.
+
+Limitação conhecida, não resolvida: `idsResolvidos` é só em memória, não
+persiste em IndexedDB. Se o app fechar bem no meio — depois do create
+resolver, antes da mutation dependente ter rodado — a reconciliação se
+perde nessa janela específica (estreita: só existe enquanto as duas ainda
+estão na fila do mesmo scope). Registrado como próximo passo se aparecer
+um caso real que precise disso (persistir o mapa via `idb-keyval`, mesmo
+mecanismo já usado pro cache de queries).
+
+Nenhum consumidor real hoje (Ponto usa chave natural, nunca referencia um
+registro por id) — construído na fundação mesmo assim, porque é PR de
+fundação: a lógica base precisa estar certa aqui, não remendada depois.
 
 ## Piloto recomendado
 
