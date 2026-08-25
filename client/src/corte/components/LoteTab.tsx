@@ -46,7 +46,7 @@ export function LoteTab({ onAbrirLote, onNovo }: { onAbrirLote: (id: string) => 
   if (loading) {
     return (
       <RebMain>
-        <RebHeader eyebrow={DOMAINS.lote.eyebrow} title="Lote" />
+        <RebHeader eyebrow={DOMAINS.lote.eyebrow} title="Lotes coletivos" />
         <div className={COR_TOOLBAR}>{controles}</div>
         <Loader />
       </RebMain>

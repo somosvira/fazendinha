@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { toAnimalDTO } from "./animais.mappers.js";
 
 const row: any = {
-  id: 7, numero: "1234", nome: "Jurema", sexo: "F", categoria: "VACA",
+  id: 7, numero: "1234", nome: "Jurema", sexo: "F", categoria: "VACA", finalidade: "LEITE",
   raca: { id: 1, nome: "Girolando 5/8" }, grauSangue: "Girolando 5/8",
   dataNascimento: new Date("2020-03-12"), dataEntrada: new Date("2020-03-12"),
   brincoEletronico: "982", sisbov: null,
@@ -22,6 +22,7 @@ describe("toAnimalDTO", () => {
     expect(dto.maeNumero).toBe("0871");
     expect(dto.grupoNome).toBe("Alta Produção");
     expect(dto.ativo).toBe(true);
+    expect(dto.finalidade).toBe("LEITE");
     expect(dto.dataNascimento).toBe("2020-03-12");
     expect(dto.resumo?.producaoMediaDia).toBe(28);
     expect(typeof dto.resumo?.producaoMediaDia).toBe("number");

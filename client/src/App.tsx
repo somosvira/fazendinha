@@ -418,9 +418,8 @@ export function App() {
 
   const fallbackTab = (): Tab => {
     if (visibleTabs[0]) return visibleTabs[0].id;
-    if (hasArea("rebanho")) return "reb-dashboard";
+    if (hasArea("pecuaria")) return "reb-dashboard";
     if (hasArea("agricultura")) return "pla-dashboard";
-    if (hasArea("gado_corte")) return "cor-dashboard";
     if (hasArea("equipe")) return "eqp-dashboard";
     return "config";
   };
@@ -554,6 +553,7 @@ export function App() {
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        onAbrirBusca={() => setBuscaAberta(true)}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
       />

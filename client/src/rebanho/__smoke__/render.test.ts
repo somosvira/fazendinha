@@ -24,28 +24,31 @@ import { RelatorioReproducaoSection } from "../components/RelatorioReproducaoSec
 import { RelatoriosTab } from "../components/RelatoriosTab";
 
 describe("render smoke", () => {
-  it("AppSidebar renders both groups", () => {
+  it("AppSidebar renders work areas and direct operational shortcuts", () => {
     const html = renderToString(h(AppSidebar, {
       current: "dashboard", onNav: () => {}, financeiro: [{ id: "dashboard", label: "Dashboard" }, { id: "ia", label: "IA" }],
       isAdmin: true,
       podeVerFolha: true,
       mobileOpen: false, onMobileToggle: () => {},
+      onAbrirBusca: () => {},
       propAtiva: null, onTrocarProp: () => {},
     }));
-    // grupos atuais (handoff "Shell": Gestão + Atividades; itens raros no rodapé)
+    // Rotinas frequentes são diretas; somente recursos secundários ficam dobrados.
+    expect(html).toContain("Acesso rápido");
     expect(html).toContain("Gestão");
-    expect(html).toContain("Atividades");
     expect(html).toContain("Terrano");           // marca no topo da sidebar
-    expect(html).toContain("Rebanho leiteiro");
-    expect(html).toContain("Painel");
+    expect(html).toContain("Pecuária");
+    expect(html).toContain("Hoje na pecuária");
+    expect(html).toContain("Reprodução");
+    expect(html).toContain("Controle leiteiro");
+    expect(html).toContain("Agronomia");
+    expect(html).toContain("Buscar");
     expect(html).toContain(">IA<");
     expect(html).toContain("Configurações");     // único item do rodapé (hub)
     // Cadastros/Categorias/Caixinha/Acessos dobraram para dentro dos hubs
     // (Configurações/Gastos) — não são mais itens de topo da sidebar.
     expect(html).not.toContain(">Acessos<");
-    expect(html).toContain("Produção");           // sub-item do rebanho (acordeão aberto)
-    expect(html).toContain("Estoque");
-    expect(html).toContain("Custo");
+    expect(html).not.toContain("Estoque de insumos"); // opção secundária inicia fechada
   });
 
   it("RebanhoContent renders the FIV/TE tab shell", () => {
@@ -180,6 +183,7 @@ describe("render smoke", () => {
     expect(html).toContain("Baixados");
     expect(html).toContain("Todos");
     expect(html).toContain("+ Novo animal");
-    expect(html).toContain("Todos os setores");
+    expect(html).toContain("Todas as localizações");
+    expect(html).toContain("Todas as finalidades");
   });
 });

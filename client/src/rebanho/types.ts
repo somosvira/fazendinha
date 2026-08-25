@@ -1,5 +1,6 @@
 export type Sexo = "F" | "M";
 export type CategoriaAnimal = "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO" | "CABRITA" | "CABRA" | "CABRITO" | "BODE";
+export type FinalidadeAnimal = "LEITE" | "CORTE" | "DUPLA_APTIDAO" | "NAO_INFORMADA";
 export type EspecieAnimal = "BOVINO" | "CAPRINO";
 
 export const ESPECIE_POR_CATEGORIA: Record<CategoriaAnimal, EspecieAnimal> = {
@@ -15,6 +16,7 @@ export interface Animal {
   nome: string;
   sexo: Sexo;
   categoria: CategoriaAnimal;
+  finalidade: FinalidadeAnimal;
   raca: string | null;   // "Girolando 5/8"
   grauSangue?: string | null;
   dataNascimento: string | null; // ISO "YYYY-MM-DD"
@@ -59,6 +61,7 @@ export interface ResumoAnimal {
   // do servidor) — usado pelas work-lists que dependem de idade/peso/categoria,
   // como "A desmamar".
   categoria?: CategoriaAnimal | null;
+  finalidade?: FinalidadeAnimal | null;
   dataNascimento?: string | null; // ISO "YYYY-MM-DD"
   ultimoPesoKg?: number | null;   // última pesagem corporal (kg)
   grupoNome?: string | null;      // lote/grupo atual, enriquecido a partir do Animal

@@ -36,9 +36,8 @@ export const ABAS: Aba[] = [
 
 export const AREAS: Area[] = [
   { id: "financeiro", label: "Financeiro", desc: "Dashboard, gastos, lançamentos, caixinha e relatórios financeiros" },
-  { id: "rebanho", label: "Rebanho leiteiro", desc: "Animais, reprodução, sanidade, produção e estoque do rebanho" },
+  { id: "pecuaria", label: "Pecuária", desc: "Animais, grupos e lotes, reprodução, sanidade, produção, nutrição e comercialização" },
   { id: "agricultura", label: "Agricultura", desc: "Plantio de café, milho, safras, talhões e silos" },
-  { id: "gado_corte", label: "Gado de corte", desc: "Lotes, pesagens, pasto, sanidade e comercialização" },
   { id: "equipe", label: "Equipe e ponto", desc: "Funcionários, marcações de ponto e folha" },
 ];
 

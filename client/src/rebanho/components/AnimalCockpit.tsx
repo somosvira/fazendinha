@@ -260,7 +260,8 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
               <h4 className="mb-[11px] mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Estado atual</h4>
               <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
               <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
-              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Finalidade</span><b>{a.finalidade === "DUPLA_APTIDAO" ? "Dupla aptidão" : a.finalidade === "NAO_INFORMADA" ? "Não informada" : a.finalidade === "LEITE" ? "Leite" : "Corte"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Localização</span><b>{a.setor ?? "—"}</b></div>
               <div className="flex justify-between py-[5px] text-sm [&_b]:font-semibold"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
               {tanque && <p className="mb-0 mt-2 text-sm text-ink-3">Produção estimada por rateio do lote.</p>}
             </div>

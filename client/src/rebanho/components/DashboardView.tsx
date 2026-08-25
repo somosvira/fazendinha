@@ -34,7 +34,7 @@ export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTa
     <RebMain>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-5 border-b border-[color:var(--rule-soft)] pb-[18px]">
         <div>
-          <p className="m-0 text-[11px] font-semibold uppercase tracking-[.14em] text-leite">Atividades · Rebanho leiteiro</p>
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-[.14em] text-leite">Atividades · Pecuária</p>
           <h1 className="mb-0 mt-1.5 font-serif text-[clamp(29px,3vw,35px)] font-medium tracking-[-.02em] text-foreground">Painel do rebanho</h1>
           <p className="mb-0 mt-1.5 text-sm text-ink-3">{formatarAtualizacao(data.atualizacao.dadoMaisRecenteEm)} · {data.atualizacao.animaisAtivos} animais ativos</p>
         </div>

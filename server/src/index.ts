@@ -119,10 +119,10 @@ app.use("/api/*", authMiddleware);
 
 // Autorização por domínio: o frontend também esconde os módulos, mas este gate
 // impede acesso por URL/cURL. Agricultura reúne os módulos Plantio e Cultivo.
-app.use("/api/rebanho/*", exigeArea("rebanho"));
+app.use("/api/rebanho/*", exigeArea("pecuaria"));
 app.use("/api/plantio/*", exigeArea("agricultura"));
 app.use("/api/cultivo/*", exigeArea("agricultura"));
-app.use("/api/corte/*", exigeArea("gado_corte"));
+app.use("/api/corte/*", exigeArea("pecuaria"));
 app.use("/api/ponto/*", exigeArea("equipe"));
 for (const path of [
   "/api/dashboard", "/api/dashboard/*", "/api/simulacao/*", "/api/categorias", "/api/categorias/*",

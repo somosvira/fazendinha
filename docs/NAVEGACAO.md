@@ -37,7 +37,7 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
 **Exemplos:**
   - [Abrir o painel de mai/2026](/dashboard?mes=2026-05)
 
-### `/rebanho/animal` — Rebanho — lista de animais
+### `/pecuaria/animal` — Pecuária — lista única de animais
 
 **Quando linkar:** Quando a resposta é sobre o rebanho/animais e o usuário pode querer ver a lista.
 
@@ -45,9 +45,9 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
   - (sem filtros de deep-link)
 
 **Exemplos:**
-  - [Ver o rebanho](/rebanho/animal)
+  - [Ver os animais](/pecuaria/animal)
 
-### `/rebanho/producao` — Produção de leite
+### `/pecuaria/producao` — Controle leiteiro
 
 **Quando linkar:** Pedidos de produção/controle leiteiro do rebanho.
 
@@ -55,9 +55,9 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
   - (sem filtros de deep-link)
 
 **Exemplos:**
-  - [Ver a produção de leite](/rebanho/producao)
+  - [Ver o controle leiteiro](/pecuaria/producao)
 
-### `/rebanho/sanidade` — Sanidade / alertas do rebanho
+### `/pecuaria/sanidade` — Sanidade / alertas dos animais
 
 **Quando linkar:** Pedidos de sanidade, CCS, mastite, alertas do rebanho.
 
@@ -65,7 +65,15 @@ Formato do link: `[rótulo curto](/caminho?param=valor&param2=valor2)`.
   - (sem filtros de deep-link)
 
 **Exemplos:**
-  - [Ver alertas de sanidade](/rebanho/sanidade)
+  - [Ver alertas de sanidade](/pecuaria/sanidade)
+
+### `/pecuaria/lotes` — registros coletivos históricos
+
+**Quando linkar:** Quando a resposta depende dos lotes agregados que ainda não
+possuem identificação individual por cabeça.
+
+**Exemplos:**
+  - [Ver lotes coletivos](/pecuaria/lotes)
 
 ## Plano de implementação no client (filtros)
 

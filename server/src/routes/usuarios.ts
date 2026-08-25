@@ -10,7 +10,9 @@ const criarSchema = z.object({ nome: z.string().min(1), email: z.string().email(
 const patchSchema = z.object({
   papel: z.string().optional(),
   abas: z.array(z.string()).optional(),
-  areas: z.array(z.enum(["financeiro", "rebanho", "agricultura", "gado_corte", "equipe"])).optional(),
+  // `rebanho`/`gado_corte` seguem aceitos durante a transição; o serviço
+  // persiste ambos como a área canônica `pecuaria`.
+  areas: z.array(z.enum(["financeiro", "pecuaria", "agricultura", "equipe", "rebanho", "gado_corte"])).optional(),
   flags: z.array(z.string()).optional(),
   status: z.enum(["PENDENTE", "ATIVO", "INATIVO"]).optional(),
 });

@@ -1,6 +1,6 @@
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
-import { aplicarPreset } from "./papeis.js";
+import { aplicarPreset, normalizarAreas } from "./papeis.js";
 import { revogarSessoesDoUsuario } from "./sessao.js";
 import { gerarLinkConvite } from "./contas.js";
 
@@ -27,7 +27,7 @@ export function usuarioDTO(u: {
   id: number; nome: string; email: string; papel: string; abas: string[]; areas: string[]; flags: string[]; status: string; dono: boolean; ultimoAcesso: Date | null;
 }): UsuarioDTO {
   return {
-    id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, areas: u.areas, flags: u.flags,
+    id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, areas: normalizarAreas(u.areas), flags: u.flags,
     status: u.status, dono: u.dono, ultimoAcesso: u.ultimoAcesso ? u.ultimoAcesso.toISOString() : null,
   };
 }
@@ -64,7 +64,7 @@ export async function atualizarUsuario(
     data: {
       papel: patch.papel ?? undefined,
       abas: patch.abas ?? undefined,
-      areas: patch.areas ?? undefined,
+      areas: patch.areas ? normalizarAreas(patch.areas) : undefined,
       flags: patch.flags ?? undefined,
       status: patch.status ?? undefined,
     },

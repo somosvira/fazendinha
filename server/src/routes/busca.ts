@@ -11,9 +11,9 @@ const buscaQuerySchema = z.object({ q: z.string().max(60).optional() });
 export const buscaRouter = new Hono().get("/busca", zValidator("query", buscaQuerySchema), async (c) => {
   const usuario = getUsuario(c);
   const resultados = await buscarEntidades(c.req.valid("query").q ?? "");
-  const areaDaTab = (tab: string): Area => tab.startsWith("reb-") ? "rebanho"
+  const areaDaTab = (tab: string): Area => tab.startsWith("reb-") ? "pecuaria"
     : tab.startsWith("pla-") || tab.startsWith("mil-") ? "agricultura"
-    : tab.startsWith("cor-") ? "gado_corte"
+    : tab.startsWith("cor-") ? "pecuaria"
     : tab.startsWith("eqp-") ? "equipe"
     : "financeiro";
   return c.json(usuario ? resultados.filter((r) => temArea(usuario, areaDaTab(r.tab))) : []);
