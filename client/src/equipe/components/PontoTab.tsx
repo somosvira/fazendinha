@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useFuncionarios, useRegistros, useUpsertRegistro, useRegistrosPendentes, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
+import { useFuncionarios, useRegistros, useUpsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
@@ -67,7 +67,13 @@ export function PontoTab() {
 
   const { data: registros, loading, erro, recarregar } = useRegistros(funcionarioId || null, mes);
   const upsert = useUpsertRegistro();
-  const pendentes = useRegistrosPendentes(funcionarioId || null, mes);
+  // upsert.pendentes é global (toda escrita de ponto pendente, de qualquer
+  // funcionário/mês) — filtra pro recorte desta tela.
+  const pendentes = useMemo(() => {
+    const s = new Set<string>();
+    for (const v of upsert.pendentes) if (v.funcionarioId === funcionarioId && v.data.slice(0, 7) === mes) s.add(v.data);
+    return s;
+  }, [upsert.pendentes, funcionarioId, mes]);
   const online = useOnlineStatus();
 
   // Grade = todos os dias do mês, com o registro casado por data.

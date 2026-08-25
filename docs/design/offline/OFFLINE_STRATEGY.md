@@ -32,9 +32,11 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
 
 ## As 4 camadas (não pensar em "módulo por módulo")
 
-1. **Fundação** (uma vez): `QueryClient` + persister IndexedDB + wrapper de
-   mutação offline (`networkMode: "offlineFirst"` + `resumePausedMutations()`
-   no reconnect) + convenção de UI pra "resumo pendente de sincronizar".
+1. **Fundação** (uma vez): `QueryClient` + persister IndexedDB + `useOfflineMutation`
+   (patch otimista + `resumePausedMutations()` no reconnect, `networkMode`
+   no default `"online"` — pausa em vez de falhar quando sem rede, sem
+   round-trip fadado a falhar; ver seção abaixo) + convenção de UI pra
+   "resumo pendente de sincronizar".
 2. **Dado de referência compartilhado** (uma vez, beneficia todo mundo de
    graça): cache de leitura de `Produto`, `CentroCusto`, `Categoria`,
    `Propriedade`. Leitura não tem custo de id/fila — puro ganho colateral
@@ -57,6 +59,17 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
 Fora do escopo por ora: IA/chat, WhatsApp bot, OCR de nota (dependem de
 serviço externo — impossível offline por definição) e telas administrativas
 (Acessos, Config, Plano de contas — baixa utilidade offline).
+
+**Também fora do escopo da fundação (#228), registrado aqui de propósito
+pra não ficar implícito:** service worker/app shell (PWA). O que existe
+hoje cobre "o app já estava aberto com rede e no meio do uso a conexão
+cai" — não cobre "abrir o navegador do zero sem nenhuma rede" (confirmado:
+reload de página offline sem visita prévia falha com
+`net::ERR_INTERNET_DISCONNECTED`, não tem nada servindo o HTML/JS
+localmente). Caminho padrão pra resolver isso quando for priorizado:
+`vite-plugin-pwa` (Workbox) só pra precache do shell — granularidade
+grossa está ok (telas fora do escopo da camada 3 podem ficar
+desabilitadas offline, não precisa cobrir tudo).
 
 ## Achados técnicos que mudam a estimativa de dificuldade
 
@@ -159,6 +172,45 @@ nem existe mais — o desempate continua usando o `Int` sequencial real,
 gerado pelo Postgres. A pesquisa fica registrada porque foi o que revelou
 que mexer no tipo de id tinha um custo escondido, o que ajudou a decidir
 não mexer.
+
+## Padrão de mutation offline: `useOfflineMutation`
+
+Toda escrita offline-aware usa a fábrica genérica em
+`client/src/lib/offline/useOfflineMutation.ts` — nenhuma tela implementa
+optimistic update na mão. Cada chamador só declara:
+
+- `mutationKey` — fixo, identifica a mutation na mutation cache.
+- `queryKey(input)` — qual lista em cache a escrita afeta.
+- `op` — `"create" | "update" | "delete" | "upsert"`.
+- `match(item, input)` — identidade do item na lista (chave natural ou id).
+- `criarOtimista(input)` — só pra `create`/`upsert`: monta o item a mostrar
+  antes da confirmação do servidor (campos computados pelo backend entram
+  aproximados/zerados, corrigem no refetch pós-sync).
+
+A fábrica cuida do resto sozinha: patch otimista da lista em `onMutate`,
+rollback do snapshot anterior em `onError`, `invalidateQueries` em
+`onSettled` pra reconciliar com o servidor (troca o item otimista pelo
+real, com `id` verdadeiro — funciona sem UUID/cuid por causa da decisão
+acima), e `queryClient.setMutationDefaults(mutationKey, {mutationFn})`
+(ver achado abaixo).
+
+Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
+chave natural `funcionarioId+data`, sem id gerado). A próxima fatia
+(Pesagem/Sanidade) usa `op:"create"` — mesma fábrica, sem reescrever a
+lógica de optimistic/rollback.
+
+### Achado: `setMutationDefaults` — bug corrigido antes de fechar a fundação
+
+Funções não sobrevivem à serialização pro IndexedDB — a doc oficial do
+TanStack é explícita: "only the state of mutations is persisted, as
+functions cannot be serialized." Sem `setMutationDefaults` registrado por
+`mutationKey` antes da hidratação, uma mutation restaurada do storage após
+um reload fica sem `mutationFn` pra executar (`"No mutationFn found"`). A
+primeira versão do piloto não registrava isso — funcionava no caso
+"reconecta sem fechar a aba" (mutation viva em memória, nunca precisou ser
+reidratada) mas quebraria no caso real "fecha o app offline com algo
+pendente, reabre depois". Corrigido registrando dentro da própria fábrica
+(não em cada tela) — fica impossível esquecer numa fatia futura.
 
 ## Piloto recomendado
 

@@ -11,10 +11,11 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useMutation, useQuery, useQueryClient, useMutationState } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
+import { useOfflineMutation } from "../lib/offline/useOfflineMutation";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -156,40 +157,35 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
   };
 }
 
-// Mutation de upsert de registro — offline-aware por herdar o networkMode
-// default do queryClient (pausa em vez de falhar quando sem rede; fica
-// persistida em IndexedDB até sincronizar de verdade). `mutationKey` fixo
-// (não varia por linha) é o que permite useRegistrosPendentes filtrar
-// "todo upsert de ponto em andamento/pendente", venha de qual componente vier.
+// Upsert de registro — offline-aware via useOfflineMutation (ver
+// lib/offline/useOfflineMutation.ts): otimista na lista de `registros` do
+// funcionário+mês, sobrevive a fechar o app offline (setMutationDefaults),
+// reconcilia com o servidor (id real + horas apuradas) ao sincronizar.
+// `op: "upsert"` porque a identidade não é um id — é a chave natural
+// (funcionarioId, data): reenviar a mesma data sobrescreve.
 export function useUpsertRegistro() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useOfflineMutation<RegistroInput, RegistroDTO>({
     mutationKey: ["ponto", "upsert-registro"],
     mutationFn: upsertRegistro,
-    onSuccess: (_novo, variaveis) => {
-      queryClient.invalidateQueries({ queryKey: chaveRegistros(variaveis.funcionarioId, variaveis.data.slice(0, 7)) });
-    },
+    queryKey: (input) => chaveRegistros(input.funcionarioId, input.data.slice(0, 7)),
+    op: "upsert",
+    match: (item, input) => item.data === input.data,
+    // Campos computados pelo backend (horas/extra) entram zerados — o
+    // apuramento é feito no servidor; corrige sozinho no refetch pós-sync.
+    criarOtimista: (input) => ({
+      id: `tmp-${input.funcionarioId}-${input.data}`,
+      funcionarioId: input.funcionarioId,
+      data: input.data,
+      entrada: input.entrada ?? null,
+      saida: input.saida ?? null,
+      intervaloMin: input.intervaloMin ?? 60,
+      tipoDia: input.tipoDia ?? "UTIL",
+      observacao: input.observacao ?? null,
+      horas: 0,
+      extra50: 0,
+      extra100: 0,
+    }),
   });
-}
-
-// Datas com upsert pendente (em voo OU pausado por falta de rede) pro
-// funcionário+mês atual — usado pra marcar a linha como "sincronização
-// pendente" em vez de assumir sucesso/erro binário. `status: "pending"`
-// cobre os dois casos: o TanStack não distingue "mandando agora" de
-// "pausado offline" no `status`, só no `isPaused` (que aqui não precisamos
-// checar — os dois casos são visualmente a mesma badge).
-export function useRegistrosPendentes(funcionarioId: string | null, mes: string): Set<string> {
-  const variaveis = useMutationState({
-    filters: { mutationKey: ["ponto", "upsert-registro"], status: "pending" },
-    select: (m) => m.state.variables as RegistroInput | undefined,
-  });
-  return useMemo(() => {
-    const s = new Set<string>();
-    for (const v of variaveis) {
-      if (v && v.funcionarioId === funcionarioId && v.data.slice(0, 7) === mes) s.add(v.data);
-    }
-    return s;
-  }, [variaveis, funcionarioId, mes]);
 }
 
 export function useFolha(mes: string) {
