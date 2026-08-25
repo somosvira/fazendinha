@@ -212,6 +212,41 @@ reidratada) mas quebraria no caso real "fecha o app offline com algo
 pendente, reabre depois". Corrigido registrando dentro da própria fábrica
 (não em cada tela) — fica impossível esquecer numa fatia futura.
 
+### Convenção: query key factory por módulo
+
+Cada módulo declara suas próprias keys num objeto único (`pontoKeys` em
+`equipe/api.ts`), `as const` — não um mapa global do app. Módulos não se
+enxergam entre si (verificado — ver "Estado atual" acima), então uma
+factory por app inteiro seria abstração sem uso; o ganho é só dentro do
+módulo, ter uma fonte única pra `queryKey`/`mutationKey` em vez de arrays
+literais repetidos em cada hook (risco: duas chamadas montam "a mesma" key
+com formato levemente diferente, viram duas entradas de cache separadas,
+silenciosamente). Repetir esse padrão em cada `api.ts` migrado.
+
+### Limitações conhecidas de `useOfflineMutation` (não construídas — sem
+consumidor real ainda)
+
+A fábrica hoje só sabe: (1) uma escrita afeta **uma** `queryKey`, e (2) o
+cache alvo é sempre uma **lista** (`TItem[]`, patch via
+create/update/delete/upsert). Dois casos reais do app vão exigir mais que
+isso, mas nenhum é consumidor hoje — registrado aqui pra não reinventar
+quando aparecer:
+
+- **Dado derivado em outra query** (ex.: Corte > Pesagem escreve na lista
+  de pesagens **e** dispara recompute do `ResumoLote` — o padrão "grava
+  evento bruto → recompute" já descrito acima). Não dá pra patch otimista
+  no resumo (duplicaria a conta do servidor). Extensão prevista: um
+  `queryKeysRelacionadas?(input)` que só chama `invalidateQueries` nessas
+  keys extras em `onSettled`, sem tentar adivinhar o valor — seguro mesmo
+  offline, porque `onSettled` só roda quando a mutation sai de `paused` de
+  verdade (ou seja, o invalidate nunca dispara enquanto ainda sem rede).
+- **Mesmo dado, sem cálculo, em duas queries** (ex.: `FuncionarioDTO` numa
+  lista e numa ficha de detalhe — literal, não derivado; provável ao
+  migrar Funcionários ou a ficha do Animal no Rebanho). Aqui dá pra
+  aplicar o **mesmo patch otimista** nas duas, sem risco, porque não tem
+  chute envolvido — é o próprio input. Diferente do caso anterior, não
+  seria só invalidar.
+
 ## Piloto recomendado
 
 - **Estratégico:** Rebanho → Relatórios/Folha de campo (`FolhaCampoView.tsx`)

@@ -133,10 +133,15 @@ export function useFuncionarios(ativo?: boolean) {
   return { data, loading, erro, recarregar };
 }
 
-// Chave da query de registros — usada aqui e pra invalidar depois de um
-// upsert (ver useUpsertRegistro). `mes` é "YYYY-MM", casa com o prefixo de
-// `data` ("YYYY-MM-DD") de um RegistroInput.
-const chaveRegistros = (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const;
+// Query key factory do módulo (padrão TanStack) — fonte única pras keys de
+// Ponto, usada aqui e em useUpsertRegistro. `as const` dá tupla literal, não
+// `unknown[]` — evita duas chamadas montarem "a mesma" key com formato
+// diferente (isso criaria duas entradas de cache separadas, silenciosamente).
+// `mes` em `registros` é "YYYY-MM", casa com o prefixo de `data` ("YYYY-MM-DD").
+const pontoKeys = {
+  registros: (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const,
+  upsertRegistro: ["ponto", "upsert-registro"] as const,
+};
 
 // Migrado pra TanStack Query (Fatia 3 do plano offline — ver
 // OFFLINE_STRATEGY.md). Mantém o contrato {data, loading, erro, recarregar}
@@ -145,7 +150,7 @@ const chaveRegistros = (funcionarioId: string, mes: string) => ["ponto", "regist
 // visto, mesmo sem rede.
 export function useRegistros(funcionarioId: string | null, mes: string) {
   const query = useQuery({
-    queryKey: chaveRegistros(funcionarioId ?? "", mes),
+    queryKey: pontoKeys.registros(funcionarioId ?? "", mes),
     queryFn: () => listarRegistros(funcionarioId!, mes),
     enabled: !!funcionarioId,
   });
@@ -165,9 +170,9 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
 // (funcionarioId, data): reenviar a mesma data sobrescreve.
 export function useUpsertRegistro() {
   return useOfflineMutation<RegistroInput, RegistroDTO>({
-    mutationKey: ["ponto", "upsert-registro"],
+    mutationKey: pontoKeys.upsertRegistro,
     mutationFn: upsertRegistro,
-    queryKey: (input) => chaveRegistros(input.funcionarioId, input.data.slice(0, 7)),
+    queryKey: (input) => pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7)),
     op: "upsert",
     match: (item, input) => item.data === input.data,
     // Campos computados pelo backend (horas/extra) entram zerados — o
