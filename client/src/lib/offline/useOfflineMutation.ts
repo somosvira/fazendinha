@@ -7,15 +7,34 @@
  * sync e sobrevivência a fechar o app offline — fica centralizado aqui,
  * escrito uma vez só, em vez de reimplementado por componente.
  *
- * `setMutationDefaults` é chamado aqui dentro (não em cada tela) porque a
- * própria doc do TanStack exige isso pra uma mutation pausada sobreviver a
- * um reload: funções não sobrevivem à serialização pro IndexedDB, então uma
- * mutation restaurada do storage só sabe o que executar se o mutationFn já
- * tiver sido registrado por mutationKey ANTES da hidratação
- * (PersistQueryClientProvider em main.tsx). Registrar dentro da fábrica
- * garante que isso nunca fica esquecido por quem só quer usar o hook.
+ * `setMutationDefaults` (doc do TanStack: funções não sobrevivem à
+ * serialização pro IndexedDB, então uma mutation restaurada do storage só
+ * sabe o que executar se um default tiver sido registrado por mutationKey
+ * ANTES do resume) precisa rodar `registrarMutationDefaults` abaixo — de
+ * ESCOPO DE MÓDULO, não de dentro do hook. Registrar só dentro do hook não
+ * basta: o hook só roda se o componente dono dele estiver montado, e um
+ * resume pode acontecer com o app tendo aberto em outra aba (a mutation
+ * pausada de uma tela pode ser retomada no boot antes do usuário nunca ter
+ * visitado aquela tela nesta sessão). `registrarMutationDefaults` deve ser
+ * chamada uma vez, no topo do módulo do domínio (ex.: equipe/api.ts) — isso
+ * roda garantidamente no carregamento do bundle, já que os módulos de tela
+ * são importados estaticamente (sem `React.lazy`) a partir de App.tsx. O
+ * hook também registra de novo a cada render, como reforço — barato e
+ * inofensivo, mas não é o que garante correção no caso "app abriu numa
+ * tela diferente"; quem garante isso é a chamada de escopo de módulo.
  */
 import { useMutation, useMutationState, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { queryClient as clienteGlobal } from "./queryClient";
+
+/** Registra o mutationFn default pra uma mutationKey — chamar uma vez, no
+ * escopo do módulo que define a mutation (não dentro de um componente/hook).
+ * Ver comentário do topo do arquivo. */
+export function registrarMutationDefaults<TInput, TItem>(
+  mutationKey: readonly unknown[],
+  mutationFn: (input: TInput) => Promise<TItem>,
+) {
+  clienteGlobal.setMutationDefaults(mutationKey as unknown[], { mutationFn });
+}
 
 export type OfflineOp = "create" | "update" | "delete" | "upsert";
 
@@ -74,8 +93,9 @@ interface Snapshot<TItem> {
 export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<TInput, TItem>) {
   const queryClient = useQueryClient();
 
-  // Ver comentário do topo do arquivo — precisa rodar antes de qualquer
-  // hidratação de mutation pausada vinda do IndexedDB.
+  // Reforço, não a garantia principal — ver comentário do topo do arquivo.
+  // Quem garante correção mesmo com o componente não montado é a chamada
+  // de escopo de módulo (registrarMutationDefaults).
   queryClient.setMutationDefaults(cfg.mutationKey as unknown[], { mutationFn: cfg.mutationFn });
 
   const mutation = useMutation<TItem, Error, TInput, { snapshots: Snapshot<TItem>[] }>({

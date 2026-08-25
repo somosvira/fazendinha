@@ -220,8 +220,22 @@ um reload fica sem `mutationFn` pra executar (`"No mutationFn found"`). A
 primeira versão do piloto não registrava isso — funcionava no caso
 "reconecta sem fechar a aba" (mutation viva em memória, nunca precisou ser
 reidratada) mas quebraria no caso real "fecha o app offline com algo
-pendente, reabre depois". Corrigido registrando dentro da própria fábrica
-(não em cada tela) — fica impossível esquecer numa fatia futura.
+pendente, reabre depois".
+
+**Segunda volta desse mesmo achado:** a primeira correção registrava o
+default só *dentro* do hook `useOfflineMutation` — o que não basta,
+porque o hook só roda se o componente dono estiver montado. Se o app
+reabre numa aba diferente da que criou a mutation pendente (ex.: fecha
+offline na tela de Ponto, reabre e cai no Dashboard), o resume tenta
+rodar no boot e quebra de novo, porque `PontoTab` nunca montou nesta
+sessão pra registrar o default. Corrigido com `registrarMutationDefaults`
+— função **de escopo de módulo**, chamada uma vez no topo de `equipe/api.ts`
+(não dentro de hook nenhum). Funciona porque `App.tsx` importa os módulos
+de tela estaticamente (sem `React.lazy`) — o módulo é avaliado no
+carregamento do bundle, antes de qualquer render, independente de qual
+aba o usuário está vendo. Testado de verdade: salvar offline no Ponto,
+reconectar e abrir o app **direto no Dashboard** (nunca voltando pro
+Ponto) — sincronizou sozinho, confirmado no Postgres.
 
 ### Convenção: query key factory por módulo
 

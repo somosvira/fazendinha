@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
-import { useOfflineMutation } from "../lib/offline/useOfflineMutation";
+import { useOfflineMutation, registrarMutationDefaults } from "../lib/offline/useOfflineMutation";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -142,6 +142,13 @@ const pontoKeys = {
   registros: (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const,
   upsertRegistro: ["ponto", "upsert-registro"] as const,
 };
+
+// Escopo de módulo, não dentro do hook — garante que uma escrita de Ponto
+// pausada offline consegue retomar no boot mesmo que o app tenha aberto
+// numa aba diferente (PontoTab nunca chegou a montar nesta sessão). Roda
+// garantido: App.tsx importa este módulo estaticamente (sem lazy), então
+// esta linha executa no carregamento do bundle. Ver lib/offline/useOfflineMutation.ts.
+registrarMutationDefaults(pontoKeys.upsertRegistro, upsertRegistro);
 
 // Migrado pra TanStack Query (Fatia 3 do plano offline — ver
 // OFFLINE_STRATEGY.md). Mantém o contrato {data, loading, erro, recarregar}
