@@ -43,6 +43,13 @@ pnpm --filter rionovo-server exec prisma generate
 pnpm --filter rionovo-server run build
 ```
 
+> O `build` do `rionovo-server` builda `packages/shared` antes de rodar o `tsc`
+> dele (`server/package.json`, `pnpm --filter @rionovo/shared run build && tsc ...`)
+> — o pacote compartilhado precisa existir compilado (`dist/`+`.d.ts`) porque em
+> prod o server roda `node dist/index.js` puro, sem executar `.ts` de workspace
+> linkado. Fica dentro do próprio script de build, não no comando do Render —
+> não precisa mexer em nada aqui nem no CF Pages quando um workspace novo entrar.
+
 E na partida:
 
 ```

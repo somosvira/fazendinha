@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { upsertRegistroSchema } from "@rionovo/shared";
 import { Loader } from "../../components/Loading";
-import { useFuncionarios, useRegistros, upsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
+import { useFuncionarios, useRegistros, useUpsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebHeader } from "@/rebanho/components/RebHeader";
@@ -8,6 +9,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { REB_INP, RebMain, RebAnm } from "@/components/rb/RebPrimitives";
 import { useToast } from "@/components/Toast";
+import { useOnlineStatus } from "@/lib/offline/useOnlineStatus";
 
 const TIPOS: { k: TipoDiaPonto; lab: string }[] = [
   { k: "UTIL", lab: "Útil" },
@@ -65,6 +67,15 @@ export function PontoTab() {
   }, [funcionarios, funcionarioId]);
 
   const { data: registros, loading, erro, recarregar } = useRegistros(funcionarioId || null, mes);
+  const upsert = useUpsertRegistro();
+  // upsert.pendentes é global (toda escrita de ponto pendente, de qualquer
+  // funcionário/mês) — filtra pro recorte desta tela.
+  const pendentes = useMemo(() => {
+    const s = new Set<string>();
+    for (const v of upsert.pendentes) if (v.funcionarioId === funcionarioId && v.data.slice(0, 7) === mes) s.add(v.data);
+    return s;
+  }, [upsert.pendentes, funcionarioId, mes]);
+  const online = useOnlineStatus();
 
   // Grade = todos os dias do mês, com o registro casado por data.
   const [linhas, setLinhas] = useState<Linha[]>([]);
@@ -110,25 +121,39 @@ export function PontoTab() {
     setLinhas((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch, ...proximoDirty } : l)));
   }
 
-  async function salvar(i: number) {
+  // Offline: onSuccess/onError só rodam quando a fila (lib/offline/fila.ts)
+  // sincronizar de verdade — pode ser numa sessão futura. O indicador
+  // confiável de "salvo vs. pendente" é `pendentes`, não este callback.
+  function salvar(i: number) {
     const l = linhas[i];
     if (!funcionarioId) return;
-    set(i, { salvando: true });
-    try {
-      await upsertRegistro({
-        funcionarioId,
-        data: l.data,
-        entrada: l.entrada || undefined,
-        saida: l.saida || undefined,
-        intervaloMin: l.intervaloMin !== "" ? Number(l.intervaloMin) : undefined,
-        tipoDia: l.tipoDia,
-        observacao: l.observacao.trim() || undefined,
-      });
-      recarregar(); // refaz o fetch → re-hidrata a grade com horas/extra computados
-    } catch (e: any) {
-      toast.error("Erro ao salvar o ponto", e?.message ?? undefined);
-      set(i, { salvando: false });
+    const body = {
+      funcionarioId,
+      data: l.data,
+      entrada: l.entrada || undefined,
+      saida: l.saida || undefined,
+      intervaloMin: l.intervaloMin !== "" ? Number(l.intervaloMin) : undefined,
+      tipoDia: l.tipoDia,
+      observacao: l.observacao.trim() || undefined,
+    };
+    // Mesmo schema Zod do backend (packages/shared) — pega erro de input
+    // (ex.: intervalo negativo, observação > 400 chars) antes de enfileirar.
+    const valido = upsertRegistroSchema.safeParse(body);
+    if (!valido.success) {
+      toast.error("Corrija antes de salvar", valido.error.issues[0]?.message);
+      return;
     }
+    set(i, { salvando: true, dirty: false });
+    upsert.mutate(
+      body,
+      {
+        onSuccess: () => set(i, { salvando: false }),
+        onError: (e: any) => {
+          toast.error("Erro ao salvar o ponto", e?.message ?? undefined);
+          set(i, { salvando: false, dirty: true });
+        },
+      },
+    );
   }
 
   return (
@@ -165,7 +190,11 @@ export function PontoTab() {
           {preenchendo ? "Preenchendo…" : "Preencher grade com horário padrão"}
         </RebButton>
 
-        <div className="ml-auto flex gap-4 text-sm text-ink-3">
+        <div className="ml-auto flex items-center gap-4 text-sm text-ink-3">
+          {!online && <span className="text-[13px] text-atencao">Sem conexão — lançamentos ficam salvos no aparelho até sincronizar</span>}
+          {pendentes.size > 0 && (
+            <span className="text-[13px] text-atencao">{pendentes.size} pendente{pendentes.size > 1 ? "s" : ""} de sincronização</span>
+          )}
           <span>Horas: <b>{horasFmt(totais.horas)}</b></span>
           <span>Extra 50%: <b>{num(totais.extra50, 1)} h</b></span>
           <span>Extra 100%: <b>{num(totais.extra100, 1)} h</b></span>
@@ -219,7 +248,11 @@ export function PontoTab() {
                   <td className="text-right">{l.reg && l.reg.extra50 > 0 ? `${num(l.reg.extra50, 1)} h` : "—"}</td>
                   <td className="text-right">{l.reg && l.reg.extra100 > 0 ? `${num(l.reg.extra100, 1)} h` : "—"}</td>
                   <td><input className={REB_INP} value={l.observacao} onChange={(e) => set(i, { observacao: e.target.value })} placeholder="—" style={{ width: 140 }} /></td>
-                  <td><RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton></td>
+                  <td>
+                    {pendentes.has(l.data)
+                      ? <span className="text-[13px] text-atencao" title="Aguardando conexão pra sincronizar com o servidor">Pendente…</span>
+                      : <RebButton disabled={l.salvando || !l.dirty} onClick={() => salvar(i)}>{l.salvando ? "…" : "Salvar"}</RebButton>}
+                  </td>
                 </tr>
               );
             })}

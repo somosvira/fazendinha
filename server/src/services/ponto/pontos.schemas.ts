@@ -1,23 +1,14 @@
 import { z } from "zod";
+// upsertRegistroSchema é compartilhado com o client (validação antes de
+// enfileirar offline) — fonte real em packages/shared, aqui é só re-export
+// pra quem já importa daqui não precisar mudar (ver routes/ponto/index.ts).
+export { upsertRegistroSchema, type UpsertRegistroSchemaInput } from "@rionovo/shared";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
-const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "hora deve ser HH:MM");
-const tipoDia = z.enum(["UTIL", "DOMINGO", "FERIADO", "FOLGA", "FALTA"]);
 const mes = z.string().regex(/^\d{4}-\d{2}$/, "mês deve ser YYYY-MM");
 
 export const listRegistrosSchema = z.object({
   funcionarioId: z.coerce.number().int().positive(),
   mes,
-});
-
-export const upsertRegistroSchema = z.object({
-  funcionarioId: z.number().int().positive(),
-  data: isoDate,
-  entrada: hhmm.nullish(),
-  saida: hhmm.nullish(),
-  intervaloMin: z.number().int().nonnegative().default(60),
-  tipoDia: tipoDia.default("UTIL"),
-  observacao: z.string().max(400).nullish(),
 });
 
 export const folhaMesSchema = z.object({ mes });
@@ -29,5 +20,4 @@ export const preencherGradeSchema = z.object({
 });
 
 export type ListRegistrosFiltros = z.infer<typeof listRegistrosSchema>;
-export type UpsertRegistroSchemaInput = z.infer<typeof upsertRegistroSchema>;
 export type PreencherGradeInput = z.infer<typeof preencherGradeSchema>;

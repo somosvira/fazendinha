@@ -13,22 +13,9 @@ export interface AnimalForm {
 // Sítio ativo (multi-propriedade) mora no módulo compartilhado propriedadeScope
 // (mesma fonte usada pelo financeiro/dashboard). Reexporta set/get p/ compat com
 // quem importava daqui (RebanhoContent, App).
-import { comPropriedade, setPropriedadeAtiva, getPropriedadeAtiva } from "../propriedadeScope";
+import { setPropriedadeAtiva, getPropriedadeAtiva } from "../propriedadeScope";
+import { req } from "../lib/offline/req";
 export { setPropriedadeAtiva, getPropriedadeAtiva };
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
-  if (init?.body) headers["content-type"] = "application/json";
-  const res = await fetch(`/api${path}`, { ...init, headers: comPropriedade(headers) });
-  if (!res.ok) {
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: número duplicado)
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
-  }
-  return res.json();
-}
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: object): string {

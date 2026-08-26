@@ -1,35 +1,14 @@
-/* Camada de leitura/escrita do módulo Equipe & Ponto.
- *
- * Espelha o pattern do Plantio/Rebanho: cada `useXxx()` bate em `/api/ponto/*`
- * via o helper `req<T>`, que prefixa `/api`, injeta `content-type` quando há
- * corpo e extrai a mensagem de erro de `{error}` (service) ou `{error:{issues}}`
- * (ZodError do zValidator). Os hooks mantêm o contrato `{data, loading, erro,
- * recarregar}`. Os DTOs (./types) não mudam.
- *
- * Formulários enviam `undefined` para opcionais vazios (nunca `null`); enums
- * em UPPERCASE.
+/* Camada de leitura/escrita do módulo Equipe & Ponto. Hooks mantêm o
+ * contrato {data, loading, erro, recarregar}. Formulários enviam
+ * `undefined` para opcionais vazios (nunca `null`); enums em UPPERCASE.
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
-import { comPropriedade } from "../propriedadeScope";
 import { fmtMoneyExact } from "../components/charts";
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = comPropriedade({
-    ...((init?.headers as Record<string, string>) || {}),
-    ...(init?.body ? { "content-type": "application/json" } : {}),
-  });
-  const res = await fetch(`/api${path}`, { ...init, headers });
-  if (!res.ok) {
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: registro em mês fechado)
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
-  }
-  return res.json();
-}
+import { req } from "../lib/offline/req";
+import { useOfflineMutation, criarIdTemporario, type UseOfflineMutationConfig } from "../lib/offline/useOfflineMutation";
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
@@ -96,8 +75,6 @@ export const preencherGrade = (funcionarioId: string, ano: number, mes: number) 
 
 export const listarRegistros = (funcionarioId: string, mes: string) =>
   req<RegistroDTO[]>(`/ponto/registros${qs({ funcionarioId, mes })}`);
-export const upsertRegistro = (input: RegistroInput) =>
-  req<RegistroDTO>(`/ponto/registros`, { method: "POST", body: JSON.stringify(input) });
 export const excluirRegistro = (id: string) =>
   req<{ ok: true }>(`/ponto/registros/${id}`, { method: "DELETE" });
 
@@ -131,26 +108,55 @@ export function useFuncionarios(ativo?: boolean) {
   return { data, loading, erro, recarregar };
 }
 
+// `as const` dá tupla literal — evita duas chamadas montarem "a mesma" key
+// com formato diferente. `mes` em `registros` é "YYYY-MM".
+const pontoKeys = {
+  registros: (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const,
+};
+
+// `op: "upsert"` porque a identidade é a chave natural (funcionarioId, data),
+// não um id — reenviar a mesma data sobrescreve.
+const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO> = {
+  mutationKey: "ponto.upsert-registro",
+  path: () => "/ponto/registros",
+  method: "POST",
+  body: (input) => input,
+  queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
+  op: "upsert",
+  match: (item, input) => item.data === input.data,
+  // Campos computados pelo backend (horas/extra) entram zerados — corrigem
+  // sozinhos no refetch pós-sync.
+  criarOtimista: (input) => ({
+    id: criarIdTemporario(),
+    funcionarioId: input.funcionarioId,
+    data: input.data,
+    entrada: input.entrada ?? null,
+    saida: input.saida ?? null,
+    intervaloMin: input.intervaloMin ?? 60,
+    tipoDia: input.tipoDia ?? "UTIL",
+    observacao: input.observacao ?? null,
+    horas: 0,
+    extra50: 0,
+    extra100: 0,
+  }),
+};
+
 export function useRegistros(funcionarioId: string | null, mes: string) {
-  const [data, setData] = useState<RegistroDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!funcionarioId) { setData([]); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    listarRegistros(funcionarioId, mes).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [funcionarioId, mes]);
-  useEffect(() => {
-    if (!funcionarioId) { setData([]); setLoading(false); return; }
-    let cancelado = false;
-    setLoading(true); setErro(null);
-    listarRegistros(funcionarioId, mes)
-      .then((d) => { if (!cancelado) setData(d); })
-      .catch((e) => { if (!cancelado) setErro(e.message); })
-      .finally(() => { if (!cancelado) setLoading(false); });
-    return () => { cancelado = true; };
-  }, [funcionarioId, mes]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: pontoKeys.registros(funcionarioId ?? "", mes),
+    queryFn: () => listarRegistros(funcionarioId!, mes),
+    enabled: !!funcionarioId,
+  });
+  return {
+    data: query.data ?? [],
+    loading: funcionarioId ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+export function useUpsertRegistro() {
+  return useOfflineMutation(configUpsertRegistro);
 }
 
 export function useFolha(mes: string) {

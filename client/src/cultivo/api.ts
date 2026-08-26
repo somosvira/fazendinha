@@ -28,24 +28,7 @@ import type {
   TipoMovimentoSilo,
   OrigemMovimentoSilo,
 } from "./types";
-import { comPropriedade } from "../propriedadeScope";
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = comPropriedade({
-    ...((init?.headers as Record<string, string>) || {}),
-    ...(init?.body ? { "content-type": "application/json" } : {}),
-  });
-  const res = await fetch(`/api${path}`, { ...init, headers });
-  if (!res.ok) {
-    const b: any = await res.json().catch(() => null);
-    let msg = `HTTP ${res.status}`;
-    if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: safra fechada)
-    else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
+import { req } from "../lib/offline/req";
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
