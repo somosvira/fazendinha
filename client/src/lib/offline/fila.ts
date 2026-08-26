@@ -16,8 +16,9 @@ import { onlineManager } from "@tanstack/react-query";
 import { comPropriedade } from "../../propriedadeScope";
 
 const CHAVE = "rionovo-fila-pendente";
+const CHAVE_ERROS = "rionovo-fila-erros";
 
-export interface PedidoMutation {
+interface PedidoMutation {
   mutationKey: string;
   path: string;
   method: string;
@@ -31,7 +32,21 @@ interface ItemFila extends PedidoMutation {
   criadoEm: string;
 }
 
-export interface Progresso {
+interface ItemErro extends ItemFila {
+  erro: string;
+  falhouEm: string;
+}
+
+// Erro HTTP de verdade (resposta não-2xx) — carrega o status pra
+// `processarFila` distinguir 401 (sessão inválida, para a fila inteira) de
+// erro de item (validação/regra de negócio, só tira esse item da fila).
+class ErroHttp extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+  }
+}
+
+interface Progresso {
   atual: number;
   total: number;
 }
@@ -116,9 +131,14 @@ async function fetchCru(path: string, method: string, body: unknown): Promise<an
       : typeof json?.erro === "string" ? json.erro
       : json?.error?.issues?.length ? json.error.issues.map((i: any) => i.message).join("; ")
       : `HTTP ${res.status}`;
-    throw new Error(msg);
+    throw new ErroHttp(msg, res.status);
   }
   return json;
+}
+
+async function moverParaErros(item: ItemFila, mensagemErro: string): Promise<void> {
+  const erros = (await get<ItemErro[]>(CHAVE_ERROS)) ?? [];
+  await set(CHAVE_ERROS, [...erros, { ...item, erro: mensagemErro, falhouEm: new Date().toISOString() }]);
 }
 
 function substituir(v: unknown, de: string, para: string): unknown {
@@ -151,7 +171,16 @@ async function processarFila(): Promise<void> {
       if (err instanceof TypeError) return;
       pendencias.get(item.filaId)?.reject(err);
       pendencias.delete(item.filaId);
-      return; // erro real do servidor — para aqui, não roda os próximos fora de ordem
+      // 401 é da sessão inteira, não do item — todo item atrás tomaria o
+      // mesmo erro. Para tudo aqui (retomar depois de relogar não está
+      // implementado ainda — ver docs/design/offline/OFFLINE_STRATEGY.md).
+      if (err instanceof ErroHttp && err.status === 401) return;
+      // Erro de item (validação/regra de negócio) não contamina os outros —
+      // tira só ele da fila, pro registro auditável, e segue com o resto.
+      await moverParaErros(item, err instanceof Error ? err.message : String(err));
+      fila = fila.slice(1);
+      await persistir();
+      continue;
     }
     let idReal: string | undefined;
     if (resposta?.id != null) idReal = String(resposta.id);
@@ -178,8 +207,16 @@ export function garantirProcessamento(): void {
     });
 }
 
+// Chamar uma vez no boot. `garantirProcessamento()` trava o gate SÍNCRONO
+// (antes de qualquer await) quando há rede — por isso vai primeiro, não
+// dentro de um `.then()` (isso reabriria a corrida que o gate existe pra
+// fechar: um fetch de outra parte do app rodando antes da fila decidir se
+// precisa travar). `carregar()` roda à parte porque precisa acontecer
+// mesmo offline (só pra `pendentes` aparecer certo na UI), caso em que
+// `garantirProcessamento()` sozinho não chega a chamá-lo.
 export function iniciarFila(): void {
-  carregar().then(garantirProcessamento);
+  garantirProcessamento();
+  carregar();
 }
 
 export async function enfileirarMutation(pedido: PedidoMutation): Promise<any> {

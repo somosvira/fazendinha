@@ -87,4 +87,43 @@ describe("fila", () => {
 
     expect(ordem).toEqual(["start:/api/a", "end:/api/a", "start:/api/b", "end:/api/b"]);
   });
+
+  it("erro de item (não-401) tira só ele da fila, vai pro registro de erros, e o resto segue", async () => {
+    vi.resetModules();
+    const { enfileirarMutation } = await import("./fila");
+    const { get: getMock } = await import("idb-keyval");
+
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify({ error: "Data inválida" }), { status: 400 })))
+      .mockImplementationOnce(() => resposta({ id: "2" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item1 = enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST", body: { x: 1 } });
+    const item2 = enfileirarMutation({ mutationKey: "b", path: "/b", method: "POST", body: { x: 2 } });
+
+    await expect(item1).rejects.toThrow("Data inválida");
+    await expect(item2).resolves.toEqual({ id: "2" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const erros = await (getMock as any)("rionovo-fila-erros");
+    expect(erros).toHaveLength(1);
+    expect(erros[0]).toMatchObject({ path: "/a", erro: "Data inválida" });
+  });
+
+  it("401 para a fila inteira — item seguinte nunca é tentado", async () => {
+    vi.resetModules();
+    const { enfileirarMutation } = await import("./fila");
+
+    const fetchMock = vi.fn().mockImplementationOnce(() =>
+      Promise.resolve(new Response(JSON.stringify({ error: "não autenticado" }), { status: 401 })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const item1 = enfileirarMutation({ mutationKey: "a", path: "/a", method: "POST" });
+    enfileirarMutation({ mutationKey: "b", path: "/b", method: "POST" }); // fica pendente pra sempre — não trava o teste
+
+    await expect(item1).rejects.toThrow("não autenticado");
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

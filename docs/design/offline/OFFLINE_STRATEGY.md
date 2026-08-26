@@ -76,6 +76,41 @@ localmente). Caminho padrão pra resolver isso quando for priorizado:
 grossa está ok (telas fora do escopo da camada 3 podem ficar
 desabilitadas offline, não precisa cobrir tudo).
 
+## Convenção obrigatória por módulo: pré-validar antes de enfileirar
+
+Registrado em 2026-08-25, pra valer a partir da próxima fatia (Pesagem/Sanidade):
+todo formulário que usa `useOfflineMutation` precisa validar o máximo de erro de
+**input** possível antes de chamar `mutate` — reduz a classe de erro mais comum
+que poderia envenenar a fila (ver limitação abaixo). Erro de **regra de negócio**
+que depende de estado do servidor (ex.: `FechamentoMensal` — a competência podia
+estar aberta quando o usuário editou offline e fechar antes do sync rodar) nunca
+dá pra prevenir no client — não é falha de validação, é o mundo mudando entre o
+enfileiramento e o envio. Pré-validação reduz a frequência do problema, não
+elimina — o mecanismo de recuperação abaixo continua necessário mesmo com
+validação perfeita.
+
+**Recuperação de erro na fila — metade resolvida em 2026-08-25.** Erro de
+item (validação/regra de negócio — qualquer status não-2xx que não seja 401)
+não contamina os outros: `fetchCru` lança `ErroHttp` (com `status`),
+`processarFila` tira só esse item da fila, move pro registro auditável
+(`idb-keyval`, chave `rionovo-fila-erros` — item inteiro + `erro` +
+`falhouEm`) e **segue com o resto**, sem bloquear mais nada. Testado em
+`fila.test.ts`: item com 400 vai pro log, o item seguinte sincroniza normal.
+Nenhuma UI pra ler/apagar/mandar pro time ainda — de propósito, fica pra bem
+depois; hoje auditar é abrir DevTools → IndexedDB → `rionovo-fila-erros`.
+
+**401 continua sem recuperação automática (não resolvido)** — para a fila
+inteira e fica assim até a próxima reconexão, que toma o mesmo 401 de novo.
+Não vai pro log de erros de propósito: é erro da sessão inteira, não do
+item — todo item atrás do que falhou tomaria o mesmo 401 se continuasse
+tentando um por um, só acumularia entradas repetidas da mesma causa. O
+certo, pra quando for implementado: **disparar a fila de novo depois de um
+login bem-sucedido** — como `comPropriedade()` já lê o token do
+`localStorage` na hora de cada envio (não congelado no enfileiramento), o
+próximo envio já sai com o token novo sozinho; falta só o gatilho pós-login,
+não uma lógica de token nova (este app usa sessão de expiração deslizante —
+`AUTH_SESSAO_DIAS`, sem refresh token separado — ver `services/auth/sessao.ts`).
+
 ## Achados técnicos que mudam a estimativa de dificuldade
 
 - **A dificuldade real não é "quantas tabelas o endpoint toca"** — quase
