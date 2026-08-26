@@ -46,7 +46,7 @@ pnpm --filter rionovo-server run build
 E na partida:
 
 ```
-prisma db push --skip-generate   # sincroniza o schema no banco (cria tabelas que faltam)
+prisma db push --skip-generate --accept-data-loss # sincroniza o schema no banco (cria tabelas que faltam)
 node dist/index.js               # bind em $PORT injetado pelo Render
 ```
 
@@ -56,6 +56,11 @@ node dist/index.js               # bind em $PORT injetado pelo Render
 > migrations existem no repo (inclusive a consolidada `20260701_...`, que cobre 100%
 > do schema — `migrate diff` dá "No difference"), então dá pra migrar pra
 > `migrate deploy` num banco limpo depois se quiser.
+
+> O `--accept-data-loss` confirma os avisos preventivos do Prisma ao adicionar
+> índices únicos. Ele não remove registros para criar o índice: se o banco tiver
+> valores duplicados, o Postgres ainda interrompe o deploy e os duplicados devem
+> ser corrigidos antes de tentar novamente.
 
 Health check: `GET /api/health`. Tempo médio de build inicial: 3-5 min.
 
