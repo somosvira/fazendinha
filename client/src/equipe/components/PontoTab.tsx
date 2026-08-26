@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { upsertRegistroSchema } from "@rionovo/shared";
 import { Loader } from "../../components/Loading";
 import { useFuncionarios, useRegistros, useUpsertRegistro, preencherGrade, num, horasFmt, weekdayBR, tipoDiaPadrao, diasDoMes, mesesRecentes, mesBR } from "../api";
 import type { RegistroDTO, TipoDiaPonto } from "../types";
@@ -126,17 +127,25 @@ export function PontoTab() {
   function salvar(i: number) {
     const l = linhas[i];
     if (!funcionarioId) return;
+    const body = {
+      funcionarioId,
+      data: l.data,
+      entrada: l.entrada || undefined,
+      saida: l.saida || undefined,
+      intervaloMin: l.intervaloMin !== "" ? Number(l.intervaloMin) : undefined,
+      tipoDia: l.tipoDia,
+      observacao: l.observacao.trim() || undefined,
+    };
+    // Mesmo schema Zod do backend (packages/shared) — pega erro de input
+    // (ex.: intervalo negativo, observação > 400 chars) antes de enfileirar.
+    const valido = upsertRegistroSchema.safeParse(body);
+    if (!valido.success) {
+      toast.error("Corrija antes de salvar", valido.error.issues[0]?.message);
+      return;
+    }
     set(i, { salvando: true, dirty: false });
     upsert.mutate(
-      {
-        funcionarioId,
-        data: l.data,
-        entrada: l.entrada || undefined,
-        saida: l.saida || undefined,
-        intervaloMin: l.intervaloMin !== "" ? Number(l.intervaloMin) : undefined,
-        tipoDia: l.tipoDia,
-        observacao: l.observacao.trim() || undefined,
-      },
+      body,
       {
         onSuccess: () => set(i, { salvando: false }),
         onError: (e: any) => {
