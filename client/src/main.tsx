@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { App } from "./App";
 import { ToastProvider } from "./components/Toast";
@@ -22,6 +23,9 @@ import "./styles/typescale.css"; // override de escala tipográfica — carregad
 // componente, é assinatura de processo). Ver lib/offline/resume.ts e fila.ts.
 iniciarRetomadaAutomatica();
 iniciarFila();
+// Precache do app shell — só ativo no build de produção (vite.config.ts).
+// Sem efeito em `vite dev`.
+registerSW({ immediate: true });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

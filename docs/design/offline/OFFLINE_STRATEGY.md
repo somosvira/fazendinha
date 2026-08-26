@@ -65,15 +65,27 @@ Fora do escopo por ora: IA/chat, WhatsApp bot, OCR de nota (dependem de
 serviço externo — impossível offline por definição) e telas administrativas
 (Acessos, Config, Plano de contas — baixa utilidade offline).
 
-**Fora do escopo da fundação (#228), em andamento a partir daqui:** service
+**Fora do escopo da fundação (#228), resolvido no PR seguinte:** service
 worker/app shell (PWA). O que existia até #228 cobria "o app já estava
 aberto com rede e no meio do uso a conexão cai" — não cobria "abrir o
 navegador do zero sem nenhuma rede" (confirmado: reload de página offline
-sem visita prévia falha com `net::ERR_INTERNET_DISCONNECTED`, não tinha
-nada servindo o HTML/JS localmente). Caminho: `vite-plugin-pwa` (Workbox)
-só pra precache do shell — granularidade grossa está ok (telas fora do
-escopo da camada 3 podem ficar desabilitadas offline, não precisa cobrir
-tudo).
+sem visita prévia falhava com `net::ERR_INTERNET_DISCONNECTED`, não tinha
+nada servindo o HTML/JS localmente).
+
+**Implementado com `vite-plugin-pwa`** (`client/vite.config.ts`), estratégia
+`generateSW` (Workbox por baixo), `registerType: "autoUpdate"`, `manifest:
+false` (não é sobre instalar como app, só sobre o shell carregar sem rede —
+granularidade grossa está ok). `navigateFallback: "/index.html"` com
+`navigateFallbackDenylist: [/^\/api\//]` — só intercepta navegação de
+página, nunca `/api/*` (esse continua 100% por conta da fundação, sem
+nenhum cache do Workbox no meio). Registrado em `main.tsx` via
+`virtual:pwa-register` (`registerSW({ immediate: true })`) — só ativo no
+build de produção, sem efeito em `vite dev`.
+
+Testado: `vite build && vite preview`, reload com `Network.emulateNetworkConditions
+offline:true` (zero rede de verdade, não só sem `/api`) tanto na raiz quanto
+num deep link (`/equipe/ponto`) — os dois carregam o shell normal (tela de
+login) em vez de `net::ERR_INTERNET_DISCONNECTED`.
 
 ## Trava de UI pra área sem suporte offline
 
@@ -412,6 +424,7 @@ primeira responde, não em paralelo).
 |---|---|---|
 | Fundação (QueryClient + persister IndexedDB + retomada automática) | ✅ Feito | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
 | Piloto: Ponto (equipe) | ✅ Feito — inclui fix incidental de `funcionarioId` no schema | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
+| App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | offline/service-worker |
 | Corte > Pesagem + Sanidade | ⬜ Não iniciado | — |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
