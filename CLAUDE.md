@@ -22,7 +22,7 @@ Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.
 
 ## Stack
 
-- Monorepo **pnpm workspaces** (lockfile único na raiz). Workspaces: `client`, `server`, `packages/shared` (`@rionovo/shared` — schemas Zod usados pelos dois lados; server re-exporta em vez de importar direto, pra não mudar import de quem já usa; precisa de `tsc` próprio, então build do server/client em CI usa `pnpm --filter "<pkg>..." run build`, não só `--filter <pkg>` — ver `render.yaml`/`DEPLOY.md`).
+- Monorepo **pnpm workspaces** (lockfile único na raiz). Workspaces: `client`, `server`, `packages/shared` (`@rionovo/shared` — schemas Zod usados pelos dois lados; server re-exporta em vez de importar direto, pra não mudar import de quem já usa). Precisa de `tsc` próprio (build gera `dist/`+`.d.ts`) — o script `build` de `server`/`client` já builda `packages/shared` antes de si mesmo (`pnpm --filter @rionovo/shared run build && tsc ...`), então `render.yaml`/CF Pages continuam com `pnpm --filter <pkg> run build` puro, sem precisar saber de workspace dependency nenhuma.
 - Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). OCR via **`tesseract.js`** + **`sharp`** + **`pdf-parse`**. Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2, S3-compatible) ou disco local.
 - Frontend: **React 18 + Vite 6 + TypeScript**. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `recharts` e `html2pdf.js` estão instalados e em uso pontual.
 - Testes: **Vitest** nos dois workspaces (`*.test.ts` colocados ao lado do código, ~60 arquivos — a maioria em `server/src/services/**` cobrindo cálculos financeiros/zootécnicos).

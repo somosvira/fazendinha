@@ -40,13 +40,15 @@ Render roda:
 corepack enable
 pnpm install --frozen-lockfile
 pnpm --filter rionovo-server exec prisma generate
-pnpm --filter "rionovo-server..." run build
+pnpm --filter rionovo-server run build
 ```
 
-> `rionovo-server...` (com `...`) builda `rionovo-server` **e** os workspaces dos
-> quais ele depende — hoje só `packages/shared` (schemas Zod compartilhados com o
-> client). Sem o `...`, `pnpm --filter` builda só o pacote citado e o build quebra
-> (`Cannot find module '@rionovo/shared'`) porque `packages/shared/dist` nunca existiu.
+> O `build` do `rionovo-server` builda `packages/shared` antes de rodar o `tsc`
+> dele (`server/package.json`, `pnpm --filter @rionovo/shared run build && tsc ...`)
+> — o pacote compartilhado precisa existir compilado (`dist/`+`.d.ts`) porque em
+> prod o server roda `node dist/index.js` puro, sem executar `.ts` de workspace
+> linkado. Fica dentro do próprio script de build, não no comando do Render —
+> não precisa mexer em nada aqui nem no CF Pages quando um workspace novo entrar.
 
 E na partida:
 
@@ -95,17 +97,12 @@ Commit + push.
 | Campo                       | Valor                                                              |
 | --------------------------- | ------------------------------------------------------------------ |
 | Framework preset            | None (ou Vite, dá no mesmo)                                        |
-| Build command               | `corepack enable && pnpm install --frozen-lockfile && pnpm --filter "rionovo-client..." run build` |
+| Build command               | `corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-client run build` |
 | Build output directory      | `client/dist`                                                      |
 | Root directory              | (vazio, deixa na raiz do repo)                                     |
 | Node version (env var)      | `NODE_VERSION=20`                                                  |
 
 Salvar e deployar. Build inicial: 1-2 min.
-
-> Mesma lógica do `...` do backend (seção 1.3): `rionovo-client...` builda
-> `packages/shared` antes do client. Isso é a **configuração de build no
-> dashboard da Cloudflare** — não vem do repo, então se o projeto CF Pages já
-> existir, atualize esse campo manualmente lá (Settings → Builds & deployments).
 
 ### 2.3. Pegar a URL
 
