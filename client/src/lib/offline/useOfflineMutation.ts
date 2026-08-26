@@ -15,6 +15,23 @@ export function criarIdTemporario(): string {
 
 export type OfflineOp = "create" | "update" | "delete" | "upsert";
 
+function ehObjetoPlano(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+// Merge profundo — array e primitivo substituem o valor inteiro (sem mesclar
+// por índice); só objeto plano em objeto plano recursa. Evita perder campo
+// irmão de um objeto aninhado que o spread raso ({...item, ...input}) perderia.
+function mesclarProfundo<T extends object>(alvo: T, patch: Partial<T>): T {
+  const resultado: any = { ...alvo };
+  for (const [chave, valor] of Object.entries(patch)) {
+    resultado[chave] = ehObjetoPlano(valor) && ehObjetoPlano(resultado[chave])
+      ? mesclarProfundo(resultado[chave], valor)
+      : valor;
+  }
+  return resultado;
+}
+
 interface UseOfflineMutationBase<TInput, TItem extends { id: string }> {
   /** Identifica esta mutation na fila — usado só pra filtrar `pendentes`. */
   mutationKey: string;
@@ -45,7 +62,7 @@ function aplicarOtimista<TInput, TItem extends { id: string }>(
   existe: boolean,
 ): TItem[] {
   const lista = anterior ?? [];
-  const patch = (item: TItem) => ({ ...item, ...(input as unknown as Partial<TItem>) });
+  const patch = (item: TItem) => mesclarProfundo(item, input as unknown as Partial<TItem>);
   switch (cfg.op) {
     case "delete":
       return lista.filter((item) => !cfg.match(item, input));
