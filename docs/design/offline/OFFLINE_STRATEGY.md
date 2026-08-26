@@ -424,7 +424,7 @@ primeira responde, não em paralelo).
 |---|---|---|
 | Fundação (QueryClient + persister IndexedDB + retomada automática) | ✅ Feito | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
 | Piloto: Ponto (equipe) | ✅ Feito — inclui fix incidental de `funcionarioId` no schema | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
-| App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | offline/service-worker |
+| App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade | ⬜ Não iniciado | — |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
