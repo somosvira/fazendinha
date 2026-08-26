@@ -99,17 +99,17 @@ não contamina os outros: `fetchCru` lança `ErroHttp` (com `status`),
 Nenhuma UI pra ler/apagar/mandar pro time ainda — de propósito, fica pra bem
 depois; hoje auditar é abrir DevTools → IndexedDB → `rionovo-fila-erros`.
 
-**401 continua sem recuperação automática (não resolvido)** — para a fila
-inteira e fica assim até a próxima reconexão, que toma o mesmo 401 de novo.
-Não vai pro log de erros de propósito: é erro da sessão inteira, não do
-item — todo item atrás do que falhou tomaria o mesmo 401 se continuasse
-tentando um por um, só acumularia entradas repetidas da mesma causa. O
-certo, pra quando for implementado: **disparar a fila de novo depois de um
-login bem-sucedido** — como `comPropriedade()` já lê o token do
-`localStorage` na hora de cada envio (não congelado no enfileiramento), o
-próximo envio já sai com o token novo sozinho; falta só o gatilho pós-login,
-não uma lógica de token nova (este app usa sessão de expiração deslizante —
-`AUTH_SESSAO_DIAS`, sem refresh token separado — ver `services/auth/sessao.ts`).
+**401 — resolvido em 2026-08-25, via `window.location.reload()` pós-login.**
+Continua parando a fila inteira (de propósito: é erro da sessão, não do
+item — não vai pro log de erros, senão todo item atrás acumularia entradas
+repetidas da mesma causa). `entrar()` em `App.tsx` persiste a sessão nova e
+recarrega a página — o boot (`main.tsx`) roda de novo com o token novo no
+`localStorage`, `iniciarFila()` retoma a fila sozinha, sem lógica de retry
+nova (este app usa sessão de expiração deslizante — `AUTH_SESSAO_DIAS`, sem
+refresh token separado — ver `services/auth/sessao.ts`). Trade-off aceito por
+ora: reload perde a "sticky activation" do clique, então a música/animação
+da abertura Terrano não toca mais logo após o login — revisitar antes de
+mergear a PR.
 
 ## Achados técnicos que mudam a estimativa de dificuldade
 

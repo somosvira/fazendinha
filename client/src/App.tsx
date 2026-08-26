@@ -146,10 +146,8 @@ export function App() {
     return { modo: (m[1] === "convite" ? "convite" : "senha") as "convite" | "senha", token: m[2] };
   })();
 
-  // Sessão real (usuários do backend). O login por e-mail+senha grava token +
-  // usuário e transiciona EM ESTADO — sem window.location.reload(). Um reload
-  // mataria a "sticky activation" do documento e o navegador voltaria a bloquear
-  // o áudio da abertura Terrano, ancorado no clique de "Entrar".
+  // Sessão real (usuários do backend). Rehidratada de localStorage no boot
+  // (getToken/getUsuario) — sobrevive a reload.
   const [token, setTokenState] = useState<string | null>(() =>
     typeof window === "undefined" ? null : getToken(),
   );
@@ -171,10 +169,13 @@ export function App() {
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
   const entrar = (novoToken: string, u: UsuarioSessao) => {
-    setSessao(novoToken, u); // persiste token + usuário pras próximas requests
-    setTokenState(novoToken); // transiciona pro app SEM reload (gesto vivo p/ o áudio)
-    setUsuario(u);
-    setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
+    setSessao(novoToken, u); // persiste token + usuário antes do reload
+    // Reload após login reprocessa o boot (iniciarFila/garantirProcessamento
+    // em main.tsx) com o token novo — resolve a fila retomar sozinha depois
+    // de um 401 (ver docs/design/offline/OFFLINE_STRATEGY.md). Provisório:
+    // quebra o autoplay da música/animação da abertura Terrano (perde o
+    // gesto do clique) — revisitar antes de mergear.
+    window.location.reload();
   };
   const onSair = token
     ? () => {
@@ -449,9 +450,7 @@ export function App() {
       />
     );
   }
-  // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
-  // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
-  // liberando o play() da música da abertura.
+  // Sem sessão válida (token + usuário), só a tela de login.
   if (!token || !usuario || !effectiveUser) {
     return <Login onEntrar={entrar} />;
   }

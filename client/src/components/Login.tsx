@@ -6,10 +6,8 @@
  * a tela inteira.
  *
  * `onEntrar` recebe o token de sessão e o usuário validados pelo backend. Quem
- * chama (App) persiste a sessão e transiciona pro app EM ESTADO — sem
- * window.location.reload(). O reload mataria a "sticky activation" do documento
- * e a música da abertura Terrano, ancorada neste clique, voltaria a ser
- * bloqueada.
+ * chama (App) persiste a sessão e dá reload (ver `entrar` em App.tsx) —
+ * provisório, quebra a música da abertura Terrano por perder o gesto do clique.
  *
  * Adaptações ao backend da fatia 1 (email+senha próprio, sem OAuth): o mockup
  * trazia "Continuar com Google" (sem backend → omitido) e "Esqueci a senha"
