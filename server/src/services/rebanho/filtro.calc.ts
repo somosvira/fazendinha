@@ -6,6 +6,7 @@ export interface FiltroSalvo {
   grupoId: number | null;
   setor: string | null;
   categoria: string | null;
+  finalidade: string | null;
   busca: string | null;
 }
 
@@ -14,6 +15,7 @@ export interface CriteriosQuery {
   grupoId?: number;
   setor?: string;
   categoria?: string;
+  finalidade?: string;
   q?: string;
 }
 
@@ -26,6 +28,7 @@ export function criteriosParaQuery(filtro: FiltroSalvo): CriteriosQuery {
   if (filtro.grupoId != null) q.grupoId = filtro.grupoId;
   if (filtro.setor && filtro.setor.trim()) q.setor = filtro.setor.trim();
   if (filtro.categoria && filtro.categoria.trim()) q.categoria = filtro.categoria.trim();
+  if (filtro.finalidade && filtro.finalidade.trim()) q.finalidade = filtro.finalidade.trim();
   if (filtro.busca && filtro.busca.trim()) q.q = filtro.busca.trim();
   return q;
 }

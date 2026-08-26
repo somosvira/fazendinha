@@ -1,10 +1,10 @@
 /* Rio Novo — navegação global (rail persistente no desktop + drawer no mobile).
  *
- * Layout novo (handoff "Shell - sidebar + header"): a marca Terrano e o seletor
- * de fazenda/sítio vivem no TOPO da sidebar (não mais no header). A navegação em
- * dois grupos — "Gestão" (financeiro) e "Atividades" (módulos operacionais, em
- * acordeão) — mais um rodapé "Configurações" ancorado embaixo que agrupa os itens
- * raros (Cadastros, Categorias, Caixinha, Configurações, Acessos).
+ * A sidebar é organizada por ÁREAS DE TRABALHO, não pela estrutura interna dos
+ * módulos. As rotinas mais frequentes ficam sempre em um clique (Reprodução,
+ * Sanidade, Controle leiteiro, Animais e Agronomia); recursos de configuração ou
+ * análise menos frequentes ficam em "Mais opções" dentro da área correspondente.
+ * A marca Terrano e o seletor de fazenda/sítio vivem no topo da sidebar.
  *
  * DESKTOP: trilho fixo sempre visível; entre 901–1100px vira ícone-only e expande
  * ao passar o mouse/focar (hover/focus-within). MOBILE (<=900px): drawer via
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { TerranoSymbol } from "./TerranoLogo";
 import { SidebarFarmPicker } from "./FarmPicker";
+import { temAcessoArea } from "@/lib/areas";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -75,86 +76,82 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
   "eqp-folha": <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
 };
 
-type ModuloId = string;
-type SubItem = { id: Tab; label: string };
-type Modulo = { id: ModuloId; label: string; icon: JSX.Element; subs: SubItem[]; disabled?: boolean };
+type AreaTrabalhoId = "pecuaria" | "agronomia" | "equipe";
+type NavItem = { id: Tab; label: string };
+type AreaTrabalho = {
+  id: AreaTrabalhoId;
+  label: string;
+  permissao: string;
+  principais: NavItem[];
+  extras?: NavItem[];
+  exigeFolha?: boolean;
+};
 
-// Registrar um novo módulo operacional (Plantio, Gado de corte, Olericultura, etc.)
-// é só adicionar uma entrada aqui. O acordeão e o estado persistido funcionam
-// automaticamente para qualquer item da lista.
-const MODULOS: Modulo[] = [
+/**
+ * Taxonomia editorial da sidebar. Ela não cria rotas novas: apenas oferece
+ * pontos de entrada orientados ao trabalho para as telas que já existem.
+ */
+const AREAS_TRABALHO: AreaTrabalho[] = [
   {
-    id: "rebanho",
-    label: "Rebanho leiteiro",
-    icon: <><circle cx="12" cy="10" r="5"/><path d="M7 8c-1-2-3-2-3 0M17 8c1-2 3-2 3 0"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
-    subs: [
-      { id: "reb-dashboard", label: "Painel" },
-      { id: "reb-animal", label: "Animal" },
+    id: "pecuaria",
+    label: "Pecuária",
+    permissao: "pecuaria",
+    principais: [
+      { id: "reb-dashboard", label: "Hoje na pecuária" },
+      { id: "reb-animal", label: "Animais" },
       { id: "reb-reproducao", label: "Reprodução" },
+      { id: "reb-sanidade", label: "Sanidade" },
+      { id: "reb-producao", label: "Controle leiteiro" },
+      { id: "reb-nutricao", label: "Nutrição" },
+      { id: "cor-lote", label: "Lotes coletivos" },
+      { id: "cor-pesagem", label: "Pesagens" },
+    ],
+    extras: [
       { id: "reb-acasalamento", label: "Acasalamento" },
       { id: "reb-fiv", label: "FIV / TE" },
-      { id: "reb-sanidade", label: "Sanidade" },
-      { id: "reb-nutricao", label: "Nutrição" },
-      { id: "reb-producao", label: "Produção" },
-      { id: "reb-estoque", label: "Estoque" },
-      { id: "reb-custo", label: "Custo" },
-      { id: "reb-carteira", label: "Carteira" },
+      { id: "reb-estoque", label: "Estoque de insumos" },
+      { id: "reb-custo", label: "Custos e indicadores" },
+      { id: "reb-carteira", label: "Carteira do rebanho" },
       { id: "reb-sugestoes", label: "Sugestões" },
-    ],
-  },
-  {
-    id: "plantio",
-    label: "Plantio · café",
-    icon: <><path d="M12 22V11"/><path d="M12 11c-3 0-6-2-6-6 3 0 6 2 6 6z"/><path d="M12 11c3 0 6-2 6-6-3 0-6 2-6 6z"/></>,
-    subs: [
-      { id: "pla-dashboard", label: "Painel" },
-      { id: "pla-talhao", label: "Talhão" },
-      { id: "pla-fenologia", label: "Fenologia" },
-      { id: "pla-fitossanidade", label: "Fitossanidade" },
-      { id: "pla-nutricao", label: "Nutrição & solo" },
-      { id: "pla-colheita", label: "Colheita" },
-      { id: "pla-planejamento", label: "Planejamento" },
-      { id: "pla-estoque", label: "Estoque" },
-      { id: "pla-custo", label: "Custo" },
-    ],
-  },
-  {
-    id: "corte",
-    label: "Gado de corte",
-    icon: <><circle cx="12" cy="11" r="5"/><path d="M6 7L3 4M18 7l3-3"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></>,
-    // Módulo liberado (Onda 1 — núcleo lê/escreve em /api/corte/*).
-    subs: [
-      { id: "cor-dashboard", label: "Painel" },
-      { id: "cor-lote", label: "Lote" },
-      { id: "cor-pesagem", label: "Pesagem" },
+      { id: "cor-dashboard", label: "Resumo dos lotes" },
       { id: "cor-pasto", label: "Pasto" },
-      { id: "cor-sanidade", label: "Sanidade" },
-      { id: "cor-nutricao", label: "Nutrição" },
-      { id: "cor-comercial", label: "Comercial" },
-      { id: "cor-custo", label: "Custo" },
+      { id: "cor-sanidade", label: "Sanidade coletiva" },
+      { id: "cor-nutricao", label: "Nutrição coletiva" },
+      { id: "cor-comercial", label: "Comercialização" },
+      { id: "cor-custo", label: "Custos dos lotes" },
     ],
   },
   {
-    id: "cultivo",
-    label: "Milho",
-    icon: <><path d="M12 22v-5"/><path d="M12 17c-3 0-5.5-2.8-5.5-6.5C6.5 6.5 9 3 12 2c3 1 5.5 4.5 5.5 8.5C17.5 14.2 15 17 12 17z"/><path d="M12 6v11M9 9c1 .8 2 1.2 3 1.2s2-.4 3-1.2M9 13c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/></>,
-    // Culturas anuais (crop-agnostic via `cultura` no backend) — MILHO é o 1º caso.
-    subs: [
-      { id: "mil-dashboard", label: "Painel" },
-      { id: "mil-safras", label: "Safras" },
-      { id: "mil-custos", label: "Lançar custos" },
-      { id: "mil-producao", label: "Produção" },
+    id: "agronomia",
+    label: "Agronomia",
+    permissao: "agricultura",
+    principais: [
+      { id: "pla-dashboard", label: "Agronomia" },
+      { id: "pla-talhao", label: "Talhões" },
+      { id: "pla-fitossanidade", label: "Fitossanidade" },
+      { id: "pla-nutricao", label: "Solo & nutrição" },
+      { id: "pla-planejamento", label: "Manejo & planejamento" },
+      { id: "mil-dashboard", label: "Milho & safras" },
+    ],
+    extras: [
+      { id: "pla-fenologia", label: "Fenologia do café" },
+      { id: "pla-colheita", label: "Colheita do café" },
+      { id: "pla-estoque", label: "Estoque agrícola" },
+      { id: "pla-custo", label: "Custos do café" },
+      { id: "mil-safras", label: "Safras de milho" },
+      { id: "mil-custos", label: "Lançar custos do milho" },
+      { id: "mil-producao", label: "Produção de milho" },
       { id: "mil-silos", label: "Silos" },
-      { id: "mil-custo", label: "Custo de produção" },
+      { id: "mil-custo", label: "Custo de produção do milho" },
     ],
   },
   {
     id: "equipe",
-    label: "Equipe & Ponto",
-    icon: <><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 4a3.5 3.5 0 0 1 0 7"/></>,
-    // Módulo de RH leve (admin gerencia) — funcionários, ponto e folha.
-    subs: [
-      { id: "eqp-dashboard", label: "Painel" },
+    label: "Equipe",
+    permissao: "equipe",
+    exigeFolha: true,
+    principais: [
+      { id: "eqp-dashboard", label: "Visão da equipe" },
       { id: "eqp-funcionarios", label: "Funcionários" },
       { id: "eqp-ponto", label: "Ponto" },
       { id: "eqp-folha", label: "Folha" },
@@ -162,13 +159,10 @@ const MODULOS: Modulo[] = [
   },
 ];
 
-const STORAGE_KEY = "rionovo:sidebar:openModulo";
+const STORAGE_KEY = "rionovo:sidebar:openExtras";
 
-function moduloOfTab(t: Tab): ModuloId | null {
-  for (const m of MODULOS) {
-    if (m.subs.some((s) => s.id === t)) return m.id;
-  }
-  return null;
+function areaExtraOfTab(tab: Tab): AreaTrabalhoId | null {
+  return AREAS_TRABALHO.find((area) => area.extras?.some((item) => item.id === tab))?.id ?? null;
 }
 
 // Breakpoints do antigo `.rb-side` (rebanho.css): >=901px o trilho fica sempre
@@ -194,8 +188,6 @@ const RAIL_GROUP =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
 const RAIL_BLOCK =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
-const RAIL_INLINE_FLEX =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline-flex min-[901px]:max-[1100px]:group-focus-within:inline-flex [.side-collapsed_&]:hidden";
 // chevron `›` dos itens de clique único — some na faixa colapsada.
 const RAIL_HIDE =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline [.side-collapsed_&]:hidden";
@@ -204,8 +196,8 @@ const RAIL_HIDE =
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
  *  quando a aba atual é uma das sub-abas dobradas nele (ex.: "Gastos" fica ativo
  *  em `caixinha`; "Configurações" em `cadastros`/`plano`/`acessos`). */
-function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
-  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
+function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured }: {
+  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[]; featured?: boolean;
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
   return (
@@ -221,6 +213,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
         nested && "py-[7px] pl-8 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
+        featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)]",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
         isOn && RAIL_ACTIVE,
@@ -231,6 +224,29 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
       )}
+    </button>
+  );
+}
+
+function SearchItem({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Buscar"
+      aria-label="Buscar páginas, animais e ações"
+      className={cn(
+        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[var(--side-hair,rgba(232,220,196,0.1))] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
+        "hover:bg-[rgba(232,220,196,0.06)] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
+        RAIL_ICON_BTN,
+      )}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-4-4" />
+      </svg>
+      <span className={cn("flex-1", RAIL_LABEL)}>Buscar</span>
+      <span className={cn("text-[10px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>Ctrl K</span>
     </button>
   );
 }
@@ -248,60 +264,39 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ModuloHeader({ m, isOpen, isActive, onToggle }: { m: Modulo; isOpen: boolean; isActive: boolean; onToggle: () => void }) {
+function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen: boolean; total: number; onToggle: () => void }) {
   return (
     <button
       type="button"
-      onClick={m.disabled ? undefined : onToggle}
+      onClick={onToggle}
       aria-expanded={isOpen}
-      aria-disabled={m.disabled || undefined}
-      disabled={m.disabled}
-      title={m.disabled ? `${m.label} — em breve` : m.label}
+      title={label}
       className={cn(
-        "relative flex w-full items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
-        "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
+        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[8px] text-left font-sans text-[12.5px] text-[var(--side-mute,#8B8672)]",
+        "hover:bg-[rgba(232,220,196,0.06)] hover:text-[var(--mast-ink)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none [&_svg]:opacity-[.72]",
         RAIL_ICON_BTN,
-        m.disabled ? "cursor-not-allowed text-[var(--side-mute,#8B8672)] opacity-65 [&_svg]:opacity-60" : "cursor-pointer hover:bg-[rgba(232,220,196,0.06)]",
-        isActive && !m.disabled && "font-semibold [&_svg]:opacity-100",
-        // módulo ativo (alguma sub-aba aberta): barrinha brass à esquerda
-        isActive && !m.disabled && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite min-[901px]:max-[1100px]:before:hidden",
       )}
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>{m.icon}</svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>{m.label}</span>
-      {m.disabled ? (
-        <span
-          aria-label="em breve"
-          className={cn(
-            "inline-flex items-center gap-[5px] rounded-[4px] border border-[var(--side-hair,rgba(232,220,196,0.1))] bg-[rgba(232,220,196,0.05)] px-[7px] py-[1px] font-serif text-[11px] italic text-[var(--side-mute,#8B8672)]",
-            RAIL_INLINE_FLEX,
-          )}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-3 w-3 flex-none opacity-85">
-            <rect x="5" y="11" width="14" height="9" rx="2"/>
-            <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
-          </svg>
-          <span className="leading-none">em breve</span>
-        </span>
-      ) : (
-        <svg
-          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
-          className={cn(
-            "!h-[11px] !w-[11px] flex-none !opacity-55 transition-transform duration-150 ease-in-out",
-            isOpen && "rotate-90",
-            RAIL_BLOCK,
-          )}
-        >
-          <path d="M9 6l6 6-6 6"/>
-        </svg>
-      )}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+        <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+      </svg>
+      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
+      <span className={cn("text-[10px] tabular-nums", RAIL_HIDE)}>{total}</span>
+      <svg
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
+        className={cn("!h-[10px] !w-[10px] flex-none transition-transform duration-150", isOpen && "rotate-90", RAIL_BLOCK)}
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
     </button>
   );
 }
 
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
-  mobileOpen, onMobileToggle, propAtiva, onTrocarProp,
+  mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -309,34 +304,33 @@ export function AppSidebar({
   podeVerFolha: boolean;
   areas?: string[];
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
+  onAbrirBusca: () => void;
   // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
 }) {
-  const areaDoModulo: Record<string, string> = {
-    rebanho: "rebanho", plantio: "agricultura", cultivo: "agricultura", corte: "gado_corte", equipe: "equipe",
-  };
-  const areasEfetivas = areas ?? ["rebanho", "agricultura", "gado_corte", "equipe"];
-  const modulosVisiveis = MODULOS
-    .filter((m) => areasEfetivas.includes(areaDoModulo[m.id]) && (m.id !== "equipe" || podeVerFolha));
-  const [openModulo, setOpenModulo] = useState<ModuloId | null>(() => {
+  const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
+  const areasVisiveis = AREAS_TRABALHO.filter(
+    (area) => temAcessoArea(areasEfetivas, area.permissao as "pecuaria" | "agricultura" | "equipe") && (!area.exigeFolha || podeVerFolha),
+  );
+  const [openExtras, setOpenExtras] = useState<AreaTrabalhoId | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && MODULOS.some((m) => m.id === stored && !m.disabled)) return stored;
+      if (stored && AREAS_TRABALHO.some((area) => area.id === stored && area.extras?.length)) return stored as AreaTrabalhoId;
     } catch { /* ignora SSR / storage indisponível */ }
-    return moduloOfTab(current) ?? MODULOS.find((m) => !m.disabled)?.id ?? null;
+    return areaExtraOfTab(current);
   });
 
-  // Abre automaticamente o módulo da aba atual quando o usuário navega via outro caminho
-  // (ex.: link do Dashboard que pula direto pro reb-animal).
+  // Se um deep-link cair numa opção secundária, abre o bloco certo para manter
+  // a localização atual visível sem exigir outro clique do usuário.
   useEffect(() => {
-    const m = moduloOfTab(current);
-    if (m && m !== openModulo) setOpenModulo(m);
+    const area = areaExtraOfTab(current);
+    if (area && area !== openExtras) setOpenExtras(area);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, openModulo ?? ""); } catch { /* noop */ }
-  }, [openModulo]);
+    try { localStorage.setItem(STORAGE_KEY, openExtras ?? ""); } catch { /* noop */ }
+  }, [openExtras]);
 
   // Fecha o drawer mobile se a viewport estiver (ou passar a estar) >=901px —
   // nessa largura o trilho desktop assume e o painel do Sheet vira `hidden`
@@ -356,11 +350,13 @@ export function AppSidebar({
   // "Caixinha" dobrou dentro de Gastos (sub-aba) e "Categorias" dentro de
   // Configurações — nenhuma das duas aparece como item solto na sidebar.
   const DOBRADAS = new Set<Tab>(["caixinha", "plano"]);
-  const gestao = financeiro.filter((t) => !DOBRADAS.has(t.id));
+  const itensFinanceiros = financeiro.filter((t) => !DOBRADAS.has(t.id));
+  const acessoRapido = itensFinanceiros.filter((t) => t.id === "dashboard" || t.id === "lancar");
+  const gestao = itensFinanceiros.filter((t) => t.id !== "dashboard" && t.id !== "lancar");
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
-
-  const toggleModulo = (id: ModuloId) => setOpenModulo((cur) => (cur === id ? null : id));
+  const abrirBusca = () => { onMobileToggle(false); onAbrirBusca(); };
+  const toggleExtras = (id: AreaTrabalhoId) => setOpenExtras((cur) => (cur === id ? null : id));
 
   // Cabeçalho da sidebar: marca Terrano + seletor de fazenda/sítio.
   const sideHead = (
@@ -378,32 +374,65 @@ export function AppSidebar({
   const navBody = (
     <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
-        <GroupLabel>Gestão</GroupLabel>
-        {gestao.map((t) => (
+        <GroupLabel>Acesso rápido</GroupLabel>
+        <SearchItem onClick={abrirBusca} />
+        {acessoRapido.map((t) => (
           <Item
-            key={t.id} id={t.id} label={t.label} current={current} onNav={nav} chevron
-            activeWhen={t.id === "gastos" ? ["caixinha", "cadastros"] : undefined}
+            key={t.id}
+            id={t.id}
+            label={t.id === "dashboard" ? "Visão geral" : "Novo lançamento"}
+            current={current}
+            onNav={nav}
+            featured={t.id === "lancar"}
           />
         ))}
       </div>
 
-      <div className="mt-4 flex flex-col gap-px">
-        <GroupLabel>Atividades</GroupLabel>
-        {modulosVisiveis.map((m) => {
-          const isOpen = openModulo === m.id && !m.disabled;
-          const isActive = m.subs.some((s) => s.id === current);
-          return (
-            <div key={m.id} className="flex flex-col">
-              <ModuloHeader m={m} isOpen={isOpen} isActive={isActive} onToggle={() => toggleModulo(m.id)} />
-              {isOpen && (
-                <div className={cn("flex flex-col gap-px pb-1", RAIL_BLOCK)}>
-                  {m.subs.map((s) => <Item key={s.id} id={s.id} label={s.label} current={current} onNav={nav} nested />)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {areasVisiveis.map((area) => {
+        const isOpen = openExtras === area.id;
+        return (
+          <div key={area.id} className="mt-4 flex flex-col gap-px">
+            <GroupLabel>{area.label}</GroupLabel>
+            {area.principais.map((item) => (
+              <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} />
+            ))}
+            {!!area.extras?.length && (
+              <>
+                <MoreToggle
+                  label={`Mais opções de ${area.label.toLowerCase()}`}
+                  total={area.extras.length}
+                  isOpen={isOpen}
+                  onToggle={() => toggleExtras(area.id)}
+                />
+                {isOpen && (
+                  <div className={cn("flex flex-col gap-px pb-1", RAIL_BLOCK)}>
+                    {area.extras.map((item) => (
+                      <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} nested />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      {gestao.length > 0 && (
+        <div className="mt-4 flex flex-col gap-px">
+          <GroupLabel>Gestão</GroupLabel>
+        {gestao.map((t) => (
+          <Item
+            key={t.id}
+            id={t.id}
+            label={t.id === "gastos" ? "Financeiro" : t.label}
+            current={current}
+            onNav={nav}
+            chevron
+            activeWhen={t.id === "gastos" ? ["caixinha", "cadastros"] : undefined}
+          />
+        ))}
+        </div>
+      )}
     </div>
   );
 

@@ -8,8 +8,9 @@ export type Flag =
   | "exportar"
   | "gerenciarAcessos";
 
-export const AREAS_IDS = ["financeiro", "rebanho", "agricultura", "gado_corte", "equipe"] as const;
+export const AREAS_IDS = ["financeiro", "pecuaria", "agricultura", "equipe"] as const;
 export type Area = (typeof AREAS_IDS)[number];
+const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
 
 // `relatorio` é o identificador persistido por compatibilidade; na interface ele
 // representa a Central de Relatórios geral, não apenas o antigo fechamento.
@@ -50,7 +51,18 @@ export function aplicarPreset(papel: string): { abas: string[]; areas: Area[]; f
 }
 
 export function temArea(u: { dono: boolean; areas: string[] }, area: Area): boolean {
-  return u.dono || u.areas.includes(area);
+  if (u.dono || u.areas.includes(area)) return true;
+  return area === "pecuaria" && u.areas.some((id) => AREAS_LEGADAS_PECUARIA.has(id));
+}
+
+/** Normaliza permissões persistidas antes da unificação da pecuária. */
+export function normalizarAreas(areas: string[]): Area[] {
+  const resultado = new Set<Area>();
+  for (const area of areas) {
+    if (AREAS_LEGADAS_PECUARIA.has(area)) resultado.add("pecuaria");
+    else if ((AREAS_IDS as readonly string[]).includes(area)) resultado.add(area as Area);
+  }
+  return [...resultado];
 }
 
 export function temPermissao(u: { dono: boolean; flags: string[] }, flag: Flag): boolean {

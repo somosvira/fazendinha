@@ -5,6 +5,7 @@ export interface AnimalDTO {
   id: string; numero: string; nome: string;
   sexo: "F" | "M";
   categoria: "BEZERRA" | "NOVILHA" | "VACA" | "BEZERRO" | "TOURO" | "CABRITA" | "CABRA" | "CABRITO" | "BODE";
+  finalidade: "LEITE" | "CORTE" | "DUPLA_APTIDAO" | "NAO_INFORMADA";
   raca: string | null; grauSangue: string | null;
   dataNascimento: string | null; dataEntrada: string;   // ISO "YYYY-MM-DD"
   brincoEletronico: string | null; sisbov: string | null;

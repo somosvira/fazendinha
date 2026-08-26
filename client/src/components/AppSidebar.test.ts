@@ -60,6 +60,7 @@ function baseProps(overrides: Partial<{
   areas: string[];
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  onAbrirBusca: () => void;
   propAtiva: number | null;
   onTrocarProp: (id: number | null) => void;
 }> = {}) {
@@ -72,9 +73,10 @@ function baseProps(overrides: Partial<{
     ],
     isAdmin: true,
     podeVerFolha: true,
-    areas: ["rebanho", "agricultura", "gado_corte", "equipe"],
+    areas: ["pecuaria", "agricultura", "equipe"],
     mobileOpen: false,
     onMobileToggle: vi.fn(),
+    onAbrirBusca: vi.fn(),
     propAtiva: null,
     onTrocarProp: vi.fn(),
     ...overrides,
@@ -85,65 +87,99 @@ describe("AppSidebar", () => {
   it("chama onNav com a Tab certa ao clicar num item", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
-    fireEvent.click(screen.getByText("Gastos"));
+    fireEvent.click(screen.getByText("Financeiro"));
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 
-  it("mostra Acasalamento depois de Reprodução e navega para a Tab dedicada", () => {
+  it("deixa Reprodução em um clique e mantém Acasalamento nas opções especializadas", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
 
     const reproducao = screen.getByText("Reprodução");
+    fireEvent.click(reproducao);
+    expect(props.onNav).toHaveBeenCalledWith("reb-reproducao");
+
+    expect(screen.queryByText("Acasalamento")).toBeNull();
+    fireEvent.click(screen.getByText("Mais opções de pecuária"));
     const acasalamento = screen.getByText("Acasalamento");
-    expect(reproducao.compareDocumentPosition(acasalamento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(acasalamento);
     expect(props.onNav).toHaveBeenCalledWith("reb-acasalamento");
   });
 
+  it("expõe Controle leiteiro diretamente na área de pecuária", () => {
+    const props = baseProps({ areas: ["pecuaria"] });
+    render(h(AppSidebar, props));
+
+    fireEvent.click(screen.getByText("Controle leiteiro"));
+    expect(props.onNav).toHaveBeenCalledWith("reb-producao");
+  });
+
+  it("reúne animais leiteiros e lotes coletivos na mesma área Pecuária", () => {
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    expect(screen.getByText("Animais")).toBeTruthy();
+    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
+    expect(screen.getByText("Pesagens")).toBeTruthy();
+    expect(screen.queryByText("Gado de corte")).toBeNull();
+  });
+
+  it("normaliza permissões antigas sem duplicar a área", () => {
+    render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
+    expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    expect(screen.getByText("Animais")).toBeTruthy();
+    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
+  });
+
+  it("abre a busca global pelo atalho visível da sidebar", () => {
+    const props = baseProps();
+    render(h(AppSidebar, props));
+
+    fireEvent.click(screen.getByRole("button", { name: "Buscar páginas, animais e ações" }));
+    expect(props.onAbrirBusca).toHaveBeenCalledOnce();
+  });
+
   it("esconde o módulo Equipe & Ponto quando podeVerFolha=false", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: false })));
-    expect(screen.queryByText("Equipe & Ponto")).toBeNull();
+    expect(screen.queryByText("Equipe")).toBeNull();
   });
 
   it("mostra o módulo Equipe & Ponto quando podeVerFolha=true", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: true })));
-    expect(screen.getByText("Equipe & Ponto")).toBeTruthy();
+    expect(screen.getByText("Equipe")).toBeTruthy();
+    expect(screen.getByText("Ponto")).toBeTruthy();
   });
 
   it("mostra somente módulos pertencentes às áreas autorizadas", () => {
-    render(h(AppSidebar, baseProps({ areas: ["rebanho"] })));
-    expect(screen.getByText("Rebanho leiteiro")).toBeTruthy();
-    expect(screen.queryByText("Plantio · café")).toBeNull();
-    expect(screen.queryByText("Milho")).toBeNull();
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    expect(screen.getByText("Pecuária")).toBeTruthy();
+    expect(screen.queryByText("Agronomia")).toBeNull();
     expect(screen.queryByText("Gado de corte")).toBeNull();
-    expect(screen.queryByText("Equipe & Ponto")).toBeNull();
+    expect(screen.queryByText("Equipe")).toBeNull();
   });
 
-  it("clicar no cabeçalho de um módulo alterna (acordeão) seus sub-itens", () => {
-    render(h(AppSidebar, baseProps()));
-    // Sem localStorage e current="dashboard" (não pertence a nenhum módulo),
-    // o 1º módulo não-desabilitado ("Rebanho leiteiro") abre por padrão.
-    expect(screen.getByText("Painel")).toBeTruthy();
+  it("clicar em Mais opções alterna somente as rotinas menos frequentes", () => {
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    expect(screen.getByText("Reprodução")).toBeTruthy();
+    expect(screen.queryByText("FIV / TE")).toBeNull();
 
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.queryByText("Painel")).toBeNull();
+    fireEvent.click(screen.getByText("Mais opções de pecuária"));
+    expect(screen.getByText("FIV / TE")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.getByText("Painel")).toBeTruthy();
+    fireEvent.click(screen.getByText("Mais opções de pecuária"));
+    expect(screen.queryByText("FIV / TE")).toBeNull();
   });
 
-  it("persiste o módulo aberto no localStorage e abre automaticamente o módulo da aba atual ao navegar", () => {
+  it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
     const { rerender } = render(h(AppSidebar, baseProps()));
 
-    fireEvent.click(screen.getByText("Milho"));
-    expect(localStorage.getItem("rionovo:sidebar:openModulo")).toBe("cultivo");
-    expect(screen.getByText("Safras")).toBeTruthy();
+    fireEvent.click(screen.getByText("Mais opções de agronomia"));
+    expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
+    expect(screen.getByText("Safras de milho")).toBeTruthy();
 
-    // navega (via prop `current`, como o App faria) para uma aba de outro módulo:
-    // o efeito de auto-open deve trocar o acordeão sem clique no cabeçalho.
-    rerender(h(AppSidebar, baseProps({ current: "reb-nutricao" as Tab })));
-    expect(screen.getByText("Nutrição")).toBeTruthy();
-    expect(screen.queryByText("Safras")).toBeNull();
+    // Deep-link para uma opção secundária de outra área deve abrir o bloco certo.
+    rerender(h(AppSidebar, baseProps({ current: "reb-custo" as Tab })));
+    expect(screen.getByText("Custos e indicadores")).toBeTruthy();
+    expect(screen.queryByText("Safras de milho")).toBeNull();
   });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {

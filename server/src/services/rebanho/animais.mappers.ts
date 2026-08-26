@@ -31,6 +31,7 @@ export function toAnimalDTO(a: any): AnimalDTO {
     nome: a.nome ?? "",
     sexo: a.sexo,
     categoria: a.categoria,
+    finalidade: a.finalidade ?? "NAO_INFORMADA",
     raca: a.raca?.nome ?? null,
     grauSangue: a.grauSangue ?? null,
     dataNascimento: iso(a.dataNascimento),

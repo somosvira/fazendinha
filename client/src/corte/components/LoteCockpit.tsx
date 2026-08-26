@@ -34,7 +34,7 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
 
   return (
     <RebMain>
-      <button className={CRUMB} onClick={onVoltar}>← <b>Corte</b> &nbsp;/&nbsp; Lote {l.codigo}</button>
+      <button className={CRUMB} onClick={onVoltar}>← <b>Pecuária</b> &nbsp;/&nbsp; Lote coletivo {l.codigo}</button>
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>

@@ -3,22 +3,24 @@ import {
   listarAnimais, listarGrupos, useSetores, alterarAnimaisColetivo,
   type GrupoDTO,
 } from "../api";
-import type { Animal } from "../types";
+import type { Animal, FinalidadeAnimal } from "../types";
 import { AnimalIdentity } from "./AnimalIdentity";
 
-// Alteração coletiva: filtra por grupo/setor, seleciona os animais e aplica um novo grupo e/ou
-// setor a todos de uma vez (o backend grava as movimentações). Painel próprio (lista leve com
+// Alteração coletiva: filtra os animais e aplica grupo, localização e/ou finalidade produtiva.
+// O backend grava movimentações quando grupo/localização mudam. Painel próprio (lista leve com
 // seleção), sem mexer na lista compartilhada (HerdDomainView).
 export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () => void; onAplicado?: () => void }) {
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const { data: setores } = useSetores();
   const [filtroSetor, setFiltroSetor] = useState("");
   const [filtroGrupo, setFiltroGrupo] = useState("");
+  const [filtroFinalidade, setFiltroFinalidade] = useState("");
   const [animais, setAnimais] = useState<Animal[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [destinoGrupo, setDestinoGrupo] = useState("");
   const [destinoSetor, setDestinoSetor] = useState("");
+  const [destinoFinalidade, setDestinoFinalidade] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -28,31 +30,32 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
   // Carrega os animais ativos que batem com o filtro (grupo/setor).
   useEffect(() => {
     setCarregando(true); setOk(null);
-    listarAnimais({ status: "ATIVO", grupoId: filtroGrupo ? Number(filtroGrupo) : undefined, setor: filtroSetor || undefined })
+    listarAnimais({ status: "ATIVO", grupoId: filtroGrupo ? Number(filtroGrupo) : undefined, setor: filtroSetor || undefined, finalidade: (filtroFinalidade || undefined) as FinalidadeAnimal | undefined })
       .then((as) => { setAnimais(as); setSel(new Set()); })
       .catch(() => setAnimais([]))
       .finally(() => setCarregando(false));
-  }, [filtroGrupo, filtroSetor]);
+  }, [filtroGrupo, filtroSetor, filtroFinalidade]);
 
   const todosSelecionados = animais.length > 0 && sel.size === animais.length;
   function toggle(id: number) { setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   function toggleTodos() { setSel(todosSelecionados ? new Set() : new Set(animais.map((a) => Number(a.id)))); }
 
-  const temDestino = destinoGrupo !== "" || destinoSetor !== "";
+  const temDestino = destinoGrupo !== "" || destinoSetor !== "" || destinoFinalidade !== "";
   const podeAplicar = sel.size > 0 && temDestino && !salvando;
 
   async function aplicar() {
     if (!podeAplicar) return;
     setSalvando(true); setErro(null); setOk(null);
     try {
-      const patch: { grupoId?: number | null; setor?: string | null } = {};
+      const patch: { grupoId?: number | null; setor?: string | null; finalidade?: FinalidadeAnimal } = {};
       if (destinoGrupo !== "") patch.grupoId = Number(destinoGrupo);
       if (destinoSetor !== "") patch.setor = destinoSetor;
+      if (destinoFinalidade !== "") patch.finalidade = destinoFinalidade as FinalidadeAnimal;
       const r = await alterarAnimaisColetivo([...sel].map(Number), patch);
       setOk(`${r.atualizados} animais alterados · ${r.movimentacoes} movimentação(ões) registrada(s).`);
       onAplicado?.();
       // recarrega a lista com o filtro atual (os animais podem ter saído do filtro)
-      const as = await listarAnimais({ status: "ATIVO", grupoId: filtroGrupo ? Number(filtroGrupo) : undefined, setor: filtroSetor || undefined });
+      const as = await listarAnimais({ status: "ATIVO", grupoId: filtroGrupo ? Number(filtroGrupo) : undefined, setor: filtroSetor || undefined, finalidade: (filtroFinalidade || undefined) as FinalidadeAnimal | undefined });
       setAnimais(as); setSel(new Set());
     } catch (e) { setErro(e instanceof Error ? e.message : "Falha ao aplicar."); }
     finally { setSalvando(false); }
@@ -75,10 +78,15 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
             {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
           </select>
         </label>
-        <label className="flex flex-col text-xs text-ink-3">Filtrar por setor
+        <label className="flex flex-col text-xs text-ink-3">Filtrar por localização
           <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
             <option value="">todos</option>
             {(setores ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col text-xs text-ink-3">Filtrar por finalidade
+          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={filtroFinalidade} onChange={(e) => setFiltroFinalidade(e.target.value)}>
+            <option value="">todas</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
           </select>
         </label>
       </div>
@@ -111,9 +119,14 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
             {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
           </select>
         </label>
-        <label className="flex flex-col text-xs text-ink-3">Novo setor
+        <label className="flex flex-col text-xs text-ink-3">Nova localização
           <input className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={destinoSetor} onChange={(e) => setDestinoSetor(e.target.value)} placeholder="(não mexer)" list="setores-lista" maxLength={40} />
           <datalist id="setores-lista">{(setores ?? []).map((s) => <option key={s} value={s} />)}</datalist>
+        </label>
+        <label className="flex flex-col text-xs text-ink-3">Nova finalidade
+          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={destinoFinalidade} onChange={(e) => setDestinoFinalidade(e.target.value)}>
+            <option value="">(não mexer)</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
+          </select>
         </label>
         <button onClick={aplicar} disabled={!podeAplicar} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
           Aplicar a {sel.size} {sel.size === 1 ? "animal" : "animais"}

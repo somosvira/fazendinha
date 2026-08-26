@@ -70,7 +70,7 @@ describe("mapearLote", () => {
       label: "LT-01 · Boiada A",
       sublabel: "BOI_GORDO · 42 cab",
       tab: "cor-lote",
-      grupo: "Lotes de corte",
+      grupo: "Lotes coletivos",
     });
   });
 });

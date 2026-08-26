@@ -1,7 +1,20 @@
-export interface EventoTimelineDTO { id: string; animalId: string; data: string; dominio: "sanidade"; titulo: string; detalhe?: string; alerta?: boolean; }
+export interface EventoTimelineDTO { id: string; animalId: string; data: string; dominio: "sanidade"; titulo: string; detalhe?: string; alerta?: boolean; editavel: true; dadosEdicao: Record<string, unknown>; }
 const iso = (d: Date) => new Date(d).toISOString().slice(0, 10);
 export function toTimeline(e: any): EventoTimelineDTO {
-  const base = { id: String(e.id), animalId: String(e.animalId), data: iso(e.data), dominio: "sanidade" as const };
+  const base = {
+    id: String(e.id), animalId: String(e.animalId), data: iso(e.data), dominio: "sanidade" as const,
+    editavel: true as const,
+    dadosEdicao: {
+      tipo: e.tipo, data: iso(e.data), observacao: e.observacao ?? "", doenca: e.doenca ?? "",
+      dtFim: e.dtFim ? iso(e.dtFim) : "", diasTratamento: e.diasTratamento ?? "",
+      produto: e.produto ?? "", dose: e.dose ?? "", carencia: e.carencia ?? "",
+      loteProduto: e.loteProduto ?? "", produtoId: e.produtoId ?? "",
+      quantidadeUsada: e.quantidadeUsada != null ? Number(e.quantidadeUsada) : "",
+      ccs: e.ccs ?? "", gordura: e.gordura != null ? Number(e.gordura) : "",
+      proteina: e.proteina != null ? Number(e.proteina) : "", quarto: e.quarto ?? "",
+      severidade: e.severidade ?? "", resultadoCultivo: e.resultadoCultivo ?? "",
+    },
+  };
   switch (e.tipo) {
     case "OCORRENCIA": return { ...base, titulo: `Ocorrência — ${e.doenca}`, detalhe: e.diasTratamento ? `${e.diasTratamento} dias de tratamento` : undefined, alerta: true };
     case "APLICACAO": return { ...base, titulo: `Aplicação — ${e.produto}`, detalhe: [e.dose && `dose ${e.dose}`, e.carencia != null && `carência ${e.carencia}h`, e.loteProduto && `lote ${e.loteProduto}`].filter(Boolean).join(" · ") || undefined };

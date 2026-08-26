@@ -73,7 +73,7 @@ export function mapearLote(row: {
     label: row.codigo + " · " + row.nome,
     sublabel: row.categoria + " · " + row.numCabecas + " cab",
     tab: "cor-lote",
-    grupo: "Lotes de corte",
+    grupo: "Lotes coletivos",
   };
 }
 

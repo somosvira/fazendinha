@@ -32,6 +32,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
   const [f, setF] = useState({
     numero: animal?.numero ?? "", nome: animal?.nome ?? "", sexo: animal?.sexo ?? "F",
     categoria: animal?.categoria ?? "NOVILHA",
+    finalidade: animal?.finalidade ?? "NAO_INFORMADA",
     dataNascimento: animal?.dataNascimento ?? "", dataEntrada: animal?.dataEntrada ?? "",
     brincoEletronico: animal?.brincoEletronico ?? "", grupoId: animal?.grupoId ?? "",
     racaId: "", fracaoSangue: "8/8", racaSecundariaId: "",
@@ -83,7 +84,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
       else {
         const grauSangue = montarGrauSangue(f.fracaoSangue, racaPrimaria, racaSecundaria);
         const payload: any = {
-          numero: f.numero, nome: f.nome || undefined, sexo: f.sexo, categoria: f.categoria,
+          numero: f.numero, nome: f.nome || undefined, sexo: f.sexo, categoria: f.categoria, finalidade: f.finalidade,
           grauSangue: grauSangue ?? undefined,
           dataNascimento: f.dataNascimento || undefined, dataEntrada: f.dataEntrada,
           brincoEletronico: f.brincoEletronico || undefined,
@@ -125,6 +126,15 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
                     {CATEGORIAS_POR_ESPECIE[esp].map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </optgroup>
                 ))}
+              </RebSelect>
+            </RebField>
+
+            <RebField label="Finalidade produtiva">
+              <RebSelect value={f.finalidade} onChange={(v) => set("finalidade", v)}>
+                <option value="NAO_INFORMADA">Não informada</option>
+                <option value="LEITE">Leite</option>
+                <option value="CORTE">Corte</option>
+                <option value="DUPLA_APTIDAO">Dupla aptidão</option>
               </RebSelect>
             </RebField>
 

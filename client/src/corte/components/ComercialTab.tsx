@@ -29,7 +29,7 @@ export function ComercialTab({ onRegistrar }: { onRegistrar: (lote: Lote) => voi
   const [aba, setAba] = useState<"painel" | "simulador">("painel");
   const { data, loading } = useLotes({ estado: "ATIVO" });
 
-  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Comercial" /><Loader /></RebMain>;
+  if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Comercialização" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrar(l); };
 
@@ -67,7 +67,7 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
   return (
     <RebMain>
       <RebHeader
-        eyebrow="Corte · simulador de venda"
+        eyebrow="Pecuária · lotes coletivos"
         title="Simulador de janela comercial"
         actions={<RebButton onClick={onVoltar}>← Painel comercial</RebButton>}
       />
