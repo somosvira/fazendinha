@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-server exec prisma generate && pnpm --filter rionovo-server run build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-server exec prisma generate && pnpm --filter "rionovo-server..." run build
     startCommand: pnpm --filter rionovo-server run start:prod
     healthCheckPath: /api/health
     envVars:
