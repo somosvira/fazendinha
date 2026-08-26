@@ -89,6 +89,14 @@ enfileiramento e o envio. Pré-validação reduz a frequência do problema, não
 elimina — o mecanismo de recuperação abaixo continua necessário mesmo com
 validação perfeita.
 
+**Como validar: reusar o schema Zod do server via `packages/shared`
+(`@rionovo/shared`), não reescrever regra no client.** Primeiro caso, também
+em 2026-08-25: `PontoTab.tsx` roda `upsertRegistroSchema.safeParse(body)`
+antes de enfileirar — mesmo schema que o server usa em `zValidator`. Achado
+retroativo: Ponto (único módulo já em produção) tinha exatamente esse gap
+(intervalo negativo, observação sem limite de tamanho) — a convenção não é
+só pra fatia nova, vale corrigir módulo já shippado quando achar o caso.
+
 **Recuperação de erro na fila — metade resolvida em 2026-08-25.** Erro de
 item (validação/regra de negócio — qualquer status não-2xx que não seja 401)
 não contamina os outros: `fetchCru` lança `ErroHttp` (com `status`),
