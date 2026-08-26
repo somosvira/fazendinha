@@ -65,16 +65,37 @@ Fora do escopo por ora: IA/chat, WhatsApp bot, OCR de nota (dependem de
 serviço externo — impossível offline por definição) e telas administrativas
 (Acessos, Config, Plano de contas — baixa utilidade offline).
 
-**Também fora do escopo da fundação (#228), registrado aqui de propósito
-pra não ficar implícito:** service worker/app shell (PWA). O que existe
-hoje cobre "o app já estava aberto com rede e no meio do uso a conexão
-cai" — não cobre "abrir o navegador do zero sem nenhuma rede" (confirmado:
-reload de página offline sem visita prévia falha com
-`net::ERR_INTERNET_DISCONNECTED`, não tem nada servindo o HTML/JS
-localmente). Caminho padrão pra resolver isso quando for priorizado:
-`vite-plugin-pwa` (Workbox) só pra precache do shell — granularidade
-grossa está ok (telas fora do escopo da camada 3 podem ficar
-desabilitadas offline, não precisa cobrir tudo).
+**Fora do escopo da fundação (#228), em andamento a partir daqui:** service
+worker/app shell (PWA). O que existia até #228 cobria "o app já estava
+aberto com rede e no meio do uso a conexão cai" — não cobria "abrir o
+navegador do zero sem nenhuma rede" (confirmado: reload de página offline
+sem visita prévia falha com `net::ERR_INTERNET_DISCONNECTED`, não tinha
+nada servindo o HTML/JS localmente). Caminho: `vite-plugin-pwa` (Workbox)
+só pra precache do shell — granularidade grossa está ok (telas fora do
+escopo da camada 3 podem ficar desabilitadas offline, não precisa cobrir
+tudo).
+
+## Trava de UI pra área sem suporte offline
+
+Com o shell podendo carregar offline (seção acima), toda tela do app abre
+mesmo sem rede — mas só o Ponto tem escrita enfileirada de verdade; o resto
+tentaria buscar/gravar dado e falharia de forma confusa (spinner preso,
+erro genérico, ou pior, deixar clicar "salvar" e perder a alteração
+silenciosamente). Decisão: travar a aba inteira em vez de deixar renderizar
+quebrada.
+
+Implementado em `App.tsx`: `TABS_OFFLINE` (um `Set<Tab>`, hoje só
+`eqp-ponto`) + `useOnlineStatus()`. Fora da lista, sem rede, `conteudo`
+renderiza `OfflineGatedTab` no lugar da tela real — mesmo padrão que já
+existia pra falta de permissão (`GatedTab`/`canAccessTab`), só reusado.
+Testado no browser real: offline, abrir Rebanho mostra a trava; abrir Ponto
+funciona normal (mesmo aviso "sem conexão" de sempre). Atualizar
+`TABS_OFFLINE` conforme cada fatia da camada 3 ganhar fila própria.
+
+Outras formas consideradas (checagem por query, banner sem travar, overlay
+por cima do conteúdo, interceptar no service worker) ficaram de fora por
+serem mais trabalho pro mesmo resultado, ou por não atenderem "travar de
+verdade" — comparação detalhada num scratch local, não versionado.
 
 ## Convenção obrigatória por módulo: pré-validar antes de enfileirar
 
