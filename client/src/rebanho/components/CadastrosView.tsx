@@ -11,6 +11,7 @@ import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb
 import { EmptyState } from "@/components/EmptyState";
 import { Package, Users } from "lucide-react";
 import { fmtMoneyExact } from "@/components/charts";
+import { Paginacao, usePaginacaoLocal } from "@/components/Paginacao";
 import { IndicadoresGeneticosSection } from "./IndicadoresGeneticosSection";
 import { MedidasAcasalamentoSection } from "./MedidasAcasalamentoSection";
 
@@ -56,6 +57,7 @@ function Produtos() {
   const { data, loading, erro, recarregar } = useProdutos({ tipo: tipo || undefined, q: q || undefined });
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [novo, setNovo] = useState(false);
+  const paginacao = usePaginacaoLocal(data, [tipo, q]);
 
   const toggleAtivo = async (p: ProdutoDTO) => { await editarProduto(p.id, { ativo: !p.ativo }); recarregar(); };
 
@@ -81,9 +83,10 @@ function Produtos() {
             : <EmptyState icon={Package} titulo="Nenhum produto cadastrado" descricao="Produtos são os itens que você compra e lança (ração, medicamento, insumo). Cadastre o primeiro para começar." acao={<RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo produto</RebButton>} />
         )
         : (
+          <>
           <RebTable>
             <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Custo</th><th>Situação</th><th></th></tr></thead>
-            <tbody>{data.map((p) => (
+            <tbody>{paginacao.itens.map((p) => (
               <tr key={p.id}>
                 <td><RebAnm>{p.nome}</RebAnm></td>
                 <td>{LABEL_PRODUTO[p.tipo]}</td>
@@ -96,7 +99,8 @@ function Produtos() {
                 </td>
               </tr>
             ))}</tbody>
-          </RebTable>
+          </RebTable><Paginacao estado={paginacao} nome="produtos" />
+          </>
         )}
 
       {novo && <ProdutoForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}
@@ -111,6 +115,7 @@ export function Fornecedores() {
   const { data, loading, erro, recarregar } = useFornecedores({ tipo: tipo || undefined, q: q || undefined });
   const [editando, setEditando] = useState<FornecedorDTO | null>(null);
   const [novo, setNovo] = useState(false);
+  const paginacao = usePaginacaoLocal(data, [tipo, q]);
 
   const toggleAtivo = async (fr: FornecedorDTO) => { await editarFornecedor(fr.id, { ativo: !fr.ativo }); recarregar(); };
   const contato = (fr: FornecedorDTO) => [fr.telefone, fr.email].filter(Boolean).join(" · ") || "—";
@@ -137,9 +142,10 @@ export function Fornecedores() {
             : <EmptyState icon={Users} titulo="Nenhum fornecedor cadastrado" descricao="Fornecedores e clientes de quem você compra ou para quem vende. Cadastre o primeiro para vinculá-lo aos lançamentos." acao={<RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo fornecedor</RebButton>} />
         )
         : (
+          <>
           <RebTable>
             <thead><tr><th>Nome</th><th>Tipo</th><th>Documento</th><th>Contato</th><th>Situação</th><th></th></tr></thead>
-            <tbody>{data.map((fr) => (
+            <tbody>{paginacao.itens.map((fr) => (
               <tr key={fr.id}>
                 <td><RebAnm>{fr.nome}</RebAnm></td>
                 <td>{LABEL_PESSOA[fr.tipo]}</td>
@@ -152,7 +158,8 @@ export function Fornecedores() {
                 </td>
               </tr>
             ))}</tbody>
-          </RebTable>
+          </RebTable><Paginacao estado={paginacao} nome="fornecedores" />
+          </>
         )}
 
       {novo && <FornecedorForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}

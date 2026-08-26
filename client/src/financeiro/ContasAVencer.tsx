@@ -19,6 +19,7 @@ import {
 import { fmtMoneyExact } from "../components/charts";
 import { useToast } from "../components/Toast";
 import { Input } from "@/components/ui/input";
+import { OPCOES_POR_PAGINA } from "@/components/Paginacao";
 import { HOJE } from "./HOJE";
 
 // "YYYY-MM-DD" → "dd/mm/aaaa" sem passar por Date (evita shift de fuso).
@@ -89,7 +90,6 @@ function BadgePaga({ dataPagamento }: { dataPagamento: string }) {
 }
 
 const FLASH_MS = 380;
-const POR_PAGINA = 20;
 
 type Tab = "aVencer" | "vencidas" | "pagas";
 
@@ -198,6 +198,7 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
   const qInicial = filtrosIniciais?.q ?? filtrosIniciais?.categoria ?? filtrosIniciais?.pessoa ?? "";
   const [tab, setTab] = useState<Tab>(tabInicial);
   const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(25);
   const [ordem, setOrdem] = useState<{ by: OrdemLancamentos; dir: DirecaoOrdem }>(ORDEM_DEFAULT.aVencer);
   const toast = useToast();
   const [liquidandoId, setLiquidandoId] = useState<number | null>(null);
@@ -220,6 +221,7 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
 
   // Reset paginação quando a busca muda (senão a página 3 fica órfã).
   useEffect(() => { setPagina(1); }, [qDebounced]);
+  useEffect(() => { setPagina(1); }, [porPagina]);
 
   // Toggle asc/desc na mesma coluna; nova coluna aplica dir default e volta pra página 1.
   function ordenarPor(coluna: OrdemLancamentos) {
@@ -239,8 +241,8 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
   const filtros = useMemo(() => {
     const base = {
       natureza: "DEBITO" as const,
-      limit: POR_PAGINA,
-      offset: (pagina - 1) * POR_PAGINA,
+      limit: porPagina,
+      offset: (pagina - 1) * porPagina,
       orderBy: ordem.by,
       orderDir: ordem.dir,
       q: qDebounced || undefined,
@@ -248,12 +250,12 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
     if (tab === "aVencer") return { ...base, situacao: "ABERTO" as const, vencimentoDe: HOJE };
     if (tab === "vencidas") return { ...base, situacao: "ABERTO" as const, vencimentoAte: subDias(HOJE, 1) };
     return { ...base, situacao: "LIQUIDADO" as const };
-  }, [tab, pagina, ordem, qDebounced]);
+  }, [tab, pagina, porPagina, ordem, qDebounced]);
 
   const { data, loading, erro, recarregar } = useLancamentos(filtros);
   const itens = data?.itens ?? [];
   const total = data?.total ?? 0;
-  const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+  const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
   const permiteAcao = tab !== "pagas";
 
   async function marcarPago(it: LancamentoLinhaDTO) {
@@ -474,7 +476,12 @@ export function ContasAVencer({ filtrosIniciais }: { filtrosIniciais?: Record<st
             <span style={{ fontSize: 12, color: "var(--ink-3)" }}>
               Página {pagina} de {totalPaginas} · <span className="mono-nums">{total}</span> {total === 1 ? "lançamento" : "lançamentos"}
             </span>
-            <div style={{ display: "inline-flex", gap: 6 }}>
+            <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <label style={{ fontSize: 12, color: "var(--ink-3)" }}>Ver{" "}
+                <select aria-label="Lançamentos por página" value={porPagina} onChange={(e) => setPorPagina(Number(e.target.value))} style={{ border: "1px solid var(--rule)", background: "var(--surface)", color: "var(--ink)", padding: "5px" }}>
+                  {OPCOES_POR_PAGINA.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
               <button
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina <= 1 || loading}

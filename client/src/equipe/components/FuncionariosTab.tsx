@@ -10,6 +10,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";
 import { Users } from "lucide-react";
+import { Paginacao, usePaginacaoLocal } from "@/components/Paginacao";
 
 type Filtro = "ATIVOS" | "TODOS";
 
@@ -22,6 +23,7 @@ const setorLabel = (fn: FuncionarioDTO) => fn.setor ?? "Geral";
 export function FuncionariosTab() {
   const [filtro, setFiltro] = useState<Filtro>("ATIVOS");
   const [setorSel, setSetorSel] = useState<string>(""); // "" = todos os setores
+  const [busca, setBusca] = useState("");
   const { data, loading, erro, recarregar } = useFuncionarios(filtro === "ATIVOS" ? true : undefined);
   const custo = useCustoMOSetor();
   const [form, setForm] = useState<{ modo: "novo" | "editar" | "baixa"; funcionario?: FuncionarioDTO } | null>(null);
@@ -33,9 +35,10 @@ export function FuncionariosTab() {
     [data]
   );
   const linhas = useMemo(
-    () => (setorSel ? data.filter((fn) => setorLabel(fn) === setorSel) : data),
-    [data, setorSel]
+    () => data.filter((fn) => (!setorSel || setorLabel(fn) === setorSel) && (!busca.trim() || `${fn.nome} ${fn.cargo ?? ""} ${setorLabel(fn)}`.toLocaleLowerCase("pt-BR").includes(busca.trim().toLocaleLowerCase("pt-BR")))),
+    [data, setorSel, busca]
   );
+  const paginacao = usePaginacaoLocal(linhas, [filtro, setorSel, busca]);
 
   // Recarrega lista + custo por setor após salvar/baixar (o custo depende do quadro ativo).
   const aposSalvar = () => { setForm(null); recarregar(); custo.recarregar(); };
@@ -53,6 +56,7 @@ export function FuncionariosTab() {
         ariaLabel="Filtrar por setor"
         options={[{ value: "", label: "Todos os setores" }, ...setores.map((s) => ({ value: s, label: s }))]}
       />
+      <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar nome ou cargo…" aria-label="Buscar funcionário" className="border border-[color:var(--rule-soft)] bg-card px-2 py-1 text-sm text-ink" />
       <RebButton variant="pri" className="ml-auto" onClick={() => setForm({ modo: "novo" })}>+ Novo funcionário</RebButton>
     </div>
   );
@@ -83,6 +87,7 @@ export function FuncionariosTab() {
           />
         )
       ) : (
+        <>
         <RebTable>
           <thead>
             <tr>
@@ -98,7 +103,7 @@ export function FuncionariosTab() {
             </tr>
           </thead>
           <tbody>
-            {linhas.map((fn) => (
+            {paginacao.itens.map((fn) => (
               <tr key={fn.id}>
                 <td><RebAnm>{fn.nome}</RebAnm></td>
                 <td>{fn.cargo ?? "—"}</td>
@@ -120,6 +125,8 @@ export function FuncionariosTab() {
             ))}
           </tbody>
         </RebTable>
+        <Paginacao estado={paginacao} nome="funcionários" />
+        </>
       )}
 
       {/* Custo de mão de obra por setor — só ativos; sem setor → "Geral". Número

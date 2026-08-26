@@ -10,6 +10,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { AnimalIdentity } from "./AnimalIdentity";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Paginacao, usePaginacaoLocal } from "@/components/Paginacao";
 
 // Toolbar do header (filtros/controles) — reaproveitada por AnimalTab etc.
 export const RB_TOOLBAR = "mb-[18px] flex flex-wrap items-center gap-2.5";
@@ -48,6 +49,7 @@ export function HerdDomainView({
   }, [colunasVisiveis, storageKey]);
   const wl = config.worklists.find((w) => w.id === wlId);
   const linhas = wl ? wl.selecionar(resumos) : [];
+  const paginacao = usePaginacaoLocal(linhas, [wlId]);
   const kpis = config.kpis(resumos);
   const colunas = config.colunas.filter((c) => colunasVisiveis.includes(c.nome));
   const alternarColuna = (nome: string) => setColunasVisiveis((atuais) =>
@@ -142,7 +144,7 @@ export function HerdDomainView({
           <RebTable>
             <thead><tr><th>Animal</th>{colunas.map((c) => <th key={c.nome}>{c.nome}</th>)}</tr></thead>
             <tbody>
-              {linhas.map((r) => {
+              {paginacao.itens.map((r) => {
                 const a = nomes?.[r.animalId] ?? getAnimal(r.animalId);
                 return (
                   <tr key={r.animalId}>
@@ -164,6 +166,7 @@ export function HerdDomainView({
               })}
             </tbody>
           </RebTable>
+          <Paginacao estado={paginacao} nome="animais" />
         </>
       )}
     </RebMain>
