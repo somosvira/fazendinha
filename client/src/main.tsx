@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { App } from "./App";
 import { ToastProvider } from "./components/Toast";
-import { queryClient } from "./lib/offline/queryClient";
+import { queryClient, GC_TIME_MS } from "./lib/offline/queryClient";
 import { persister } from "./lib/offline/persister";
 import { iniciarRetomadaAutomatica } from "./lib/offline/resume";
 import { iniciarFila } from "./lib/offline/fila";
@@ -25,7 +25,7 @@ iniciarFila();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: GC_TIME_MS }}>
       <ToastProvider>
         <ShellOffline />
         <App />

@@ -90,6 +90,15 @@ export const obterFolha = (mes: string) => req<FolhaDTO>(`/ponto/folha${qs({ mes
 // chegar depois da nova sobrescreve a folha na tela. `recarregar` continua
 // manual (não cancela).
 
+// Referências estáveis pro fallback de "sem dado ainda" — `query.data ?? []`
+// direto criaria um array novo a cada render, e um consumidor que dependa
+// dele num useEffect (ex.: PontoTab com `registros`) reentraria em loop a
+// cada render. Offline, com a query pausada (nunca chega a resolver), isso
+// vira loop infinito de verdade, não só render desperdiçado (achado testando
+// F5 offline numa combinação funcionário/mês nunca visitada antes).
+const FUNCIONARIOS_VAZIO: FuncionarioDTO[] = [];
+const REGISTROS_VAZIO: RegistroDTO[] = [];
+
 // Via useQuery (não useState+fetch direto) de propósito: é a leitura que
 // alimenta o dropdown de funcionário da tela de Ponto, a única com suporte
 // offline (TABS_OFFLINE em App.tsx) — precisa estar no queryClient pra ser
@@ -100,7 +109,7 @@ export function useFuncionarios(ativo?: boolean) {
     queryFn: () => listarFuncionarios(ativo),
   });
   return {
-    data: query.data ?? [],
+    data: query.data ?? FUNCIONARIOS_VAZIO,
     loading: query.isPending,
     erro: query.error ? (query.error as Error).message : null,
     recarregar: query.refetch,
@@ -148,7 +157,7 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
     enabled: !!funcionarioId,
   });
   return {
-    data: query.data ?? [],
+    data: query.data ?? REGISTROS_VAZIO,
     loading: funcionarioId ? query.isPending : false,
     erro: query.error ? (query.error as Error).message : null,
     recarregar: query.refetch,
