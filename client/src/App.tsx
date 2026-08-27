@@ -32,6 +32,7 @@ import { ABAS, type User } from "./data/acessos";
 import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
+import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -75,6 +76,25 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
         <div className="s">
           A aba <strong>{abaLabel}</strong> não está liberada para este perfil. O proprietário pode liberar em
           Acessos &amp; Permissões.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Abas com suporte real a escrita offline (fila própria) — ver
+// docs/design/offline/OFFLINE_STRATEGY.md. Fora daqui, sem rede a tela é
+// travada em vez de deixar abrir com leitura/escrita quebrada.
+const TABS_OFFLINE = new Set<Tab>(["eqp-ponto"]);
+
+function OfflineGatedTab() {
+  return (
+    <div className="shell-wide">
+      <div className="gated-msg">
+        <div className="lock">⊘</div>
+        <div className="h">Esta área não funciona sem conexão</div>
+        <div className="s">
+          Só o Ponto (Equipe) tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>
@@ -433,6 +453,7 @@ export function App() {
   }, [visibleTabs, effectiveUser?.areas, tab]);
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
+  const online = useOnlineStatus();
 
   // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
   // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
@@ -456,6 +477,8 @@ export function App() {
 
   const conteudo = !canAccessTab(tab)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : (!online && !TABS_OFFLINE.has(tab))
+    ? <OfflineGatedTab />
     : String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
         onAbrirWorklist={abrirWorklist}

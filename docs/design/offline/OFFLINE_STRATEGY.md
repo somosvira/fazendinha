@@ -65,16 +65,49 @@ Fora do escopo por ora: IA/chat, WhatsApp bot, OCR de nota (dependem de
 serviço externo — impossível offline por definição) e telas administrativas
 (Acessos, Config, Plano de contas — baixa utilidade offline).
 
-**Também fora do escopo da fundação (#228), registrado aqui de propósito
-pra não ficar implícito:** service worker/app shell (PWA). O que existe
-hoje cobre "o app já estava aberto com rede e no meio do uso a conexão
-cai" — não cobre "abrir o navegador do zero sem nenhuma rede" (confirmado:
-reload de página offline sem visita prévia falha com
-`net::ERR_INTERNET_DISCONNECTED`, não tem nada servindo o HTML/JS
-localmente). Caminho padrão pra resolver isso quando for priorizado:
-`vite-plugin-pwa` (Workbox) só pra precache do shell — granularidade
-grossa está ok (telas fora do escopo da camada 3 podem ficar
-desabilitadas offline, não precisa cobrir tudo).
+**Fora do escopo da fundação (#228), resolvido no PR seguinte:** service
+worker/app shell (PWA). O que existia até #228 cobria "o app já estava
+aberto com rede e no meio do uso a conexão cai" — não cobria "abrir o
+navegador do zero sem nenhuma rede" (confirmado: reload de página offline
+sem visita prévia falhava com `net::ERR_INTERNET_DISCONNECTED`, não tinha
+nada servindo o HTML/JS localmente).
+
+**Implementado com `vite-plugin-pwa`** (`client/vite.config.ts`), estratégia
+`generateSW` (Workbox por baixo), `registerType: "autoUpdate"`, `manifest:
+false` (não é sobre instalar como app, só sobre o shell carregar sem rede —
+granularidade grossa está ok). `navigateFallback: "/index.html"` com
+`navigateFallbackDenylist: [/^\/api\//]` — só intercepta navegação de
+página, nunca `/api/*` (esse continua 100% por conta da fundação, sem
+nenhum cache do Workbox no meio). Registrado em `main.tsx` via
+`virtual:pwa-register` (`registerSW({ immediate: true })`) — só ativo no
+build de produção, sem efeito em `vite dev`.
+
+Testado: `vite build && vite preview`, reload com `Network.emulateNetworkConditions
+offline:true` (zero rede de verdade, não só sem `/api`) tanto na raiz quanto
+num deep link (`/equipe/ponto`) — os dois carregam o shell normal (tela de
+login) em vez de `net::ERR_INTERNET_DISCONNECTED`.
+
+## Trava de UI pra área sem suporte offline
+
+Com o shell podendo carregar offline (seção acima), toda tela do app abre
+mesmo sem rede — mas só o Ponto tem escrita enfileirada de verdade; o resto
+tentaria buscar/gravar dado e falharia de forma confusa (spinner preso,
+erro genérico, ou pior, deixar clicar "salvar" e perder a alteração
+silenciosamente). Decisão: travar a aba inteira em vez de deixar renderizar
+quebrada.
+
+Implementado em `App.tsx`: `TABS_OFFLINE` (um `Set<Tab>`, hoje só
+`eqp-ponto`) + `useOnlineStatus()`. Fora da lista, sem rede, `conteudo`
+renderiza `OfflineGatedTab` no lugar da tela real — mesmo padrão que já
+existia pra falta de permissão (`GatedTab`/`canAccessTab`), só reusado.
+Testado no browser real: offline, abrir Rebanho mostra a trava; abrir Ponto
+funciona normal (mesmo aviso "sem conexão" de sempre). Atualizar
+`TABS_OFFLINE` conforme cada fatia da camada 3 ganhar fila própria.
+
+Outras formas consideradas (checagem por query, banner sem travar, overlay
+por cima do conteúdo, interceptar no service worker) ficaram de fora por
+serem mais trabalho pro mesmo resultado, ou por não atenderem "travar de
+verdade" — comparação detalhada num scratch local, não versionado.
 
 ## Convenção obrigatória por módulo: pré-validar antes de enfileirar
 
@@ -396,6 +429,7 @@ primeira responde, não em paralelo).
 | Fix: "Preencher grade com horário padrão" chamava `preencherGrade()` direto (fora da fila de escrita offline — é bulk/idempotente no backend, não um upsert único enfileirável); offline o clique só falhava com erro genérico sem enfileirar nada. Botão agora fica desabilitado sem conexão | ✅ Feito | [#233](https://github.com/piubellofelipe/fazendinha/pull/233) |
 | `gcTime` (queryClient) + `maxAge` (persistQueryClient) aumentados de 24h → 72h — 24h era curto pra fazenda sem sinal por alguns dias | ✅ Feito | [#233](https://github.com/piubellofelipe/fazendinha/pull/233) |
 | Fix: trocar de mês offline pra uma combinação funcionário/mês nunca cacheada ficava com `<Loader/>` girando pra sempre — a query fica pausada (networkMode padrão nunca chega a tentar o fetch, então nunca erra). Mês já cacheado continua mostrando na hora, mesmo offline. Mensagem específica no lugar do spinner infinito | ✅ Feito — achado testando a troca de mês offline | [#233](https://github.com/piubellofelipe/fazendinha/pull/233) |
+| App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade | ⬜ Não iniciado | — |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
