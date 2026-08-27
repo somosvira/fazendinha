@@ -152,6 +152,72 @@ ora: reload perde a "sticky activation" do clique, então a música/animação
 da abertura Terrano não toca mais logo após o login — revisitar antes de
 mergear a PR.
 
+## Convenção obrigatória por módulo: hooks de leitura em `useQuery` antes de qualquer escrita offline
+
+Achado analisando a próxima fatia (Corte > Pesagem/Sanidade, 2026-08-27): a
+convenção de pré-validação acima cobre a **escrita**, mas faltava
+documentar uma pré-condição da **leitura** — só query registrada no
+`queryClient` (`useQuery`) é persistida pelo `persister` em IndexedDB (ver
+`client/src/lib/offline/persister.ts`/`main.tsx`). Um hook hand-rolled
+(`useState`+`useEffect`+`fetch` direto — o padrão original de todo
+`api.ts` antes da fundação) nunca passa pelo `queryClient`: não importa
+quanto tempo o app já rodou online, o dado nunca sobrevive a um F5 offline.
+
+Isso já aconteceu uma vez em produção: `useFuncionarios` (dropdown de
+funcionário do Ponto) ficou nesse padrão antigo mesmo depois da fundação
+(#228) — só foi pego testando F5 offline de verdade, não por revisão de
+código (ver tabela de Progresso abaixo). **Regra, a partir de agora:**
+antes de dar suporte offline de escrita a um módulo, migrar pra `useQuery`
+todo hook de leitura do qual a tela depende — não só o formulário de
+escrita em si, mas dropdowns/listas de apoio que a tela também lê (ex.: o
+seletor de lote/funcionário/animal).
+
+**Verificado nesta análise (2026-08-27): `client/src/corte/api.ts` inteiro
+ainda está no padrão antigo** — `useLotes`, `useLote` e `useEventos` usam
+`useState`+`useEffect`+`fetch` direto, zero uso de `useQuery` no arquivo.
+Migrar esses três hooks é pré-requisito da fatia Pesagem/Sanidade, não
+trabalho à parte — sem isso, o mesmo bug do Ponto reaparece (dropdown de
+lote fica vazio depois de F5 offline).
+
+**Armadilha companheira, já resolvida uma vez e fácil de repetir:**
+`query.data ?? []` sem memoizar cria um array novo a cada render. Se algum
+efeito depende desse valor (ex.: recalcular algo derivado da lista) e a
+query está pausada offline (nunca visitada — `networkMode` padrão
+(`"online"`) nem chega a tentar o fetch, fica em `pending` pra sempre), o
+efeito re-executa a cada render em loop infinito — trava real da tela, não
+só "carregando pra sempre". Fix: constante de módulo (ex.: `const
+LOTES_VAZIO: Lote[] = [];`), nunca um literal `[]` inline no retorno do
+hook.
+
+## Checklist: o que "testado" significa pra uma fatia offline
+
+Consolidado depois de verificar #233/#234 na prática — testar no navegador
+real pegou dois gaps (`useFuncionarios` fora do `queryClient`, loop
+infinito offline) que nenhuma leitura de código nem teste automatizado
+isolado tinha capturado antes. Antes de marcar uma fatia como "Feito" na
+tabela de Progresso abaixo:
+
+1. **Regressão automatizada que prova o bug** — escrever o teste, confirmar
+   que ele falha sem o fix (isolar via `git stash` do arquivo do fix,
+   mantendo o teste) e passa com o fix restaurado. Não confiar só em
+   "parece corrigido lendo o código".
+2. **Browser real, offline de verdade** — DevTools → Network → Offline (ou
+   `Network.emulateNetworkConditions offline:true`), não só desconectar o
+   Wi-Fi (cache do SO pode mascarar o resultado). Reload (F5) tanto na
+   raiz quanto num deep link da tela (`/equipe/ponto`, `/corte/...`) — os
+   dois caminhos carregam o shell de formas diferentes.
+3. **Caso "nunca visitado" além do caso feliz "já visitado online"** —
+   toda combinação de filtro/seleção (funcionário×mês no Ponto; lote no
+   Corte) que nunca foi buscada enquanto online precisa de comportamento
+   explícito offline (mensagem clara), não um spinner que gira pra
+   sempre — a query fica pausada, nunca chega a errar sozinha.
+4. **Ciclo completo de escrita** — criar/editar offline → item aparece
+   otimista na lista → reconectar → confirma e (se foi `create`) o id
+   temporário some, substituído pelo id real, sem duplicar nem sumir da
+   lista.
+5. **Todo hook de leitura que a tela usa está em `useQuery`** — não só o
+   hook do formulário de escrita (ver convenção acima).
+
 ## Achados técnicos que mudam a estimativa de dificuldade
 
 - **A dificuldade real não é "quantas tabelas o endpoint toca"** — quase
@@ -315,6 +381,16 @@ key, pra rollback certo mesmo com mais de uma afetada), enfileiramento
 (`enfileirarMutation`, em `fila.ts`), rollback em erro real do servidor,
 `invalidateQueries` quando a fila confirma a escrita (nas `queryKeys` e
 nas `queryKeysRelacionadas`).
+
+**Patch de `update` faz merge profundo, não raso.** `aplicarOtimista` usa
+`mesclarProfundo(item, input)` — recursiva, escrita na mão (sem virar
+dependência de `lodash`): objeto plano em objeto plano recursa campo a
+campo, array e primitivo substituem o valor inteiro. Motivo: um `update`
+parcial (`patch`) com spread raso (`{...item, ...input}`) perde qualquer
+campo irmão dentro de um objeto aninhado que não veio no `input` — ex.:
+mandar só `input.endereco.rua` apagaria `input.endereco.numero` se
+`item.endereco` fosse sobrescrito inteiro pelo spread em vez de mesclado
+campo a campo. Testado em `useOfflineMutation.test.ts`.
 
 `TItem` precisa ter `id: string` (convenção já seguida por todo DTO do
 projeto) — é o que permite a fábrica gerar id temporário e reconciliar
