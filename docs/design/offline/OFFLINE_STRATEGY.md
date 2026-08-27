@@ -109,6 +109,19 @@ por cima do conteúdo, interceptar no service worker) ficaram de fora por
 serem mais trabalho pro mesmo resultado, ou por não atenderem "travar de
 verdade" — comparação detalhada num scratch local, não versionado.
 
+## Convenção: densidade de comentário
+
+Registrado em 2026-08-27, revisando o PR de Corte (#235) — vale pra todo PR
+do epic, não só esse. Comentário bom é o que é **necessário pra entender a
+lógica** (uma armadilha real, um porquê não-óbvio) — não o que narra a
+história da mudança ("movida pra cá", "mesmo motivo do X acima", "espelha o
+PR #Y"). Esse tipo de nota pertence à descrição do PR, não ao código — ela
+apodrece conforme o código muda e some da PR depois do merge de qualquer
+forma. Preferir uma linha curta a um bloco de várias; se dois arquivos
+acabam com o mesmo comentário explicando a mesma coisa (achado comum entre
+telas irmãs, ex.: Pesagem/Sanidade), é sinal de que a explicação deveria
+estar num lugar só (o código compartilhado, não repetida por chamador).
+
 ## Convenção obrigatória por módulo: pré-validar antes de enfileirar
 
 Registrado em 2026-08-25, pra valer a partir da próxima fatia (Pesagem/Sanidade):
