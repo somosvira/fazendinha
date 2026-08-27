@@ -55,7 +55,7 @@ function linhaInicial(data: string, reg: RegistroDTO | null): Linha {
  * intervalo/obs são editáveis; "Salvar" faz upsert e refaz o fetch. Horas e
  * extra 50/100 exibidos vêm computados do backend (RegistroDTO). */
 export function PontoTab() {
-  const { data: funcionarios, loading: loadFunc } = useFuncionarios(true);
+  const { data: funcionarios, loading: loadFunc, erro: erroFunc } = useFuncionarios(true);
   const toast = useToast();
   const meses = useMemo(() => mesesRecentes(12), []);
   const [funcionarioId, setFuncionarioId] = useState<string>("");
@@ -168,7 +168,11 @@ export function PontoTab() {
           ariaLabel="Escolher funcionário"
           options={[
             ...(loadFunc ? [{ value: "", label: "Carregando…" }] : []),
-            ...(!loadFunc && funcionarios.length === 0 ? [{ value: "", label: "Nenhum funcionário ativo" }] : []),
+            // Distingue "sem funcionário ativo" (dado real) de "não deu pra
+            // carregar" (offline sem cache prévio) — senão parece que a
+            // fazenda não tem ninguém ativo quando na verdade é falta de rede.
+            ...(!loadFunc && erroFunc && funcionarios.length === 0 ? [{ value: "", label: "Sem conexão e sem dado salvo neste aparelho" }] : []),
+            ...(!loadFunc && !erroFunc && funcionarios.length === 0 ? [{ value: "", label: "Nenhum funcionário ativo" }] : []),
             ...funcionarios.map((f) => ({ value: String(f.id), label: `${f.nome}${f.cargo ? ` · ${f.cargo}` : ""}` })),
           ]}
         />
@@ -181,10 +185,12 @@ export function PontoTab() {
         />
 
         <RebButton
-          disabled={!funcionarioId || !temPadrao || preenchendo || loading}
-          title={temPadrao
-            ? "Cria os dias úteis do mês com o horário padrão do funcionário (não sobrescreve dias já lançados)"
-            : "Defina o horário padrão do funcionário (Entrada/Saída padrão no cadastro) para usar isto"}
+          disabled={!funcionarioId || !temPadrao || preenchendo || loading || !online}
+          title={!online
+            ? "Precisa de conexão — cria vários lançamentos de uma vez, não dá pra enfileirar como um só (diferente do Salvar por linha)"
+            : temPadrao
+              ? "Cria os dias úteis do mês com o horário padrão do funcionário (não sobrescreve dias já lançados)"
+              : "Defina o horário padrão do funcionário (Entrada/Saída padrão no cadastro) para usar isto"}
           onClick={preencherComPadrao}
         >
           {preenchendo ? "Preenchendo…" : "Preencher grade com horário padrão"}

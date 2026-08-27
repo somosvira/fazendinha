@@ -84,34 +84,43 @@ export const obterFolha = (mes: string) => req<FolhaDTO>(`/ponto/folha${qs({ mes
 
 // HOOKS -------------------------------------------------------------------
 
-// Os hooks abaixo usam uma flag `cancelado` no cleanup do useEffect — diferente
-// do padrão de rebanho/plantio (sem abort). Motivo: aqui o usuário troca mês/
-// funcionário com frequência e uma resposta antiga chegar depois da nova
-// sobrescreve a folha na tela. `recarregar` continua manual (não cancela).
+// useFolha/useCustoMOSetor (abaixo) usam uma flag `cancelado` no cleanup do
+// useEffect — diferente do padrão de rebanho/plantio (sem abort). Motivo:
+// aqui o usuário troca mês/funcionário com frequência e uma resposta antiga
+// chegar depois da nova sobrescreve a folha na tela. `recarregar` continua
+// manual (não cancela).
+
+// Referências estáveis pro fallback de "sem dado ainda" — `query.data ?? []`
+// direto criaria um array novo a cada render, e um consumidor que dependa
+// dele num useEffect (ex.: PontoTab com `registros`) reentraria em loop a
+// cada render. Offline, com a query pausada (nunca chega a resolver), isso
+// vira loop infinito de verdade, não só render desperdiçado (achado testando
+// F5 offline numa combinação funcionário/mês nunca visitada antes).
+const FUNCIONARIOS_VAZIO: FuncionarioDTO[] = [];
+const REGISTROS_VAZIO: RegistroDTO[] = [];
+
+// Via useQuery (não useState+fetch direto) de propósito: é a leitura que
+// alimenta o dropdown de funcionário da tela de Ponto, a única com suporte
+// offline (TABS_OFFLINE em App.tsx) — precisa estar no queryClient pra ser
+// persistida em IndexedDB (persister.ts) e sobreviver a um F5 offline.
 export function useFuncionarios(ativo?: boolean) {
-  const [data, setData] = useState<FuncionarioDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarFuncionarios(ativo).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [ativo]);
-  useEffect(() => {
-    let cancelado = false;
-    setLoading(true); setErro(null);
-    listarFuncionarios(ativo)
-      .then((d) => { if (!cancelado) setData(d); })
-      .catch((e) => { if (!cancelado) setErro(e.message); })
-      .finally(() => { if (!cancelado) setLoading(false); });
-    return () => { cancelado = true; };
-  }, [ativo]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: pontoKeys.funcionarios(ativo),
+    queryFn: () => listarFuncionarios(ativo),
+  });
+  return {
+    data: query.data ?? FUNCIONARIOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // `as const` dá tupla literal — evita duas chamadas montarem "a mesma" key
 // com formato diferente. `mes` em `registros` é "YYYY-MM".
 const pontoKeys = {
   registros: (funcionarioId: string, mes: string) => ["ponto", "registros", funcionarioId, mes] as const,
+  funcionarios: (ativo?: boolean) => ["ponto", "funcionarios", ativo] as const,
 };
 
 // `op: "upsert"` porque a identidade é a chave natural (funcionarioId, data),
@@ -148,7 +157,7 @@ export function useRegistros(funcionarioId: string | null, mes: string) {
     enabled: !!funcionarioId,
   });
   return {
-    data: query.data ?? [],
+    data: query.data ?? REGISTROS_VAZIO,
     loading: funcionarioId ? query.isPending : false,
     erro: query.error ? (query.error as Error).message : null,
     recarregar: query.refetch,
