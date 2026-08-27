@@ -7,6 +7,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 type Metodo = Pesagem["metodo"];
 const METODOS: { k: Metodo; lab: string }[] = [
@@ -29,11 +30,8 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
   const [erro, setErro] = useState<string | null>(null);
   const registrar = useRegistrarPesagem();
   const toast = useToast();
+  const { salvando, salvar: enviar } = useSalvarOffline();
 
-  // Offline-aware: `mutate` já aplica o patch otimista e enfileira na hora
-  // (não espera rede) — por isso fecha o drawer direto, sem "Salvando…".
-  // Erro real do servidor (chegado bem depois, quando a fila sincronizar)
-  // vira toast + desfaz o otimista sozinho (useOfflineMutation).
   function salvar() {
     const payload: PesagemInput = {
       data: data || HOJE,
@@ -51,11 +49,11 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       setErro(valido.error.issues[0]?.message ?? "Dado inválido.");
       return;
     }
-    registrar.mutate(
-      { ...payload, loteId: lote.id },
-      { onError: (e: any) => toast.error("Erro ao salvar a pesagem", e?.message ?? undefined) },
-    );
-    onSalvo();
+    enviar(registrar.mutate, { ...payload, loteId: lote.id }, {
+      onSalvo,
+      onErroInline: setErro,
+      onErroTardio: (msg) => toast.error("Erro ao salvar a pesagem", msg),
+    });
   }
 
   return (
@@ -64,8 +62,8 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       onClose={onFechar}
       actions={
         <>
-          <RebButton onClick={onFechar}>Cancelar</RebButton>
-          <RebButton variant="pri" disabled={!pesoMedio || !numCabecas} onClick={salvar}>Salvar pesagem</RebButton>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !pesoMedio || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar pesagem"}</RebButton>
         </>
       }
     >

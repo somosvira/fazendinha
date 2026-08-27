@@ -7,6 +7,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 /* Catálogo de manejos sanitários (Calendário Embrapa cronograma 11). O label é
  * editorial; o valor é o enum TipoSanitario em UPPERCASE que o backend espera. */
@@ -45,11 +46,8 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
   const [erro, setErro] = useState<string | null>(null);
   const registrar = useRegistrarManejo();
   const toast = useToast();
+  const { salvando, salvar: enviar } = useSalvarOffline();
 
-  // Offline-aware: `mutate` já aplica o patch otimista e enfileira na hora
-  // (não espera rede) — por isso fecha o drawer direto, sem "Salvando…".
-  // Erro real do servidor (chegado bem depois, quando a fila sincronizar)
-  // vira toast + desfaz o otimista sozinho (useOfflineMutation).
   function salvar() {
     const payload: ManejoInput = {
       data: data || HOJE,
@@ -70,11 +68,11 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
       setErro(valido.error.issues[0]?.message ?? "Dado inválido.");
       return;
     }
-    registrar.mutate(
-      { ...payload, loteId: lote.id },
-      { onError: (e: any) => toast.error("Erro ao salvar o manejo", e?.message ?? undefined) },
-    );
-    onSalvo();
+    enviar(registrar.mutate, { ...payload, loteId: lote.id }, {
+      onSalvo,
+      onErroInline: setErro,
+      onErroTardio: (msg) => toast.error("Erro ao salvar o manejo", msg),
+    });
   }
 
   return (
@@ -83,8 +81,8 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
       onClose={onFechar}
       actions={
         <>
-          <RebButton onClick={onFechar}>Cancelar</RebButton>
-          <RebButton variant="pri" disabled={!numCabecas} onClick={salvar}>Salvar manejo</RebButton>
+          <RebButton onClick={onFechar} disabled={salvando}>Cancelar</RebButton>
+          <RebButton variant="pri" disabled={salvando || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar manejo"}</RebButton>
         </>
       }
     >

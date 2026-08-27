@@ -427,6 +427,23 @@ diferente, viram duas entradas de cache separadas, silenciosamente).
 cache do TanStack mais — ver seção acima), não precisa de factory.
 Repetir esse padrão em cada `api.ts` migrado.
 
+### Convenção: modal de escrita usa `useSalvarOffline`
+
+Registrado em 2026-08-27, revisando o PR de Corte (#235). `mutate()` do
+`useOfflineMutation` nunca espera a rede (aplica o otimista e enfileira na
+hora, sempre) — certo pra edição inline (Ponto), mas um **modal** que fecha
+na hora, mesmo online, perde a rede de segurança do padrão antigo: se o
+POST falhar (erro que o schema client não pegou), o usuário já saiu da tela
+e só sabe pelo toast, sem chance de corrigir sem perder o que digitou.
+
+`client/src/lib/offline/useSalvarOffline.ts` resolve isso: online, espera
+`onSuccess`/`onError` do `mutate` antes de fechar (erro aparece dentro do
+próprio modal, dá pra corrigir na hora); offline, fecha direto — não dá pra
+esperar por tempo indeterminado, erro tardio (raro, só depois do sync) vira
+toast. Usado por `PesagemForm`/`ManejoForm` (Corte) — todo modal de escrita
+offline-aware futuro deveria reusar em vez de reimplementar o branch
+online/offline na mão.
+
 ### Escrita afetando mais de uma query
 
 Dois casos, dois mecanismos diferentes (implementados, sem consumidor real
