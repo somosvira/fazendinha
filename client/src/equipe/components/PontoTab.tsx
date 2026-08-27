@@ -211,6 +211,12 @@ export function PontoTab() {
         <p className="text-sm text-ink-3">Selecione um funcionário para lançar a jornada.</p>
       ) : erro ? (
         <p className="text-sm text-prejuizo">Erro ao carregar os registros: {erro}</p>
+      ) : !online && loading ? (
+        // Offline + `loading` ainda true: a query nunca chegou a tentar o
+        // fetch (fica pausada até voltar a conexão) — sem isso o usuário via
+        // um <Loader/> girando pra sempre, indistinguível de "carregando
+        // rápido", num mês/funcionário nunca visitado antes deste aparelho.
+        <p className="text-sm text-atencao">Sem conexão e sem dado salvo pra este mês neste aparelho. Troque pra um mês já visitado online, ou conecte pra buscar.</p>
       ) : loading ? (
         <Loader />
       ) : (
