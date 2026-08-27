@@ -3,7 +3,7 @@
 import { onlineManager } from "@tanstack/react-query";
 import { garantirProcessamento } from "./fila";
 
-const SONDA_TIMEOUT_MS = 4000;
+const SONDA_TIMEOUT_MS = 8000;
 
 // navigator.onLine só garante "existe uma interface de rede" — mente dizendo
 // online sem internet de verdade (rede sem uplink, portal cativo) e, mais
