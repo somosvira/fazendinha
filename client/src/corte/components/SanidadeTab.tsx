@@ -1,5 +1,5 @@
 import { Loader } from "../../components/Loading";
-import { useLotes } from "../api";
+import { useLotes, useRegistrarManejo } from "../api";
 import { LoteDomainView } from "./LoteDomainView";
 import { DOMAINS } from "../domains";
 import { insightDaFazenda } from "../mock";
@@ -11,9 +11,18 @@ import type { ResumoLote, Lote } from "../types";
 
 export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
+  // Contador global da fila (não filtrado por lote) — mesmo motivo do
+  // PesagemTab: o item da fila não carrega um identificador de lote isolado
+  // fácil de casar por fora do body.
+  const { pendentes } = useRegistrarManejo();
   if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Sanidade" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrarManejo(l); };
+  const controles = pendentes.length > 0 ? (
+    <span className="ml-auto text-[13px] text-atencao">
+      {pendentes.length} {pendentes.length > 1 ? "manejos pendentes" : "manejo pendente"} de sincronização
+    </span>
+  ) : undefined;
 
   return (
     <>
@@ -23,6 +32,7 @@ export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: L
         lotes={data}
         insight={insightDaFazenda("sanidade")}
         onAbrirLote={abrir}
+        controles={controles}
         dicaLinha="clique num lote pra registrar manejo sanitário"
       />
       <RebMain style={{ paddingTop: 0 }}>
