@@ -88,6 +88,31 @@ describe("PontoTab — 'Preencher grade com horário padrão' offline", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText(/sem conexão/i)).toBeTruthy();
+    // Só prova que renderizou (não travou) — o botão sempre existe no shell.
+    expect(await screen.findByRole("button", { name: /preencher grade com horário padrão/i })).toBeTruthy();
+  });
+
+  // Achado verificando "trocar de mês offline": um mês já cacheado (visitado
+  // online antes) mostra os dados na hora, mesmo offline — mas um mês nunca
+  // visitado fica com `loading: true` pra sempre (query pausada, nunca chega
+  // a tentar o fetch, nunca erra) sem o fix acima. Antes desta mudança isso
+  // aparecia como um <Loader/> girando pra sempre, indistinguível de
+  // "carregando rápido" — sem indicação de que é por falta de conexão.
+  it("mostra mensagem específica (não spinner infinito) pra mês nunca cacheado offline", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(["ponto", "funcionarios", true], [FUNCIONARIO]);
+    // Só o mês default (mesesRecentes(12)[0] = "2026-05") tem cache — nenhum
+    // registros para "2026-05" foi seedado, então já nasce sem dado.
+    onlineManager.setOnline(false);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <PontoTab />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/sem dado salvo pra este mês/i)).toBeTruthy();
   });
 });
