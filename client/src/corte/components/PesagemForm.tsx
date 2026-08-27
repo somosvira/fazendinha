@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { criarPesagemSchema } from "@rionovo/shared";
 import type { Lote, Pesagem } from "../types";
-import { criarPesagem, type PesagemInput } from "../api";
+import { useRegistrarPesagem, type PesagemInput } from "../api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { useToast } from "@/components/Toast";
 
 type Metodo = Pesagem["metodo"];
 const METODOS: { k: Metodo; lab: string }[] = [
@@ -24,28 +26,36 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
   const [metodo, setMetodo] = useState<Metodo>("BALANCA_LOTE");
   const [responsavel, setResponsavel] = useState<string>("");
   const [observacao, setObservacao] = useState<string>("");
-  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const registrar = useRegistrarPesagem();
+  const toast = useToast();
 
-  async function salvar() {
-    setSalvando(true); setErro(null);
-    try {
-      const payload: PesagemInput = {
-        data: data || HOJE,
-        pesoMedio: Number(pesoMedio),
-        numCabecas: Number(numCabecas),
-        metodo,
-        // Opcionais: só entram no payload quando preenchidos.
-        responsavel: responsavel || undefined,
-        observacao: observacao || undefined,
-      };
-      await criarPesagem(lote.id, payload);
-      onSalvo();
-    } catch (e: any) {
-      setErro(e.message);
-    } finally {
-      setSalvando(false);
+  // Offline-aware: `mutate` já aplica o patch otimista e enfileira na hora
+  // (não espera rede) — por isso fecha o drawer direto, sem "Salvando…".
+  // Erro real do servidor (chegado bem depois, quando a fila sincronizar)
+  // vira toast + desfaz o otimista sozinho (useOfflineMutation).
+  function salvar() {
+    const payload: PesagemInput = {
+      data: data || HOJE,
+      pesoMedio: Number(pesoMedio),
+      numCabecas: Number(numCabecas),
+      metodo,
+      // Opcionais: só entram no payload quando preenchidos.
+      responsavel: responsavel || undefined,
+      observacao: observacao || undefined,
+    };
+    // Mesmo schema Zod do backend (packages/shared) — pega erro de input
+    // (ex.: peso ≤ 0) antes de enfileirar.
+    const valido = criarPesagemSchema.safeParse(payload);
+    if (!valido.success) {
+      setErro(valido.error.issues[0]?.message ?? "Dado inválido.");
+      return;
     }
+    registrar.mutate(
+      { ...payload, loteId: lote.id },
+      { onError: (e: any) => toast.error("Erro ao salvar a pesagem", e?.message ?? undefined) },
+    );
+    onSalvo();
   }
 
   return (
@@ -55,7 +65,7 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       actions={
         <>
           <RebButton onClick={onFechar}>Cancelar</RebButton>
-          <RebButton variant="pri" disabled={salvando || !pesoMedio || !numCabecas} onClick={salvar}>{salvando ? "Salvando…" : "Salvar pesagem"}</RebButton>
+          <RebButton variant="pri" disabled={!pesoMedio || !numCabecas} onClick={salvar}>Salvar pesagem</RebButton>
         </>
       }
     >

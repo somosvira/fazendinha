@@ -6,6 +6,7 @@ import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
 import { RebKpiStrip } from "@/components/rb/RebKpiStrip";
 import { RebMain, RebBox, RebBoxSection, RebKv, RebEmpty, REB_SEC_SUB, REB_GRID, REB_CHIP, REB_CHIP_PREG, REB_CHIP_LACT } from "@/components/rb/RebPrimitives";
+import { useOnlineStatus } from "@/lib/offline/useOnlineStatus";
 
 // Migalha (voltar) — breadcrumb-botão (ink-3, <b> em ink-2).
 const CRUMB = "mb-4 cursor-pointer border-0 bg-transparent p-0 font-sans text-sm text-ink-3 [&_b]:text-ink-2";
@@ -21,7 +22,20 @@ const RB_K_D = "mt-2 text-[15px] font-medium text-ink-2";
 export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: () => void }) {
   const { data: l, resumo, loading } = useLote(loteId);
   const { data: eventos } = useEventos(loteId);
+  const online = useOnlineStatus();
 
+  if (!online && loading) {
+    // Offline + `loading` ainda true: o lote nunca foi aberto neste aparelho
+    // enquanto online, a query fica pausada (nunca chega a tentar o fetch,
+    // então nunca erra) — sem isto seria um <Loader/> girando pra sempre,
+    // indistinguível de "carregando rápido" (mesmo achado do Ponto).
+    return (
+      <RebMain>
+        <button className={CRUMB} onClick={onVoltar}>← Lotes</button>
+        <p className="text-sm text-atencao">Sem conexão e sem dado salvo pra este lote neste aparelho. Abra este lote uma vez online, ou conecte pra buscar.</p>
+      </RebMain>
+    );
+  }
   if (loading) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Lotes</button><Loader /></RebMain>;
   if (!l) return <RebMain><button className={CRUMB} onClick={onVoltar}>← Lotes</button><p>Lote não encontrado.</p></RebMain>;
 

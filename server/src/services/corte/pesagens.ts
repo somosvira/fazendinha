@@ -4,30 +4,14 @@
  * anterior, persiste, e dispara recomputarResumo(loteId) para atualizar o
  * read-model (pesoMedio / gmd / ua / arrobas / diasParaAlvo).
  */
-import { z } from "zod";
 import { prisma } from "../../db.js";
 import { LoteError } from "./lotes.js";
 import { recomputarResumo } from "./resumos.recompute.js";
-
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
-
-export const metodoPesagem = z.enum([
-  "BALANCA_INDIVIDUAL",
-  "BALANCA_LOTE",
-  "FITA_TORACICA",
-  "VISUAL_ESTIMADO",
-]);
-
-export const criarPesagemSchema = z.object({
-  data: isoDate,
-  pesoMedio: z.number().positive("peso médio deve ser > 0"),
-  numCabecas: z.number().int().positive(),
-  metodo: metodoPesagem,
-  responsavel: z.string().max(80).nullish(),
-  observacao: z.string().max(400).nullish(),
-});
-
-export type CriarPesagemInput = z.infer<typeof criarPesagemSchema>;
+import type { CriarPesagemInput } from "@rionovo/shared";
+// criarPesagemSchema é compartilhado com o client (validação antes de
+// enfileirar offline) — fonte real em packages/shared, aqui é só re-export
+// pra quem já importa daqui não precisar mudar (ver routes/corte/lotes.ts).
+export { metodoPesagem, criarPesagemSchema, type CriarPesagemInput } from "@rionovo/shared";
 
 // DTO de Pesagem na rede — mesma forma do client/src/corte/types.ts.
 export interface PesagemDTO {
