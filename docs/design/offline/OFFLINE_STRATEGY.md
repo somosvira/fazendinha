@@ -391,6 +391,7 @@ primeira responde, não em paralelo).
 |---|---|---|
 | Fundação (QueryClient + persister IndexedDB + retomada automática) | ✅ Feito | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
 | Piloto: Ponto (equipe) | ✅ Feito — inclui fix incidental de `funcionarioId` no schema | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
+| Fix: `useFuncionarios` (dropdown de funcionário do Ponto) lia via `useState`+`fetch` direto, fora do `queryClient` — nunca persistia em IndexedDB, então F5 offline zerava a lista. Migrado pra `useQuery` (mesmo padrão de `useRegistros`) | ✅ Feito — achado testando F5 offline de verdade | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade | ⬜ Não iniciado | — |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
