@@ -11,9 +11,7 @@ import type { ResumoLote, Lote } from "../types";
 
 export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  // Contador global da fila (não filtrado por lote) — mesmo motivo do
-  // PesagemTab: o item da fila não carrega um identificador de lote isolado
-  // fácil de casar por fora do body.
+  // Fila não guarda o lote isolado por item — contador é global, não por lote.
   const { pendentes } = useRegistrarManejo();
   if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Sanidade" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));

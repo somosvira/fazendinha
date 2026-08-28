@@ -16,6 +16,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { TITULO_SANITARIO, TITULO_PESAGEM_LOTE } from "@rionovo/shared";
 import type { Lote, ResumoLote, EventoTimeline, Piquete, Pesagem, Suplementacao, OperacaoComercial, IaInsight } from "./types";
 import { req } from "../lib/offline/req";
 import { useOfflineMutation, criarIdTemporario, type UseOfflineMutationConfig } from "../lib/offline/useOfflineMutation";
@@ -141,13 +142,8 @@ export const registrarOperacaoComercial = (input: OperacaoComercialInput) =>
 
 // HOOKS -------------------------------------------------------------------
 
-// Via useQuery (não useState+fetch direto) de propósito: é a leitura que
-// alimenta os dropdowns de lote das telas de Pesagem/Sanidade, as únicas do
-// módulo com suporte offline (TABS_OFFLINE em App.tsx) — precisa estar no
-// queryClient pra ser persistida em IndexedDB (persister.ts) e sobreviver a
-// um F5 offline (mesmo gap achado e corrigido em useFuncionarios/Ponto — ver
-// OFFLINE_STRATEGY.md, "hooks de leitura em useQuery antes de qualquer
-// escrita offline").
+// useQuery (não useState+fetch): precisa estar no queryClient pra persistir
+// em IndexedDB e sobreviver a F5 offline — ver OFFLINE_STRATEGY.md.
 
 // Referências estáveis pro fallback de "sem dado ainda" — `query.data ?? []`
 // direto criaria um array novo a cada render, o que travaria em loop
@@ -209,41 +205,10 @@ export function useEventos(id: string | null) {
 }
 
 // ESCRITA OFFLINE (Pesagem / Sanidade) -------------------------------------
-//
-// Pesagem e manejo sanitário não têm lista própria renderizada em tela — só
-// aparecem tecidos na Timeline (EventoTimeline, derivada no backend a partir
-// das 4 tabelas de fato) e no ResumoLote agregado (pesoMedio/gmd/proximaVacina
-// etc., recomputado no servidor). Por isso o design aqui é:
-// - `queryKeys` (patch otimista de verdade) mira a própria Timeline do lote
-//   (corteKeys.eventos) — o item otimista é um EventoTimeline "aproximado":
-//   título/data/domínio certos, mas sem os campos que só o backend calcula
-//   (GMD, impacto, alerta de carência) — mesma convenção de
-//   "campos computados entram zerados, corrigem no refetch pós-sync" já usada
-//   em useUpsertRegistro (equipe/api.ts).
-// - `queryKeysRelacionadas` (só invalida) mira o ResumoLote — patch otimista
-//   aí duplicaria a conta do servidor (não dá pra "adivinhar" o novo GMD).
-
-// Títulos legíveis por tipo de manejo — espelha TITULO_SANITARIO em
-// server/src/services/corte/timeline.ts, só pro item otimista ficar
-// parecido com o que volta depois do sync (evita "flicker" de texto).
-const TITULO_SANITARIO: Record<string, string> = {
-  VACINA_AFTOSA: "Vacinação aftosa",
-  VACINA_BRUCELOSE_B19: "Vacinação brucelose (B19)",
-  VACINA_CLOSTRIDIOSE: "Vacinação clostridiose",
-  VACINA_RAIVA: "Vacinação raiva",
-  VACINA_CARBUNCULO: "Vacinação carbúnculo",
-  VACINA_LEPTOSPIROSE: "Vacinação leptospirose",
-  VACINA_IBR_BVD: "Vacinação IBR-BVD",
-  VERMIFUGACAO_5811: "Vermifugação 5-8-11",
-  VERMIFUGACAO_ESTRATEGICA: "Vermifugação estratégica",
-  CONTROLE_CARRAPATO: "Controle de carrapato",
-  CONTROLE_MOSCA: "Controle de mosca-dos-chifres",
-  CONTROLE_BERNE: "Controle de berne",
-  MARCACAO: "Marcação a ferro",
-  DESCORNA: "Descorna",
-  CASTRACAO: "Castração",
-  BRINCO_ELETRONICO: "Identificação eletrônica (brinco)",
-};
+// Pesagem e manejo sanitário só aparecem tecidos na Timeline e no ResumoLote
+// agregado (recomputado no servidor) — por isso `queryKeys` mira a Timeline
+// (patch otimista aproximado) e `queryKeysRelacionadas` só invalida o Resumo,
+// sem tentar adivinhar o valor recomputado.
 
 export interface PesagemOfflineInput extends PesagemInput {
   loteId: string;
@@ -263,7 +228,7 @@ const configRegistrarPesagem: UseOfflineMutationConfig<PesagemOfflineInput, Even
     loteId: input.loteId,
     data: input.data,
     dominio: "pesagem",
-    titulo: "Pesagem do lote",
+    titulo: TITULO_PESAGEM_LOTE,
     detalhe: `peso médio ${input.pesoMedio} kg`,
     responsavel: input.responsavel,
   }),

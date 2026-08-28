@@ -8,9 +8,7 @@ import { prisma } from "../../db.js";
 import { LoteError } from "./lotes.js";
 import { recomputarResumo } from "./resumos.recompute.js";
 import type { CriarPesagemInput } from "@rionovo/shared";
-// criarPesagemSchema é compartilhado com o client (validação antes de
-// enfileirar offline) — fonte real em packages/shared, aqui é só re-export
-// pra quem já importa daqui não precisar mudar (ver routes/corte/lotes.ts).
+// Fonte real em packages/shared; re-export pra quem já importa daqui não precisar mudar.
 export { metodoPesagem, criarPesagemSchema, type CriarPesagemInput } from "@rionovo/shared";
 
 // DTO de Pesagem na rede — mesma forma do client/src/corte/types.ts.

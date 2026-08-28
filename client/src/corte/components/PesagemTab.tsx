@@ -8,10 +8,7 @@ import type { ResumoLote, Lote } from "../types";
 
 export function PesagemTab({ onAbrirLote, onPesar }: { onAbrirLote: (id: string) => void; onPesar?: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  // `.pendentes` é global (toda pesagem enfileirada, de qualquer lote) — não
-  // dá pra filtrar por lote aqui como o Ponto filtra por funcionário/mês
-  // (o item da fila só tem path/body, sem lote isolado num campo próprio
-  // fácil de casar), então o contador é da fila inteira desta mutation.
+  // Fila não guarda o lote isolado por item — contador é global, não por lote.
   const { pendentes } = useRegistrarPesagem();
   if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Pesagem" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));

@@ -42,8 +42,6 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       responsavel: responsavel || undefined,
       observacao: observacao || undefined,
     };
-    // Mesmo schema Zod do backend (packages/shared) — pega erro de input
-    // (ex.: peso ≤ 0) antes de enfileirar.
     const valido = criarPesagemSchema.safeParse(payload);
     if (!valido.success) {
       setErro(valido.error.issues[0]?.message ?? "Dado inválido.");

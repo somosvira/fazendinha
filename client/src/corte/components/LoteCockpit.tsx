@@ -25,10 +25,9 @@ export function LoteCockpit({ loteId, onVoltar }: { loteId: string; onVoltar: ()
   const online = useOnlineStatus();
 
   if (!online && loading) {
-    // Offline + `loading` ainda true: o lote nunca foi aberto neste aparelho
-    // enquanto online, a query fica pausada (nunca chega a tentar o fetch,
-    // então nunca erra) — sem isto seria um <Loader/> girando pra sempre,
-    // indistinguível de "carregando rápido" (mesmo achado do Ponto).
+    // Lote nunca aberto neste aparelho: a query fica pausada offline (nunca
+    // chega a tentar o fetch, então nunca erra) — sem isto seria um
+    // <Loader/> girando pra sempre.
     return (
       <RebMain>
         <button className={CRUMB} onClick={onVoltar}>← Lotes</button>

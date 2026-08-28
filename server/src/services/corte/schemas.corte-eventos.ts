@@ -11,10 +11,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-D
 /** ISO YYYY-MM-DD → Date, propagando null/undefined sem virar Invalid Date. */
 export const toDate = (s?: string | null): Date | undefined => (s ? new Date(s) : undefined);
 
-// tipoSanitario/criarManejoSchema são compartilhados com o client (validação
-// antes de enfileirar offline, fatia Corte > Sanidade) — fonte real em
-// packages/shared, aqui é só re-export pra quem já importa daqui (manejo.ts,
-// routes/corte/eventos.ts) não precisar mudar.
+// Fonte real em packages/shared; re-export pra quem já importa daqui não precisar mudar.
 export { tipoSanitario, criarManejoSchema } from "@rionovo/shared";
 export type CriarManejoInput = CriarManejoInputShared;
 

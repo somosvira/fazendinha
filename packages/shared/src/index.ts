@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export { TITULO_SANITARIO, TITULO_PESAGEM_LOTE } from "./corte.constants.js";
+
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "hora deve ser HH:MM");
 const tipoDiaPontoSchema = z.enum(["UTIL", "DOMINGO", "FERIADO", "FOLGA", "FALTA"]);
@@ -16,9 +18,7 @@ export const upsertRegistroSchema = z.object({
 
 export type UpsertRegistroSchemaInput = z.infer<typeof upsertRegistroSchema>;
 
-// Corte > Pesagem — mesma forma de server/src/services/corte/pesagens.ts,
-// movida pra cá pra validar no client antes de enfileirar offline (mesmo
-// motivo do upsertRegistroSchema acima).
+// Corte > Pesagem
 export const metodoPesagem = z.enum([
   "BALANCA_INDIVIDUAL",
   "BALANCA_LOTE",
@@ -37,8 +37,7 @@ export const criarPesagemSchema = z.object({
 
 export type CriarPesagemInput = z.infer<typeof criarPesagemSchema>;
 
-// Corte > Sanidade (manejo sanitário) — mesma forma de
-// server/src/services/corte/schemas.corte-eventos.ts.
+// Corte > Sanidade (manejo sanitário)
 export const tipoSanitario = z.enum([
   "VACINA_AFTOSA",
   "VACINA_BRUCELOSE_B19",

@@ -61,8 +61,6 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
       proximaDose: proximaDose || undefined,
       observacao: observacao || undefined,
     };
-    // Mesmo schema Zod do backend (packages/shared) — pega erro de input
-    // antes de enfileirar.
     const valido = criarManejoSchema.safeParse(payload);
     if (!valido.success) {
       setErro(valido.error.issues[0]?.message ?? "Dado inválido.");

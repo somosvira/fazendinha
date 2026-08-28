@@ -537,6 +537,7 @@ primeira responde, não em paralelo).
 | Fix: trocar de mês offline pra uma combinação funcionário/mês nunca cacheada ficava com `<Loader/>` girando pra sempre — a query fica pausada (networkMode padrão nunca chega a tentar o fetch, então nunca erra). Mês já cacheado continua mostrando na hora, mesmo offline. Mensagem específica no lugar do spinner infinito | ✅ Feito — achado testando a troca de mês offline | [#233](https://github.com/piubellofelipe/fazendinha/pull/233) |
 | App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade — inclui migração de `useLotes`/`useLote`/`useEventos` pra `useQuery` (pré-requisito) e schemas movidos pra `packages/shared` | ✅ Feito — testado no navegador com build de produção + rede offline real | [#235](https://github.com/piubellofelipe/fazendinha/pull/235) |
+| Revisão pós-#235: limpeza de comentários históricos (narravam a mudança, não a lógica) + `TITULO_SANITARIO`/`"Pesagem do lote"` (duplicados byte a byte entre `client/src/corte/api.ts` e `server/.../timeline.ts`) movidos pra `packages/shared/src/corte.constants.ts` | ✅ Feito | epic/offline-first |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |
