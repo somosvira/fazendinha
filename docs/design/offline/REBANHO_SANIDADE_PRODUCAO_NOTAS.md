@@ -136,12 +136,19 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
     conhecido, não gerado agora). Não precisa de `criarOtimista`/id
     temporário pra essa entrada — não é um item novo na lista, é uma
     correção num que já está lá.
-  - `useMovimentos`/`listarMovimentos` (`MovimentoDTO[]`, extrato
-    completo, tem `excluirMovimento` na tela) — **essa sim** é o caso de
-    `criarOtimista` com `id: criarIdTemporario()` +
-    `appendItemToCacheList`, igual Corte: item novo na lista, precisa de
-    id (React key, e reconciliado 1:1 pelo mecanismo já pronto de
-    `fila.ts` quando o real chegar).
+  - `useMovimentos`/`listarMovimentos` (`MovimentoDTO[]`, extrato completo)
+    — item novo na lista, precisa de `id: criarIdTemporario()` +
+    `appendItemToCacheList` só como React key (não é o `idTemporarioGerado`
+    da mutation — quem reconcilia é o `EventoTimeline` da Sanidade, que é
+    o `criarOtimista` desta config). **Esse item de movimento NÃO é
+    reconciliado com o id real** — fica com id temporário até o
+    `invalidateQueries` pós-sync trazer a lista real do servidor e
+    substituir a linha inteira. Sem problema prático: `excluirMovimento`
+    já bloqueia server-side qualquer exclusão de movimento com
+    `origem === "SANIDADE"` (`estoque.ts:184-185`, regra de negócio
+    preexistente, nada a ver com offline) — ninguém consegue (nem devia)
+    excluir essa linha antes do sync de qualquer forma, então não ter
+    reconciliação de id aqui não é uma lacuna real.
 - Não passa pela ponte financeiro (`gerarLancamento`) nem por
   `FechamentoMensal` — isso só existe pra **entrada** (compra); Sanidade só
   gera **saída**.

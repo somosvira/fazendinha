@@ -1,5 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
+import { useQuery, type QueryKey } from "@tanstack/react-query";
+import {
+  useOfflineMutation,
+  criarIdTemporario,
+  appendItemToCacheList,
+  updateItemInCacheList,
+  type UseOfflineMutationConfig,
+} from "../lib/offline/useOfflineMutation";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
+
+// Chaves de cache do módulo — mesma convenção de client/src/corte/api.ts.
+export const rebanhoKeys = {
+  animal: (id: string) => ["rebanho", "animal", id] as const,
+  timeline: (id: string) => ["rebanho", "timeline", id] as const,
+  saudeUbere: (id: string) => ["rebanho", "saude-ubere", id] as const,
+  produtos: (f?: { tipo?: string; q?: string; ativo?: boolean }) => ["rebanho", "produtos", f?.tipo ?? null, f?.q ?? null, f?.ativo ?? null] as const,
+  saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
+  movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
+};
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
@@ -216,17 +234,20 @@ export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) =>
 export const editarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/sanidade/${id}`, { method: "PUT", body: JSON.stringify(p) });
 export const excluirEventoSanidade = (id: string) => req<{ ok: true }>(`/rebanho/sanidade/${id}`, { method: "DELETE" });
 
+const TIMELINE_VAZIO: EventoTimeline[] = [];
+
 export function useTimeline(id: string | null) {
-  const [data, setData] = useState<EventoTimeline[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!id) { setData([]); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    montarTimeline(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [id]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.timeline(id ?? ""),
+    queryFn: () => montarTimeline(id!),
+    enabled: !!id,
+  });
+  return {
+    data: query.data ?? TIMELINE_VAZIO,
+    loading: id ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 export interface LactacaoDTO {
@@ -303,16 +324,17 @@ export function useMovimentacoes(id: string | null) {
 }
 
 export function useAnimal(id: string | null) {
-  const [data, setData] = useState<Animal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!id) { setData(null); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    obterAnimal(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [id]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.animal(id ?? ""),
+    queryFn: () => obterAnimal(id!),
+    enabled: !!id,
+  });
+  return {
+    data: query.data ?? null,
+    loading: id ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Insights (painel executivo do animal) ─────────────────────────────────
@@ -986,18 +1008,19 @@ export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<For
 export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(p) });
 export const editarFornecedor = (id: number, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
+const PRODUTOS_VAZIO: ProdutoDTO[] = [];
+
 export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
-  const [data, setData] = useState<ProdutoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarProdutos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.produtos(f),
+    queryFn: () => listarProdutos(f),
+  });
+  return {
+    data: query.data ?? PRODUTOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Princípios ativos (composição de medicamento — base carência/antibiótico) ──
@@ -1091,7 +1114,9 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
 export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "PERDA" | "AJUSTE_INVENTARIO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+// id aceita string pro item otimista (criarIdTemporario()) enquanto o movimento
+// da baixa automática de Sanidade não sincroniza — ver notas de design.
+export interface MovimentoDTO { id: number | string; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
 export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; gerarLancamento?: boolean; categoriaId?: number; centroCustoId?: number; }
 export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
 export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
@@ -1099,21 +1124,36 @@ export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null
 export const listarSaldos = (f?: { setor?: string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
 export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
-export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
+export const excluirMovimento = (id: number | string) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
 export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
 
+const SALDOS_VAZIO: SaldoDTO[] = [];
+const MOVIMENTOS_VAZIO: MovimentoDTO[] = [];
+
 export function useSaldos(f?: { setor?: string }) {
-  const [data, setData] = useState<SaldoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarSaldos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.saldos(f),
+    queryFn: () => listarSaldos(f),
+  });
+  return {
+    data: query.data ?? SALDOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+export function useMovimentos(f?: { produtoId?: number; tipo?: string }) {
+  const query = useQuery({
+    queryKey: rebanhoKeys.movimentos(f),
+    queryFn: () => listarMovimentos(f),
+  });
+  return {
+    data: query.data ?? MOVIMENTOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 export function useCustoVacaDia(dias = 30) {

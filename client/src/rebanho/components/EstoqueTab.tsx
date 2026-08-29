@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
+import { useSaldos, useMovimentos, useCustoVacaDia, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
 import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
@@ -29,15 +29,6 @@ function SetorChip({ setor }: { setor: string }) {
       {setorLabel(setor)}
     </RebPill>
   );
-}
-
-function useMovimentos() {
-  const [data, setData] = useState<MovimentoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarMovimentos().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
 }
 
 type SortKey = "nome" | "tipo" | "valor";
