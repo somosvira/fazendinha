@@ -373,46 +373,57 @@ optimistic update na mão. Cada chamador só declara:
 - `path(input)` / `method` / `body?(input)` — a requisição em si. Isso
   (não uma função arbitrária) é o que vira o item da fila — é o que
   permite a fila ser dado puro, sem registro de função nenhum por tipo.
-- `queryKeys(input)` — quais listas em cache a escrita afeta com patch
-  otimista de verdade (array — normalmente uma só; mais de uma serve pro
-  caso do mesmo item, sem cálculo nenhum, aparecer em mais de uma lista ao
-  mesmo tempo, ex.: lista geral + lista filtrada).
-- `queryKeysRelacionadas?(input)` — opcional: outras queries que só levam
-  `invalidateQueries` (sem patch, sem chute) — pra dado **derivado**,
-  calculado a partir do que foi escrito (ex.: um resumo agregado
-  recomputado no servidor).
-- `op` — `"create" | "update" | "delete" | "upsert"`.
-- `match(item, input)` — identidade do item na lista (chave natural ou id).
-- `criarOtimista(input)` — **exigido pelo tipo** quando `op` é
-  `"create"`/`"upsert"` (tipo discriminado por `op` — esquecer é erro de
-  compilação): monta o item a mostrar antes da confirmação do servidor,
-  `id` sempre via `criarIdTemporario()`. Campos computados pelo backend
-  entram aproximados/zerados, corrigem no refetch pós-sync.
+- `criarOtimista?(input)` — opcional (omitido quando a escrita não cria
+  nada novo — delete, update puro): ponto único de criação do item
+  otimista, roda **uma vez** por `mutate()`, nunca por queryKey (evita id
+  divergente entre entradas). `id` sempre via `criarIdTemporario()`.
+  Campos computados pelo backend entram aproximados/zerados, corrigem no
+  refetch pós-sync.
+- `queryKeys(input, itemOtimista)` — lista de entradas `{ queryKey,
+  aplicar? }`, uma por cache afetado. `aplicar` **ausente** = só
+  `invalidateQueries` depois do sync, sem patch (dado **derivado**,
+  recomputado no servidor — ex.: resumo agregado). `aplicar` **presente**
+  recebe o valor atual do cache (`T | undefined` — a query pode nunca ter
+  rodado offline) e o item otimista já pronto (2º argumento — nunca gerado
+  de novo dentro do `aplicar`), devolve o novo valor. Anotado na mão por
+  quem escreve (`aplicar: (atual: SaldoDTO[] | undefined) => ...`), sem
+  wrapper genérico — o tipo `T` não precisa ser lista, pode ser qualquer
+  formato de cache (objeto agregado único, por exemplo).
 
-A fábrica cuida do resto: patch otimista de cada lista (com snapshot por
-key, pra rollback certo mesmo com mais de uma afetada), enfileiramento
-(`enfileirarMutation`, em `fila.ts`), rollback em erro real do servidor,
-`invalidateQueries` quando a fila confirma a escrita (nas `queryKeys` e
-nas `queryKeysRelacionadas`).
+A fábrica cuida do resto: snapshot de cada entrada antes de aplicar (pra
+rollback certo mesmo com mais de uma afetada), enfileiramento
+(`enfileirarMutation`, em `fila.ts`), rollback em erro real do servidor
+(restaura o `anterior` de toda entrada), `invalidateQueries` em toda
+entrada quando a fila confirma a escrita.
 
-**Patch de `update` faz merge profundo, não raso.** `aplicarOtimista` usa
-`mesclarProfundo(item, input)` — recursiva, escrita na mão (sem virar
-dependência de `lodash`): objeto plano em objeto plano recursa campo a
-campo, array e primitivo substituem o valor inteiro. Motivo: um `update`
-parcial (`patch`) com spread raso (`{...item, ...input}`) perde qualquer
-campo irmão dentro de um objeto aninhado que não veio no `input` — ex.:
-mandar só `input.endereco.rua` apagaria `input.endereco.numero` se
-`item.endereco` fosse sobrescrito inteiro pelo spread em vez de mesclado
-campo a campo. Testado em `useOfflineMutation.test.ts`.
+**Helpers diretos pro caso comum de cache em lista** (não curried, nunca
+devolvem função — chamados de dentro do `aplicar` já anotado):
+`appendItemToCacheList`, `removeItemFromCacheList`,
+`updateItemInCacheList` (merge profundo — ver abaixo) e
+`upsertItemInCacheList` (merge se já existe, senão acrescenta). Cada um
+normaliza seu próprio "vazio" (`atual ?? []`) — nunca devolve `undefined`,
+mesmo recebendo `atual: T | undefined`; é a mesma regra que todo `aplicar`
+customizado tem que seguir (bloquear a escrita nesse caso seria errado —
+ela tem efeito real, vai pra fila, independente do que dá pra mostrar
+otimista).
 
-`TItem` precisa ter `id: string` (convenção já seguida por todo DTO do
-projeto) — é o que permite a fábrica gerar id temporário e reconciliar
-sem cada config precisar de um acessor `idDoItem` a mais.
+**Merge é profundo, não raso.** `updateItemInCacheList`/
+`upsertItemInCacheList` usam `mesclarProfundo(item, patch)` — recursiva,
+escrita na mão (sem virar dependência de `lodash`): objeto plano em objeto
+plano recursa campo a campo, array e primitivo substituem o valor inteiro.
+Motivo: um patch parcial com spread raso (`{...item, ...input}`) perde
+qualquer campo irmão dentro de um objeto aninhado que não veio no
+`input` — ex.: mandar só `input.endereco.rua` apagaria
+`input.endereco.numero` se `item.endereco` fosse sobrescrito inteiro pelo
+spread em vez de mesclado campo a campo. Testado em
+`useOfflineMutation.test.ts`.
 
-Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, `op:"upsert"` —
-chave natural `funcionarioId+data`). A próxima fatia (Pesagem/Sanidade)
-usa `op:"create"` — mesma fábrica, sem reescrever a lógica de
-optimistic/rollback.
+Usada pelo Ponto (`equipe/api.ts` → `useUpsertRegistro`, via
+`upsertItemInCacheList` — chave natural `funcionarioId+data`) e pelo Corte
+(`corte/api.ts` → `useRegistrarPesagem`/`useRegistrarManejo`, via
+`appendItemToCacheList` na Timeline + entradas sem `aplicar` pro
+Resumo/lista de lotes) — mesma fábrica pros dois formatos de escrita, sem
+reescrever a lógica de optimistic/rollback.
 
 ### Convenção: query key factory por módulo
 
@@ -446,25 +457,25 @@ online/offline na mão.
 
 ### Escrita afetando mais de uma query
 
-Dois casos, dois mecanismos diferentes (implementados, sem consumidor real
-ainda no Ponto — ele só toca uma lista — mas prontos pra próxima fatia):
+Um único mecanismo — `queryKeys` devolve uma entrada por cache afetado,
+cada uma decide por si se tem `aplicar` ou não:
 
-- **Mesmo dado, sem cálculo, em duas listas** (ex.: `FuncionarioDTO` numa
-  lista geral e numa lista filtrada; provável ao migrar Funcionários ou a
-  ficha do Animal no Rebanho). Usa `queryKeys` retornando mais de uma key
-  — a mesma operação (`op`/`match`/`criarOtimista`) é aplicada em cada
-  uma, com patch otimista de verdade nas duas, porque não tem chute
-  envolvido: é o próprio input.
+- **Mesmo dado, sem cálculo, em mais de uma lista** (ex.: `FuncionarioDTO`
+  numa lista geral e numa lista filtrada; a Timeline de eventos do Corte).
+  Cada entrada correspondente tem seu próprio `aplicar` (normalmente o
+  mesmo helper chamado várias vezes) — patch otimista de verdade em todas,
+  porque não tem chute envolvido: é o próprio `input`/`itemOtimista`.
 - **Dado derivado em outra query** (ex.: Corte > Pesagem escreve na lista
   de pesagens **e** dispara recompute do `ResumoLote` no servidor — o
   padrão "grava evento bruto → recompute" já descrito acima). Não dá pra
-  patch otimista no resumo (duplicaria a conta do servidor). Usa
-  `queryKeysRelacionadas` — só invalida, sem tentar adivinhar o valor.
+  patch otimista no resumo (duplicaria a conta do servidor). A entrada
+  correspondente simplesmente **não** declara `aplicar` — só é invalidada
+  quando a fila confirma a escrita.
 
-Limitação que continua real (sem consumidor, não construída): o cache
-alvo do patch otimista é sempre uma **lista** (`TItem[]`). Um write que
-afetasse um objeto único em cache (não uma lista) precisaria de outro
-caminho — não vale generalizar sem um caso de uso real.
+O cache alvo do patch otimista não precisa ser uma lista — `aplicar` pode
+mirar qualquer formato (objeto agregado único, por exemplo), já que quem
+escreve `aplicar` anota o tipo `T` na mão; a fábrica não assume `TItem[]`
+em nenhum ponto.
 
 ### Reconciliação de id temporário
 
@@ -538,6 +549,7 @@ primeira responde, não em paralelo).
 | App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade — inclui migração de `useLotes`/`useLote`/`useEventos` pra `useQuery` (pré-requisito) e schemas movidos pra `packages/shared` | ✅ Feito — testado no navegador com build de produção + rede offline real | [#235](https://github.com/piubellofelipe/fazendinha/pull/235) |
 | Revisão pós-#235: limpeza de comentários históricos (narravam a mudança, não a lógica) + `TITULO_SANITARIO`/`"Pesagem do lote"` (duplicados byte a byte entre `client/src/corte/api.ts` e `server/.../timeline.ts`) movidos pra `packages/shared/src/corte.constants.ts` | ✅ Feito | epic/offline-first |
+| `useOfflineMutation` — `op`/`match`/`queryKeysRelacionadas` substituídos por uma lista única `{ queryKey, aplicar? }`: `aplicar` ausente = só invalida (antigo `queryKeysRelacionadas`); presente, dá patch otimista de verdade com `atual`/`itemOtimista` anotados na mão, sem wrapper genérico. Helpers diretos (`appendItemToCacheList`, `removeItemFromCacheList`, `updateItemInCacheList`, `upsertItemInCacheList`) cobrem os casos de lista; cache-objeto-agregado (não-lista) já é suportado sem mecanismo extra. Corte e Ponto migrados pra config nova | ✅ Feito | offline/aplicar-cache-patch |
 | Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |

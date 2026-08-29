@@ -19,7 +19,12 @@ import { useQuery } from "@tanstack/react-query";
 import { TITULO_SANITARIO, TITULO_PESAGEM_LOTE } from "@rionovo/shared";
 import type { Lote, ResumoLote, EventoTimeline, Piquete, Pesagem, Suplementacao, OperacaoComercial, IaInsight } from "./types";
 import { req } from "../lib/offline/req";
-import { useOfflineMutation, criarIdTemporario, type UseOfflineMutationConfig } from "../lib/offline/useOfflineMutation";
+import {
+  useOfflineMutation,
+  criarIdTemporario,
+  appendItemToCacheList,
+  type UseOfflineMutationConfig,
+} from "../lib/offline/useOfflineMutation";
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
@@ -206,9 +211,9 @@ export function useEventos(id: string | null) {
 
 // ESCRITA OFFLINE (Pesagem / Sanidade) -------------------------------------
 // Pesagem e manejo sanitário só aparecem tecidos na Timeline e no ResumoLote
-// agregado (recomputado no servidor) — por isso `queryKeys` mira a Timeline
-// (patch otimista aproximado) e `queryKeysRelacionadas` só invalida o Resumo,
-// sem tentar adivinhar o valor recomputado.
+// agregado (recomputado no servidor) — por isso a Timeline recebe patch
+// otimista de verdade (append) e Resumo/lista de lotes só são invalidados
+// (aplicar ausente), sem tentar adivinhar o valor recomputado.
 
 export interface PesagemOfflineInput extends PesagemInput {
   loteId: string;
@@ -219,10 +224,6 @@ const configRegistrarPesagem: UseOfflineMutationConfig<PesagemOfflineInput, Even
   path: (input) => `/corte/lotes/${input.loteId}/pesagens`,
   method: "POST",
   body: ({ loteId, ...rest }) => rest,
-  queryKeys: (input) => [corteKeys.eventos(input.loteId)],
-  queryKeysRelacionadas: (input) => [corteKeys.lote(input.loteId), corteKeys.lotesTodos()],
-  op: "create",
-  match: () => false,
   criarOtimista: (input) => ({
     id: criarIdTemporario(),
     loteId: input.loteId,
@@ -232,6 +233,14 @@ const configRegistrarPesagem: UseOfflineMutationConfig<PesagemOfflineInput, Even
     detalhe: `peso médio ${input.pesoMedio} kg`,
     responsavel: input.responsavel,
   }),
+  queryKeys: (input, itemOtimista) => [
+    {
+      queryKey: corteKeys.eventos(input.loteId),
+      aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!),
+    },
+    { queryKey: corteKeys.lote(input.loteId) },
+    { queryKey: corteKeys.lotesTodos() },
+  ],
 };
 
 export function useRegistrarPesagem() {
@@ -247,10 +256,6 @@ const configRegistrarManejo: UseOfflineMutationConfig<ManejoOfflineInput, Evento
   path: (input) => `/corte/lotes/${input.loteId}/manejo-sanitario`,
   method: "POST",
   body: ({ loteId, ...rest }) => rest,
-  queryKeys: (input) => [corteKeys.eventos(input.loteId)],
-  queryKeysRelacionadas: (input) => [corteKeys.lote(input.loteId), corteKeys.lotesTodos()],
-  op: "create",
-  match: () => false,
   criarOtimista: (input) => ({
     id: criarIdTemporario(),
     loteId: input.loteId,
@@ -260,6 +265,14 @@ const configRegistrarManejo: UseOfflineMutationConfig<ManejoOfflineInput, Evento
     detalhe: [`${input.numCabecas} cabeças`, input.produto].filter(Boolean).join(" · "),
     responsavel: input.responsavel,
   }),
+  queryKeys: (input, itemOtimista) => [
+    {
+      queryKey: corteKeys.eventos(input.loteId),
+      aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!),
+    },
+    { queryKey: corteKeys.lote(input.loteId) },
+    { queryKey: corteKeys.lotesTodos() },
+  ],
 };
 
 export function useRegistrarManejo() {
