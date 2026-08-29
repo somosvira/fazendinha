@@ -57,7 +57,15 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
    (`funcionarioId`+`data`), sem recompute, horas calculadas por função pura
    no read. Candidata a nem precisar de id gerado no client.
 2. **Pesagem + Sanidade** (corte)
-3. **Sanidade + Produção-tanque** (rebanho)
+3. **Sanidade + Produção-tanque** (rebanho) — nome herdado do mapeamento
+   original; **corrigido em `docs/design/offline/REBANHO_SANIDADE_PRODUCAO_NOTAS.md`**:
+   `producaoModo` é um toggle único pra fazenda inteira (`ORDENHA` vs.
+   `TANQUE_LOTE`, tabelas/endpoints diferentes por modo — não é só
+   UI, muda inclusive a fórmula de cálculo no servidor). O dado real
+   importado (`rebanho_real.json`) confirma que a Rio Novo usa `ORDENHA`
+   (controle por vaca, `ControleForm`) — **não** o modo tanque/lote que o
+   nome desta fatia sugere. O modo tanque (`ProducaoTab`→`LoteForm`) não
+   tem uso real e fica fora de escopo.
 4. **Fitossanidade + Nutrição + Colheita** (café)
 5. **Produção** (milho)
 
@@ -538,7 +546,7 @@ primeira responde, não em paralelo).
 | App shell offline (service worker, `vite-plugin-pwa`) + trava de UI pra área não coberta | ✅ Feito | [#234](https://github.com/piubellofelipe/fazendinha/pull/234) |
 | Corte > Pesagem + Sanidade — inclui migração de `useLotes`/`useLote`/`useEventos` pra `useQuery` (pré-requisito) e schemas movidos pra `packages/shared` | ✅ Feito — testado no navegador com build de produção + rede offline real | [#235](https://github.com/piubellofelipe/fazendinha/pull/235) |
 | Revisão pós-#235: limpeza de comentários históricos (narravam a mudança, não a lógica) + `TITULO_SANITARIO`/`"Pesagem do lote"` (duplicados byte a byte entre `client/src/corte/api.ts` e `server/.../timeline.ts`) movidos pra `packages/shared/src/corte.constants.ts` | ✅ Feito | epic/offline-first |
-| Rebanho > Sanidade + Produção-tanque | ⬜ Não iniciado | — |
+| Rebanho > Sanidade + Produção — nome herdado "Produção-tanque" é impreciso, dado real confirma modo `ORDENHA` (por vaca), não tanque/lote — ver seção "Ordem de rollout sugerida" acima | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |
 
