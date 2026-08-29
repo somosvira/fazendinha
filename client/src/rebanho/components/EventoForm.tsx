@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, editarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
+import { criarEventoSanitarioSchema } from "@rionovo/shared";
+import { registrarEvento, editarEventoSanidade, useRegistrarEventoSanitario, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
@@ -9,6 +10,8 @@ import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 import { rotuloAnimal } from "./AnimalIdentity";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "COBERTURA", label: "Cobertura (monta natural)" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
@@ -124,6 +127,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
   // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
   const { data: produtosEstoque } = useProdutos({ ativo: true });
+  const registrarSanitario = useRegistrarEventoSanitario();
+  const toast = useToast();
+  const { salvando: salvandoOffline, salvar: enviarOffline } = useSalvarOffline();
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
@@ -180,8 +186,55 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const ehPuroRep = f.fracaoReprodutor === "8/8";
   const fracCompRep = complementoLabel(f.fracaoReprodutor);
 
+  // Compartilhado entre o create offline (abaixo) e a edição online (ainda
+  // sem cobertura offline — fora de escopo, mesmo padrão do Corte).
+  function montarPayloadSanidade(): EventoSanidadePayload {
+    const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
+    if (tipoSan === "EXAME") { p.ccs = num(f.ccs); p.gordura = num(f.gordura); p.proteina = num(f.proteina); }
+    if (tipoSan === "APLICACAO") { p.produto = f.produto; p.dose = f.dose || undefined; p.carencia = num(f.carencia); p.loteProduto = f.loteProduto || undefined; }
+    if (tipoSan === "OCORRENCIA") { p.doenca = f.doenca; p.diasTratamento = num(f.diasTratamento); }
+    if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
+    if (tipoSan === "VACINA") p.produto = f.produto;
+    if (tipoSan === "APLICACAO" || tipoSan === "VACINA") {
+      p.produtoId = f.estoqueProdutoId ? Number(f.estoqueProdutoId) : undefined;
+      p.quantidadeUsada = num(f.estoqueQtd);
+    }
+    return p;
+  }
+
+  // Sanidade > criar (offline-aware): valida com o mesmo schema do servidor
+  // antes de enfileirar, e sai por useSalvarOffline (fecha na hora se offline,
+  // espera confirmação real se online — ver docs/design/offline).
+  function salvarSanidadeNova() {
+    const p = montarPayloadSanidade();
+    if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && (!p.produtoId || !p.quantidadeUsada)) {
+      setErro("Selecione o produto do estoque e a quantidade usada.");
+      return;
+    }
+    const valido = criarEventoSanitarioSchema.safeParse(p);
+    if (!valido.success) {
+      setErro(valido.error.issues[0]?.message ?? "Dado inválido.");
+      return;
+    }
+    const produto = p.produtoId != null ? produtosEstoque.find((pr) => pr.id === p.produtoId) : undefined;
+    salvamentoEmCurso.current = true;
+    setErro(null);
+    enviarOffline(registrarSanitario.mutate, {
+      animalId, ...p,
+      produtoInfo: produto ? { nome: produto.nome, unidade: produto.unidade, setor: produto.setor } : undefined,
+    }, {
+      onSalvo: () => { salvamentoEmCurso.current = false; onSalvo(); },
+      onErroInline: (msg) => { salvamentoEmCurso.current = false; setErro(msg); },
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar o evento sanitário", msg),
+    });
+  }
+
   async function salvar() {
     if (salvamentoEmCurso.current || avisoSalvo) return;
+    if (dominio === "sanidade" && !eventoEdicao) {
+      salvarSanidadeNova();
+      return;
+    }
     salvamentoEmCurso.current = true;
     setSalvando(true); setErro(null);
     try {
@@ -216,21 +269,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
         criado = await registrarEvento(animalId, p);
       } else {
-        const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
-        if (tipoSan === "EXAME") { p.ccs = num(f.ccs); p.gordura = num(f.gordura); p.proteina = num(f.proteina); }
-        if (tipoSan === "APLICACAO") { p.produto = f.produto; p.dose = f.dose || undefined; p.carencia = num(f.carencia); p.loteProduto = f.loteProduto || undefined; }
-        if (tipoSan === "OCORRENCIA") { p.doenca = f.doenca; p.diasTratamento = num(f.diasTratamento); }
-        if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
-        if (tipoSan === "VACINA") p.produto = f.produto;
-        // Aplicação/vacina sempre consomem um produto do estoque — obrigatório (ver eventos-sanidade.schemas.ts).
-        if (tipoSan === "APLICACAO" || tipoSan === "VACINA") {
-          if (!f.estoqueProdutoId || !num(f.estoqueQtd)) {
-            throw new Error("Selecione o produto do estoque e a quantidade usada.");
-          }
-          p.produtoId = Number(f.estoqueProdutoId);
-          p.quantidadeUsada = num(f.estoqueQtd);
-        }
-        criado = eventoEdicao ? await editarEventoSanidade(eventoEdicao.id, p) : await registrarEventoSanidade(animalId, p);
+        // Sanidade > editar — segue online (create é o único caminho offline nesta fatia).
+        criado = await editarEventoSanidade(eventoEdicao!.id, montarPayloadSanidade());
       }
       if (criado?.aviso) {
         setAvisoSalvo({ mensagem: criado.aviso, evento: criado });
@@ -264,8 +304,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         avisoSalvo
           ? <RebButton ref={botaoConfirmarAviso} variant="pri" onClick={confirmarAvisoSalvo}>Entendi</RebButton>
           : <>
-              <RebButton disabled={salvando} onClick={fecharModal}>Cancelar</RebButton>
-              <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
+              <RebButton disabled={salvando || salvandoOffline} onClick={fecharModal}>Cancelar</RebButton>
+              <RebButton variant="pri" disabled={salvando || salvandoOffline} onClick={salvar}>{(salvando || salvandoOffline) ? "Salvando…" : "Salvar"}</RebButton>
             </>
       }
     >

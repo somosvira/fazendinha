@@ -1,12 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
-import { useQuery, type QueryKey } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   useOfflineMutation,
   criarIdTemporario,
   appendItemToCacheList,
-  updateItemInCacheList,
   type UseOfflineMutationConfig,
+  type EntradaPatch,
 } from "../lib/offline/useOfflineMutation";
+import {
+  tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
+  tituloControleLeiteiro, detalheControleLeiteiro,
+  recomputarQuartos,
+} from "@rionovo/shared";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
 
 // Chaves de cache do módulo — mesma convenção de client/src/corte/api.ts.
@@ -248,6 +253,84 @@ export function useTimeline(id: string | null) {
     erro: query.error ? (query.error as Error).message : null,
     recarregar: query.refetch,
   };
+}
+
+// ESCRITA OFFLINE (Sanidade) ------------------------------------------------
+// Só cobre CREATE — edição de evento sanitário fica no fluxo online de sempre
+// (mesmo escopo do Corte > Sanidade). Quando a Aplicação/Vacina vincula um
+// produto do estoque, o servidor já cria EventoSanitario+MovimentoEstoque numa
+// única transação — por isso as caches de estoque entram na mesma config, sem
+// nenhuma segunda mutation.
+export interface EventoSanidadeOfflineInput extends EventoSanidadePayload {
+  animalId: string;
+  // Nome/unidade/setor do produto vinculado — só pro item otimista do
+  // MovimentoDTO (nunca vai pro corpo da requisição real).
+  produtoInfo?: { nome: string; unidade: string; setor: SetorEstoque | null };
+}
+
+function aplicarDeltaSaldo(atual: SaldoDTO[] | undefined, produtoId: number, quantidadeUsada: number): SaldoDTO[] {
+  return (atual ?? []).map((s) => {
+    if (s.produtoId !== produtoId) return s;
+    const custoUnitario = s.saldo !== 0 ? s.valor / s.saldo : 0;
+    const novoSaldo = s.saldo - quantidadeUsada;
+    return {
+      ...s,
+      saldo: novoSaldo,
+      valor: s.valor - quantidadeUsada * custoUnitario,
+      abaixoMinimo: s.minimoEstoque != null ? novoSaldo < s.minimoEstoque : s.abaixoMinimo,
+    };
+  });
+}
+
+const configRegistrarEventoSanitario: UseOfflineMutationConfig<EventoSanidadeOfflineInput, EventoTimeline> = {
+  mutationKey: "rebanho.registrar-evento-sanitario",
+  path: (input) => `/rebanho/animais/${input.animalId}/sanidade`,
+  method: "POST",
+  body: ({ animalId, produtoInfo, ...rest }) => rest,
+  criarOtimista: (input) => ({
+    id: criarIdTemporario(),
+    animalId: input.animalId,
+    data: input.data,
+    dominio: "sanidade",
+    titulo: tituloEventoSanitario(input),
+    detalhe: detalheEventoSanitario(input),
+    alerta: alertaEventoSanitario(input),
+  }),
+  queryKeys: (input, itemOtimista) => {
+    const entradas: EntradaPatch<any, EventoTimeline>[] = [
+      { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+      { queryKey: rebanhoKeys.animal(input.animalId) },
+    ];
+    if (input.produtoId != null && input.quantidadeUsada != null) {
+      const { produtoId, quantidadeUsada } = input;
+      entradas.push(
+        { queryKey: rebanhoKeys.saldos(), aplicar: (atual: SaldoDTO[] | undefined) => aplicarDeltaSaldo(atual, produtoId, quantidadeUsada) },
+        {
+          queryKey: rebanhoKeys.movimentos(),
+          aplicar: (atual: MovimentoDTO[] | undefined) => appendItemToCacheList(atual, {
+            id: criarIdTemporario(),
+            produtoId,
+            produto: input.produtoInfo?.nome ?? input.produto ?? "",
+            setor: input.produtoInfo?.setor ?? "GERAL",
+            tipo: "SAIDA",
+            origem: "SANIDADE",
+            data: input.data,
+            quantidade: quantidadeUsada,
+            custoUnitario: 0,
+            valorTotal: 0,
+            fornecedor: null,
+            grupo: null,
+            observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${input.animalId})`,
+          }),
+        },
+      );
+    }
+    return entradas;
+  },
+};
+
+export function useRegistrarEventoSanitario() {
+  return useOfflineMutation(configRegistrarEventoSanitario);
 }
 
 export interface LactacaoDTO {
@@ -1113,7 +1196,7 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
 export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "PERDA" | "AJUSTE_INVENTARIO";
+export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO";
 // id aceita string pro item otimista (criarIdTemporario()) enquanto o movimento
 // da baixa automática de Sanidade não sincroniza — ver notas de design.
 export interface MovimentoDTO { id: number | string; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }

@@ -6,18 +6,24 @@ import { Children, createElement, Fragment, isValidElement, type ChangeEvent, ty
 
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
-  registrarEventoSanidade: vi.fn(),
+  registrarSanitarioMutate: vi.fn(),
   listarReprodutores: vi.fn(),
   listarEstoqueSemen: vi.fn(),
   listarRacas: vi.fn(),
   listarAnimais: vi.fn(),
+  produtosEstoque: [] as { id: number; nome: string; unidade: string; setor: string }[],
 }));
 
 vi.mock("../api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../api")>(),
   ...apiMocks,
-  useProdutos: () => ({ data: [] }),
+  useProdutos: () => ({ data: apiMocks.produtosEstoque }),
   useResultadosGinecologicos: () => ({ data: [], loading: true }),
+  useRegistrarEventoSanitario: () => ({ mutate: apiMocks.registrarSanitarioMutate, pendentes: [] }),
+}));
+
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
 vi.mock("@/components/rb/RebSelect", () => ({
@@ -49,6 +55,7 @@ const base = { animalId: "1", animal: { id: "1", numero: "1188", nome: "Jurema",
 
 beforeEach(() => {
   vi.clearAllMocks();
+  apiMocks.produtosEstoque = [];
   apiMocks.listarRacas.mockResolvedValue([]);
   apiMocks.listarAnimais.mockResolvedValue([]);
   apiMocks.listarReprodutores.mockResolvedValue({
@@ -111,10 +118,36 @@ describe("EventoForm tipoInicial", () => {
       }));
       fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
       expect(await screen.findByText("Selecione o produto do estoque e a quantidade usada.")).toBeTruthy();
-      expect(apiMocks.registrarEventoSanidade).not.toHaveBeenCalled();
+      expect(apiMocks.registrarSanitarioMutate).not.toHaveBeenCalled();
       expect(onSalvo).not.toHaveBeenCalled();
     },
   );
+
+  it("registra aplicação vinculada ao estoque via useOfflineMutation, com produtoInfo pro item otimista", async () => {
+    apiMocks.produtosEstoque = [{ id: 10, nome: "Ivomectina", unidade: "ml", setor: "GERAL" }];
+    apiMocks.registrarSanitarioMutate.mockImplementation((_input, opts) => {
+      opts?.onSuccess?.({ id: "77", animalId: "1", data: "2026-07-27", dominio: "sanidade", titulo: "Aplicação — Ivomectina" });
+    });
+    const onSalvo = vi.fn();
+    render(createElement(EventoForm, {
+      ...base, onSalvo, dominioFixo: "sanidade",
+      tipoInicial: { dominio: "sanidade", tipo: "APLICACAO" }, dataInicial: "2026-07-27",
+    }));
+
+    fireEvent.change(screen.getByLabelText("Produto*"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Qtd. usada*"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(apiMocks.registrarSanitarioMutate).toHaveBeenCalledTimes(1));
+    expect(apiMocks.registrarSanitarioMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        animalId: "1", tipo: "APLICACAO", produtoId: 10, quantidadeUsada: 5,
+        produtoInfo: { nome: "Ivomectina", unidade: "ml", setor: "GERAL" },
+      }),
+      expect.anything(),
+    );
+    expect(onSalvo).toHaveBeenCalledTimes(1);
+  });
 
   it("mantém o modal aberto até confirmar o aviso retornado ao salvar", async () => {
     const onSalvo = vi.fn();

@@ -3,6 +3,15 @@
 import { describe, it, expect } from "vitest";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// CadastrosView/EstoqueTab usam useQuery (useProdutos/useSaldos/useMovimentos)
+// — precisam de um QueryClient no contexto, mesmo em SSR síncrono (não chega
+// a esperar o fetch, só renderiza o shell de loading).
+function comQueryClient(node: ReturnType<typeof h>) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return h(QueryClientProvider, { client: queryClient }, node);
+}
 import { App } from "../../App";
 import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
@@ -113,7 +122,7 @@ describe("render smoke", () => {
   });
 
   it("CadastrosView renders sub-abas and the loading shell (fetches /rebanho/produtos)", () => {
-    const html = renderToString(h(CadastrosView));
+    const html = renderToString(comQueryClient(h(CadastrosView)));
     // (título de topo removido do produto)
     expect(html).toContain("Produtos");       // sub-aba
     expect(html).toContain("Fornecedores");   // sub-aba
@@ -127,7 +136,7 @@ describe("render smoke", () => {
   });
 
   it("EstoqueTab renders the loading shell (fetches /rebanho/estoque/*)", () => {
-    const html = renderToString(h(EstoqueTab));
+    const html = renderToString(comQueryClient(h(EstoqueTab)));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
