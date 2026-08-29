@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { registrarControle, type ModoProducao, type ControlePayload } from "../api";
+import { controleSchema } from "@rionovo/shared";
+import { useRegistrarControle, type ModoProducao, type ControlePayload } from "../api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   animalId: string;
@@ -13,20 +16,27 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
 }) {
   const [f, setF] = useState({ data: HOJE, peso1: "", peso2: "", peso3: "", pesoTotal: "" });
   const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
+  const registrar = useRegistrarControle();
+  const toast = useToast();
+  const { salvando, salvar: enviarOffline } = useSalvarOffline();
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
 
-  async function salvar() {
+  function salvar() {
     const p: ControlePayload = { data: f.data };
     if (modo === "ORDENHA") { p.peso1 = num(f.peso1); p.peso2 = num(f.peso2); p.peso3 = num(f.peso3); }
     else { p.pesoTotal = num(f.pesoTotal); }
-    if ((p.peso1 ?? p.peso2 ?? p.peso3 ?? p.pesoTotal) == null) { setErro("Informe ao menos um peso."); return; }
-    setSalvando(true); setErro(null);
-    try {
-      await registrarControle(animalId, p);
-      onSalvo();
-    } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
+    const valido = controleSchema.safeParse(p);
+    if (!valido.success) {
+      setErro(valido.error.issues[0]?.message ?? "Informe ao menos um peso.");
+      return;
+    }
+    setErro(null);
+    enviarOffline(registrar.mutate, { animalId, ...p }, {
+      onSalvo,
+      onErroInline: setErro,
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar o controle leiteiro", msg),
+    });
   }
 
   return (

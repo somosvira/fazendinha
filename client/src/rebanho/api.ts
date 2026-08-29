@@ -10,8 +10,9 @@ import {
 import {
   tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
   tituloControleLeiteiro, detalheControleLeiteiro,
-  recomputarQuartos,
+  recomputarQuartos, type ExameQuartoIn,
 } from "@rionovo/shared";
+import { HOJE } from "./HOJE";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
 
 // Chaves de cache do módulo — mesma convenção de client/src/corte/api.ts.
@@ -984,6 +985,41 @@ export function useParametros() {
 export interface ControlePayload { data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number }
 export const registrarControle = (animalId: string, p: ControlePayload) => req<EventoTimeline>(`/rebanho/animais/${animalId}/producao`, { method: "POST", body: JSON.stringify(p) });
 export const excluirControle = (id: string) => req<{ ok: true }>(`/rebanho/producao/${id}`, { method: "DELETE" });
+
+// ESCRITA OFFLINE (Produção — modo ORDENHA) ---------------------------------
+// Só cobre o par POST /animais/:id/producao (registrarControle) — o modo
+// TANQUE_LOTE (producao-lote) fica fora de escopo, a Rio Novo não usa (ver
+// docs/design/offline/REBANHO_SANIDADE_PRODUCAO_NOTAS.md). excluirControle
+// não tem UI hoje (achado durante esta fatia) — nada a cobrir aí.
+export interface ControleOfflineInput extends ControlePayload {
+  animalId: string;
+}
+
+const configRegistrarControle: UseOfflineMutationConfig<ControleOfflineInput, EventoTimeline> = {
+  mutationKey: "rebanho.registrar-controle",
+  path: (input) => `/rebanho/animais/${input.animalId}/producao`,
+  method: "POST",
+  body: ({ animalId, ...rest }) => rest,
+  criarOtimista: (input) => {
+    const pesoTotal = input.pesoTotal ?? (input.peso1 ?? 0) + (input.peso2 ?? 0) + (input.peso3 ?? 0);
+    return {
+      id: criarIdTemporario(),
+      animalId: input.animalId,
+      data: input.data,
+      dominio: "producao",
+      titulo: tituloControleLeiteiro(pesoTotal),
+      detalhe: detalheControleLeiteiro(input),
+    };
+  },
+  queryKeys: (input, itemOtimista) => [
+    { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+  ],
+};
+
+export function useRegistrarControle() {
+  return useOfflineMutation(configRegistrarControle);
+}
 export const registrarProducaoLote = (p: { grupoId?: number; data: string; litros: number }) => req<{ id: number }>(`/rebanho/producao-lote`, { method: "POST", body: JSON.stringify(p) });
 export const excluirProducaoLote = (id: string) => req<{ ok: true }>(`/rebanho/producao-lote/${id}`, { method: "DELETE" });
 
@@ -1481,16 +1517,65 @@ export const registrarExameQuarto = (animalId: string, input: RegistrarExameQuar
   req<SaudeUbereDTO>(`/rebanho/animais/${animalId}/exames-quarto`, { method: "POST", body: JSON.stringify(input) });
 
 export function useSaudeUbere(animalId: string | null) {
-  const [data, setData] = useState<SaudeUbereDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!animalId) { setData(null); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    obterSaudeUbere(animalId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [animalId]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.saudeUbere(animalId ?? ""),
+    queryFn: () => obterSaudeUbere(animalId!),
+    enabled: !!animalId,
+  });
+  return {
+    data: query.data ?? null,
+    loading: animalId ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+function paraExameQuartoIn(e: ExameQuartoDTO): ExameQuartoIn {
+  return { quarto: e.quarto, data: e.data, scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, perdido: e.perdido };
+}
+
+// ESCRITA OFFLINE (Exame de quarto — CMT) -----------------------------------
+// Escrita em lote: 1-4 quartos de uma vez. `porQuarto`/quartosCronicos/
+// quartosPerdidos são recomputados no client com o mesmo cálculo puro do
+// servidor (recomputarQuartos, packages/shared) — cache é objeto agregado,
+// não lista, o `aplicar` cobre isso sem mecanismo extra.
+export interface RegistrarExameQuartoOfflineInput extends RegistrarExameQuartoInput {
+  animalId: string;
+}
+
+const configRegistrarExameQuarto: UseOfflineMutationConfig<RegistrarExameQuartoOfflineInput, ExameQuartoDTO[]> = {
+  mutationKey: "rebanho.registrar-exame-quarto",
+  path: (input) => `/rebanho/animais/${input.animalId}/exames-quarto`,
+  method: "POST",
+  body: ({ animalId, ...rest }) => rest,
+  criarOtimista: (input) => input.quartos.map((q, i) => ({
+    id: -(Date.now() * 10 + i), // sintético, nunca sai do client (não vai pro corpo real nem é referenciado depois)
+    data: input.data,
+    quarto: q.quarto,
+    scoreCmt: q.scoreCmt ?? null,
+    ccs: q.ccs ?? null,
+    clinica: q.clinica ?? false,
+    severidade: q.severidade ?? null,
+    resultadoCultivo: q.resultadoCultivo ?? null,
+    perdido: q.perdido ?? false,
+    escoreTeto: q.escoreTeto ?? null,
+    observacao: q.observacao ?? null,
+  })),
+  queryKeys: (input, itemOtimista) => [
+    {
+      queryKey: rebanhoKeys.saudeUbere(input.animalId),
+      aplicar: (atual: SaudeUbereDTO | undefined) => {
+        const exames = [...(atual?.exames ?? []), ...itemOtimista!];
+        const r = recomputarQuartos(exames.map(paraExameQuartoIn), HOJE);
+        return { exames, porQuarto: r.porQuarto, quartosCronicos: r.quartosCronicos, quartosPerdidos: r.quartosPerdidos };
+      },
+    },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+  ],
+};
+
+export function useRegistrarExameQuarto() {
+  return useOfflineMutation(configRegistrarExameQuarto);
 }
 
 // ── Biblioteca de reprodutores + centrais de sêmen + índices genéticos ────────

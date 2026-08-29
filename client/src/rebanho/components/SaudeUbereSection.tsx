@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
-import { useSaudeUbere, registrarExameQuarto, type Quarto, type ScoreCmt, type EstadoQuarto, type QuartoInput } from "../api";
+import { registrarExameQuartoSchema } from "@rionovo/shared";
+import { useSaudeUbere, useRegistrarExameQuarto, type Quarto, type ScoreCmt, type EstadoQuarto, type QuartoInput } from "../api";
 import { getHojeISO } from "../../lib/hoje";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const QUARTOS: Quarto[] = ["AE", "AD", "PE", "PD"];
 const QUARTO_LABEL: Record<Quarto, string> = { AE: "Ant. Esq.", AD: "Ant. Dir.", PE: "Post. Esq.", PD: "Post. Dir." };
@@ -30,11 +33,13 @@ const rascunhoVazio = (): Rascunho => ({ AE: {}, AD: {}, PE: {}, PD: {} });
 const ESCORES_TETO = [1, 2, 3, 4];
 
 export function SaudeUbereSection({ animalId }: { animalId: string }) {
-  const { data, loading, recarregar } = useSaudeUbere(animalId);
+  const { data, loading } = useSaudeUbere(animalId);
+  const registrar = useRegistrarExameQuarto();
+  const toast = useToast();
+  const { salvando, salvar: enviarOffline } = useSalvarOffline();
   const [aberto, setAberto] = useState(false);
   const [data_, setData_] = useState(getHojeISO());
   const [rascunho, setRascunho] = useState<Rascunho>(rascunhoVazio());
-  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const quartosPreenchidos = useMemo(
@@ -60,16 +65,19 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
     setRascunho((r) => ({ ...r, [q]: { ...r[q], escoreTeto: r[q].escoreTeto === v ? undefined : v } }));
   }
 
-  async function salvar(e: React.FormEvent) {
+  function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!quartosPreenchidos.length) return;
-    setSalvando(true); setErro(null);
-    try {
-      const quartos: QuartoInput[] = quartosPreenchidos.map((q) => ({ quarto: q, ...rascunho[q] }));
-      await registrarExameQuarto(animalId, { data: data_, quartos });
-      setRascunho(rascunhoVazio()); setAberto(false); recarregar();
-    } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao registrar."); }
-    finally { setSalvando(false); }
+    const quartos: QuartoInput[] = quartosPreenchidos.map((q) => ({ quarto: q, ...rascunho[q] }));
+    const payload = { data: data_, quartos };
+    const valido = registrarExameQuartoSchema.safeParse(payload);
+    if (!valido.success) { setErro(valido.error.issues[0]?.message ?? "Dado inválido."); return; }
+    setErro(null);
+    enviarOffline(registrar.mutate, { animalId, ...payload }, {
+      onSalvo: () => { setRascunho(rascunhoVazio()); setAberto(false); },
+      onErroInline: setErro,
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar o exame de quarto", msg),
+    });
   }
 
   return (
