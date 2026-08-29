@@ -1,8 +1,8 @@
-// Fábrica genérica de escrita offline-aware sobre listas em cache do
-// TanStack Query. Cada tela declara o quê (path/method/body, queryKeys
-// afetadas, identidade do item, como montar o item otimista); o como —
-// patch otimista, rollback em erro, enfileiramento e substituição de id
-// temporário — fica em fila.ts, escrito uma vez só.
+// Fábrica genérica de escrita offline-aware sobre caches do TanStack Query.
+// Cada tela declara o quê (path/method/body, como criar o item otimista, como
+// cada queryKey afetada deve ser corrigida — `aplicar`); o como — snapshot
+// pra rollback em erro, enfileiramento e substituição de id temporário —
+// fica em fila.ts, escrito uma vez só.
 import { useSyncExternalStore } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { enfileirarMutation, inscrever, obterFila } from "./fila";
@@ -12,8 +12,6 @@ export const ID_TEMPORARIO_PREFIXO = "local:";
 export function criarIdTemporario(): string {
   return `${ID_TEMPORARIO_PREFIXO}${crypto.randomUUID()}`;
 }
-
-export type OfflineOp = "create" | "update" | "delete" | "upsert";
 
 function ehObjetoPlano(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -32,54 +30,71 @@ function mesclarProfundo<T extends object>(alvo: T, patch: Partial<T>): T {
   return resultado;
 }
 
-interface UseOfflineMutationBase<TInput, TItem extends { id: string }> {
+// Helpers diretos (não curried, nunca devolvem função) pro caso comum de
+// cache em lista — chamados de dentro de um `aplicar` já anotado na mão, ex.:
+// `aplicar: (atual: Item[] | undefined) => appendItemToCacheList(atual, itemOtimista!)`.
+// Cada helper normaliza seu próprio "vazio" — nunca devolve `undefined`.
+
+export function appendItemToCacheList<T>(atual: T[] | undefined, item: T): T[] {
+  return [...(atual ?? []), item];
+}
+
+export function removeItemFromCacheList<T>(atual: T[] | undefined, corresponde: (item: T) => boolean): T[] {
+  return (atual ?? []).filter((item) => !corresponde(item));
+}
+
+export function updateItemInCacheList<T extends object>(
+  atual: T[] | undefined,
+  patch: Partial<T>,
+  corresponde: (item: T) => boolean,
+): T[] {
+  return (atual ?? []).map((item) => (corresponde(item) ? mesclarProfundo(item, patch) : item));
+}
+
+// Upsert de lista: dá merge profundo de `patch` no item existente, ou
+// acrescenta `itemNovo` quando `corresponde` não acha ninguém.
+export function upsertItemInCacheList<T extends object>(
+  atual: T[] | undefined,
+  itemNovo: T,
+  patch: Partial<T>,
+  corresponde: (item: T) => boolean,
+): T[] {
+  const lista = atual ?? [];
+  return lista.some(corresponde)
+    ? updateItemInCacheList(lista, patch, corresponde)
+    : appendItemToCacheList(lista, itemNovo);
+}
+
+/** Uma queryKey afetada por uma mutation + como corrigi-la no cache.
+ * `aplicar` ausente = só invalida depois do sync (dado derivado recomputado
+ * no servidor, sem patch otimista possível — antigo `queryKeysRelacionadas`).
+ * Quando presente, nunca devolve `undefined`: `atual` chega `T | undefined`
+ * (queryKey nunca visitada offline), mas o retorno é sempre `T` — normalizar
+ * (`atual ?? VAZIO`) é responsabilidade de quem escreve `aplicar`, igual já
+ * é feito pelos helpers de lista acima. */
+export interface EntradaPatch<T, TItem> {
+  queryKey: QueryKey;
+  aplicar?: (atual: T | undefined, itemOtimista: TItem | undefined) => T;
+}
+
+export interface UseOfflineMutationConfig<TInput, TItem> {
   /** Identifica esta mutation na fila — usado só pra filtrar `pendentes`. */
   mutationKey: string;
   path: (input: TInput) => string;
   method: "POST" | "PATCH" | "PUT" | "DELETE";
   body?: (input: TInput) => unknown;
-  /** Listas em cache que recebem patch otimista de verdade. */
-  queryKeys: (input: TInput) => QueryKey[];
-  /** Só invalidadas (sem patch) — dado derivado recomputado no servidor. */
-  queryKeysRelacionadas?: (input: TInput) => QueryKey[];
-  match: (item: TItem, input: TInput) => boolean;
+  /** Ponto único de criação do item otimista — roda uma vez por `mutate()`,
+   * nunca por queryKey (evita id divergente entre entradas). Omitir quando a
+   * escrita não cria nada novo (delete, update puro). `id` deve vir de
+   * `criarIdTemporario()`; campos computados pelo backend entram
+   * aproximados/zerados — corrigem no refetch pós-sync. */
+  criarOtimista?: (input: TInput) => TItem;
+  /** Cada entrada é uma queryKey afetada + como corrigi-la (`aplicar`, com o
+   * item otimista já pronto como 2º argumento — nunca gerado de novo aqui). */
+  queryKeys: (input: TInput, itemOtimista: TItem | undefined) => EntradaPatch<any, TItem>[];
 }
 
-export type UseOfflineMutationConfig<TInput, TItem extends { id: string }> =
-  | (UseOfflineMutationBase<TInput, TItem> & {
-      op: "create" | "upsert";
-      /** `id` deve vir de `criarIdTemporario()`. Campos computados pelo
-       * backend entram aproximados/zerados — corrigem no refetch pós-sync. */
-      criarOtimista: (input: TInput) => TItem;
-    })
-  | (UseOfflineMutationBase<TInput, TItem> & { op: "update" | "delete"; criarOtimista?: (input: TInput) => TItem });
-
-function aplicarOtimista<TInput, TItem extends { id: string }>(
-  anterior: TItem[] | undefined,
-  input: TInput,
-  cfg: UseOfflineMutationConfig<TInput, TItem>,
-  itemOtimista: TItem | undefined,
-  existe: boolean,
-): TItem[] {
-  const lista = anterior ?? [];
-  const patch = (item: TItem) => mesclarProfundo(item, input as unknown as Partial<TItem>);
-  switch (cfg.op) {
-    case "delete":
-      return lista.filter((item) => !cfg.match(item, input));
-    case "create":
-      return [...lista, itemOtimista!];
-    case "update":
-      return lista.map((item) => (cfg.match(item, input) ? patch(item) : item));
-    case "upsert":
-      return existe
-        ? lista.map((item) => (cfg.match(item, input) ? patch(item) : item))
-        : [...lista, itemOtimista!];
-  }
-}
-
-export function useOfflineMutation<TInput, TItem extends { id: string }>(
-  cfg: UseOfflineMutationConfig<TInput, TItem>,
-) {
+export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<TInput, TItem>) {
   const queryClient = useQueryClient();
   const fila = useSyncExternalStore(inscrever, obterFila, obterFila);
   const pendentes = fila.filter((item) => item.mutationKey === cfg.mutationKey).map((item) => item.body as TInput);
@@ -88,19 +103,11 @@ export function useOfflineMutation<TInput, TItem extends { id: string }>(
     input: TInput,
     opts?: { onSuccess?: (item: TItem) => void; onError?: (err: unknown) => void },
   ) {
-    const queryKeys = cfg.queryKeys(input);
-    const snapshots = queryKeys.map((queryKey) => ({
-      queryKey,
-      anterior: queryClient.getQueryData<TItem[]>(queryKey),
-    }));
-    // Computado uma vez (não por queryKey) pra ficar consistente entre listas
-    // e pra criarOtimista() (que pode usar criarIdTemporario() internamente)
-    // não gerar um id diferente por lista.
-    const existe = snapshots.some(({ anterior }) => (anterior ?? []).some((item) => cfg.match(item, input)));
-    const vaiCriar = cfg.op === "create" || (cfg.op === "upsert" && !existe);
-    const itemOtimista = vaiCriar ? cfg.criarOtimista!(input) : undefined;
-    for (const { queryKey, anterior } of snapshots) {
-      queryClient.setQueryData(queryKey, aplicarOtimista(anterior, input, cfg, itemOtimista, existe));
+    const itemOtimista = cfg.criarOtimista?.(input);
+    const entradas = cfg.queryKeys(input, itemOtimista);
+    const snapshots = entradas.map((entrada) => ({ entrada, anterior: queryClient.getQueryData(entrada.queryKey) }));
+    for (const { entrada, anterior } of snapshots) {
+      if (entrada.aplicar) queryClient.setQueryData(entrada.queryKey, entrada.aplicar(anterior, itemOtimista));
     }
 
     enfileirarMutation({
@@ -108,15 +115,18 @@ export function useOfflineMutation<TInput, TItem extends { id: string }>(
       path: cfg.path(input),
       method: cfg.method,
       body: cfg.body?.(input),
-      idTemporarioGerado: itemOtimista?.id,
+      // Deliberadamente 1 id por escrita. Uma escrita em lote (N itens numa
+      // chamada só) exigiria reescrever N pares temp→real aqui — e que a
+      // resposta do servidor correlacionasse os N ids reais à ordem enviada.
+      // Sem consumidor real ainda, fica só este comentário no ponto certo.
+      idTemporarioGerado: (itemOtimista as { id?: string } | undefined)?.id,
     })
       .then((resposta) => {
-        for (const queryKey of cfg.queryKeys(input)) queryClient.invalidateQueries({ queryKey });
-        for (const queryKey of cfg.queryKeysRelacionadas?.(input) ?? []) queryClient.invalidateQueries({ queryKey });
+        for (const { entrada } of snapshots) queryClient.invalidateQueries({ queryKey: entrada.queryKey });
         opts?.onSuccess?.(resposta as TItem);
       })
       .catch((err) => {
-        for (const { queryKey, anterior } of snapshots) queryClient.setQueryData(queryKey, anterior);
+        for (const { entrada, anterior } of snapshots) queryClient.setQueryData(entrada.queryKey, anterior);
         opts?.onError?.(err);
       });
   }

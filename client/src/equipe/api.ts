@@ -8,7 +8,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { FuncionarioDTO, RegistroDTO, FolhaDTO, CustoMOSetorDTO } from "./types";
 import { fmtMoneyExact } from "../components/charts";
 import { req } from "../lib/offline/req";
-import { useOfflineMutation, criarIdTemporario, type UseOfflineMutationConfig } from "../lib/offline/useOfflineMutation";
+import {
+  useOfflineMutation,
+  criarIdTemporario,
+  upsertItemInCacheList,
+  type UseOfflineMutationConfig,
+} from "../lib/offline/useOfflineMutation";
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
 function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
@@ -123,18 +128,17 @@ const pontoKeys = {
   funcionarios: (ativo?: boolean) => ["ponto", "funcionarios", ativo] as const,
 };
 
-// `op: "upsert"` porque a identidade é a chave natural (funcionarioId, data),
-// não um id — reenviar a mesma data sobrescreve.
+// Upsert porque a identidade é a chave natural (funcionarioId, data), não um
+// id — reenviar a mesma data sobrescreve (`upsertItemInCacheList` decide
+// merge x append olhando se já existe um registro com a mesma `data`).
 const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO> = {
   mutationKey: "ponto.upsert-registro",
   path: () => "/ponto/registros",
   method: "POST",
   body: (input) => input,
-  queryKeys: (input) => [pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7))],
-  op: "upsert",
-  match: (item, input) => item.data === input.data,
   // Campos computados pelo backend (horas/extra) entram zerados — corrigem
-  // sozinhos no refetch pós-sync.
+  // sozinhos no refetch pós-sync. Gerado sempre, mesmo quando o registro já
+  // existe (aí só o merge é usado) — id sobrando é inofensivo.
   criarOtimista: (input) => ({
     id: criarIdTemporario(),
     funcionarioId: input.funcionarioId,
@@ -148,6 +152,18 @@ const configUpsertRegistro: UseOfflineMutationConfig<RegistroInput, RegistroDTO>
     extra50: 0,
     extra100: 0,
   }),
+  queryKeys: (input, itemOtimista) => [
+    {
+      queryKey: pontoKeys.registros(input.funcionarioId, input.data.slice(0, 7)),
+      aplicar: (atual: RegistroDTO[] | undefined) =>
+        upsertItemInCacheList(
+          atual,
+          itemOtimista!,
+          input as unknown as Partial<RegistroDTO>,
+          (item) => item.data === input.data,
+        ),
+    },
+  ],
 };
 
 export function useRegistros(funcionarioId: string | null, mes: string) {
