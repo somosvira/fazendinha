@@ -1,4 +1,4 @@
-# Notas — Rebanho > Sanidade + Produção-tanque
+# Notas — Rebanho > Sanidade + Produção
 
 Rascunho de trabalho. Próxima fatia do rollout offline depois do Corte
 (#235), conforme `docs/design/offline/OFFLINE_STRATEGY.md`.
@@ -145,36 +145,63 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
 - Não passa pela ponte financeiro (`gerarLancamento`) nem por
   `FechamentoMensal` — isso só existe pra **entrada** (compra); Sanidade só
   gera **saída**.
-- [ok] Caminho de estoque manual (`BaixaEstoqueCard` — produto digitado sem
-  vincular, dispara um **segundo** POST separado via `registrarMovimento`,
-  sem referenciar o evento por id) — **decidido: entra no escopo desta
-  fatia**, offline-habilitado igual qualquer create simples de uma tabela só
-  (mesmo padrão do Corte/Ponto, zero acoplamento técnico com o evento — ver
-  investigação acima). Hoje o card ainda lê `listarProdutos`/`listarSaldos`
-  via `useEffect`+`useState` direto (fora do `queryClient`) e chama
-  `registrarMovimento` com `await` direto — precisa migrar pros mesmos
-  padrões do resto da fatia (`useQuery` + `useOfflineMutation`).
-- [ok] **Oportunidade de teste real da reconciliação de id temporário**: até
-  agora o mecanismo de 1-item (`substituirIdNaFila`, seção 1) nunca teve um
-  consumidor de verdade — nem Corte nem Ponto enfileiram uma escrita que
-  referencie o id de outra escrita otimista ainda pendente na mesma fila.
-  `EstoqueTab.tsx` já tem `excluirMovimento` na tela (hoje um `req()` direto,
-  só-online, `id: number`) ao lado da lista que o `BaixaEstoqueCard` alimenta
-  via `criarIdTemporario()`. Migrando os dois juntos, um cenário real fica
-  possível pela primeira vez: usuário offline dá baixa manual (cria
-  `MovimentoDTO` com `id: "local:<uuid>"`, aparece na lista) → percebe erro e
-  clica excluir **antes de sincronizar** (enfileira um `DELETE
-  /rebanho/estoque/movimentos/local:<uuid>`) → volta online → fila processa
-  o create primeiro, servidor devolve id real → `substituirIdNaFila` reescreve
-  o path do delete enfileirado pro id real → delete processa certo. Pra isso
-  funcionar: `MovimentoDTO.id` precisa aceitar `string | number` (hoje é só
-  `number`) durante a janela pendente, mesma convenção que `EventoTimeline.id`
-  do Corte já usa (`id: string` sempre, real ou temporário) — e
-  `excluirMovimento` precisa virar uma config de `useOfflineMutation`
-  (`method: "DELETE"`) em vez do `req()` direto atual. Vale escrever um teste
-  de integração específico pra esse par create+delete encadeado — é o
-  primeiro caso real que exercita `substituirIdNaFila` fora do mock sintético
-  de `fila.test.ts`.
+- [fechado] `BaixaEstoqueCard` — **achado durante esta fatia: código morto,
+  não é uma decisão de escopo**. O schema do servidor
+  (`eventos-sanidade.schemas.ts:5`, desde o commit `9a81458` "integra eventos
+  sanitarios ao estoque") tornou `produtoId`+`quantidadeUsada` **obrigatórios**
+  em toda `APLICACAO`/`VACINA` — mas `EventoForm.tsx:239` só abre o
+  `BaixaEstoqueCard` quando `usaEstoque` é **falso** (ou seja, quando
+  `produtoId` NÃO foi enviado). Como `registrarEventoSanidade` já lança 400
+  antes de chegar nessa linha nesse caso, o branch nunca é alcançado —
+  `BaixaEstoqueCard` não tem nenhum outro caller no repo (só esse). Não é
+  possível hoje, nem online, "digitar produto sem vincular ao estoque" pra
+  Aplicação/Vacina — o campo de texto livre "Produto\*" é puramente
+  decorativo (o próprio código já copia o nome do produto do dropdown pra
+  ele, `EventoForm.tsx:536,563`); não existe (nunca existiu) lógica de
+  "criar produto no estoque a partir do texto digitado" — `registrarSanidade`
+  (`eventos-sanidade.ts:41-42`) só faz `produto.findUnique` e lança erro se
+  não achar.
+  **Decidido: cleanup faz parte desta fatia** (bug de UX real, não é
+  offline, mas gate a decisão de escopo desta sub-feature) — nesta mesma
+  branch: tirar o campo de texto livre "Produto" pra Aplicação/Vacina,
+  tornar "Produto do estoque" obrigatório de fato no client (bloquear
+  "Salvar" antes do POST, no padrão que `MovimentoForm.tsx:46-47` já usa),
+  apagar o branch morto (`baixaCtx`/`setBaixaCtx`, linhas 238-249 e
+  275-289) e apagar `BaixaEstoqueCard.tsx` inteiro (sem caller depois do
+  cleanup). Resultado: a baixa de estoque ligada à Sanidade fica 100%
+  coberta pelo POST único e atômico de `registrarEventoSanidade` — não
+  sobra nenhuma escrita separada de estoque pra cobrir offline nesta
+  sub-feature (o `useSaldos`/`useMovimentos` de `EstoqueTab.tsx` ainda
+  precisam de `aplicar` pra refletir esse `MovimentoEstoque` criado de
+  tabela, mas isso é leitura/patch de cache reagindo a uma escrita já
+  coberta pela config da Sanidade — não é uma segunda mutation).
+- [aberto, fora de escopo] **Caso anotado pra depois, fora desta fatia**:
+  existe um `MovimentoForm.tsx` genérico (botão "+ Novo movimento" em
+  `EstoqueTab.tsx:265`), independente de qualquer evento — e dentro dele um
+  "+ novo produto" (`ProdutoForm.tsx`) que cria um `Produto` novo e
+  recarrega o dropdown já selecionando o criado
+  (`MovimentoForm.tsx:177-182`). Nenhum dos dois está no escopo desta fatia
+  (não é Sanidade/Produção/Exame de quarto) — mas registrando aqui pra não
+  perder: se um dia `useProdutos` virar `useQuery` (é o caso já, nesta
+  fatia, mas só leitura) e a criação de produto for coberta por
+  `useOfflineMutation` com um `aplicar` que faz `appendItemToCacheList`, o
+  produto novo (id temporário) apareceria no dropdown do `MovimentoForm` na
+  hora, ainda offline — é o valor real do `aplicar` vs. invalidate-only.
+  Só que se o usuário then **selecionar esse produto recém-criado e
+  submeter um movimento pra ele**, ainda offline, isso encadeia duas
+  escritas na fila: create Produto (id temporário) → create Movimento
+  referenciando esse id — o mesmo tipo de dependência de
+  `substituirIdNaFila` do caso create+delete acima, só que create→create.
+  **Pegadinha a mais aqui que o caso do `MovimentoDTO.id` não tem**:
+  `produtoId` no schema do servidor é `z.number().int()` **sem coerção**
+  (`estoque.ts:22`), e `substituirIdNaFila`/`substituir` (`fila.ts:144-155`)
+  faz troca **string→string** (`idReal = String(resposta.id)`) — o corpo
+  reescrito chegaria com `produtoId: "77"` (string), que um `z.number()`
+  estrito rejeita. Pra esse encadeamento funcionar de verdade precisaria de
+  `z.coerce.number()` (ou equivalente) nesse campo — não existe hoje. Não é
+  bloqueio de nada, só fica anotado: se essa escrita (criar produto) entrar
+  em escopo numa fatia futura, essa reconciliação precisa desse ajuste de
+  schema antes de funcionar.
 
 ### Sub-feature: Exame de quarto (CMT — saúde do úbere)
 - Tabela separada `ExameQuarto`, **não é** um dos 5 tipos de
