@@ -6,6 +6,33 @@ Rascunho de trabalho. Próxima fatia do rollout offline depois do Corte
 Convenção: `[aberto]` = decisão pendente sua. `[ok]` = decidido/confirmado.
 `[fechado]` = implementado.
 
+**Status**: implementado na branch `offline/rebanho-sanidade-producao`. As
+3 sub-features de escrita (Evento sanitário, Exame de quarto, Produção
+modo ORDENHA) estão `[fechado]` — testadas com suíte automatizada e
+manualmente no navegador com rede offline real (CDP
+`Network.emulateNetworkConditions`). Desvios do que estava planejado nesta
+página, descobertos durante a implementação:
+- `EventoForm.tsx` **não** foi dividido num `SanidadeForm` dedicado — a
+  mudança real foi mais estreita (só o `salvar()` de criação passou a
+  desviar pra `useOfflineMutation`, com um `montarPayloadSanidade()`
+  compartilhado com a edição, que segue online). Separar o arquivo inteiro
+  não era necessário pra cobrir offline e ficou fora do escopo real.
+- `useAnimais`/`useGrupos`/`useProducao` (agregado) **não** foram migrados
+  pra `useQuery` — não alimentam nenhuma das 3 escritas cobertas, só
+  `useAnimal` (singular), `useTimeline`, `useSaudeUbere`, `useProdutos`,
+  `useSaldos`/`useMovimentos` migraram de verdade.
+- `producaoLoteSchema` **não** foi movido pra `packages/shared` (só
+  `criarEventoSanitarioSchema`, `registrarExameQuartoSchema`,
+  `controleSchema`) — modo `TANQUE_LOTE` segue fora de escopo.
+- Achado extra corrigido nesta mesma branch: `BaixaEstoqueCard` era código
+  morto (ver sub-feature de estoque abaixo) — removido, junto com um bug
+  de UX real no `EventoForm` (produto do estoque não era exigido no
+  client, resultando em 400 sem explicação).
+- Achado extra corrigido: `reb-animal` não estava em `TABS_OFFLINE`
+  (`App.tsx`) — a feature inteira ficava inalcançável offline sem essa
+  entrada. Indicador de "N pendente(s)" adicionado ao `AnimalCockpit`
+  (mesmo padrão do `PesagemTab` do Corte).
+
 ---
 
 ## 1. Design do `aplicar` (fábrica `useOfflineMutation`)
@@ -96,7 +123,7 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
 
 ---
 
-## 2. Feature: Sanidade + Produção-tanque
+## 2. Feature: Sanidade + Produção
 
 ### Grupo geral
 - Read hooks a migrar pra `useQuery`: `useAnimais`, `useProdutos`,
