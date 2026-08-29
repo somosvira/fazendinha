@@ -145,21 +145,36 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
 - Não passa pela ponte financeiro (`gerarLancamento`) nem por
   `FechamentoMensal` — isso só existe pra **entrada** (compra); Sanidade só
   gera **saída**.
-- [aberto] Caminho de estoque manual (`BaixaEstoqueCard` — produto digitado
-  sem vincular, dispara um **segundo** POST separado via
-  `registrarMovimento`, sem referenciar o evento por id) — bloquear offline
-  (só libera o caminho com dropdown vinculado) ou suportar também?
-  **Investigado**: não tem nenhum acoplamento técnico com o evento — pro
-  caso `SAIDA`, `registrarMovimento` (`server/src/services/rebanho/estoque.ts:115-171`)
-  só cria uma linha de `MovimentoEstoque`, sem `eventoId`/FK nenhuma pro
-  `EventoSanitario` (que só referencia `MovimentoEstoque` no sentido
-  inverso, via `movimentoEstoqueId`, e só no caminho vinculado). Não
-  depende de id gerado na mesma ação (o `produtoId` vem de um GET separado,
-  `listarProdutos()`, não do evento recém-criado). Ou seja: dá pra
-  offline-abilitar exatamente como qualquer create simples de uma tabela só
-  (mesmo padrão do Corte/Ponto) — não é mais difícil tecnicamente, só mais
-  uma superfície de escrita pra construir/testar. Decisão de escopo, não de
-  arquitetura — segue aberta até confirmar frequência de uso real.
+- [ok] Caminho de estoque manual (`BaixaEstoqueCard` — produto digitado sem
+  vincular, dispara um **segundo** POST separado via `registrarMovimento`,
+  sem referenciar o evento por id) — **decidido: entra no escopo desta
+  fatia**, offline-habilitado igual qualquer create simples de uma tabela só
+  (mesmo padrão do Corte/Ponto, zero acoplamento técnico com o evento — ver
+  investigação acima). Hoje o card ainda lê `listarProdutos`/`listarSaldos`
+  via `useEffect`+`useState` direto (fora do `queryClient`) e chama
+  `registrarMovimento` com `await` direto — precisa migrar pros mesmos
+  padrões do resto da fatia (`useQuery` + `useOfflineMutation`).
+- [ok] **Oportunidade de teste real da reconciliação de id temporário**: até
+  agora o mecanismo de 1-item (`substituirIdNaFila`, seção 1) nunca teve um
+  consumidor de verdade — nem Corte nem Ponto enfileiram uma escrita que
+  referencie o id de outra escrita otimista ainda pendente na mesma fila.
+  `EstoqueTab.tsx` já tem `excluirMovimento` na tela (hoje um `req()` direto,
+  só-online, `id: number`) ao lado da lista que o `BaixaEstoqueCard` alimenta
+  via `criarIdTemporario()`. Migrando os dois juntos, um cenário real fica
+  possível pela primeira vez: usuário offline dá baixa manual (cria
+  `MovimentoDTO` com `id: "local:<uuid>"`, aparece na lista) → percebe erro e
+  clica excluir **antes de sincronizar** (enfileira um `DELETE
+  /rebanho/estoque/movimentos/local:<uuid>`) → volta online → fila processa
+  o create primeiro, servidor devolve id real → `substituirIdNaFila` reescreve
+  o path do delete enfileirado pro id real → delete processa certo. Pra isso
+  funcionar: `MovimentoDTO.id` precisa aceitar `string | number` (hoje é só
+  `number`) durante a janela pendente, mesma convenção que `EventoTimeline.id`
+  do Corte já usa (`id: string` sempre, real ou temporário) — e
+  `excluirMovimento` precisa virar uma config de `useOfflineMutation`
+  (`method: "DELETE"`) em vez do `req()` direto atual. Vale escrever um teste
+  de integração específico pra esse par create+delete encadeado — é o
+  primeiro caso real que exercita `substituirIdNaFila` fora do mock sintético
+  de `fila.test.ts`.
 
 ### Sub-feature: Exame de quarto (CMT — saúde do úbere)
 - Tabela separada `ExameQuarto`, **não é** um dos 5 tipos de
