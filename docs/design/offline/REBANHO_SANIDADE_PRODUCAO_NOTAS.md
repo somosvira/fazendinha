@@ -1,7 +1,7 @@
 # Notas — Rebanho > Sanidade + Produção-tanque
 
-Untracked, rascunho de trabalho. Próxima fatia do rollout offline depois do
-Corte (#235), conforme `docs/design/offline/OFFLINE_STRATEGY.md`.
+Rascunho de trabalho. Próxima fatia do rollout offline depois do Corte
+(#235), conforme `docs/design/offline/OFFLINE_STRATEGY.md`.
 
 Convenção: `[aberto]` = decisão pendente sua. `[ok]` = decidido/confirmado.
 `[fechado]` = implementado.
@@ -108,9 +108,14 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
 - Ordenação por id em `agregarProducao` (`[grupoId asc, data desc, id desc]`)
   já coberta pela decisão de manter `Int autoincrement` — nada a fazer, só
   reconfirmar no teste.
-- [aberto] `EventoForm.tsx` é compartilhado com Reprodução (577 linhas, um
-  modal só pros dois domínios). Extrair `SanidadeForm` dedicado (recomendo)
-  ou reusar o modal grande com Reprodução bloqueada offline?
+- [ok] `EventoForm.tsx` é compartilhado com Reprodução (577 linhas, um
+  modal só pros dois domínios) — **decidido: extrair `SanidadeForm`
+  dedicado**, menor, só com os campos de Sanidade. Segue o padrão já usado
+  no Corte (`ManejoForm` é próprio, não compartilhado com Reprodução).
+- [ok] `producaoModo` só afeta a sub-feature Produção (qual tela grava o
+  volume de leite). Evento sanitário, Exame de quarto e Movimentação de
+  estoque são inteiramente independentes dele — mesma tabela, mesmo fluxo,
+  não importa o modo da fazenda.
 
 ### Sub-feature: Evento sanitário (Ocorrência / Aplicação / Exame / Mastite / Vacina)
 - Tabela única `EventoSanitario`, campo `tipo` decide quais colunas importam.
@@ -123,18 +128,38 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
 - Quando `APLICACAO`/`VACINA` vincula `produtoId`, servidor cria
   `EventoSanitario`+`MovimentoEstoque` numa `$transaction` atômica — client
   faz **um** POST só, sem escrita dupla.
-- `useSaldos` não tem patch hoje — vira `aplicar` de delta
-  (`saldo -= quantidadeUsada`, `valor -= quantidadeUsada*custoUnitario`,
-  dados já disponíveis via `useProdutos`) ou fica invalidate-only, dependendo
-  de como fechar a seção 1.
+- `EstoqueTab.tsx` lê duas caches diferentes pro mesmo `MovimentoEstoque`
+  novo — cada uma com o formato de `aplicar` certo pro seu caso:
+  - `useSaldos` (`SaldoDTO[]`, agregado por produto) — `aplicar` de
+    **delta** num item **já existente** (`saldo -= quantidadeUsada`,
+    `valor -= quantidadeUsada*custoUnitario`), casado por `produtoId` (já
+    conhecido, não gerado agora). Não precisa de `criarOtimista`/id
+    temporário pra essa entrada — não é um item novo na lista, é uma
+    correção num que já está lá.
+  - `useMovimentos`/`listarMovimentos` (`MovimentoDTO[]`, extrato
+    completo, tem `excluirMovimento` na tela) — **essa sim** é o caso de
+    `criarOtimista` com `id: criarIdTemporario()` +
+    `appendItemToCacheList`, igual Corte: item novo na lista, precisa de
+    id (React key, e reconciliado 1:1 pelo mecanismo já pronto de
+    `fila.ts` quando o real chegar).
 - Não passa pela ponte financeiro (`gerarLancamento`) nem por
   `FechamentoMensal` — isso só existe pra **entrada** (compra); Sanidade só
   gera **saída**.
 - [aberto] Caminho de estoque manual (`BaixaEstoqueCard` — produto digitado
   sem vincular, dispara um **segundo** POST separado via
   `registrarMovimento`, sem referenciar o evento por id) — bloquear offline
-  (só libera o caminho com dropdown vinculado) ou é usado com frequência
-  real no curral?
+  (só libera o caminho com dropdown vinculado) ou suportar também?
+  **Investigado**: não tem nenhum acoplamento técnico com o evento — pro
+  caso `SAIDA`, `registrarMovimento` (`server/src/services/rebanho/estoque.ts:115-171`)
+  só cria uma linha de `MovimentoEstoque`, sem `eventoId`/FK nenhuma pro
+  `EventoSanitario` (que só referencia `MovimentoEstoque` no sentido
+  inverso, via `movimentoEstoqueId`, e só no caminho vinculado). Não
+  depende de id gerado na mesma ação (o `produtoId` vem de um GET separado,
+  `listarProdutos()`, não do evento recém-criado). Ou seja: dá pra
+  offline-abilitar exatamente como qualquer create simples de uma tabela só
+  (mesmo padrão do Corte/Ponto) — não é mais difícil tecnicamente, só mais
+  uma superfície de escrita pra construir/testar. Decisão de escopo, não de
+  arquitetura — segue aberta até confirmar frequência de uso real.
 
 ### Sub-feature: Exame de quarto (CMT — saúde do úbere)
 - Tabela separada `ExameQuarto`, **não é** um dos 5 tipos de
@@ -165,23 +190,58 @@ resultado na hora, chamadas de dentro do `aplicar`, iguais a `data.map(...)`.
   escrita continua liberada mesmo nesse caso (efeito real vai pra fila de
   qualquer jeito) — só o otimista fica mais pobre (calculado só a partir dos
   4 itens que acabaram de ser digitados, sem histórico prévio).
-- [aberto] Essa fatia depende da feature `aplicar` (seção 1) — usuário vai
-  detalhar depois por quê.
+- [ok] A dependência da feature `aplicar` (seção 1) caiu — implementada no
+  [PR #236](https://github.com/piubellofelipe/fazendinha/pull/236),
+  `aplicar` já suporta cache-objeto-agregado (não-lista) sem mecanismo
+  extra. Nada bloqueado aqui.
 
-### Sub-feature: Produção (modo tanque/lote)
-- Tela `ProducaoTab` → `LoteForm` (hoje 100% hand-rolled, nem usa o hook
-  `useGrupos` que já existe — chama `listarGrupos()` direto).
-- Config `producaoModo` (**default `ORDENHA`** no schema e no seed) decide
-  qual UI renderiza. `TANQUE_LOTE` é o modo que o rollout chamou de
-  "Produção-tanque".
-- Recompute: `registrarProducaoLote` dispara `recomputarProducaoDoAnimal`
-  pra cada vaca do grupo — invalidate-only.
-- [aberto] Confirmar modo real da fazenda — se for `ORDENHA`, a prioridade
-  muda pra `ControleForm` (registro por vaca, na ficha do animal), fora do
-  que foi mapeado até aqui.
-
-### Sub-feature: TanquesSection (qualidade CCS/CBT do tanque físico)
-- Diferente de "Produção-tanque" (que é sobre volume) — isso é qualidade do
-  leite do tanque de resfriamento (`registrarAnaliseTanque`).
-- Não citado explicitamente no rollout (`OFFLINE_AREAS.md`/`OFFLINE_STRATEGY.md`).
-- [aberto] Incluir nessa fatia ou deixar de fora?
+### Sub-feature: Produção (modo tanque/lote vs. por vaca)
+- `producaoModo` (`Configuracao.producaoModo`, enum `ORDENHA | TOTAL_DIARIO
+  | TANQUE_LOTE`) é um **toggle único pra fazenda inteira** (não por
+  evento nem por animal) — decide qual das duas telas é a usada de
+  verdade:
+  - `ORDENHA`/`TOTAL_DIARIO` → `ControleForm` (modal por vaca, na ficha do
+    animal) grava em `ControleLeiteiro` (peso1/2/3 por ordenha, ou
+    pesoTotal).
+  - `TANQUE_LOTE` → o `LoteForm` embutido em `ProducaoTab.tsx` (grupo/tanque
+    + litros do dia) grava em `ProducaoLote`, com rateio por vaca depois.
+  Schema default é `ORDENHA`; o rollout chamou essa fatia de
+  "Produção-tanque" assumindo `TANQUE_LOTE`.
+- Endpoints — **tabela e rota são diferentes por modo**, só a leitura
+  agregada é compartilhada:
+  - `ORDENHA`: `POST /rebanho/animais/:id/producao` (`registrarControle`) +
+    `DELETE /rebanho/producao/:id` (`excluirControle`) → grava em
+    `ControleLeiteiro`. **É esse par que essa fatia cobre offline.**
+  - `TANQUE_LOTE`: `POST /rebanho/producao-lote` (`registrarProducaoLote`) +
+    `DELETE /rebanho/producao-lote/:id` (`excluirProducaoLote`) → grava em
+    `ProducaoLote`. Fora de escopo (modo não usado na Rio Novo).
+  - Compartilhado pelos dois: `GET /rebanho/producao` (`agregarProducao`,
+    formato de resposta muda por modo — ver acima) e o recompute
+    (`recomputarProducaoDoAnimal`), que escreve no mesmo `ResumoAnimal`
+    pros dois, só com fórmula diferente por dentro.
+- [ok] **Confirmado por dado real**: `server/prisma/rebanho_real.json` (a
+  importação real da Rio Novo, mesmo padrão do `rio_novo.json`
+  financeiro) tem **1.722 linhas em `controles`** (formato
+  `numero+data+peso1/2/3+pesoTotal` — exatamente `ControleLeiteiro`,
+  por vaca) e **nenhuma** linha de produção por lote/tanque em lugar
+  nenhum do arquivo. A fazenda usa `ORDENHA` de verdade — a tela
+  prioritária é `ControleForm` (por vaca), não `ProducaoTab`→`LoteForm`
+  (tanque/lote). Precisa remapear essa sub-feature em cima de
+  `ControleForm` antes de implementar — o que foi escrito acima sobre
+  `LoteForm`/`ProducaoLote` fica só como referência de um modo que a
+  fazenda não usa hoje.
+- Recompute: tanto `registrarControle` quanto `registrarProducaoLote`
+  disparam `recomputarProducaoDoAnimal` — invalidate-only, independente do
+  modo.
+- [ok] `producaoModo` **não é só UI** — muda a lógica de cálculo no
+  servidor (`server/src/services/rebanho/producao.ts:23-53,96-145`):
+  em `ORDENHA`, `producaoMediaDia` vem direto do `ControleLeiteiro` do
+  próprio animal (medição real); em `TANQUE_LOTE`, vem de **rateio**
+  (`litros do grupo ÷ vacas em lactação do grupo` — estimativa, não
+  medição por vaca). `agregarProducao` também devolve formato diferente
+  por modo (`lotes` agregados vs. `ranking` por vaca) — e o cálculo de
+  **carência** (janela de leite não vendável após aplicação com
+  `carencia > 0`) só roda no branch não-tanque; `TANQUE_LOTE` não tem
+  carência por vaca nenhuma hoje. Reforça que `ORDENHA` (confirmado pelo
+  dado real acima) é o modo certo pra essa fatia — em `TANQUE_LOTE`
+  faltaria construir a carência do zero, fora do que foi mapeado aqui.
