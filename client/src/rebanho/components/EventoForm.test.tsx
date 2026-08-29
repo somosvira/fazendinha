@@ -6,6 +6,7 @@ import { Children, createElement, Fragment, isValidElement, type ChangeEvent, ty
 
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
+  registrarEventoSanidade: vi.fn(),
   listarReprodutores: vi.fn(),
   listarEstoqueSemen: vi.fn(),
   listarRacas: vi.fn(),
@@ -99,6 +100,21 @@ describe("EventoForm tipoInicial", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
     expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe("Exame");
   });
+
+  it.each(["APLICACAO", "VACINA"] as const)(
+    "bloqueia salvar %s sem produto do estoque vinculado (servidor exige produtoId)",
+    async (tipo) => {
+      const onSalvo = vi.fn();
+      render(createElement(EventoForm, {
+        ...base, onSalvo, dominioFixo: "sanidade",
+        tipoInicial: { dominio: "sanidade", tipo }, dataInicial: "2026-07-27",
+      }));
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+      expect(await screen.findByText("Selecione o produto do estoque e a quantidade usada.")).toBeTruthy();
+      expect(apiMocks.registrarEventoSanidade).not.toHaveBeenCalled();
+      expect(onSalvo).not.toHaveBeenCalled();
+    },
+  );
 
   it("mantém o modal aberto até confirmar o aviso retornado ao salvar", async () => {
     const onSalvo = vi.fn();
