@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useAnimal, useTimeline, useConfig, useAnimalInsights, excluirEventoSanidade } from "../api";
+import { useAnimal, useTimeline, useConfig, useAnimalInsights, excluirEventoSanidade, useRegistrarEventoSanitario, useRegistrarControle, useRegistrarExameQuarto } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
@@ -82,6 +82,11 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
   const { data: cfg } = useConfig();
   const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
+  // Fila não guarda o animal isolado por item — contador é global, não por ficha.
+  const { pendentes: pendentesEvento } = useRegistrarEventoSanitario();
+  const { pendentes: pendentesControle } = useRegistrarControle();
+  const { pendentes: pendentesExame } = useRegistrarExameQuarto();
+  const totalPendentes = pendentesEvento.length + pendentesControle.length + pendentesExame.length;
   const [registrando, setRegistrando] = useState(false);
   const [registrandoControle, setRegistrandoControle] = useState(false);
   const [eventoEditando, setEventoEditando] = useState<EventoTimeline | null>(null);
@@ -129,6 +134,11 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   return (
     <RebMain>
       <button className={CRUMB} onClick={onVoltar}>← <b>Rebanho</b> &nbsp;/&nbsp; Animal #{a.numero}</button>
+      {totalPendentes > 0 && (
+        <p className="mt-1 text-[13px] text-atencao">
+          {totalPendentes} {totalPendentes > 1 ? "registros pendentes" : "registro pendente"} de sincronização
+        </p>
+      )}
 
       <div className="mb-[18px] mt-1 flex items-end justify-between gap-5 border-b border-[color:var(--rule)] pb-4">
         <div>
