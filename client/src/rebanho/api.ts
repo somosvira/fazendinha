@@ -22,6 +22,7 @@ export const rebanhoKeys = {
   produtos: (f?: { tipo?: string; q?: string; ativo?: boolean }) => ["rebanho", "produtos", f?.tipo ?? null, f?.q ?? null, f?.ativo ?? null] as const,
   saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
+  config: () => ["rebanho", "config"] as const,
 };
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
@@ -922,12 +923,13 @@ export const salvarConfig = (input: { producaoModo?: ModoProducao; precoLeite?: 
   req<ConfigDTO>(`/rebanho/config`, { method: "PATCH", body: JSON.stringify(input) });
 
 export function useConfig() {
-  const [data, setData] = useState<ConfigDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterConfig().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({ queryKey: rebanhoKeys.config(), queryFn: obterConfig });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Parâmetros de manejo ──────────────────────────────────────────────────

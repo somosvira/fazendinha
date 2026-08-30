@@ -120,7 +120,7 @@ describe("render smoke", () => {
   });
 
   it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {
-    const html = renderToString(h(ConfiguracoesView));
+    const html = renderToString(comQueryClient(h(ConfiguracoesView)));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
