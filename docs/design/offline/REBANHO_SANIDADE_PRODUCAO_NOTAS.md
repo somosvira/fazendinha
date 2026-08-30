@@ -8,15 +8,20 @@ Convenção: `[aberto]` = decisão pendente sua. `[ok]` = decidido/confirmado.
 
 **Status**: implementado na branch `offline/rebanho-sanidade-producao`. As
 3 sub-features de escrita (Evento sanitário, Exame de quarto, Produção
-modo ORDENHA) estão `[fechado]` — testadas com suíte automatizada e
-manualmente no navegador com rede offline real (CDP
-`Network.emulateNetworkConditions`). Desvios do que estava planejado nesta
-página, descobertos durante a implementação:
-- `EventoForm.tsx` **não** foi dividido num `SanidadeForm` dedicado — a
-  mudança real foi mais estreita (só o `salvar()` de criação passou a
-  desviar pra `useOfflineMutation`, com um `montarPayloadSanidade()`
-  compartilhado com a edição, que segue online). Separar o arquivo inteiro
-  não era necessário pra cobrir offline e ficou fora do escopo real.
+modo ORDENHA) estão `[fechado]` **só pra criação** — testadas com suíte
+automatizada e manualmente no navegador com rede offline real (CDP
+`Network.emulateNetworkConditions`). **Evento sanitário é a única das 3 que
+tem editar/excluir em algum lugar do app (Exame de quarto e Produção nunca
+tiveram) — esses dois continuam exigindo conexão.** Se o usuário estiver
+offline, os botões "Editar"/"Excluir" de um evento sanitário aparecem
+normalmente (a ficha do animal está em `TABS_OFFLINE`) mas o clique falha
+com o erro cru do `fetch`, sem enfileirar. Desvios do que estava planejado
+nesta página, descobertos durante a implementação:
+- `EventoForm.tsx` foi dividido em `EventoForm.sanidade.tsx` (campos +
+  `montarPayloadSanidade` + hook de escrita), mas não virou um modal
+  `SanidadeForm` independente — o modal único Reprodução+Sanidade (com
+  troca de domínio inline) continua o mesmo, só a apresentação e a escrita
+  de Sanidade saíram do arquivo.
 - `useAnimais`/`useGrupos`/`useProducao` (agregado) **não** foram migrados
   pra `useQuery` — não alimentam nenhuma das 3 escritas cobertas, só
   `useAnimal` (singular), `useTimeline`, `useSaudeUbere`, `useProdutos`,
