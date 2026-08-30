@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { criarEventoSanitarioSchema } from "@rionovo/shared";
-import { registrarEvento, editarEventoSanidade, useRegistrarEventoSanitario, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
+import { registrarEvento, editarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
+import { TIPOS_SAN, QUARTOS_UBERE, SEVERIDADES_MASTITE, SanidadeCampos, montarPayloadSanidade, useSanidadeEscrita } from "./EventoForm.sanidade";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { RebModal } from "@/components/rb/RebModal";
@@ -10,15 +11,9 @@ import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 import { rotuloAnimal } from "./AnimalIdentity";
-import { useToast } from "@/components/Toast";
-import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const TIPOS: { v: EventoPayload["tipo"]; label: string }[] = [
   { v: "CIO", label: "Cio" }, { v: "INSEMINACAO", label: "Inseminação" }, { v: "COBERTURA", label: "Cobertura (monta natural)" }, { v: "TRANSFERENCIA_EMBRIAO", label: "Transferência de embrião" }, { v: "DIAGNOSTICO", label: "Diagnóstico" }, { v: "PARTO", label: "Parto" }, { v: "SECAGEM", label: "Secagem" }, { v: "EXAME_GINECOLOGICO", label: "Exame ginecológico" }, { v: "DESMAME", label: "Desmame" },
-];
-
-const TIPOS_SAN: { v: EventoSanidadePayload["tipo"]; label: string }[] = [
-  { v: "OCORRENCIA", label: "Ocorrência" }, { v: "APLICACAO", label: "Aplicação" }, { v: "EXAME", label: "Exame" }, { v: "MASTITE", label: "Mastite" }, { v: "VACINA", label: "Vacina" },
 ];
 
 // Protocolos reprodutivos comuns no manejo leiteiro brasileiro (IATF + monta).
@@ -64,10 +59,6 @@ const ACHADOS_GINE: { v: string; label: string }[] = [
   { v: "CISTO_LUTEO", label: "Cisto lúteo" }, { v: "ENDOMETRITE", label: "Endometrite" }, { v: "INDEFINIDO", label: "Indefinido" },
 ];
 const METODOS_EXAME = ["Palpação", "Ultrassom"];
-
-const QUARTOS_UBERE = ["AD", "AE", "PD", "PE"]; // anterior/posterior · direito/esquerdo
-
-const SEVERIDADES_MASTITE = ["Subclínica", "Clínica leve", "Clínica moderada", "Clínica grave"];
 
 type TipoInicialEvento =
   | { dominio: "reproducao"; tipo: EventoPayload["tipo"] }
@@ -125,11 +116,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     setCarregandoEstoqueSemen(Boolean(reprodutorCatalogoId));
   };
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
-  // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
-  const { data: produtosEstoque } = useProdutos({ ativo: true });
-  const registrarSanitario = useRegistrarEventoSanitario();
-  const toast = useToast();
-  const { salvando: salvandoOffline, salvar: enviar } = useSalvarOffline();
+  const { produtosEstoque, registrar: registrarSanitario, toast, salvando: salvandoOffline, enviar } = useSanidadeEscrita();
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
@@ -186,24 +173,10 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const ehPuroRep = f.fracaoReprodutor === "8/8";
   const fracCompRep = complementoLabel(f.fracaoReprodutor);
 
-  function montarPayloadSanidade(): EventoSanidadePayload {
-    const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
-    if (tipoSan === "EXAME") { p.ccs = num(f.ccs); p.gordura = num(f.gordura); p.proteina = num(f.proteina); }
-    if (tipoSan === "APLICACAO") { p.produto = f.produto; p.dose = f.dose || undefined; p.carencia = num(f.carencia); p.loteProduto = f.loteProduto || undefined; }
-    if (tipoSan === "OCORRENCIA") { p.doenca = f.doenca; p.diasTratamento = num(f.diasTratamento); }
-    if (tipoSan === "MASTITE") { p.quarto = f.quarto || undefined; p.severidade = f.severidade || undefined; p.resultadoCultivo = f.resultadoCultivo || undefined; }
-    if (tipoSan === "VACINA") p.produto = f.produto;
-    if (tipoSan === "APLICACAO" || tipoSan === "VACINA") {
-      p.produtoId = f.estoqueProdutoId ? Number(f.estoqueProdutoId) : undefined;
-      p.quantidadeUsada = num(f.estoqueQtd);
-    }
-    return p;
-  }
-
   // useSalvarOffline: fecha o modal na hora se offline (erro tardio vai pro
   // toast); espera confirmação real do servidor antes de fechar se online.
   function salvarSanidadeNova() {
-    const p = montarPayloadSanidade();
+    const p = montarPayloadSanidade(tipoSan, f);
     if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && (!p.produtoId || !p.quantidadeUsada)) {
       setErro("Selecione o produto do estoque e a quantidade usada.");
       return;
@@ -266,7 +239,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
         criado = await registrarEvento(animalId, p);
       } else {
-        criado = await editarEventoSanidade(eventoEdicao!.id, montarPayloadSanidade());
+        criado = await editarEventoSanidade(eventoEdicao!.id, montarPayloadSanidade(tipoSan, f));
       }
       if (criado?.aviso) {
         setAvisoSalvo({ mensagem: criado.aviso, evento: criado });
@@ -525,51 +498,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             </RebField>
           </>}
         </>}
-        {dominio === "sanidade" && <>
-          {tipoSan === "EXAME" && <>
-            <RebField label="CCS (mil)*"><input type="number" min={0} value={f.ccs} onChange={(e) => set("ccs", e.target.value)} /></RebField>
-            <RebField label="Gordura (%)"><input type="number" step="0.01" value={f.gordura} onChange={(e) => set("gordura", e.target.value)} /></RebField>
-            <RebField label="Proteína (%)"><input type="number" step="0.01" value={f.proteina} onChange={(e) => set("proteina", e.target.value)} /></RebField>
-          </>}
-          {tipoSan === "APLICACAO" && <>
-            <RebField label="Produto*">
-              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => { const id = e.target.value; setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
-                <option value="">— selecione —</option>
-                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
-              </select>
-            </RebField>
-            <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>
-            <RebField label="Dose"><input value={f.dose} onChange={(e) => set("dose", e.target.value)} placeholder="1 bisnaga" /></RebField>
-            <RebField label="Carência (h)"><input type="number" min={0} value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
-            <RebField label="Lote do produto"><input value={f.loteProduto} onChange={(e) => set("loteProduto", e.target.value)} placeholder="MAST-2231" /></RebField>
-          </>}
-          {tipoSan === "OCORRENCIA" && <>
-            <RebField label="Doença*"><input value={f.doenca} onChange={(e) => set("doenca", e.target.value)} placeholder="Mastite clínica" /></RebField>
-            <RebField label="Dias de tratamento"><input type="number" min={0} value={f.diasTratamento} onChange={(e) => set("diasTratamento", e.target.value)} /></RebField>
-          </>}
-          {tipoSan === "MASTITE" && <>
-            <RebField label="Quarto">
-              <select className="rb-field-select" value={f.quarto} onChange={(e) => set("quarto", e.target.value)}>
-                {QUARTOS_UBERE.map((q) => <option key={q} value={q}>{q}</option>)}
-              </select>
-            </RebField>
-            <RebField label="Severidade">
-              <select className="rb-field-select" value={f.severidade} onChange={(e) => set("severidade", e.target.value)}>
-                {SEVERIDADES_MASTITE.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </RebField>
-            <RebField label="Resultado do cultivo"><input value={f.resultadoCultivo} onChange={(e) => set("resultadoCultivo", e.target.value)} placeholder="ex.: Staphylococcus aureus" /></RebField>
-          </>}
-          {tipoSan === "VACINA" && <>
-            <RebField label="Produto*">
-              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => { const id = e.target.value; setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
-                <option value="">— selecione —</option>
-                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
-              </select>
-            </RebField>
-            <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>
-          </>}
-        </>}
+        {dominio === "sanidade" && <SanidadeCampos tipoSan={tipoSan} f={f} set={set} setF={setF} produtosEstoque={produtosEstoque} />}
         <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </>
