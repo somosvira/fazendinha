@@ -36,7 +36,7 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
   const { data, loading } = useSaudeUbere(animalId);
   const registrar = useRegistrarExameQuarto();
   const toast = useToast();
-  const { salvando, salvar: enviarOffline } = useSalvarOffline();
+  const { salvando, salvar: enviar } = useSalvarOffline();
   const [aberto, setAberto] = useState(false);
   const [data_, setData_] = useState(getHojeISO());
   const [rascunho, setRascunho] = useState<Rascunho>(rascunhoVazio());
@@ -73,7 +73,7 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
     const valido = registrarExameQuartoSchema.safeParse(payload);
     if (!valido.success) { setErro(valido.error.issues[0]?.message ?? "Dado inválido."); return; }
     setErro(null);
-    enviarOffline(registrar.mutate, { animalId, ...payload }, {
+    enviar(registrar.mutate, { animalId, ...payload }, {
       onSalvo: () => { setRascunho(rascunhoVazio()); setAberto(false); },
       onErroInline: setErro,
       onErroTardio: (msg) => toast.error("Erro ao sincronizar o exame de quarto", msg),

@@ -18,7 +18,7 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   const [erro, setErro] = useState<string | null>(null);
   const registrar = useRegistrarControle();
   const toast = useToast();
-  const { salvando, salvar: enviarOffline } = useSalvarOffline();
+  const { salvando, salvar: enviar } = useSalvarOffline();
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
 
@@ -32,7 +32,7 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
       return;
     }
     setErro(null);
-    enviarOffline(registrar.mutate, { animalId, ...p }, {
+    enviar(registrar.mutate, { animalId, ...p }, {
       onSalvo,
       onErroInline: setErro,
       onErroTardio: (msg) => toast.error("Erro ao sincronizar o controle leiteiro", msg),

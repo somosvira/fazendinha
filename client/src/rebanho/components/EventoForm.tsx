@@ -129,7 +129,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const { data: produtosEstoque } = useProdutos({ ativo: true });
   const registrarSanitario = useRegistrarEventoSanitario();
   const toast = useToast();
-  const { salvando: salvandoOffline, salvar: enviarOffline } = useSalvarOffline();
+  const { salvando: salvandoOffline, salvar: enviar } = useSalvarOffline();
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
@@ -216,7 +216,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     const produto = p.produtoId != null ? produtosEstoque.find((pr) => pr.id === p.produtoId) : undefined;
     salvamentoEmCurso.current = true;
     setErro(null);
-    enviarOffline(registrarSanitario.mutate, {
+    enviar(registrarSanitario.mutate, {
       animalId, ...p,
       produtoInfo: produto ? { nome: produto.nome, unidade: produto.unidade, setor: produto.setor } : undefined,
     }, {
