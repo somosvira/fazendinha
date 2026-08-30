@@ -45,6 +45,18 @@ estava planejado nesta página, descobertos durante a implementação:
   (`App.tsx`) — a feature inteira ficava inalcançável offline sem essa
   entrada. Indicador de "N pendente(s)" adicionado ao `AnimalCockpit`
   (mesmo padrão do `PesagemTab` do Corte).
+- Achado extra corrigido (revisão pós-#237): o item otimista do `criar`
+  de Evento sanitário não tinha `editavel`/`dadosEdicao`, então
+  Editar/Excluir ficavam escondidos (`Timeline.tsx` só mostra os botões
+  quando `editavel` é `true`) enquanto o evento ainda não tinha sincronizado
+  — mesmo o servidor sempre mandando `editavel: true` pra evento sanitário
+  (`eventos-sanidade.mappers.ts`, campo fixo, não é regra de negócio).
+  `configRegistrarEventoSanitario.criarOtimista` agora preenche os dois com
+  os dados já disponíveis em `input` (mesma forma enviada em `body`), o que
+  também deixa o item recém-criado offline editável/excluível na hora, sem
+  esperar o sync. Testado manualmente: criar → editar (form abre já
+  preenchido) → cancelar → excluir, tudo com o evento ainda em `id`
+  temporário e a rede desligada.
 
 ---
 

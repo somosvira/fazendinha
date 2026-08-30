@@ -288,15 +288,20 @@ const configRegistrarEventoSanitario: UseOfflineMutationConfig<EventoSanidadeOff
   path: (input) => `/rebanho/animais/${input.animalId}/sanidade`,
   method: "POST",
   body: ({ animalId, produtoInfo, ...rest }) => rest,
-  criarOtimista: (input) => ({
-    id: criarIdTemporario(),
-    animalId: input.animalId,
-    data: input.data,
-    dominio: "sanidade",
-    titulo: tituloEventoSanitario(input),
-    detalhe: detalheEventoSanitario(input),
-    alerta: alertaEventoSanitario(input),
-  }),
+  criarOtimista: (input) => {
+    const { animalId, produtoInfo, ...payload } = input;
+    return {
+      id: criarIdTemporario(),
+      animalId,
+      data: input.data,
+      dominio: "sanidade",
+      titulo: tituloEventoSanitario(input),
+      detalhe: detalheEventoSanitario(input),
+      alerta: alertaEventoSanitario(input),
+      editavel: true,
+      dadosEdicao: payload as unknown as Record<string, unknown>,
+    };
+  },
   queryKeys: (input, itemOtimista) => {
     const entradas: EntradaPatch<any, EventoTimeline>[] = [
       { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
