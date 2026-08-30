@@ -4,6 +4,8 @@ import {
   useOfflineMutation,
   criarIdTemporario,
   appendItemToCacheList,
+  updateItemInCacheList,
+  removeItemFromCacheList,
   type UseOfflineMutationConfig,
   type EntradaPatch,
 } from "../lib/offline/useOfflineMutation";
@@ -330,6 +332,87 @@ const configRegistrarEventoSanitario: UseOfflineMutationConfig<EventoSanidadeOff
 
 export function useRegistrarEventoSanitario() {
   return useOfflineMutation(configRegistrarEventoSanitario);
+}
+
+// EDITAR — mesmas caches de estoque do create ficam invalidate-only aqui:
+// dá pra trocar produtoId/quantidadeUsada num edit (o servidor ajusta o
+// MovimentoEstoque vinculado), e computar a reversão+reaplicação otimista
+// certa exigiria conhecer o produtoId/quantidade ANTERIOR — o card de Editar
+// já tem esse dado (dadosEdicao), mas plumbar isso até aqui não valia a
+// complexidade extra; saldo/movimentos corrigem no refetch pós-sync.
+export interface EditarEventoSanitarioOfflineInput {
+  eventoId: string;
+  animalId: string;
+  payload: EventoSanidadePayload;
+}
+
+const configEditarEventoSanitario: UseOfflineMutationConfig<EditarEventoSanitarioOfflineInput, never> = {
+  mutationKey: "rebanho.editar-evento-sanitario",
+  path: (input) => `/rebanho/sanidade/${input.eventoId}`,
+  method: "PUT",
+  body: (input) => input.payload,
+  queryKeys: (input) => [
+    {
+      queryKey: rebanhoKeys.timeline(input.animalId),
+      aplicar: (atual: EventoTimeline[] | undefined) => updateItemInCacheList(
+        atual ?? [],
+        {
+          data: input.payload.data,
+          titulo: tituloEventoSanitario(input.payload),
+          detalhe: detalheEventoSanitario(input.payload),
+          alerta: alertaEventoSanitario(input.payload),
+          dadosEdicao: input.payload as unknown as Record<string, unknown>,
+        },
+        (item) => item.id === input.eventoId,
+      ),
+    },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+    { queryKey: rebanhoKeys.saldos() },
+    { queryKey: rebanhoKeys.movimentos() },
+  ],
+};
+
+export function useEditarEventoSanitario() {
+  return useOfflineMutation(configEditarEventoSanitario);
+}
+
+// EXCLUIR — remove da timeline na hora; se o evento consumia estoque, devolve
+// a quantidade ao saldo (mesma promessa do confirm() de sempre). O movimento
+// de estoque vinculado não some da lista até o refetch pós-sync — não dá pra
+// identificar seu id só com o que a timeline guarda no client.
+export interface ExcluirEventoSanitarioOfflineInput {
+  eventoId: string;
+  animalId: string;
+  produtoId?: number;
+  quantidadeUsada?: number;
+}
+
+const configExcluirEventoSanitario: UseOfflineMutationConfig<ExcluirEventoSanitarioOfflineInput, never> = {
+  mutationKey: "rebanho.excluir-evento-sanitario",
+  path: (input) => `/rebanho/sanidade/${input.eventoId}`,
+  method: "DELETE",
+  queryKeys: (input) => {
+    const entradas: EntradaPatch<any, never>[] = [
+      {
+        queryKey: rebanhoKeys.timeline(input.animalId),
+        aplicar: (atual: EventoTimeline[] | undefined) => removeItemFromCacheList(atual, (item) => item.id === input.eventoId),
+      },
+      { queryKey: rebanhoKeys.animal(input.animalId) },
+      { queryKey: rebanhoKeys.movimentos() },
+    ];
+    if (input.produtoId != null && input.quantidadeUsada != null) {
+      const { produtoId, quantidadeUsada } = input;
+      entradas.push({
+        queryKey: rebanhoKeys.saldos(),
+        aplicar: (atual: SaldoDTO[] | undefined) => aplicarDeltaSaldo(atual, produtoId, -quantidadeUsada),
+      });
+    }
+    return entradas;
+  },
+};
+
+export function useExcluirEventoSanitario() {
+  return useOfflineMutation(configExcluirEventoSanitario);
 }
 
 export interface LactacaoDTO {

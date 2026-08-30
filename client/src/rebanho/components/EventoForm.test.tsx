@@ -7,6 +7,7 @@ import { Children, createElement, Fragment, isValidElement, type ChangeEvent, ty
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
   registrarSanitarioMutate: vi.fn(),
+  editarSanitarioMutate: vi.fn(),
   listarReprodutores: vi.fn(),
   listarEstoqueSemen: vi.fn(),
   listarRacas: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("../api", async (importOriginal) => ({
   useProdutos: () => ({ data: apiMocks.produtosEstoque }),
   useResultadosGinecologicos: () => ({ data: [], loading: true }),
   useRegistrarEventoSanitario: () => ({ mutate: apiMocks.registrarSanitarioMutate, pendentes: [] }),
+  useEditarEventoSanitario: () => ({ mutate: apiMocks.editarSanitarioMutate, pendentes: [] }),
 }));
 
 vi.mock("@/components/Toast", () => ({
@@ -146,6 +148,33 @@ describe("EventoForm tipoInicial", () => {
       }),
       expect.anything(),
     );
+    expect(onSalvo).toHaveBeenCalledTimes(1);
+  });
+
+  it("edita evento sanitário existente via useOfflineMutation (useEditarEventoSanitario)", async () => {
+    apiMocks.editarSanitarioMutate.mockImplementation((_input, opts) => {
+      opts?.onSuccess?.({ id: "50", animalId: "1", data: "2026-07-20", dominio: "sanidade", titulo: "Ocorrência — Mastite" });
+    });
+    const onSalvo = vi.fn();
+    const eventoEdicao = {
+      id: "50", animalId: "1", data: "2026-07-20", dominio: "sanidade" as const,
+      titulo: "Ocorrência — Mastite", editavel: true,
+      dadosEdicao: { tipo: "OCORRENCIA", data: "2026-07-20", observacao: "", doenca: "Mastite", diasTratamento: 3 },
+    };
+    render(createElement(EventoForm, { ...base, onSalvo, dominioFixo: "sanidade", eventoEdicao }));
+
+    fireEvent.change(screen.getByLabelText("Dias de tratamento"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(apiMocks.editarSanitarioMutate).toHaveBeenCalledTimes(1));
+    expect(apiMocks.editarSanitarioMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventoId: "50", animalId: "1",
+        payload: expect.objectContaining({ tipo: "OCORRENCIA", doenca: "Mastite", diasTratamento: 5 }),
+      }),
+      expect.anything(),
+    );
+    expect(apiMocks.registrarSanitarioMutate).not.toHaveBeenCalled();
     expect(onSalvo).toHaveBeenCalledTimes(1);
   });
 

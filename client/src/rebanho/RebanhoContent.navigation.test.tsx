@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "../components/Toast";
 import { RebanhoContent } from "./RebanhoContent";
 
 describe("RebanhoContent — navegação a partir do cockpit", () => {
@@ -10,7 +11,9 @@ describe("RebanhoContent — navegação a partir do cockpit", () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const view = render(
       <QueryClientProvider client={queryClient}>
-        <RebanhoContent aba="animal" abrirId="7" onAbriuEntidade={consumiuDeepLink} />
+        <ToastProvider>
+          <RebanhoContent aba="animal" abrirId="7" onAbriuEntidade={consumiuDeepLink} />
+        </ToastProvider>
       </QueryClientProvider>,
     );
 
@@ -19,7 +22,9 @@ describe("RebanhoContent — navegação a partir do cockpit", () => {
 
     view.rerender(
       <QueryClientProvider client={queryClient}>
-        <RebanhoContent aba="estoque" />
+        <ToastProvider>
+          <RebanhoContent aba="estoque" />
+        </ToastProvider>
       </QueryClientProvider>,
     );
 

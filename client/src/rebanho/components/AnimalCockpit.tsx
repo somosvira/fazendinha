@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useAnimal, useTimeline, useConfig, useAnimalInsights, excluirEventoSanidade, useRegistrarEventoSanitario, useRegistrarControle, useRegistrarExameQuarto } from "../api";
+import { useAnimal, useTimeline, useConfig, useAnimalInsights, useRegistrarEventoSanitario, useEditarEventoSanitario, useExcluirEventoSanitario, useRegistrarControle, useRegistrarExameQuarto } from "../api";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
@@ -84,9 +86,15 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
   // Fila não guarda o animal isolado por item — contador é global, não por ficha.
   const { pendentes: pendentesEvento } = useRegistrarEventoSanitario();
+  const { pendentes: pendentesEdicaoEvento } = useEditarEventoSanitario();
+  const excluirSanitario = useExcluirEventoSanitario();
+  const { pendentes: pendentesExclusaoEvento } = excluirSanitario;
   const { pendentes: pendentesControle } = useRegistrarControle();
   const { pendentes: pendentesExame } = useRegistrarExameQuarto();
-  const totalPendentes = pendentesEvento.length + pendentesControle.length + pendentesExame.length;
+  const totalPendentes = pendentesEvento.length + pendentesEdicaoEvento.length + pendentesExclusaoEvento.length
+    + pendentesControle.length + pendentesExame.length;
+  const toast = useToast();
+  const { salvar: enviarExclusao } = useSalvarOffline();
   const [registrando, setRegistrando] = useState(false);
   const [registrandoControle, setRegistrandoControle] = useState(false);
   const [eventoEditando, setEventoEditando] = useState<EventoTimeline | null>(null);
@@ -101,13 +109,18 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const tanque = modo === "TANQUE_LOTE";
 
   const recarregarTudo = () => { recarregar(); recarregarEventos(); recarregarInsights(); };
-  const excluirEventoDaTimeline = async (evento: EventoTimeline) => {
+  const excluirEventoDaTimeline = (evento: EventoTimeline) => {
     if (!window.confirm(`Excluir “${evento.titulo}”? Se houver baixa automática, a quantidade será devolvida ao estoque.`)) return;
+    const dadosEdicao = evento.dadosEdicao as { produtoId?: number | ""; quantidadeUsada?: number | "" } | undefined;
+    const produtoId = typeof dadosEdicao?.produtoId === "number" ? dadosEdicao.produtoId : undefined;
+    const quantidadeUsada = typeof dadosEdicao?.quantidadeUsada === "number" ? dadosEdicao.quantidadeUsada : undefined;
     setExcluindoEventoId(evento.id);
     setErroTimeline(null);
-    try { await excluirEventoSanidade(evento.id); recarregarTudo(); }
-    catch (e: any) { setErroTimeline(e.message ?? "Não foi possível excluir o evento."); }
-    finally { setExcluindoEventoId(null); }
+    enviarExclusao(excluirSanitario.mutate, { eventoId: evento.id, animalId, produtoId, quantidadeUsada }, {
+      onSalvo: () => { setExcluindoEventoId(null); recarregarTudo(); },
+      onErroInline: (msg) => { setExcluindoEventoId(null); setErroTimeline(msg); },
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar a exclusão do evento", msg),
+    });
   };
 
   // Quando chega flash de fora (registro vindo da aba Reprodução/Sanidade), espelha local

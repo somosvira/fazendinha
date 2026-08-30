@@ -7,16 +7,24 @@ Convenção: `[aberto]` = decisão pendente sua. `[ok]` = decidido/confirmado.
 `[fechado]` = implementado.
 
 **Status**: implementado na branch `offline/rebanho-sanidade-producao`. As
-3 sub-features de escrita (Evento sanitário, Exame de quarto, Produção
-modo ORDENHA) estão `[fechado]` **só pra criação** — testadas com suíte
+3 sub-features de escrita estão `[fechado]` — testadas com suíte
 automatizada e manualmente no navegador com rede offline real (CDP
-`Network.emulateNetworkConditions`). **Evento sanitário é a única das 3 que
-tem editar/excluir em algum lugar do app (Exame de quarto e Produção nunca
-tiveram) — esses dois continuam exigindo conexão.** Se o usuário estiver
-offline, os botões "Editar"/"Excluir" de um evento sanitário aparecem
-normalmente (a ficha do animal está em `TABS_OFFLINE`) mas o clique falha
-com o erro cru do `fetch`, sem enfileirar. Desvios do que estava planejado
-nesta página, descobertos durante a implementação:
+`Network.emulateNetworkConditions`). Exame de quarto e Produção nunca
+tiveram editar/excluir em lugar nenhum do app, então create é 100% da
+feature nos dois casos. **Evento sanitário tem create+editar+excluir
+offline** (achado numa revisão pós-#237: a primeira versão só cobria
+create — ver "Convenção obrigatória: cobrir toda operação da feature, não
+só create" em `OFFLINE_STRATEGY.md`). Editar reusa `montarPayloadSanidade`
+e o mesmo `useSalvarOffline`; a timeline recebe um patch otimista real
+(`updateItemInCacheList`), mas saldo/movimentos de estoque ficam
+invalidate-only no editar (trocar produtoId/quantidade num evento já
+existente exigiria conhecer o vínculo anterior pra reverter+reaplicar —
+não valeu a complexidade extra; corrige no refetch pós-sync). Excluir
+devolve a quantidade consumida ao saldo do produto na hora (dado já vem no
+`dadosEdicao` da timeline, sem precisar reconsultar nada) e remove o
+evento da timeline; o movimento de estoque vinculado só some da lista
+depois do sync (sem id client-side pra removê-lo antes). Desvios do que
+estava planejado nesta página, descobertos durante a implementação:
 - `EventoForm.tsx` foi dividido em `EventoForm.sanidade.tsx` (campos +
   `montarPayloadSanidade` + hook de escrita), mas não virou um modal
   `SanidadeForm` independente — o modal único Reprodução+Sanidade (com

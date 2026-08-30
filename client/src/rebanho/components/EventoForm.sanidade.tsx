@@ -1,4 +1,4 @@
-import { useProdutos, useRegistrarEventoSanitario, type EventoSanidadePayload } from "../api";
+import { useProdutos, useRegistrarEventoSanitario, useEditarEventoSanitario, type EventoSanidadePayload } from "../api";
 import { RebField } from "@/components/rb/RebField";
 import { useToast } from "@/components/Toast";
 import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
@@ -29,9 +29,10 @@ export function montarPayloadSanidade(tipoSan: EventoSanidadePayload["tipo"], f:
 export function useSanidadeEscrita() {
   const { data: produtosEstoque } = useProdutos({ ativo: true });
   const registrar = useRegistrarEventoSanitario();
+  const editar = useEditarEventoSanitario();
   const toast = useToast();
   const { salvando, salvar: enviar } = useSalvarOffline();
-  return { produtosEstoque, registrar, toast, salvando, enviar };
+  return { produtosEstoque, registrar, editar, toast, salvando, enviar };
 }
 
 export function SanidadeCampos({ tipoSan, f, set, setF, produtosEstoque }: {

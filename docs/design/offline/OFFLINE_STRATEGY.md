@@ -210,6 +210,40 @@ só "carregando pra sempre". Fix: constante de módulo (ex.: `const
 LOTES_VAZIO: Lote[] = [];`), nunca um literal `[]` inline no retorno do
 hook.
 
+## Convenção obrigatória: cobrir toda operação da feature, não só create
+
+Achado numa revisão pós-#237 (2026-08-29): a primeira versão de "Rebanho >
+Evento sanitário" só cobriu `create` offline, com um comentário no código
+justificando isso como "mesmo escopo do Corte > Sanidade". A analogia era
+falsa — Corte > Sanidade/Pesagem nunca tiveram editar/excluir em lugar
+nenhum do app (create sempre foi 100% da feature ali), enquanto Evento
+sanitário **já tinha** editar e excluir online antes desta fatia existir.
+Cobrir só create deixou os botões "Editar"/"Excluir" visíveis e clicáveis
+offline (a ficha do animal já estava em `TABS_OFFLINE`), só que eles
+falhavam com o erro cru do `fetch` em vez de enfileirar — pior que não
+oferecer o botão, porque parece que devia funcionar.
+
+**Regra, a partir de agora:** ao dar suporte offline a uma feature, checar
+quais operações ela já tem em algum lugar do app (create/editar/excluir) —
+não assumir que create sozinho é "o mesmo padrão" de outra feature sem
+conferir se essa outra feature de fato não tem as demais operações também.
+Cobrir todas as que existirem, não só create. Quando alguma ficar de fora
+por complexidade real (não por prazo), documentar o motivo técnico
+específico no lugar certo (nota de design da fatia), nunca só "fora de
+escopo" sem explicação — isso é exatamente o tipo de comentário que a
+convenção de densidade de comentário (acima) pede pra evitar.
+
+**Aplicado nesta mesma revisão:** editar e excluir de Evento sanitário
+passaram a usar `useOfflineMutation` como o create. Editar dá patch
+otimista real só na timeline (título/detalhe recalculados) — saldo e
+movimento de estoque ficam invalidate-only, porque reconciliar uma troca
+de produtoId/quantidade exigiria conhecer o vínculo anterior pra reverter
+e reaplicar, e isso não valia a complexidade extra pro ganho (corrige
+sozinho no refetch pós-sync). Excluir devolve a quantidade ao saldo na
+hora (o dado já vem no `dadosEdicao` que a timeline carrega, sem precisar
+buscar nada a mais) e remove o evento da lista; o movimento de estoque
+vinculado só some da lista depois do sync.
+
 ## Checklist: o que "testado" significa pra uma fatia offline
 
 Consolidado depois de verificar #233/#234 na prática — testar no navegador
@@ -558,8 +592,8 @@ primeira responde, não em paralelo).
 | Corte > Pesagem + Sanidade — inclui migração de `useLotes`/`useLote`/`useEventos` pra `useQuery` (pré-requisito) e schemas movidos pra `packages/shared` | ✅ Feito — testado no navegador com build de produção + rede offline real | [#235](https://github.com/piubellofelipe/fazendinha/pull/235) |
 | Revisão pós-#235: limpeza de comentários históricos (narravam a mudança, não a lógica) + `TITULO_SANITARIO`/`"Pesagem do lote"` (duplicados byte a byte entre `client/src/corte/api.ts` e `server/.../timeline.ts`) movidos pra `packages/shared/src/corte.constants.ts` | ✅ Feito | epic/offline-first |
 | `useOfflineMutation` — `op`/`match`/`queryKeysRelacionadas` substituídos por uma lista única `{ queryKey, aplicar? }`: `aplicar` ausente = só invalida (antigo `queryKeysRelacionadas`); presente, dá patch otimista de verdade com `atual`/`itemOtimista` anotados na mão, sem wrapper genérico. Helpers diretos (`appendItemToCacheList`, `removeItemFromCacheList`, `updateItemInCacheList`, `upsertItemInCacheList`) cobrem os casos de lista; cache-objeto-agregado (não-lista) já é suportado sem mecanismo extra. Corte e Ponto migrados pra config nova | ✅ Feito | [#236](https://github.com/piubellofelipe/fazendinha/pull/236) |
-| Rebanho > Sanidade + Produção — Evento sanitário (create — editar/excluir seguem online), Exame de quarto e Produção (modo `ORDENHA`, confirmado por dado real). Achados corrigidos junto: `BaixaEstoqueCard` era código morto (removido) e `reb-animal` faltava em `TABS_OFFLINE` | ✅ Feito | [#237](https://github.com/piubellofelipe/fazendinha/pull/237) |
-| Revisão pós-#237: `rebanho.schemas.ts` (shared) dividido por sub-feature espelhando o server; `useConfig` migrado pra `useQuery` (mesma convenção de leitura, achado real: `AnimalCockpit` dependia dele pra decidir o botão de Produção); `EventoForm.tsx` dividido em `EventoForm.sanidade.tsx`; limpeza de comentário que narrava escopo da PR (incluindo um com analogia falsa ao Corte) | ✅ Feito | epic/offline-first |
+| Rebanho > Sanidade + Produção — Evento sanitário (create+editar+excluir), Exame de quarto e Produção (modo `ORDENHA`, confirmado por dado real — create é 100% da feature nos dois, nunca tiveram editar/excluir). Achados corrigidos junto: `BaixaEstoqueCard` era código morto (removido) e `reb-animal` faltava em `TABS_OFFLINE` | ✅ Feito | [#237](https://github.com/piubellofelipe/fazendinha/pull/237) |
+| Revisão pós-#237: `rebanho.schemas.ts` (shared) dividido por sub-feature espelhando o server; `useConfig` migrado pra `useQuery` (mesma convenção de leitura, achado real: `AnimalCockpit` dependia dele pra decidir o botão de Produção); `EventoForm.tsx` dividido em `EventoForm.sanidade.tsx`; limpeza de comentário que narrava escopo da PR (incluindo um com analogia falsa ao Corte); achado nessa mesma revisão — Evento sanitário só cobria create, editar/excluir foram cobertos na sequência (ver convenção nova abaixo) | ✅ Feito | epic/offline-first |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { criarEventoSanitarioSchema } from "@rionovo/shared";
-import { registrarEvento, editarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
+import { registrarEvento, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { TIPOS_SAN, QUARTOS_UBERE, SEVERIDADES_MASTITE, SanidadeCampos, montarPayloadSanidade, useSanidadeEscrita } from "./EventoForm.sanidade";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
@@ -116,7 +116,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     setCarregandoEstoqueSemen(Boolean(reprodutorCatalogoId));
   };
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
-  const { produtosEstoque, registrar: registrarSanitario, toast, salvando: salvandoOffline, enviar } = useSanidadeEscrita();
+  const { produtosEstoque, registrar: registrarSanitario, editar: editarSanitario, toast, salvando: salvandoOffline, enviar } = useSanidadeEscrita();
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
@@ -173,19 +173,22 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const ehPuroRep = f.fracaoReprodutor === "8/8";
   const fracCompRep = complementoLabel(f.fracaoReprodutor);
 
+  // Validação client-side compartilhada por criar e editar Sanidade — mesmo
+  // schema do servidor, roda antes de enfileirar (reduz erro de fila).
+  function validarSanidade(p: EventoSanidadePayload): string | null {
+    if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && (!p.produtoId || !p.quantidadeUsada)) {
+      return "Selecione o produto do estoque e a quantidade usada.";
+    }
+    const valido = criarEventoSanitarioSchema.safeParse(p);
+    return valido.success ? null : (valido.error.issues[0]?.message ?? "Dado inválido.");
+  }
+
   // useSalvarOffline: fecha o modal na hora se offline (erro tardio vai pro
   // toast); espera confirmação real do servidor antes de fechar se online.
   function salvarSanidadeNova() {
     const p = montarPayloadSanidade(tipoSan, f);
-    if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && (!p.produtoId || !p.quantidadeUsada)) {
-      setErro("Selecione o produto do estoque e a quantidade usada.");
-      return;
-    }
-    const valido = criarEventoSanitarioSchema.safeParse(p);
-    if (!valido.success) {
-      setErro(valido.error.issues[0]?.message ?? "Dado inválido.");
-      return;
-    }
+    const erroValidacao = validarSanidade(p);
+    if (erroValidacao) { setErro(erroValidacao); return; }
     const produto = p.produtoId != null ? produtosEstoque.find((pr) => pr.id === p.produtoId) : undefined;
     salvamentoEmCurso.current = true;
     setErro(null);
@@ -199,48 +202,56 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     });
   }
 
+  function salvarSanidadeEdicao() {
+    const p = montarPayloadSanidade(tipoSan, f);
+    const erroValidacao = validarSanidade(p);
+    if (erroValidacao) { setErro(erroValidacao); return; }
+    salvamentoEmCurso.current = true;
+    setErro(null);
+    enviar(editarSanitario.mutate, { eventoId: eventoEdicao!.id, animalId, payload: p }, {
+      onSalvo: () => { salvamentoEmCurso.current = false; onSalvo(); },
+      onErroInline: (msg) => { salvamentoEmCurso.current = false; setErro(msg); },
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar a edição do evento sanitário", msg),
+    });
+  }
+
   async function salvar() {
     if (salvamentoEmCurso.current || avisoSalvo) return;
-    if (dominio === "sanidade" && !eventoEdicao) {
-      salvarSanidadeNova();
+    if (dominio === "sanidade") {
+      if (eventoEdicao) salvarSanidadeEdicao(); else salvarSanidadeNova();
       return;
     }
     salvamentoEmCurso.current = true;
     setSalvando(true); setErro(null);
     try {
-      let criado: EventoRegistrado | undefined;
-      if (dominio === "reproducao") {
-        const p: EventoPayload = { tipo, data: f.data, observacao: f.observacao || undefined };
-        if (tipo === "CIO") {
-          // Detecção entra como observação curta — o backend não tem campo dedicado.
-          p.observacao = [f.deteccaoCio, f.observacao].filter(Boolean).join(" · ") || undefined;
-        }
-        if (tipo === "INSEMINACAO") {
-          const rep = reprodutorCatalogo?.nome ?? montarRacaDisplay(f.fracaoReprodutor, racaReprodutor, racaSecReprodutor);
-          if (!rep) throw new Error("Selecione o reprodutor do catálogo ou a raça do reprodutor.");
-          const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
-          Object.assign(p, camposInseminacao({
-            reprodutor: rep,
-            protocolo: proto || undefined,
-            estoqueSemenId: f.estoqueSemenId,
-          }));
-        }
-        if (tipo === "COBERTURA") {
-          if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
-        }
-        if (tipo === "TRANSFERENCIA_EMBRIAO") {
-          const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
-          Object.assign(p, camposTransferenciaEmbriao({ embriaoColetaId: f.embriaoColetaId, doadoraId: f.doadoraId, semenTE: f.semenTE, protocolo: proto }));
-        }
-        if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
-        if (tipo === "PARTO") Object.assign(p, camposParto(f));
-        if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
-        if (tipo === "EXAME_GINECOLOGICO") Object.assign(p, camposExameGinecologico(f));
-        if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
-        criado = await registrarEvento(animalId, p);
-      } else {
-        criado = await editarEventoSanidade(eventoEdicao!.id, montarPayloadSanidade(tipoSan, f));
+      const p: EventoPayload = { tipo, data: f.data, observacao: f.observacao || undefined };
+      if (tipo === "CIO") {
+        // Detecção entra como observação curta — o backend não tem campo dedicado.
+        p.observacao = [f.deteccaoCio, f.observacao].filter(Boolean).join(" · ") || undefined;
       }
+      if (tipo === "INSEMINACAO") {
+        const rep = reprodutorCatalogo?.nome ?? montarRacaDisplay(f.fracaoReprodutor, racaReprodutor, racaSecReprodutor);
+        if (!rep) throw new Error("Selecione o reprodutor do catálogo ou a raça do reprodutor.");
+        const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
+        Object.assign(p, camposInseminacao({
+          reprodutor: rep,
+          protocolo: proto || undefined,
+          estoqueSemenId: f.estoqueSemenId,
+        }));
+      }
+      if (tipo === "COBERTURA") {
+        if (f.semenTE.trim()) p.reprodutor = f.semenTE.trim();
+      }
+      if (tipo === "TRANSFERENCIA_EMBRIAO") {
+        const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
+        Object.assign(p, camposTransferenciaEmbriao({ embriaoColetaId: f.embriaoColetaId, doadoraId: f.doadoraId, semenTE: f.semenTE, protocolo: proto }));
+      }
+      if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
+      if (tipo === "PARTO") Object.assign(p, camposParto(f));
+      if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
+      if (tipo === "EXAME_GINECOLOGICO") Object.assign(p, camposExameGinecologico(f));
+      if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
+      const criado = await registrarEvento(animalId, p);
       if (criado?.aviso) {
         setAvisoSalvo({ mensagem: criado.aviso, evento: criado });
         return;
