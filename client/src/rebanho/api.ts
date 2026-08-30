@@ -15,7 +15,6 @@ import {
 import { HOJE } from "./HOJE";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
 
-// Chaves de cache do módulo — mesma convenção de client/src/corte/api.ts.
 export const rebanhoKeys = {
   animal: (id: string) => ["rebanho", "animal", id] as const,
   timeline: (id: string) => ["rebanho", "timeline", id] as const,
@@ -257,11 +256,9 @@ export function useTimeline(id: string | null) {
 }
 
 // ESCRITA OFFLINE (Sanidade) ------------------------------------------------
-// Só cobre CREATE — edição de evento sanitário fica no fluxo online de sempre
-// (mesmo escopo do Corte > Sanidade). Quando a Aplicação/Vacina vincula um
-// produto do estoque, o servidor já cria EventoSanitario+MovimentoEstoque numa
-// única transação — por isso as caches de estoque entram na mesma config, sem
-// nenhuma segunda mutation.
+// Quando a Aplicação/Vacina vincula um produto do estoque, o servidor já cria
+// EventoSanitario+MovimentoEstoque numa única transação — por isso as caches
+// de estoque entram na mesma config, sem nenhuma segunda mutation.
 export interface EventoSanidadeOfflineInput extends EventoSanidadePayload {
   animalId: string;
   // Nome/unidade/setor do produto vinculado — só pro item otimista do
@@ -987,10 +984,6 @@ export const registrarControle = (animalId: string, p: ControlePayload) => req<E
 export const excluirControle = (id: string) => req<{ ok: true }>(`/rebanho/producao/${id}`, { method: "DELETE" });
 
 // ESCRITA OFFLINE (Produção — modo ORDENHA) ---------------------------------
-// Só cobre o par POST /animais/:id/producao (registrarControle) — o modo
-// TANQUE_LOTE (producao-lote) fica fora de escopo, a Rio Novo não usa (ver
-// docs/design/offline/REBANHO_SANIDADE_PRODUCAO_NOTAS.md). excluirControle
-// não tem UI hoje (achado durante esta fatia) — nada a cobrir aí.
 export interface ControleOfflineInput extends ControlePayload {
   animalId: string;
 }

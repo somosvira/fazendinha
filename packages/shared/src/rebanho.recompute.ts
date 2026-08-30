@@ -12,7 +12,7 @@ export type EstadoQuarto = "SADIO" | "ATIVO" | "CRONICO" | "PERDIDO";
 
 export interface ExameQuartoIn {
   quarto: Quarto;
-  data: string; // ISO YYYY-MM-DD
+  data: string;
   scoreCmt?: ScoreCmt | null;
   ccs?: number | null;
   clinica?: boolean;

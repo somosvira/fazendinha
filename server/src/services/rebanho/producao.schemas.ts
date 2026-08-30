@@ -6,8 +6,7 @@ const dataNaoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data 
 // quem já importa daqui não precisar mudar.
 export { controleSchema, type ControleInput } from "@rionovo/shared";
 
-// producaoLoteSchema (modo TANQUE_LOTE) fica só aqui — fora do escopo da fatia
-// offline (a Rio Novo não usa esse modo, ver docs/design/offline/REBANHO_SANIDADE_PRODUCAO_NOTAS.md).
+// producaoLoteSchema (modo TANQUE_LOTE) fica só aqui — a Rio Novo usa modo ORDENHA.
 export const producaoLoteSchema = z.object({
   grupoId: z.number().int().optional(),
   data: dataNaoFutura,

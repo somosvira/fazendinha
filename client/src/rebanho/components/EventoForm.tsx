@@ -186,8 +186,6 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const ehPuroRep = f.fracaoReprodutor === "8/8";
   const fracCompRep = complementoLabel(f.fracaoReprodutor);
 
-  // Compartilhado entre o create offline (abaixo) e a edição online (ainda
-  // sem cobertura offline — fora de escopo, mesmo padrão do Corte).
   function montarPayloadSanidade(): EventoSanidadePayload {
     const p: EventoSanidadePayload = { tipo: tipoSan, data: f.data, observacao: f.observacao || undefined };
     if (tipoSan === "EXAME") { p.ccs = num(f.ccs); p.gordura = num(f.gordura); p.proteina = num(f.proteina); }
@@ -202,9 +200,8 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     return p;
   }
 
-  // Sanidade > criar (offline-aware): valida com o mesmo schema do servidor
-  // antes de enfileirar, e sai por useSalvarOffline (fecha na hora se offline,
-  // espera confirmação real se online — ver docs/design/offline).
+  // useSalvarOffline: fecha o modal na hora se offline (erro tardio vai pro
+  // toast); espera confirmação real do servidor antes de fechar se online.
   function salvarSanidadeNova() {
     const p = montarPayloadSanidade();
     if ((tipoSan === "APLICACAO" || tipoSan === "VACINA") && (!p.produtoId || !p.quantidadeUsada)) {
@@ -269,7 +266,6 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipo === "DESMAME") p.pesoKg = num(f.pesoDesmame) ?? undefined;
         criado = await registrarEvento(animalId, p);
       } else {
-        // Sanidade > editar — segue online (create é o único caminho offline nesta fatia).
         criado = await editarEventoSanidade(eventoEdicao!.id, montarPayloadSanidade());
       }
       if (criado?.aviso) {
