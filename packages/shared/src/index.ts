@@ -4,7 +4,6 @@ export { TITULO_SANITARIO, TITULO_PESAGEM_LOTE } from "./corte.constants.js";
 export {
   tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
   tituloControleLeiteiro, detalheControleLeiteiro,
-  type TipoEventoSanitario,
 } from "./rebanho.constants.js";
 export { criarEventoSanitarioSchema, type CriarEventoSanitarioInput } from "./rebanho.eventos-sanidade.schemas.js";
 export { QUARTOS, SCORES_CMT, registrarExameQuartoSchema, type RegistrarExameQuartoInput } from "./rebanho.exames-quarto.schemas.js";

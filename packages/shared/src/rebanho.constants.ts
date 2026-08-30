@@ -4,7 +4,7 @@
 // do client (criarOtimista de useOfflineMutation) — precisa bater byte a byte
 // nos dois lados, senão o item pisca ao trocar do otimista pro real no sync.
 
-export type TipoEventoSanitario = "OCORRENCIA" | "APLICACAO" | "EXAME" | "MASTITE" | "VACINA";
+type TipoEventoSanitario = "OCORRENCIA" | "APLICACAO" | "EXAME" | "MASTITE" | "VACINA";
 
 export function tituloEventoSanitario(input: {
   tipo: TipoEventoSanitario;
