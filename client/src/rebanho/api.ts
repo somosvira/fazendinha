@@ -1501,7 +1501,7 @@ export interface QuartoInput {
 export interface RegistrarExameQuartoInput { data: string; quartos: QuartoInput[] }
 
 export interface ExameQuartoDTO {
-  id: number; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
+  id: number | string; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
   clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; escoreTeto: number | null; observacao: string | null;
 }
 export interface EstadoPorQuarto { estado: EstadoQuarto; positivos12m: number; clinicas12m: number; ultimoPositivo: string | null }
@@ -1548,8 +1548,8 @@ const configRegistrarExameQuarto: UseOfflineMutationConfig<RegistrarExameQuartoO
   path: (input) => `/rebanho/animais/${input.animalId}/exames-quarto`,
   method: "POST",
   body: ({ animalId, ...rest }) => rest,
-  criarOtimista: (input) => input.quartos.map((q, i) => ({
-    id: -(Date.now() * 10 + i), // sintético, nunca sai do client (não vai pro corpo real nem é referenciado depois)
+  criarOtimista: (input) => input.quartos.map((q) => ({
+    id: criarIdTemporario(), // sintético, nunca sai do client (não vai pro corpo real nem é referenciado depois)
     data: input.data,
     quarto: q.quarto,
     scoreCmt: q.scoreCmt ?? null,
