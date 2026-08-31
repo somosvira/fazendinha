@@ -21,6 +21,10 @@ import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
+const MOTIVO_BLOQUEIO_EXCLUSAO: Partial<Record<MovimentoDTO["origem"], string>> = {
+  NUTRICAO: "Baixa de consumo — estorne o período na aba Nutrição",
+  SANIDADE: "Baixa automática de evento sanitário — exclua o evento na ficha do animal",
+};
 // Cor do setor via variáveis CSS já existentes (não hardcodar hex): Leite/Café têm var própria;
 // Corte/Milho reusam --outros (demais atividades); Geral fica neutro.
 const setorCor = (s: string) => (s === "LEITE" ? "var(--leite)" : s === "CAFE" ? "var(--cafe)" : s === "GERAL" ? "var(--ink-mute)" : "var(--outros)");
@@ -244,12 +248,8 @@ export function EstoqueTab() {
                 <td style={{ textAlign: "right" }}>
                   <RebButton
                     onClick={() => setExcluindo(m)}
-                    disabled={m.origem === "NUTRICAO" || m.origem === "SANIDADE"}
-                    title={
-                      m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição"
-                      : m.origem === "SANIDADE" ? "Baixa automática de evento sanitário — exclua o evento na ficha do animal"
-                      : "Excluir"
-                    }
+                    disabled={m.origem in MOTIVO_BLOQUEIO_EXCLUSAO}
+                    title={MOTIVO_BLOQUEIO_EXCLUSAO[m.origem] ?? "Excluir"}
                   >
                     Excluir
                   </RebButton>
