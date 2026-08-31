@@ -77,7 +77,7 @@ export interface EntradaPatch<T, TItem> {
   aplicar?: (atual: T | undefined, itemOtimista: TItem | undefined) => T;
 }
 
-export interface UseOfflineMutationConfig<TInput, TItem> {
+export interface UseOfflineMutationConfig<TInput, TItem, TResp = TItem> {
   /** Identifica esta mutation na fila — usado só pra filtrar `pendentes`. */
   mutationKey: string;
   path: (input: TInput) => string;
@@ -94,14 +94,19 @@ export interface UseOfflineMutationConfig<TInput, TItem> {
   queryKeys: (input: TInput, itemOtimista: TItem | undefined) => EntradaPatch<any, TItem>[];
 }
 
-export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<TInput, TItem>) {
+// TResp é o corpo real da resposta HTTP, passado pro onSuccess do mutate.
+// Por padrão é igual a TItem (o item otimista já é o que a lista espera de
+// volta), mas some endpoints devolvem outra coisa (ex.: POST de movimento de
+// estoque devolve {id, lancamentoCriado}, não o MovimentoDTO da lista) —
+// nesse caso o config passa TResp explícito.
+export function useOfflineMutation<TInput, TItem, TResp = TItem>(cfg: UseOfflineMutationConfig<TInput, TItem, TResp>) {
   const queryClient = useQueryClient();
   const fila = useSyncExternalStore(inscrever, obterFila, obterFila);
   const pendentes = fila.filter((item) => item.mutationKey === cfg.mutationKey).map((item) => item.body as TInput);
 
   function mutate(
     input: TInput,
-    opts?: { onSuccess?: (item: TItem) => void; onError?: (err: unknown) => void },
+    opts?: { onSuccess?: (item: TResp) => void; onError?: (err: unknown) => void },
   ) {
     const itemOtimista = cfg.criarOtimista?.(input);
     const entradas = cfg.queryKeys(input, itemOtimista);
@@ -123,7 +128,7 @@ export function useOfflineMutation<TInput, TItem>(cfg: UseOfflineMutationConfig<
     })
       .then((resposta) => {
         for (const { entrada } of snapshots) queryClient.invalidateQueries({ queryKey: entrada.queryKey });
-        opts?.onSuccess?.(resposta as TItem);
+        opts?.onSuccess?.(resposta as TResp);
       })
       .catch((err) => {
         for (const { entrada, anterior } of snapshots) queryClient.setQueryData(entrada.queryKey, anterior);

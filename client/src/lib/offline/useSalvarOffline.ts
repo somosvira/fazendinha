@@ -7,13 +7,16 @@
 import { useState } from "react";
 import { useOnlineStatus } from "./useOnlineStatus";
 
-type Mutate<TInput> = (
+type Mutate<TInput, TItem> = (
   input: TInput,
-  opts?: { onSuccess?: (item: any) => void; onError?: (err: unknown) => void },
+  opts?: { onSuccess?: (item: TItem) => void; onError?: (err: unknown) => void },
 ) => void;
 
-interface Callbacks {
-  onSalvo: () => void;
+interface Callbacks<TItem> {
+  // Recebe a resposta real do servidor quando online; offline não há como
+  // esperar por ela (o modal já fechou), então chega undefined — quem
+  // precisa distinguir os dois casos (ex.: recibo com previsão) usa isso.
+  onSalvo: (item?: TItem) => void;
   onErroInline: (mensagem: string) => void;
   onErroTardio: (mensagem: string) => void;
 }
@@ -22,11 +25,11 @@ function mensagemDeErro(e: unknown): string {
   return (e as any)?.message ?? "Erro ao salvar.";
 }
 
-export function useSalvarOffline() {
+export function useSalvarOffline<TItem = unknown>() {
   const online = useOnlineStatus();
   const [salvando, setSalvando] = useState(false);
 
-  function salvar<TInput>(mutate: Mutate<TInput>, input: TInput, cb: Callbacks) {
+  function salvar<TInput>(mutate: Mutate<TInput, TItem>, input: TInput, cb: Callbacks<TItem>) {
     if (!online) {
       mutate(input, { onError: (e) => cb.onErroTardio(mensagemDeErro(e)) });
       cb.onSalvo();
@@ -34,7 +37,7 @@ export function useSalvarOffline() {
     }
     setSalvando(true);
     mutate(input, {
-      onSuccess: () => { setSalvando(false); cb.onSalvo(); },
+      onSuccess: (item) => { setSalvando(false); cb.onSalvo(item); },
       onError: (e) => { setSalvando(false); cb.onErroInline(mensagemDeErro(e)); },
     });
   }
