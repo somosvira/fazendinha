@@ -23,8 +23,19 @@ não valeu a complexidade extra; corrige no refetch pós-sync). Excluir
 devolve a quantidade consumida ao saldo do produto na hora (dado já vem no
 `dadosEdicao` da timeline, sem precisar reconsultar nada) e remove o
 evento da timeline; o movimento de estoque vinculado só some da lista
-depois do sync (sem id client-side pra removê-lo antes). Desvios do que
-estava planejado nesta página, descobertos durante a implementação:
+depois do sync (sem id client-side pra removê-lo antes).
+
+**Validação manual (2026-08-31, pelo usuário, navegador real com rede
+offline de verdade — não só o teste automatizado):** criar evento offline;
+criar → editar ainda offline → reconectar; criar → excluir ainda offline →
+reconectar; editar evento já existente offline → reconectar; excluir
+evento com baixa de estoque (Vacina/MAP 11-52-00) offline → reconectar →
+saldo do produto confirmado correto em Estoque de insumos. Os dois achados
+extras abaixo (reload com service worker e ficha de animal nunca visitado)
+também já validados.
+
+Desvios do que estava planejado nesta página, descobertos durante a
+implementação:
 - `EventoForm.tsx` foi dividido em `EventoForm.sanidade.tsx` (campos +
   `montarPayloadSanidade` + hook de escrita), mas não virou um modal
   `SanidadeForm` independente — o modal único Reprodução+Sanidade (com
