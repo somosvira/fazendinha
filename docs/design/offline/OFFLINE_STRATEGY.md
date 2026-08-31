@@ -210,6 +210,26 @@ só "carregando pra sempre". Fix: constante de módulo (ex.: `const
 LOTES_VAZIO: Lote[] = [];`), nunca um literal `[]` inline no retorno do
 hook.
 
+## Convenção: semear a ficha com o dado de uma lista já cacheada (`initialData`)
+
+Achado na revisão pós-#237 (2026-08-31): quando uma tela de detalhe (ficha)
+e uma tela de lista usam o mesmo DTO no server (mesmo mapper, mesmo
+`include`), a ficha não precisa depender só da própria busca individual
+pra ter dado — ela pode ler o item de qualquer query de lista já cacheada
+via `initialData`, e deixar a busca individual rodar em segundo plano (só
+pra manter fresco, quando online). Isso resolve dois problemas de uma vez:
+renderiza instantâneo mesmo online (sem esperar round-trip) e, offline,
+cobre o caso comum "lista foi visitada, ficha nunca foi aberta
+individualmente" sem exigir uma visita prévia à ficha específica.
+
+Implementado em `useAnimal` (`client/src/rebanho/api.ts`) lendo de
+qualquer `rebanhoKeys.animaisTodos()` cacheado. Requer uma chave de
+"família" curta pra casar qualquer combinação de filtro da lista (ver
+`corteKeys.lotesTodos()`/`rebanhoKeys.animaisTodos()`) — sem isso,
+`getQueriesData` com a chave completa (incluindo filtros) só acha a lista
+com exatamente os mesmos filtros. **Candidato natural pra Plantio
+(Talhões) e Cultivo** quando tiverem lista+ficha no mesmo formato.
+
 ## Convenção obrigatória: cobrir toda operação da feature, não só create
 
 Achado numa revisão pós-#237 (2026-08-29): a primeira versão de "Rebanho >
@@ -279,9 +299,15 @@ tabela de Progresso abaixo:
    ```
 3. **Caso "nunca visitado" além do caso feliz "já visitado online"** —
    toda combinação de filtro/seleção (funcionário×mês no Ponto; lote no
-   Corte) que nunca foi buscada enquanto online precisa de comportamento
-   explícito offline (mensagem clara), não um spinner que gira pra
-   sempre — a query fica pausada, nunca chega a errar sozinha.
+   Corte; animal no Rebanho) que nunca foi buscada enquanto online precisa
+   de comportamento explícito offline (mensagem clara), não um spinner que
+   gira pra sempre — a query fica pausada, nunca chega a errar sozinha.
+   **Essa regra já foi violada duas vezes apesar de estar escrita aqui**
+   (Ponto em #233, `useAnimal` do Rebanho na revisão pós-#237) — prosa
+   sozinha não é suficiente, quem escreve o hook não relê o checklist.
+   Vira item de backlog abaixo: um helper compartilhado (`lib/offline/`)
+   que já devolve `loading` correto (considerando `fetchStatus ===
+   "paused"`), pra não depender de lembrar a checar isso hook por hook.
 4. **Ciclo completo de escrita** — criar/editar offline → item aparece
    otimista na lista → reconectar → confirma e (se foi `create`) o id
    temporário some, substituído pelo id real, sem duplicar nem sumir da
@@ -611,6 +637,7 @@ primeira responde, não em paralelo).
 | Rebanho > Sanidade + Produção — Evento sanitário (create+editar+excluir), Exame de quarto e Produção (modo `ORDENHA`, confirmado por dado real — create é 100% da feature nos dois, nunca tiveram editar/excluir). Achados corrigidos junto: `BaixaEstoqueCard` era código morto (removido) e `reb-animal` faltava em `TABS_OFFLINE` | ✅ Feito | [#237](https://github.com/piubellofelipe/fazendinha/pull/237) |
 | Revisão pós-#237: `rebanho.schemas.ts` (shared) dividido por sub-feature espelhando o server; `useConfig` migrado pra `useQuery` (mesma convenção de leitura, achado real: `AnimalCockpit` dependia dele pra decidir o botão de Produção); `EventoForm.tsx` dividido em `EventoForm.sanidade.tsx`; limpeza de comentário que narrava escopo da PR (incluindo um com analogia falsa ao Corte); achado nessa mesma revisão — Evento sanitário só cobria create, editar/excluir foram cobertos na sequência (ver convenção nova abaixo); item otimista do create nasceu sem `editavel`/`dadosEdicao` (corrigido); `useAnimais` (lista de Animais) ainda era `fetch` cru e quebrava com `"Erro: Failed to fetch"` num reload offline — só apareceu testando com o service worker (build de produção), não em `pnpm dev`; migrado pra `useQuery`; `useAnimal` (ficha) travava em "Carregando..." pra sempre offline num animal nunca aberto individualmente (mesma classe de bug do item de `useRegistros`/Ponto em #233 — `isPending` fica `true` com a query pausada, nunca chega a errar sozinha) — corrigido em duas partes: `initialData` lê o animal de qualquer lista (`useAnimais`) já cacheada (mesmo DTO nos dois endpoints, `toAnimalDTO`), e `loading` agora também considera `fetchStatus === "paused"` como "não está mais carregando", caindo no fallback "Animal não encontrado" em vez de girar pra sempre | ✅ Feito | epic/offline-first |
 | Pré-aquecer `useProdutos` (cadastro compartilhado — Rebanho/Corte/Plantio) assim que a tela que precisa dele abre, não só quando o formulário de evento é aberto. Achado testando Sanidade > Aplicação/Vacina offline: `Produto` é `@@unique` global (não exclusivo do Rebanho), usado em qualquer formulário com baixa de estoque; hoje só cacheia quando o modal específico é aberto — se isso nunca aconteceu online, o dropdown fica vazio offline (mesmo o resto da tela funcionando). Tabela pequena e pouco mutável — custo baixo de pré-buscar mais cedo | ⬜ Não iniciado | — |
+| Helper compartilhado (`lib/offline/`) pra `loading` correto (`isPending && fetchStatus !== "paused"`) — a regra "não travar em spinner offline pra sempre" já foi violada 2x (Ponto #233, `useAnimal` do Rebanho) apesar de documentada em prosa no checklist acima. Mexe em vários hooks de vários módulos (Ponto, Corte, Rebanho) — escopo maior que um fix pontual, avaliar junto de uma fatia futura | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |
 
