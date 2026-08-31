@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { movimentoSchema } from "@rionovo/shared";
 import { useProdutos, useRegistrarMovimento, listarFornecedores, listarGrupos, type FornecedorDTO, type GrupoDTO, type MovimentoInput, type ProdutoDTO } from "../api";
 import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
@@ -46,8 +47,6 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
 
   function salvar() {
     if (!f.produtoId) { setErro("Selecione um produto."); return; }
-    if (!f.quantidade || Number(f.quantidade) === 0) { setErro("Informe a quantidade."); return; }
-    setErro(null);
     const ehEntrada = f.tipo === "ENTRADA";
     const payload = {
       produtoId: Number(f.produtoId),
@@ -60,6 +59,12 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
       gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
       produtoInfo: { nome: produtoSel!.nome, unidade: produtoSel!.unidade, setor: produtoSel!.setor, custoUnitario: produtoSel!.custoUnitario },
     };
+    // Mesmo schema que o server valida (zValidator) — pega erro de input antes
+    // de enfileirar, em vez de só descobrir no sync (convenção obrigatória,
+    // ver "pré-validar antes de enfileirar" em OFFLINE_STRATEGY.md).
+    const valido = movimentoSchema.safeParse(payload);
+    if (!valido.success) { setErro(valido.error.issues[0]?.message ?? "Dado inválido."); return; }
+    setErro(null);
     enviar(registrar.mutate, payload, {
       onSalvo: () => { toast.success("Movimento registrado"); onSalvo(); },
       onErroInline: (msg) => setErro(msg),
