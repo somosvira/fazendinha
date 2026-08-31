@@ -88,7 +88,7 @@ describe("render smoke", () => {
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
-    const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
+    const html = renderToString(comQueryClient(h(RebanhoContent, { aba: "reproducao" })));
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
@@ -190,7 +190,7 @@ describe("render smoke", () => {
   });
 
   it("AnimalTab renders the status filter (Ativos/Baixados/Todos), visible while loading", () => {
-    const html = renderToString(h(AnimalTab, { onAbrirAnimal: () => {}, onNovo: () => {} }));
+    const html = renderToString(comQueryClient(h(AnimalTab, { onAbrirAnimal: () => {}, onNovo: () => {} })));
     expect(html).toContain("Ativos");
     expect(html).toContain("Baixados");
     expect(html).toContain("Todos");

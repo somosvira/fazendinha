@@ -25,6 +25,8 @@ export const rebanhoKeys = {
   saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
   config: () => ["rebanho", "config"] as const,
+  animais: (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) =>
+    ["rebanho", "animais", f?.status ?? null, f?.grupoId ?? null, f?.q ?? null, f?.setor ?? null, f?.categoria ?? null, f?.finalidade ?? null] as const,
 };
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
@@ -107,18 +109,16 @@ export function useSetores() {
   return { data, loading, erro, recarregar };
 }
 
+const ANIMAIS_VAZIO: Animal[] = [];
+
 export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) {
-  const [data, setData] = useState<Animal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarAnimais(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({ queryKey: rebanhoKeys.animais(f), queryFn: () => listarAnimais(f) });
+  return {
+    data: query.data ?? ANIMAIS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANTE", "ANESTRO", "CISTO_FOLICULAR", "CISTO_LUTEO", "ENDOMETRITE", "INDEFINIDO"] as const;

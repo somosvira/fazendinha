@@ -30,10 +30,10 @@ estava planejado nesta página, descobertos durante a implementação:
   `SanidadeForm` independente — o modal único Reprodução+Sanidade (com
   troca de domínio inline) continua o mesmo, só a apresentação e a escrita
   de Sanidade saíram do arquivo.
-- `useAnimais`/`useGrupos`/`useProducao` (agregado) **não** foram migrados
-  pra `useQuery` — não alimentam nenhuma das 3 escritas cobertas, só
+- `useGrupos`/`useProducao` (agregado) **não** foram migrados pra
+  `useQuery` — não alimentam nenhuma das 3 escritas cobertas, só
   `useAnimal` (singular), `useTimeline`, `useSaudeUbere`, `useProdutos`,
-  `useSaldos`/`useMovimentos` migraram de verdade.
+  `useSaldos`/`useMovimentos`/`useAnimais` migraram de verdade.
 - `producaoLoteSchema` **não** foi movido pra `packages/shared` (só
   `criarEventoSanitarioSchema`, `registrarExameQuartoSchema`,
   `controleSchema`) — modo `TANQUE_LOTE` segue fora de escopo.
@@ -57,6 +57,19 @@ estava planejado nesta página, descobertos durante a implementação:
   esperar o sync. Testado manualmente: criar → editar (form abre já
   preenchido) → cancelar → excluir, tudo com o evento ainda em `id`
   temporário e a rede desligada.
+- Achado extra corrigido: `useAnimais` (lista de Animais, `AnimalTab`) ainda
+  era `fetch` cru — offline (testado com o build de produção + service
+  worker, não em `pnpm dev`) mostrava `"Erro: Failed to fetch"` em vez de
+  usar o cache persistido, mesmo o usuário tendo acabado de visitar a
+  lista online. Migrado pra `useQuery` (chave `rebanhoKeys.animais(f)`,
+  mesmo padrão de `useConfig`/`useTimeline`); reload offline agora mostra
+  os animais do cache normalmente. Esse hook não alimenta nenhuma das
+  escritas desta fatia, mas é a tela de entrada do módulo inteiro — só não
+  foi pego antes porque `pnpm dev` não roda o service worker (ver seção
+  "reload/cold-start offline exige o build de produção" em
+  `OFFLINE_STRATEGY.md`), então nenhum teste anterior desta fatia chegou a
+  dar reload numa tela sem escrita offline com a rede desligada de
+  verdade.
 
 ---
 
