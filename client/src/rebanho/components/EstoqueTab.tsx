@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useSaldos, useMovimentos, useCustoVacaDia, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
+import { useSaldos, useMovimentos, useCustoVacaDia, useProdutos, useExcluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
 import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
@@ -15,6 +15,8 @@ import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -44,15 +46,13 @@ export function EstoqueTab() {
   const [busca, setBusca] = useState("");
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  // useProdutos (useQuery) — mesma chave/cache do prefetch do AnimalCockpit
+  // (#238) e do MovimentoForm, persiste offline.
+  const produtosQuery = useProdutos({ ativo: true });
+  const produtos = produtosQuery.data;
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
-
-  const carregarProdutos = useCallback(() => {
-    listarProdutos({ ativo: true }).then(setProdutos).catch(() => {});
-  }, []);
-  useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
 
   function trocarSort(key: SortKey) {
     setSort((s) => {
@@ -100,7 +100,7 @@ export function EstoqueTab() {
     if (p) setEditando(p);
   }
 
-  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); carregarProdutos(); };
+  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); produtosQuery.recarregar(); };
 
   const renderRow = (s: SaldoDTO) => (
     <tr key={s.produtoId}>
@@ -243,7 +243,19 @@ export function EstoqueTab() {
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</RebButton></td>
+                <td style={{ textAlign: "right" }}>
+                  <RebButton
+                    onClick={() => setExcluindo(m)}
+                    disabled={m.origem === "NUTRICAO" || m.origem === "SANIDADE"}
+                    title={
+                      m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição"
+                      : m.origem === "SANIDADE" ? "Baixa automática de evento sanitário — exclua o evento na ficha do animal"
+                      : "Excluir"
+                    }
+                  >
+                    Excluir
+                  </RebButton>
+                </td>
               </tr>
             ))}</tbody>
           </RebTable>
@@ -269,18 +281,24 @@ export function EstoqueTab() {
 
 function ConfirmarExclusao({ movimento, onCancelar, onConfirmado }: { movimento: MovimentoDTO; onCancelar: () => void; onConfirmado: () => void }) {
   const [aceito, setAceito] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const excluir = useExcluirMovimento();
+  const { salvando: excluindo, salvar: enviar } = useSalvarOffline();
+  const toast = useToast();
 
-  async function confirmar() {
-    setExcluindo(true); setErro(null);
-    try {
-      await excluirMovimento(movimento.id);
-      onConfirmado();
-    } catch (e: any) {
-      setErro(e.message ?? "Erro ao excluir.");
-      setExcluindo(false);
-    }
+  function confirmar() {
+    setErro(null);
+    enviar(excluir.mutate, {
+      movimentoId: movimento.id,
+      produtoId: movimento.produtoId,
+      tipo: movimento.tipo,
+      quantidade: movimento.quantidade,
+      valorTotal: movimento.valorTotal,
+    }, {
+      onSalvo: () => { toast.success("Movimento excluído"); onConfirmado(); },
+      onErroInline: (msg) => setErro(msg),
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar a exclusão do movimento", msg),
+    });
   }
 
   const dataFmt = new Date(movimento.data).toLocaleDateString("pt-BR");

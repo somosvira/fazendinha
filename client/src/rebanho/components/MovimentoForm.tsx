@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type MovimentoResult, type MovimentoInput } from "../api";
+import { useProdutos, useRegistrarMovimento, listarFornecedores, listarGrupos, type FornecedorDTO, type GrupoDTO, type MovimentoInput, type ProdutoDTO } from "../api";
 import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { fmtMoneyExact } from "@/components/charts";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -16,102 +18,56 @@ const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
 const money = fmtMoneyExact;
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  // useProdutos (useQuery) em vez de fetch cru: compartilha cache com o
+  // prefetch do AnimalCockpit (#238) — produto já aparece aqui mesmo offline
+  // sem nunca ter aberto este modal antes.
+  const produtosQuery = useProdutos({ ativo: true });
+  const produtos = produtosQuery.data.filter((p) => p.estocavel);
   const [fornecedores, setFornecedores] = useState<FornecedorDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", fornecedorId: "", grupoId: "", observacao: "", gerarLancamento: true });
   const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
-  const [resultado, setResultado] = useState<MovimentoResult | null>(null);
   const [novoProduto, setNovoProduto] = useState(false);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
-
-  async function carregarProdutos(selecionarId?: number) {
-    const ps = await listarProdutos({ ativo: true });
-    const estocaveis = ps.filter((p) => p.estocavel);
-    setProdutos(estocaveis);
-    if (selecionarId) setF((s) => ({ ...s, produtoId: String(selecionarId) }));
-  }
+  const registrar = useRegistrarMovimento();
+  const { salvando, salvar: enviar } = useSalvarOffline();
+  const toast = useToast();
 
   useEffect(() => {
-    carregarProdutos().catch(() => {});
     listarFornecedores().then(setFornecedores).catch(() => {});
     listarGrupos().then(setGrupos).catch(() => {});
   }, []);
 
+  async function aoCriarProduto(criado?: ProdutoDTO) {
+    setNovoProduto(false);
+    await produtosQuery.recarregar();
+    if (criado) set("produtoId", String(criado.id));
+  }
+
   const produtoSel = produtos.find((p) => String(p.id) === f.produtoId) || null;
   const semContabil = produtoSel && f.tipo === "ENTRADA" && (produtoSel.categoriaId == null || produtoSel.centroCustoId == null);
 
-  async function salvar() {
+  function salvar() {
     if (!f.produtoId) { setErro("Selecione um produto."); return; }
     if (!f.quantidade || Number(f.quantidade) === 0) { setErro("Informe a quantidade."); return; }
-    setSalvando(true); setErro(null);
-    try {
-      const ehEntrada = f.tipo === "ENTRADA";
-      const payload: MovimentoInput = {
-        produtoId: Number(f.produtoId),
-        tipo: f.tipo,
-        data: f.data,
-        quantidade: Number(f.quantidade),
-        fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
-        grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
-        observacao: f.observacao || undefined,
-        gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
-      };
-      const r = await registrarMovimento(payload);
-      setResultado(r);
-    } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
-  }
-
-  // Após salvar, mostra um recibo claro do que aconteceu.
-  if (resultado) {
-    const tipoLabel = TIPOS.find((t) => t.id === f.tipo)?.label.split(" ")[0] ?? f.tipo;
-    const qtdNum = Number(f.quantidade);
-    const valorTotal = produtoSel?.custoUnitario != null ? Number(produtoSel.custoUnitario) * Math.abs(qtdNum) : null;
-    return (
-      <RebModal
-        title=""
-        showClose={false}
-        onClose={onSalvo}
-        className="max-w-[440px]"
-        actions={
-          <div className="flex w-full justify-center">
-            <RebButton variant="pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</RebButton>
-          </div>
-        }
-      >
-        <div className="mt-1 flex justify-center animate-[rb-check-pop_0.3s_cubic-bezier(0.34,1.56,0.64,1)] [&>svg]:h-16 [&>svg]:w-16 [&>svg]:text-lucro [&_circle]:[stroke-dasharray:132] [&_circle]:[stroke-dashoffset:0] [&_circle]:animate-[rb-check-circle_0.4s_ease-out_backwards] [&_path]:[stroke-dasharray:30] [&_path]:[stroke-dashoffset:0] [&_path]:animate-[rb-check-path_0.25s_ease-out_0.25s_backwards]">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="24" cy="24" r="21" />
-            <path d="M15 24l7 7 12-14" />
-          </svg>
-        </div>
-        <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
-        <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
-          <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
-          {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
-        </p>
-        <div className="flex items-start gap-3 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3.5 text-sm [&_b]:font-semibold [&_b]:text-foreground">
-          {resultado.lancamentoCriado ? (
-            <>
-              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color-mix(in_srgb,var(--lucro)_14%,transparent)] text-lucro">✓</span>
-              <div>
-                <b>Lançamento financeiro gerado</b>
-                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color:var(--rule-soft)] text-ink-3">—</span>
-              <div>
-                <b>Sem lançamento financeiro</b>
-                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
-              </div>
-            </>
-          )}
-        </div>
-      </RebModal>
-    );
+    setErro(null);
+    const ehEntrada = f.tipo === "ENTRADA";
+    const payload = {
+      produtoId: Number(f.produtoId),
+      tipo: f.tipo,
+      data: f.data,
+      quantidade: Number(f.quantidade),
+      fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
+      grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
+      observacao: f.observacao || undefined,
+      gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
+      produtoInfo: { nome: produtoSel!.nome, unidade: produtoSel!.unidade, setor: produtoSel!.setor, custoUnitario: produtoSel!.custoUnitario },
+    };
+    enviar(registrar.mutate, payload, {
+      onSalvo: () => { toast.success("Movimento registrado"); onSalvo(); },
+      onErroInline: (msg) => setErro(msg),
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar o movimento", msg),
+    });
   }
 
   return (
@@ -178,7 +134,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
         <ProdutoForm
           stacked
           onFechar={() => setNovoProduto(false)}
-          onSalvo={(criado) => { setNovoProduto(false); carregarProdutos(criado?.id).catch(() => {}); }}
+          onSalvo={(criado) => { aoCriarProduto(criado).catch(() => {}); }}
         />
       )}
     </>

@@ -1386,6 +1386,103 @@ export function useMovimentos(f?: { produtoId?: number; tipo?: string }) {
   };
 }
 
+// ESCRITA OFFLINE (Estoque > movimento manual) -------------------------------
+// produtoInfo só alimenta o item otimista de MovimentoDTO (nunca vai pro
+// corpo real) — o servidor já resolve nome/unidade/setor/custo a partir do
+// produtoId sozinho; aqui é só pra não esperar o refetch pra mostrar certo.
+export interface RegistrarMovimentoOfflineInput extends MovimentoInput {
+  produtoInfo: { nome: string; unidade: string; setor: SetorEstoque | null; custoUnitario: number | null };
+}
+
+const sinalMovimento = (tipo: MovimentoInput["tipo"]) => (tipo === "SAIDA" ? -1 : 1);
+
+// Delta pelo sinal real do tipo (ENTRADA/AJUSTE somam ao saldo, SAIDA
+// subtrai — mesma regra de estoque.calc.ts no server). Mais preciso que
+// aplicarDeltaSaldo acima, que assume custo médio — certo só pro caso de
+// baixa por consumo da Sanidade, não serve pra ENTRADA a custo próprio.
+function aplicarMovimentoNoSaldo(atual: SaldoDTO[] | undefined, m: { produtoId: number; tipo: MovimentoInput["tipo"]; quantidade: number; valorTotal: number }): SaldoDTO[] {
+  return (atual ?? []).map((s) => {
+    if (s.produtoId !== m.produtoId) return s;
+    const sinal = sinalMovimento(m.tipo);
+    const novoSaldo = s.saldo + sinal * m.quantidade;
+    return {
+      ...s,
+      saldo: novoSaldo,
+      valor: s.valor + sinal * m.valorTotal,
+      abaixoMinimo: s.minimoEstoque != null ? novoSaldo < s.minimoEstoque : s.abaixoMinimo,
+    };
+  });
+}
+
+const configRegistrarMovimento: UseOfflineMutationConfig<RegistrarMovimentoOfflineInput, MovimentoDTO> = {
+  mutationKey: "rebanho.registrar-movimento",
+  path: () => `/rebanho/estoque/movimentos`,
+  method: "POST",
+  body: ({ produtoInfo, ...rest }) => rest,
+  criarOtimista: (input) => {
+    const custo = input.custoUnitario ?? input.produtoInfo.custoUnitario ?? 0;
+    return {
+      id: criarIdTemporario(),
+      produtoId: input.produtoId,
+      produto: input.produtoInfo.nome,
+      setor: input.produtoInfo.setor ?? "GERAL",
+      tipo: input.tipo,
+      origem: "MANUAL",
+      data: input.data,
+      quantidade: input.quantidade,
+      custoUnitario: custo,
+      valorTotal: input.quantidade * custo,
+      fornecedor: null,
+      grupo: null,
+      observacao: input.observacao ?? null,
+    };
+  },
+  queryKeys: (input, itemOtimista) => [
+    { queryKey: rebanhoKeys.movimentos(), aplicar: (atual: MovimentoDTO[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+    {
+      queryKey: rebanhoKeys.saldos(),
+      aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: input.quantidade, valorTotal: itemOtimista!.valorTotal }),
+    },
+  ],
+};
+
+export function useRegistrarMovimento() {
+  return useOfflineMutation(configRegistrarMovimento);
+}
+
+// EXCLUIR — reverte o saldo pelo sinal contrário do movimento original.
+// Origem SANIDADE/NUTRICAO e mês fechado continuam bloqueados no servidor
+// (regra preexistente de estoque.ts, nada a ver com offline) — a tela só
+// deixa abrir a confirmação pra movimento MANUAL, então isso nunca chega
+// aqui enfileirado por engano.
+export interface ExcluirMovimentoOfflineInput {
+  movimentoId: number | string;
+  produtoId: number;
+  tipo: MovimentoInput["tipo"];
+  quantidade: number;
+  valorTotal: number;
+}
+
+const configExcluirMovimento: UseOfflineMutationConfig<ExcluirMovimentoOfflineInput, never> = {
+  mutationKey: "rebanho.excluir-movimento",
+  path: (input) => `/rebanho/estoque/movimentos/${input.movimentoId}`,
+  method: "DELETE",
+  queryKeys: (input) => [
+    {
+      queryKey: rebanhoKeys.movimentos(),
+      aplicar: (atual: MovimentoDTO[] | undefined) => removeItemFromCacheList(atual, (item) => item.id === input.movimentoId),
+    },
+    {
+      queryKey: rebanhoKeys.saldos(),
+      aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: -input.quantidade, valorTotal: -input.valorTotal }),
+    },
+  ],
+};
+
+export function useExcluirMovimento() {
+  return useOfflineMutation(configExcluirMovimento);
+}
+
 export function useCustoVacaDia(dias = 30) {
   const [data, setData] = useState<CustoVacaDia | null>(null);
   const [loading, setLoading] = useState(true);
