@@ -13,6 +13,7 @@ import {
   tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
   tituloControleLeiteiro, detalheControleLeiteiro,
   recomputarQuartos, type ExameQuartoIn,
+  sinalMovimentoEstoque,
 } from "@rionovo/shared";
 import { HOJE } from "./HOJE";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
@@ -1394,16 +1395,14 @@ export interface RegistrarMovimentoOfflineInput extends MovimentoInput {
   produtoInfo: { nome: string; unidade: string; setor: SetorEstoque | null; custoUnitario: number | null };
 }
 
-const sinalMovimento = (tipo: MovimentoInput["tipo"]) => (tipo === "SAIDA" ? -1 : 1);
-
 // Delta pelo sinal real do tipo (ENTRADA/AJUSTE somam ao saldo, SAIDA
-// subtrai — mesma regra de estoque.calc.ts no server). Mais preciso que
+// subtrai — mesma função do server, via @rionovo/shared). Mais preciso que
 // aplicarDeltaSaldo acima, que assume custo médio — certo só pro caso de
 // baixa por consumo da Sanidade, não serve pra ENTRADA a custo próprio.
 function aplicarMovimentoNoSaldo(atual: SaldoDTO[] | undefined, m: { produtoId: number; tipo: MovimentoInput["tipo"]; quantidade: number; valorTotal: number }): SaldoDTO[] {
   return (atual ?? []).map((s) => {
     if (s.produtoId !== m.produtoId) return s;
-    const sinal = sinalMovimento(m.tipo);
+    const sinal = sinalMovimentoEstoque(m.tipo);
     const novoSaldo = s.saldo + sinal * m.quantidade;
     return {
       ...s,
