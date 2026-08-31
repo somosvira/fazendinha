@@ -25,8 +25,12 @@ export const rebanhoKeys = {
   saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
   config: () => ["rebanho", "config"] as const,
+  // Prefixo curto, só pra casar TODAS as variações de useAnimais(f) de uma vez
+  // (getQueriesData/invalidateQueries casam por prefixo) — mesmo padrão de
+  // corteKeys.lotesTodos() em client/src/corte/api.ts.
+  animaisTodos: () => ["rebanho", "animais"] as const,
   animais: (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) =>
-    ["rebanho", "animais", f?.status ?? null, f?.grupoId ?? null, f?.q ?? null, f?.setor ?? null, f?.categoria ?? null, f?.finalidade ?? null] as const,
+    [...rebanhoKeys.animaisTodos(), f?.status ?? null, f?.grupoId ?? null, f?.q ?? null, f?.setor ?? null, f?.categoria ?? null, f?.finalidade ?? null] as const,
 };
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
@@ -507,7 +511,7 @@ export function useAnimal(id: string | null) {
     // reconectar).
     initialData: () => {
       if (!id) return undefined;
-      for (const [, lista] of queryClient.getQueriesData<Animal[]>({ queryKey: ["rebanho", "animais"] })) {
+      for (const [, lista] of queryClient.getQueriesData<Animal[]>({ queryKey: rebanhoKeys.animaisTodos() })) {
         const achado = lista?.find((a) => a.id === id);
         if (achado) return achado;
       }
