@@ -18,9 +18,6 @@ const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
 const money = fmtMoneyExact;
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
-  // useProdutos (useQuery) em vez de fetch cru: compartilha cache com o
-  // prefetch do AnimalCockpit (#238) — produto já aparece aqui mesmo offline
-  // sem nunca ter aberto este modal antes.
   const produtosQuery = useProdutos({ ativo: true });
   const produtos = produtosQuery.data.filter((p) => p.estocavel);
   const [fornecedores, setFornecedores] = useState<FornecedorDTO[]>([]);

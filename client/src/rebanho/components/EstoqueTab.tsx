@@ -46,8 +46,6 @@ export function EstoqueTab() {
   const [busca, setBusca] = useState("");
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
-  // useProdutos (useQuery) — mesma chave/cache do prefetch do AnimalCockpit
-  // (#238) e do MovimentoForm, persiste offline.
   const produtosQuery = useProdutos({ ativo: true });
   const produtos = produtosQuery.data;
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
