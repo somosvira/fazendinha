@@ -1,6 +1,17 @@
 import { z } from "zod";
 
 export { TITULO_SANITARIO, TITULO_PESAGEM_LOTE } from "./corte.constants.js";
+export {
+  tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
+  tituloControleLeiteiro, detalheControleLeiteiro,
+} from "./rebanho.constants.js";
+export { criarEventoSanitarioSchema, type CriarEventoSanitarioInput } from "./rebanho.eventos-sanidade.schemas.js";
+export { QUARTOS, SCORES_CMT, registrarExameQuartoSchema, type RegistrarExameQuartoInput } from "./rebanho.exames-quarto.schemas.js";
+export { controleSchema, type ControleInput } from "./rebanho.producao.schemas.js";
+export {
+  recomputarQuartos, CCS_POSITIVO, JANELA_MESES, DIAS_ATIVO,
+  type Quarto, type ScoreCmt, type EstadoQuarto, type ExameQuartoIn, type EstadoPorQuarto, type ResumoQuartos,
+} from "./rebanho.recompute.js";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "hora deve ser HH:MM");

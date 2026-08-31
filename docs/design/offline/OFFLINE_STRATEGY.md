@@ -58,7 +58,8 @@ uma vez — seguindo um padrão único construído uma vez e reaplicado.
    no read. Candidata a nem precisar de id gerado no client.
 2. **Pesagem + Sanidade** (corte)
 3. **Sanidade + Produção-tanque** (rebanho) — nome herdado do mapeamento
-   original; **corrigido em `docs/design/offline/REBANHO_SANIDADE_PRODUCAO_NOTAS.md`**:
+   original; corrigido depois de conferir o dado real (achado documentado
+   abaixo, seção de Progresso):
    `producaoModo` é um toggle único pra fazenda inteira (`ORDENHA` vs.
    `TANQUE_LOTE`, tabelas/endpoints diferentes por modo — não é só
    UI, muda inclusive a fórmula de cálculo no servidor). O dado real
@@ -210,6 +211,60 @@ só "carregando pra sempre". Fix: constante de módulo (ex.: `const
 LOTES_VAZIO: Lote[] = [];`), nunca um literal `[]` inline no retorno do
 hook.
 
+## Convenção: semear a ficha com o dado de uma lista já cacheada (`initialData`)
+
+Achado na revisão pós-#237 (2026-08-31): quando uma tela de detalhe (ficha)
+e uma tela de lista usam o mesmo DTO no server (mesmo mapper, mesmo
+`include`), a ficha não precisa depender só da própria busca individual
+pra ter dado — ela pode ler o item de qualquer query de lista já cacheada
+via `initialData`, e deixar a busca individual rodar em segundo plano (só
+pra manter fresco, quando online). Isso resolve dois problemas de uma vez:
+renderiza instantâneo mesmo online (sem esperar round-trip) e, offline,
+cobre o caso comum "lista foi visitada, ficha nunca foi aberta
+individualmente" sem exigir uma visita prévia à ficha específica.
+
+Implementado em `useAnimal` (`client/src/rebanho/api.ts`) lendo de
+qualquer `rebanhoKeys.animaisTodos()` cacheado. Requer uma chave de
+"família" curta pra casar qualquer combinação de filtro da lista (ver
+`corteKeys.lotesTodos()`/`rebanhoKeys.animaisTodos()`) — sem isso,
+`getQueriesData` com a chave completa (incluindo filtros) só acha a lista
+com exatamente os mesmos filtros. **Candidato natural pra Plantio
+(Talhões) e Cultivo** quando tiverem lista+ficha no mesmo formato.
+
+## Convenção obrigatória: cobrir toda operação da feature, não só create
+
+Achado numa revisão pós-#237 (2026-08-29): a primeira versão de "Rebanho >
+Evento sanitário" só cobriu `create` offline, com um comentário no código
+justificando isso como "mesmo escopo do Corte > Sanidade". A analogia era
+falsa — Corte > Sanidade/Pesagem nunca tiveram editar/excluir em lugar
+nenhum do app (create sempre foi 100% da feature ali), enquanto Evento
+sanitário **já tinha** editar e excluir online antes desta fatia existir.
+Cobrir só create deixou os botões "Editar"/"Excluir" visíveis e clicáveis
+offline (a ficha do animal já estava em `TABS_OFFLINE`), só que eles
+falhavam com o erro cru do `fetch` em vez de enfileirar — pior que não
+oferecer o botão, porque parece que devia funcionar.
+
+**Regra, a partir de agora:** ao dar suporte offline a uma feature, checar
+quais operações ela já tem em algum lugar do app (create/editar/excluir) —
+não assumir que create sozinho é "o mesmo padrão" de outra feature sem
+conferir se essa outra feature de fato não tem as demais operações também.
+Cobrir todas as que existirem, não só create. Quando alguma ficar de fora
+por complexidade real (não por prazo), documentar o motivo técnico
+específico no lugar certo (nota de design da fatia), nunca só "fora de
+escopo" sem explicação — isso é exatamente o tipo de comentário que a
+convenção de densidade de comentário (acima) pede pra evitar.
+
+**Aplicado nesta mesma revisão:** editar e excluir de Evento sanitário
+passaram a usar `useOfflineMutation` como o create. Editar dá patch
+otimista real só na timeline (título/detalhe recalculados) — saldo e
+movimento de estoque ficam invalidate-only, porque reconciliar uma troca
+de produtoId/quantidade exigiria conhecer o vínculo anterior pra reverter
+e reaplicar, e isso não valia a complexidade extra pro ganho (corrige
+sozinho no refetch pós-sync). Excluir devolve a quantidade ao saldo na
+hora (o dado já vem no `dadosEdicao` que a timeline carrega, sem precisar
+buscar nada a mais) e remove o evento da lista; o movimento de estoque
+vinculado só some da lista depois do sync.
+
 ## Checklist: o que "testado" significa pra uma fatia offline
 
 Consolidado depois de verificar #233/#234 na prática — testar no navegador
@@ -227,11 +282,33 @@ tabela de Progresso abaixo:
    Wi-Fi (cache do SO pode mascarar o resultado). Reload (F5) tanto na
    raiz quanto num deep link da tela (`/equipe/ponto`, `/corte/...`) — os
    dois caminhos carregam o shell de formas diferentes.
+   **`pnpm dev` não serve pra isso** — o `VitePWA` (`client/vite.config.ts`)
+   não tem `devOptions.enabled`, então o service worker não roda no Vite
+   dev server; qualquer reload/navegação offline nesse modo vai dar
+   `ERR_INTERNET_DISCONNECTED` mesmo com o app funcionando perfeitamente
+   em produção. Pra validar o service worker (reload/deep-link/cold-start
+   offline), tem que ser contra o build de produção — ver comandos abaixo.
+   Interagir com a SPA já carregada (clicar, preencher formulário, sem
+   reload) pode ser feito em `pnpm dev` mesmo sem o worker — essa parte
+   depende só da fila (`lib/offline/fila.ts` + IndexedDB), não do SW.
+
+   ```bash
+   pnpm --filter rionovo-client run build   # gera dist/sw.js
+   pnpm --filter rionovo-client exec vite preview --port 41875
+   # abrir http://localhost:41875, navegar ONLINE pelo menos uma vez
+   # (registra o SW e faz o precache), então offline + reload/deep-link
+   ```
 3. **Caso "nunca visitado" além do caso feliz "já visitado online"** —
    toda combinação de filtro/seleção (funcionário×mês no Ponto; lote no
-   Corte) que nunca foi buscada enquanto online precisa de comportamento
-   explícito offline (mensagem clara), não um spinner que gira pra
-   sempre — a query fica pausada, nunca chega a errar sozinha.
+   Corte; animal no Rebanho) que nunca foi buscada enquanto online precisa
+   de comportamento explícito offline (mensagem clara), não um spinner que
+   gira pra sempre — a query fica pausada, nunca chega a errar sozinha.
+   **Essa regra já foi violada duas vezes apesar de estar escrita aqui**
+   (Ponto em #233, `useAnimal` do Rebanho na revisão pós-#237) — prosa
+   sozinha não é suficiente, quem escreve o hook não relê o checklist.
+   Vira item de backlog abaixo: um helper compartilhado (`lib/offline/`)
+   que já devolve `loading` correto (considerando `fetchStatus ===
+   "paused"`), pra não depender de lembrar a checar isso hook por hook.
 4. **Ciclo completo de escrita** — criar/editar offline → item aparece
    otimista na lista → reconectar → confirma e (se foi `create`) o id
    temporário some, substituído pelo id real, sem duplicar nem sumir da
@@ -558,7 +635,11 @@ primeira responde, não em paralelo).
 | Corte > Pesagem + Sanidade — inclui migração de `useLotes`/`useLote`/`useEventos` pra `useQuery` (pré-requisito) e schemas movidos pra `packages/shared` | ✅ Feito — testado no navegador com build de produção + rede offline real | [#235](https://github.com/piubellofelipe/fazendinha/pull/235) |
 | Revisão pós-#235: limpeza de comentários históricos (narravam a mudança, não a lógica) + `TITULO_SANITARIO`/`"Pesagem do lote"` (duplicados byte a byte entre `client/src/corte/api.ts` e `server/.../timeline.ts`) movidos pra `packages/shared/src/corte.constants.ts` | ✅ Feito | epic/offline-first |
 | `useOfflineMutation` — `op`/`match`/`queryKeysRelacionadas` substituídos por uma lista única `{ queryKey, aplicar? }`: `aplicar` ausente = só invalida (antigo `queryKeysRelacionadas`); presente, dá patch otimista de verdade com `atual`/`itemOtimista` anotados na mão, sem wrapper genérico. Helpers diretos (`appendItemToCacheList`, `removeItemFromCacheList`, `updateItemInCacheList`, `upsertItemInCacheList`) cobrem os casos de lista; cache-objeto-agregado (não-lista) já é suportado sem mecanismo extra. Corte e Ponto migrados pra config nova | ✅ Feito | [#236](https://github.com/piubellofelipe/fazendinha/pull/236) |
-| Rebanho > Sanidade + Produção — nome herdado "Produção-tanque" é impreciso, dado real confirma modo `ORDENHA` (por vaca), não tanque/lote — ver seção "Ordem de rollout sugerida" acima | ⬜ Não iniciado | — |
+| Rebanho > Sanidade + Produção — Evento sanitário (create+editar+excluir), Exame de quarto e Produção (modo `ORDENHA`, confirmado por dado real — create é 100% da feature nos dois, nunca tiveram editar/excluir). Achados corrigidos junto: `BaixaEstoqueCard` era código morto (removido) e `reb-animal` faltava em `TABS_OFFLINE` | ✅ Feito | [#237](https://github.com/piubellofelipe/fazendinha/pull/237) |
+| Revisão pós-#237: `rebanho.schemas.ts` (shared) dividido por sub-feature espelhando o server; `useConfig` migrado pra `useQuery` (mesma convenção de leitura, achado real: `AnimalCockpit` dependia dele pra decidir o botão de Produção); `EventoForm.tsx` dividido em `EventoForm.sanidade.tsx`; limpeza de comentário que narrava escopo da PR (incluindo um com analogia falsa ao Corte); achado nessa mesma revisão — Evento sanitário só cobria create, editar/excluir foram cobertos na sequência (ver convenção nova abaixo); item otimista do create nasceu sem `editavel`/`dadosEdicao` (corrigido); `useAnimais` (lista de Animais) ainda era `fetch` cru e quebrava com `"Erro: Failed to fetch"` num reload offline — só apareceu testando com o service worker (build de produção), não em `pnpm dev`; migrado pra `useQuery`; `useAnimal` (ficha) travava em "Carregando..." pra sempre offline num animal nunca aberto individualmente (mesma classe de bug do item de `useRegistros`/Ponto em #233 — `isPending` fica `true` com a query pausada, nunca chega a errar sozinha) — corrigido em duas partes: `initialData` lê o animal de qualquer lista (`useAnimais`) já cacheada (mesmo DTO nos dois endpoints, `toAnimalDTO`), e `loading` agora também considera `fetchStatus === "paused"` como "não está mais carregando", caindo no fallback "Animal não encontrado" em vez de girar pra sempre | ✅ Feito | epic/offline-first |
+| Pré-aquecer `useProdutos` (cadastro compartilhado — Rebanho/Corte/Plantio) assim que a tela que precisa dele abre, não só quando o formulário de evento é aberto. Achado testando Sanidade > Aplicação/Vacina offline: `Produto` é `@@unique` global (não exclusivo do Rebanho), usado em qualquer formulário com baixa de estoque; hoje só cacheia quando o modal específico é aberto — se isso nunca aconteceu online, o dropdown fica vazio offline (mesmo o resto da tela funcionando). Tabela pequena e pouco mutável — custo baixo de pré-buscar mais cedo | ⬜ Não iniciado | — |
+| Helper compartilhado (`lib/offline/`) pra `loading` correto (`isPending && fetchStatus !== "paused"`) — a regra "não travar em spinner offline pra sempre" já foi violada 2x (Ponto #233, `useAnimal` do Rebanho) apesar de documentada em prosa no checklist acima. Mexe em vários hooks de vários módulos (Ponto, Corte, Rebanho) — escopo maior que um fix pontual, avaliar junto de uma fatia futura | ⬜ Não iniciado | — |
+| Criação de `Produto` (estoque) offline — hoje `MovimentoForm.tsx`→`ProdutoForm.tsx` cria produto novo síncrono, fora de qualquer fila. Se um dia isso virar `useOfflineMutation` (com `useProdutos` já em `useQuery`, o produto novo apareceria no dropdown na hora via `aplicar`), tem uma pegadinha: encadear create-Produto→create-Movimento offline (selecionar o produto recém-criado, ainda com id temporário, e submeter um movimento pra ele) exige `substituirIdNaFila` reescrever `produtoId` no corpo — mas esse campo é `z.number().int()` sem coerção no server (`estoque.ts`), e a reescrita da fila é sempre string→string (`fila.ts`). Precisaria de `z.coerce.number()` (ou equivalente) nesse campo antes de funcionar | ⬜ Não iniciado | — |
 | Plantio (café) > Fitossanidade + Nutrição + Colheita | ⬜ Não iniciado | — |
 | Cultivo (milho) > Produção | ⬜ Não iniciado | — |
 

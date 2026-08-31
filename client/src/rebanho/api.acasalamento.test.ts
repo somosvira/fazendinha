@@ -19,6 +19,15 @@ import {
 } from "./components/MedidasAcasalamentoSection";
 import { CadastrosView } from "./components/CadastrosView";
 
+// CadastrosView também monta a sub-aba Produtos (useProdutos, useQuery) —
+// incidental pra estes testes (só testam Medidas/Combinações de acasalamento),
+// mockada pra não precisar de QueryClientProvider nem interferir nas
+// asserções de ordem de fetch das próprias medidas/combinações.
+vi.mock("./api", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./api")>(),
+  useProdutos: () => ({ data: [] }),
+}));
+
 function resposta(body: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(body), {
     status,

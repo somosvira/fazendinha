@@ -1,3 +1,5 @@
+import { tituloControleLeiteiro, detalheControleLeiteiro } from "@rionovo/shared";
+
 export interface EventoTimelineDTO { id: string; animalId: string; data: string; dominio: "producao" | "nutricao"; titulo: string; detalhe?: string; alerta?: boolean; marcador?: string; }
 const iso = (d: Date) => new Date(d).toISOString().slice(0, 10);
 
@@ -16,17 +18,16 @@ export function toTimelinePesagem(p: any): EventoTimelineDTO {
 }
 
 export function toTimelineControle(c: any): EventoTimelineDTO {
-  const ordenhas = [c.peso1, c.peso2, c.peso3]
-    .map((p, i) => (p != null ? `ordenha ${i + 1}: ${Number(p)} L` : null))
-    .filter(Boolean)
-    .join(" · ");
+  const peso1 = c.peso1 != null ? Number(c.peso1) : undefined;
+  const peso2 = c.peso2 != null ? Number(c.peso2) : undefined;
+  const peso3 = c.peso3 != null ? Number(c.peso3) : undefined;
   return {
     id: String(c.id),
     animalId: String(c.animalId),
     data: iso(c.data),
     dominio: "producao",
-    titulo: `Controle leiteiro — ${Number(c.pesoTotal)} L/dia`,
-    detalhe: ordenhas || undefined,
+    titulo: tituloControleLeiteiro(Number(c.pesoTotal)),
+    detalhe: detalheControleLeiteiro({ peso1, peso2, peso3 }),
     alerta: false,
     marcador: undefined,
   };

@@ -12,6 +12,14 @@ import {
 import { CadastrosView } from "./components/CadastrosView";
 import { ReprodutoresSection } from "./components/ReprodutoresSection";
 
+// CadastrosView também monta a sub-aba Produtos (useProdutos, useQuery) —
+// incidental pra este arquivo (só testa genética/sêmen), mockada pra não
+// precisar de QueryClientProvider.
+vi.mock("./api", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./api")>(),
+  useProdutos: () => ({ data: [] }),
+}));
+
 function resposta(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), {
     status: 200,

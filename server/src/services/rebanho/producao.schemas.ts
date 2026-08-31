@@ -2,21 +2,11 @@ import { z } from "zod";
 
 const dataNaoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
-// Decimal(6,2) na coluna → cap em 9999.99 evita Postgres 22003 (numeric overflow)
-const litrosPorOrdenha = z.number().positive().max(9999.99, "valor deve ser menor que 10.000 L");
+// Fonte real em packages/shared (modo ORDENHA — coberto offline); re-export pra
+// quem já importa daqui não precisar mudar.
+export { controleSchema, type ControleInput } from "@rionovo/shared";
 
-export const controleSchema = z
-  .object({
-    data: dataNaoFutura,
-    peso1: litrosPorOrdenha.optional(),
-    peso2: litrosPorOrdenha.optional(),
-    peso3: litrosPorOrdenha.optional(),
-    pesoTotal: litrosPorOrdenha.optional(),
-    observacao: z.string().max(200).optional(),
-  })
-  .refine((v) => (v.peso1 ?? v.peso2 ?? v.peso3 ?? v.pesoTotal) != null, "informe ao menos um peso");
-export type ControleInput = z.infer<typeof controleSchema>;
-
+// producaoLoteSchema (modo TANQUE_LOTE) fica só aqui — a Rio Novo usa modo ORDENHA.
 export const producaoLoteSchema = z.object({
   grupoId: z.number().int().optional(),
   data: dataNaoFutura,

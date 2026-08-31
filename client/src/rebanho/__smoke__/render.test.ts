@@ -3,6 +3,18 @@
 import { describe, it, expect } from "vitest";
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "../../components/Toast";
+
+// CadastrosView/EstoqueTab/SaudeUbereSection usam useQuery
+// (useProdutos/useSaldos/useMovimentos/useSaudeUbere) — precisam de um
+// QueryClient no contexto, mesmo em SSR síncrono (não chega a esperar o
+// fetch, só renderiza o shell de loading). SaudeUbereSection também chama
+// useToast() (escrita offline) — precisa do ToastProvider.
+function comQueryClient(node: ReturnType<typeof h>) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return h(QueryClientProvider, { client: queryClient }, h(ToastProvider, null, node));
+}
 import { App } from "../../App";
 import { DashboardView } from "../components/DashboardView";
 import { IaView } from "../components/IaView";
@@ -76,7 +88,7 @@ describe("render smoke", () => {
   });
 
   it("RebanhoContent renders a domain tab shell (live-fetched)", () => {
-    const html = renderToString(h(RebanhoContent, { aba: "reproducao" }));
+    const html = renderToString(comQueryClient(h(RebanhoContent, { aba: "reproducao" })));
     expect(html).toContain("Carregando");   // shell de loading (sem fetch no SSR)
   });
 
@@ -92,7 +104,7 @@ describe("render smoke", () => {
 
   it("SaudeUbereSection renders the úbere map (loading shell in SSR)", () => {
     // No SSR o hook fica em loading e o componente retorna null — não pode crashar.
-    expect(() => renderToString(h(SaudeUbereSection, { animalId: "1" }))).not.toThrow();
+    expect(() => renderToString(comQueryClient(h(SaudeUbereSection, { animalId: "1" })))).not.toThrow();
   });
 
   it("App gates on login when there is no session (email + senha)", () => {
@@ -108,12 +120,12 @@ describe("render smoke", () => {
   });
 
   it("ConfiguracoesView renders the loading shell (fetches /rebanho/config)", () => {
-    const html = renderToString(h(ConfiguracoesView));
+    const html = renderToString(comQueryClient(h(ConfiguracoesView)));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
   it("CadastrosView renders sub-abas and the loading shell (fetches /rebanho/produtos)", () => {
-    const html = renderToString(h(CadastrosView));
+    const html = renderToString(comQueryClient(h(CadastrosView)));
     // (título de topo removido do produto)
     expect(html).toContain("Produtos");       // sub-aba
     expect(html).toContain("Fornecedores");   // sub-aba
@@ -127,7 +139,7 @@ describe("render smoke", () => {
   });
 
   it("EstoqueTab renders the loading shell (fetches /rebanho/estoque/*)", () => {
-    const html = renderToString(h(EstoqueTab));
+    const html = renderToString(comQueryClient(h(EstoqueTab)));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
@@ -178,7 +190,7 @@ describe("render smoke", () => {
   });
 
   it("AnimalTab renders the status filter (Ativos/Baixados/Todos), visible while loading", () => {
-    const html = renderToString(h(AnimalTab, { onAbrirAnimal: () => {}, onNovo: () => {} }));
+    const html = renderToString(comQueryClient(h(AnimalTab, { onAbrirAnimal: () => {}, onNovo: () => {} })));
     expect(html).toContain("Ativos");
     expect(html).toContain("Baixados");
     expect(html).toContain("Todos");

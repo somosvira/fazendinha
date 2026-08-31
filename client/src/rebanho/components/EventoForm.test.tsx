@@ -6,17 +6,26 @@ import { Children, createElement, Fragment, isValidElement, type ChangeEvent, ty
 
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
+  registrarSanitarioMutate: vi.fn(),
+  editarSanitarioMutate: vi.fn(),
   listarReprodutores: vi.fn(),
   listarEstoqueSemen: vi.fn(),
   listarRacas: vi.fn(),
   listarAnimais: vi.fn(),
+  produtosEstoque: [] as { id: number; nome: string; unidade: string; setor: string }[],
 }));
 
 vi.mock("../api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../api")>(),
   ...apiMocks,
-  useProdutos: () => ({ data: [] }),
+  useProdutos: () => ({ data: apiMocks.produtosEstoque }),
   useResultadosGinecologicos: () => ({ data: [], loading: true }),
+  useRegistrarEventoSanitario: () => ({ mutate: apiMocks.registrarSanitarioMutate, pendentes: [] }),
+  useEditarEventoSanitario: () => ({ mutate: apiMocks.editarSanitarioMutate, pendentes: [] }),
+}));
+
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
 vi.mock("@/components/rb/RebSelect", () => ({
@@ -48,6 +57,7 @@ const base = { animalId: "1", animal: { id: "1", numero: "1188", nome: "Jurema",
 
 beforeEach(() => {
   vi.clearAllMocks();
+  apiMocks.produtosEstoque = [];
   apiMocks.listarRacas.mockResolvedValue([]);
   apiMocks.listarAnimais.mockResolvedValue([]);
   apiMocks.listarReprodutores.mockResolvedValue({
@@ -98,6 +108,74 @@ describe("EventoForm tipoInicial", () => {
   it("inicia sanidade em exame", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
     expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe("Exame");
+  });
+
+  it.each(["APLICACAO", "VACINA"] as const)(
+    "bloqueia salvar %s sem produto do estoque vinculado (servidor exige produtoId)",
+    async (tipo) => {
+      const onSalvo = vi.fn();
+      render(createElement(EventoForm, {
+        ...base, onSalvo, dominioFixo: "sanidade",
+        tipoInicial: { dominio: "sanidade", tipo }, dataInicial: "2026-07-27",
+      }));
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+      expect(await screen.findByText("Selecione o produto do estoque e a quantidade usada.")).toBeTruthy();
+      expect(apiMocks.registrarSanitarioMutate).not.toHaveBeenCalled();
+      expect(onSalvo).not.toHaveBeenCalled();
+    },
+  );
+
+  it("registra aplicação vinculada ao estoque via useOfflineMutation, com produtoInfo pro item otimista", async () => {
+    apiMocks.produtosEstoque = [{ id: 10, nome: "Ivomectina", unidade: "ml", setor: "GERAL" }];
+    apiMocks.registrarSanitarioMutate.mockImplementation((_input, opts) => {
+      opts?.onSuccess?.({ id: "77", animalId: "1", data: "2026-07-27", dominio: "sanidade", titulo: "Aplicação — Ivomectina" });
+    });
+    const onSalvo = vi.fn();
+    render(createElement(EventoForm, {
+      ...base, onSalvo, dominioFixo: "sanidade",
+      tipoInicial: { dominio: "sanidade", tipo: "APLICACAO" }, dataInicial: "2026-07-27",
+    }));
+
+    fireEvent.change(screen.getByLabelText("Produto*"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Qtd. usada*"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(apiMocks.registrarSanitarioMutate).toHaveBeenCalledTimes(1));
+    expect(apiMocks.registrarSanitarioMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        animalId: "1", tipo: "APLICACAO", produtoId: 10, quantidadeUsada: 5,
+        produtoInfo: { nome: "Ivomectina", unidade: "ml", setor: "GERAL" },
+      }),
+      expect.anything(),
+    );
+    expect(onSalvo).toHaveBeenCalledTimes(1);
+  });
+
+  it("edita evento sanitário existente via useOfflineMutation (useEditarEventoSanitario)", async () => {
+    apiMocks.editarSanitarioMutate.mockImplementation((_input, opts) => {
+      opts?.onSuccess?.({ id: "50", animalId: "1", data: "2026-07-20", dominio: "sanidade", titulo: "Ocorrência — Mastite" });
+    });
+    const onSalvo = vi.fn();
+    const eventoEdicao = {
+      id: "50", animalId: "1", data: "2026-07-20", dominio: "sanidade" as const,
+      titulo: "Ocorrência — Mastite", editavel: true,
+      dadosEdicao: { tipo: "OCORRENCIA", data: "2026-07-20", observacao: "", doenca: "Mastite", diasTratamento: 3 },
+    };
+    render(createElement(EventoForm, { ...base, onSalvo, dominioFixo: "sanidade", eventoEdicao }));
+
+    fireEvent.change(screen.getByLabelText("Dias de tratamento"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(apiMocks.editarSanitarioMutate).toHaveBeenCalledTimes(1));
+    expect(apiMocks.editarSanitarioMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventoId: "50", animalId: "1",
+        payload: expect.objectContaining({ tipo: "OCORRENCIA", doenca: "Mastite", diasTratamento: 5 }),
+      }),
+      expect.anything(),
+    );
+    expect(apiMocks.registrarSanitarioMutate).not.toHaveBeenCalled();
+    expect(onSalvo).toHaveBeenCalledTimes(1);
   });
 
   it("mantém o modal aberto até confirmar o aviso retornado ao salvar", async () => {

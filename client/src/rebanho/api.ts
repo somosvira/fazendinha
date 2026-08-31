@@ -1,5 +1,37 @@
 import { useEffect, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useOfflineMutation,
+  criarIdTemporario,
+  appendItemToCacheList,
+  updateItemInCacheList,
+  removeItemFromCacheList,
+  type UseOfflineMutationConfig,
+  type EntradaPatch,
+} from "../lib/offline/useOfflineMutation";
+import {
+  tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
+  tituloControleLeiteiro, detalheControleLeiteiro,
+  recomputarQuartos, type ExameQuartoIn,
+} from "@rionovo/shared";
+import { HOJE } from "./HOJE";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
+
+export const rebanhoKeys = {
+  animal: (id: string) => ["rebanho", "animal", id] as const,
+  timeline: (id: string) => ["rebanho", "timeline", id] as const,
+  saudeUbere: (id: string) => ["rebanho", "saude-ubere", id] as const,
+  produtos: (f?: { tipo?: string; q?: string; ativo?: boolean }) => ["rebanho", "produtos", f?.tipo ?? null, f?.q ?? null, f?.ativo ?? null] as const,
+  saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
+  movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
+  config: () => ["rebanho", "config"] as const,
+  // Prefixo curto, só pra casar TODAS as variações de useAnimais(f) de uma vez
+  // (getQueriesData/invalidateQueries casam por prefixo) — mesmo padrão de
+  // corteKeys.lotesTodos() em client/src/corte/api.ts.
+  animaisTodos: () => ["rebanho", "animais"] as const,
+  animais: (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) =>
+    [...rebanhoKeys.animaisTodos(), f?.status ?? null, f?.grupoId ?? null, f?.q ?? null, f?.setor ?? null, f?.categoria ?? null, f?.finalidade ?? null] as const,
+};
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
@@ -81,18 +113,16 @@ export function useSetores() {
   return { data, loading, erro, recarregar };
 }
 
+const ANIMAIS_VAZIO: Animal[] = [];
+
 export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) {
-  const [data, setData] = useState<Animal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarAnimais(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({ queryKey: rebanhoKeys.animais(f), queryFn: () => listarAnimais(f) });
+  return {
+    data: query.data ?? ANIMAIS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 export const ACHADOS_GINECOLOGICOS = ["CICLANDO", "CIO", "CORPO_LUTEO", "GESTANTE", "ANESTRO", "CISTO_FOLICULAR", "CISTO_LUTEO", "ENDOMETRITE", "INDEFINIDO"] as const;
@@ -216,17 +246,188 @@ export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) =>
 export const editarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/sanidade/${id}`, { method: "PUT", body: JSON.stringify(p) });
 export const excluirEventoSanidade = (id: string) => req<{ ok: true }>(`/rebanho/sanidade/${id}`, { method: "DELETE" });
 
+const TIMELINE_VAZIO: EventoTimeline[] = [];
+
 export function useTimeline(id: string | null) {
-  const [data, setData] = useState<EventoTimeline[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!id) { setData([]); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    montarTimeline(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [id]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.timeline(id ?? ""),
+    queryFn: () => montarTimeline(id!),
+    enabled: !!id,
+  });
+  return {
+    data: query.data ?? TIMELINE_VAZIO,
+    loading: id ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+// ESCRITA OFFLINE (Sanidade) ------------------------------------------------
+// Quando a Aplicação/Vacina vincula um produto do estoque, o servidor já cria
+// EventoSanitario+MovimentoEstoque numa única transação — por isso as caches
+// de estoque entram na mesma config, sem nenhuma segunda mutation.
+export interface EventoSanidadeOfflineInput extends EventoSanidadePayload {
+  animalId: string;
+  // Nome/unidade/setor do produto vinculado — só pro item otimista do
+  // MovimentoDTO (nunca vai pro corpo da requisição real).
+  produtoInfo?: { nome: string; unidade: string; setor: SetorEstoque | null };
+}
+
+function aplicarDeltaSaldo(atual: SaldoDTO[] | undefined, produtoId: number, quantidadeUsada: number): SaldoDTO[] {
+  return (atual ?? []).map((s) => {
+    if (s.produtoId !== produtoId) return s;
+    const custoUnitario = s.saldo !== 0 ? s.valor / s.saldo : 0;
+    const novoSaldo = s.saldo - quantidadeUsada;
+    return {
+      ...s,
+      saldo: novoSaldo,
+      valor: s.valor - quantidadeUsada * custoUnitario,
+      abaixoMinimo: s.minimoEstoque != null ? novoSaldo < s.minimoEstoque : s.abaixoMinimo,
+    };
+  });
+}
+
+const configRegistrarEventoSanitario: UseOfflineMutationConfig<EventoSanidadeOfflineInput, EventoTimeline> = {
+  mutationKey: "rebanho.registrar-evento-sanitario",
+  path: (input) => `/rebanho/animais/${input.animalId}/sanidade`,
+  method: "POST",
+  body: ({ animalId, produtoInfo, ...rest }) => rest,
+  criarOtimista: (input) => {
+    const { animalId, produtoInfo, ...payload } = input;
+    return {
+      id: criarIdTemporario(),
+      animalId,
+      data: input.data,
+      dominio: "sanidade",
+      titulo: tituloEventoSanitario(input),
+      detalhe: detalheEventoSanitario(input),
+      alerta: alertaEventoSanitario(input),
+      editavel: true,
+      dadosEdicao: payload as unknown as Record<string, unknown>,
+    };
+  },
+  queryKeys: (input, itemOtimista) => {
+    const entradas: EntradaPatch<any, EventoTimeline>[] = [
+      { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+      { queryKey: rebanhoKeys.animal(input.animalId) },
+    ];
+    if (input.produtoId != null && input.quantidadeUsada != null) {
+      const { produtoId, quantidadeUsada } = input;
+      entradas.push(
+        { queryKey: rebanhoKeys.saldos(), aplicar: (atual: SaldoDTO[] | undefined) => aplicarDeltaSaldo(atual, produtoId, quantidadeUsada) },
+        {
+          // id temporário aqui NUNCA é reconciliado com o real (fica até o
+          // invalidateQueries pós-sync trocar a lista inteira) — sem
+          // problema: excluirMovimento já bloqueia server-side qualquer
+          // exclusão de movimento com origem SANIDADE (estoque.ts, regra de
+          // negócio preexistente, nada a ver com offline), então ninguém
+          // consegue agir nessa linha antes do sync de qualquer forma.
+          queryKey: rebanhoKeys.movimentos(),
+          aplicar: (atual: MovimentoDTO[] | undefined) => appendItemToCacheList(atual, {
+            id: criarIdTemporario(),
+            produtoId,
+            produto: input.produtoInfo?.nome ?? input.produto ?? "",
+            setor: input.produtoInfo?.setor ?? "GERAL",
+            tipo: "SAIDA",
+            origem: "SANIDADE",
+            data: input.data,
+            quantidade: quantidadeUsada,
+            custoUnitario: 0,
+            valorTotal: 0,
+            fornecedor: null,
+            grupo: null,
+            observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${input.animalId})`,
+          }),
+        },
+      );
+    }
+    return entradas;
+  },
+};
+
+export function useRegistrarEventoSanitario() {
+  return useOfflineMutation(configRegistrarEventoSanitario);
+}
+
+// EDITAR — mesmas caches de estoque do create ficam invalidate-only aqui:
+// dá pra trocar produtoId/quantidadeUsada num edit (o servidor ajusta o
+// MovimentoEstoque vinculado), e computar a reversão+reaplicação otimista
+// certa exigiria conhecer o produtoId/quantidade ANTERIOR — o card de Editar
+// já tem esse dado (dadosEdicao), mas plumbar isso até aqui não valia a
+// complexidade extra; saldo/movimentos corrigem no refetch pós-sync.
+export interface EditarEventoSanitarioOfflineInput {
+  eventoId: string;
+  animalId: string;
+  payload: EventoSanidadePayload;
+}
+
+const configEditarEventoSanitario: UseOfflineMutationConfig<EditarEventoSanitarioOfflineInput, never> = {
+  mutationKey: "rebanho.editar-evento-sanitario",
+  path: (input) => `/rebanho/sanidade/${input.eventoId}`,
+  method: "PUT",
+  body: (input) => input.payload,
+  queryKeys: (input) => [
+    {
+      queryKey: rebanhoKeys.timeline(input.animalId),
+      aplicar: (atual: EventoTimeline[] | undefined) => updateItemInCacheList(
+        atual ?? [],
+        {
+          data: input.payload.data,
+          titulo: tituloEventoSanitario(input.payload),
+          detalhe: detalheEventoSanitario(input.payload),
+          alerta: alertaEventoSanitario(input.payload),
+          dadosEdicao: input.payload as unknown as Record<string, unknown>,
+        },
+        (item) => item.id === input.eventoId,
+      ),
+    },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+    { queryKey: rebanhoKeys.saldos() },
+    { queryKey: rebanhoKeys.movimentos() },
+  ],
+};
+
+export function useEditarEventoSanitario() {
+  return useOfflineMutation(configEditarEventoSanitario);
+}
+
+// EXCLUIR — remove da timeline na hora; se o evento consumia estoque, devolve
+// a quantidade ao saldo (mesma promessa do confirm() de sempre). O movimento
+// de estoque vinculado não some da lista até o refetch pós-sync — não dá pra
+// identificar seu id só com o que a timeline guarda no client.
+export interface ExcluirEventoSanitarioOfflineInput {
+  eventoId: string;
+  animalId: string;
+  produtoId?: number;
+  quantidadeUsada?: number;
+}
+
+const configExcluirEventoSanitario: UseOfflineMutationConfig<ExcluirEventoSanitarioOfflineInput, never> = {
+  mutationKey: "rebanho.excluir-evento-sanitario",
+  path: (input) => `/rebanho/sanidade/${input.eventoId}`,
+  method: "DELETE",
+  queryKeys: (input) => {
+    const entradas: EntradaPatch<any, never>[] = [
+      {
+        queryKey: rebanhoKeys.timeline(input.animalId),
+        aplicar: (atual: EventoTimeline[] | undefined) => removeItemFromCacheList(atual, (item) => item.id === input.eventoId),
+      },
+      { queryKey: rebanhoKeys.animal(input.animalId) },
+      { queryKey: rebanhoKeys.movimentos() },
+    ];
+    if (input.produtoId != null && input.quantidadeUsada != null) {
+      const { produtoId, quantidadeUsada } = input;
+      entradas.push({
+        queryKey: rebanhoKeys.saldos(),
+        aplicar: (atual: SaldoDTO[] | undefined) => aplicarDeltaSaldo(atual, produtoId, -quantidadeUsada),
+      });
+    }
+    return entradas;
+  },
+};
+
+export function useExcluirEventoSanitario() {
+  return useOfflineMutation(configExcluirEventoSanitario);
 }
 
 export interface LactacaoDTO {
@@ -303,16 +504,35 @@ export function useMovimentacoes(id: string | null) {
 }
 
 export function useAnimal(id: string | null) {
-  const [data, setData] = useState<Animal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!id) { setData(null); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    obterAnimal(id).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [id]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: rebanhoKeys.animal(id ?? ""),
+    queryFn: () => obterAnimal(id!),
+    enabled: !!id,
+    // Lista e ficha usam o mesmo DTO (toAnimalDTO, mesmo include no server) —
+    // se o animal já veio numa lista cacheada (o caminho normal: lista →
+    // clique no animal), a ficha renderiza na hora com esse dado, sem
+    // depender de uma segunda ida ao servidor (crítico offline: sem isso, um
+    // animal nunca aberto individualmente ficava sem dado nenhum até
+    // reconectar).
+    initialData: () => {
+      if (!id) return undefined;
+      for (const [, lista] of queryClient.getQueriesData<Animal[]>({ queryKey: rebanhoKeys.animaisTodos() })) {
+        const achado = lista?.find((a) => a.id === id);
+        if (achado) return achado;
+      }
+      return undefined;
+    },
+  });
+  return {
+    data: query.data ?? null,
+    // fetchStatus "paused" = offline sem esse dado em cache (nem via initialData
+    // acima) — isPending ficaria true pra sempre; melhor cair no fallback de
+    // "não encontrado" do que girar um spinner sem nunca resolver.
+    loading: id ? query.isPending && query.fetchStatus !== "paused" : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Insights (painel executivo do animal) ─────────────────────────────────
@@ -819,12 +1039,13 @@ export const salvarConfig = (input: { producaoModo?: ModoProducao; precoLeite?: 
   req<ConfigDTO>(`/rebanho/config`, { method: "PATCH", body: JSON.stringify(input) });
 
 export function useConfig() {
-  const [data, setData] = useState<ConfigDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterConfig().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({ queryKey: rebanhoKeys.config(), queryFn: obterConfig });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Parâmetros de manejo ──────────────────────────────────────────────────
@@ -879,6 +1100,37 @@ export function useParametros() {
 export interface ControlePayload { data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number }
 export const registrarControle = (animalId: string, p: ControlePayload) => req<EventoTimeline>(`/rebanho/animais/${animalId}/producao`, { method: "POST", body: JSON.stringify(p) });
 export const excluirControle = (id: string) => req<{ ok: true }>(`/rebanho/producao/${id}`, { method: "DELETE" });
+
+// ESCRITA OFFLINE (Produção — modo ORDENHA) ---------------------------------
+export interface ControleOfflineInput extends ControlePayload {
+  animalId: string;
+}
+
+const configRegistrarControle: UseOfflineMutationConfig<ControleOfflineInput, EventoTimeline> = {
+  mutationKey: "rebanho.registrar-controle",
+  path: (input) => `/rebanho/animais/${input.animalId}/producao`,
+  method: "POST",
+  body: ({ animalId, ...rest }) => rest,
+  criarOtimista: (input) => {
+    const pesoTotal = input.pesoTotal ?? (input.peso1 ?? 0) + (input.peso2 ?? 0) + (input.peso3 ?? 0);
+    return {
+      id: criarIdTemporario(),
+      animalId: input.animalId,
+      data: input.data,
+      dominio: "producao",
+      titulo: tituloControleLeiteiro(pesoTotal),
+      detalhe: detalheControleLeiteiro(input),
+    };
+  },
+  queryKeys: (input, itemOtimista) => [
+    { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+  ],
+};
+
+export function useRegistrarControle() {
+  return useOfflineMutation(configRegistrarControle);
+}
 export const registrarProducaoLote = (p: { grupoId?: number; data: string; litros: number }) => req<{ id: number }>(`/rebanho/producao-lote`, { method: "POST", body: JSON.stringify(p) });
 export const excluirProducaoLote = (id: string) => req<{ ok: true }>(`/rebanho/producao-lote/${id}`, { method: "DELETE" });
 
@@ -986,18 +1238,19 @@ export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<For
 export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(p) });
 export const editarFornecedor = (id: number, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
+const PRODUTOS_VAZIO: ProdutoDTO[] = [];
+
 export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
-  const [data, setData] = useState<ProdutoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarProdutos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.produtos(f),
+    queryFn: () => listarProdutos(f),
+  });
+  return {
+    data: query.data ?? PRODUTOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Princípios ativos (composição de medicamento — base carência/antibiótico) ──
@@ -1090,8 +1343,10 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
 export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "PERDA" | "AJUSTE_INVENTARIO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO";
+// id aceita string pro item otimista (criarIdTemporario()) enquanto o movimento
+// da baixa automática de Sanidade não sincroniza — ver notas de design.
+export interface MovimentoDTO { id: number | string; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
 export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; gerarLancamento?: boolean; categoriaId?: number; centroCustoId?: number; }
 export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
 export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
@@ -1099,21 +1354,36 @@ export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null
 export const listarSaldos = (f?: { setor?: string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
 export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
-export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
+export const excluirMovimento = (id: number | string) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
 export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
 
+const SALDOS_VAZIO: SaldoDTO[] = [];
+const MOVIMENTOS_VAZIO: MovimentoDTO[] = [];
+
 export function useSaldos(f?: { setor?: string }) {
-  const [data, setData] = useState<SaldoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarSaldos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.saldos(f),
+    queryFn: () => listarSaldos(f),
+  });
+  return {
+    data: query.data ?? SALDOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+export function useMovimentos(f?: { produtoId?: number; tipo?: string }) {
+  const query = useQuery({
+    queryKey: rebanhoKeys.movimentos(f),
+    queryFn: () => listarMovimentos(f),
+  });
+  return {
+    data: query.data ?? MOVIMENTOS_VAZIO,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 export function useCustoVacaDia(dias = 30) {
@@ -1342,7 +1612,7 @@ export interface QuartoInput {
 export interface RegistrarExameQuartoInput { data: string; quartos: QuartoInput[] }
 
 export interface ExameQuartoDTO {
-  id: number; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
+  id: number | string; data: string; quarto: Quarto; scoreCmt: ScoreCmt | null; ccs: number | null;
   clinica: boolean; severidade: string | null; resultadoCultivo: string | null; perdido: boolean; escoreTeto: number | null; observacao: string | null;
 }
 export interface EstadoPorQuarto { estado: EstadoQuarto; positivos12m: number; clinicas12m: number; ultimoPositivo: string | null }
@@ -1358,16 +1628,65 @@ export const registrarExameQuarto = (animalId: string, input: RegistrarExameQuar
   req<SaudeUbereDTO>(`/rebanho/animais/${animalId}/exames-quarto`, { method: "POST", body: JSON.stringify(input) });
 
 export function useSaudeUbere(animalId: string | null) {
-  const [data, setData] = useState<SaudeUbereDTO | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    if (!animalId) { setData(null); setLoading(false); return; }
-    setLoading(true); setErro(null);
-    obterSaudeUbere(animalId).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-  }, [animalId]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.saudeUbere(animalId ?? ""),
+    queryFn: () => obterSaudeUbere(animalId!),
+    enabled: !!animalId,
+  });
+  return {
+    data: query.data ?? null,
+    loading: animalId ? query.isPending : false,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
+}
+
+function paraExameQuartoIn(e: ExameQuartoDTO): ExameQuartoIn {
+  return { quarto: e.quarto, data: e.data, scoreCmt: e.scoreCmt, ccs: e.ccs, clinica: e.clinica, perdido: e.perdido };
+}
+
+// ESCRITA OFFLINE (Exame de quarto — CMT) -----------------------------------
+// Escrita em lote: 1-4 quartos de uma vez. `porQuarto`/quartosCronicos/
+// quartosPerdidos são recomputados no client com o mesmo cálculo puro do
+// servidor (recomputarQuartos, packages/shared) — cache é objeto agregado,
+// não lista, o `aplicar` cobre isso sem mecanismo extra.
+export interface RegistrarExameQuartoOfflineInput extends RegistrarExameQuartoInput {
+  animalId: string;
+}
+
+const configRegistrarExameQuarto: UseOfflineMutationConfig<RegistrarExameQuartoOfflineInput, ExameQuartoDTO[]> = {
+  mutationKey: "rebanho.registrar-exame-quarto",
+  path: (input) => `/rebanho/animais/${input.animalId}/exames-quarto`,
+  method: "POST",
+  body: ({ animalId, ...rest }) => rest,
+  criarOtimista: (input) => input.quartos.map((q) => ({
+    id: criarIdTemporario(), // sintético, nunca sai do client (não vai pro corpo real nem é referenciado depois)
+    data: input.data,
+    quarto: q.quarto,
+    scoreCmt: q.scoreCmt ?? null,
+    ccs: q.ccs ?? null,
+    clinica: q.clinica ?? false,
+    severidade: q.severidade ?? null,
+    resultadoCultivo: q.resultadoCultivo ?? null,
+    perdido: q.perdido ?? false,
+    escoreTeto: q.escoreTeto ?? null,
+    observacao: q.observacao ?? null,
+  })),
+  queryKeys: (input, itemOtimista) => [
+    {
+      queryKey: rebanhoKeys.saudeUbere(input.animalId),
+      aplicar: (atual: SaudeUbereDTO | undefined) => {
+        const exames = [...(atual?.exames ?? []), ...itemOtimista!];
+        const r = recomputarQuartos(exames.map(paraExameQuartoIn), HOJE);
+        return { exames, porQuarto: r.porQuarto, quartosCronicos: r.quartosCronicos, quartosPerdidos: r.quartosPerdidos };
+      },
+    },
+    { queryKey: rebanhoKeys.animal(input.animalId) },
+  ],
+};
+
+export function useRegistrarExameQuarto() {
+  return useOfflineMutation(configRegistrarExameQuarto);
 }
 
 // ── Biblioteca de reprodutores + centrais de sêmen + índices genéticos ────────
