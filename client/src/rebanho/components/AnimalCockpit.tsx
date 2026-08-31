@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useAnimal, useTimeline, useConfig, useAnimalInsights, useRegistrarEventoSanitario, useEditarEventoSanitario, useExcluirEventoSanitario, useRegistrarControle, useRegistrarExameQuarto } from "../api";
+import { useAnimal, useTimeline, useConfig, useAnimalInsights, useProdutos, useRegistrarEventoSanitario, useEditarEventoSanitario, useExcluirEventoSanitario, useRegistrarControle, useRegistrarExameQuarto } from "../api";
 import { useToast } from "@/components/Toast";
 import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 import { idadeMeses } from "../lib/derive";
@@ -84,6 +84,11 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: eventos, recarregar: recarregarEventos } = useTimeline(animalId);
   const { data: cfg } = useConfig();
   const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
+  // Pré-aquece o cache de produtos assim que a ficha abre, não só quando o
+  // modal de "Registrar evento" é montado — sem isso, o dropdown de
+  // Aplicação/Vacina fica vazio offline se o usuário nunca abriu esse modal
+  // específico enquanto online. Tabela pequena e pouco mutável.
+  useProdutos({ ativo: true });
   // Fila não guarda o animal isolado por item — contador é global, não por ficha.
   const { pendentes: pendentesEvento } = useRegistrarEventoSanitario();
   const { pendentes: pendentesEdicaoEvento } = useEditarEventoSanitario();
