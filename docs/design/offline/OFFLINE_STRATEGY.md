@@ -261,6 +261,22 @@ tabela de Progresso abaixo:
    Wi-Fi (cache do SO pode mascarar o resultado). Reload (F5) tanto na
    raiz quanto num deep link da tela (`/equipe/ponto`, `/corte/...`) — os
    dois caminhos carregam o shell de formas diferentes.
+   **`pnpm dev` não serve pra isso** — o `VitePWA` (`client/vite.config.ts`)
+   não tem `devOptions.enabled`, então o service worker não roda no Vite
+   dev server; qualquer reload/navegação offline nesse modo vai dar
+   `ERR_INTERNET_DISCONNECTED` mesmo com o app funcionando perfeitamente
+   em produção. Pra validar o service worker (reload/deep-link/cold-start
+   offline), tem que ser contra o build de produção — ver comandos abaixo.
+   Interagir com a SPA já carregada (clicar, preencher formulário, sem
+   reload) pode ser feito em `pnpm dev` mesmo sem o worker — essa parte
+   depende só da fila (`lib/offline/fila.ts` + IndexedDB), não do SW.
+
+   ```bash
+   pnpm --filter rionovo-client run build   # gera dist/sw.js
+   pnpm --filter rionovo-client exec vite preview --port 41875
+   # abrir http://localhost:41875, navegar ONLINE pelo menos uma vez
+   # (registra o SW e faz o precache), então offline + reload/deep-link
+   ```
 3. **Caso "nunca visitado" além do caso feliz "já visitado online"** —
    toda combinação de filtro/seleção (funcionário×mês no Ponto; lote no
    Corte) que nunca foi buscada enquanto online precisa de comportamento
