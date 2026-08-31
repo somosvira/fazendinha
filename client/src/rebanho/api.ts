@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useOfflineMutation,
   criarIdTemporario,
@@ -494,14 +494,32 @@ export function useMovimentacoes(id: string | null) {
 }
 
 export function useAnimal(id: string | null) {
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: rebanhoKeys.animal(id ?? ""),
     queryFn: () => obterAnimal(id!),
     enabled: !!id,
+    // Lista e ficha usam o mesmo DTO (toAnimalDTO, mesmo include no server) —
+    // se o animal já veio numa lista cacheada (o caminho normal: lista →
+    // clique no animal), a ficha renderiza na hora com esse dado, sem
+    // depender de uma segunda ida ao servidor (crítico offline: sem isso, um
+    // animal nunca aberto individualmente ficava sem dado nenhum até
+    // reconectar).
+    initialData: () => {
+      if (!id) return undefined;
+      for (const [, lista] of queryClient.getQueriesData<Animal[]>({ queryKey: ["rebanho", "animais"] })) {
+        const achado = lista?.find((a) => a.id === id);
+        if (achado) return achado;
+      }
+      return undefined;
+    },
   });
   return {
     data: query.data ?? null,
-    loading: id ? query.isPending : false,
+    // fetchStatus "paused" = offline sem esse dado em cache (nem via initialData
+    // acima) — isPending ficaria true pra sempre; melhor cair no fallback de
+    // "não encontrado" do que girar um spinner sem nunca resolver.
+    loading: id ? query.isPending && query.fetchStatus !== "paused" : false,
     erro: query.error ? (query.error as Error).message : null,
     recarregar: query.refetch,
   };

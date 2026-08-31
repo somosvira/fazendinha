@@ -70,6 +70,25 @@ estava planejado nesta página, descobertos durante a implementação:
   `OFFLINE_STRATEGY.md`), então nenhum teste anterior desta fatia chegou a
   dar reload numa tela sem escrita offline com a rede desligada de
   verdade.
+- Achado extra corrigido: a própria ficha do animal (`AnimalCockpit`, tela
+  onde todas as escritas desta fatia acontecem) travava em "Carregando..."
+  pra sempre offline, quando o animal nunca tinha sido aberto
+  individualmente antes — `useAnimal` tinha `loading: id ? query.isPending
+  : false`, e offline sem esse dado em cache o React Query fica "pausado"
+  (`fetchStatus: "paused"`), nunca chega a errar, então `isPending` nunca
+  vira `false`. Mesma classe de bug já documentada pra `useRegistros`/Ponto
+  em #233. Corrigido em duas partes: (1) `useAnimal` agora usa `initialData`
+  pra buscar o animal em qualquer lista (`useAnimais`) já cacheada antes —
+  lista e ficha usam o mesmo DTO no server (`toAnimalDTO`), então o caminho
+  normal (lista → clique no animal) renderiza a ficha na hora, sem
+  requisição nova, mesmo offline; (2) pro caso raro de um animal nunca
+  visitado nem na lista nem na ficha, `loading` passou a considerar
+  `fetchStatus === "paused"` como "não está mais carregando", caindo no
+  fallback "Animal não encontrado" em vez de girar pra sempre. Regressão
+  provada com teste (`api.useAnimal.test.ts`): falha sem o fix, passa com
+  ele restaurado. Testado manualmente também: lista visitada online →
+  offline → clique num animal nunca aberto individualmente → ficha
+  renderiza na hora com o dado da lista.
 
 ---
 
