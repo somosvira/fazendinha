@@ -316,6 +316,12 @@ const configRegistrarEventoSanitario: UseOfflineMutationConfig<EventoSanidadeOff
       entradas.push(
         { queryKey: rebanhoKeys.saldos(), aplicar: (atual: SaldoDTO[] | undefined) => aplicarDeltaSaldo(atual, produtoId, quantidadeUsada) },
         {
+          // id temporário aqui NUNCA é reconciliado com o real (fica até o
+          // invalidateQueries pós-sync trocar a lista inteira) — sem
+          // problema: excluirMovimento já bloqueia server-side qualquer
+          // exclusão de movimento com origem SANIDADE (estoque.ts, regra de
+          // negócio preexistente, nada a ver com offline), então ninguém
+          // consegue agir nessa linha antes do sync de qualquer forma.
           queryKey: rebanhoKeys.movimentos(),
           aplicar: (atual: MovimentoDTO[] | undefined) => appendItemToCacheList(atual, {
             id: criarIdTemporario(),
