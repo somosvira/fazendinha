@@ -5,6 +5,13 @@ percebe elas no uso (a navegação lateral do app), com uma avaliação de quão
 difícil seria dar suporte offline pra cada uma e quão útil isso seria na
 prática. Feito em 2026-08-24, cruzando a conversa sobre arquitetura offline
 (TanStack Query + IndexedDB + fila de mutação + UUID/LWW) com o código real.
+Re-escaneado em 2026-08-31 (navegando o app de verdade, tela por tela, depois
+de #235/#237/#238): marcações `✅ Implementado` nas linhas já cobertas +
+achado um write real que não estava mapeado (**Chuva**, embutido na aba
+Carteira). A sidebar "Pecuária" mistura dois módulos diferentes — Rebanho
+(leiteiro, individual) e Plantel (corte, por lote) — que aqui ficam em
+tabelas separadas; conferido nav item a nav item que os dois juntos cobrem
+100% do que aparece na sidebar.
 
 Companheiro do [OFFLINE_STRATEGY.md](OFFLINE_STRATEGY.md) — este aqui é o
 levantamento tela-a-tela; aquele é a estratégia e o progresso da rollout.
@@ -56,17 +63,18 @@ bom (curral, piquete, talhão, lavoura) vs. no escritório/casa com wifi.
 | Feature | O que é / o que faz | Dificuldade offline | Utilidade offline |
 |---|---|---|---|
 | **Dashboard** | KPIs do dia + "cockpit" de alertas/tarefas urgentes. Só leitura. | 🟢 **Baixa** | 🟡 **Média** |
-| **Animal** | Lista + ficha completa (cockpit: lactação, saúde, IATF, genealogia) + cadastro/edição/baixa/edição em massa. | 🔴 **Alta** — a ficha cruza várias entidades recalculadas via `*.recompute.ts` no servidor; escrita offline fica "desatualizada" até sincronizar e recomputar | 🟡 **Média** — cadastro/baixa é frequente, mas não necessariamente feito no pasto |
+| **Animal** | Lista + ficha completa (cockpit: lactação, saúde, IATF, genealogia) + cadastro/edição/baixa/edição em massa. **✅ Leitura (lista + ficha) e Exame de quarto/CMT (create) implementados offline — [#237](https://github.com/piubellofelipe/fazendinha/pull/237)**; cadastro/edição/baixa/edição em massa do animal em si seguem fora de escopo. | 🔴 **Alta** — a ficha cruza várias entidades recalculadas via `*.recompute.ts` no servidor; escrita offline fica "desatualizada" até sincronizar e recomputar | 🟡 **Média** — cadastro/baixa é frequente, mas não necessariamente feito no pasto |
 | **Reprodução** | Registrar evento (cio, IA, diagnóstico, parto, secagem) + programar protocolo IATF em lote (multi-etapa: programar → executar cada dia → exceções por animal). | 🔴 **Alta** — a programação em lote tem estado sequencial, difícil de enfileirar fora de ordem | 🔴 **Alta** — registro de parto/cio acontece no curral, na hora |
 | **Acasalamento** | Planos com ranking de touros calculado no servidor (mérito genético, parentesco, sêmen disponível) + config de indicadores/regras/combinações. | 🔴 **Alta** — o ranking depende de cálculo pesado sobre todo o rebanho + estoque de sêmen atualizado; replicar isso offline é duplicar um algoritmo inteiro no client | 🟢 **Baixa** — decisão de acasalamento é feita com calma, no escritório |
 | **FIV** | Cadastro de coletas de oócitos por doadora + "pool de doadoras" (gera várias coletas de uma vez). | 🟡 **Média** — CRUD simples, mas "aplicar pool" expande uma ação em N registros | 🟡 **Média** |
 | **Relatórios** | Monta relatório por template/filtros, exporta, e permite montar "folha de campo" pra imprimir → depois lançar os dados coletados de volta no sistema. | 🟡 **Média** — a parte de relatório é leitura fácil; "lançar dados de campo" já é um lote de escrita, no mesmo espírito do que viraria a fila offline | 🔴 **Alta** — a folha de campo já existe justamente pra suprir a falta de conectividade hoje (imprime, preenche, digita depois); é a candidata mais natural pra virar fila de verdade |
-| **Sanidade** | Registrar evento sanitário (doença, tratamento, vacina) + protocolos. | 🟡 **Média** | 🔴 **Alta** — aplicação de vacina/tratamento acontece no curral |
+| **Sanidade** | Registrar evento sanitário (doença, tratamento, vacina) + protocolos. **✅ Evento sanitário (criar+editar+excluir) implementado offline — [#237](https://github.com/piubellofelipe/fazendinha/pull/237).** Protocolo sanitário (calendário/agendamento) segue fora de escopo. | 🟡 **Média** | 🔴 **Alta** — aplicação de vacina/tratamento acontece no curral |
 | **Nutrição** | Lotes/dietas + lançamento de consumo do lote (baixa automática no estoque). | 🔴 **Alta** — lançar consumo dispara baixa de estoque automaticamente; LWW por registro não garante a consistência do saldo | 🟡 **Média** |
-| **Produção** | KPIs de produção + lançamento de controle leiteiro por vaca (`ControleForm`, modo `ORDENHA` — confirmado pelo dado real importado, `rebanho_real.json` tem 1.722 registros de controle por animal e nenhum de lote/tanque). Existe também um modo agregado por lote/tanque (`producaoModo=TANQUE_LOTE`) no schema, mas não é o usado nesta fazenda — fora de escopo. | 🟡 **Média** | 🔴 **Alta** — o registro por vaca acontece na ordenha, local clássico de sinal ruim |
-| **Estoque** | Saldos de insumos, cadastro de produto, movimento (entrada/saída/ajuste) — pode ter reflexo financeiro. | 🔴 **Alta** — movimento de estoque mexe em mais de uma tabela | 🟡 **Média** — almoxarifado costuma ter sinal melhor que o pasto |
+| **Produção** | KPIs de produção + lançamento de controle leiteiro por vaca (`ControleForm`, modo `ORDENHA` — confirmado pelo dado real importado, `rebanho_real.json` tem 1.722 registros de controle por animal e nenhum de lote/tanque). Existe também um modo agregado por lote/tanque (`producaoModo=TANQUE_LOTE`) no schema, mas não é o usado nesta fazenda — fora de escopo. **✅ Create implementado offline — [#237](https://github.com/piubellofelipe/fazendinha/pull/237)**; editar/excluir controle não têm UI hoje. | 🟡 **Média** | 🔴 **Alta** — o registro por vaca acontece na ordenha, local clássico de sinal ruim |
+| **Estoque** | Saldos de insumos, cadastro de produto, movimento (entrada/saída/ajuste) — pode ter reflexo financeiro. **Leitura (saldos/movimentos/produtos) em `useQuery`, persiste offline** — inclusive recebe patch otimista quando um evento de Sanidade dá baixa (#237). Escrita direta nesta tela (cadastrar produto, registrar movimento manual, ajuste) **não** está na fila offline. | 🔴 **Alta** — movimento de estoque mexe em mais de uma tabela | 🟡 **Média** — almoxarifado costuma ter sinal melhor que o pasto |
 | **Custo** | Dashboard de custo/litro, custo vaca/dia. Só leitura. | 🟢 **Baixa** | 🟢 **Baixa** |
-| **Carteira** | Score/ranking de vacas (Elite → Descarte) + simulador "descartar N piores" que não grava nada. | 🟢 **Baixa** — leitura + simulação client-side stateless | 🟢🟡 **Baixa-Média** |
+| **Carteira** | Score/ranking de vacas (Elite → Descarte) + simulador "descartar N piores" que não grava nada. O ranking em si é leitura/simulação stateless — mas a aba embute um widget de registro de chuva (ver linha abaixo), que não é. | 🟢 **Baixa** — leitura + simulação client-side stateless | 🟢🟡 **Baixa-Média** |
+| **Chuva** (widget dentro de Carteira, `ClimaChuvaSection.tsx`) | Registro de chuva por pluviômetro (data + mm + observação), pra acompanhar acumulado mensal e lotação (UA/área). CRUD simples: criar/excluir, sem editar. Achado no re-scan de 2026-08-31 — não estava mapeado (rota própria `server/.../chuva.ts`, `useChuva` ainda no padrão antigo `useState`+`fetch`). | 🟢 **Baixa** — entidade única, sem recompute em outra tabela, mesmo perfil do Ponto | 🟡 **Média** — pluviômetro costuma ficar fora do alcance do wifi da sede, mas não é registro urgente como sanidade/parto |
 | **Sugestões** | Cartões de decisão priorizados por impacto financeiro estimado. **Não é IA/LLM** — é motor de regras determinístico no servidor. | 🟢 **Baixa** — resultado é só consulta | 🟡 **Média** |
 
 ## Plantel (gado de corte)
@@ -75,9 +83,9 @@ bom (curral, piquete, talhão, lavoura) vs. no escritório/casa com wifi.
 |---|---|---|---|
 | **Dashboard** | KPIs gerais (cabeças, UA, arrobas, GMD médio). Só leitura, uso de escritório. | 🟢 **Baixa** | 🟢🟡 **Baixa-Média** |
 | **Lote** | Lista + cockpit + cadastro/edição/baixa de lote. | 🟡 **Média** | 🟢 **Baixa** — gestão administrativa, não é tela de campo |
-| **Pesagem** | Registrar pesagem (peso médio, método, GMD recalculado a partir da anterior). | 🟡 **Média** — escrita simples, mas o GMD depende do histórico local pra calcular certo offline | 🔴 **Alta** — apontamento clássico de curral/balança |
+| **Pesagem** | Registrar pesagem (peso médio, método, GMD recalculado a partir da anterior). **✅ Implementado offline — [#235](https://github.com/piubellofelipe/fazendinha/pull/235)** | 🟡 **Média** — escrita simples, mas o GMD depende do histórico local pra calcular certo offline | 🔴 **Alta** — apontamento clássico de curral/balança |
 | **Pasto** | Painel de piquetes (ocupação, lotação, capim). Só leitura, sem cadastro. | 🟢 **Baixa** | 🔴 **Alta** — checar qual piquete está livre é útil andando no pasto |
-| **Sanidade** | Registrar manejo sanitário (vacina, vermífugo, carrapaticida, marcação) + calendário Embrapa de referência. | 🟡 **Média** | 🔴 **Alta** — registrado no curral, com carência que importa na hora |
+| **Sanidade** | Registrar manejo sanitário (vacina, vermífugo, carrapaticida, marcação) + calendário Embrapa de referência. **✅ Registrar manejo implementado offline — [#235](https://github.com/piubellofelipe/fazendinha/pull/235)**; calendário Embrapa é só referência (já leitura fácil). | 🟡 **Média** | 🔴 **Alta** — registrado no curral, com carência que importa na hora |
 | **Nutrição** | Registrar suplementação aplicada ao lote + catálogo de referência. | 🟡 **Média** | 🟡 **Média** — cocho/curral, mas menos urgente que sanidade/pesagem |
 | **Comercial** | Registrar operação comercial (venda/compra/transferência) + simulador "vender hoje x esperar" usando curva de mercado (B3). | 🔴 **Alta** — o simulador depende de cotação de mercado atualizada pra fazer sentido | 🟢🟡 **Baixa-Média** — decisão comercial normalmente precisa de internet pra cotação |
 | **Custo** | Dashboard custo/arroba/ha + comparativo Cepea/Esalq. Só leitura. | 🟢 **Baixa** | 🟢 **Baixa** |
@@ -113,7 +121,7 @@ bom (curral, piquete, talhão, lavoura) vs. no escritório/casa com wifi.
 |---|---|---|---|
 | **Dashboard** | Visão executiva de RH/ponto/folha. Só leitura. | 🟢 **Baixa** | 🟢🟡 **Baixa-Média** |
 | **Funcionários** | CRUD de cadastro (salário, jornada, PIX, admissão). | 🟡 **Média** — dado sensível, cadastro raramente feito fora do escritório | 🟢 **Baixa** |
-| **Ponto** | Registro de jornada (entrada/saída/intervalo). | 🟡 **Média** — escrita simples por registro, mas "bate ponto" real de campo precisa suportar vários funcionários no mesmo dispositivo/dia | 🔴 **Alta** — bater ponto no curral/lavoura sem sinal é um caso de uso clássico de app offline |
+| **Ponto** | Registro de jornada (entrada/saída/intervalo). **✅ Implementado offline — [#228](https://github.com/piubellofelipe/fazendinha/pull/228)/[#233](https://github.com/piubellofelipe/fazendinha/pull/233)** | 🟡 **Média** — escrita simples por registro, mas "bate ponto" real de campo precisa suportar vários funcionários no mesmo dispositivo/dia | 🔴 **Alta** — bater ponto no curral/lavoura sem sinal é um caso de uso clássico de app offline |
 | **Folha** | Rateio de custo de mão de obra por setor — majoritariamente derivado de Ponto + Funcionário. | 🟢🟡 **Baixa-Média** — é cálculo/leitura na maior parte | 🟢 **Baixa** — uso mensal, escritório |
 
 ## Administração & Acessos
