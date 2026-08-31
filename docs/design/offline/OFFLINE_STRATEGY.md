@@ -622,6 +622,10 @@ primeira responde, não em paralelo).
 
 ## Progresso
 
+Log técnico por PR (achados, decisões, bugs corrigidos). Pra contagem de
+quantas telas já têm cobertura offline vs. quantas faltam, ver a seção
+"Progresso de cobertura" em [OFFLINE_AREAS.md](OFFLINE_AREAS.md#progresso-de-cobertura).
+
 | Fatia | Status | PR |
 |---|---|---|
 | Fundação (QueryClient + persister IndexedDB + retomada automática) | ✅ Feito | [#228](https://github.com/piubellofelipe/fazendinha/pull/228) |
