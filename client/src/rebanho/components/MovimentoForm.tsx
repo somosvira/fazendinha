@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { movimentoSchema } from "@rionovo/shared";
-import { useProdutos, useRegistrarMovimento, listarFornecedores, listarGrupos, type FornecedorDTO, type GrupoDTO, type MovimentoInput, type ProdutoDTO } from "../api";
+import { movimentoSchema, preverLancamentoDaEntrada } from "@rionovo/shared";
+import { useProdutos, useRegistrarMovimento, listarFornecedores, listarGrupos, type FornecedorDTO, type GrupoDTO, type MovimentoInput, type MovimentoResult, type ProdutoDTO } from "../api";
 import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
@@ -26,9 +26,14 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
   const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", fornecedorId: "", grupoId: "", observacao: "", gerarLancamento: true });
   const [erro, setErro] = useState<string | null>(null);
   const [novoProduto, setNovoProduto] = useState(false);
+  // previsto: true quando a resposta não veio do servidor (offline — a mutation
+  // só foi enfileirada). incerto: true quando "deve gerar lançamento" foi
+  // assumido sem saber se o mês está fechado (único dado que o client não tem
+  // offline) — só confirma de verdade quando a fila sincronizar.
+  const [resultado, setResultado] = useState<{ lancamentoCriado: boolean; motivo?: string; previsto: boolean; incerto: boolean } | null>(null);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
   const registrar = useRegistrarMovimento();
-  const { salvando, salvar: enviar } = useSalvarOffline();
+  const { salvando, salvar: enviar } = useSalvarOffline<MovimentoResult>();
   const toast = useToast();
 
   useEffect(() => {
@@ -66,10 +71,87 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     if (!valido.success) { setErro(valido.error.issues[0]?.message ?? "Dado inválido."); return; }
     setErro(null);
     enviar(registrar.mutate, payload, {
-      onSalvo: () => { toast.success("Movimento registrado"); onSalvo(); },
+      // resp só existe online (servidor já decidiu de verdade). Offline, a
+      // fila ainda não rodou — prevê com a mesma regra do servidor
+      // (preverLancamentoDaEntrada), assumindo mês aberto.
+      onSalvo: (resp) => {
+        if (resp) {
+          setResultado({ lancamentoCriado: resp.lancamentoCriado, motivo: resp.motivo, previsto: false, incerto: false });
+        } else {
+          const p = preverLancamentoDaEntrada({
+            tipo: f.tipo,
+            gerarLancamento: f.gerarLancamento,
+            produtoCategoriaId: produtoSel!.categoriaId,
+            produtoCentroCustoId: produtoSel!.centroCustoId,
+          });
+          setResultado({ lancamentoCriado: p.deveCriar, motivo: p.motivo, previsto: true, incerto: p.incerto });
+        }
+      },
       onErroInline: (msg) => setErro(msg),
       onErroTardio: (msg) => toast.error("Erro ao sincronizar o movimento", msg),
     });
+  }
+
+  // Após salvar, mostra um recibo claro do que aconteceu — confirmado (online)
+  // ou previsto (offline, com a mesma regra do servidor, mas sem saber se o
+  // mês está fechado).
+  if (resultado) {
+    const tipoLabel = TIPOS.find((t) => t.id === f.tipo)?.label.split(" ")[0] ?? f.tipo;
+    const qtdNum = Number(f.quantidade);
+    const valorTotal = produtoSel?.custoUnitario != null ? Number(produtoSel.custoUnitario) * Math.abs(qtdNum) : null;
+    return (
+      <RebModal
+        title=""
+        showClose={false}
+        onClose={onSalvo}
+        className="max-w-[440px]"
+        actions={
+          <div className="flex w-full justify-center">
+            <RebButton variant="pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</RebButton>
+          </div>
+        }
+      >
+        <div className="mt-1 flex justify-center animate-[rb-check-pop_0.3s_cubic-bezier(0.34,1.56,0.64,1)] [&>svg]:h-16 [&>svg]:w-16 [&>svg]:text-lucro [&_circle]:[stroke-dasharray:132] [&_circle]:[stroke-dashoffset:0] [&_circle]:animate-[rb-check-circle_0.4s_ease-out_backwards] [&_path]:[stroke-dasharray:30] [&_path]:[stroke-dashoffset:0] [&_path]:animate-[rb-check-path_0.25s_ease-out_0.25s_backwards]">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="24" cy="24" r="21" />
+            <path d="M15 24l7 7 12-14" />
+          </svg>
+        </div>
+        <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
+        {resultado.previsto && (
+          <p style={{ textAlign: "center", color: "var(--atencao)", fontSize: 12.5, margin: "0 0 6px" }}>
+            Offline — vai sincronizar quando reconectar
+          </p>
+        )}
+        <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
+          <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
+          {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
+        </p>
+        <div className="flex items-start gap-3 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3.5 text-sm [&_b]:font-semibold [&_b]:text-foreground">
+          {resultado.lancamentoCriado ? (
+            <>
+              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color-mix(in_srgb,var(--lucro)_14%,transparent)] text-lucro">✓</span>
+              <div>
+                <b>{resultado.previsto ? "Lançamento financeiro deve ser gerado" : "Lançamento financeiro gerado"}</b>
+                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>
+                  {resultado.incerto
+                    ? "Previsto pelo cadastro do produto — confirma se o mês ainda estiver aberto quando sincronizar."
+                    : "O custo foi registrado no fluxo de caixa."}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color:var(--rule-soft)] text-ink-3">—</span>
+              <div>
+                <b>Sem lançamento financeiro</b>
+                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
+              </div>
+            </>
+          )}
+        </div>
+      </RebModal>
+    );
   }
 
   return (

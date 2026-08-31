@@ -1413,7 +1413,7 @@ function aplicarMovimentoNoSaldo(atual: SaldoDTO[] | undefined, m: { produtoId: 
   });
 }
 
-const configRegistrarMovimento: UseOfflineMutationConfig<RegistrarMovimentoOfflineInput, MovimentoDTO> = {
+const configRegistrarMovimento: UseOfflineMutationConfig<RegistrarMovimentoOfflineInput, MovimentoDTO, MovimentoResult> = {
   mutationKey: "rebanho.registrar-movimento",
   path: () => `/rebanho/estoque/movimentos`,
   method: "POST",
