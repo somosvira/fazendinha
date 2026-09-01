@@ -102,7 +102,12 @@ export function EstoqueTab() {
     if (p) setEditando(p);
   }
 
-  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); produtosQuery.recarregar(); };
+  // custo vaca/dia não entra aqui: só depende de SAIDA, e as mutations de
+  // Estoque (useRegistrarMovimento/useExcluirMovimento) já invalidam
+  // `rebanhoKeys.custoVacaDia` sozinhas quando o tipo é SAIDA — recarregar
+  // aqui de novo seria redundante (e errado pra Entrada/Ajuste, que nunca
+  // mudam esse número).
+  const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); produtosQuery.recarregar(); };
 
   const renderRow = (s: SaldoDTO) => (
     <tr key={s.produtoId}>

@@ -74,6 +74,25 @@ describe("useRegistrarMovimento — patch otimista de saldo", () => {
     expect(saldos?.[0]).toMatchObject({ saldo: 94, valor: 470 });
   });
 
+  it("entra no topo da lista (listarMovimentos ordena mais recente primeiro), não no final", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(rebanhoKeys.saldos(), [SALDO_BASE]);
+    queryClient.setQueryData(rebanhoKeys.movimentos(), [
+      { id: 1, produtoId: 1, produto: "Sal mineral", setor: "GERAL", tipo: "ENTRADA", origem: "MANUAL", data: "2026-03-15", quantidade: 5, custoUnitario: 5, valorTotal: 25, fornecedor: null, grupo: null, observacao: null } satisfies MovimentoDTO,
+    ]);
+
+    const { result } = renderHook(() => useRegistrarMovimento(), { wrapper: wrapper(queryClient) });
+    result.current.mutate({
+      produtoId: 1, tipo: "SAIDA", data: "2026-08-31", quantidade: 2,
+      produtoInfo: { nome: "Sal mineral", unidade: "kg", setor: "GERAL", custoUnitario: 5 },
+    });
+
+    const movimentos = queryClient.getQueryData<MovimentoDTO[]>(rebanhoKeys.movimentos());
+    expect(movimentos).toHaveLength(2);
+    expect(movimentos?.[0]).toMatchObject({ tipo: "SAIDA", data: "2026-08-31" });
+    expect(movimentos?.[1]).toMatchObject({ id: 1, tipo: "ENTRADA" });
+  });
+
   it("cruza abaixoMinimo quando o novo saldo fica abaixo do mínimo cadastrado", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(rebanhoKeys.saldos(), [SALDO_BASE]); // minimoEstoque: 20

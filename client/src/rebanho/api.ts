@@ -4,6 +4,7 @@ import {
   useOfflineMutation,
   criarIdTemporario,
   appendItemToCacheList,
+  prependItemToCacheList,
   updateItemInCacheList,
   removeItemFromCacheList,
   type UseOfflineMutationConfig,
@@ -25,6 +26,7 @@ export const rebanhoKeys = {
   produtos: (f?: { tipo?: string; q?: string; ativo?: boolean }) => ["rebanho", "produtos", f?.tipo ?? null, f?.q ?? null, f?.ativo ?? null] as const,
   saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
+  custoVacaDia: (dias: number) => ["rebanho", "custo-vaca-dia", dias] as const,
   config: () => ["rebanho", "config"] as const,
   // Prefixo curto, só pra casar TODAS as variações de useAnimais(f) de uma vez
   // (getQueriesData/invalidateQueries casam por prefixo) — mesmo padrão de
@@ -1437,11 +1439,17 @@ const configRegistrarMovimento: UseOfflineMutationConfig<RegistrarMovimentoOffli
     };
   },
   queryKeys: (input, itemOtimista) => [
-    { queryKey: rebanhoKeys.movimentos(), aplicar: (atual: MovimentoDTO[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
+    // listarMovimentos ordena `data: "desc"` — prepend, não append, senão o
+    // item novo cai no final da lista "recentes" até o próximo fetch real.
+    { queryKey: rebanhoKeys.movimentos(), aplicar: (atual: MovimentoDTO[] | undefined) => prependItemToCacheList(atual, itemOtimista!) },
     {
       queryKey: rebanhoKeys.saldos(),
       aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: input.quantidade, valorTotal: itemOtimista!.valorTotal }),
     },
+    // custo vaca/dia só soma SAIDA (custoVacaDia() em @rionovo/shared) — não
+    // invalida à toa numa Entrada/Ajuste. Sem `aplicar`: é um agregado
+    // (vacas × dias), não dá pra patchar otimisticamente, só invalidar.
+    ...(input.tipo === "SAIDA" ? [{ queryKey: rebanhoKeys.custoVacaDia(30) }] : []),
   ],
 };
 
@@ -1475,6 +1483,7 @@ const configExcluirMovimento: UseOfflineMutationConfig<ExcluirMovimentoOfflineIn
       queryKey: rebanhoKeys.saldos(),
       aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: -input.quantidade, valorTotal: -input.valorTotal }),
     },
+    ...(input.tipo === "SAIDA" ? [{ queryKey: rebanhoKeys.custoVacaDia(30) }] : []),
   ],
 };
 
@@ -1483,12 +1492,16 @@ export function useExcluirMovimento() {
 }
 
 export function useCustoVacaDia(dias = 30) {
-  const [data, setData] = useState<CustoVacaDia | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoVacaDia(dias).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [dias]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.custoVacaDia(dias),
+    queryFn: () => obterCustoVacaDia(dias),
+  });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Custo de Sanidade (Fatia 18): gasto real de medicamento rateado por aplicações ──────────

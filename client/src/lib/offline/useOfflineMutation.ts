@@ -39,6 +39,14 @@ export function appendItemToCacheList<T>(atual: T[] | undefined, item: T): T[] {
   return [...(atual ?? []), item];
 }
 
+// Pro caso de lista "mais recente primeiro" (mesmo orderBy do servidor,
+// ex.: `data: "desc"` em listarMovimentos/timeline) — `append` deixaria o
+// item novo no final, abaixo de tudo, contradizendo a ordem que a tela
+// promete até o próximo fetch real corrigir.
+export function prependItemToCacheList<T>(atual: T[] | undefined, item: T): T[] {
+  return [item, ...(atual ?? [])];
+}
+
 export function removeItemFromCacheList<T>(atual: T[] | undefined, corresponde: (item: T) => boolean): T[] {
   return (atual ?? []).filter((item) => !corresponde(item));
 }
