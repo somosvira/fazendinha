@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   useOfflineMutation,
   criarIdTemporario,
@@ -28,6 +28,12 @@ export const rebanhoKeys = {
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
   custoVacaDia: (dias: number) => ["rebanho", "custo-vaca-dia", dias] as const,
   config: () => ["rebanho", "config"] as const,
+  // Prefixo pra invalidar o dashboard inteiro (todos os períodos) de uma vez
+  // — uma escrita que afeta o painel não sabe qual período o usuário está
+  // vendo agora. Mesmo padrão de animaisTodos()/animais(f) abaixo.
+  dashboardTodos: () => ["rebanho", "dashboard"] as const,
+  dashboard: (periodo: PeriodoDashboard) => [...rebanhoKeys.dashboardTodos(), periodo] as const,
+  producaoAgg: () => ["rebanho", "producao-agg"] as const,
   // Prefixo curto, só pra casar TODAS as variações de useAnimais(f) de uma vez
   // (getQueriesData/invalidateQueries casam por prefixo) — mesmo padrão de
   // corteKeys.lotesTodos() em client/src/corte/api.ts.
@@ -773,25 +779,22 @@ export function useWorklist(chave?: ChaveWorklistRebanho, snapshotInicial?: Work
 }
 
 export function useDashboard(periodo: PeriodoDashboard = "7d") {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [atualizando, setAtualizando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [tentativa, setTentativa] = useState(0);
-  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
-  useEffect(() => {
-    const ctrl = new AbortController();
-    setErro(null);
-    if (data) setAtualizando(true); else setLoading(true);
-    obterDashboard(periodo, ctrl.signal)
-      .then(setData)
-      .catch((e) => { if (e?.name !== "AbortError") setErro(e instanceof Error ? e.message : "Falha ao carregar o painel."); })
-      .finally(() => { if (!ctrl.signal.aborted) { setLoading(false); setAtualizando(false); } });
-    return () => ctrl.abort();
-    // Preserva o último resultado sem transformar `data` em gatilho de refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo, tentativa]);
-  return { data, loading, atualizando, erro, recarregar };
+  // keepPreviousData: trocar de período (hoje/7d/30d) pra um período nunca
+  // visitado mostra o painel anterior meio apagado (`atualizando`) em vez de
+  // um loading de página inteira — mesma UX de antes, agora vinda do cache
+  // por período em vez de um `data` compartilhado entre todos.
+  const query = useQuery({
+    queryKey: rebanhoKeys.dashboard(periodo),
+    queryFn: ({ signal }) => obterDashboard(periodo, signal),
+    placeholderData: keepPreviousData,
+  });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    atualizando: query.isPlaceholderData || (query.isFetching && !query.isPending),
+    erro: query.error ? (query.error instanceof Error ? query.error.message : "Falha ao carregar o painel.") : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Cockpit do Dia (Painel "Hoje") ───────────────────────────────────────────
@@ -1128,6 +1131,13 @@ const configRegistrarControle: UseOfflineMutationConfig<ControleOfflineInput, Ev
   queryKeys: (input, itemOtimista) => [
     { queryKey: rebanhoKeys.timeline(input.animalId), aplicar: (atual: EventoTimeline[] | undefined) => appendItemToCacheList(atual, itemOtimista!) },
     { queryKey: rebanhoKeys.animal(input.animalId) },
+    // Controle leiteiro alimenta direto os heróis/indicadores de produção do
+    // painel (herois.producaoMediaVaca/producaoTotalDia, indicadores.producao)
+    // e o agregado da aba Produção (ProducaoAgg.totalDia/mediaVaca/ranking)
+    // — sem `aplicar` nos dois porque são agregados calculados no servidor
+    // (médias, variação %, ranking), não dá pra patchar na mão.
+    { queryKey: rebanhoKeys.dashboardTodos() },
+    { queryKey: rebanhoKeys.producaoAgg() },
   ],
 };
 
@@ -1147,12 +1157,16 @@ export interface ProducaoAgg {
 }
 export const obterProducao = () => req<ProducaoAgg>(`/rebanho/producao`);
 export function useProducao() {
-  const [data, setData] = useState<ProducaoAgg | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterProducao().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.producaoAgg(),
+    queryFn: obterProducao,
+  });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Análise de leite (qualidade): tendência de CCS + distribuição + piores animais ──

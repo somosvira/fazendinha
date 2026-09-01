@@ -27,7 +27,7 @@ export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTa
   const { data, loading, atualizando, erro, recarregar } = useDashboard(periodo);
 
   if (loading && !data) return <RebMain><Loader /></RebMain>;
-  if (!data) return <RebMain><RebEmpty className="flex items-center justify-between gap-4"><span>Não foi possível carregar o painel{erro ? `: ${erro}` : "."}</span><RebButton onClick={recarregar}>Tentar novamente</RebButton></RebEmpty></RebMain>;
+  if (!data) return <RebMain><RebEmpty className="flex items-center justify-between gap-4"><span>Não foi possível carregar o painel{erro ? `: ${erro}` : "."}</span><RebButton onClick={() => recarregar()}>Tentar novamente</RebButton></RebEmpty></RebMain>;
   if (data.atualizacao.animaisAtivos === 0) return <RebMain><RebEmpty><h1 className="mb-2 font-serif text-2xl text-foreground">Seu rebanho começa aqui</h1><p>Cadastre o primeiro animal para acompanhar produção, reprodução e alertas.</p><RebButton className="mt-4" variant="pri" onClick={() => onNav("animal")}>Cadastrar animal</RebButton></RebEmpty></RebMain>;
 
   return (
@@ -44,7 +44,7 @@ export function DashboardView({ onNav, onAbrirWorklist }: { onNav: (t: RebanhoTa
         </div>
       </header>
 
-      {(erro || data.atualizacao.avisos.length > 0) && <div className="mb-4 rounded-lg border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-4 py-2 text-xs text-ink-3">{erro ? <>Não foi possível atualizar: {erro}. <button className="font-semibold text-cafe" onClick={recarregar}>Tentar novamente</button></> : data.atualizacao.avisos.join(" · ")}</div>}
+      {(erro || data.atualizacao.avisos.length > 0) && <div className="mb-4 rounded-lg border border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-4 py-2 text-xs text-ink-3">{erro ? <>Não foi possível atualizar: {erro}. <button className="font-semibold text-cafe" onClick={() => recarregar()}>Tentar novamente</button></> : data.atualizacao.avisos.join(" · ")}</div>}
       <CockpitDia alertas={data.alertas} onNav={onNav} onAbrirWorklist={onAbrirWorklist} />
       <div className={atualizando ? "opacity-70 transition-opacity" : "transition-opacity"} aria-busy={atualizando}>
         <DashboardHeroKpis data={data} />
