@@ -85,7 +85,7 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 // Abas com suporte real a escrita offline (fila própria) — ver
 // docs/design/offline/OFFLINE_STRATEGY.md. Fora daqui, sem rede a tela é
 // travada em vez de deixar abrir com leitura/escrita quebrada.
-const TABS_OFFLINE = new Set<Tab>(["eqp-ponto", "cor-pesagem", "cor-sanidade", "reb-animal"]);
+const TABS_OFFLINE = new Set<Tab>(["eqp-ponto", "cor-pesagem", "cor-sanidade", "reb-animal", "reb-estoque"]);
 
 function OfflineGatedTab() {
   return (
@@ -94,7 +94,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Só Ponto (Equipe), Pesagem/Sanidade (Corte) e a ficha do Animal (Rebanho) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Só Ponto (Equipe), Pesagem/Sanidade (Corte), a ficha do Animal e o Estoque (Rebanho) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type MovimentoResult, type MovimentoInput } from "../api";
+import { movimentoSchema, preverLancamentoDaEntrada } from "@rionovo/shared";
+import { useProdutos, useRegistrarMovimento, listarFornecedores, listarGrupos, type FornecedorDTO, type GrupoDTO, type MovimentoInput, type MovimentoResult, type ProdutoDTO } from "../api";
 import { HOJE } from "../HOJE";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { fmtMoneyExact } from "@/components/charts";
+import { useToast } from "@/components/Toast";
+import { useSalvarOffline } from "@/lib/offline/useSalvarOffline";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -16,54 +19,82 @@ const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
 const money = fmtMoneyExact;
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  const produtosQuery = useProdutos({ ativo: true });
+  const produtos = produtosQuery.data.filter((p) => p.estocavel);
   const [fornecedores, setFornecedores] = useState<FornecedorDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
   const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", fornecedorId: "", grupoId: "", observacao: "", gerarLancamento: true });
   const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
-  const [resultado, setResultado] = useState<MovimentoResult | null>(null);
   const [novoProduto, setNovoProduto] = useState(false);
+  // previsto: true quando a resposta não veio do servidor (offline — a mutation
+  // só foi enfileirada). incerto: true quando "deve gerar lançamento" foi
+  // assumido sem saber se o mês está fechado (único dado que o client não tem
+  // offline) — só confirma de verdade quando a fila sincronizar.
+  const [resultado, setResultado] = useState<{ lancamentoCriado: boolean; motivo?: string; previsto: boolean; incerto: boolean } | null>(null);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
-
-  async function carregarProdutos(selecionarId?: number) {
-    const ps = await listarProdutos({ ativo: true });
-    const estocaveis = ps.filter((p) => p.estocavel);
-    setProdutos(estocaveis);
-    if (selecionarId) setF((s) => ({ ...s, produtoId: String(selecionarId) }));
-  }
+  const registrar = useRegistrarMovimento();
+  const { salvando, salvar: enviar } = useSalvarOffline<MovimentoResult>();
+  const toast = useToast();
 
   useEffect(() => {
-    carregarProdutos().catch(() => {});
     listarFornecedores().then(setFornecedores).catch(() => {});
     listarGrupos().then(setGrupos).catch(() => {});
   }, []);
 
+  async function aoCriarProduto(criado?: ProdutoDTO) {
+    setNovoProduto(false);
+    await produtosQuery.recarregar();
+    if (criado) set("produtoId", String(criado.id));
+  }
+
   const produtoSel = produtos.find((p) => String(p.id) === f.produtoId) || null;
   const semContabil = produtoSel && f.tipo === "ENTRADA" && (produtoSel.categoriaId == null || produtoSel.centroCustoId == null);
 
-  async function salvar() {
+  function salvar() {
     if (!f.produtoId) { setErro("Selecione um produto."); return; }
-    if (!f.quantidade || Number(f.quantidade) === 0) { setErro("Informe a quantidade."); return; }
-    setSalvando(true); setErro(null);
-    try {
-      const ehEntrada = f.tipo === "ENTRADA";
-      const payload: MovimentoInput = {
-        produtoId: Number(f.produtoId),
-        tipo: f.tipo,
-        data: f.data,
-        quantidade: Number(f.quantidade),
-        fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
-        grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
-        observacao: f.observacao || undefined,
-        gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
-      };
-      const r = await registrarMovimento(payload);
-      setResultado(r);
-    } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
+    const ehEntrada = f.tipo === "ENTRADA";
+    const payload = {
+      produtoId: Number(f.produtoId),
+      tipo: f.tipo,
+      data: f.data,
+      quantidade: Number(f.quantidade),
+      fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
+      grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
+      observacao: f.observacao || undefined,
+      gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
+      produtoInfo: { nome: produtoSel!.nome, unidade: produtoSel!.unidade, setor: produtoSel!.setor, custoUnitario: produtoSel!.custoUnitario },
+    };
+    // Mesmo schema que o server valida (zValidator) — pega erro de input antes
+    // de enfileirar, em vez de só descobrir no sync (convenção obrigatória,
+    // ver "pré-validar antes de enfileirar" em OFFLINE_STRATEGY.md).
+    const valido = movimentoSchema.safeParse(payload);
+    if (!valido.success) { setErro(valido.error.issues[0]?.message ?? "Dado inválido."); return; }
+    setErro(null);
+    enviar(registrar.mutate, payload, {
+      // resp só existe online (servidor já decidiu de verdade). Offline, a
+      // fila ainda não rodou — prevê com a mesma regra do servidor
+      // (preverLancamentoDaEntrada), assumindo mês aberto.
+      onSalvo: (resp) => {
+        if (resp) {
+          setResultado({ lancamentoCriado: resp.lancamentoCriado, motivo: resp.motivo, previsto: false, incerto: false });
+        } else {
+          const p = preverLancamentoDaEntrada({
+            tipo: f.tipo,
+            gerarLancamento: f.gerarLancamento,
+            produtoCategoriaId: produtoSel!.categoriaId,
+            produtoCentroCustoId: produtoSel!.centroCustoId,
+          });
+          setResultado({ lancamentoCriado: p.deveCriar, motivo: p.motivo, previsto: true, incerto: p.incerto });
+        }
+      },
+      onErroInline: (msg) => setErro(msg),
+      onErroTardio: (msg) => toast.error("Erro ao sincronizar o movimento", msg),
+    });
   }
 
-  // Após salvar, mostra um recibo claro do que aconteceu.
+  // Após salvar, mostra um recibo claro do que aconteceu — confirmado (online)
+  // ou previsto (offline, com a mesma regra do servidor, mas sem saber se o
+  // mês está fechado).
   if (resultado) {
     const tipoLabel = TIPOS.find((t) => t.id === f.tipo)?.label.split(" ")[0] ?? f.tipo;
     const qtdNum = Number(f.quantidade);
@@ -87,6 +118,11 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
           </svg>
         </div>
         <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
+        {resultado.previsto && (
+          <p style={{ textAlign: "center", color: "var(--atencao)", fontSize: 12.5, margin: "0 0 6px" }}>
+            Offline — vai sincronizar quando reconectar
+          </p>
+        )}
         <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
           <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
           {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
@@ -96,8 +132,12 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
             <>
               <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color-mix(in_srgb,var(--lucro)_14%,transparent)] text-lucro">✓</span>
               <div>
-                <b>Lançamento financeiro gerado</b>
-                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
+                <b>{resultado.previsto ? "Lançamento financeiro deve ser gerado" : "Lançamento financeiro gerado"}</b>
+                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>
+                  {resultado.incerto
+                    ? "Previsto pelo cadastro do produto — confirma se o mês ainda estiver aberto quando sincronizar."
+                    : "O custo foi registrado no fluxo de caixa."}
+                </div>
               </div>
             </>
           ) : (
@@ -178,7 +218,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
         <ProdutoForm
           stacked
           onFechar={() => setNovoProduto(false)}
-          onSalvo={(criado) => { setNovoProduto(false); carregarProdutos(criado?.id).catch(() => {}); }}
+          onSalvo={(criado) => { aoCriarProduto(criado).catch(() => {}); }}
         />
       )}
     </>

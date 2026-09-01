@@ -4,6 +4,7 @@ import {
   useOfflineMutation,
   criarIdTemporario,
   appendItemToCacheList,
+  prependItemToCacheList,
   updateItemInCacheList,
   removeItemFromCacheList,
   type UseOfflineMutationConfig,
@@ -13,6 +14,7 @@ import {
   tituloEventoSanitario, detalheEventoSanitario, alertaEventoSanitario,
   tituloControleLeiteiro, detalheControleLeiteiro,
   recomputarQuartos, type ExameQuartoIn,
+  sinalMovimentoEstoque,
 } from "@rionovo/shared";
 import { HOJE } from "./HOJE";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
@@ -24,6 +26,7 @@ export const rebanhoKeys = {
   produtos: (f?: { tipo?: string; q?: string; ativo?: boolean }) => ["rebanho", "produtos", f?.tipo ?? null, f?.q ?? null, f?.ativo ?? null] as const,
   saldos: (f?: { setor?: string }) => ["rebanho", "estoque-saldos", f?.setor ?? null] as const,
   movimentos: (f?: { produtoId?: number; tipo?: string }) => ["rebanho", "estoque-movimentos", f?.produtoId ?? null, f?.tipo ?? null] as const,
+  custoVacaDia: (dias: number) => ["rebanho", "custo-vaca-dia", dias] as const,
   config: () => ["rebanho", "config"] as const,
   // Prefixo curto, só pra casar TODAS as variações de useAnimais(f) de uma vez
   // (getQueriesData/invalidateQueries casam por prefixo) — mesmo padrão de
@@ -1386,13 +1389,119 @@ export function useMovimentos(f?: { produtoId?: number; tipo?: string }) {
   };
 }
 
+// ESCRITA OFFLINE (Estoque > movimento manual) -------------------------------
+// produtoInfo só alimenta o item otimista de MovimentoDTO (nunca vai pro
+// corpo real) — o servidor já resolve nome/unidade/setor/custo a partir do
+// produtoId sozinho; aqui é só pra não esperar o refetch pra mostrar certo.
+export interface RegistrarMovimentoOfflineInput extends MovimentoInput {
+  produtoInfo: { nome: string; unidade: string; setor: SetorEstoque | null; custoUnitario: number | null };
+}
+
+// Delta pelo sinal real do tipo (ENTRADA/AJUSTE somam ao saldo, SAIDA
+// subtrai — mesma função do server, via @rionovo/shared). Mais preciso que
+// aplicarDeltaSaldo acima, que assume custo médio — certo só pro caso de
+// baixa por consumo da Sanidade, não serve pra ENTRADA a custo próprio.
+function aplicarMovimentoNoSaldo(atual: SaldoDTO[] | undefined, m: { produtoId: number; tipo: MovimentoInput["tipo"]; quantidade: number; valorTotal: number }): SaldoDTO[] {
+  return (atual ?? []).map((s) => {
+    if (s.produtoId !== m.produtoId) return s;
+    const sinal = sinalMovimentoEstoque(m.tipo);
+    const novoSaldo = s.saldo + sinal * m.quantidade;
+    return {
+      ...s,
+      saldo: novoSaldo,
+      valor: s.valor + sinal * m.valorTotal,
+      abaixoMinimo: s.minimoEstoque != null ? novoSaldo < s.minimoEstoque : s.abaixoMinimo,
+    };
+  });
+}
+
+const configRegistrarMovimento: UseOfflineMutationConfig<RegistrarMovimentoOfflineInput, MovimentoDTO, MovimentoResult> = {
+  mutationKey: "rebanho.registrar-movimento",
+  path: () => `/rebanho/estoque/movimentos`,
+  method: "POST",
+  body: ({ produtoInfo, ...rest }) => rest,
+  criarOtimista: (input) => {
+    const custo = input.custoUnitario ?? input.produtoInfo.custoUnitario ?? 0;
+    return {
+      id: criarIdTemporario(),
+      produtoId: input.produtoId,
+      produto: input.produtoInfo.nome,
+      setor: input.produtoInfo.setor ?? "GERAL",
+      tipo: input.tipo,
+      origem: "MANUAL",
+      data: input.data,
+      quantidade: input.quantidade,
+      custoUnitario: custo,
+      valorTotal: input.quantidade * custo,
+      fornecedor: null,
+      grupo: null,
+      observacao: input.observacao ?? null,
+    };
+  },
+  queryKeys: (input, itemOtimista) => [
+    // listarMovimentos ordena `data: "desc"` — prepend, não append, senão o
+    // item novo cai no final da lista "recentes" até o próximo fetch real.
+    { queryKey: rebanhoKeys.movimentos(), aplicar: (atual: MovimentoDTO[] | undefined) => prependItemToCacheList(atual, itemOtimista!) },
+    {
+      queryKey: rebanhoKeys.saldos(),
+      aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: input.quantidade, valorTotal: itemOtimista!.valorTotal }),
+    },
+    // custo vaca/dia só soma SAIDA (custoVacaDia() em @rionovo/shared) — não
+    // invalida à toa numa Entrada/Ajuste. Sem `aplicar`: é um agregado
+    // (vacas × dias), não dá pra patchar otimisticamente, só invalidar.
+    ...(input.tipo === "SAIDA" ? [{ queryKey: rebanhoKeys.custoVacaDia(30) }] : []),
+  ],
+};
+
+export function useRegistrarMovimento() {
+  return useOfflineMutation(configRegistrarMovimento);
+}
+
+// EXCLUIR — reverte o saldo pelo sinal contrário do movimento original.
+// Origem SANIDADE/NUTRICAO e mês fechado continuam bloqueados no servidor
+// (regra preexistente de estoque.ts, nada a ver com offline) — a tela só
+// deixa abrir a confirmação pra movimento MANUAL, então isso nunca chega
+// aqui enfileirado por engano.
+export interface ExcluirMovimentoOfflineInput {
+  movimentoId: number | string;
+  produtoId: number;
+  tipo: MovimentoInput["tipo"];
+  quantidade: number;
+  valorTotal: number;
+}
+
+const configExcluirMovimento: UseOfflineMutationConfig<ExcluirMovimentoOfflineInput, never> = {
+  mutationKey: "rebanho.excluir-movimento",
+  path: (input) => `/rebanho/estoque/movimentos/${input.movimentoId}`,
+  method: "DELETE",
+  queryKeys: (input) => [
+    {
+      queryKey: rebanhoKeys.movimentos(),
+      aplicar: (atual: MovimentoDTO[] | undefined) => removeItemFromCacheList(atual, (item) => item.id === input.movimentoId),
+    },
+    {
+      queryKey: rebanhoKeys.saldos(),
+      aplicar: (atual: SaldoDTO[] | undefined) => aplicarMovimentoNoSaldo(atual, { produtoId: input.produtoId, tipo: input.tipo, quantidade: -input.quantidade, valorTotal: -input.valorTotal }),
+    },
+    ...(input.tipo === "SAIDA" ? [{ queryKey: rebanhoKeys.custoVacaDia(30) }] : []),
+  ],
+};
+
+export function useExcluirMovimento() {
+  return useOfflineMutation(configExcluirMovimento);
+}
+
 export function useCustoVacaDia(dias = 30) {
-  const [data, setData] = useState<CustoVacaDia | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoVacaDia(dias).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [dias]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const query = useQuery({
+    queryKey: rebanhoKeys.custoVacaDia(dias),
+    queryFn: () => obterCustoVacaDia(dias),
+  });
+  return {
+    data: query.data ?? null,
+    loading: query.isPending,
+    erro: query.error ? (query.error as Error).message : null,
+    recarregar: query.refetch,
+  };
 }
 
 // ── Custo de Sanidade (Fatia 18): gasto real de medicamento rateado por aplicações ──────────

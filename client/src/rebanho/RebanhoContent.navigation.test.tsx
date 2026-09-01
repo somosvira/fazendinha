@@ -31,6 +31,6 @@ describe("RebanhoContent — navegação a partir do cockpit", () => {
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: /Rebanho/ })).toBeNull();
     });
-    expect(screen.getByRole("heading", { name: "Saldos de estoque" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Saldos de estoque" })).toBeTruthy();
   });
 });

@@ -8,6 +8,12 @@ export {
 export { criarEventoSanitarioSchema, type CriarEventoSanitarioInput } from "./rebanho.eventos-sanidade.schemas.js";
 export { QUARTOS, SCORES_CMT, registrarExameQuartoSchema, type RegistrarExameQuartoInput } from "./rebanho.exames-quarto.schemas.js";
 export { controleSchema, type ControleInput } from "./rebanho.producao.schemas.js";
+export { movimentoSchema, type MovimentoInput } from "./rebanho.estoque.schemas.js";
+export { saldoProduto, sinalMovimentoEstoque, type MovIn } from "./rebanho.estoque.calc.js";
+export {
+  resolverLancamentoDaEntrada, preverLancamentoDaEntrada,
+  type ResolverIn, type ResolverOut, type PreverIn, type PreverOut,
+} from "./rebanho.ponte.calc.js";
 export {
   recomputarQuartos, CCS_POSITIVO, JANELA_MESES, DIAS_ATIVO,
   type Quarto, type ScoreCmt, type EstadoQuarto, type ExameQuartoIn, type EstadoPorQuarto, type ResumoQuartos,
