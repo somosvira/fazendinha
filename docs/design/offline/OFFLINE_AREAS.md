@@ -58,13 +58,13 @@ sub-feature específica, ver a célula de descrição de cada uma).
 |---|---|---|---|---|---|
 | Financeiro | 0 | 0 | 8 | 1 | 9 |
 | Canais alternativos | 0 | 0 | 1 | 1 | 2 |
-| Rebanho (gado leiteiro) | 0 | 4 | 10 | 0 | 14 |
+| Rebanho (gado leiteiro) | 1 | 4 | 9 | 0 | 14 |
 | Plantel (gado de corte) | 2 | 0 | 6 | 0 | 8 |
 | Plantio (café) | 0 | 0 | 9 | 0 | 9 |
 | Cultivo (milho e grãos) | 0 | 0 | 6 | 0 | 6 |
 | Equipe | 1 | 0 | 3 | 0 | 4 |
 | Administração & Acessos | 0 | 0 | 3 | 0 | 3 |
-| **Total** | **3** | **4** | **46** | **2** | **55** |
+| **Total** | **4** | **4** | **45** | **2** | **55** |
 
 Atualizar esta tabela junto com a coluna "Status offline" sempre que uma
 linha mudar de status (fatia nova entrando na fila offline, achado que abre
@@ -97,7 +97,7 @@ uma linha nova como a do Chuva).
 
 | Feature | O que é / o que faz | Status offline | Dificuldade offline | Utilidade offline |
 |---|---|---|---|---|
-| **Dashboard** | KPIs do dia + "cockpit" de alertas/tarefas urgentes. Só leitura. Os KPIs de produção (`dashboard.agg.ts`) usam fonte de dado diferente conforme `producaoModo` (por vaca vs rateio de tanque) — mesmo toggle que afeta a linha Produção abaixo, sem UI própria aqui. | ⬜ **Não iniciado** | 🟢 **Baixa** | 🟡 **Média** |
+| **Dashboard** | KPIs do dia + "cockpit" de alertas/tarefas urgentes. Só leitura. Os KPIs de produção (`dashboard.agg.ts`) usam fonte de dado diferente conforme `producaoModo` (por vaca vs rateio de tanque) — mesmo toggle que afeta a linha Produção abaixo, sem UI própria aqui. | ✅ **Completo** — `useQuery` + invalidação escopada (só `registrarControle`) — [epic/offline-first](https://github.com/piubellofelipe/fazendinha/pull/233) | 🟢 **Baixa** | 🟡 **Média** |
 | **Animal** | Lista + ficha completa (cockpit: lactação, saúde, IATF, genealogia) + cadastro/edição/baixa/edição em massa; cadastro/edição/baixa/edição em massa do animal em si seguem fora de escopo. | 🟡 **Parcial** — leitura (lista + ficha) e Exame de quarto/CMT (create) — [#237](https://github.com/piubellofelipe/fazendinha/pull/237) | 🔴 **Alta** — a ficha cruza várias entidades recalculadas via `*.recompute.ts` no servidor; escrita offline fica "desatualizada" até sincronizar e recomputar | 🟡 **Média** — cadastro/baixa é frequente, mas não necessariamente feito no pasto |
 | **Reprodução** | Registrar evento (cio, IA, diagnóstico, parto, secagem) + programar protocolo IATF em lote (multi-etapa: programar → executar cada dia → exceções por animal). | ⬜ **Não iniciado** | 🔴 **Alta** — a programação em lote tem estado sequencial, difícil de enfileirar fora de ordem | 🔴 **Alta** — registro de parto/cio acontece no curral, na hora |
 | **Acasalamento** | Planos com ranking de touros calculado no servidor (mérito genético, parentesco, sêmen disponível) + config de indicadores/regras/combinações. | ⬜ **Não iniciado** | 🔴 **Alta** — o ranking depende de cálculo pesado sobre todo o rebanho + estoque de sêmen atualizado; replicar isso offline é duplicar um algoritmo inteiro no client | 🟢 **Baixa** — decisão de acasalamento é feita com calma, no escritório |
@@ -105,7 +105,7 @@ uma linha nova como a do Chuva).
 | **Relatórios** | Monta relatório por template/filtros, exporta, e permite montar "folha de campo" pra imprimir → depois lançar os dados coletados de volta no sistema. | ⬜ **Não iniciado** | 🟡 **Média** — a parte de relatório é leitura fácil; "lançar dados de campo" já é um lote de escrita, no mesmo espírito do que viraria a fila offline | 🔴 **Alta** — a folha de campo já existe justamente pra suprir a falta de conectividade hoje (imprime, preenche, digita depois); é a candidata mais natural pra virar fila de verdade |
 | **Sanidade** | Registrar evento sanitário (doença, tratamento, vacina) + protocolos. Protocolo sanitário (calendário/agendamento) segue fora de escopo. | 🟡 **Parcial** — evento sanitário (criar+editar+excluir) — [#237](https://github.com/piubellofelipe/fazendinha/pull/237) | 🟡 **Média** | 🔴 **Alta** — aplicação de vacina/tratamento acontece no curral |
 | **Nutrição** | Lotes/dietas + lançamento de consumo do lote (baixa automática no estoque). | ⬜ **Não iniciado** | 🔴 **Alta** — lançar consumo dispara baixa de estoque automaticamente; LWW por registro não garante a consistência do saldo | 🟡 **Média** |
-| **Produção** | KPIs de produção + lançamento de controle leiteiro por vaca (`ControleForm`, modo `ORDENHA` — confirmado pelo dado real importado, `rebanho_real.json` tem 1.722 registros de controle por animal e nenhum de lote/tanque). Existe também um modo agregado por lote/tanque (`producaoModo=TANQUE_LOTE`) no schema, mas não é o usado nesta fazenda — fora de escopo; editar/excluir controle não têm UI hoje. | 🟡 **Parcial** — create — [#237](https://github.com/piubellofelipe/fazendinha/pull/237) | 🟡 **Média** | 🔴 **Alta** — o registro por vaca acontece na ordenha, local clássico de sinal ruim |
+| **Produção** | KPIs de produção + lançamento de controle leiteiro por vaca (`ControleForm`, modo `ORDENHA` — confirmado pelo dado real importado, `rebanho_real.json` tem 1.722 registros de controle por animal e nenhum de lote/tanque). Existe também um modo agregado por lote/tanque (`producaoModo=TANQUE_LOTE`) no schema, mas não é o usado nesta fazenda — fora de escopo; editar/excluir controle não têm UI hoje (a escrita de excluir já existe no servidor e no client, só não está plugada em nenhum botão). | 🟡 **Parcial** — leitura (`ProducaoAgg`, `useQuery`) + create — [#237](https://github.com/piubellofelipe/fazendinha/pull/237), leitura em [epic/offline-first](https://github.com/piubellofelipe/fazendinha/pull/233) | 🟡 **Média** | 🔴 **Alta** — o registro por vaca acontece na ordenha, local clássico de sinal ruim |
 | **Estoque** | Saldos de insumos, cadastro de produto, movimento (entrada/saída/ajuste) — pode ter reflexo financeiro. Cadastrar produto novo (`+ novo produto` / `+ Cadastrar produto`) segue fora da fila. | 🟡 **Parcial** — leitura (saldos/movimentos/produtos, `useQuery`) + registrar/excluir movimento manual (3 tipos) — [epic/offline-first](https://github.com/piubellofelipe/fazendinha/pull/233) | 🔴 **Alta** — movimento de estoque mexe em mais de uma tabela | 🟡 **Média** — almoxarifado costuma ter sinal melhor que o pasto |
 | **Custo** | Dashboard de custo/litro, custo vaca/dia. Só leitura. | ⬜ **Não iniciado** | 🟢 **Baixa** | 🟢 **Baixa** |
 | **Carteira** | Score/ranking de vacas (Elite → Descarte) + simulador "descartar N piores" que não grava nada. O ranking em si é leitura/simulação stateless — mas a aba embute um widget de registro de chuva (ver linha abaixo), que não é. | ⬜ **Não iniciado** | 🟢 **Baixa** — leitura + simulação client-side stateless | 🟢🟡 **Baixa-Média** |

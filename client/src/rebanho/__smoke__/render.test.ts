@@ -134,7 +134,7 @@ describe("render smoke", () => {
   });
 
   it("ProducaoTab renders the loading shell (fetches /rebanho/producao)", () => {
-    const html = renderToString(h(ProducaoTab));
+    const html = renderToString(comQueryClient(h(ProducaoTab)));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
@@ -160,9 +160,9 @@ describe("render smoke", () => {
   });
 
   it("DashboardView renders the loading shell (it now fetches live)", () => {
-    // A view agora busca /rebanho/dashboard via useDashboard; em SSR (sem fetch)
-    // renderiza o shell de carregamento sem lançar.
-    const html = renderToString(h(DashboardView, { onNav: () => {} }));
+    // A view agora busca /rebanho/dashboard via useDashboard (useQuery); em
+    // SSR (sem fetch) renderiza o shell de carregamento sem lançar.
+    const html = renderToString(comQueryClient(h(DashboardView, { onNav: () => {} })));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
