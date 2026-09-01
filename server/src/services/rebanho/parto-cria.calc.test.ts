@@ -63,6 +63,19 @@ describe("planejarCrias", () => {
     ]);
   });
 
+  it("planeja três crias com o sexo individual informado", () => {
+    expect(planejarCrias(parto({
+      numCrias: 3,
+      criasVivas: 3,
+      sexoCria: "FMF",
+      criaNumero: "T-30",
+    }), 10, null).map((cria) => ({ numero: cria.tipo === "CRIAR" ? cria.numero : "", sexo: cria.sexo }))).toEqual([
+      { numero: "T-30", sexo: "F" },
+      { numero: "T-30-2", sexo: "M" },
+      { numero: "T-30-3", sexo: "F" },
+    ]);
+  });
+
   it("vincula uma cria existente em vez de planejar nova criação", () => {
     expect(planejarCrias(parto({ criarCria: false, criaNumero: undefined, criaId: 77 }), 10, null)).toEqual([{
       tipo: "VINCULAR",
