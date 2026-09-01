@@ -87,7 +87,7 @@ describe("AppSidebar", () => {
   it("chama onNav com a Tab certa ao clicar num item", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
-    fireEvent.click(screen.getByText("Financeiro"));
+    fireEvent.click(screen.getByText("Compromissos"));
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 

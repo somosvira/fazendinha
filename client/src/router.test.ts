@@ -7,8 +7,14 @@ import {
 } from "./router";
 
 describe("roteamento da pecuária", () => {
-  it("usa /relatorios como rota canônica e mantém o endereço antigo compatível", () => {
-    expect(tabToPath("relatorio")).toBe("/relatorios");
+  it("publica contas e extratos como uma área financeira própria", () => {
+    expect(tabToPath("caixinha")).toBe("/financeiro/contas");
+    expect(pathToTab("/financeiro/contas")).toBe("caixinha");
+    expect(pathToTab("/caixinha")).toBe("caixinha");
+  });
+  it("ancora relatórios no módulo financeiro e mantém endereços antigos compatíveis", () => {
+    expect(tabToPath("relatorio")).toBe("/financeiro/relatorios");
+    expect(pathToTab("/financeiro/relatorios")).toBe("relatorio");
     expect(pathToTab("/relatorios")).toBe("relatorio");
     expect(pathToTab("/relatorio")).toBe("relatorio");
   });

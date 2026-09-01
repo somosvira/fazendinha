@@ -347,9 +347,9 @@ export function AppSidebar({
     return () => mq.removeEventListener("change", onChange);
   }, [mobileOpen, onMobileToggle]);
 
-  // "Caixinha" dobrou dentro de Gastos (sub-aba) e "Categorias" dentro de
-  // Configurações — nenhuma das duas aparece como item solto na sidebar.
-  const DOBRADAS = new Set<Tab>(["caixinha", "plano"]);
+  // IDs antigos de caixinha/categorias continuam aceitos por links históricos,
+  // mas não aparecem como áreas financeiras independentes.
+  const DOBRADAS = new Set<Tab>(["plano"]);
   const itensFinanceiros = financeiro.filter((t) => !DOBRADAS.has(t.id));
   const acessoRapido = itensFinanceiros.filter((t) => t.id === "dashboard" || t.id === "lancar");
   const gestao = itensFinanceiros.filter((t) => t.id !== "dashboard" && t.id !== "lancar");
@@ -380,7 +380,7 @@ export function AppSidebar({
           <Item
             key={t.id}
             id={t.id}
-            label={t.id === "dashboard" ? "Visão geral" : "Novo lançamento"}
+            label={t.id === "dashboard" ? "Visão geral" : "Operações"}
             current={current}
             onNav={nav}
             featured={t.id === "lancar"}
@@ -424,11 +424,11 @@ export function AppSidebar({
           <Item
             key={t.id}
             id={t.id}
-            label={t.id === "gastos" ? "Financeiro" : t.label}
+            label={t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
             current={current}
             onNav={nav}
             chevron
-            activeWhen={t.id === "gastos" ? ["caixinha", "cadastros"] : undefined}
+            activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
           />
         ))}
         </div>

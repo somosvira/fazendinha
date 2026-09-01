@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   grupoFindMany: vi.fn(),
   producaoFindMany: vi.fn(),
   eventoFindMany: vi.fn(),
-  lancamentoFindMany: vi.fn(),
+  transacaoFindMany: vi.fn(),
   produtoFindMany: vi.fn(),
   obterConfig: vi.fn(),
   calcularCustoVacaDia: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("../../db.js", () => ({
     grupo: { findMany: mocks.grupoFindMany },
     producaoLote: { findMany: mocks.producaoFindMany },
     eventoSanitario: { findMany: mocks.eventoFindMany },
-    lancamento: { findMany: mocks.lancamentoFindMany },
+    transacaoFinanceira: { findMany: mocks.transacaoFindMany },
     produto: { findMany: mocks.produtoFindMany },
   },
 }));
@@ -37,7 +37,7 @@ beforeEach(() => {
   mocks.grupoFindMany.mockResolvedValue([]);
   mocks.producaoFindMany.mockResolvedValue([]);
   mocks.eventoFindMany.mockResolvedValue([]);
-  mocks.lancamentoFindMany.mockResolvedValue([]);
+  mocks.transacaoFindMany.mockResolvedValue([]);
   mocks.produtoFindMany.mockResolvedValue([]);
   mocks.calcularCustoVacaDia.mockResolvedValue({ custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 });
 });
@@ -55,7 +55,7 @@ describe("agregados por propriedade", () => {
   it("filtra todas as fontes do custo de produção", async () => {
     await agregarCustoProducao(12, 7);
 
-    expect(mocks.lancamentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.transacaoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ propriedadeId: 7 }),
     }));
     expect(mocks.calcularCustoVacaDia).toHaveBeenCalledWith(30, 7);
@@ -67,8 +67,8 @@ describe("agregados por propriedade", () => {
   it("filtra financeiro e aplicações no custo sanitário", async () => {
     await agregarCustoSanidade(12, 7);
 
-    expect(mocks.lancamentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ propriedadeId: 7, estornado: false }),
+    expect(mocks.transacaoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ propriedadeId: 7, status: "CONFIRMADA" }),
     }));
     expect(mocks.eventoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ animal: { propriedadeId: 7 } }),

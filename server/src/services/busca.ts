@@ -163,7 +163,7 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
       orderBy: { nome: "asc" },
       take: TAKE,
     }),
-    prisma.clienteFornecedor.findMany({
+    prisma.parceiro.findMany({
       where: { nome: { contains: termo, mode: "insensitive" }, ativo: true },
       orderBy: { nome: "asc" },
       take: TAKE,

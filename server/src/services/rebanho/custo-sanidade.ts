@@ -32,18 +32,17 @@ export async function agregarCustoSanidade(meses = 12, propriedadeId: number | n
   desde.setMonth(desde.getMonth() - meses);
 
   // Gasto real "Medicamento Animal" (mesmos filtros de caixa do dashboard).
-  const lancs = await prisma.lancamento.findMany({
+  const lancs = await prisma.transacaoFinanceira.findMany({
     where: {
-      situacao: "LIQUIDADO",
-      natureza: "DEBITO",
-      dataLiquidacao: { not: null, gte: desde },
-      categoria: { nome: "Medicamento Animal" },
-      estornado: false,
+      status: "CONFIRMADA",
+      tipo: "PAGAMENTO",
+      data: { gte: desde },
+      operacao: { categoria: { nome: "Medicamento Animal" } },
       ...(propriedadeId != null ? { propriedadeId } : {}),
     },
-    select: { valor: true },
+    select: { valorTotal: true },
   });
-  const totalMedicamento = Math.round(lancs.reduce((s, l) => s + toNum(l.valor), 0) * 100) / 100;
+  const totalMedicamento = Math.round(lancs.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
 
   // Aplicações reais por animal + ranking de produtos (inclui VACINA — também é
   // consumo de produto veterinário; só o tipo na timeline difere).

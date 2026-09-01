@@ -15,16 +15,16 @@ import type { Tab } from "./components/Shell";
 
 // Abas de slug fixo (financeiro + administração). Slug = parte visível na URL.
 const PATH_BY_TAB: Partial<Record<Tab, string>> = {
-  dashboard: "/dashboard",
-  gastos: "/gastos",
-  lancar: "/lancar",
-  caixinha: "/caixinha",
-  plano: "/categorias",
+  dashboard: "/financeiro",
+  gastos: "/financeiro/compromissos",
+  lancar: "/financeiro/operacoes",
+  caixinha: "/financeiro/contas",
+  plano: "/financeiro/configuracoes/categorias",
   ia: "/ia",
-  relatorio: "/relatorios",
+  relatorio: "/financeiro/relatorios",
   acessos: "/acessos",
   config: "/configuracoes",
-  cadastros: "/cadastros",
+  cadastros: "/financeiro/configuracoes",
   // Lotes agregados preexistentes vivem como uma subseção da Pecuária, não
   // como um módulo de corte independente.
   "cor-dashboard": "/pecuaria/lotes/resumo",
@@ -120,6 +120,11 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/" || path === "") return DEFAULT_TAB;
   // Compatibilidade com links e favoritos anteriores à Central de Relatórios.
   if (path === "/relatorio") return "relatorio";
+  if (path === "/relatorios") return "relatorio";
+  if (path === "/dashboard") return "dashboard";
+  if (path === "/gastos") return "gastos";
+  if (path === "/lancar") return "lancar";
+  if (path === "/caixinha") return "caixinha";
 
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;

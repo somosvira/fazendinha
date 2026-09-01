@@ -9,12 +9,9 @@ import { type Tab, type NavTab } from "./components/Shell";
 import { buildRotaWorklistRebanho, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { Header } from "./components/Header";
-import { Dashboard } from "./components/Dashboard";
-import { Gastos } from "./components/Gastos";
-import { Lancar } from "./components/Lancar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
-import { Relatorios } from "./components/Relatorios";
+import { FinanceiroContent } from "./financeiro/FinanceiroContent";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -411,7 +408,7 @@ export function App() {
     if (id === "config") return true;
     const area = areaDaTab(id);
     if (area && !hasArea(area)) return false;
-    if (area === "financeiro") return id === "cadastros" ? canSee("gastos") : visibleTabs.some((t) => t.id === id);
+    if (area === "financeiro") return visibleTabs.some((t) => t.id === id) || (id === "caixinha" && visibleTabs.some((t) => t.id === "cadastros"));
     if (area === "equipe" && id === "eqp-folha") return canSeeFolha;
     return true;
   };
@@ -478,35 +475,11 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
+    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"] as Tab[]).includes(tab)
+    ? <FinanceiroContent tab={tab} onNav={setTab} />
     : (
       <>
-        {tab === "dashboard" &&
-          (canSee("dashboard")
-            ? <Dashboard
-                key={deepLinkFiltros?.tab === "dashboard" ? JSON.stringify(deepLinkFiltros.filtros) : "dashboard"}
-                onNav={setTab}
-                user={effectiveUser}
-                filtrosIniciais={deepLinkFiltros?.tab === "dashboard" ? deepLinkFiltros.filtros : undefined}
-              />
-            : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
-        {/* Gastos vira hub: Contas + Caixinha (sub-aba dobrada). /caixinha ainda
-            resolve — abre o hub na sub-aba Caixinha. */}
-        {(tab === "gastos" || tab === "caixinha" || tab === "cadastros") &&
-          (canSee("gastos") || (tab === "caixinha" && canSee("caixinha"))
-            ? <Gastos
-                key={deepLinkFiltros?.tab === "gastos" ? JSON.stringify(deepLinkFiltros.filtros) : "gastos"}
-                onNav={setTab}
-                user={effectiveUser}
-                sub={tab === "caixinha" ? "caixinha" : tab === "cadastros" ? "fornecedores" : "contas"}
-                podeCaixinha={canSee("caixinha")}
-                filtrosIniciais={deepLinkFiltros?.tab === "gastos" ? deepLinkFiltros.filtros : undefined}
-              />
-            : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
-        {tab === "relatorio" &&
-          (canSee("relatorio") ? <Relatorios onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatórios" />)}
-        {tab === "lancar" &&
-          (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
         {/* Configurações mantém somente setup global, categorias e acessos. */}
         {(tab === "config" || tab === "plano" || tab === "acessos") && (
           <ConfiguracoesHub

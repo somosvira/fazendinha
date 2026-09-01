@@ -6,11 +6,11 @@ const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
 describe("movimentoSchema", () => {
   it("aceita um movimento válido", () => {
-    const r = movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: ontem, quantidade: 1000, custoUnitario: 2.1, fornecedorId: 3 });
+    const r = movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: ontem, quantidade: 1000, custoUnitario: 2.1, observacao: "Ajuste conferido" });
     expect(r.success).toBe(true);
   });
   it("custoUnitario é opcional", () => {
-    const r = movimentoSchema.safeParse({ produtoId: 1, tipo: "SAIDA", data: ontem, quantidade: 300 });
+    const r = movimentoSchema.safeParse({ produtoId: 1, tipo: "SAIDA", data: ontem, quantidade: 300, observacao: "Ajuste conferido" });
     expect(r.success).toBe(true);
   });
   it("rejeita sem produtoId", () => {
@@ -23,12 +23,15 @@ describe("movimentoSchema", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: ontem, quantidade: -5 }).success).toBe(false);
   });
   it("aceita AJUSTE com quantidade negativa (correção de saldo)", () => {
-    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -5 }).success).toBe(true);
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -5, observacao: "Contagem física corrigida" }).success).toBe(true);
   });
   it("rejeita data futura", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "ENTRADA", data: amanha, quantidade: 10 }).success).toBe(false);
   });
   it("rejeita tipo inválido", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "DEVOLUCAO", data: ontem, quantidade: 10 }).success).toBe(false);
+  });
+  it("rejeita ajuste sem justificativa", () => {
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: 10 }).success).toBe(false);
   });
 });

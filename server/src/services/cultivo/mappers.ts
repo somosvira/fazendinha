@@ -52,7 +52,7 @@ export function toLancamentoCustoDTO(l: any) {
     horasMaquina: num(l.horasMaquina),
     numMaquinas: l.numMaquinas ?? null,
     numCaminhoes: l.numCaminhoes ?? null,
-    lancamentoId: l.lancamentoId ?? null,
+    operacaoFinanceiraId: l.operacaoFinanceiraId ?? null,
     observacao: l.observacao ?? null,
   };
 }
