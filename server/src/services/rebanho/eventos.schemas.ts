@@ -22,7 +22,8 @@ const partoObject = z.object({
   numCrias: z.number().int().min(0).max(3).optional(),
   criasVivas: z.number().int().min(0).max(3).optional(),
   criasNatimortas: z.number().int().min(0).max(3).optional(),
-  sexoCria: z.enum(["F", "M", "FM", "MF"]).optional(),
+  // Um caractere por cria viva, na ordem informada (ex.: FMF para três crias).
+  sexoCria: z.string().regex(/^[FM]{1,3}$/, "informe o sexo de cada cria").optional(),
   tipoParto: z.string().max(20).optional(),
   auxilioParto: z.string().max(20).optional(),
   criarCria: z.boolean().optional(),

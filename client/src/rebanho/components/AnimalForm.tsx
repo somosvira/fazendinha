@@ -24,6 +24,20 @@ const CATEGORIAS_POR_ESPECIE: Record<EspecieAnimal, { id: CategoriaAnimal; label
 
 const LABEL_ESPECIE: Record<RacaDTO["especie"], string> = { BOVINO: "Bovinos", CAPRINO: "Caprinos" };
 
+const MOTIVOS_BAIXA = [
+  "Venda",
+  "Abate",
+  "Descarte por fertilidade",
+  "Descarte por baixa produção",
+  "Descarte por mastite",
+  "Descarte por idade",
+  "Morte por doença",
+  "Morte no parto",
+  "Acidente",
+  "Doação / transferência",
+  "Outros",
+];
+
 export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; animal?: Animal; onFechar: () => void; onSalvo: () => void }) {
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
@@ -36,7 +50,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
     dataNascimento: animal?.dataNascimento ?? "", dataEntrada: animal?.dataEntrada ?? "",
     brincoEletronico: animal?.brincoEletronico ?? "", grupoId: animal?.grupoId ?? "",
     racaId: "", fracaoSangue: "8/8", racaSecundariaId: "",
-    motivo: "",
+    motivo: MOTIVOS_BAIXA[0],
   });
 
   useEffect(() => {
@@ -113,7 +127,11 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
     >
       <>
         {modo === "baixa" ? (
-          <RebField label="Motivo da baixa"><input value={f.motivo} onChange={(e) => set("motivo", e.target.value)} placeholder="venda, morte, descarte…" /></RebField>
+          <RebField label="Motivo da baixa">
+            <RebSelect value={f.motivo} onChange={(v) => set("motivo", v)}>
+              {MOTIVOS_BAIXA.map((motivo) => <option key={motivo} value={motivo}>{motivo}</option>)}
+            </RebSelect>
+          </RebField>
         ) : (
           <>
             <RebField label="Número do animal*"><input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></RebField>

@@ -125,6 +125,10 @@ const CAMPO_POR_CHAVE: Record<ChaveCampoFormulario, CampoFormularioDTO> = {
       { valor: "M", rotulo: "Macho" },
       { valor: "FM", rotulo: "Fêmea / macho" },
       { valor: "MF", rotulo: "Macho / fêmea" },
+      { valor: "FFF", rotulo: "3 fêmeas" },
+      { valor: "FFM", rotulo: "2 fêmeas / 1 macho" },
+      { valor: "FMM", rotulo: "1 fêmea / 2 machos" },
+      { valor: "MMM", rotulo: "3 machos" },
     ],
   },
   observacao: {
@@ -212,7 +216,7 @@ const respostasPartoSchema = z.object({
   num_crias: z.coerce.number().int().min(0).max(3),
   crias_vivas: z.coerce.number().int().min(0).max(3),
   crias_natimortas: z.coerce.number().int().min(0).max(3),
-  sexo_cria: z.enum(["F", "M", "FM", "MF"]).optional(),
+  sexo_cria: z.string().regex(/^[FM]{1,3}$/).optional(),
   observacao: z.string().trim().max(200).optional(),
 });
 

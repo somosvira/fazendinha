@@ -117,7 +117,7 @@ export interface EventoPayload {
   reprodutor?: string; protocolo?: string; estoqueSemenId?: number;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; criasVivas?: number; criasNatimortas?: number;
-  sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
   criarCria?: boolean; criaNumero?: string; criaId?: number;
   doadoraId?: number; // TE: animal doador da genética
   embriaoColetaId?: number; // TE: embrião interno do estoque FIV (deriva doadora/touro)
