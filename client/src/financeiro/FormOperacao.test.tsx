@@ -37,6 +37,35 @@ describe("FormOperacao", () => {
     expect(screen.queryByRole("spinbutton", { name: "Valor unitário do item 1" })).toBeNull();
   });
 
+  it("deriva a unidade do produto sem permitir edição", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    expect(screen.getByLabelText("Unidade do item 1").textContent).toBe("kg");
+    expect(screen.queryByRole("textbox", { name: "Unidade do item 1" })).toBeNull();
+  });
+
+  it("não expõe o saldo no seletor de conta", () => {
+    montar();
+    expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Banco principal.*R\$/ })).toBeNull();
+  });
+
+  it("formata o valor informado com duas casas decimais", () => {
+    montar();
+    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" });
+    fireEvent.change(campo, { target: { value: "12.5" } });
+    fireEvent.blur(campo);
+    expect((campo as HTMLInputElement).value).toBe("12.50");
+  });
+
+  it("remove a introdução e posiciona o aviso antes da confirmação", () => {
+    montar();
+    expect(screen.queryByText(/Registre o fato de negócio uma vez/)).toBeNull();
+    const aviso = screen.getByText("A confirmação cria somente os efeitos descritos acima.");
+    const botao = screen.getByRole("button", { name: "Confirmar operação" });
+    expect(aviso.compareDocumentPosition(botao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("explica e configura os compromissos derivados da condição a prazo", () => {
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
