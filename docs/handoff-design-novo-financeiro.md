@@ -550,13 +550,13 @@ Cada operação deve abrir uma página ou drawer de detalhe com quatro grupos:
 
 ### 5.3. Nova operação
 
-Recomendação: formulário progressivo em uma única página ou modal amplo, evitando duas colunas longas sem hierarquia.
+Implementado como modal amplo e rolável, com revisão de efeitos fixa e seções condicionais ao tipo de operação.
 
 Etapas lógicas:
 
 1. **O que aconteceu?** Tipo, data, parceiro e descrição.
-2. **Quais itens?** Produtos/serviços, quantidade e valores.
-3. **Como será pago ou recebido?** À vista, a prazo, parcial ou sem efeito financeiro.
+2. **Quais itens?** Apenas operações físicas exibem produto, quantidade e unidade. Serviço recebe diretamente o valor total.
+3. **Como será pago ou recebido?** Liquidação integral na operação, integral a prazo, parcial com saldo a prazo ou sem movimentação financeira.
 4. **Classificação:** categoria e centro de custo.
 5. **Documentos:** nota, boleto, contrato ou justificativa.
 6. **Revisão dos efeitos:** mostrar antes de confirmar o que será criado.
@@ -796,11 +796,12 @@ Recursos já disponíveis na API:
 - liquidação parcial ou integral;
 - transferência entre contas;
 - transação financeira avulsa;
-- estorno de transação.
+- estorno de transação;
+- upload, listagem e download de documentos vinculados à operação.
 
 Ainda precisam de interface/API completa:
 
-- upload e gestão de documentos;
+- remoção e gestão posterior de documentos já anexados;
 - fechamento e reabertura de períodos;
 - relatórios exportáveis avançados;
 - conciliação bancária;

@@ -5,10 +5,12 @@ import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propri
 import * as contas from "../services/financeiro/contas.js";
 import * as parceiros from "../services/financeiro/parceiros.js";
 import * as operacoes from "../services/financeiro/operacoes.js";
+import * as documentos from "../services/financeiro/documentos.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
+import { getStorage } from "../lib/storage.js";
 
 function usuarioId(c: Context): number | null {
   const usuario = c.get("usuario") as { id?: number } | undefined;
@@ -83,6 +85,40 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
     try { return c.json(await operacoes.estornarOperacao(Number(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/:id/documentos", async (c) => {
+    try {
+      const contentLength = Number(c.req.header("content-length") ?? 0);
+      if (contentLength > documentos.MAX_DOCUMENTO_BYTES + 64 * 1024) {
+        return c.json({ error: "O arquivo excede o limite de 10 MB" }, 413);
+      }
+      const form = await c.req.formData();
+      const arquivo = form.get("arquivo");
+      if (!(arquivo instanceof File)) return c.json({ error: "Selecione um arquivo" }, 400);
+      const tipo = tipoDocumentoFinanceiroSchema.safeParse(form.get("tipo"));
+      if (!tipo.success) return c.json({ error: "Tipo de documento inválido" }, 422);
+      const propriedadeId = await resolverEscopoEscrita(c);
+      const documento = await documentos.anexarDocumentoOperacao({
+        operacaoId: Number(c.req.param("id")), propriedadeId, tipo: tipo.data,
+        nome: String(form.get("nome") || arquivo.name), numero: String(form.get("numero") || "") || null,
+        mimeType: arquivo.type || "application/octet-stream", buffer: Buffer.from(await arquivo.arrayBuffer()), usuarioId: usuarioId(c),
+      });
+      return c.json(documento, 201);
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/documentos/:id/download", async (c) => {
+    try {
+      const documento = await documentos.obterDocumento(Number(c.req.param("id")), await resolverEscopoEscrita(c));
+      const storage = await getStorage();
+      if (storage.driver === "r2") {
+        return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
+      }
+      const buffer = await storage.getObjectBuffer({ key: documento.storageKey! });
+      c.header("Content-Type", documento.mimeType || "application/octet-stream");
+      c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(documento.nome)}`);
+      c.header("Cache-Control", "private, max-age=300");
+      return c.body(new Uint8Array(buffer));
+    } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/compromissos", async (c) => c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c))))
   .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {

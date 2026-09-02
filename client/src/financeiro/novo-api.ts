@@ -11,7 +11,8 @@ export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: strin
 export type ItemOperacao = { id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
 export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
 export type TransacaoOperacao = { id: number; tipo: string; status: string; data?: string; valorTotal: string; formaPagamento?: string | null; movimentos?: MovimentoConta[] };
-export type Operacao = { id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: Parceiro | null; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[] };
+export type DocumentoFinanceiro = { id: number; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
+export type Operacao = { id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: Parceiro | null; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
 export type MovimentoConta = { id: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: Parceiro | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
 
@@ -31,6 +32,19 @@ export const listarOperacoes = () => req<Operacao[]>("/financeiro/operacoes");
 export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
+export async function anexarDocumentoOperacao(operacaoId: number, input: { arquivo: File; tipo: string; numero?: string }) {
+  const form = new FormData();
+  form.set("arquivo", input.arquivo);
+  form.set("nome", input.arquivo.name);
+  form.set("tipo", input.tipo);
+  if (input.numero) form.set("numero", input.numero);
+  const resposta = await fetch(`/api/financeiro/operacoes/${operacaoId}/documentos`, {
+    method: "POST", body: form, headers: comPropriedade(),
+  });
+  const corpo = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  return corpo as DocumentoFinanceiro;
+}
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
 export const liquidarCompromisso = (id: number, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
 export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });

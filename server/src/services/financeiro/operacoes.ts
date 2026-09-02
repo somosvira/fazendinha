@@ -11,13 +11,14 @@ type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedad
 
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
+const documentoPublico = { id: true, tipo: true, nome: true, numero: true, mimeType: true, tamanhoBytes: true, createdAt: true } as const;
 
 function tipoCompromisso(tipoOperacao: string): TipoCompromisso {
-  return tipoOperacao === "VENDA" ? "RECEBER" : "PAGAR";
+  return tipoOperacao === "VENDA" || tipoOperacao === "DEVOLUCAO" ? "RECEBER" : "PAGAR";
 }
 
 function tipoTransacao(tipoOperacao: string): TipoTransacaoFinanceira {
-  if (tipoOperacao === "VENDA") return "RECEBIMENTO";
+  if (tipoOperacao === "VENDA" || tipoOperacao === "DEVOLUCAO") return "RECEBIMENTO";
   if (tipoOperacao === "APORTE") return "APORTE";
   if (tipoOperacao === "RETIRADA") return "RETIRADA";
   return "PAGAMENTO";
@@ -81,7 +82,11 @@ export async function criarOperacao(input: OperacaoInput) {
       valorTotal: dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario)),
       estocavel: item.estocavel,
     }));
-    const valorTotal = dinheiro(itens.reduce((soma, item) => soma.plus(item.valorTotal), new Prisma.Decimal(0)));
+    const totalItens = dinheiro(itens.reduce((soma, item) => soma.plus(item.valorTotal), new Prisma.Decimal(0)));
+    const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
+    if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
+      throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
+    }
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
 
     if (input.financeiro.condicao === "PARCIAL") {
@@ -149,7 +154,7 @@ export async function criarOperacao(input: OperacaoInput) {
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
-      include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, parceiro: true },
+      include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
     });
   });
 }
@@ -280,7 +285,7 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
 export async function listarOperacoes(propriedadeId?: number | null) {
   return prisma.operacao.findMany({
     where: propriedadeId ? { propriedadeId } : {},
-    include: { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: true },
+    include: { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico } },
     orderBy: [{ data: "desc" }, { id: "desc" }],
   });
 }

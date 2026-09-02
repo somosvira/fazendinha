@@ -65,7 +65,7 @@ export function MonthControl({ mes, onChange }: { mes: string; onChange: (mes: s
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string }) {
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`max-h-[92vh] w-full overflow-auto ${width}`}><div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-[#f4f2e9] p-5"><div><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>{children}</Panel></div>;
+  return <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`max-h-[92vh] w-full overflow-auto ${width}`}><div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-[#f4f2e9] p-5"><div><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>{children}</Panel></div>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
