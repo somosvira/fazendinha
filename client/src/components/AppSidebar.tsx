@@ -188,8 +188,6 @@ const RAIL_ACTIVE =
 // hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
 const RAIL_LABEL =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex [.side-collapsed_&]:hidden";
-const RAIL_GROUP =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
 const RAIL_BLOCK =
   "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
 // chevron `›` dos itens de clique único — some na faixa colapsada.
@@ -232,25 +230,19 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured
   );
 }
 
-function SearchItem({ onClick }: { onClick: () => void }) {
+function SearchControl({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title="Buscar"
       aria-label="Buscar páginas, animais e ações"
-      className={cn(
-        "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[var(--side-hair,rgba(232,220,196,0.1))] bg-transparent px-2.5 py-[9px] text-left font-sans text-[13.5px] text-[var(--mast-ink)]",
-        "hover:bg-[rgba(232,220,196,0.06)] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
-        RAIL_ICON_BTN,
-      )}
+      className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-2 [.side-collapsed_&]:order-2"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
+      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
         <circle cx="11" cy="11" r="7" />
         <path d="m20 20-4-4" />
       </svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>Buscar</span>
-      <span className={cn("text-[10px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>Ctrl K</span>
     </button>
   );
 }
@@ -275,20 +267,14 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
   );
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className={cn(
-        "px-2.5 pb-1.5 pt-1 font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--side-mute,#8B8672)]",
-        RAIL_GROUP,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
+const GROUP_ICON: Record<SidebarGroupId, JSX.Element> = {
+  financeiro: <><path d="M12 2v20"/><path d="M17 6.5A4 4 0 0 0 13 4h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
+  pecuaria: <><path d="M7 8 4 5M17 8l3-3"/><path d="M6 11c0-4 2.5-6 6-6s6 2 6 6v4c0 3-2.5 5-6 5s-6-2-6-5z"/><circle cx="9" cy="12" r=".7" fill="currentColor"/><circle cx="15" cy="12" r=".7" fill="currentColor"/><path d="M10 16h4"/></>,
+  agronomia: <><path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12"/><path d="M6 21c3-5 6-8 10-10"/></>,
+  equipe: <><circle cx="9" cy="8" r="3"/><path d="M3 20c.7-4 3-6 6-6s5.3 2 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.5M17 14c2 .5 3.5 2.5 4 5"/></>,
+};
 
-function GroupToggle({ label, isOpen, onToggle }: { label: string; isOpen: boolean; onToggle: () => void }) {
+function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; label: string; isOpen: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
@@ -296,15 +282,16 @@ function GroupToggle({ label, isOpen, onToggle }: { label: string; isOpen: boole
       aria-expanded={isOpen}
       aria-label={`${isOpen ? "Recolher" : "Expandir"} ${label}`}
       className={cn(
-        "flex w-full items-center justify-between rounded-[7px] px-2.5 pb-1.5 pt-1 text-left font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--side-mute,#8B8672)]",
-        "hover:bg-[rgba(232,220,196,0.06)] hover:text-[var(--mast-ink)]",
-        RAIL_GROUP,
+        "flex w-full items-center gap-3 rounded-[7px] px-2.5 py-2 text-left font-sans text-[11px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.72)]",
+        "hover:bg-[rgba(232,220,196,0.06)] hover:text-[var(--mast-ink)] [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:flex-none [&>svg]:opacity-90",
+        RAIL_ICON_BTN,
       )}
     >
-      <span>{label}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>{GROUP_ICON[id]}</svg>
+      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
-        className={cn("h-[10px] w-[10px] transition-transform duration-150", isOpen && "rotate-90")}
+        className={cn("!h-[10px] !w-[10px] transition-transform duration-150", isOpen && "rotate-90", RAIL_HIDE)}
       >
         <path d="M9 6l6 6-6 6" />
       </svg>
@@ -445,9 +432,12 @@ export function AppSidebar({
         <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
-          <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="ml-auto hidden h-8 w-8 flex-none items-center justify-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:flex min-[901px]:max-[1100px]:ml-0 [.side-collapsed_&]:ml-0">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
-          </button>
+          <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
+            <SearchControl onClick={abrirBusca} />
+            <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-1 [.side-collapsed_&]:order-1">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
+            </button>
+          </div>
         </div>
       </div>
       <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
@@ -458,14 +448,9 @@ export function AppSidebar({
 
   const navBody = (
     <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-      <div className="flex flex-col gap-px">
-        <GroupLabel>Acesso rápido</GroupLabel>
-        <SearchItem onClick={abrirBusca} />
-      </div>
-
       {itensFinanceiros.length > 0 && (
-        <div className="mt-4 flex flex-col gap-px">
-          <GroupToggle label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
+        <div className="flex flex-col gap-px">
+          <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
           {!collapsedGroups.has("financeiro") && itensFinanceiros.map((t) => (
             <Item
               key={t.id}
@@ -486,7 +471,7 @@ export function AppSidebar({
         const groupOpen = !collapsedGroups.has(area.id);
         return (
           <div key={area.id} className="mt-4 flex flex-col gap-px">
-            <GroupToggle label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
+            <GroupToggle id={area.id} label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
             {groupOpen && area.principais.map((item) => (
               <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} />
             ))}

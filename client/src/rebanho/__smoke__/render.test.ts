@@ -36,7 +36,7 @@ describe("render smoke", () => {
       colapsada: false, onToggleColapsar: () => {}, onAcessos: () => {}, onSair: () => {},
     }));
     // Rotinas frequentes são diretas; somente recursos secundários ficam dobrados.
-    expect(html).toContain("Acesso rápido");
+    expect(html).toContain("Buscar páginas, animais e ações");
     expect(html).toContain("Financeiro");
     expect(html).toContain("Terrano");           // marca no topo da sidebar
     expect(html).toContain("Pecuária");

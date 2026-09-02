@@ -102,7 +102,8 @@ function baseProps(overrides: Partial<{
 describe("AppSidebar", () => {
   it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
     render(h(AppSidebar, baseProps()));
-    expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
+    const pecuaria = screen.getByRole("button", { name: "Expandir Pecuária" });
+    expect(pecuaria.querySelector("svg")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Expandir Agronomia" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Expandir Equipe" })).toBeTruthy();
     expect(screen.getByText("Visão geral")).toBeTruthy();
