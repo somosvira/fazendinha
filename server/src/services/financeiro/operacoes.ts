@@ -59,6 +59,11 @@ async function criarTransacaoComMovimento(
 export async function criarOperacao(input: OperacaoInput) {
   return prisma.$transaction(async (tx) => {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    if (input.corrigeOperacaoId) {
+      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId } });
+      if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
+      if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
+    }
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
     const produtos = produtosIds.length
       ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true } })
@@ -111,6 +116,7 @@ export async function criarOperacao(input: OperacaoInput) {
         parceiroId: input.parceiroId,
         categoriaId: input.categoriaId,
         centroCustoId: input.centroCustoId,
+        corrigeOperacaoId: input.corrigeOperacaoId,
         criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
         itens: { create: itens },
       },
@@ -282,10 +288,18 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
   });
 }
 
-export async function listarOperacoes(propriedadeId?: number | null) {
+const includeOperacao = { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, corrigeOperacao: { select: { id: true, descricao: true } }, correcoes: { select: { id: true, descricao: true, status: true } } } as const;
+
+export async function obterOperacao(id: number, propriedadeId?: number | null) {
+  const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
+  if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
+  return operacao;
+}
+
+export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
   return prisma.operacao.findMany({
-    where: propriedadeId ? { propriedadeId } : {},
-    include: { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico } },
+    where: { ...(propriedadeId ? { propriedadeId } : {}), ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
+    include: includeOperacao,
     orderBy: [{ data: "desc" }, { id: "desc" }],
   });
 }

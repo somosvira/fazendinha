@@ -74,7 +74,15 @@ export const financeiroRouter = new Hono()
     try { return c.json(await parceiros.atualizarParceiro(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/operacoes", async (c) => c.json(await operacoes.listarOperacoes(await resolverEscopoLeitura(c))))
+  .get("/financeiro/operacoes", async (c) => {
+    const inicio = c.req.query("inicio") ? new Date(`${c.req.query("inicio")}T00:00:00`) : undefined;
+    const fim = c.req.query("fim") ? new Date(`${c.req.query("fim")}T00:00:00`) : undefined;
+    return c.json(await operacoes.listarOperacoes(await resolverEscopoLeitura(c), inicio, fim));
+  })
+  .get("/financeiro/operacoes/:id", async (c) => {
+    try { return c.json(await operacoes.obterOperacao(Number(c.req.param("id")), await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
   .post("/financeiro/operacoes", zValidator("json", operacaoSchema), async (c) => {
     try {
       const input = c.req.valid("json");

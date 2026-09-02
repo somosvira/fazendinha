@@ -25,20 +25,23 @@ const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", 
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
 
-export function FormOperacao({ config, onSalvo, onCancelar }: { config: ConfiguracoesFinanceiras; onSalvo: (aviso?: string) => void; onCancelar: () => void }) {
-  const [tipo, setTipo] = useState("COMPRA_ESTOQUE");
-  const [condicao, setCondicao] = useState<Condicao>("A_VISTA");
-  const [descricao, setDescricao] = useState("");
-  const [valorOperacao, setValorOperacao] = useState("");
-  const [itens, setItens] = useState<ItemForm[]>([novoItem()]);
-  const [parceiroId, setParceiroId] = useState("");
-  const [categoriaId, setCategoriaId] = useState("");
-  const [centroCustoId, setCentroCustoId] = useState("");
-  const [contaId, setContaId] = useState("");
-  const [formaPagamento, setFormaPagamento] = useState("PIX");
+export function FormOperacao({ config, operacaoBase = null, onSalvo, onCancelar }: { config: ConfiguracoesFinanceiras; operacaoBase?: import("./novo-api").Operacao | null; onSalvo: (aviso?: string) => void; onCancelar: () => void }) {
+  const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
+  const temCompromissos = !!operacaoBase?.compromissos.length;
+  const condicaoBase: Condicao = !operacaoBase ? "A_VISTA" : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO";
+  const [tipo, setTipo] = useState(operacaoBase?.tipo ?? "COMPRA_ESTOQUE");
+  const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
+  const [descricao, setDescricao] = useState(operacaoBase ? `Correção da OP-${String(operacaoBase.id).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : "");
+  const [valorOperacao, setValorOperacao] = useState(operacaoBase?.valorTotal ?? "");
+  const [itens, setItens] = useState<ItemForm[]>(() => operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]);
+  const [parceiroId, setParceiroId] = useState(operacaoBase?.parceiro?.id ? String(operacaoBase.parceiro.id) : "");
+  const [categoriaId, setCategoriaId] = useState(operacaoBase?.categoriaId ? String(operacaoBase.categoriaId) : "");
+  const [centroCustoId, setCentroCustoId] = useState(operacaoBase?.centroCustoId ? String(operacaoBase.centroCustoId) : "");
+  const [contaId, setContaId] = useState(transacaoBase?.movimentos?.[0]?.contaId ? String(transacaoBase.movimentos[0].contaId) : "");
+  const [formaPagamento, setFormaPagamento] = useState(transacaoBase?.formaPagamento ?? "PIX");
   const [data, setData] = useState(hoje());
-  const [valorAgora, setValorAgora] = useState("");
-  const [parcelas, setParcelas] = useState<ParcelaForm[]>([novaParcela()]);
+  const [valorAgora, setValorAgora] = useState(condicaoBase === "PARCIAL" ? transacaoBase?.valorTotal ?? "" : "");
+  const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: proximoId++, valor: item.valorOriginal, vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]);
   const [anexos, setAnexos] = useState<AnexoForm[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -111,6 +114,7 @@ export function FormOperacao({ config, onSalvo, onCancelar }: { config: Configur
         parceiroId: parceiroId ? Number(parceiroId) : undefined,
         categoriaId: categoriaId ? Number(categoriaId) : undefined,
         centroCustoId: centroCustoId ? Number(centroCustoId) : undefined,
+        corrigeOperacaoId: operacaoBase?.id,
         itens: comItens ? itens.map((item) => {
           const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
           const quantidade = Number(item.quantidade);
@@ -128,10 +132,11 @@ export function FormOperacao({ config, onSalvo, onCancelar }: { config: Configur
     finally { setSalvando(false); }
   };
 
-  return <Modal titulo="Nova operação" eyebrow="Registro orientado" onClose={onCancelar} width="max-w-[1240px]" semCabecalho>
+  return <Modal titulo={operacaoBase ? "Criar operação de correção" : "Nova operação"} eyebrow="Registro orientado" onClose={onCancelar} width="max-w-[1240px]" semCabecalho>
     <form onSubmit={submit} className="grid h-full min-h-0 overflow-y-auto xl:grid-cols-[minmax(0,1fr)_330px] xl:overflow-hidden">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
+        {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na OP-{String(operacaoBase.id).padStart(4, "0")}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -61,6 +61,11 @@ const MODULO_BASE_LEGADO: Array<{ prefix: string; base: string; defaultSub?: str
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+export function parseOperacaoFinanceiraId(pathname: string): number | null {
+  const match = /^\/financeiro\/operacoes\/(\d+)\/?$/i.exec(pathname);
+  return match ? Number(match[1]) : null;
+}
+
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
   "vazia-pos-pev": "reproducao",
@@ -125,6 +130,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/gastos") return "gastos";
   if (path === "/lancar") return "lancar";
   if (path === "/caixinha") return "caixinha";
+  if (parseOperacaoFinanceiraId(path) != null) return "lancar";
 
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;

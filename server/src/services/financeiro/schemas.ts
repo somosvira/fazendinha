@@ -52,6 +52,7 @@ export const operacaoSchema = z.object({
   parceiroId: z.number().int().positive().optional(),
   categoriaId: z.number().int().positive().optional(),
   centroCustoId: z.number().int().positive().optional(),
+  corrigeOperacaoId: z.number().int().positive().optional(),
   propriedadeId: z.number().int().positive().optional(),
   itens: z.array(itemOperacaoSchema).default([]),
   financeiro: z.discriminatedUnion("condicao", [

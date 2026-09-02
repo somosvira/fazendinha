@@ -392,6 +392,9 @@ model Operacao {
   categoriaId         Int?
   centroCusto         CentroCusto?            @relation(fields: [centroCustoId], references: [id])
   centroCustoId       Int?
+  corrigeOperacao     Operacao?                @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
+  corrigeOperacaoId   Int?
+  correcoes           Operacao[]               @relation("CorrecaoOperacao")
   criadoPor           Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
   criadoPorId         Int?
   itens               ItemOperacao[]
@@ -409,6 +412,7 @@ model Operacao {
   @@index([propriedadeId, data])
   @@index([tipo, status])
   @@index([parceiroId])
+  @@index([corrigeOperacaoId])
 }
 
 model ItemOperacao {

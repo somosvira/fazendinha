@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRotaWorklistRebanho,
+  parseOperacaoFinanceiraId,
   parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
 } from "./router";
 
 describe("roteamento da pecuária", () => {
+  it("reconhece o detalhe de uma operação financeira", () => {
+    expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");
+    expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBe(42);
+    expect(parseOperacaoFinanceiraId("/financeiro/operacoes")).toBeNull();
+  });
   it("publica contas e extratos como uma área financeira própria", () => {
     expect(tabToPath("caixinha")).toBe("/financeiro/contas");
     expect(pathToTab("/financeiro/contas")).toBe("caixinha");
