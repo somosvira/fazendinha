@@ -58,6 +58,17 @@ describe("FormOperacao", () => {
     expect((campo as HTMLInputElement).value).toBe("12.50");
   });
 
+  it("resume produto, quantidade e valor total de cada item", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "3" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
+    const resumo = screen.getAllByText("Itens da operação").at(-1)!.parentElement!;
+    expect(resumo.textContent).toContain("Ração");
+    expect(resumo.textContent).toContain("3 kg");
+    expect(resumo.textContent?.replaceAll("\u00a0", " ")).toContain("R$ 15,00");
+  });
+
   it("remove a introdução e posiciona o aviso antes da confirmação", () => {
     montar();
     expect(screen.queryByText(/Registre o fato de negócio uma vez/)).toBeNull();
