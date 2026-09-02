@@ -214,7 +214,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured
         "[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none [&_svg]:opacity-[.82]",
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
-        nested && "py-[7px] pl-8 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
+        nested && "py-[7px] pl-4 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
         featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)] min-[901px]:max-[1100px]:border-0 min-[901px]:max-[1100px]:bg-transparent [.side-collapsed_&]:border-0 [.side-collapsed_&]:bg-transparent",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
@@ -269,7 +269,7 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
 
 const GROUP_ICON: Record<SidebarGroupId, JSX.Element> = {
   financeiro: <><path d="M12 2v20"/><path d="M17 6.5A4 4 0 0 0 13 4h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
-  pecuaria: <><path d="M7 8 4 5M17 8l3-3"/><path d="M6 11c0-4 2.5-6 6-6s6 2 6 6v4c0 3-2.5 5-6 5s-6-2-6-5z"/><circle cx="9" cy="12" r=".7" fill="currentColor"/><circle cx="15" cy="12" r=".7" fill="currentColor"/><path d="M10 16h4"/></>,
+  pecuaria: <><path d="M7.5 8C5 8 3.5 6.5 3 4c2.8.2 4.7 1.2 6 3M16.5 8c2.5 0 4-1.5 4.5-4-2.8.2-4.7 1.2-6 3"/><path d="M7 9.5C7 6.5 9 5 12 5s5 1.5 5 4.5V15c0 3-2 5-5 5s-5-2-5-5z"/><circle cx="9.5" cy="12" r=".65" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12" r=".65" fill="currentColor" stroke="none"/><path d="M9.5 16c1.5-1 3.5-1 5 0"/></>,
   agronomia: <><path d="M12 21c5-3 8-7 8-12 0-1.5-.5-3-1-4-3 0-7 1-9 4s-2 8-2 12"/><path d="M6 21c3-5 6-8 10-10"/></>,
   equipe: <><circle cx="9" cy="8" r="3"/><path d="M3 20c.7-4 3-6 6-6s5.3 2 6 6"/><path d="M16 5.5a3 3 0 0 1 0 5.5M17 14c2 .5 3.5 2.5 4 5"/></>,
 };
@@ -299,13 +299,14 @@ function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; labe
   );
 }
 
-function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen: boolean; total: number; onToggle: () => void }) {
+function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
-      title={label}
+      aria-label={`${isOpen ? "Recolher" : "Expandir"} mais opções de ${context}`}
+      title={`Mais opções de ${context}`}
       className={cn(
         "relative flex w-full cursor-pointer items-center gap-3 rounded-[7px] bg-transparent px-2.5 py-[8px] text-left font-sans text-[12.5px] text-[var(--side-mute,#8B8672)]",
         "hover:bg-[rgba(232,220,196,0.06)] hover:text-[var(--mast-ink)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none [&_svg]:opacity-[.72]",
@@ -317,8 +318,7 @@ function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen:
         <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
         <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
       </svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
-      <span className={cn("text-[10px] tabular-nums", RAIL_HIDE)}>{total}</span>
+      <span className={cn("flex-1", RAIL_LABEL)}>Mais</span>
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
         className={cn("!h-[10px] !w-[10px] flex-none transition-transform duration-150", isOpen && "rotate-90", RAIL_BLOCK)}
@@ -447,22 +447,27 @@ export function AppSidebar({
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-color:#2a3025_transparent] [scrollbar-width:thin] min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       {itensFinanceiros.length > 0 && (
         <div className="flex flex-col gap-px">
           <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
-          {!collapsedGroups.has("financeiro") && itensFinanceiros.map((t) => (
-            <Item
-              key={t.id}
-              id={t.id}
-              label={t.id === "dashboard" ? "Visão geral" : t.id === "lancar" ? "Operações" : t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
-              current={current}
-              onNav={nav}
-              chevron={t.id !== "dashboard" && t.id !== "lancar"}
-              featured={t.id === "lancar"}
-              activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
-            />
-          ))}
+          {!collapsedGroups.has("financeiro") && (
+            <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+              {itensFinanceiros.map((t) => (
+                <Item
+                  key={t.id}
+                  id={t.id}
+                  label={t.id === "dashboard" ? "Visão geral" : t.id === "lancar" ? "Operações" : t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
+                  current={current}
+                  onNav={nav}
+                  nested
+                  chevron={t.id !== "dashboard" && t.id !== "lancar"}
+                  featured={t.id === "lancar"}
+                  activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -470,16 +475,16 @@ export function AppSidebar({
         const isOpen = openExtras === area.id;
         const groupOpen = !collapsedGroups.has(area.id);
         return (
-          <div key={area.id} className="mt-4 flex flex-col gap-px">
+          <div key={area.id} className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
             <GroupToggle id={area.id} label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
-            {groupOpen && area.principais.map((item) => (
-              <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} />
-            ))}
-            {groupOpen && !!area.extras?.length && (
-              <>
+            {groupOpen && (
+              <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+                {area.principais.map((item) => (
+                  <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} nested />
+                ))}
+                {!!area.extras?.length && <>
                 <MoreToggle
-                  label={`Mais opções de ${area.label.toLowerCase()}`}
-                  total={area.extras.length}
+                  context={area.label.toLowerCase()}
                   isOpen={isOpen}
                   onToggle={() => toggleExtras(area.id)}
                 />
@@ -490,13 +495,14 @@ export function AppSidebar({
                     ))}
                   </div>
                 )}
-              </>
+                </>}
+              </div>
             )}
           </div>
         );
       })}
 
-      <div className="mt-4 flex flex-col gap-px">
+      <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
         <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["acessos"] as Tab[]) : [])]} />
       </div>
     </div>
