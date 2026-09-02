@@ -32,6 +32,8 @@ describe("render smoke", () => {
       mobileOpen: false, onMobileToggle: () => {},
       onAbrirBusca: () => {},
       propAtiva: null, onTrocarProp: () => {},
+      user: { id: "u1", nome: "Marco", email: "marco@rio.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [] },
+      colapsada: false, onToggleColapsar: () => {}, onPreferencias: () => {}, onSair: () => {},
     }));
     // Rotinas frequentes são diretas; somente recursos secundários ficam dobrados.
     expect(html).toContain("Acesso rápido");

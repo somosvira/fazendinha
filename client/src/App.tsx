@@ -8,7 +8,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { buildRotaWorklistRebanho, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
-import { Header } from "./components/Header";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { FinanceiroContent } from "./financeiro/FinanceiroContent";
@@ -510,16 +509,6 @@ export function App() {
       )}
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
-      <Header
-        user={effectiveUser}
-        mobileOpen={mobileOpen}
-        onMobileToggle={setMobileOpen}
-        colapsada={sideColapsada}
-        onToggleColapsar={toggleSidebar}
-        onAbrirBusca={() => setBuscaAberta(true)}
-        onPreferencias={() => setTab("config")}
-        onSair={onSair}
-      />
       <AppSidebar
         current={tab}
         onNav={navegarTab}
@@ -532,6 +521,11 @@ export function App() {
         onAbrirBusca={() => setBuscaAberta(true)}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
+        user={effectiveUser}
+        colapsada={sideColapsada}
+        onToggleColapsar={toggleSidebar}
+        onPreferencias={() => setTab("config")}
+        onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>

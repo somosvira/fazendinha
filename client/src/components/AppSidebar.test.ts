@@ -4,6 +4,9 @@ import { createElement as h } from "react";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { AppSidebar } from "./AppSidebar";
 import type { Tab } from "./Shell";
+import type { User } from "../data/acessos";
+
+const proprietario: User = { id: "u1", nome: "Marco Antônio", email: "marco@riovono.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [] };
 
 // Node 22+ define um `localStorage` global "experimental" (atrás de
 // --localstorage-file) que sombreia o do jsdom e quebra com "Cannot read
@@ -63,6 +66,11 @@ function baseProps(overrides: Partial<{
   onAbrirBusca: () => void;
   propAtiva: number | null;
   onTrocarProp: (id: number | null) => void;
+  user: User;
+  colapsada: boolean;
+  onToggleColapsar: () => void;
+  onPreferencias: () => void;
+  onSair: () => void;
 }> = {}) {
   return {
     current: "dashboard" as Tab,
@@ -79,6 +87,11 @@ function baseProps(overrides: Partial<{
     onAbrirBusca: vi.fn(),
     propAtiva: null,
     onTrocarProp: vi.fn(),
+    user: proprietario,
+    colapsada: false,
+    onToggleColapsar: vi.fn(),
+    onPreferencias: vi.fn(),
+    onSair: vi.fn(),
     ...overrides,
   };
 }
@@ -212,5 +225,16 @@ describe("AppSidebar", () => {
 
     rerender(h(AppSidebar, baseProps({ mobileOpen: true })));
     expect(document.querySelector('[data-slot="sheet-content"]')).toBeTruthy();
+  });
+
+  it("mantém usuário e recolhimento no rodapé da sidebar", async () => {
+    const props = baseProps();
+    render(h(AppSidebar, props));
+    fireEvent.click(screen.getByLabelText("Recolher menu lateral"));
+    expect(props.onToggleColapsar).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
+    fireEvent.click(await screen.findByText("Preferências"));
+    expect(props.onPreferencias).toHaveBeenCalledTimes(1);
   });
 });

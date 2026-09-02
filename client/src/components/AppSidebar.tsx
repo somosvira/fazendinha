@@ -14,9 +14,11 @@ import { useEffect, useState } from "react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea } from "@/lib/areas";
+import { PAPEIS, type User } from "@/data/acessos";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -253,6 +255,26 @@ function SearchItem({ onClick }: { onClick: () => void }) {
   );
 }
 
+function UserMenu({ user, onPreferencias, onSair }: { user: User; onPreferencias: () => void; onSair?: () => void }) {
+  const papel = user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome ?? "";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label="Menu da conta" className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-[rgba(232,220,196,0.08)]", RAIL_ICON_BTN)}>
+          <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-leite text-sm font-semibold text-ink">{user.inicial}</span>
+          <span className={cn("min-w-0 flex-1", RAIL_LABEL)}><span className="block truncate text-[13px] font-semibold text-mast-ink">{user.nome}</span><span className="mt-0.5 block truncate text-[10.5px] text-[var(--side-mute)]">{papel}</span></span>
+          <span className={cn("text-xs text-[var(--side-mute)]", RAIL_HIDE)} aria-hidden>⌃</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
+        <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
+        <DropdownMenuItem onSelect={onPreferencias} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Preferências</DropdownMenuItem>
+        {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -323,6 +345,7 @@ function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen:
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
+  user, colapsada, onToggleColapsar, onPreferencias, onSair,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -333,6 +356,8 @@ export function AppSidebar({
   onAbrirBusca: () => void;
   // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
+  user: User; colapsada: boolean; onToggleColapsar: () => void;
+  onPreferencias: () => void; onSair?: () => void;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -509,12 +534,18 @@ export function AppSidebar({
           id="config" label="Configurações" current={current} onNav={nav} chevron
           activeWhen={["plano", ...(isAdmin ? (["acessos"] as Tab[]) : [])]}
         />
+        <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className={cn("hidden w-full items-center gap-3 rounded-[7px] px-2.5 py-[9px] text-left text-[13px] text-[var(--side-mute)] hover:bg-[rgba(232,220,196,0.06)] hover:text-mast-ink min-[901px]:flex", RAIL_ICON_BTN)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px] flex-none" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+          <span className={cn("flex-1", RAIL_LABEL)}>{colapsada ? "Expandir sidebar" : "Recolher sidebar"}</span>
+        </button>
+        <UserMenu user={user} onPreferencias={onPreferencias} onSair={onSair} />
       </div>
     </div>
   );
 
   return (
     <>
+      {!mobileOpen && <button type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[900px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></button>}
       {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
@@ -541,6 +572,7 @@ export function AppSidebar({
           showCloseButton={false}
           className="max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
+          <button type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>
           <div className="flex h-full flex-col overflow-hidden">
