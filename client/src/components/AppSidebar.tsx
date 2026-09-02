@@ -160,6 +160,8 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
 ];
 
 const STORAGE_KEY = "rionovo:sidebar:openExtras";
+const COLLAPSED_GROUPS_KEY = "rionovo:sidebar:collapsedGroups";
+type SidebarGroupId = AreaTrabalhoId | "financeiro" | "gestao";
 
 function areaExtraOfTab(tab: Tab): AreaTrabalhoId | null {
   return AREAS_TRABALHO.find((area) => area.extras?.some((item) => item.id === tab))?.id ?? null;
@@ -264,6 +266,30 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function GroupToggle({ label, isOpen, onToggle }: { label: string; isOpen: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      aria-label={`${isOpen ? "Recolher" : "Expandir"} ${label}`}
+      className={cn(
+        "flex w-full items-center justify-between rounded-[7px] px-2.5 pb-1.5 pt-1 text-left font-sans text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--side-mute,#8B8672)]",
+        "hover:bg-[rgba(232,220,196,0.06)] hover:text-[var(--mast-ink)]",
+        RAIL_GROUP,
+      )}
+    >
+      <span>{label}</span>
+      <svg
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
+        className={cn("h-[10px] w-[10px] transition-transform duration-150", isOpen && "rotate-90")}
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
+  );
+}
+
 function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen: boolean; total: number; onToggle: () => void }) {
   return (
     <button
@@ -319,6 +345,13 @@ export function AppSidebar({
     } catch { /* ignora SSR / storage indisponível */ }
     return areaExtraOfTab(current);
   });
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarGroupId>>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(COLLAPSED_GROUPS_KEY) ?? "[]");
+      if (Array.isArray(stored)) return new Set(stored.filter((id): id is SidebarGroupId => id === "financeiro" || id === "gestao" || AREAS_TRABALHO.some((area) => area.id === id)));
+    } catch { /* ignora SSR / storage inválido */ }
+    return new Set();
+  });
 
   // Se um deep-link cair numa opção secundária, abre o bloco certo para manter
   // a localização atual visível sem exigir outro clique do usuário.
@@ -331,6 +364,10 @@ export function AppSidebar({
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, openExtras ?? ""); } catch { /* noop */ }
   }, [openExtras]);
+
+  useEffect(() => {
+    try { localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify([...collapsedGroups])); } catch { /* noop */ }
+  }, [collapsedGroups]);
 
   // Fecha o drawer mobile se a viewport estiver (ou passar a estar) >=901px —
   // nessa largura o trilho desktop assume e o painel do Sheet vira `hidden`
@@ -357,6 +394,24 @@ export function AppSidebar({
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
   const abrirBusca = () => { onMobileToggle(false); onAbrirBusca(); };
   const toggleExtras = (id: AreaTrabalhoId) => setOpenExtras((cur) => (cur === id ? null : id));
+  const toggleGroup = (id: SidebarGroupId) => setCollapsedGroups((atuais) => {
+    const proximos = new Set(atuais);
+    if (proximos.has(id)) proximos.delete(id); else proximos.add(id);
+    return proximos;
+  });
+
+  useEffect(() => {
+    const grupoAtivo: SidebarGroupId | null = acessoRapido.some((item) => item.id === current)
+      ? "financeiro"
+      : gestao.some((item) => item.id === current) || current === "plano"
+      ? "gestao"
+      : areasVisiveis.find((area) => area.principais.some((item) => item.id === current) || area.extras?.some((item) => item.id === current))?.id ?? null;
+    if (grupoAtivo && collapsedGroups.has(grupoAtivo)) {
+      setCollapsedGroups((atuais) => { const proximos = new Set(atuais); proximos.delete(grupoAtivo); return proximos; });
+    }
+    // O conjunto só deve reagir a mudanças de rota; clicar no título pode recolher o grupo ativo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   // Cabeçalho da sidebar: marca Terrano + seletor de fazenda/sítio.
   const sideHead = (
@@ -376,27 +431,34 @@ export function AppSidebar({
       <div className="flex flex-col gap-px">
         <GroupLabel>Acesso rápido</GroupLabel>
         <SearchItem onClick={abrirBusca} />
-        {acessoRapido.map((t) => (
-          <Item
-            key={t.id}
-            id={t.id}
-            label={t.id === "dashboard" ? "Visão geral" : "Operações"}
-            current={current}
-            onNav={nav}
-            featured={t.id === "lancar"}
-          />
-        ))}
       </div>
+
+      {acessoRapido.length > 0 && (
+        <div className="mt-4 flex flex-col gap-px">
+          <GroupToggle label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
+          {!collapsedGroups.has("financeiro") && acessoRapido.map((t) => (
+            <Item
+              key={t.id}
+              id={t.id}
+              label={t.id === "dashboard" ? "Visão geral" : "Operações"}
+              current={current}
+              onNav={nav}
+              featured={t.id === "lancar"}
+            />
+          ))}
+        </div>
+      )}
 
       {areasVisiveis.map((area) => {
         const isOpen = openExtras === area.id;
+        const groupOpen = !collapsedGroups.has(area.id);
         return (
           <div key={area.id} className="mt-4 flex flex-col gap-px">
-            <GroupLabel>{area.label}</GroupLabel>
-            {area.principais.map((item) => (
+            <GroupToggle label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
+            {groupOpen && area.principais.map((item) => (
               <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} />
             ))}
-            {!!area.extras?.length && (
+            {groupOpen && !!area.extras?.length && (
               <>
                 <MoreToggle
                   label={`Mais opções de ${area.label.toLowerCase()}`}
@@ -419,20 +481,21 @@ export function AppSidebar({
 
       {gestao.length > 0 && (
         <div className="mt-4 flex flex-col gap-px">
-          <GroupLabel>Gestão</GroupLabel>
-        {gestao.map((t) => (
-          <Item
-            key={t.id}
-            id={t.id}
-            label={t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
-            current={current}
-            onNav={nav}
-            chevron
-            activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
-          />
-        ))}
+          <GroupToggle label="Gestão" isOpen={!collapsedGroups.has("gestao")} onToggle={() => toggleGroup("gestao")} />
+          {!collapsedGroups.has("gestao") && gestao.map((t) => (
+            <Item
+              key={t.id}
+              id={t.id}
+              label={t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
+              current={current}
+              onNav={nav}
+              chevron
+              activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
+            />
+          ))}
         </div>
       )}
+
     </div>
   );
 

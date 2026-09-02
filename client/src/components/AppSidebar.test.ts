@@ -169,6 +169,30 @@ describe("AppSidebar", () => {
     expect(screen.queryByText("FIV / TE")).toBeNull();
   });
 
+  it("permite recolher os domínios da sidebar e persiste a escolha", () => {
+    render(h(AppSidebar, baseProps()));
+
+    fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
+    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+    expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
+    expect(localStorage.getItem("rionovo:sidebar:collapsedGroups")).toContain("pecuaria");
+
+    fireEvent.click(screen.getByRole("button", { name: "Recolher Financeiro" }));
+    expect(screen.queryByText("Visão geral")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Recolher Gestão" }));
+    expect(screen.queryByText("Compromissos")).toBeNull();
+  });
+
+  it("reabre o domínio recolhido quando a navegação entra nele", () => {
+    localStorage.setItem("rionovo:sidebar:collapsedGroups", JSON.stringify(["pecuaria"]));
+    const { rerender } = render(h(AppSidebar, baseProps({ current: "dashboard" as Tab })));
+    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+
+    rerender(h(AppSidebar, baseProps({ current: "reb-dashboard" as Tab })));
+    expect(screen.getByText("Hoje na pecuária")).toBeTruthy();
+  });
+
   it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
     const { rerender } = render(h(AppSidebar, baseProps()));
 
