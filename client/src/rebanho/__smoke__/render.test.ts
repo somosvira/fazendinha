@@ -33,19 +33,15 @@ describe("render smoke", () => {
       onAbrirBusca: () => {},
       propAtiva: null, onTrocarProp: () => {},
       user: { id: "u1", nome: "Marco", email: "marco@rio.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [] },
-      colapsada: false, onToggleColapsar: () => {}, onPreferencias: () => {}, onSair: () => {},
+      colapsada: false, onToggleColapsar: () => {}, onAcessos: () => {}, onSair: () => {},
     }));
     // Rotinas frequentes são diretas; somente recursos secundários ficam dobrados.
     expect(html).toContain("Acesso rápido");
-    expect(html).toContain("Gestão");
+    expect(html).toContain("Financeiro");
     expect(html).toContain("Terrano");           // marca no topo da sidebar
     expect(html).toContain("Pecuária");
-    expect(html).toContain("Hoje na pecuária");
-    expect(html).toContain("Reprodução");
-    expect(html).toContain("Controle leiteiro");
     expect(html).toContain("Agronomia");
     expect(html).toContain("Buscar");
-    expect(html).toContain(">IA<");
     expect(html).toContain("Configurações");     // único item do rodapé (hub)
     // Cadastros/Categorias/Caixinha/Acessos dobraram para dentro dos hubs
     // (Configurações/Gastos) — não são mais itens de topo da sidebar.

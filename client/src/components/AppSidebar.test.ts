@@ -69,7 +69,7 @@ function baseProps(overrides: Partial<{
   user: User;
   colapsada: boolean;
   onToggleColapsar: () => void;
-  onPreferencias: () => void;
+  onAcessos: () => void;
   onSair: () => void;
 }> = {}) {
   return {
@@ -77,7 +77,10 @@ function baseProps(overrides: Partial<{
     onNav: vi.fn(),
     financeiro: [
       { id: "dashboard" as Tab, label: "Dashboard" },
+      { id: "lancar" as Tab, label: "Operações" },
       { id: "gastos" as Tab, label: "Gastos" },
+      { id: "caixinha" as Tab, label: "Contas e extratos" },
+      { id: "cadastros" as Tab, label: "Configurações financeiras" },
     ],
     isAdmin: true,
     podeVerFolha: true,
@@ -90,13 +93,25 @@ function baseProps(overrides: Partial<{
     user: proprietario,
     colapsada: false,
     onToggleColapsar: vi.fn(),
-    onPreferencias: vi.fn(),
+    onAcessos: vi.fn(),
     onSair: vi.fn(),
     ...overrides,
   };
 }
 
 describe("AppSidebar", () => {
+  it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
+    render(h(AppSidebar, baseProps()));
+    expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expandir Agronomia" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expandir Equipe" })).toBeTruthy();
+    expect(screen.getByText("Visão geral")).toBeTruthy();
+    expect(screen.getByText("Operações")).toBeTruthy();
+    expect(screen.getByText("Compromissos")).toBeTruthy();
+    expect(screen.getByText("Contas e extratos")).toBeTruthy();
+    expect(screen.getByText("Configurações financeiras")).toBeTruthy();
+  });
+
   it("chama onNav com a Tab certa ao clicar num item", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
@@ -108,6 +123,7 @@ describe("AppSidebar", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
 
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     const reproducao = screen.getByText("Reprodução");
     fireEvent.click(reproducao);
     expect(props.onNav).toHaveBeenCalledWith("reb-reproducao");
@@ -123,6 +139,7 @@ describe("AppSidebar", () => {
     const props = baseProps({ areas: ["pecuaria"] });
     render(h(AppSidebar, props));
 
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByText("Controle leiteiro"));
     expect(props.onNav).toHaveBeenCalledWith("reb-producao");
   });
@@ -130,6 +147,7 @@ describe("AppSidebar", () => {
   it("reúne animais leiteiros e lotes coletivos na mesma área Pecuária", () => {
     render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     expect(screen.getByText("Animais")).toBeTruthy();
     expect(screen.getByText("Lotes coletivos")).toBeTruthy();
     expect(screen.getByText("Pesagens")).toBeTruthy();
@@ -139,6 +157,7 @@ describe("AppSidebar", () => {
   it("normaliza permissões antigas sem duplicar a área", () => {
     render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
     expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     expect(screen.getByText("Animais")).toBeTruthy();
     expect(screen.getByText("Lotes coletivos")).toBeTruthy();
   });
@@ -159,6 +178,7 @@ describe("AppSidebar", () => {
   it("mostra o módulo Equipe & Ponto quando podeVerFolha=true", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: true })));
     expect(screen.getByText("Equipe")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Equipe" }));
     expect(screen.getByText("Ponto")).toBeTruthy();
   });
 
@@ -172,6 +192,7 @@ describe("AppSidebar", () => {
 
   it("clicar em Mais opções alterna somente as rotinas menos frequentes", () => {
     render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     expect(screen.getByText("Reprodução")).toBeTruthy();
     expect(screen.queryByText("FIV / TE")).toBeNull();
 
@@ -185,20 +206,20 @@ describe("AppSidebar", () => {
   it("permite recolher os domínios da sidebar e persiste a escolha", () => {
     render(h(AppSidebar, baseProps()));
 
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
     expect(screen.queryByText("Hoje na pecuária")).toBeNull();
     expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
-    expect(localStorage.getItem("rionovo:sidebar:collapsedGroups")).toContain("pecuaria");
+    expect(localStorage.getItem("rionovo:sidebar:collapsedGroups:v2")).toContain("pecuaria");
 
     fireEvent.click(screen.getByRole("button", { name: "Recolher Financeiro" }));
     expect(screen.queryByText("Visão geral")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Recolher Gestão" }));
     expect(screen.queryByText("Compromissos")).toBeNull();
   });
 
   it("reabre o domínio recolhido quando a navegação entra nele", () => {
-    localStorage.setItem("rionovo:sidebar:collapsedGroups", JSON.stringify(["pecuaria"]));
+    localStorage.setItem("rionovo:sidebar:collapsedGroups:v2", JSON.stringify(["pecuaria"]));
     const { rerender } = render(h(AppSidebar, baseProps({ current: "dashboard" as Tab })));
     expect(screen.queryByText("Hoje na pecuária")).toBeNull();
 
@@ -209,6 +230,7 @@ describe("AppSidebar", () => {
   it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
     const { rerender } = render(h(AppSidebar, baseProps()));
 
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Agronomia" }));
     fireEvent.click(screen.getByText("Mais opções de agronomia"));
     expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
     expect(screen.getByText("Safras de milho")).toBeTruthy();
@@ -227,14 +249,16 @@ describe("AppSidebar", () => {
     expect(document.querySelector('[data-slot="sheet-content"]')).toBeTruthy();
   });
 
-  it("mantém usuário e recolhimento no rodapé da sidebar", async () => {
+  it("mantém o usuário no rodapé e o recolhimento junto à marca", async () => {
     const props = baseProps();
     render(h(AppSidebar, props));
     fireEvent.click(screen.getByLabelText("Recolher menu lateral"));
     expect(props.onToggleColapsar).toHaveBeenCalledTimes(1);
 
     fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
-    fireEvent.click(await screen.findByText("Preferências"));
-    expect(props.onPreferencias).toHaveBeenCalledTimes(1);
+    const acessos = await screen.findByText("Acessos");
+    expect(screen.queryByText("Preferências")).toBeNull();
+    fireEvent.click(acessos);
+    expect(props.onAcessos).toHaveBeenCalledTimes(1);
   });
 });

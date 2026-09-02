@@ -524,7 +524,7 @@ export function App() {
         user={effectiveUser}
         colapsada={sideColapsada}
         onToggleColapsar={toggleSidebar}
-        onPreferencias={() => setTab("config")}
+        onAcessos={() => setTab("acessos")}
         onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>

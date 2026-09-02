@@ -162,8 +162,8 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
 ];
 
 const STORAGE_KEY = "rionovo:sidebar:openExtras";
-const COLLAPSED_GROUPS_KEY = "rionovo:sidebar:collapsedGroups";
-type SidebarGroupId = AreaTrabalhoId | "financeiro" | "gestao";
+const COLLAPSED_GROUPS_KEY = "rionovo:sidebar:collapsedGroups:v2";
+type SidebarGroupId = AreaTrabalhoId | "financeiro";
 
 function areaExtraOfTab(tab: Tab): AreaTrabalhoId | null {
   return AREAS_TRABALHO.find((area) => area.extras?.some((item) => item.id === tab))?.id ?? null;
@@ -217,7 +217,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
         nested && "py-[7px] pl-8 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
-        featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)]",
+        featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)] min-[901px]:max-[1100px]:border-0 min-[901px]:max-[1100px]:bg-transparent [.side-collapsed_&]:border-0 [.side-collapsed_&]:bg-transparent",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
         isOn && RAIL_ACTIVE,
@@ -255,7 +255,7 @@ function SearchItem({ onClick }: { onClick: () => void }) {
   );
 }
 
-function UserMenu({ user, onPreferencias, onSair }: { user: User; onPreferencias: () => void; onSair?: () => void }) {
+function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => void; onSair?: () => void }) {
   const papel = user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome ?? "";
   return (
     <DropdownMenu>
@@ -268,7 +268,7 @@ function UserMenu({ user, onPreferencias, onSair }: { user: User; onPreferencias
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
         <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
-        <DropdownMenuItem onSelect={onPreferencias} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Preferências</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>
         {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -345,7 +345,7 @@ function MoreToggle({ label, isOpen, total, onToggle }: { label: string; isOpen:
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
-  user, colapsada, onToggleColapsar, onPreferencias, onSair,
+  user, colapsada, onToggleColapsar, onAcessos, onSair,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -357,7 +357,7 @@ export function AppSidebar({
   // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
   user: User; colapsada: boolean; onToggleColapsar: () => void;
-  onPreferencias: () => void; onSair?: () => void;
+  onAcessos: () => void; onSair?: () => void;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -372,10 +372,13 @@ export function AppSidebar({
   });
   const [collapsedGroups, setCollapsedGroups] = useState<Set<SidebarGroupId>>(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem(COLLAPSED_GROUPS_KEY) ?? "[]");
-      if (Array.isArray(stored)) return new Set(stored.filter((id): id is SidebarGroupId => id === "financeiro" || id === "gestao" || AREAS_TRABALHO.some((area) => area.id === id)));
+      const raw = localStorage.getItem(COLLAPSED_GROUPS_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw);
+        if (Array.isArray(stored)) return new Set(stored.filter((id): id is SidebarGroupId => id === "financeiro" || AREAS_TRABALHO.some((area) => area.id === id)));
+      }
     } catch { /* ignora SSR / storage inválido */ }
-    return new Set();
+    return new Set<SidebarGroupId>(["financeiro", ...AREAS_TRABALHO.map((area) => area.id)]);
   });
 
   // Se um deep-link cair numa opção secundária, abre o bloco certo para manter
@@ -413,8 +416,6 @@ export function AppSidebar({
   // mas não aparecem como áreas financeiras independentes.
   const DOBRADAS = new Set<Tab>(["plano"]);
   const itensFinanceiros = financeiro.filter((t) => !DOBRADAS.has(t.id));
-  const acessoRapido = itensFinanceiros.filter((t) => t.id === "dashboard" || t.id === "lancar");
-  const gestao = itensFinanceiros.filter((t) => t.id !== "dashboard" && t.id !== "lancar");
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
   const abrirBusca = () => { onMobileToggle(false); onAbrirBusca(); };
@@ -426,10 +427,8 @@ export function AppSidebar({
   });
 
   useEffect(() => {
-    const grupoAtivo: SidebarGroupId | null = acessoRapido.some((item) => item.id === current)
+    const grupoAtivo: SidebarGroupId | null = itensFinanceiros.some((item) => item.id === current) || current === "plano"
       ? "financeiro"
-      : gestao.some((item) => item.id === current) || current === "plano"
-      ? "gestao"
       : areasVisiveis.find((area) => area.principais.some((item) => item.id === current) || area.extras?.some((item) => item.id === current))?.id ?? null;
     if (grupoAtivo && collapsedGroups.has(grupoAtivo)) {
       setCollapsedGroups((atuais) => { const proximos = new Set(atuais); proximos.delete(grupoAtivo); return proximos; });
@@ -438,16 +437,22 @@ export function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cabeçalho da sidebar: marca Terrano + seletor de fazenda/sítio.
+  // Cabeçalho da sidebar: marca e controle do trilho; o contexto da fazenda
+  // fica em um bloco próprio depois do divisor.
   const sideHead = (
-    <div className="flex-none border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-      <div className="ah-brand flex items-center gap-2.5 px-1.5 pb-3 min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:justify-center [.side-collapsed_&]:px-0">
-        <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
-        <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>
-          Terrano
-        </span>
+    <div className="flex-none">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
+          <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
+          <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
+          <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="ml-auto hidden h-8 w-8 flex-none items-center justify-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:flex min-[901px]:max-[1100px]:ml-0 [.side-collapsed_&]:ml-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
+          </button>
+        </div>
       </div>
-      <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+      <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+        <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+      </div>
     </div>
   );
 
@@ -458,17 +463,19 @@ export function AppSidebar({
         <SearchItem onClick={abrirBusca} />
       </div>
 
-      {acessoRapido.length > 0 && (
+      {itensFinanceiros.length > 0 && (
         <div className="mt-4 flex flex-col gap-px">
           <GroupToggle label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
-          {!collapsedGroups.has("financeiro") && acessoRapido.map((t) => (
+          {!collapsedGroups.has("financeiro") && itensFinanceiros.map((t) => (
             <Item
               key={t.id}
               id={t.id}
-              label={t.id === "dashboard" ? "Visão geral" : "Operações"}
+              label={t.id === "dashboard" ? "Visão geral" : t.id === "lancar" ? "Operações" : t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
               current={current}
               onNav={nav}
+              chevron={t.id !== "dashboard" && t.id !== "lancar"}
               featured={t.id === "lancar"}
+              activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
             />
           ))}
         </div>
@@ -504,41 +511,17 @@ export function AppSidebar({
         );
       })}
 
-      {gestao.length > 0 && (
-        <div className="mt-4 flex flex-col gap-px">
-          <GroupToggle label="Gestão" isOpen={!collapsedGroups.has("gestao")} onToggle={() => toggleGroup("gestao")} />
-          {!collapsedGroups.has("gestao") && gestao.map((t) => (
-            <Item
-              key={t.id}
-              id={t.id}
-              label={t.id === "gastos" ? "Compromissos" : t.id === "caixinha" ? "Contas e extratos" : t.id === "cadastros" ? "Configurações financeiras" : t.label}
-              current={current}
-              onNav={nav}
-              chevron
-              activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
-            />
-          ))}
-        </div>
-      )}
-
+      <div className="mt-4 flex flex-col gap-px">
+        <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["acessos"] as Tab[]) : [])]} />
+      </div>
     </div>
   );
 
-  // Rodapé ancorado: um único item "Configurações" que abre o hub de setup/admin
-  // (Geral · Cadastros · Categorias · Acessos como sub-abas lá dentro). Fica ativo
-  // em qualquer uma dessas rotas dobradas.
+  // Rodapé ancorado: somente identidade e ações do usuário.
   const sideFoot = (
     <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
-        <Item
-          id="config" label="Configurações" current={current} onNav={nav} chevron
-          activeWhen={["plano", ...(isAdmin ? (["acessos"] as Tab[]) : [])]}
-        />
-        <button type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className={cn("hidden w-full items-center gap-3 rounded-[7px] px-2.5 py-[9px] text-left text-[13px] text-[var(--side-mute)] hover:bg-[rgba(232,220,196,0.06)] hover:text-mast-ink min-[901px]:flex", RAIL_ICON_BTN)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px] flex-none" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
-          <span className={cn("flex-1", RAIL_LABEL)}>{colapsada ? "Expandir sidebar" : "Recolher sidebar"}</span>
-        </button>
-        <UserMenu user={user} onPreferencias={onPreferencias} onSair={onSair} />
+        <UserMenu user={user} onAcessos={onAcessos} onSair={onSair} />
       </div>
     </div>
   );
