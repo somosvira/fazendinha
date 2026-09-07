@@ -139,14 +139,15 @@ export function passadaToTimeline(p: any): EventoTimeline {
 // a OperacaoForm do cliente reaproveitar direto na lista. Respeita
 // FechamentoMensal (regra do domínio): não registra em mês de caixa fechado.
 export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput): Promise<EventoTimeline> {
-  if (!(await prisma.talhao.findUnique({ where: { id: talhaoId }, select: { id: true } }))) {
+  const talhao = await prisma.talhao.findUnique({ where: { id: talhaoId }, select: { id: true, propriedadeId: true } });
+  if (!talhao) {
     throw new PlantioEventoError("NAO_ENCONTRADO", "talhão não encontrado");
   }
   const data = new Date(input.data);
-  const fechado = await prisma.fechamentoMensal.findUnique({
-    where: { ano_mes: { ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } },
-  });
-  if (fechado) throw new PlantioEventoError("MES_FECHADO", "mês fechado — operação não pode ser registrada");
+  const fechado = talhao.propriedadeId ? await prisma.periodoFinanceiro.findUnique({
+    where: { propriedadeId_ano_mes: { propriedadeId: talhao.propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } },
+  }) : null;
+  if (fechado?.status === "FECHADO") throw new PlantioEventoError("MES_FECHADO", "mês fechado — operação não pode ser registrada");
 
   const o = await prisma.operacaoAgricola.create({
     data: {

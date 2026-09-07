@@ -5,7 +5,7 @@
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
 import { useEffect, useState } from "react";
-import { ABAS, FLAGS, PAPEIS } from "../data/acessos";
+import { ABAS, AREAS, FLAGS, PAPEIS } from "../data/acessos";
 import {
   listarUsuarios,
   criarUsuario,
@@ -169,7 +169,7 @@ function PermissionEditor({
 }) {
   const applyPreset = (papelId: string) => {
     const preset = PAPEIS[papelId];
-    onChange({ ...user, papel: papelId, abas: [...preset.abas], flags: [...preset.flags] });
+    onChange({ ...user, papel: papelId, abas: [...preset.abas], areas: [...preset.areas], flags: [...preset.flags] });
   };
   const toggleAba = (id: string) => {
     const has = user.abas.includes(id);
@@ -178,6 +178,10 @@ function PermissionEditor({
   const toggleFlag = (id: string) => {
     const has = user.flags.includes(id);
     onChange({ ...user, flags: has ? user.flags.filter((f) => f !== id) : [...user.flags, id], papel: "personalizado" });
+  };
+  const toggleArea = (id: string) => {
+    const has = user.areas.includes(id);
+    onChange({ ...user, areas: has ? user.areas.filter((a) => a !== id) : [...user.areas, id], papel: "personalizado" });
   };
 
   const papelNome = user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome || "—";
@@ -220,6 +224,27 @@ function PermissionEditor({
         </div>
       ) : (
         <>
+          <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
+            <div className="mb-[14px] flex items-baseline justify-between">
+              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Áreas que pode acessar</span>
+              <span className="text-[12px] text-ink-3 tabular-nums">{user.areas.length} de {AREAS.length}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
+              {AREAS.map((area) => {
+                const on = user.areas.includes(area.id);
+                return (
+                  <button key={area.id} className={permRowClass(on)} onClick={() => toggleArea(area.id)}>
+                    <span className={permCheck} data-on={on}>{on && <span className="text-[11px] leading-none text-[color:var(--bg-card)]">✓</span>}</span>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <strong className="font-sans text-[14px] font-medium text-[color:var(--ink)]">{area.label}</strong>
+                      <small className="text-[12px] leading-[1.4] text-ink-3">{area.desc}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
               <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Papel</span>
@@ -339,7 +364,7 @@ export function Acessos() {
     // otimista: reflete na UI e persiste; em erro, avisa (a próxima carga corrige).
     setUsers((us) => us.map((u) => (u.id === next.id ? next : u)));
     try {
-      const salvo = await atualizarUsuario(next.id, { papel: next.papel, abas: next.abas, flags: next.flags });
+      const salvo = await atualizarUsuario(next.id, { papel: next.papel, abas: next.abas, areas: next.areas, flags: next.flags });
       setUsers((us) => us.map((u) => (u.id === salvo.id ? salvo : u)));
     } catch (e) {
       toast.error("Não foi possível salvar", e instanceof Error ? e.message : "");

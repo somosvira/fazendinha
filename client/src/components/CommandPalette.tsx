@@ -31,15 +31,14 @@ type Props = {
 };
 
 // Ordem fixa dos cabeçalhos de entidades reais (depois dos grupos de navegação).
-const ORDEM_GRUPO_ENTIDADE = ["Talhões", "Animais", "Lotes de corte", "Categorias", "Fornecedores"];
+const ORDEM_GRUPO_ENTIDADE = ["Talhões", "Animais", "Lotes coletivos", "Categorias", "Fornecedores"];
 
 // Ordem fixa das seções (cabeçalhos) no resultado.
 const ORDEM_GRUPO: GrupoComando[] = [
   "Ações",
   "Financeiro",
-  "Rebanho",
+  "Pecuária",
   "Plantio",
-  "Gado de corte",
   "Milho",
   "Administração",
 ];
@@ -47,9 +46,8 @@ const ORDEM_GRUPO: GrupoComando[] = [
 // Pontinho colorido por grupo (reusa as vars de atividade da paleta).
 const COR_GRUPO: Record<GrupoComando, string> = {
   Financeiro: "var(--info)",
-  Rebanho: "var(--leite)",
+  Pecuária: "var(--leite)",
   Plantio: "var(--outros)",
-  "Gado de corte": "var(--cafe-2)",
   Milho: "var(--outros)",
   Administração: "var(--ink-3)",
   Ações: "var(--leite-2)",

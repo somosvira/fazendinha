@@ -1,33 +1,47 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRotaWorklistRebanho,
+  parseOperacaoFinanceiraId,
   parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
 } from "./router";
 
-describe("roteamento do rebanho", () => {
-  it("usa /relatorios como rota canônica e mantém o endereço antigo compatível", () => {
-    expect(tabToPath("relatorio")).toBe("/relatorios");
+describe("roteamento da pecuária", () => {
+  it("reconhece o detalhe de uma operação financeira", () => {
+    expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");
+    expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBe(42);
+    expect(parseOperacaoFinanceiraId("/financeiro/operacoes")).toBeNull();
+  });
+  it("publica contas e extratos como uma área financeira própria", () => {
+    expect(tabToPath("caixinha")).toBe("/financeiro/contas");
+    expect(pathToTab("/financeiro/contas")).toBe("caixinha");
+    expect(pathToTab("/caixinha")).toBe("caixinha");
+  });
+  it("ancora relatórios no módulo financeiro e mantém endereços antigos compatíveis", () => {
+    expect(tabToPath("relatorio")).toBe("/financeiro/relatorios");
+    expect(pathToTab("/financeiro/relatorios")).toBe("relatorio");
     expect(pathToTab("/relatorios")).toBe("relatorio");
     expect(pathToTab("/relatorio")).toBe("relatorio");
   });
   it.each([
-    ["reb-dashboard", "/rebanho/dashboard"],
-    ["reb-reproducao", "/rebanho/reproducao"],
-    ["reb-acasalamento", "/rebanho/acasalamento"],
-    ["reb-sanidade", "/rebanho/sanidade"],
+    ["reb-dashboard", "/pecuaria/dashboard"],
+    ["reb-reproducao", "/pecuaria/reproducao"],
+    ["reb-acasalamento", "/pecuaria/acasalamento"],
+    ["reb-sanidade", "/pecuaria/sanidade"],
+    ["cor-lote", "/pecuaria/lotes"],
+    ["cor-pesagem", "/pecuaria/lotes/pesagens"],
   ] as const)("converte %s para o pathname canônico", (tab, path) => {
     expect(tabToPath(tab)).toBe(path);
     expect(pathToTab(path)).toBe(tab);
   });
 
   it.each([
-    ["secagem-atrasada", "/rebanho/reproducao?worklist=secagem-atrasada"],
-    ["vazia-pos-pev", "/rebanho/reproducao?worklist=vazia-pos-pev"],
-    ["dg-pendente", "/rebanho/reproducao?worklist=dg-pendente"],
-    ["parto-proximo", "/rebanho/reproducao?worklist=parto-proximo"],
-    ["ccs-alta", "/rebanho/sanidade?worklist=ccs-alta"],
+    ["secagem-atrasada", "/pecuaria/reproducao?worklist=secagem-atrasada"],
+    ["vazia-pos-pev", "/pecuaria/reproducao?worklist=vazia-pos-pev"],
+    ["dg-pendente", "/pecuaria/reproducao?worklist=dg-pendente"],
+    ["parto-proximo", "/pecuaria/reproducao?worklist=parto-proximo"],
+    ["ccs-alta", "/pecuaria/sanidade?worklist=ccs-alta"],
   ] as const)("monta e interpreta a worklist %s", (chave, url) => {
     expect(buildRotaWorklistRebanho(chave)).toBe(url);
     const parsed = new URL(url, "https://rio-novo.test");
@@ -42,6 +56,11 @@ describe("roteamento do rebanho", () => {
     expect(parseRotaWorklistRebanho("/rebanho/sanidade", "?worklist=dg-pendente")).toBeNull();
     expect(parseRotaWorklistRebanho("/rebanho/reproducao", "?worklist=ccs-alta")).toBeNull();
     expect(buildRotaWorklistRebanho("ccs-alta", "reproducao")).toBeNull();
+  });
+
+  it("mantém os endereços antigos de rebanho e corte como aliases", () => {
+    expect(pathToTab("/rebanho/reproducao")).toBe("reb-reproducao");
+    expect(pathToTab("/corte/lote")).toBe("cor-lote");
   });
 
   it("não confunde filtros financeiros com worklists do rebanho", () => {

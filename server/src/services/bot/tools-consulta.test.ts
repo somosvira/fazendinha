@@ -11,9 +11,9 @@ describe("toolsConsulta", () => {
 
   it("a description documenta o mapa entidade→campos e a proibição de calcular", () => {
     const fin = porNome.get("consulta_financeiro")!;
-    expect(fin.spec.function.description).toContain("ENTIDADE 'lancamento'");
+    expect(fin.spec.function.description).toContain("ENTIDADE 'transacao'");
     expect(fin.spec.function.description).toContain("NUNCA calcule");
-    expect(fin.spec.function.description).toContain("RAZÃO 'custoPorLitro'");
+    expect(fin.spec.function.description).toContain("ENTIDADE 'compromisso'");
   });
 
   it("o JSON Schema tem os enums do registro", () => {

@@ -23,7 +23,7 @@ function timingSafeMatch(a: string, b: string): boolean {
 // Dono sintético para a ponte da senha compartilhada (rollout). Acesso total.
 function donoSintetico(): UsuarioContexto {
   const preset = aplicarPreset("proprietario");
-  return { id: 0, nome: "Proprietário", email: "", papel: "proprietario", abas: preset.abas, flags: preset.flags, status: "ATIVO", dono: true };
+  return { id: 0, nome: "Proprietário", email: "", papel: "proprietario", abas: preset.abas, areas: preset.areas, flags: preset.flags, status: "ATIVO", dono: true };
 }
 
 export const authMiddleware: MiddlewareHandler = async (c, next) => {

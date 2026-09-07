@@ -24,6 +24,20 @@ const CATEGORIAS_POR_ESPECIE: Record<EspecieAnimal, { id: CategoriaAnimal; label
 
 const LABEL_ESPECIE: Record<RacaDTO["especie"], string> = { BOVINO: "Bovinos", CAPRINO: "Caprinos" };
 
+const MOTIVOS_BAIXA = [
+  "Venda",
+  "Abate",
+  "Descarte por fertilidade",
+  "Descarte por baixa produção",
+  "Descarte por mastite",
+  "Descarte por idade",
+  "Morte por doença",
+  "Morte no parto",
+  "Acidente",
+  "Doação / transferência",
+  "Outros",
+];
+
 export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; animal?: Animal; onFechar: () => void; onSalvo: () => void }) {
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
@@ -32,10 +46,11 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
   const [f, setF] = useState({
     numero: animal?.numero ?? "", nome: animal?.nome ?? "", sexo: animal?.sexo ?? "F",
     categoria: animal?.categoria ?? "NOVILHA",
+    finalidade: animal?.finalidade ?? "NAO_INFORMADA",
     dataNascimento: animal?.dataNascimento ?? "", dataEntrada: animal?.dataEntrada ?? "",
     brincoEletronico: animal?.brincoEletronico ?? "", grupoId: animal?.grupoId ?? "",
     racaId: "", fracaoSangue: "8/8", racaSecundariaId: "",
-    motivo: "",
+    motivo: MOTIVOS_BAIXA[0],
   });
 
   useEffect(() => {
@@ -83,7 +98,7 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
       else {
         const grauSangue = montarGrauSangue(f.fracaoSangue, racaPrimaria, racaSecundaria);
         const payload: any = {
-          numero: f.numero, nome: f.nome || undefined, sexo: f.sexo, categoria: f.categoria,
+          numero: f.numero, nome: f.nome || undefined, sexo: f.sexo, categoria: f.categoria, finalidade: f.finalidade,
           grauSangue: grauSangue ?? undefined,
           dataNascimento: f.dataNascimento || undefined, dataEntrada: f.dataEntrada,
           brincoEletronico: f.brincoEletronico || undefined,
@@ -112,7 +127,11 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
     >
       <>
         {modo === "baixa" ? (
-          <RebField label="Motivo da baixa"><input value={f.motivo} onChange={(e) => set("motivo", e.target.value)} placeholder="venda, morte, descarte…" /></RebField>
+          <RebField label="Motivo da baixa">
+            <RebSelect value={f.motivo} onChange={(v) => set("motivo", v)}>
+              {MOTIVOS_BAIXA.map((motivo) => <option key={motivo} value={motivo}>{motivo}</option>)}
+            </RebSelect>
+          </RebField>
         ) : (
           <>
             <RebField label="Número do animal*"><input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></RebField>
@@ -125,6 +144,15 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
                     {CATEGORIAS_POR_ESPECIE[esp].map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </optgroup>
                 ))}
+              </RebSelect>
+            </RebField>
+
+            <RebField label="Finalidade produtiva">
+              <RebSelect value={f.finalidade} onChange={(v) => set("finalidade", v)}>
+                <option value="NAO_INFORMADA">Não informada</option>
+                <option value="LEITE">Leite</option>
+                <option value="CORTE">Corte</option>
+                <option value="DUPLA_APTIDAO">Dupla aptidão</option>
               </RebSelect>
             </RebField>
 

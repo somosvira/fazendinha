@@ -69,9 +69,10 @@ export const animaisRouter = new Hono()
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c);
-      const patch: { grupoId?: number | null; setor?: string | null } = {};
+      const patch: { grupoId?: number | null; setor?: string | null; finalidade?: "LEITE" | "CORTE" | "DUPLA_APTIDAO" | "NAO_INFORMADA" } = {};
       if (input.grupoId !== undefined) patch.grupoId = input.grupoId;
       if (input.setor !== undefined) patch.setor = input.setor;
+      if (input.finalidade !== undefined) patch.finalidade = input.finalidade;
       return c.json(await svc.alterarColetivo(input.animalIds, patch, propriedadeId));
     } catch (e) { const { status, body } = handle(e); return c.json(body, status); }
   })

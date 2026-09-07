@@ -49,10 +49,11 @@ Convenções de leitura:
 - **Quando usar:** no topo de qualquer página financeira.
 - **Quando NÃO usar:** páginas embedadas (demo, print).
 
-### `.rb-side` (Sidebar do Rebanho)
+### `.rb-side` (legado visual do Rebanho)
 
 - **Path CSS:** `client/src/rebanho/styles/rebanho.css`
-- **Função:** sidebar fixa lateral com 9 itens do menu Rebanho.
+- **Função:** mantém tokens e estilos usados pelas telas do Rebanho; não é mais
+  a navegação global ativa.
 - **Width:** `var(--side-w)` (222px).
 - **Estado ativo:** classe `.navi.on` com border-left `--leite` e font-weight 600.
 
@@ -103,9 +104,20 @@ Convenções de leitura:
 ### `<AppSidebar>`
 
 - **Path:** `client/src/components/AppSidebar.tsx`
-- **Função:** sidebar global de navegação (financeiro + rebanho).
-- **Configuração:** lista `REBANHO_ITENS` define os itens.
-- **Permissão:** respeita `user.abas` (multi-tenant futuro).
+- **Função:** sidebar global organizada por áreas de trabalho, compartilhada no
+  desktop e no drawer mobile.
+- **Acesso rápido:** busca global visível, visão geral e novo lançamento quando
+  autorizados.
+- **Rotinas diretas:** Animais, Reprodução, Sanidade, Controle leiteiro,
+  Nutrição, Lotes coletivos, Pesagens e Agronomia ficam em um clique. Leite e
+  corte não são áreas diferentes: pertencem à única área **Pecuária**.
+- **Rotinas secundárias:** itens menos frequentes ficam em “Mais opções”; o
+  bloco abre automaticamente quando uma rota secundária está ativa e persiste
+  a preferência no `localStorage`.
+- **Permissão:** filtra as áreas usando `user.areas` e protege Equipe/Folha com
+  `podeVerFolha`; `pecuaria` é a permissão canônica e as antigas `rebanho` e
+  `gado_corte` são normalizadas por compatibilidade. As rotas continuam
+  validadas pelo gate de `App.tsx`.
 
 ---
 

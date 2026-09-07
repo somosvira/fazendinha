@@ -1,14 +1,14 @@
 import type { Animal, ResumoAnimal } from "../types";
 
 export const animais: Animal[] = [
-  { id: "1234", numero: "1234", nome: "Jurema", sexo: "F", categoria: "VACA", raca: "Girolando 5/8", dataNascimento: "2020-03-12", dataEntrada: "2020-03-12", brincoEletronico: "982000123456789", maeId: "0871", paiNome: "Lance 612", grupoAtual: "Alta Produção", setor: "Galpão 2", ativo: true },
-  { id: "1188", numero: "1188", nome: "Aurora", sexo: "F", categoria: "VACA", raca: "Girolando 1/2", dataNascimento: "2021-06-02", dataEntrada: "2021-06-02", grupoAtual: "Alta Produção", ativo: true },
-  { id: "0942", numero: "0942", nome: "Bonita", sexo: "F", categoria: "VACA", raca: "Holandês", dataNascimento: "2020-09-18", dataEntrada: "2020-09-18", grupoAtual: "Média Produção", ativo: true },
-  { id: "1305", numero: "1305", nome: "Cravina", sexo: "F", categoria: "VACA", raca: "Girolando 3/4", dataNascimento: "2021-01-05", dataEntrada: "2021-01-05", grupoAtual: "Média Produção", ativo: true },
-  { id: "0877", numero: "0877", nome: "Dália", sexo: "F", categoria: "VACA", raca: "Girolando 5/8", dataNascimento: "2020-04-22", dataEntrada: "2020-04-22", grupoAtual: "Alta Produção", ativo: true },
-  { id: "1421", numero: "1421", nome: "Estrela", sexo: "F", categoria: "VACA", raca: "Holandês", dataNascimento: "2021-08-30", dataEntrada: "2021-08-30", grupoAtual: "Média Produção", ativo: true },
-  { id: "0871", numero: "0871", nome: "Jandira", sexo: "F", categoria: "VACA", raca: "Girolando 5/8", dataNascimento: "2018-02-10", dataEntrada: "2018-02-10", grupoAtual: "Alta Produção", ativo: true },
-  { id: "1442", numero: "1442", nome: "Bezerra 1442", sexo: "F", categoria: "BEZERRA", raca: "Girolando 9/16", dataNascimento: "2026-01-22", dataEntrada: "2026-01-22", maeId: "1234", paiNome: "Lance 884", grupoAtual: "Bezerreiro", ativo: true },
+  { id: "1234", numero: "1234", nome: "Jurema", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Girolando 5/8", dataNascimento: "2020-03-12", dataEntrada: "2020-03-12", brincoEletronico: "982000123456789", maeId: "0871", paiNome: "Lance 612", grupoAtual: "Alta Produção", setor: "Galpão 2", ativo: true },
+  { id: "1188", numero: "1188", nome: "Aurora", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Girolando 1/2", dataNascimento: "2021-06-02", dataEntrada: "2021-06-02", grupoAtual: "Alta Produção", ativo: true },
+  { id: "0942", numero: "0942", nome: "Bonita", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Holandês", dataNascimento: "2020-09-18", dataEntrada: "2020-09-18", grupoAtual: "Média Produção", ativo: true },
+  { id: "1305", numero: "1305", nome: "Cravina", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Girolando 3/4", dataNascimento: "2021-01-05", dataEntrada: "2021-01-05", grupoAtual: "Média Produção", ativo: true },
+  { id: "0877", numero: "0877", nome: "Dália", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Girolando 5/8", dataNascimento: "2020-04-22", dataEntrada: "2020-04-22", grupoAtual: "Alta Produção", ativo: true },
+  { id: "1421", numero: "1421", nome: "Estrela", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Holandês", dataNascimento: "2021-08-30", dataEntrada: "2021-08-30", grupoAtual: "Média Produção", ativo: true },
+  { id: "0871", numero: "0871", nome: "Jandira", sexo: "F", categoria: "VACA", finalidade: "LEITE", raca: "Girolando 5/8", dataNascimento: "2018-02-10", dataEntrada: "2018-02-10", grupoAtual: "Alta Produção", ativo: true },
+  { id: "1442", numero: "1442", nome: "Bezerra 1442", sexo: "F", categoria: "BEZERRA", finalidade: "LEITE", raca: "Girolando 9/16", dataNascimento: "2026-01-22", dataEntrada: "2026-01-22", maeId: "1234", paiNome: "Lance 884", grupoAtual: "Bezerreiro", ativo: true },
 ];
 
 export const resumos: ResumoAnimal[] = [

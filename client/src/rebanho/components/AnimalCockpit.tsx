@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useAnimal, useTimeline, useConfig, useAnimalInsights } from "../api";
+import { useAnimal, useTimeline, useConfig, useAnimalInsights, excluirEventoSanidade } from "../api";
 import { idadeMeses } from "../lib/derive";
 import { HOJE } from "../HOJE";
 import { Timeline } from "./Timeline";
@@ -20,7 +20,7 @@ import {
   ScoreBadge, RentabilidadeKpi, Tendencias, Insights, Percentis,
   ProducaoFinanceira, EficienciaGauge, Projecoes, Genealogia,
 } from "./animal-cockpit/InsightsPanel";
-import type { Animal } from "../types";
+import type { Animal, EventoTimeline } from "../types";
 import { AnimalIdentity } from "./AnimalIdentity";
 
 function fmtPrevSecagem(iso?: string | null) {
@@ -84,6 +84,9 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const { data: insights, recarregar: recarregarInsights } = useAnimalInsights(animalId);
   const [registrando, setRegistrando] = useState(false);
   const [registrandoControle, setRegistrandoControle] = useState(false);
+  const [eventoEditando, setEventoEditando] = useState<EventoTimeline | null>(null);
+  const [excluindoEventoId, setExcluindoEventoId] = useState<string | null>(null);
+  const [erroTimeline, setErroTimeline] = useState<string | null>(null);
   // Destaque visual da Linha do tempo: id do evento recém-criado + token que reinicia
   // a animação a cada novo registro (incrementa quando salva pela ficha; sincroniza com
   // o prop externo quando o registro vem da lista de Reprodução/Sanidade).
@@ -93,6 +96,14 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
   const tanque = modo === "TANQUE_LOTE";
 
   const recarregarTudo = () => { recarregar(); recarregarEventos(); recarregarInsights(); };
+  const excluirEventoDaTimeline = async (evento: EventoTimeline) => {
+    if (!window.confirm(`Excluir “${evento.titulo}”? Se houver baixa automática, a quantidade será devolvida ao estoque.`)) return;
+    setExcluindoEventoId(evento.id);
+    setErroTimeline(null);
+    try { await excluirEventoSanidade(evento.id); recarregarTudo(); }
+    catch (e: any) { setErroTimeline(e.message ?? "Não foi possível excluir o evento."); }
+    finally { setExcluindoEventoId(null); }
+  };
 
   // Quando chega flash de fora (registro vindo da aba Reprodução/Sanidade), espelha local
   // e dispara nova rodada da animação trocando o key do wrapper da timeline.
@@ -235,9 +246,10 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
           <div key={flashTick} className={"rb-tl-card" + (flashLocalId ? " rb-tl-card-flash" : "")}>
             <h3 className="mb-3 font-serif text-xl font-medium">Linha do tempo</h3>
             <p className="mb-4 mt-0 text-sm text-ink-3">Reprodução, sanidade, nutrição e produção — interpretadas pelo sistema.</p>
+            {erroTimeline && <p role="alert" className="mb-3 text-sm text-prejuizo">{erroTimeline}</p>}
             {eventos.length === 0
               ? <div className="rounded-[10px] border border-dashed border-[color:var(--rule)] bg-[color:var(--bg-card-2)] p-[22px] text-sm text-ink-3">Nenhum lançamento ainda. Registre o primeiro evento reprodutivo.</div>
-              : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} flashEventoId={flashLocalId} />}
+              : <Timeline eventos={eventos} interpretacao={insights?.timelineInterpretacao} flashEventoId={flashLocalId} onEditar={setEventoEditando} onExcluir={excluindoEventoId ? undefined : excluirEventoDaTimeline} />}
           </div>
 
           {insights && <Tendencias tendencias={insights.tendencias} />}
@@ -248,7 +260,8 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
               <h4 className="mb-[11px] mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Estado atual</h4>
               <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Grupo / lote</span><b>{a.grupoNome ?? "—"}</b></div>
               <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Dieta</span><b>{a.dietaNome ?? "—"}</b></div>
-              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Setor</span><b>{a.setor ?? "—"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Finalidade</span><b>{a.finalidade === "DUPLA_APTIDAO" ? "Dupla aptidão" : a.finalidade === "NAO_INFORMADA" ? "Não informada" : a.finalidade === "LEITE" ? "Leite" : "Corte"}</b></div>
+              <div className="flex justify-between border-b border-dashed border-[color:var(--rule-soft)] py-[5px] text-sm [&_b]:font-semibold"><span>Localização</span><b>{a.setor ?? "—"}</b></div>
               <div className="flex justify-between py-[5px] text-sm [&_b]:font-semibold"><span>Status reprod.</span><b>{r?.statusReprodutivo ?? "—"}</b></div>
               {tanque && <p className="mb-0 mt-2 text-sm text-ink-3">Produção estimada por rateio do lote.</p>}
             </div>
@@ -269,6 +282,7 @@ export function AnimalCockpit({ animalId, onVoltar, onAbrirAnimal, onEditar, onB
       </div>
 
       {registrando && <EventoForm animalId={animalId} animal={a} onFechar={() => setRegistrando(false)} onSalvo={(evento) => { setRegistrando(false); recarregarTudo(); if (evento?.id) { setFlashLocalId(evento.id); setFlashTick((n) => n + 1); } }} />}
+      {eventoEditando && <EventoForm animalId={animalId} animal={a} dominioFixo="sanidade" eventoEdicao={eventoEditando} onFechar={() => setEventoEditando(null)} onSalvo={(evento) => { setEventoEditando(null); recarregarTudo(); if (evento?.id) { setFlashLocalId(evento.id); setFlashTick((n) => n + 1); } }} />}
       {registrandoControle && <ControleForm animalId={animalId} modo={modo} onFechar={() => setRegistrandoControle(false)} onSalvo={() => { setRegistrandoControle(false); recarregarTudo(); }} />}
     </RebMain>
   );

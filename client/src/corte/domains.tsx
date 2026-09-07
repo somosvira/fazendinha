@@ -22,8 +22,8 @@ const pill = (txt: string, tom?: "warn" | "bad") =>
 
 // LOTE (visão geral) -----------------------------------------------------
 export const lote: DomainConfig = {
-  titulo: "Lote",
-  eyebrow: "Corte · Rio Novo",
+  titulo: "Lotes coletivos",
+  eyebrow: "Pecuária · Lotes coletivos",
   kpis: (rs, ls) => {
     const total = ls.reduce((a, l) => a + l.numCabecas, 0);
     const matrizes = ls.filter((l) => l.categoria === "VACA_MATRIZ").reduce((a, l) => a + l.numCabecas, 0);
@@ -50,7 +50,7 @@ export const lote: DomainConfig = {
 // PESAGEM ---------------------------------------------------------------
 export const pesagem: DomainConfig = {
   titulo: "Pesagem & ganho",
-  eyebrow: "Corte · Rio Novo",
+  eyebrow: "Pecuária · Lotes coletivos",
   kpis: (rs, ls) => {
     const lotesComGmd = rs.filter((r) => (r.gmd ?? 0) > 0);
     const gmdMedio = lotesComGmd.length
@@ -88,7 +88,7 @@ export const pesagem: DomainConfig = {
 // SANIDADE --------------------------------------------------------------
 export const sanidade: DomainConfig = {
   titulo: "Sanidade",
-  eyebrow: "Corte · Rio Novo",
+  eyebrow: "Pecuária · Lotes coletivos",
   kpis: (rs, ls) => {
     const mortAlta = mortalidadeAlta(rs).length;
     const vacPend = vacinaPendente(rs, HOJE).length;
@@ -116,7 +116,7 @@ export const sanidade: DomainConfig = {
 // COMERCIAL -------------------------------------------------------------
 export const comercial: DomainConfig = {
   titulo: "Comercial",
-  eyebrow: "Corte · Rio Novo",
+  eyebrow: "Pecuária · Lotes coletivos",
   kpis: (rs, ls) => {
     const prontos = ls.filter((l) => {
       const r = rs.find((x) => x.loteId === l.id);
@@ -155,7 +155,7 @@ export const comercial: DomainConfig = {
 // NUTRIÇÃO / PASTO -------------------------------------------------------
 export const nutricao: DomainConfig = {
   titulo: "Nutrição & Pasto",
-  eyebrow: "Corte · Rio Novo",
+  eyebrow: "Pecuária · Lotes coletivos",
   kpis: (rs, ls) => {
     const uaTotal = ls.reduce((a, l) => {
       const r = rs.find((x) => x.loteId === l.id);

@@ -105,7 +105,7 @@ function Produtos() {
   );
 }
 
-function Fornecedores() {
+export function Fornecedores() {
   const [tipo, setTipo] = useState<string>("");
   const [q, setQ] = useState("");
   const { data, loading, erro, recarregar } = useFornecedores({ tipo: tipo || undefined, q: q || undefined });

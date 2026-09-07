@@ -15,6 +15,12 @@ export const CHAVES_CAMPO_FORMULARIO = [
   "crias_natimortas",
   "sexo_cria",
   "observacao",
+  "peso_1",
+  "peso_2",
+  "peso_3",
+  "peso_total",
+  "peso_corporal",
+  "vacina",
 ] as const;
 
 export type ChaveCampoFormulario = (typeof CHAVES_CAMPO_FORMULARIO)[number];
@@ -30,7 +36,7 @@ export interface CampoFormularioDTO {
   rotulo: string;
   tipoUi: TipoUiCampoFormulario;
   obrigatorio: boolean;
-  eventoAlvo: TipoEventoRelatorio;
+  eventoAlvo: TipoEventoRelatorio | "CONTROLE_LEITEIRO" | "PESAGEM_CORPORAL" | "VACINA";
   opcoes?: readonly OpcaoCampoFormulario[];
 }
 
@@ -119,6 +125,10 @@ const CAMPO_POR_CHAVE: Record<ChaveCampoFormulario, CampoFormularioDTO> = {
       { valor: "M", rotulo: "Macho" },
       { valor: "FM", rotulo: "Fêmea / macho" },
       { valor: "MF", rotulo: "Macho / fêmea" },
+      { valor: "FFF", rotulo: "3 fêmeas" },
+      { valor: "FFM", rotulo: "2 fêmeas / 1 macho" },
+      { valor: "FMM", rotulo: "1 fêmea / 2 machos" },
+      { valor: "MMM", rotulo: "3 machos" },
     ],
   },
   observacao: {
@@ -128,6 +138,12 @@ const CAMPO_POR_CHAVE: Record<ChaveCampoFormulario, CampoFormularioDTO> = {
     obrigatorio: false,
     eventoAlvo: "DIAGNOSTICO",
   },
+  peso_1: { chave: "peso_1", rotulo: "1ª ordenha (L)", tipoUi: "numero", obrigatorio: false, eventoAlvo: "CONTROLE_LEITEIRO" },
+  peso_2: { chave: "peso_2", rotulo: "2ª ordenha (L)", tipoUi: "numero", obrigatorio: false, eventoAlvo: "CONTROLE_LEITEIRO" },
+  peso_3: { chave: "peso_3", rotulo: "3ª ordenha (L)", tipoUi: "numero", obrigatorio: false, eventoAlvo: "CONTROLE_LEITEIRO" },
+  peso_total: { chave: "peso_total", rotulo: "Total do dia (L)", tipoUi: "numero", obrigatorio: false, eventoAlvo: "CONTROLE_LEITEIRO" },
+  peso_corporal: { chave: "peso_corporal", rotulo: "Peso corporal (kg)", tipoUi: "numero", obrigatorio: true, eventoAlvo: "PESAGEM_CORPORAL" },
+  vacina: { chave: "vacina", rotulo: "Vacina", tipoUi: "texto", obrigatorio: true, eventoAlvo: "VACINA" },
 };
 
 const CAMPOS_DG: readonly ChaveCampoFormulario[] = [
@@ -153,6 +169,9 @@ const CAMPOS_POR_TEMPLATE: Partial<Record<IdTemplateRelatorio, readonly ChaveCam
   "cobertura-periodo": CAMPOS_DG,
   "te-periodo": CAMPOS_DG,
   "partos-previstos": CAMPOS_PARTO,
+  "controle-leiteiro-lote": ["data_evento", "peso_1", "peso_2", "peso_3", "peso_total", "observacao"],
+  "pesagem-corporal-lote": ["data_evento", "peso_corporal", "observacao"],
+  "vacinacao-lote": ["data_evento", "vacina", "observacao"],
 };
 
 export function obterCampoFormulario(chave: string): CampoFormularioDTO {
@@ -175,7 +194,10 @@ export function camposParaTemplate(templateId: IdTemplateRelatorio): CampoFormul
   return (CAMPOS_POR_TEMPLATE[templateId] ?? []).map(obterCampoFormulario).map((campo) => ({
     ...campo,
     // Campos compartilhados assumem o alvo operacional do template.
-    eventoAlvo: templateId === "partos-previstos" ? "PARTO" : "DIAGNOSTICO",
+    eventoAlvo: templateId === "partos-previstos" ? "PARTO"
+      : templateId === "controle-leiteiro-lote" ? "CONTROLE_LEITEIRO"
+      : templateId === "pesagem-corporal-lote" ? "PESAGEM_CORPORAL"
+      : templateId === "vacinacao-lote" ? "VACINA" : "DIAGNOSTICO",
   }));
 }
 
@@ -194,7 +216,7 @@ const respostasPartoSchema = z.object({
   num_crias: z.coerce.number().int().min(0).max(3),
   crias_vivas: z.coerce.number().int().min(0).max(3),
   crias_natimortas: z.coerce.number().int().min(0).max(3),
-  sexo_cria: z.enum(["F", "M", "FM", "MF"]).optional(),
+  sexo_cria: z.string().regex(/^[FM]{1,3}$/).optional(),
   observacao: z.string().trim().max(200).optional(),
 });
 
@@ -202,10 +224,39 @@ function respostasInvalidas(): never {
   throw new Error("respostas inválidas para o formulário");
 }
 
+export type ResultadoOperacionalFormulario =
+  | { tipo: "CONTROLE_LEITEIRO"; data: string; peso1?: number; peso2?: number; peso3?: number; pesoTotal?: number; observacao?: string }
+  | { tipo: "PESAGEM_CORPORAL"; data: string; peso: number }
+  | { tipo: "VACINA"; data: string; produto: string; observacao?: string };
+
+const numeroPositivo = z.coerce.number().positive().max(9999.99);
+export function mapearRespostasOperacionais(templateId: IdTemplateRelatorio, respostas: Record<string, unknown>): ResultadoOperacionalFormulario | null {
+  if (templateId === "controle-leiteiro-lote") {
+    const parse = z.object({ data_evento: isoDate, peso_1: numeroPositivo.optional(), peso_2: numeroPositivo.optional(), peso_3: numeroPositivo.optional(), peso_total: numeroPositivo.optional(), observacao: z.string().trim().max(200).optional() })
+      .refine((v) => [v.peso_1, v.peso_2, v.peso_3, v.peso_total].some((v) => v != null), "informe ao menos uma ordenha ou o total")
+      .safeParse(respostas);
+    if (!parse.success) return respostasInvalidas();
+    const v = parse.data;
+    return { tipo: "CONTROLE_LEITEIRO", data: v.data_evento, ...(v.peso_1 ? { peso1: v.peso_1 } : {}), ...(v.peso_2 ? { peso2: v.peso_2 } : {}), ...(v.peso_3 ? { peso3: v.peso_3 } : {}), ...(v.peso_total ? { pesoTotal: v.peso_total } : {}), ...(v.observacao ? { observacao: v.observacao } : {}) };
+  }
+  if (templateId === "pesagem-corporal-lote") {
+    const parse = z.object({ data_evento: isoDate, peso_corporal: numeroPositivo }).safeParse(respostas);
+    if (!parse.success) return respostasInvalidas();
+    return { tipo: "PESAGEM_CORPORAL", data: parse.data.data_evento, peso: parse.data.peso_corporal };
+  }
+  if (templateId === "vacinacao-lote") {
+    const parse = z.object({ data_evento: isoDate, vacina: z.string().trim().min(1).max(60), observacao: z.string().trim().max(200).optional() }).safeParse(respostas);
+    if (!parse.success) return respostasInvalidas();
+    return { tipo: "VACINA", data: parse.data.data_evento, produto: parse.data.vacina, ...(parse.data.observacao ? { observacao: parse.data.observacao } : {}) };
+  }
+  return null;
+}
+
 export function mapearRespostasParaEvento(
   templateId: IdTemplateRelatorio,
   respostas: Record<string, unknown>,
 ): CriarEventoInput {
+  if (mapearRespostasOperacionais(templateId, respostas)) return respostasInvalidas();
   if (templateId === "partos-previstos") {
     const parse = respostasPartoSchema.safeParse(respostas);
     if (!parse.success) return respostasInvalidas();

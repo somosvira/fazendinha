@@ -98,9 +98,9 @@ async function montarPool(propriedadeId: number | null): Promise<{
   const desde12m = new Date(hoje); desde12m.setMonth(hoje.getMonth() - 12);
   const escopoSanidade = propriedadeId == null ? {} : { animal: { propriedadeId } };
   const [lancsMedic, totalAplicsGlob, aplicsPorAnimal] = await Promise.all([
-    prisma.lancamento.findMany({
-      where: { situacao: "LIQUIDADO", natureza: "DEBITO", dataLiquidacao: { not: null, gte: desde12m }, categoria: { nome: "Medicamento Animal" } },
-      select: { valor: true },
+    prisma.transacaoFinanceira.findMany({
+      where: { status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m }, operacao: { categoria: { nome: "Medicamento Animal" } }, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      select: { valorTotal: true },
     }),
     prisma.eventoSanitario.count({ where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m }, ...escopoSanidade } }),
     prisma.eventoSanitario.groupBy({
@@ -109,7 +109,7 @@ async function montarPool(propriedadeId: number | null): Promise<{
       _count: { _all: true },
     }),
   ]);
-  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valor), 0);
+  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valorTotal), 0);
   const custoPorAplic = totalAplicsGlob > 0 ? totalMedic / totalAplicsGlob : 0;
   const aplicsMap = new Map<number, number>();
   for (const g of aplicsPorAnimal) if (g.animalId != null) aplicsMap.set(g.animalId, g._count._all);

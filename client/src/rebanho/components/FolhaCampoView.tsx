@@ -50,10 +50,13 @@ function valorSistema(linha: LinhaFolhaCampoDTO, chave: string) {
 
 function linhaResolvida(edicao: EdicaoLinha, campos: CampoFormularioCampoDTO[]) {
   if (edicao.status === "NAO_REALIZADO") return edicao.motivoNaoRealizado.trim().length > 0;
-  return campos.filter((campo) => campo.obrigatorio).every((campo) => {
+  const obrigatorios = campos.filter((campo) => campo.obrigatorio).every((campo) => {
     const valor = edicao.respostas[campo.chave];
     return valor !== undefined && valor !== null && String(valor).trim() !== "";
   });
+  const camposLeite = campos.filter((campo) => ["peso_1", "peso_2", "peso_3", "peso_total"].includes(campo.chave));
+  const temLeite = !camposLeite.length || camposLeite.some((campo) => String(edicao.respostas[campo.chave] ?? "").trim() !== "");
+  return obrigatorios && temLeite;
 }
 
 export function FolhaCampoView({

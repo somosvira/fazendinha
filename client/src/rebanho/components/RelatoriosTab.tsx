@@ -16,6 +16,7 @@ import {
   type ResultadoRelatorioRebanhoDTO,
   type TemplateRelatorioRebanhoDTO,
   type FolhaCampoDTO,
+  type FiltroColunaRelatorioRebanho,
 } from "../api";
 import { RebHeader } from "./RebHeader";
 import { RelatorioResultado } from "./RelatorioResultado";
@@ -55,9 +56,11 @@ export function RelatoriosTab({
   const [grupoId, setGrupoId] = useState("");
   const [setor, setSetor] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [animal, setAnimal] = useState("");
   const [reprodutor, setReprodutor] = useState("");
   const [protocolo, setProtocolo] = useState("");
   const [resultado, setResultado] = useState("");
+  const [filtrosColunas, setFiltrosColunas] = useState<Record<string, { minimo: string; maximo: string; valor: string }>>({});
   const [colunasVisiveis, setColunasVisiveis] = useState<string[]>([]);
   const grupos = useGrupos();
   const setores = useSetores();
@@ -74,11 +77,21 @@ export function RelatoriosTab({
   useEffect(() => { if (filtrosAplicados) relatorio.recarregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [refreshToken]);
 
   const template = templates.find((t) => t.id === templateId);
-  const exigePeriodo = templateId !== "gestantes-atual";
+  const exigePeriodo = !["gestantes-atual", "controle-leiteiro-lote", "pesagem-corporal-lote", "vacinacao-lote"].includes(templateId);
   const fases = useMemo(() => Array.from(new Set(templates.map((t) => t.fase))), [templates]);
+
+  function atualizarFiltro(chave: string, campo: "minimo" | "maximo" | "valor", valor: string) {
+    setFiltrosColunas((atuais) => ({ ...atuais, [chave]: { ...(atuais[chave] ?? { minimo: "", maximo: "", valor: "" }), [campo]: valor } }));
+  }
 
   function gerar() {
     setColunasVisiveis([]);
+    const filtrosAtivos = (template?.colunas ?? []).reduce<FiltroColunaRelatorioRebanho[]>((ativos, coluna) => {
+      const filtro = filtrosColunas[coluna.chave];
+      if (coluna.tipo === "texto" && filtro?.valor.trim()) ativos.push({ chave: coluna.chave, tipo: coluna.tipo, valor: filtro.valor.trim() });
+      if (coluna.tipo !== "texto" && (filtro?.minimo || filtro?.maximo)) ativos.push({ chave: coluna.chave, tipo: coluna.tipo, ...(filtro.minimo ? { minimo: filtro.minimo } : {}), ...(filtro.maximo ? { maximo: filtro.maximo } : {}) });
+      return ativos;
+    }, []);
     setFiltrosAplicados({
       templateId,
       ...(exigePeriodo ? { dataInicio: isoLocal(range.start), dataFim: isoLocal(range.end) } : {}),
@@ -86,9 +99,11 @@ export function RelatoriosTab({
       ...(grupoId ? { grupoId: Number(grupoId) } : {}),
       ...(setor ? { setor } : {}),
       ...(categoria ? { categoria } : {}),
+      ...(animal.trim() ? { animal: animal.trim() } : {}),
       ...(reprodutor.trim() ? { reprodutor: reprodutor.trim() } : {}),
       ...(protocolo.trim() ? { protocolo: protocolo.trim() } : {}),
       ...(resultado ? { resultado: resultado as "positivo" | "negativo" } : {}),
+      ...(filtrosAtivos.length ? { filtrosColunas: JSON.stringify(filtrosAtivos) } : {}),
     });
   }
 
@@ -126,19 +141,31 @@ export function RelatoriosTab({
       <RebBox className="p-5">
         <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 xl:grid-cols-4">
           <RebField label="Modelo de relatório" className="md:col-span-2">
-            <select aria-label="Modelo de relatório" value={templateId} onChange={(e) => setTemplateId(e.target.value as FiltrosRelatorioRebanho["templateId"])}>
+            <select aria-label="Modelo de relatório" value={templateId} onChange={(e) => { setTemplateId(e.target.value as FiltrosRelatorioRebanho["templateId"]); setFiltrosColunas({}); }}>
               {fases.map((fase) => <optgroup key={fase} label={fase}>{templates.filter((t) => t.fase === fase).map((t) => <option key={t.id} value={t.id}>{t.titulo}</option>)}</optgroup>)}
               {!templates.length && <option value="ia-periodo">Inseminações no período</option>}
             </select>
           </RebField>
           <RebField label="Situação do animal"><select value={status} onChange={(e) => setStatus(e.target.value as FiltrosRelatorioRebanho["status"])}><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todos</option></select></RebField>
           <RebField label="Categoria"><select value={categoria} onChange={(e) => setCategoria(e.target.value)}>{CATEGORIAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></RebField>
+          <RebField label="Animal"><input aria-label="Animal" value={animal} onChange={(e) => setAnimal(e.target.value)} placeholder="Número ou nome" /></RebField>
           <RebField label="Grupo"><select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}><option value="">Todos os grupos</option>{grupos.data.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</select></RebField>
           <RebField label="Setor"><select value={setor} onChange={(e) => setSetor(e.target.value)}><option value="">Todos os setores</option>{setores.data.map((s) => <option key={s} value={s}>{s}</option>)}</select></RebField>
           {template?.filtrosEspecificos.includes("reprodutor") && <RebField label="Touro ou sêmen"><input aria-label="Touro ou sêmen" value={reprodutor} onChange={(e) => setReprodutor(e.target.value)} placeholder="Nome ou código" /></RebField>}
           {template?.filtrosEspecificos.includes("protocolo") && <RebField label="Protocolo"><input aria-label="Protocolo" value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex.: IATF 11d" /></RebField>}
           {template?.filtrosEspecificos.includes("resultado") && <RebField label="Resultado"><select value={resultado} onChange={(e) => setResultado(e.target.value)}><option value="">Todos</option><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></RebField>}
         </div>
+        {!!template?.colunas?.length && <fieldset className="mb-4 border-t border-line pt-4">
+          <legend className="pr-3 font-serif text-sm font-medium italic text-ink-3">Delimitar por parâmetros</legend>
+          <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 xl:grid-cols-4">
+            {(template.colunas ?? []).map((coluna) => coluna.tipo === "texto" ? <RebField key={coluna.chave} label={coluna.rotulo}>
+              <input aria-label={`Filtrar ${coluna.rotulo}`} value={filtrosColunas[coluna.chave]?.valor ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "valor", e.target.value)} placeholder="Contém..." />
+            </RebField> : <div key={coluna.chave} className="grid grid-cols-2 gap-2">
+              <RebField label={`${coluna.rotulo} — mínimo`}><input type={coluna.tipo === "data" ? "date" : "number"} aria-label={`${coluna.rotulo} mínimo`} value={filtrosColunas[coluna.chave]?.minimo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "minimo", e.target.value)} /></RebField>
+              <RebField label={`${coluna.rotulo} — máximo`}><input type={coluna.tipo === "data" ? "date" : "number"} aria-label={`${coluna.rotulo} máximo`} value={filtrosColunas[coluna.chave]?.maximo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "maximo", e.target.value)} /></RebField>
+            </div>)}
+          </div>
+        </fieldset>}
         {exigePeriodo && <div className="mb-4"><span className="mb-1.5 block font-serif text-sm font-medium italic text-ink-3">Período</span><DateRangePicker value={range} onChange={setRange} /></div>}
         {template && <p className="mb-4 text-sm text-ink-3">{template.descricao}</p>}
         <RebButton variant="pri" aria-label="Gerar relatório" onClick={gerar}>Gerar relatório</RebButton>

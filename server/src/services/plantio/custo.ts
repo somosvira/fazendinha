@@ -38,29 +38,27 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
 
   // 1b) Lançamentos reais de café (mesmos filtros do dashboard financeiro:
   //     LIQUIDADO, estornado=false, DEBITO, dataLiquidacao recente).
-  const lancs = await prisma.lancamento.findMany({
+  const lancs = await prisma.transacaoFinanceira.findMany({
     where: {
-      situacao: "LIQUIDADO",
-      estornado: false,
-      natureza: "DEBITO",
-      dataLiquidacao: { not: null, gte: desde },
-      centroCustoId: { in: centroCafeIds },
+      status: "CONFIRMADA",
+      tipo: "PAGAMENTO",
+      data: { gte: desde },
+      operacao: { centroCustoId: { in: centroCafeIds } },
     },
     select: {
-      valor: true,
-      categoria: { select: { nome: true } },
-      centroCusto: { select: { nome: true } },
+      valorTotal: true,
+      operacao: { select: { categoria: { select: { nome: true } }, centroCusto: { select: { nome: true } } } },
     },
   });
 
   // 2) Split custeio (centro SEM "investimento") vs investimento (formação).
-  const custeio = lancs.filter((l) => !ehInvestimento(l.centroCusto.nome));
-  const investimento = lancs.filter((l) => ehInvestimento(l.centroCusto.nome));
-  const custeioTotal = Math.round(custeio.reduce((s, l) => s + toNum(l.valor), 0) * 100) / 100;
-  const investimentoTotal = Math.round(investimento.reduce((s, l) => s + toNum(l.valor), 0) * 100) / 100;
+  const custeio = lancs.filter((l) => !ehInvestimento(l.operacao?.centroCusto?.nome ?? ""));
+  const investimento = lancs.filter((l) => ehInvestimento(l.operacao?.centroCusto?.nome ?? ""));
+  const custeioTotal = Math.round(custeio.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
+  const investimentoTotal = Math.round(investimento.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
 
   // 3) Breakdown do custeio por categoria (motor puro reusado do rebanho).
-  const quebra = quebrarPorCategoria(custeio.map((l) => ({ categoria: l.categoria.nome, valor: toNum(l.valor) })));
+  const quebra = quebrarPorCategoria(custeio.map((l) => ({ categoria: l.operacao?.categoria?.nome ?? "Sem categoria", valor: toNum(l.valorTotal) })));
 
   // 4) Sacas colhidas no período — produção real das passadas de colheita.
   const passadas = await prisma.passadaColheita.findMany({

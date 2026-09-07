@@ -24,6 +24,7 @@ export async function listarAnimais(f: ListFiltros): Promise<AnimalDTO[]> {
   if (f.grupoId) where.grupoId = f.grupoId;
   if (f.setor) where.setor = f.setor;
   if (f.categoria) where.categoria = f.categoria; // filtro por categoria (usado pelo filtro salvo)
+  if (f.finalidade) where.finalidade = f.finalidade;
   if (f.propriedadeId) where.propriedadeId = f.propriedadeId; // filtro por sítio (null = consolidado)
   // Busca por número, nome OU brinco eletrônico (A6 Fase 1 — o bastão RFID
   // digita o número da etiqueta no campo de busca).
@@ -63,7 +64,7 @@ export async function criarAnimal(input: CriarAnimalInput): Promise<AnimalDTO> {
   await assertRefs(input);
   const row = await prisma.animal.create({
     data: {
-      numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria,
+      numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria, finalidade: input.finalidade,
       racaId: input.racaId, grauSangue: input.grauSangue,
       dataNascimento: d(input.dataNascimento), dataEntrada: new Date(input.dataEntrada),
       brincoEletronico: input.brincoEletronico, sisbov: input.sisbov,
@@ -94,7 +95,7 @@ export async function editarAnimal(id: number, input: EditarAnimalInput): Promis
     const updated = await tx.animal.update({
       where: { id },
       data: {
-        numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria,
+        numero: input.numero, nome: input.nome, sexo: input.sexo, categoria: input.categoria, finalidade: input.finalidade,
         racaId: input.racaId, grauSangue: input.grauSangue,
         dataNascimento: d(input.dataNascimento), dataEntrada: d(input.dataEntrada),
         brincoEletronico: input.brincoEletronico, sisbov: input.sisbov,
@@ -120,7 +121,7 @@ export async function editarAnimal(id: number, input: EditarAnimalInput): Promis
 // o histórico de movimentação de cada um (reusa registrarMovimentacoes, como editarAnimal).
 export async function alterarColetivo(
   animalIds: number[],
-  patch: { grupoId?: number | null; setor?: string | null },
+  patch: { grupoId?: number | null; setor?: string | null; finalidade?: "LEITE" | "CORTE" | "DUPLA_APTIDAO" | "NAO_INFORMADA" },
   propriedadeId: number | null,
 ): Promise<{ atualizados: number; movimentacoes: number }> {
   const ids = [...new Set(animalIds)];
@@ -145,6 +146,7 @@ export async function alterarColetivo(
         data: {
           ...(patch.grupoId !== undefined ? { grupoId: patch.grupoId } : {}),
           ...(patch.setor !== undefined ? { setor: patch.setor } : {}),
+          ...(patch.finalidade !== undefined ? { finalidade: patch.finalidade } : {}),
         },
       });
       movimentacoes += await registrarMovimentacoes(

@@ -67,12 +67,13 @@
   --side-mute: #8B8672;
   --side-hair: rgba(232, 220, 196, 0.10);
 
-  /* header (faixa clara enxuta: só busca + conta; começa após a sidebar) */
-  --header-h: 64px;
+  /* A topbar foi removida; a variável permanece para telas que calculam a
+     altura útil a partir dela. */
+  --header-h: 0px;
 }
 
-/* shell único: header fixo no topo, sidebar abaixo do header, main com offset */
-.app { min-height: 100vh; background: var(--bg); color: var(--ink); padding-top: var(--header-h); }
+/* shell único: sidebar fixa e conteúdo ocupando toda a altura disponível */
+.app { min-height: 100vh; background: var(--bg); color: var(--ink); }
 /* overflow-x: clip impede que tabelas densas com colunas de min-width fixo
    (ex.: linhas mono-nums em grids [64px_1fr_auto]) empurrem scroll horizontal
    na PÁGINA inteira em telas estreitas. Cada área rolável interna
@@ -85,25 +86,11 @@
   .app.side-collapsed { --side-w: 64px; }
 }
 
-/* ============================================================
-   APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
-   Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
-   para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
-   ============================================================ */
 /* Marca Terrano — agora no TOPO da sidebar (não mais no header). O `.ah-brand`
    e o `.ah-brand-symbol` continuam existindo só como âncora do voo da abertura
    (TerranoIntro pousa em `.ah-brand .terrano-symbol`); o wordmark "Terrano" é
    estilizado por Tailwind dentro do AppSidebar. */
 .ah-brand-symbol { display: block; flex: none; }
-
-@media (max-width: 900px) {
-  :root { --header-h: 56px; }
-}
-
-/* viewport realmente pequeno */
-@media (max-width: 560px) {
-  :root { --header-h: 52px; }
-}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -645,7 +632,7 @@ input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
 @media (max-width: 900px) {
   :root { --gutter: 14px; }
 
-  /* sidebar vira drawer; main perde offset (burger vive no header, ver Header.tsx) */
+  /* sidebar vira drawer; main perde offset e recebe um acionador flutuante */
   .app-main { margin-left: 0; }
 
   .shell, .shell-wide { padding: 0 14px; }

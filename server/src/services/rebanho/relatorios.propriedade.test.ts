@@ -105,6 +105,23 @@ describe("consulta de relatórios por propriedade", () => {
     expect(r.linhas[0]).toMatchObject({ animalId: 8, data: null, celulas: [210, "2026-01-01", "2026-08-10"] });
   });
 
+  it("delimita dias de gestação por mínimo e máximo inclusivos", async () => {
+    mocks.animalCount.mockResolvedValue(3);
+    mocks.animalFindMany.mockResolvedValue([62, 63, 70, 71].map((diasGestacao, indice) => ({
+      id: indice + 1, numero: String(100 + indice), nome: null, categoria: "VACA", setor: null, grupo: null,
+      resumo: { statusReprodutivo: "PRENHE", diasGestacao, ultimaInseminacao: null, previsaoSecagem: null },
+    })));
+
+    const r = await gerarRelatorio({
+      templateId: "gestantes-atual", status: "ATIVO",
+      filtrosColunas: [{ chave: "diasGestacao", tipo: "numero", minimo: "63", maximo: "70" }],
+    }, 7);
+
+    expect(r.total).toBe(2);
+    expect(r.linhas.map((linha) => linha.celulas[0])).toEqual([63, 70]);
+    expect(mocks.animalFindMany.mock.calls[0]?.[0]).not.toHaveProperty("take");
+  });
+
   it("deriva a previsão de parto e aplica a janela do template previsto", async () => {
     mocks.animalCount.mockResolvedValue(1);
     mocks.animalFindMany.mockResolvedValue([{
