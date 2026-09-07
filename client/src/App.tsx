@@ -316,6 +316,10 @@ export function App() {
   // para o botão "voltar" do navegador funcionar.
   const firstSync = useRef(true);
   useEffect(() => {
+    // Convite e redefinição de senha são rotas públicas independentes das
+    // abas do aplicativo. Não as normalize para a aba padrão enquanto o
+    // usuário estiver criando a senha.
+    if (rotaSenha) return;
     const worklistUrl = rotaWorklist && tab === `reb-${rotaWorklist.tab}`
       ? buildRotaWorklistRebanho(rotaWorklist.chave, rotaWorklist.tab)
       : null;
@@ -331,7 +335,7 @@ export function App() {
       else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab, rotaWorklist, deepLinkFiltros]);
+  }, [tab, rotaWorklist, deepLinkFiltros, rotaSenha]);
 
   // Botões voltar/avançar restauram pathname + worklist como uma única rota.
   useEffect(() => {
