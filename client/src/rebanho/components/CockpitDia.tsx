@@ -1,6 +1,6 @@
 import { useCockpitHoje, type CockpitContadorDTO, type WorklistRebanho } from "../api";
 import { fmtBRL } from "@/components/charts";
-import { ActivityPill } from "@/components/Gastos";
+import { ActivityPill } from "@/components/ActivityPill";
 import type { RebanhoTab } from "../nav";
 
 const LABEL: Record<CockpitContadorDTO["categoria"], string> = {

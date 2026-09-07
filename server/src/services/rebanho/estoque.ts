@@ -2,7 +2,6 @@ import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
-import { resolverLancamentoDaEntrada } from "./ponte.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class EstoqueError extends Error {
@@ -26,12 +25,7 @@ export const movimentoSchema = z
     quantidade: z.number().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta"),
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
     grupoId: z.number().int().optional(),
-    fornecedorId: z.number().int().optional(),
-    observacao: z.string().max(200).optional(),
-    // Ponte compra→financeiro (só ENTRADA): gerar Lancamento e com qual mapeamento contábil.
-    gerarLancamento: z.boolean().optional(),
-    categoriaId: z.number().int().optional(),
-    centroCustoId: z.number().int().optional(),
+    observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
   })
   // ENTRADA/SAIDA exigem quantidade positiva; AJUSTE aceita negativa (correção de saldo) mas nunca zero.
@@ -49,7 +43,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
-    include: { movimentos: f?.propriedadeId ? { where: { propriedadeId: f.propriedadeId } } : true },
+    include: { movimentos: { where: { status: "CONFIRMADO", ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
   });
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
@@ -78,6 +72,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
   const where: any = {};
+  where.status = "CONFIRMADO";
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo;
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
@@ -85,7 +80,7 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
     where,
     orderBy: { data: "desc" },
     take: 200,
-    include: { produto: true, fornecedor: true, grupo: true },
+    include: { produto: true, operacao: { include: { parceiro: true } }, grupo: true },
   });
   return ms.map((m) => ({
     id: m.id,
@@ -98,18 +93,18 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
     quantidade: Number(m.quantidade),
     custoUnitario: Number(m.custoUnitario),
     valorTotal: Number(m.valorTotal),
-    fornecedor: m.fornecedor?.nome ?? null,
+    fornecedor: m.operacao?.parceiro?.nome ?? null,
     grupo: m.grupo?.nome ?? null,
     observacao: m.observacao ?? null,
   }));
 }
 
-// Um mês (ano/mes 1-12) está fechado se existe FechamentoMensal correspondente.
+// Um mês está fechado quando o período financeiro da propriedade está FECHADO.
 // Recebe o client da transação para que a decisão e a escrita sejam uma unidade atômica.
-async function mesFechado(tx: Prisma.TransactionClient, data: Date): Promise<boolean> {
+async function mesFechado(tx: Prisma.TransactionClient, propriedadeId: number, data: Date): Promise<boolean> {
   const ano = data.getUTCFullYear();
   const mes = data.getUTCMonth() + 1;
-  return (await tx.fechamentoMensal.findUnique({ where: { ano_mes: { ano, mes } } })) != null;
+  return (await tx.periodoFinanceiro.findUnique({ where: { propriedadeId_ano_mes: { propriedadeId, ano, mes } } }))?.status === "FECHADO";
 }
 
 export async function registrarMovimento(input: MovimentoInput) {
@@ -122,52 +117,33 @@ export async function registrarMovimento(input: MovimentoInput) {
     // Decimal exato (não float) — este valor alimenta o livro financeiro real (Lancamento.valor).
     const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
     const data = new Date(input.data);
+    if (input.tipo !== "AJUSTE") {
+      throw new EstoqueError("ORIGEM_AUTOMATICA", "Entradas e saídas devem nascer de uma operação financeira ou de um evento operacional; aqui só é permitido ajuste justificado de inventário");
+    }
+    if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
+    const operacao = await tx.operacao.create({ data: {
+      tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
+      valorTotal: valorTotal.abs(), propriedadeId,
+      itens: { create: { produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: produto.unidade, valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
+    }, include: { itens: true } });
     const m = await tx.movimentoEstoque.create({
       data: {
         produtoId: input.produtoId,
         tipo: input.tipo,
+        origem: "AJUSTE_INVENTARIO",
         data,
         quantidade: input.quantidade,
         custoUnitario: custo,
         valorTotal,
         grupoId: input.grupoId ?? null,
-        fornecedorId: input.fornecedorId ?? null,
+        operacaoId: operacao.id,
+        itemOperacaoId: operacao.itens[0]?.id,
         propriedadeId,
         observacao: input.observacao,
       },
     });
 
-    // Ponte compra→financeiro: ENTRADA pode gerar um Lancamento (DEBITO/LIQUIDADO).
-    // Nunca bloqueia o movimento — se não dá para criar, devolve o motivo.
-    const resol = resolverLancamentoDaEntrada({
-      tipo: input.tipo,
-      gerarLancamento: input.gerarLancamento,
-      inputCategoriaId: input.categoriaId,
-      inputCentroCustoId: input.centroCustoId,
-      produtoCategoriaId: produto.categoriaId,
-      produtoCentroCustoId: produto.centroCustoId,
-      mesFechado: input.tipo === "ENTRADA" ? await mesFechado(tx, data) : false,
-    });
-
-    if (!resol.deveCriar) return { id: m.id, lancamentoCriado: false, motivo: resol.motivo };
-
-    const lanc = await tx.lancamento.create({
-      data: {
-        natureza: "DEBITO",
-        valor: valorTotal,
-        dataCompetencia: data,
-        dataVencimento: data,
-        dataLiquidacao: data,
-        situacao: "LIQUIDADO",
-        categoriaId: resol.categoriaId!,
-        centroCustoId: resol.centroCustoId!,
-        clienteFornecedorId: input.fornecedorId ?? null,
-        propriedadeId, // o lançamento da compra herda o sítio do movimento (Fatia 3)
-        descricao: `Compra: ${produto.nome} (${input.quantidade} ${produto.unidade})`,
-      },
-    });
-    await tx.movimentoEstoque.update({ where: { id: m.id }, data: { lancamentoId: lanc.id } });
-    return { id: m.id, lancamentoCriado: true, lancamentoId: lanc.id };
+    return { id: m.id, operacaoId: operacao.id };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
@@ -175,7 +151,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
   return prisma.$transaction(async (tx) => {
     const mov = await tx.movimentoEstoque.findFirst({
       where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
-      include: { lancamento: true },
+      include: { revertidoPor: true },
     });
     if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
 
@@ -184,16 +160,19 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
     if (mov.origem === "SANIDADE") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de um evento sanitário — exclua ou estorne o evento na ficha do animal");
     if (mov.origem === "NUTRICAO" || mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
 
-    // Se há um Lancamento vinculado num mês fechado, não exclui nada.
-    if (mov.lancamento) {
-      const ref = mov.lancamento.dataLiquidacao ?? mov.lancamento.dataCompetencia;
-      if (await mesFechado(tx, ref)) throw new EstoqueError("MES_FECHADO", "lançamento em mês fechado — não pode ser excluído");
-    }
-
-    // O movimento referencia o lançamento (FK em MovimentoEstoque.lancamentoId);
-    // exclui o movimento primeiro, depois o lançamento, na mesma transação.
-    await tx.movimentoEstoque.delete({ where: { id } });
-    if (mov.lancamentoId) await tx.lancamento.delete({ where: { id: mov.lancamentoId } });
+    if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
+    const pid = mov.propriedadeId ?? await propriedadePrincipalId();
+    if (await mesFechado(tx, pid, new Date())) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
+    await tx.movimentoEstoque.create({ data: {
+      produtoId: mov.produtoId,
+      tipo: mov.tipo === "ENTRADA" ? "SAIDA" : mov.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
+      origem: "AJUSTE_INVENTARIO", data: new Date(),
+      quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
+      custoUnitario: mov.custoUnitario, valorTotal: mov.valorTotal,
+      propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id,
+      observacao: `Estorno do movimento #${mov.id}`,
+    } });
+    await tx.movimentoEstoque.update({ where: { id }, data: { status: "REVERTIDO" } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
@@ -204,7 +183,7 @@ export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: num
   const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
   limite.setDate(limite.getDate() - periodoDias);
   const saidas = await prisma.movimentoEstoque.findMany({
-    where: { tipo: "SAIDA", data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
+    where: { tipo: "SAIDA", status: "CONFIRMADO", data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
     select: { valorTotal: true, data: true },
   });
   const arr = saidas.map((s) => ({ valorTotal: Number(s.valorTotal), data: iso(s.data) }));

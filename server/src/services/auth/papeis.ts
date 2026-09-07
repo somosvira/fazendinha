@@ -14,22 +14,22 @@ const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
 
 // `relatorio` é o identificador persistido por compatibilidade; na interface ele
 // representa a Central de Relatórios geral, não apenas o antigo fechamento.
-export const ABAS_IDS = ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"];
+export const ABAS_IDS = ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"];
 export const FLAGS_IDS: Flag[] = ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"];
 
 export const PAPEIS: Record<string, { abas: string[]; areas: Area[]; flags: Flag[] }> = {
   proprietario: {
-    abas: ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"],
+    abas: ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"],
     areas: [...AREAS_IDS],
     flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
   },
   secretaria: {
-    abas: ["gastos", "lancar", "caixinha", "plano", "ia"],
+    abas: ["gastos", "lancar", "caixinha", "cadastros"],
     areas: ["financeiro"],
     flags: ["verValores", "verSalarios", "lancar"],
   },
   contador: {
-    abas: ["dashboard", "gastos", "plano", "relatorio"],
+    abas: ["dashboard", "gastos", "caixinha", "cadastros", "relatorio"],
     areas: ["financeiro"],
     flags: ["verValores", "verInvestimento", "verSalarios", "exportar"],
   },

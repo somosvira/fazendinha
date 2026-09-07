@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import { buildRebanhoDashboard } from "./dashboard-rebanho.js";
 import { listarSaldos } from "./estoque.js";
-import { buildDashboard } from "../dashboard.js";
+import { obterDashboard } from "../financeiro/dashboard.js";
 import { carenciaAtiva } from "./carencia.calc.js";
 import { resumirCockpit, type AlertaResumo, type CockpitDTO } from "./cockpit.calc.js";
 import { obterSugestoes } from "./sugestoes.js";
@@ -49,17 +49,15 @@ export async function montarCockpitHoje(propriedadeId: number | null, agora: Dat
 
   // 4) Fluxo financeiro do dia e do mês (só leitura; sinal preservado).
   const [dashDia, dashMes] = await Promise.all([
-    buildDashboard({ from: agora, to: agora, propriedadeId }),
-    buildDashboard({ from: inicioDoMes(agora), to: agora, propriedadeId }),
+    obterDashboard(propriedadeId, agora, agora),
+    obterDashboard(propriedadeId, inicioDoMes(agora), agora),
   ]);
-  const fluxoDia = dashDia.periodo?.fluxo ?? 0;
-  const fluxoMes = dashMes.periodo?.fluxo ?? 0;
-  // Quebra do mês por atividade: com from/to setados, dashMes.totals23m já é o periodTotals do mês.
-  const t = dashMes.totals23m;
+  const fluxoDia = Number(dashDia.realizado.resultado);
+  const fluxoMes = Number(dashMes.realizado.resultado);
   const mesPorAtividade = {
-    receitaLeite: t.receitaLeite, custeioLeitePuro: t.custeioLeitePuro, investLeite: t.investLeite,
-    receitaCafe: t.receitaCafe, custeioCafe: t.custeioCafe, investCafe: t.investCafe,
-    totalGeral: t.totalGeral,
+    receitaLeite: 0, custeioLeitePuro: 0, investLeite: 0,
+    receitaCafe: 0, custeioCafe: 0, investCafe: 0,
+    totalGeral: fluxoMes,
   };
 
   const dto = resumirCockpit({ alertas, estoqueAbaixoMinimo, carenciaAtivaCount, vacinaPendenteCount, fluxoDia, fluxoMes, mesPorAtividade });

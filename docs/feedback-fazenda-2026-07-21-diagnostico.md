@@ -1,8 +1,8 @@
 # Feedback da fazenda — diagnóstico antes do backlog
 
-**Data do feedback:** 2026-07-21  
-**Origem:** usuária da operação da Fazenda Rio Novo, após primeiro contato com Dashboard e módulo Rebanho  
-**Status:** diagnóstico inicial; **não é backlog aprovado nem especificação de implementação**  
+**Data do feedback:** 2026-07-21
+**Origem:** usuária da operação da Fazenda Rio Novo, após primeiro contato com Dashboard e módulo Rebanho
+**Status:** diagnóstico inicial; **não é backlog aprovado nem especificação de implementação**
 **Próximo passo escolhido:** aprofundar primeiro a identificação dos animais, dando primazia ao número operacional
 
 ---

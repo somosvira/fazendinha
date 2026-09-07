@@ -4,10 +4,14 @@ import { z } from "zod";
 import { saldoProduto, type MovIn } from "./estoque.calc.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
-import { assertMesAberto, FechamentoMensalError } from "../fechamento.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+async function assertPeriodoAberto(propriedadeId: number, data: Date) {
+  const periodo = await prisma.periodoFinanceiro.findUnique({ where: { propriedadeId_ano_mes: { propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } } });
+  if (periodo?.status === "FECHADO") throw new NutricaoError("MES_FECHADO", "mês financeiro fechado");
+}
 
 // Janela de fechamento de consumo: lote + intervalo de datas.
 export const consumoSchema = z.object({
@@ -100,12 +104,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
   const dataMov = new Date(input.dataFim + "T00:00:00Z");
   const propriedadeMovimentoId = prev.propriedadeId ?? (await propriedadePrincipalId()); // escopo das SAIDAs
 
-  try {
-    await assertMesAberto(dataMov);
-  } catch (e) {
-    if (e instanceof FechamentoMensalError) throw new NutricaoError("MES_FECHADO", e.message);
-    throw e;
-  }
+  await assertPeriodoAberto(propriedadeMovimentoId, dataMov);
 
   try {
     const periodo = await prisma.$transaction(async (tx) => {
@@ -158,14 +157,9 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
 
 // Estorna um período fechado: apaga as SAIDAs geradas (cascade) e o cabeçalho.
 export async function reabrirConsumoPeriodo(id: number, propriedadeId: number | null = null) {
-  const cp = await prisma.consumoPeriodo.findFirst({ where: { id, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) } });
+  const cp = await prisma.consumoPeriodo.findFirst({ where: { id, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, include: { grupo: true } });
   if (!cp) throw new NutricaoError("NAO_ENCONTRADO", "fechamento de consumo não encontrado");
-  try {
-    await assertMesAberto(cp.dataFim);
-  } catch (e) {
-    if (e instanceof FechamentoMensalError) throw new NutricaoError("MES_FECHADO", e.message);
-    throw e;
-  }
+  await assertPeriodoAberto(cp.grupo.propriedadeId ?? await propriedadePrincipalId(), cp.dataFim);
   // onDelete: Cascade nas SAIDAs (consumoPeriodoId) apaga os movimentos junto.
   await prisma.consumoPeriodo.delete({ where: { id } });
 }
@@ -176,7 +170,7 @@ export async function listarConsumosPeriodo(grupoId: number, propriedadeId: numb
     throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
   }
   const periodos = await prisma.consumoPeriodo.findMany({ where: { grupoId, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, orderBy: { dataFim: "desc" }, include: { _count: { select: { movimentos: true } } } });
-  const fechados = await prisma.fechamentoMensal.findMany({ select: { ano: true, mes: true } });
+  const fechados = await prisma.periodoFinanceiro.findMany({ where: { status: "FECHADO", ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { ano: true, mes: true } });
   const mesFechado = (d: Date) => fechados.some((f) => f.ano === d.getUTCFullYear() && f.mes === d.getUTCMonth() + 1);
   return periodos.map((p) => ({
     id: p.id,

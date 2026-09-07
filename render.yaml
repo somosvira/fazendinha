@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: rionovo-api
+    name: terrano-api
     runtime: node
     plan: free
-    region: oregon
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
     rootDir: .
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-server exec prisma generate && pnpm --filter rionovo-server run build
     startCommand: pnpm --filter rionovo-server run start:prod
@@ -15,7 +17,7 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      # URL direct (não-pooled) — usada pelo `db push` da partida (schema tem directUrl).
+      # URL direct (não-pooled) — reservada para migrations Prisma controladas.
       - key: DIRECT_URL
         sync: false
       - key: JWT_SECRET

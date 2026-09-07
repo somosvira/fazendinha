@@ -198,11 +198,11 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
     if (cu != null) custoSanidadeExato += cu;
   }
   // Rateio do gasto real "Medicamento Animal" / aplicações no rebanho
-  const lancsMedic = await prisma.lancamento.findMany({
-    where: { situacao: "LIQUIDADO", natureza: "DEBITO", dataLiquidacao: { not: null, gte: desde12m }, categoria: { nome: "Medicamento Animal" } },
-    select: { valor: true },
+  const lancsMedic = await prisma.transacaoFinanceira.findMany({
+    where: { status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m }, operacao: { categoria: { nome: "Medicamento Animal" } } },
+    select: { valorTotal: true },
   });
-  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valor), 0);
+  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valorTotal), 0);
   const todasAplicsGlob = await prisma.eventoSanitario.count({ where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m } } });
   const custoPorAplic = todasAplicsGlob > 0 ? totalMedic / todasAplicsGlob : 0;
   const custoSanidadeRateio = round(custoPorAplic * aplics12m.length);

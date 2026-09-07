@@ -15,16 +15,16 @@ import type { Tab } from "./components/Shell";
 
 // Abas de slug fixo (financeiro + administração). Slug = parte visível na URL.
 const PATH_BY_TAB: Partial<Record<Tab, string>> = {
-  dashboard: "/dashboard",
-  gastos: "/gastos",
-  lancar: "/lancar",
-  caixinha: "/caixinha",
-  plano: "/categorias",
+  dashboard: "/financeiro",
+  gastos: "/financeiro/compromissos",
+  lancar: "/financeiro/operacoes",
+  caixinha: "/financeiro/contas",
+  plano: "/financeiro/configuracoes/categorias",
   ia: "/ia",
-  relatorio: "/relatorios",
+  relatorio: "/financeiro/relatorios",
   acessos: "/acessos",
   config: "/configuracoes",
-  cadastros: "/cadastros",
+  cadastros: "/financeiro/configuracoes",
   // Lotes agregados preexistentes vivem como uma subseção da Pecuária, não
   // como um módulo de corte independente.
   "cor-dashboard": "/pecuaria/lotes/resumo",
@@ -60,6 +60,11 @@ const MODULO_BASE_LEGADO: Array<{ prefix: string; base: string; defaultSub?: str
 ];
 
 export const DEFAULT_TAB: Tab = "dashboard";
+
+export function parseOperacaoFinanceiraId(pathname: string): number | null {
+  const match = /^\/financeiro\/operacoes\/(\d+)\/?$/i.exec(pathname);
+  return match ? Number(match[1]) : null;
+}
 
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
@@ -120,6 +125,12 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/" || path === "") return DEFAULT_TAB;
   // Compatibilidade com links e favoritos anteriores à Central de Relatórios.
   if (path === "/relatorio") return "relatorio";
+  if (path === "/relatorios") return "relatorio";
+  if (path === "/dashboard") return "dashboard";
+  if (path === "/gastos") return "gastos";
+  if (path === "/lancar") return "lancar";
+  if (path === "/caixinha") return "caixinha";
+  if (parseOperacaoFinanceiraId(path) != null) return "lancar";
 
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;
