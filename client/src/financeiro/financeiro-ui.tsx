@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, Check, X } from "lucide-react";
+import { Loader } from "../components/Loading";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
@@ -22,9 +23,24 @@ const STATUS: Record<string, string> = {
   REVERTIDA: "Revertida",
 };
 
+/* Envelope de toda página financeira. O gutter e o ritmo vertical (inclusive a
+ * folga que impede o botão flutuante de menu de cobrir o cabeçalho em ≤900px)
+ * vêm de `.shell-wide.pagina-financeira` em base.css — utilitário Tailwind de
+ * padding não funciona aqui, `.shell-wide` é regra não-camada e vence a camada. */
+export function PaginaFinanceira({ children }: { children: React.ReactNode }) {
+  return <div className="shell-wide pagina-financeira">{children}</div>;
+}
+
+/* Carregamento em nível de página: ocupa a área de conteúdo (.app-main, que já
+ * exclui a sidebar) e centraliza o loader nos dois eixos. Ver `.loader--pagina`
+ * em base.css. */
+export function PaginaCarregando({ label }: { label: string }) {
+  return <PaginaFinanceira><Loader label={label} full /></PaginaFinanceira>;
+}
+
 export function PageHeader({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
-  return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7">
-    <div className="max-w-3xl"><div className="eyebrow">Financeiro</div><h1 className="h1 mt-2">{titulo}</h1><p className="mt-2 text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+  return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">Financeiro</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 
@@ -39,7 +55,7 @@ export function Panel({ children, className = "" }: { children: React.ReactNode;
 
 export function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue" | "brown" }) {
   const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-amber-100 text-amber-900", red: "bg-red-100 text-red-800", blue: "bg-blue-100 text-blue-800", brown: "bg-[#eee7d8] text-[#63543c]" };
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</span>;
+  return <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</span>;
 }
 
 export function StatusPill({ status }: { status: string }) {
@@ -49,7 +65,7 @@ export function StatusPill({ status }: { status: string }) {
 
 export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="p-5"><div className="flex items-start justify-between gap-4"><div><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 font-serif text-[28px] leading-none tracking-tight text-ink">{valor}</div></div><div className={`rounded-lg p-2.5 ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 text-xs text-ink-3">{detalhe}</div></Panel>;
+  return <Panel className="p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(22px,5vw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
@@ -65,10 +81,93 @@ export function MonthControl({ mes, onChange }: { mes: string; onChange: (mes: s
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean }) {
-  return <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-[#f4f2e9] p-5"><div><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>}{children}</Panel></div>;
+  return <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-label={titulo}><Panel className={`${semCabecalho ? "h-[92vh] overflow-hidden" : "max-h-[92vh] overflow-auto"} w-full ${width}`}>{!semCabecalho && <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-[#f4f2e9] p-5"><div className="min-w-0"><div className="eyebrow">{eyebrow}</div><h2 className="mt-1 break-words font-serif text-2xl">{titulo}</h2></div><button onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></button></div>}{children}</Panel></div>;
 }
 
 export function ReviewLine({ children, tone = "green" }: { children: React.ReactNode; tone?: "green" | "amber" | "brown" | "neutral" }) {
   const cor = { green: "text-[#9fc28d]", amber: "text-[#e3c66f]", brown: "text-[#d3bd8c]", neutral: "text-[#aeb9aa]" }[tone];
   return <div className="flex gap-2"><Check size={16} className={`mt-0.5 shrink-0 ${cor}`} /><span>{children}</span></div>;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Tabela financeira responsiva.
+
+   Uma única declaração de colunas alimenta as DUAS representações, então o
+   alinhamento do cabeçalho e o do conteúdo nunca divergem — `alinhamento` é a
+   fonte única para <th> e <td> (e para o valor no card).
+
+     ≥768px  tabela com rolagem HORIZONTAL própria (a largura mínima vive no
+             wrapper `overflow-x-auto`, nunca vaza para a página);
+     <768px  cartões empilhados — a coluna `principal` vira o título e as demais
+             viram pares rótulo/valor, sem truncar dinheiro.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+export type ColunaTabela<T> = {
+  chave: string;
+  titulo: string;
+  /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
+  alinhamento?: "esquerda" | "direita";
+  celula: (item: T) => React.ReactNode;
+  /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
+  larguraMinima?: number;
+  /** coluna que vira o título do cartão no mobile (uma por tabela) */
+  principal?: boolean;
+  /** já representada no título do cartão — não repetir como par rótulo/valor */
+  ocultarNoCartao?: boolean;
+};
+
+const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
+
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo }: {
+  colunas: ColunaTabela<T>[];
+  itens: T[];
+  chaveDe: (item: T) => React.Key;
+  onAbrir?: (item: T) => void;
+  classeLinha?: (item: T) => string;
+  rotulo: string;
+}) {
+  const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
+  const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
+  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && coluna.titulo);
+
+  return <>
+    {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
+    <div className="hidden overflow-x-auto md:block">
+      <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
+        <caption className="sr-only">{rotulo}</caption>
+        <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
+          <tr>{colunas.map((coluna) => <th key={coluna.chave} scope="col" className={`p-4 font-semibold ${alinhaCelula(coluna.alinhamento)}`}>{coluna.titulo}</th>)}</tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {itens.map((item) => <tr
+            key={chaveDe(item)}
+            /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
+               por role="button" quebraria a semântica de tabela para leitores de tela */
+            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(item); } } } : {})}
+            className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
+          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
+        </tbody>
+      </table>
+    </div>
+
+    {/* <768px — cartões: nada de rolagem lateral, nada de coluna espremida */}
+    <ul className="divide-y divide-border md:hidden" aria-label={rotulo}>
+      {itens.map((item) => {
+        const corpo = <>
+          <div className="min-w-0 break-words text-left">{principal.celula(item)}</div>
+          <dl className="mt-3 space-y-2">
+            {secundarias.map((coluna) => <div key={coluna.chave} className="flex items-start justify-between gap-3">
+              <dt className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.08em] text-ink-3">{coluna.titulo}</dt>
+              <dd className="min-w-0 flex-1 break-words text-right text-sm">{coluna.celula(item)}</dd>
+            </div>)}
+          </dl>
+        </>;
+        return <li key={chaveDe(item)} className={classeLinha?.(item) ?? ""}>
+          {onAbrir
+            ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
+            : <div className="p-4">{corpo}</div>}
+        </li>;
+      })}
+    </ul>
+  </>;
 }
