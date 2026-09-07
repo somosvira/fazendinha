@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, ChevronRight, Plus, Search } from "lucide-react";
+import { CalendarRange, ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { Loader } from "../components/Loading";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { isNovaOperacaoFinanceira, parseOperacaoFinanceiraId } from "../router";
-import { listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao, type RascunhoOperacao } from "./novo-api";
+import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, dataBR, Empty, ErrorBox, PageHeader, Panel, Pill, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
@@ -45,6 +45,7 @@ const hojeLocal = () => { const data = new Date(); return `${data.getFullYear()}
 
 export function OperacoesFinanceiras() {
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [rascunho, setRascunho] = useState<RascunhoOperacao | null>(null); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
+  const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(inicioMes); const [fim, setFim] = useState(hojeLocal);
   const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   const carregar = useCallback(async () => { setLoading(true); setErro(null); try { const [ops, cfg, draft] = await Promise.all([listarOperacoes({ inicio, fim }), obterConfiguracoesFinanceiras(), obterRascunhoOperacao()]); setItens(ops); setConfig(cfg); setRascunho(draft); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setLoading(false); } }, [inicio, fim]);
@@ -54,16 +55,24 @@ export function OperacoesFinanceiras() {
   const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
   const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); setDetalheId(null); setOperacaoBase(base); setForm(true); };
-  const fecharFormulario = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setForm(false); setOperacaoBase(null); };
+  const abrirNovaOperacao = async () => {
+    setIniciandoNova(true); setErro(null);
+    try {
+      if (rascunho) await descartarRascunhoOperacao();
+      setRascunho(null); abrirFormulario();
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setIniciandoNova(false); }
+  };
+  const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} />;
   if (loading && !config) return <Loader label="Carregando operações" />;
   const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
-  if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onCancelar={fecharFormulario} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
   return <div className="shell-wide pb-10">
-    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={<Button onClick={() => abrirFormulario()}><Plus size={16} /> Nova operação</Button>} />
+    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={<div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div>} />
     <ErrorBox erro={erro} />
     <Panel className="mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">

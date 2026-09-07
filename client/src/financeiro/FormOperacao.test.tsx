@@ -18,7 +18,7 @@ const config: ConfiguracoesFinanceiras = {
 };
 
 function montar() {
-  render(<FormOperacao config={config} onSalvo={vi.fn()} onCancelar={vi.fn()} />);
+  render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
 
 describe("FormOperacao", () => {
@@ -31,10 +31,13 @@ describe("FormOperacao", () => {
     expect(screen.getByRole("spinbutton", { name: "Valor total da operação" })).toBeTruthy();
   });
 
-  it("expõe o estado do rascunho e a ação para limpá-lo", () => {
+  it("só expõe a ação de limpar depois que o rascunho recebe conteúdo", () => {
     montar();
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra mensal" } });
     expect(screen.getByText("Alterações não salvas")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Limpar rascunho" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Voltar para operações" })).toBeNull();
   });
 
   it("salva automaticamente depois de uma alteração", async () => {
@@ -55,7 +58,7 @@ describe("FormOperacao", () => {
   });
 
   it("retoma os dados persistidos ao recarregar a página", () => {
-    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} onCancelar={vi.fn()} />);
+    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />);
     expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Manutenção programada");
     expect((screen.getByRole("combobox", { name: "Condição financeira" }) as HTMLSelectElement).value).toBe("A_PRAZO");
   });

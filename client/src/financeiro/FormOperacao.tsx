@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, FileText, Paperclip, Plus, Trash2 } from "lucide-react";
+import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 
@@ -30,7 +30,7 @@ const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", 
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
 
-export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo, onCancelar }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void; onCancelar: () => void }) {
+export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
   const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
@@ -95,6 +95,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     };
   }, [categoriaId, centroCustoId, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, realizadoAgora, tipo, total]);
   const dadosRascunho = useMemo(() => ({ formulario: estadoFormulario, operacao: operacaoRascunho }), [estadoFormulario, operacaoRascunho]);
+  const temConteudoRascunho = useMemo(() => !!(
+    documentosSalvos.length || descricao.trim() || valorOperacao || parceiroId || categoriaId || centroCustoId || contaId || valorAgora
+    || itens.some((item) => item.produtoId || item.descricao.trim() || item.valorUnitario || item.valorTotal || item.quantidade !== "1")
+    || parcelas.some((parcela) => parcela.valor)
+  ), [categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
 
   const persistirRascunho = async () => {
     if (salvamentoEmCursoRef.current) await salvamentoEmCursoRef.current.catch(() => undefined);
@@ -206,7 +211,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   };
 
   return <div className="shell-wide pb-10">
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5"><div><button type="button" onClick={onCancelar} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-ink-3 hover:text-ink"><ArrowLeft size={16} /> Voltar para operações</button><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={limparRascunho}>Limpar rascunho</Button></div>}</div>
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={limparRascunho}>Limpar rascunho</Button></div>}</div>
     <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
