@@ -36,7 +36,10 @@ describe("FormOperacao", () => {
     expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra mensal" } });
     expect(screen.getByText("Alterações não salvas")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Limpar rascunho" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Limpar rascunho" }));
+    expect(screen.getByRole("heading", { name: "Limpar rascunho?" })).toBeTruthy();
+    expect(screen.getByText(/Todos os dados preenchidos e documentos anexados/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manter rascunho" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Voltar para operações" })).toBeNull();
   });
 
