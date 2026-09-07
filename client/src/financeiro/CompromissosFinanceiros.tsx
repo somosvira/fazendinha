@@ -2,17 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
 import { liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, type Compromisso, type ConfiguracoesFinanceiras } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, Panel, Pill, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
+import type { Tab } from "../components/Shell";
 
-export function CompromissosFinanceiros() {
+export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }) {
   const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [contaId, setContaId] = useState(""); const [valor, setValor] = useState(""); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS">("PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
   const carregar = useCallback(() => Promise.all([listarCompromissos(), obterConfiguracoesFinanceiras()]).then(([c, cfg]) => { setItens(c); setConfig(cfg); }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   const lista = itens.filter((c) => aba === "LIQUIDADOS" ? c.status === "LIQUIDADO" : c.tipo === aba && c.status !== "LIQUIDADO").filter((c) => !soVencidos || c.vencido);
   const total = lista.reduce((s, c) => s + Number(c.saldoPendente), 0);
   const pagar = async () => { if (!pagando) return; try { await liquidarCompromisso(pagando.id, { contaId: Number(contaId), valor: Number(valor), data: hoje(), formaPagamento: "PIX" }); setPagando(null); setContaId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", `/financeiro/operacoes/nova?compromisso=${tipo}`); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); };
 
   return <div className="shell-wide pb-10">
-    <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." />
+    <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => criarCompromisso("RECEBER")}>Criar a receber</Button><Button onClick={() => criarCompromisso("PAGAR")}>Criar a pagar</Button></div>} />
     <ErrorBox erro={erro} />
     <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Condição de prazo, não status" icon={CalendarDays} tone="red" /></div>
     <Panel className="mt-6 overflow-hidden">

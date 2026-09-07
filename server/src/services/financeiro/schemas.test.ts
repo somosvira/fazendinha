@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const base = {
   data: "2026-09-02",
@@ -50,5 +50,16 @@ describe("schema de criação de operação", () => {
 describe("documentos financeiros", () => {
   it.each(["NOTA_FISCAL", "BOLETO", "CONTRATO", "RECIBO", "COMPROVANTE", "JUSTIFICATIVA", "OUTRO"])("aceita o tipo %s", (tipo) => {
     expect(tipoDocumentoFinanceiroSchema.safeParse(tipo).success).toBe(true);
+  });
+});
+
+describe("rascunho de operação", () => {
+  it("aceita dados parciais sem aplicar a validação da confirmação", () => {
+    expect(rascunhoOperacaoSchema.safeParse({ dados: { formulario: { descricao: "" }, operacao: { tipo: "COMPRA_ESTOQUE" } } }).success).toBe(true);
+  });
+
+  it("valida a versão otimista quando informada", () => {
+    expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 0 }).success).toBe(false);
+    expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 2 }).success).toBe(true);
   });
 });

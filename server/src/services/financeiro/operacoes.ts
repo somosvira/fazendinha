@@ -56,8 +56,7 @@ async function criarTransacaoComMovimento(
   });
 }
 
-export async function criarOperacao(input: OperacaoInput) {
-  return prisma.$transaction(async (tx) => {
+async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.corrigeOperacaoId) {
       const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId } });
@@ -162,7 +161,14 @@ export async function criarOperacao(input: OperacaoInput) {
       where: { id: operacao.id },
       include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
     });
-  });
+}
+
+export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput) {
+  return criarOperacaoTx(tx, input);
+}
+
+export async function criarOperacao(input: OperacaoInput) {
+  return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
 }
 
 export async function liquidarCompromisso(compromissoId: number, input: LiquidacaoInput) {

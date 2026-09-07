@@ -66,6 +66,10 @@ export function parseOperacaoFinanceiraId(pathname: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+export function isNovaOperacaoFinanceira(pathname: string): boolean {
+  return /^\/financeiro\/operacoes\/nova\/?$/i.test(pathname);
+}
+
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
   "vazia-pos-pev": "reproducao",
@@ -131,6 +135,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path === "/lancar") return "lancar";
   if (path === "/caixinha") return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
+  if (isNovaOperacaoFinanceira(path)) return "lancar";
 
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;

@@ -130,7 +130,7 @@ describe("AppSidebar", () => {
     expect(props.onNav).toHaveBeenCalledWith("reb-reproducao");
 
     expect(screen.queryByText("Acasalamento")).toBeNull();
-    fireEvent.click(screen.getByText("Mais opções de pecuária"));
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
     const acasalamento = screen.getByText("Acasalamento");
     fireEvent.click(acasalamento);
     expect(props.onNav).toHaveBeenCalledWith("reb-acasalamento");
@@ -197,10 +197,10 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Reprodução")).toBeTruthy();
     expect(screen.queryByText("FIV / TE")).toBeNull();
 
-    fireEvent.click(screen.getByText("Mais opções de pecuária"));
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
     expect(screen.getByText("FIV / TE")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Mais opções de pecuária"));
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
     expect(screen.queryByText("FIV / TE")).toBeNull();
   });
 
@@ -232,7 +232,7 @@ describe("AppSidebar", () => {
     const { rerender } = render(h(AppSidebar, baseProps()));
 
     fireEvent.click(screen.getByRole("button", { name: "Expandir Agronomia" }));
-    fireEvent.click(screen.getByText("Mais opções de agronomia"));
+    fireEvent.click(screen.getByTitle("Mais opções de agronomia"));
     expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
     expect(screen.getByText("Safras de milho")).toBeTruthy();
 

@@ -9,7 +9,7 @@ import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 export function FinanceiroContent({ tab, onNav }: { tab: Tab; onNav: (tab: Tab) => void }) {
   if (tab === "dashboard") return <VisaoGeralFinanceira onNav={onNav} />;
   if (tab === "lancar") return <OperacoesFinanceiras />;
-  if (tab === "gastos") return <CompromissosFinanceiros />;
+  if (tab === "gastos") return <CompromissosFinanceiros onNav={onNav} />;
   if (tab === "caixinha") return <ContasFinanceiras onNav={onNav} />;
   if (tab === "cadastros") return <ConfiguracoesFinanceiras />;
   return <RelatoriosFinanceiros />;

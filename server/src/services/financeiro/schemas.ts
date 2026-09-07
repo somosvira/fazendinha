@@ -115,3 +115,8 @@ export const transacaoAvulsaSchema = z.object({
 });
 
 export const estornoSchema = z.object({ motivo: z.string().trim().min(5).max(300) });
+
+export const rascunhoOperacaoSchema = z.object({
+  dados: z.record(z.unknown()),
+  versao: z.number().int().positive().optional(),
+});
