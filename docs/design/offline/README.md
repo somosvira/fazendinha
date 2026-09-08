@@ -183,18 +183,3 @@ pré-validação (convenção 2 acima). Esse workspace **não existe hoje neste
 branch** — não foi portado porque era acoplado às features antigas
 (Rebanho/Corte). Recriar quando a fatia do Financeiro precisar reusar um
 schema Zod do server no client; não é pré-requisito da fundação.
-
-## Estado desta fundação
-
-- `client/src/lib/offline/` — motor completo, com teste.
-- `main.tsx` — `PersistQueryClientProvider` + `ShellOffline` + boot da fila +
-  registro do service worker.
-- `vite.config.ts` — `vite-plugin-pwa` (`generateSW`, não intercepta `/api`).
-- `App.tsx` — `TABS_OFFLINE` (vazio) + `OfflineGatedTab` + reload pós-login.
-- **Zero cobertura de feature.** Toda aba do app fica travada offline até a
-  fatia correspondente adicionar sua entrada em `TABS_OFFLINE` e sua própria
-  fiação (`useQuery` nas leituras, `useOfflineMutation`/`useSalvarOffline`
-  nas escritas).
-- Próxima fatia planejada: **Financeiro** (`Operacao`/`CompromissoFinanceiro`/
-  `TransacaoFinanceira`/`MovimentoConta` — ver `docs/financeiro-rebuild-contrato.md`
-  e `docs/handoff-design-novo-financeiro.md`).
