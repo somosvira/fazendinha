@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeftRight, Landmark, Settings2, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { obterConfiguracoesFinanceiras, obterExtratoConta, transferir, type ConfiguracoesFinanceiras, type Conta, type MovimentoConta } from "./novo-api";
-import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 
 /* Colunas do extrato. Entradas e saídas alinhadas à direita no cabeçalho E na
  * célula; dinheiro nunca quebra no meio (whitespace-nowrap). */
@@ -19,7 +19,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg); setSelecionada((atual) => cfg.contas.find((c) => c.id === atual?.id) ?? cfg.contas[0] ?? null); }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { if (!selecionada) return; obterExtratoConta(selecionada.id).then(setExtrato).catch((e) => setErro(e.message)); }, [selecionada]);
-  if (!config) return <PaginaCarregando label="Carregando contas" />;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erro} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
   const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 

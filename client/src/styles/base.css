@@ -1075,13 +1075,27 @@ body.no-scroll { overflow: hidden; }
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
-/* Loader em nível de PÁGINA (<Loader full />): preenche a área de conteúdo e
-   centraliza nos dois eixos. Vive dentro do `.app-main`, que já desconta a
-   sidebar no margin-left — o centro é o da região de conteúdo, não o da janela,
-   e acompanha o trilho aberto (256px), recolhido (64px) ou o drawer mobile (0).
-   `min-height` em dvh evita a barra do navegador móvel deslocar o centro. */
-.loader--pagina {
+/* Estado de carregamento em nível de PÁGINA.
+
+   A coluna `.pagina-carregando` mede exatamente uma viewport e o loader dentro
+   dela cresce para tomar a sobra (`flex: 1`). Assim o total nunca passa de
+   100dvh — nem quando há algo acima do loader (o botão "Voltar" do detalhe da
+   operação, por exemplo). Dar `min-height: 100dvh` direto no loader criava
+   barra de rolagem, porque o padding do contêiner e os irmãos somavam POR FORA
+   dos 100dvh e empurravam a página (40px no desktop, 96px no mobile).
+
+   Vive dentro do `.app-main`, que já desconta a sidebar no margin-left — o
+   centro é o da região de conteúdo, não o da janela, e acompanha o trilho
+   aberto (256px), recolhido (64px) ou o drawer mobile (0). `dvh` evita que a
+   barra do navegador móvel desloque o centro. */
+.pagina-carregando {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.loader--pagina {
+  flex: 1;
+  min-height: 0;
   justify-content: center;
   padding: 24px;
 }

@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Building2, Plus, Users } from "lucide-react";
 import { atualizarConta, atualizarParceiro, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
-import { brl, Button, type ColunaTabela, dataBR, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { brl, Button, type ColunaTabela, dataBR, ErrorBox, hoje, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 
 /* Colunas dos dois cadastros. O alinhamento vale para cabeçalho e conteúdo de
  * uma vez só; `alternar` recebe o item porque o toggle depende da linha. */
@@ -25,7 +25,7 @@ export function ConfiguracoesFinanceiras() {
   const [config, setConfig] = useState<Config | null>(null); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"contas" | "parceiros">("contas"); const [criando, setCriando] = useState(false);
   const [nome, setNome] = useState(""); const [tipo, setTipo] = useState("BANCO"); const [saldo, setSaldo] = useState("0"); const [documento, setDocumento] = useState("");
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []); useEffect(() => { carregar(); }, [carregar]);
-  if (!config) return <PaginaCarregando label="Carregando configurações financeiras" />;
+  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
   const adicionar = async (e: FormEvent) => { e.preventDefault(); try { if (aba === "contas") await criarConta({ nome, tipo, saldoAbertura: Number(saldo), dataSaldoAbertura: hoje(), incluirNoSaldoGeral: true }); else await criarParceiro({ nome, documento: documento || undefined, tipo }); setNome(""); setDocumento(""); setSaldo("0"); setCriando(false); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 
   return <PaginaFinanceira><PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={<Button onClick={() => setCriando(true)}><Plus size={16} /> {aba === "contas" ? "Nova conta" : "Novo parceiro"}</Button>} /><ErrorBox erro={erro} />

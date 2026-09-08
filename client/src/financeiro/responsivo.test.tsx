@@ -119,15 +119,33 @@ describe("telas financeiras — envelope e carregamento", () => {
 
     const loader = container.querySelector(".loader")!;
     expect(loader, "toda tela usa o mesmo dialeto de loading").toBeTruthy();
-    // `.loader--pagina` = min-height da área de conteúdo + centralização nos dois
-    // eixos; como vive dentro do .app-main, a sidebar não entra na conta.
     expect(loader.className).toContain("loader--pagina");
     expect(screen.getByRole("status")).toBeTruthy();
 
-    // envelope único: gutter + folga do botão flutuante de menu em ≤900px
+    // A coluna de carregamento mede uma viewport e o loader toma a sobra. Ela NÃO
+    // pode ser a `.pagina-financeira`: o padding vertical daquela somaria por fora
+    // dos 100dvh e criaria barra de rolagem (medido: +40px desktop, +96px mobile).
     const raiz = container.firstElementChild!;
     expect(raiz.className).toContain("shell-wide");
-    expect(raiz.className).toContain("pagina-financeira");
+    expect(raiz.className).toContain("pagina-carregando");
+    expect(raiz.className).not.toContain("pagina-financeira");
+    expect(loader.parentElement, "o loader é filho direto da coluna que mede a viewport").toBe(raiz);
+  });
+
+  it.each([
+    ["Contas e extratos", async () => { const m = await import("./ContasFinanceiras"); return () => <m.ContasFinanceiras onNav={() => {}} />; }],
+    ["Configurações financeiras", async () => { const m = await import("./ConfiguracoesFinanceiras"); return () => <m.ConfiguracoesFinanceiras />; }],
+  ] as [string, () => Promise<() => JSX.Element>][])("%s mostra o erro em vez de girar para sempre", async (_nome, carregar) => {
+    // Telas que só renderizam com `config` carregada: sem este caminho, uma falha
+    // deixa `config` nula, o guard de carregamento vence e o ErrorBox nunca é
+    // alcançado — a tela fica girando e o usuário não vê o motivo.
+    for (const mock of [obterConfiguracoesFinanceiras, obterExtratoConta]) mock.mockRejectedValue(new Error("Falha simulada no servidor"));
+    const renderizar = await carregar();
+    const { container, findByRole } = render(renderizar());
+
+    const alerta = await findByRole("alert");
+    expect(alerta.textContent).toContain("Falha simulada no servidor");
+    expect(container.querySelector(".loader"), "o loader some quando há erro").toBeNull();
   });
 
   it.each(telas)("%s não solta largura mínima fora de um contêiner rolável", async (_nome, carregar) => {

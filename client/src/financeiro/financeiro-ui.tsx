@@ -32,10 +32,20 @@ export function PaginaFinanceira({ children }: { children: React.ReactNode }) {
 }
 
 /* Carregamento em nível de página: ocupa a área de conteúdo (.app-main, que já
- * exclui a sidebar) e centraliza o loader nos dois eixos. Ver `.loader--pagina`
- * em base.css. */
+ * exclui a sidebar) e centraliza o loader nos dois eixos. Usa `.pagina-carregando`
+ * em vez de `PaginaFinanceira` de propósito — o padding vertical da página somaria
+ * POR FORA dos 100dvh do loader e criaria barra de rolagem. Ver base.css. */
 export function PaginaCarregando({ label }: { label: string }) {
-  return <PaginaFinanceira><Loader label={label} full /></PaginaFinanceira>;
+  return <div className="shell-wide pagina-carregando"><Loader label={label} full /></div>;
+}
+
+/* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
+ * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
+ * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
+ * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
+export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
+  if (!erro) return <PaginaCarregando label={label} />;
+  return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
 export function PageHeader({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
@@ -65,7 +75,7 @@ export function StatusPill({ status }: { status: string }) {
 
 export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(22px,5vw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
+  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {

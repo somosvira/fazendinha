@@ -13,7 +13,9 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const carregar = useCallback(async () => { try { setErro(null); setOperacao(await obterOperacao(operacaoId)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } }, [operacaoId]);
   useEffect(() => { void carregar(); }, [carregar]);
 
-  if (!operacao) return <PaginaFinanceira><button onClick={onVoltar} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</PaginaFinanceira>;
+  // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
+  // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
+  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</div>;
 
   const transacoesOriginais = operacao.transacoes.filter((item) => item.tipo !== "REVERSAO");
   const valorFinanceiro = transacoesOriginais.reduce((soma, item) => soma + Number(item.valorTotal), 0);
