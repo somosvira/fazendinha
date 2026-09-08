@@ -9,8 +9,27 @@ import {
   removeItemFromCacheList,
   updateItemInCacheList,
   upsertItemInCacheList,
+  criarIdTemporario,
+  criarIdOtimista,
+  idPendenteDeSync,
   type UseOfflineMutationConfig,
 } from "./useOfflineMutation";
+
+describe("idPendenteDeSync", () => {
+  it("reconhece id temporário (reconciliável) e id otimista (não reconciliável) como pendentes", () => {
+    expect(idPendenteDeSync(criarIdTemporario())).toBe(true);
+    expect(idPendenteDeSync(criarIdOtimista())).toBe(true);
+  });
+
+  it("id real (numérico, vindo do servidor) não é pendente", () => {
+    expect(idPendenteDeSync(42)).toBe(false);
+  });
+
+  it("os dois prefixos nunca colidem entre si", () => {
+    expect(criarIdOtimista().startsWith("local:")).toBe(false);
+    expect(criarIdTemporario().startsWith("otimista:")).toBe(false);
+  });
+});
 
 let enfileirarImpl: () => Promise<unknown> = () => new Promise(() => {});
 

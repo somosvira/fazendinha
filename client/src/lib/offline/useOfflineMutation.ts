@@ -13,6 +13,24 @@ export function criarIdTemporario(): string {
   return `${ID_TEMPORARIO_PREFIXO}${crypto.randomUUID()}`;
 }
 
+// Prefixo separado (não elegível a substituirIdNaFila) para sub-entidades
+// nascidas como efeito colateral de uma mutation que já tem seu próprio id
+// temporário reconciliável — ex.: os N CompromissoFinanceiro que uma
+// Operação `A_PRAZO`/`PARCIAL` cria de uma vez (ver
+// docs/design/offline/PLANO_FINANCEIRO.md). `substituirIdNaFila` só conhece
+// ID_TEMPORARIO_PREFIXO, então isto nunca é reconciliado por engano —
+// qualquer ação que dependa de id real (ex.: liquidar um compromisso) deve
+// checar `idPendenteDeSync` e ficar indisponível enquanto o id não sincronizar.
+export const ID_OTIMISTA_PREFIXO = "otimista:";
+
+export function criarIdOtimista(): string {
+  return `${ID_OTIMISTA_PREFIXO}${crypto.randomUUID()}`;
+}
+
+export function idPendenteDeSync(id: string | number): boolean {
+  return typeof id === "string" && (id.startsWith(ID_TEMPORARIO_PREFIXO) || id.startsWith(ID_OTIMISTA_PREFIXO));
+}
+
 function ehObjetoPlano(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
