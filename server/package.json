@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "prisma db push --skip-generate && tsx watch --env-file=.env src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm --filter @rionovo/shared run build && tsc -p tsconfig.json",
     "start": "node --env-file=.env dist/index.js",
     "start:prod": "node dist/index.js",
     "postinstall": "prisma generate",
@@ -37,6 +37,7 @@
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "@prisma/client": "^6.1.0",
+    "@rionovo/shared": "workspace:*",
     "hono": "^4.6.15",
     "openai": "^6.44.0",
     "pdf-parse": "^2.4.5",
