@@ -1,21 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
-import { listarCompromissos, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro } from "./novo-api";
+import { useCompromissosFinanceiros, useDashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [mes, setMes] = useState(mesAtual());
-  const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
-  const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
-  const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    const { inicio, fim } = limitesMes(mes); setErro(null);
-    Promise.all([obterDashboardFinanceiro(inicio, fim), listarCompromissos()])
-      .then(([d, c]) => { setDados(d); setCompromissos(c); })
-      .catch((e) => setErro(e.message));
-  }, [mes]);
+  const { inicio, fim } = limitesMes(mes);
+  const dashboardQuery = useDashboardFinanceiro(inicio, fim);
+  const compromissosQuery = useCompromissosFinanceiros();
+  const dados = dashboardQuery.data ?? null;
+  const compromissos = compromissosQuery.data ?? [];
+  const erroQuery = dashboardQuery.error ?? compromissosQuery.error;
+  const erro = erroQuery ? (erroQuery instanceof Error ? erroQuery.message : String(erroQuery)) : null;
 
   if (!dados && !erro) return <PaginaCarregando label="Carregando financeiro" />;
   const maior = Math.max(...(dados?.despesasPorCategoria.map((x) => Number(x.valor)) ?? [1]), 1);

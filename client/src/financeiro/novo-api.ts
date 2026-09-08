@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { comPropriedade } from "../propriedadeScope";
+import { req } from "../lib/offline/req";
 
 export type Conta = { id: number; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
 export type Parceiro = { id: number; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
@@ -17,16 +19,6 @@ export type Operacao = { id: number; tipo: string; status: string; data: string;
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: Parceiro | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const resposta = await fetch(`/api${path}`, {
-    ...init,
-    headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
-  });
-  const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
-  return corpo as T;
-}
-
 export const obterDashboardFinanceiro = (inicio?: string, fim?: string) => req<DashboardFinanceiro>(`/financeiro/dashboard${inicio && fim ? `?inicio=${inicio}&fim=${fim}` : ""}`);
 export const obterConfiguracoesFinanceiras = () => req<ConfiguracoesFinanceiras>("/financeiro/configuracoes");
 export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => {
@@ -36,6 +28,40 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
 export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoes/${id}`);
 export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
+
+// Query key factory do módulo (convenção offline — ver docs/design/offline/README.md).
+export const financeiroKeys = {
+  dashboard: (inicio?: string, fim?: string) => ["financeiro", "dashboard", inicio ?? null, fim ?? null] as const,
+  configuracoes: () => ["financeiro", "configuracoes"] as const,
+  operacoesTodos: () => ["financeiro", "operacoes"] as const,
+  operacoes: (filtros?: { inicio?: string; fim?: string }) => ["financeiro", "operacoes", filtros?.inicio ?? null, filtros?.fim ?? null] as const,
+  operacao: (id: number) => ["financeiro", "operacao", id] as const,
+  compromissos: () => ["financeiro", "compromissos"] as const,
+  extrato: (contaId: number) => ["financeiro", "extrato", contaId] as const,
+  rascunho: () => ["financeiro", "rascunho"] as const,
+};
+
+export function useDashboardFinanceiro(inicio?: string, fim?: string) {
+  return useQuery({ queryKey: financeiroKeys.dashboard(inicio, fim), queryFn: () => obterDashboardFinanceiro(inicio, fim) });
+}
+export function useConfiguracoesFinanceiras() {
+  return useQuery({ queryKey: financeiroKeys.configuracoes(), queryFn: () => obterConfiguracoesFinanceiras() });
+}
+export function useOperacoesFinanceiras(filtros?: { inicio?: string; fim?: string }) {
+  return useQuery({ queryKey: financeiroKeys.operacoes(filtros), queryFn: () => listarOperacoes(filtros) });
+}
+export function useOperacaoFinanceira(id: number) {
+  return useQuery({ queryKey: financeiroKeys.operacao(id), queryFn: () => obterOperacao(id) });
+}
+export function useCompromissosFinanceiros() {
+  return useQuery({ queryKey: financeiroKeys.compromissos(), queryFn: () => listarCompromissos() });
+}
+export function useExtratoConta(contaId: number | null) {
+  return useQuery({ queryKey: financeiroKeys.extrato(contaId ?? 0), queryFn: () => obterExtratoConta(contaId!), enabled: contaId != null });
+}
+export function useRascunhoOperacao() {
+  return useQuery({ queryKey: financeiroKeys.rascunho(), queryFn: () => obterRascunhoOperacao() });
+}
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
 export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho");
 export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) });

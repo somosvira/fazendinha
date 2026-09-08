@@ -1,7 +1,7 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { ArrowLeftRight, Landmark, Settings2, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
-import { obterConfiguracoesFinanceiras, obterExtratoConta, transferir, type ConfiguracoesFinanceiras, type Conta, type MovimentoConta } from "./novo-api";
+import { transferir, useConfiguracoesFinanceiras, useExtratoConta, type Conta, type MovimentoConta } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 
 /* Colunas do extrato. Entradas e saídas alinhadas à direita no cabeçalho E na
@@ -15,18 +15,22 @@ const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
 ];
 
 export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
-  const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [selecionada, setSelecionada] = useState<Conta | null>(null); const [extrato, setExtrato] = useState<MovimentoConta[]>([]); const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
-  const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg); setSelecionada((atual) => cfg.contas.find((c) => c.id === atual?.id) ?? cfg.contas[0] ?? null); }).catch((e) => setErro(e.message)), []);
-  useEffect(() => { carregar(); }, [carregar]);
-  useEffect(() => { if (!selecionada) return; obterExtratoConta(selecionada.id).then(setExtrato).catch((e) => setErro(e.message)); }, [selecionada]);
-  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erro} />;
+  const configQuery = useConfiguracoesFinanceiras();
+  const config = configQuery.data ?? null;
+  const [selecionadaId, setSelecionadaId] = useState<number | null>(null);
+  const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
+  const selecionada: Conta | null = config ? (config.contas.find((c) => c.id === selecionadaId) ?? config.contas[0] ?? null) : null;
+  const extratoQuery = useExtratoConta(selecionada?.id ?? null);
+  const extrato = extratoQuery.data ?? [];
+  const erroCarregamento = configQuery.error ? (configQuery.error instanceof Error ? configQuery.error.message : String(configQuery.error)) : null;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erroCarregamento} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
-  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await configQuery.refetch(); await extratoQuery.refetch(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 
   return <PaginaFinanceira>
     <PageHeader titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button><Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
     <ErrorBox erro={erro} />
-    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric label="Saldo geral" valor={brl(saldoGeral)} detalhe={`${config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).length} contas consideradas`} icon={WalletCards} />{config.contas.slice(0, 3).map((c) => <button key={c.id} onClick={() => setSelecionada(c)} className="min-w-0 text-left"><Panel className={`h-full p-5 transition ${selecionada?.id === c.id ? "border-[#5f7859] ring-1 ring-[#5f7859]" : "hover:border-stone-400"}`}><div className="flex justify-between gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={18} /> : <WalletCards size={18} />}</div>{!c.incluirNoSaldoGeral && <Pill>fora do geral</Pill>}</div><div className="mt-4 break-words font-semibold">{c.nome}</div><div className="mt-1 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}</div><div className="mt-4 break-words font-serif text-2xl">{brl(c.saldoAtual)}</div></Panel></button>)}</div>
+    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric label="Saldo geral" valor={brl(saldoGeral)} detalhe={`${config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).length} contas consideradas`} icon={WalletCards} />{config.contas.slice(0, 3).map((c) => <button key={c.id} onClick={() => setSelecionadaId(c.id)} className="min-w-0 text-left"><Panel className={`h-full p-5 transition ${selecionada?.id === c.id ? "border-[#5f7859] ring-1 ring-[#5f7859]" : "hover:border-stone-400"}`}><div className="flex justify-between gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={18} /> : <WalletCards size={18} />}</div>{!c.incluirNoSaldoGeral && <Pill>fora do geral</Pill>}</div><div className="mt-4 break-words font-semibold">{c.nome}</div><div className="mt-1 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}</div><div className="mt-4 break-words font-serif text-2xl">{brl(c.saldoAtual)}</div></Panel></button>)}</div>
     {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)} · saldo atual {brl(selecionada.saldoAtual)}</p></div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
       {extrato.length ? <TabelaFinanceira rotulo={`Extrato de ${selecionada.nome}`} itens={extrato} colunas={COLUNAS_EXTRATO} chaveDe={(m) => m.id} classeLinha={(m) => m.transacao.status === "REVERTIDA" ? "opacity-55" : ""} /> : <Empty>Esta conta ainda não possui movimentos.</Empty>}
     </Panel>}

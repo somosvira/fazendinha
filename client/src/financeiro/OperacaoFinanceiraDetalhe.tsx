@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
-import { estornarOperacao, obterOperacao, type Operacao } from "./novo-api";
+import { estornarOperacao, useOperacaoFinanceira, type Operacao } from "./novo-api";
 import { Loader } from "../components/Loading";
 import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 
 export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCorrigir }: { operacaoId: number; onVoltar: () => void; onAbrir: (id: number) => void; onCorrigir: (operacao: Operacao) => void }) {
-  const [operacao, setOperacao] = useState<Operacao | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const operacaoQuery = useOperacaoFinanceira(operacaoId);
+  const operacao = operacaoQuery.data ?? null;
+  const [erroEstorno, setErroEstorno] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const carregar = useCallback(async () => { try { setErro(null); setOperacao(await obterOperacao(operacaoId)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } }, [operacaoId]);
-  useEffect(() => { void carregar(); }, [carregar]);
+  const erro = erroEstorno ?? (operacaoQuery.error ? (operacaoQuery.error instanceof Error ? operacaoQuery.error.message : String(operacaoQuery.error)) : null);
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
   // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
@@ -23,9 +23,9 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const quantidadeEstoque = operacao.movimentosEstoque.filter((item) => !["REVERTIDO", "CANCELADO"].includes(item.status)).length;
 
   const confirmarCancelamento = async () => {
-    setSalvando(true); setErro(null);
-    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await carregar(); }
-    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    setSalvando(true); setErroEstorno(null);
+    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await operacaoQuery.refetch(); }
+    catch (e) { setErroEstorno(e instanceof Error ? e.message : String(e)); }
     finally { setSalvando(false); }
   };
 

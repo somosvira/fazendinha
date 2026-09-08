@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
 import { CircleDollarSign, Package, ShieldCheck } from "lucide-react";
-import { listarCompromissos, listarOperacoes, type Compromisso, type Operacao } from "./novo-api";
+import { useCompromissosFinanceiros, useOperacoesFinanceiras } from "./novo-api";
 import { brl, ErrorBox, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, TIPO_OPERACAO } from "./financeiro-ui";
 
 export function RelatoriosFinanceiros() {
-  const [ops, setOps] = useState<Operacao[]>([]); const [comps, setComps] = useState<Compromisso[]>([]); const [erro, setErro] = useState<string | null>(null); const [carregando, setCarregando] = useState(true);
-  useEffect(() => { Promise.all([listarOperacoes(), listarCompromissos()]).then(([o, c]) => { setOps(o); setComps(c); }).catch((e) => setErro(e.message)).finally(() => setCarregando(false)); }, []);
+  const opsQuery = useOperacoesFinanceiras(); const compsQuery = useCompromissosFinanceiros();
+  const ops = opsQuery.data ?? []; const comps = compsQuery.data ?? [];
+  const erroQuery = opsQuery.error ?? compsQuery.error;
+  const erro = erroQuery ? (erroQuery instanceof Error ? erroQuery.message : String(erroQuery)) : null;
   const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
-  if (carregando && !erro) return <PaginaCarregando label="Carregando relatórios" />;
+  if (opsQuery.isPending && compsQuery.isPending && !erro) return <PaginaCarregando label="Carregando relatórios" />;
 
   return <PaginaFinanceira><PageHeader titulo="Relatórios financeiros" descricao="Leituras auditáveis geradas somente a partir das operações, compromissos, transações e movimentos já registrados." /><ErrorBox erro={erro} />
     <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="Operações confirmadas" valor={String(confirmadas.length)} detalhe="Registros ativos" icon={ShieldCheck} /><Metric label="Volume econômico" valor={brl(total)} detalhe="Soma das operações confirmadas" icon={CircleDollarSign} /><Metric label="Com efeito de estoque" valor={String(ops.filter((o) => o.movimentosEstoque?.length).length)} detalhe="Operações rastreadas fisicamente" icon={Package} /></div>

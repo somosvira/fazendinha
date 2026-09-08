@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 
-const { obterOperacao, estornarOperacao } = vi.hoisted(() => ({ obterOperacao: vi.fn(), estornarOperacao: vi.fn() }));
-vi.mock("./novo-api", () => ({ obterOperacao, estornarOperacao }));
+const { useOperacaoFinanceira, estornarOperacao } = vi.hoisted(() => ({ useOperacaoFinanceira: vi.fn(), estornarOperacao: vi.fn() }));
+vi.mock("./novo-api", () => ({ useOperacaoFinanceira, estornarOperacao }));
 
 const operacao = {
   id: 6, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-02", descricao: "Compra de ração", valorTotal: "360",
@@ -18,7 +18,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("OperacaoFinanceiraDetalhe", () => {
   it("abre uma página própria e revisa os efeitos antes de cancelar", async () => {
-    obterOperacao.mockResolvedValue(operacao);
+    useOperacaoFinanceira.mockReturnValue({ data: operacao, error: null, isPending: false, refetch: vi.fn() });
     estornarOperacao.mockResolvedValue({ ...operacao, status: "CANCELADA" });
     render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
     expect(await screen.findByRole("heading", { name: "Compra de ração" })).toBeTruthy();

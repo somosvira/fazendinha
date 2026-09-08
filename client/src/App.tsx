@@ -78,11 +78,11 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
   );
 }
 
-// Abas com suporte real a escrita offline (fila própria) — ver
-// docs/design/offline/README.md. Começa vazia: a fundação por si só não cobre
-// nenhuma feature ainda, então toda aba fica travada sem rede até a fatia
-// correspondente (a próxima é Financeiro) declarar suporte aqui.
-const TABS_OFFLINE = new Set<Tab>([]);
+// Abas liberadas sem rede — ver docs/design/offline/PLANO_FINANCEIRO.md.
+// dashboard/relatorio (Financeiro) são só leitura, já migradas para useQuery
+// (persistem em IndexedDB) e sem nenhuma ação de escrita — liberadas assim
+// que a leitura ficou offline-safe, antes de qualquer mutation da fatia.
+const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio"]);
 
 function OfflineGatedTab() {
   return (
@@ -91,7 +91,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Nenhuma área tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Só Visão geral e Relatórios (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

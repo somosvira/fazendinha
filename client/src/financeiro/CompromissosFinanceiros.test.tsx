@@ -4,9 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 
+const { resultadoVazio } = vi.hoisted(() => ({ resultadoVazio: { data: undefined, error: null, isPending: false, refetch: vi.fn() } }));
 vi.mock("./novo-api", () => ({
-  listarCompromissos: vi.fn().mockResolvedValue([]),
-  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [] }),
+  useCompromissosFinanceiros: vi.fn().mockReturnValue({ ...resultadoVazio, data: [] }),
+  useConfiguracoesFinanceiras: vi.fn().mockReturnValue({ ...resultadoVazio, data: { contas: [], parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [] } }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
   liquidarCompromisso: vi.fn(),

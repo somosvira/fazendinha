@@ -16,20 +16,31 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 
-const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao } = vi.hoisted(() => ({
-  obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
-  listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(), obterRascunhoOperacao: vi.fn(),
+// As telas leem via hooks useQuery (ver docs/design/offline/PLANO_FINANCEIRO.md
+// — leitura migrada para useQuery antes de qualquer escrita offline). Mockar o
+// hook direto, não o fetch cru por baixo: `queryFn` fecha sobre o binding
+// interno do próprio módulo, então sobrescrever só a função crua não muda o
+// que o hook devolve (limitação conhecida de mock ESM via importOriginal).
+type ResultadoQuery<T> = { data: T | undefined; error: unknown; isPending: boolean; refetch: () => Promise<unknown> };
+const pendente = <T,>(): ResultadoQuery<T> => ({ data: undefined, error: null, isPending: true, refetch: vi.fn() });
+const resolvido = <T,>(data: T): ResultadoQuery<T> => ({ data, error: null, isPending: false, refetch: vi.fn() });
+const comErro = (erro: Error): ResultadoQuery<never> => ({ data: undefined, error: erro, isPending: false, refetch: vi.fn() });
+
+const {
+  useDashboardFinanceiro, useConfiguracoesFinanceiras, useCompromissosFinanceiros,
+  useOperacoesFinanceiras, useExtratoConta, useRascunhoOperacao,
+} = vi.hoisted(() => ({
+  useDashboardFinanceiro: vi.fn(), useConfiguracoesFinanceiras: vi.fn(), useCompromissosFinanceiros: vi.fn(),
+  useOperacoesFinanceiras: vi.fn(), useExtratoConta: vi.fn(), useRascunhoOperacao: vi.fn(),
 }));
 vi.mock("./novo-api", () => ({
-  obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta,
+  useDashboardFinanceiro, useConfiguracoesFinanceiras, useCompromissosFinanceiros, useOperacoesFinanceiras, useExtratoConta, useRascunhoOperacao,
+  useOperacaoFinanceira: vi.fn(),
   liquidarCompromisso: vi.fn(), transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),
-  obterRascunhoOperacao, descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
+  descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
 }));
-
-// Nunca resolve: congela cada tela no estado de carregamento.
-const pendente = () => new Promise(() => {});
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
@@ -114,8 +125,8 @@ describe("telas financeiras — envelope e carregamento", () => {
   ];
 
   it.each(telas)("%s centraliza o carregamento na área de conteúdo", async (_nome, carregar) => {
-    for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta]) mock.mockImplementation(pendente);
-    obterRascunhoOperacao.mockResolvedValue(null);
+    for (const hook of [useDashboardFinanceiro, useConfiguracoesFinanceiras, useCompromissosFinanceiros, useOperacoesFinanceiras, useExtratoConta]) hook.mockReturnValue(pendente());
+    useRascunhoOperacao.mockReturnValue(resolvido(null));
     const { render: renderizar } = await carregar();
     const { container } = render(renderizar());
 
@@ -141,8 +152,8 @@ describe("telas financeiras — envelope e carregamento", () => {
     // Telas que só renderizam com `config` carregada: sem este caminho, uma falha
     // deixa `config` nula, o guard de carregamento vence e o ErrorBox nunca é
     // alcançado — a tela fica girando e o usuário não vê o motivo.
-    for (const mock of [obterConfiguracoesFinanceiras, obterExtratoConta]) mock.mockRejectedValue(new Error("Falha simulada no servidor"));
-    obterRascunhoOperacao.mockResolvedValue(null);
+    for (const hook of [useConfiguracoesFinanceiras, useExtratoConta]) hook.mockReturnValue(comErro(new Error("Falha simulada no servidor")));
+    useRascunhoOperacao.mockReturnValue(resolvido(null));
     const renderizar = await carregar();
     const { container, findByRole } = render(renderizar());
 
@@ -152,28 +163,28 @@ describe("telas financeiras — envelope e carregamento", () => {
   });
 
   it.each(telas)("%s não solta largura mínima fora de um contêiner rolável", async (_nome, carregar) => {
-    obterDashboardFinanceiro.mockResolvedValue({
+    useDashboardFinanceiro.mockReturnValue(resolvido({
       periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "1628514.34",
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       realizado: { entradas: "412870.22", saidas: "298345.68", resultado: "114524.54" },
       compromissos: { aPagar: "204500.9", aReceber: "278140.55" },
       despesasPorCategoria: [{ categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
-    });
-    obterConfiguracoesFinanceiras.mockResolvedValue({
+    }));
+    useConfiguracoesFinanceiras.mockReturnValue(resolvido({
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       parceiros: [{ id: 1, nome: "Cooperativa Agropecuária dos Produtores de Leite do Alto Paranaíba Ltda.", documento: "12.345.678/0001-99", tipo: "FORNECEDOR", telefone: null, email: null, ativo: true }],
       gruposCategorias: [], centrosCusto: [], produtos: [],
-    });
-    listarCompromissos.mockResolvedValue([{
+    }));
+    useCompromissosFinanceiros.mockReturnValue(resolvido([{
       id: 1, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "184500.9", valorLiquidado: "0", saldoPendente: "184500.9",
       dataVencimento: "2026-09-15", vencido: false, parceiro: null, operacao: { id: 41, tipo: "COMPRA_ESTOQUE", descricao: "Compra de ração concentrada 22% PB" },
-    }]);
-    listarOperacoes.mockResolvedValue([{
+    }]));
+    useOperacoesFinanceiras.mockReturnValue(resolvido([{
       id: 41, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-02", descricao: "Compra de ração concentrada 22% PB",
       valorTotal: "184500.9", parceiro: null, itens: [], compromissos: [], transacoes: [], movimentosEstoque: [], documentos: [],
-    }]);
-    obterExtratoConta.mockResolvedValue([]);
-    obterRascunhoOperacao.mockResolvedValue(null);
+    }]));
+    useExtratoConta.mockReturnValue(resolvido([]));
+    useRascunhoOperacao.mockReturnValue(resolvido(null));
 
     const { render: renderizar } = await carregar();
     const { container, findByRole } = render(renderizar());
