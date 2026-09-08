@@ -54,7 +54,10 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     finally { setPreparando(false); }
   };
 
-  if ((itensQuery.isPending || configQuery.isPending) && !config) return <PaginaCarregando label="Carregando compromissos" />;
+  // Gate na query da lista, não em `config` (ver mesmo comentário em
+  // OperacoesFinanceiras.tsx) — `config` é opcional aqui (só usado com `?.`
+  // no modal de liquidação).
+  if (itensQuery.isPending) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira>
     <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={<div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div>} />

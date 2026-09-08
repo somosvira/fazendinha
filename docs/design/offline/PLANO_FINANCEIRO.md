@@ -183,3 +183,32 @@ _(Tomadas durante a implementação — não estavam detalhadas no plano acima.)
   precisa mockar `../lib/offline/fila`** (idb-keyval não roda em jsdom) —
   e, se o componente usa `useSalvarOffline`, envolver o render em
   `<ToastProvider>` (erro tardio vira toast).
+
+## Bugs achados no QA manual e como foram corrigidos
+
+_(Achados testando de verdade no navegador — `offline`/`online` disparados
+manualmente, fila inspecionada via IndexedDB, backend real local.)_
+
+- **Gate de loading que assume que duas queries sempre resolvem juntas
+  esconde uma query pausada offline atrás de um resultado vazio/zerado.**
+  `OperacoesFinanceiras.tsx`, `CompromissosFinanceiros.tsx` e
+  `ContasFinanceiras.tsx` decidiam "ainda carregando" checando `!config`
+  (ou similar) em vez da própria query da lista — herdado de antes da fila
+  offline (#251), quando as duas sempre respondiam juntas online. Com
+  `networkMode` padrão do TanStack Query, uma query **nunca visitada**
+  fica pausada indefinidamente enquanto offline (ver
+  `docs/design/offline/README.md`), então se a query irmã (ex.:
+  `configuracoes()`, aquecida por outra tela) já tiver dado, o gate
+  liberava a página achando que tudo carregou — mostrando "Nenhuma
+  operação encontrada"/"não possui movimentos" como se fosse um resultado
+  real. `RelatoriosFinanceiros.tsx` tinha a mesma falha ao contrário
+  (`&&` em vez de `||` entre as duas `isPending`): com uma das duas já
+  aquecida, os KPIs renderizavam somando só a que resolveu, mostrando
+  totais visivelmente errados (ex.: R$ 0,00) em vez de "carregando".
+  Corrigido: cada gate agora depende só da(s) query(s) cujo dado ele
+  realmente precisa pra não mentir (`operacoesQuery.isPending`,
+  `itensQuery.isPending`, `extratoQuery.isPending`, e `||` no lugar de
+  `&&` em Relatórios). Reproduzido e confirmado no navegador: limpar
+  `localStorage`+IndexedDB, logar, ir offline **antes** de visitar a tela
+  — antes do fix mostrava vazio/zerado na hora; depois, fica em
+  "Carregando…" até reconectar, e resolve normal.

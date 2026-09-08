@@ -65,7 +65,6 @@ export function OperacoesFinanceiras() {
   const configQuery = useConfiguracoesFinanceiras();
   const rascunhoQuery = useRascunhoOperacao();
   const itens = operacoesQuery.data ?? []; const config = configQuery.data ?? null; const rascunho = rascunhoQuery.data ?? null;
-  const loading = operacoesQuery.isPending || configQuery.isPending;
   const erroCarregamento = operacoesQuery.error ?? configQuery.error;
   const recarregarListaERascunho = () => Promise.all([operacoesQuery.refetch(), rascunhoQuery.refetch()]);
   useEffect(() => { const onPop = () => { setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname)); }; window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
@@ -85,7 +84,12 @@ export function OperacoesFinanceiras() {
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} />;
-  if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
+  // Gate na query da lista, não em `config` — `config` costuma aquecer antes
+  // (compartilhado por várias telas) e, offline, `operacoesQuery` pode ficar
+  // pausada indefinidamente (nunca visitada com este filtro exato, ver
+  // docs/design/offline/README.md). Um gate em `!config` mascarava isso como
+  // "nenhuma operação encontrada" em vez de "ainda carregando".
+  if (operacoesQuery.isPending) return <PaginaCarregando label="Carregando operações" />;
   const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
   if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} filtrosLista={{ inicio, fim }} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => {
     setForm(false); setOperacaoBase(null); await recarregarListaERascunho(); if (aviso) setErro(aviso);

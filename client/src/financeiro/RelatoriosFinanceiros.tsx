@@ -8,7 +8,11 @@ export function RelatoriosFinanceiros() {
   const erroQuery = opsQuery.error ?? compsQuery.error;
   const erro = erroQuery ? (erroQuery instanceof Error ? erroQuery.message : String(erroQuery)) : null;
   const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
-  if (opsQuery.isPending && compsQuery.isPending && !erro) return <PaginaCarregando label="Carregando relatórios" />;
+  // `||`, não `&&`: os KPIs somam as duas fontes — se uma ficar pausada
+  // offline (nunca visitada com esta queryKey) enquanto a outra já resolveu,
+  // renderizar cedo demais mostra total/volume como se fossem zero, não como
+  // "ainda carregando" (mesma classe de bug de OperacoesFinanceiras.tsx).
+  if ((opsQuery.isPending || compsQuery.isPending) && !erro) return <PaginaCarregando label="Carregando relatórios" />;
 
   return <PaginaFinanceira><PageHeader titulo="Relatórios financeiros" descricao="Leituras auditáveis geradas somente a partir das operações, compromissos, transações e movimentos já registrados." /><ErrorBox erro={erro} />
     <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="Operações confirmadas" valor={String(confirmadas.length)} detalhe="Registros ativos" icon={ShieldCheck} /><Metric label="Volume econômico" valor={brl(total)} detalhe="Soma das operações confirmadas" icon={CircleDollarSign} /><Metric label="Com efeito de estoque" valor={String(ops.filter((o) => o.movimentosEstoque?.length).length)} detalhe="Operações rastreadas fisicamente" icon={Package} /></div>
