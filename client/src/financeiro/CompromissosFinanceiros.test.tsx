@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
+import { ToastProvider } from "../components/Toast";
 
 const { resultadoVazio } = vi.hoisted(() => ({ resultadoVazio: { data: undefined, error: null, isPending: false, refetch: vi.fn() } }));
 vi.mock("./novo-api", () => ({
@@ -10,8 +11,14 @@ vi.mock("./novo-api", () => ({
   useConfiguracoesFinanceiras: vi.fn().mockReturnValue({ ...resultadoVazio, data: { contas: [], parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [] } }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
-  liquidarCompromisso: vi.fn(),
+  useLiquidarCompromisso: vi.fn().mockReturnValue({ mutate: vi.fn(), pendentes: [] }),
 }));
+
+// CompromissosFinanceiros usa useToast() (escrita offline — ver
+// ../lib/offline/useSalvarOffline) — precisa do ToastProvider no contexto.
+function renderComToast(node: React.ReactElement) {
+  return render(<ToastProvider>{node}</ToastProvider>);
+}
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/financeiro/compromissos");
@@ -23,7 +30,7 @@ describe("CompromissosFinanceiros — criação", () => {
   it("pede confirmação antes de substituir um rascunho", async () => {
     vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: 8, versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
     const onNav = vi.fn();
-    render(<CompromissosFinanceiros onNav={onNav} />);
+    renderComToast(<CompromissosFinanceiros onNav={onNav} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar a pagar" }));
     expect(await screen.findByRole("heading", { name: "Substituir rascunho em andamento?" })).toBeTruthy();
@@ -38,7 +45,7 @@ describe("CompromissosFinanceiros — criação", () => {
   it("segue diretamente quando não existe rascunho", async () => {
     vi.mocked(obterRascunhoOperacao).mockResolvedValue(null);
     const onNav = vi.fn();
-    render(<CompromissosFinanceiros onNav={onNav} />);
+    renderComToast(<CompromissosFinanceiros onNav={onNav} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar a receber" }));
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));

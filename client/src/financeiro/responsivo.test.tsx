@@ -15,6 +15,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { ToastProvider } from "../components/Toast";
+
+// CompromissosFinanceiros usa useToast() (escrita offline) — precisa do
+// ToastProvider no contexto; as demais telas ignoram, sem custo.
+const comToast = (node: JSX.Element) => <ToastProvider>{node}</ToastProvider>;
 
 // As telas leem via hooks useQuery (ver docs/design/offline/PLANO_FINANCEIRO.md
 // — leitura migrada para useQuery antes de qualquer escrita offline). Mockar o
@@ -36,7 +41,8 @@ const {
 vi.mock("./novo-api", () => ({
   useDashboardFinanceiro, useConfiguracoesFinanceiras, useCompromissosFinanceiros, useOperacoesFinanceiras, useExtratoConta, useRascunhoOperacao,
   useOperacaoFinanceira: vi.fn(),
-  liquidarCompromisso: vi.fn(), transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
+  useLiquidarCompromisso: vi.fn().mockReturnValue({ mutate: vi.fn(), pendentes: [] }),
+  transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
@@ -128,7 +134,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     for (const hook of [useDashboardFinanceiro, useConfiguracoesFinanceiras, useCompromissosFinanceiros, useOperacoesFinanceiras, useExtratoConta]) hook.mockReturnValue(pendente());
     useRascunhoOperacao.mockReturnValue(resolvido(null));
     const { render: renderizar } = await carregar();
-    const { container } = render(renderizar());
+    const { container } = render(comToast(renderizar()));
 
     const loader = container.querySelector(".loader")!;
     expect(loader, "toda tela usa o mesmo dialeto de loading").toBeTruthy();
@@ -155,7 +161,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     for (const hook of [useConfiguracoesFinanceiras, useExtratoConta]) hook.mockReturnValue(comErro(new Error("Falha simulada no servidor")));
     useRascunhoOperacao.mockReturnValue(resolvido(null));
     const renderizar = await carregar();
-    const { container, findByRole } = render(renderizar());
+    const { container, findByRole } = render(comToast(renderizar()));
 
     const alerta = await findByRole("alert");
     expect(alerta.textContent).toContain("Falha simulada no servidor");
@@ -187,7 +193,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     useRascunhoOperacao.mockReturnValue(resolvido(null));
 
     const { render: renderizar } = await carregar();
-    const { container, findByRole } = render(renderizar());
+    const { container, findByRole } = render(comToast(renderizar()));
     await findByRole("heading", { level: 1 });
 
     for (const el of comLarguraMinima(container)) {

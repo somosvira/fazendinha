@@ -79,10 +79,10 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 }
 
 // Abas liberadas sem rede — ver docs/design/offline/PLANO_FINANCEIRO.md.
-// dashboard/relatorio (Financeiro) são só leitura, já migradas para useQuery
-// (persistem em IndexedDB) e sem nenhuma ação de escrita — liberadas assim
-// que a leitura ficou offline-safe, antes de qualquer mutation da fatia.
-const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio"]);
+// dashboard/relatorio (Financeiro) são só leitura. gastos (Compromissos) já
+// cobre a liquidação (useLiquidarCompromisso, update in-place num compromisso
+// existente — sem criação de entidade nova nesta tela).
+const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio", "gastos"]);
 
 function OfflineGatedTab() {
   return (
@@ -91,7 +91,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Só Visão geral e Relatórios (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Só Visão geral, Relatórios e Compromissos (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

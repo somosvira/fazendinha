@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { arredondar } from "@rionovo/shared";
 import { comPropriedade } from "../propriedadeScope";
 import { req } from "../lib/offline/req";
+import { useOfflineMutation } from "../lib/offline/useOfflineMutation";
 
 export type Conta = { id: number; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
 export type Parceiro = { id: number; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
@@ -31,6 +33,7 @@ export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/finance
 
 // Query key factory do módulo (convenção offline — ver docs/design/offline/README.md).
 export const financeiroKeys = {
+  dashboardTodos: () => ["financeiro", "dashboard"] as const,
   dashboard: (inicio?: string, fim?: string) => ["financeiro", "dashboard", inicio ?? null, fim ?? null] as const,
   configuracoes: () => ["financeiro", "configuracoes"] as const,
   operacoesTodos: () => ["financeiro", "operacoes"] as const,
@@ -94,7 +97,37 @@ export async function anexarDocumentoOperacao(operacaoId: number, input: { arqui
   return corpo as DocumentoFinanceiro;
 }
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
-export const liquidarCompromisso = (id: number, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
+
+export type LiquidarCompromissoInput = { compromissoId: number; contaId: number; valor: number; data: string; formaPagamento?: string; descricao?: string };
+
+// Update in-place num Compromisso JÁ EXISTENTE (id real — nunca criado
+// offline nesta fatia) — sem criarOtimista, a fórmula (saldo zerou?
+// LIQUIDADO : PARCIAL) é determinística e lida do próprio cache, não
+// duplicada aqui. Extrato/dashboard/saldo de conta são invalidate-only:
+// dado agregado no servidor, não dá pra patchar sem duplicar a conta.
+export function useLiquidarCompromisso() {
+  return useOfflineMutation<LiquidarCompromissoInput, Compromisso>({
+    mutationKey: "financeiro-liquidar-compromisso",
+    path: (input) => `/financeiro/compromissos/${input.compromissoId}/liquidacoes`,
+    method: "POST",
+    body: (input) => ({ contaId: input.contaId, valor: input.valor, data: input.data, formaPagamento: input.formaPagamento, descricao: input.descricao }),
+    queryKeys: (input) => [
+      {
+        queryKey: financeiroKeys.compromissos(),
+        aplicar: (atual: Compromisso[] | undefined) => (atual ?? []).map((c) => {
+          if (c.id !== input.compromissoId) return c;
+          const valorLiquidado = arredondar(Number(c.valorLiquidado) + input.valor);
+          const saldoPendente = Math.max(0, arredondar(Number(c.valorOriginal) - valorLiquidado));
+          return { ...c, valorLiquidado: String(valorLiquidado), saldoPendente: String(saldoPendente), status: saldoPendente <= 0.005 ? "LIQUIDADO" : "PARCIAL" };
+        }),
+      },
+      { queryKey: financeiroKeys.extrato(input.contaId) },
+      { queryKey: financeiroKeys.dashboardTodos() },
+      { queryKey: financeiroKeys.configuracoes() },
+    ],
+  });
+}
+
 export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
 export const atualizarConta = (id: number, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
