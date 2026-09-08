@@ -10,15 +10,15 @@ import {
   updateItemInCacheList,
   upsertItemInCacheList,
   criarIdTemporario,
-  criarIdOtimista,
+  criarIdLote,
   idPendenteDeSync,
   type UseOfflineMutationConfig,
 } from "./useOfflineMutation";
 
 describe("idPendenteDeSync", () => {
-  it("reconhece id temporário (reconciliável) e id otimista (não reconciliável) como pendentes", () => {
+  it("reconhece id temporário (reconciliável) e id de lote (não reconciliável) como pendentes", () => {
     expect(idPendenteDeSync(criarIdTemporario())).toBe(true);
-    expect(idPendenteDeSync(criarIdOtimista())).toBe(true);
+    expect(idPendenteDeSync(criarIdLote())).toBe(true);
   });
 
   it("id real (numérico, vindo do servidor) não é pendente", () => {
@@ -26,8 +26,8 @@ describe("idPendenteDeSync", () => {
   });
 
   it("os dois prefixos nunca colidem entre si", () => {
-    expect(criarIdOtimista().startsWith("local:")).toBe(false);
-    expect(criarIdTemporario().startsWith("otimista:")).toBe(false);
+    expect(criarIdLote().startsWith("local:")).toBe(false);
+    expect(criarIdTemporario().startsWith("lote:")).toBe(false);
   });
 });
 

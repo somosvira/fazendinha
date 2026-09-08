@@ -48,14 +48,14 @@ reconciliação N-a-N sem nenhum caso de uso real pedindo isso, entra um
 prefixo **separado**, deliberadamente **não elegível a reconciliação**:
 
 ```ts
-export const ID_OTIMISTA_PREFIXO = "otimista:";
-export function criarIdOtimista(): string { return `${ID_OTIMISTA_PREFIXO}${crypto.randomUUID()}`; }
+export const ID_LOTE_PREFIXO = "lote:";
+export function criarIdLote(): string { return `${ID_LOTE_PREFIXO}${crypto.randomUUID()}`; }
 export function idPendenteDeSync(id: string | number): boolean {
-  return typeof id === "string" && (id.startsWith(ID_TEMPORARIO_PREFIXO) || id.startsWith(ID_OTIMISTA_PREFIXO));
+  return typeof id === "string" && (id.startsWith(ID_TEMPORARIO_PREFIXO) || id.startsWith(ID_LOTE_PREFIXO));
 }
 ```
 
-`fila.ts` não muda — só conhece `local:`, então `otimista:` fica fora do
+`fila.ts` não muda — só conhece `local:`, então `lote:` fica fora do
 mecanismo automaticamente. Qualquer ação que dependa de id real (ex.:
 "Liquidar" um compromisso) fica desabilitada via `idPendenteDeSync()`
 enquanto o id for de um dos dois prefixos.
@@ -70,7 +70,7 @@ enquanto o id for de um dos dois prefixos.
 - `MovimentoEstoque` (0..N) — embutido no otimista da Operação; sem cache
   próprio (nenhuma tela financeira lista isso separado).
 - `CompromissoFinanceiro` (0..N) — patch otimista na lista de Compromissos,
-  id `otimista:`.
+  id `lote:`.
 - `TransacaoFinanceira`+`MovimentoConta` (0 ou 1) — patch otimista no
   extrato da conta, se estiver em cache.
 - Dashboard e saldo agregado de Conta: **sempre invalidate-only** (somas do
@@ -141,7 +141,7 @@ _(Tomadas durante a implementação — não estavam detalhadas no plano acima.)
 
 - **`Operacao.id` e `Compromisso.id` alargados para `number | string`**
   (`novo-api.ts`). Um id otimista/temporário é sempre string
-  (`"local:<uuid>"`/`"otimista:<uuid>"`); os dois tipos precisavam aceitar
+  (`"local:<uuid>"`/`"lote:<uuid>"`); os dois tipos precisavam aceitar
   isso pra caber no mesmo cache que recebe registros reais. Todo call site
   que assume id real (`abrirDetalhe`, `estornarOperacao`, `liquidarCompromisso`)
   só é alcançável depois de um guard `idPendenteDeSync` — nunca precisou de
@@ -158,7 +158,7 @@ _(Tomadas durante a implementação — não estavam detalhadas no plano acima.)
   Operações (são componentes irmãos, não pai/filho). Mesma razão do item
   acima, aplicada ao contrário: sem a chave exata, só dá pra invalidar.
 - **Sub-itens embutidos sem endereço próprio usam id numérico negativo
-  sequencial**, não `criarIdTemporario()`/`criarIdOtimista()` — reservado
+  sequencial**, não `criarIdTemporario()`/`criarIdLote()` — reservado
   pra quando algo pode legitimamente ser referenciado depois (a Operação em
   si, os Compromissos). `ItemOperacao`, `MovimentoEstoqueOperacao`,
   `TransacaoOperacao` embutidos numa Operação otimista, e a `transacao`

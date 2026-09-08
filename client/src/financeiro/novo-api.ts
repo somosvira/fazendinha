@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { arredondar, preverEfeitosOperacao, type OperacaoInput as OperacaoSchemaInput } from "@rionovo/shared";
 import { comPropriedade } from "../propriedadeScope";
 import { req } from "../lib/offline/req";
-import { criarIdOtimista, criarIdTemporario, prependItemToCacheList, useOfflineMutation } from "../lib/offline/useOfflineMutation";
+import { criarIdLote, criarIdTemporario, prependItemToCacheList, useOfflineMutation } from "../lib/offline/useOfflineMutation";
 
 export type Conta = { id: number; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
 export type Parceiro = { id: number; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
@@ -12,7 +12,7 @@ export type CentroCusto = { id: number; nome: string; ehInvestimento: boolean };
 export type Produto = { id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; gruposCategorias: GrupoCategoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
 // id: number | string — string só quando ainda não sincronizou (id temporário
-// ou "otimista:", ver lib/offline/useOfflineMutation.ts). idPendenteDeSync(id)
+// ou "lote:", ver lib/offline/useOfflineMutation.ts). idPendenteDeSync(id)
 // diz quando uma ação que depende de id real deve ficar indisponível.
 export type Compromisso = { id: number | string; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; vencido: boolean; parceiro: Parceiro | null; operacao: { id: number | string; tipo: string; descricao: string | null } };
 export type ItemOperacao = { id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
@@ -143,7 +143,7 @@ export type CriarOperacaoInput = OperacaoSchemaInput;
 // movimentos de estoque/transação embutidos na Operação otimista recebem id
 // numérico sequencial local (nunca olhado por id em lugar nenhum da UI);
 // os compromissos, por serem endereçáveis à parte (liquidação), recebem
-// ID_OTIMISTA_PREFIXO e ficam com a ação bloqueada até sincronizar
+// ID_LOTE_PREFIXO e ficam com a ação bloqueada até sincronizar
 // (idPendenteDeSync).
 function construirOperacaoOtimista(input: CriarOperacaoInput): Operacao {
   const previsto = preverEfeitosOperacao(input);
@@ -158,7 +158,7 @@ function construirOperacaoOtimista(input: CriarOperacaoInput): Operacao {
     id: proximoId--, tipo: m.tipo, status: "CONFIRMADO", quantidade: String(m.quantidade), valorTotal: String(m.valorTotal), produtoId: m.produtoId,
   }));
   const compromissos: Compromisso[] = previsto.compromissos.map((c) => ({
-    id: criarIdOtimista(), tipo: c.tipo, status: "PENDENTE", valorOriginal: String(c.valorOriginal), valorLiquidado: "0",
+    id: criarIdLote(), tipo: c.tipo, status: "PENDENTE", valorOriginal: String(c.valorOriginal), valorLiquidado: "0",
     saldoPendente: String(c.valorOriginal), dataVencimento: c.dataVencimento.toISOString(), vencido: false, parceiro: null,
     operacao: { id, tipo: input.tipo, descricao: input.descricao },
   }));

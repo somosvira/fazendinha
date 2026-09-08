@@ -13,22 +13,30 @@ export function criarIdTemporario(): string {
   return `${ID_TEMPORARIO_PREFIXO}${crypto.randomUUID()}`;
 }
 
-// Prefixo separado (não elegível a substituirIdNaFila) para sub-entidades
-// nascidas como efeito colateral de uma mutation que já tem seu próprio id
-// temporário reconciliável — ex.: os N CompromissoFinanceiro que uma
-// Operação `A_PRAZO`/`PARCIAL` cria de uma vez (ver
-// docs/design/offline/PLANO_FINANCEIRO.md). `substituirIdNaFila` só conhece
-// ID_TEMPORARIO_PREFIXO, então isto nunca é reconciliado por engano —
-// qualquer ação que dependa de id real (ex.: liquidar um compromisso) deve
-// checar `idPendenteDeSync` e ficar indisponível enquanto o id não sincronizar.
-export const ID_OTIMISTA_PREFIXO = "otimista:";
+/**
+ * Prefixo separado (não elegível a `substituirIdNaFila`) para sub-entidades
+ * nascidas em lote como efeito colateral de uma mutation que já tem seu
+ * próprio id temporário reconciliável — ex.: os N `CompromissoFinanceiro`
+ * que uma Operação `A_PRAZO`/`PARCIAL` cria de uma vez (ver
+ * docs/design/offline/PLANO_FINANCEIRO.md).
+ *
+ * Não é uma impossibilidade arquitetural — é limitação de implementação:
+ * `fila.ts` só sabe substituir 1 id por escrita (`idTemporarioGerado` é
+ * singular); reconciliar N ids exigiria o servidor devolver um array de ids
+ * reais casado por posição e a fila aplicar N substituições por item. Ninguém
+ * pediu isso ainda, então `substituirIdNaFila` nunca aprendeu — e por isso
+ * este prefixo nunca é reconciliado por engano. Qualquer ação que dependa de
+ * id real (ex.: liquidar um compromisso) deve checar `idPendenteDeSync` e
+ * ficar indisponível enquanto o id não sincronizar.
+ */
+export const ID_LOTE_PREFIXO = "lote:";
 
-export function criarIdOtimista(): string {
-  return `${ID_OTIMISTA_PREFIXO}${crypto.randomUUID()}`;
+export function criarIdLote(): string {
+  return `${ID_LOTE_PREFIXO}${crypto.randomUUID()}`;
 }
 
 export function idPendenteDeSync(id: string | number): boolean {
-  return typeof id === "string" && (id.startsWith(ID_TEMPORARIO_PREFIXO) || id.startsWith(ID_OTIMISTA_PREFIXO));
+  return typeof id === "string" && (id.startsWith(ID_TEMPORARIO_PREFIXO) || id.startsWith(ID_LOTE_PREFIXO));
 }
 
 function ehObjetoPlano(v: unknown): v is Record<string, unknown> {

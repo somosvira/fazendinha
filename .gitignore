@@ -20,3 +20,7 @@ __pycache__/
 .uploads/
 bateria-gabarito.json
 bateria-respostas.json
+
+# Notas de review do usuário durante a sessão com o Claude — pessoal, não é
+# documentação do projeto.
+REVIEW.md

@@ -63,7 +63,7 @@ describe("useCriarOperacao — patch otimista e invalidação", () => {
     expect(queryClient.getQueryData<Operacao[]>(financeiroKeys.operacoes(outroFiltro))).toHaveLength(0);
   });
 
-  it("serviço a prazo: cria N compromissos com id otimista (não reconciliável) na lista de Compromissos", () => {
+  it("serviço a prazo: cria N compromissos com id de lote (não reconciliável) na lista de Compromissos", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(financeiroKeys.operacoes(filtros), []);
     queryClient.setQueryData(financeiroKeys.compromissos(), []);
@@ -79,7 +79,7 @@ describe("useCriarOperacao — patch otimista e invalidação", () => {
     expect(compromissos).toHaveLength(2);
     expect(compromissos.map((c) => c.valorOriginal)).toEqual(["600", "400"]);
     for (const c of compromissos) {
-      expect(String(c.id).startsWith("otimista:")).toBe(true);
+      expect(String(c.id).startsWith("lote:")).toBe(true);
       expect(idPendenteDeSync(c.id)).toBe(true);
     }
   });
