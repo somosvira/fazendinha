@@ -137,5 +137,49 @@ autosave ainda quebrando offline.
 
 ## Decisões de implementação não planejadas
 
-_(Preenchido durante a implementação — decisões tomadas no código que não
-estavam detalhadas acima.)_
+_(Tomadas durante a implementação — não estavam detalhadas no plano acima.)_
+
+- **`Operacao.id` e `Compromisso.id` alargados para `number | string`**
+  (`novo-api.ts`). Um id otimista/temporário é sempre string
+  (`"local:<uuid>"`/`"otimista:<uuid>"`); os dois tipos precisavam aceitar
+  isso pra caber no mesmo cache que recebe registros reais. Todo call site
+  que assume id real (`abrirDetalhe`, `estornarOperacao`, `liquidarCompromisso`)
+  só é alcançável depois de um guard `idPendenteDeSync` — nunca precisou de
+  runtime check adicional, só cast documentado (`as number`).
+- **`filtrosLista` (inicio/fim) threadado como prop até `FormOperacao`**,
+  em vez de `useCriarOperacao` resolver o filtro ativo sozinho.
+  `queryClient.setQueryData` exige a chave exata — uma chave-prefixo
+  (`operacoesTodos()`) não serve pra patch, só pra invalidação. Sem saber o
+  filtro exato da tela que está montada, o patch otimista escreveria numa
+  entrada de cache que ninguém lê.
+- **`useTransferir` não patcha a lista de Operações** (só invalida por
+  prefixo) — ao contrário de `criarOperacao`, quem chama esta mutation é a
+  tela de Contas, que nunca conhece o filtro inicio/fim ativo na tela de
+  Operações (são componentes irmãos, não pai/filho). Mesma razão do item
+  acima, aplicada ao contrário: sem a chave exata, só dá pra invalidar.
+- **Sub-itens embutidos sem endereço próprio usam id numérico negativo
+  sequencial**, não `criarIdTemporario()`/`criarIdOtimista()` — reservado
+  pra quando algo pode legitimamente ser referenciado depois (a Operação em
+  si, os Compromissos). `ItemOperacao`, `MovimentoEstoqueOperacao`,
+  `TransacaoOperacao` embutidos numa Operação otimista, e a `transacao`
+  embutida num `MovimentoConta` otimista de `useTransferir`, nunca são
+  olhados por id em lugar nenhum da UI — só id real de servidor money value
+  (mais barato, mais simples, sem string onde o tipo já era `number`).
+- **Pré-validação com o schema do server exige o resultado do `safeParse`,
+  não o payload montado à mão.** `operacaoRascunho`/`corpo` (form state
+  serializado) não bate estruturalmente com o tipo `z.infer` do schema
+  (`data` é `string` na UI, `Date` depois do parse) — `mutate()` recebe
+  sempre `validacao.data` (o resultado parseado), nunca o objeto cru. Reduz
+  a mesma classe de erro que a pré-validação já reduzia, e resolve de graça
+  a divergência de tipo entre form state e schema.
+- **Mock de teste: mockar o hook (`useXxxFinanceiro`), nunca a função de
+  fetch por baixo.** `queryFn`/`criarOtimista` fecham sobre o binding
+  interno do próprio módulo — sobrescrever só o export com
+  `vi.mock`/`importOriginal` não muda o que o hook devolve, porque a
+  closure já capturou a referência real antes do mock trocar o export
+  público. Afetou `responsivo.test.tsx` e os testes de
+  `OperacoesFinanceiras`/`CompromissosFinanceiros`/`OperacaoFinanceiraDetalhe`.
+- **Qualquer teste que renderiza um componente com `useOfflineMutation`
+  precisa mockar `../lib/offline/fila`** (idb-keyval não roda em jsdom) —
+  e, se o componente usa `useSalvarOffline`, envolver o render em
+  `<ToastProvider>` (erro tardio vira toast).
