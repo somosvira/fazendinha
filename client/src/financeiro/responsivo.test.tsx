@@ -16,15 +16,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 
-const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta } = vi.hoisted(() => ({
+const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao } = vi.hoisted(() => ({
   obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
-  listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(),
+  listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(), obterRascunhoOperacao: vi.fn(),
 }));
 vi.mock("./novo-api", () => ({
   obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta,
   liquidarCompromisso: vi.fn(), transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),
+  obterRascunhoOperacao, descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
 }));
 
 // Nunca resolve: congela cada tela no estado de carregamento.
@@ -106,7 +107,7 @@ describe("telas financeiras — envelope e carregamento", () => {
   const telas: [string, () => Promise<{ render: () => JSX.Element }>][] = [
     ["Visão geral", async () => { const m = await import("./VisaoGeralFinanceira"); return { render: () => <m.VisaoGeralFinanceira onNav={() => {}} /> }; }],
     ["Operações", async () => { const m = await import("./OperacoesFinanceiras"); return { render: () => <m.OperacoesFinanceiras /> }; }],
-    ["Compromissos", async () => { const m = await import("./CompromissosFinanceiros"); return { render: () => <m.CompromissosFinanceiros /> }; }],
+    ["Compromissos", async () => { const m = await import("./CompromissosFinanceiros"); return { render: () => <m.CompromissosFinanceiros onNav={() => {}} /> }; }],
     ["Contas e extratos", async () => { const m = await import("./ContasFinanceiras"); return { render: () => <m.ContasFinanceiras onNav={() => {}} /> }; }],
     ["Configurações financeiras", async () => { const m = await import("./ConfiguracoesFinanceiras"); return { render: () => <m.ConfiguracoesFinanceiras /> }; }],
     ["Relatórios", async () => { const m = await import("./RelatoriosFinanceiros"); return { render: () => <m.RelatoriosFinanceiros /> }; }],
@@ -114,6 +115,7 @@ describe("telas financeiras — envelope e carregamento", () => {
 
   it.each(telas)("%s centraliza o carregamento na área de conteúdo", async (_nome, carregar) => {
     for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta]) mock.mockImplementation(pendente);
+    obterRascunhoOperacao.mockResolvedValue(null);
     const { render: renderizar } = await carregar();
     const { container } = render(renderizar());
 
@@ -140,6 +142,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     // deixa `config` nula, o guard de carregamento vence e o ErrorBox nunca é
     // alcançado — a tela fica girando e o usuário não vê o motivo.
     for (const mock of [obterConfiguracoesFinanceiras, obterExtratoConta]) mock.mockRejectedValue(new Error("Falha simulada no servidor"));
+    obterRascunhoOperacao.mockResolvedValue(null);
     const renderizar = await carregar();
     const { container, findByRole } = render(renderizar());
 
@@ -170,6 +173,7 @@ describe("telas financeiras — envelope e carregamento", () => {
       valorTotal: "184500.9", parceiro: null, itens: [], compromissos: [], transacoes: [], movimentosEstoque: [], documentos: [],
     }]);
     obterExtratoConta.mockResolvedValue([]);
+    obterRascunhoOperacao.mockResolvedValue(null);
 
     const { render: renderizar } = await carregar();
     const { container, findByRole } = render(renderizar());

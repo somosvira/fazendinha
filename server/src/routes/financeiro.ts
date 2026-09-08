@@ -6,8 +6,9 @@ import * as contas from "../services/financeiro/contas.js";
 import * as parceiros from "../services/financeiro/parceiros.js";
 import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
+import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
@@ -15,6 +16,12 @@ import { getStorage } from "../lib/storage.js";
 function usuarioId(c: Context): number | null {
   const usuario = c.get("usuario") as { id?: number } | undefined;
   return usuario?.id && usuario.id > 0 ? usuario.id : null;
+}
+
+function exigirUsuarioId(c: Context): number {
+  const id = usuarioId(c);
+  if (!id) throw new FinanceiroError("VALIDACAO", "É necessário estar autenticado para salvar um rascunho");
+  return id;
 }
 
 function falha(c: Context, erro: unknown) {
@@ -78,6 +85,59 @@ export const financeiroRouter = new Hono()
     const inicio = c.req.query("inicio") ? new Date(`${c.req.query("inicio")}T00:00:00`) : undefined;
     const fim = c.req.query("fim") ? new Date(`${c.req.query("fim")}T00:00:00`) : undefined;
     return c.json(await operacoes.listarOperacoes(await resolverEscopoLeitura(c), inicio, fim));
+  })
+  .get("/financeiro/operacoes/rascunho", async (c) => {
+    try { return c.json(await rascunhos.obterRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .put("/financeiro/operacoes/rascunho", zValidator("json", rascunhoOperacaoSchema), async (c) => {
+    try {
+      return c.json(await rascunhos.salvarRascunho({
+        ...c.req.valid("json"), propriedadeId: await resolverEscopoEscrita(c), usuarioId: exigirUsuarioId(c),
+      }));
+    } catch (e) { return falha(c, e); }
+  })
+  .delete("/financeiro/operacoes/rascunho", async (c) => {
+    try { await rascunhos.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/rascunho/confirmacao", zValidator("json", z.object({ versao: z.number().int().positive().optional() })), async (c) => {
+    try { return c.json(await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), c.req.valid("json").versao), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/operacoes/rascunho/documentos", async (c) => {
+    try {
+      const form = await c.req.formData();
+      const arquivo = form.get("arquivo");
+      if (!(arquivo instanceof File)) return c.json({ error: "Selecione um arquivo" }, 400);
+      const tipo = tipoDocumentoFinanceiroSchema.safeParse(form.get("tipo"));
+      if (!tipo.success) return c.json({ error: "Tipo de documento inválido" }, 422);
+      const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
+      const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
+      if (!rascunho) return c.json({ error: "Salve o rascunho antes de anexar documentos" }, 409);
+      return c.json(await documentos.anexarDocumentoRascunho({
+        rascunhoId: rascunho.id, propriedadeId, usuarioId: uid, tipo: tipo.data,
+        nome: String(form.get("nome") || arquivo.name), numero: String(form.get("numero") || "") || null,
+        mimeType: arquivo.type || "application/octet-stream", buffer: Buffer.from(await arquivo.arrayBuffer()),
+      }), 201);
+    } catch (e) { return falha(c, e); }
+  })
+  .delete("/financeiro/operacoes/rascunho/documentos/:id", async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
+      const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
+      if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
+      await documentos.removerDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid);
+      return c.body(null, 204);
+    } catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/operacoes/rascunho/documentos/:id", zValidator("json", z.object({ tipo: tipoDocumentoFinanceiroSchema.optional(), numero: z.string().max(80).nullable().optional() })), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
+      const rascunho = await rascunhos.obterRascunho(propriedadeId, uid);
+      if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
+      return c.json(await documentos.atualizarDocumentoRascunho(Number(c.req.param("id")), rascunho.id, propriedadeId, uid, c.req.valid("json")));
+    } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/operacoes/:id", async (c) => {
     try { return c.json(await operacoes.obterOperacao(Number(c.req.param("id")), await resolverEscopoLeitura(c))); }

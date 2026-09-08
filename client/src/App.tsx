@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
@@ -218,7 +218,7 @@ export function App() {
   const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
     if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    if (![...sp.keys()].length || sp.has("worklist")) return null;
+    if (![...sp.keys()].length || sp.has("worklist") || isNovaOperacaoFinanceira(window.location.pathname)) return null;
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
@@ -326,8 +326,8 @@ export function App() {
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
-    const detalheOperacaoUrl = tab === "lancar" && parseOperacaoFinanceiraId(window.location.pathname) != null
-      ? window.location.pathname
+    const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
+      ? window.location.pathname + window.location.search
       : null;
     const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
@@ -345,7 +345,7 @@ export function App() {
       setWorklistSnapshot(null);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);

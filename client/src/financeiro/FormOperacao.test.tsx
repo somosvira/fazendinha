@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 const config: ConfiguracoesFinanceiras = {
   contas: [{ id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true }],
@@ -18,16 +18,52 @@ const config: ConfiguracoesFinanceiras = {
 };
 
 function montar() {
-  render(<FormOperacao config={config} onSalvo={vi.fn()} onCancelar={vi.fn()} />);
+  render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
 
 describe("FormOperacao", () => {
-  it("abre como modal e remove campos físicos quando o tipo é serviço", () => {
+  it("abre como página e remove campos físicos quando o tipo é serviço", () => {
     montar();
-    expect(screen.getByRole("dialog", { name: "Nova operação" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Nova operação" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
     expect(screen.queryByRole("combobox", { name: "Produto do item 1" })).toBeNull();
     expect(screen.getByRole("spinbutton", { name: "Valor total da operação" })).toBeTruthy();
+  });
+
+  it("só expõe a ação de limpar depois que o rascunho recebe conteúdo", () => {
+    montar();
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra mensal" } });
+    expect(screen.getByText("Alterações não salvas")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Limpar rascunho" }));
+    expect(screen.getByRole("heading", { name: "Limpar rascunho?" })).toBeTruthy();
+    expect(screen.getByText(/Todos os dados preenchidos e documentos anexados/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manter rascunho" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Voltar para operações" })).toBeNull();
+  });
+
+  it("salva automaticamente depois de uma alteração", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 8, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra mensal de ração" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho", expect.objectContaining({ method: "PUT" })), { timeout: 2000 });
+    expect(await screen.findByText("Rascunho salvo")).toBeTruthy();
+  });
+
+  it("mantém o formulário e informa falha quando o autosave não conclui", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "Rede indisponível" }) }));
+    montar();
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Texto que não pode ser perdido" } });
+    expect(await screen.findByText("Falha ao salvar", {}, { timeout: 2000 })).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Texto que não pode ser perdido");
+  });
+
+  it("retoma os dados persistidos ao recarregar a página", () => {
+    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />);
+    expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Manutenção programada");
+    expect((screen.getByRole("combobox", { name: "Condição financeira" }) as HTMLSelectElement).value).toBe("A_PRAZO");
   });
 
   it("permite alternar entre valor unitário e valor total do item", () => {

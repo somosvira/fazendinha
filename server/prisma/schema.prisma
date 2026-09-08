@@ -392,9 +392,9 @@ model Operacao {
   categoriaId         Int?
   centroCusto         CentroCusto?            @relation(fields: [centroCustoId], references: [id])
   centroCustoId       Int?
-  corrigeOperacao     Operacao?                @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
+  corrigeOperacao     Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
   corrigeOperacaoId   Int?
-  correcoes           Operacao[]               @relation("CorrecaoOperacao")
+  correcoes           Operacao[]              @relation("CorrecaoOperacao")
   criadoPor           Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
   criadoPorId         Int?
   itens               ItemOperacao[]
@@ -413,6 +413,25 @@ model Operacao {
   @@index([tipo, status])
   @@index([parceiroId])
   @@index([corrigeOperacaoId])
+}
+
+// Estado temporario do formulario financeiro. Cada usuario possui no maximo
+// um rascunho por propriedade; nenhum efeito contabil, financeiro ou fisico
+// deriva desta entidade antes da confirmacao.
+model RascunhoOperacao {
+  id            Int                   @id @default(autoincrement())
+  propriedade   Propriedade           @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  propriedadeId Int
+  criadoPor     Usuario               @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+  criadoPorId   Int
+  dados         Json
+  versao        Int                   @default(1)
+  documentos    DocumentoFinanceiro[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([propriedadeId, criadoPorId])
+  @@index([criadoPorId, updatedAt])
 }
 
 model ItemOperacao {
@@ -529,11 +548,14 @@ model DocumentoFinanceiro {
   transacaoId   Int?
   compromisso   CompromissoFinanceiro?  @relation(fields: [compromissoId], references: [id])
   compromissoId Int?
+  rascunho      RascunhoOperacao?       @relation(fields: [rascunhoId], references: [id], onDelete: Cascade)
+  rascunhoId    Int?
   createdAt     DateTime                @default(now())
 
   @@index([operacaoId])
   @@index([transacaoId])
   @@index([compromissoId])
+  @@index([rascunhoId])
 }
 
 model AuditoriaFinanceira {
@@ -1156,6 +1178,7 @@ model Propriedade {
   movimentosEstoque      MovimentoEstoque[]
   contasFinanceiras      ContaFinanceira[]
   operacoesFinanceiras   Operacao[]
+  rascunhosOperacoes     RascunhoOperacao[]
   transacoesFinanceiras  TransacaoFinanceira[]
   periodosFinanceiros    PeriodoFinanceiro[]
   lotesCorte             LoteCorte[]
@@ -3017,6 +3040,7 @@ model Usuario {
   sessoes                  Sessao[]
   tokens                   TokenAcesso[]
   operacoesCriadas         Operacao[]            @relation("OperacaoCriador")
+  rascunhosOperacoes       RascunhoOperacao[]
   transacoesCriadas        TransacaoFinanceira[] @relation("TransacaoCriador")
   movimentosEstoqueCriados MovimentoEstoque[]    @relation("MovimentoEstoqueCriador")
   auditoriasFinanceiras    AuditoriaFinanceira[]

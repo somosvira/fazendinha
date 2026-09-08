@@ -22,7 +22,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const proximos = compromissos.filter((c) => ["PENDENTE", "PARCIAL"].includes(c.status)).slice(0, 5);
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button onClick={() => onNav("lancar")}><Plus size={16} /> Nova operação</Button></div>} />
+    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); }}><Plus size={16} /> Nova operação</Button></div>} />
     <ErrorBox erro={erro} />
     {dados && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
