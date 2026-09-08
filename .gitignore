@@ -11,6 +11,7 @@ __pycache__/
 
 # brainstorming visual companion
 .superpowers/
+.worktrees/
 
 # Tesseract.js — language data baixado no primeiro recognize(), fica no cwd do server.
 *.traineddata
