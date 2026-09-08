@@ -28,6 +28,7 @@ import { ABAS, type User } from "./data/acessos";
 import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
+import { useOnlineStatus } from "./lib/offline/useOnlineStatus";
 
 // Abertura Terrano (marca grande + música no centro, some pro canto).
 //   "always"  → toca em todo load do dashboard (bom pra testar)
@@ -71,6 +72,26 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
         <div className="s">
           A aba <strong>{abaLabel}</strong> não está liberada para este perfil. O proprietário pode liberar em
           Acessos &amp; Permissões.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Abas com suporte real a escrita offline (fila própria) — ver
+// docs/design/offline/README.md. Começa vazia: a fundação por si só não cobre
+// nenhuma feature ainda, então toda aba fica travada sem rede até a fatia
+// correspondente (a próxima é Financeiro) declarar suporte aqui.
+const TABS_OFFLINE = new Set<Tab>([]);
+
+function OfflineGatedTab() {
+  return (
+    <div className="shell-wide">
+      <div className="gated-msg">
+        <div className="lock">⊘</div>
+        <div className="h">Esta área não funciona sem conexão</div>
+        <div className="s">
+          Nenhuma área tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>
@@ -142,10 +163,8 @@ export function App() {
     return { modo: (m[1] === "convite" ? "convite" : "senha") as "convite" | "senha", token: m[2] };
   })();
 
-  // Sessão real (usuários do backend). O login por e-mail+senha grava token +
-  // usuário e transiciona EM ESTADO — sem window.location.reload(). Um reload
-  // mataria a "sticky activation" do documento e o navegador voltaria a bloquear
-  // o áudio da abertura Terrano, ancorado no clique de "Entrar".
+  // Sessão real (usuários do backend). Rehidratada de localStorage no boot
+  // (getToken/getUsuario) — sobrevive a reload.
   const [token, setTokenState] = useState<string | null>(() =>
     typeof window === "undefined" ? null : getToken(),
   );
@@ -167,10 +186,13 @@ export function App() {
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
   const entrar = (novoToken: string, u: UsuarioSessao) => {
-    setSessao(novoToken, u); // persiste token + usuário pras próximas requests
-    setTokenState(novoToken); // transiciona pro app SEM reload (gesto vivo p/ o áudio)
-    setUsuario(u);
-    setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
+    setSessao(novoToken, u); // persiste token + usuário antes do reload
+    // Reload após login reprocessa o boot (iniciarFila/garantirProcessamento em
+    // main.tsx) com o token novo — resolve a fila retomar sozinha depois de um
+    // 401 (ver docs/design/offline/README.md). Trade-off conhecido, herdado da
+    // fundação original e nunca revisitado: quebra o autoplay da música/animação
+    // da abertura Terrano (perde o gesto do clique).
+    window.location.reload();
   };
   const onSair = token
     ? () => {
@@ -435,6 +457,7 @@ export function App() {
   }, [visibleTabs, effectiveUser?.areas, tab]);
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
+  const online = useOnlineStatus();
 
   // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
   // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
@@ -451,15 +474,15 @@ export function App() {
       />
     );
   }
-  // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
-  // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
-  // liberando o play() da música da abertura.
+  // Sem sessão válida (token + usuário), só a tela de login.
   if (!token || !usuario || !effectiveUser) {
     return <Login onEntrar={entrar} />;
   }
 
   const conteudo = !canAccessTab(tab)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : (!online && !TABS_OFFLINE.has(tab))
+    ? <OfflineGatedTab />
     : String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
         onAbrirWorklist={abrirWorklist}

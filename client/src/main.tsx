@@ -1,7 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { App } from "./App";
 import { ToastProvider } from "./components/Toast";
+import { queryClient, GC_TIME_MS } from "./lib/offline/queryClient";
+import { persister } from "./lib/offline/persister";
+import { iniciarRetomadaAutomatica } from "./lib/offline/resume";
+import { iniciarFila } from "./lib/offline/fila";
+import { ShellOffline } from "./lib/offline/ShellOffline";
 import "./styles/theme.css";
 import "./styles/base.css";
 import "./styles/dashboard.css";
@@ -12,10 +19,21 @@ import "./styles/acessos.css";
 import "./styles/terrano-intro.css";
 import "./styles/typescale.css"; // override de escala tipográfica — carregado por último (legibilidade 60+)
 
+// Chamado uma vez no boot do módulo (não num useEffect — não é efeito de
+// componente, é assinatura de processo). Ver lib/offline/resume.ts e fila.ts.
+iniciarRetomadaAutomatica();
+iniciarFila();
+// Precache do app shell — só ativo no build de produção (vite.config.ts).
+// Sem efeito em `vite dev`.
+registerSW({ immediate: true });
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: GC_TIME_MS }}>
+      <ToastProvider>
+        <ShellOffline />
+        <App />
+      </ToastProvider>
+    </PersistQueryClientProvider>
   </React.StrictMode>,
 );
