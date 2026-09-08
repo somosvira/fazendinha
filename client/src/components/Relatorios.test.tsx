@@ -3,6 +3,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Relatorios } from "./Relatorios";
 
+vi.mock("./relatorio-gerencial/RelatorioGerencial", () => ({
+  RelatorioGerencial: ({ onVoltar }: { onVoltar: () => void }) => <div><h1>Gerencial aberto</h1><button onClick={onVoltar}>Voltar</button></div>,
+}));
 vi.mock("./Relatorio", () => ({
   FechamentoMensalRelatorio: ({ onVoltar }: { onVoltar: () => void }) => <div><h1>Fechamento aberto</h1><button onClick={onVoltar}>Voltar</button></div>,
 }));
@@ -34,6 +37,14 @@ describe("Central de Relatórios", () => {
     render(<Relatorios onNav={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Abrir Fechamento financeiro mensal" }));
     expect(screen.getByRole("heading", { name: "Fechamento aberto" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+    expect(screen.getByRole("heading", { name: "Relatórios" })).toBeTruthy();
+  });
+
+  it("abre o relatório financeiro gerencial como documento interno", () => {
+    render(<Relatorios onNav={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Abrir Relatório financeiro gerencial" }));
+    expect(screen.getByRole("heading", { name: "Gerencial aberto" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
     expect(screen.getByRole("heading", { name: "Relatórios" })).toBeTruthy();
   });

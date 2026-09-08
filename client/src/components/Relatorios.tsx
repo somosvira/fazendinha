@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Tab } from "./Shell";
 import { FechamentoMensalRelatorio } from "./Relatorio";
+import { RelatorioGerencial } from "./relatorio-gerencial/RelatorioGerencial";
 import { cn } from "@/lib/utils";
 
 type Area = "Todos" | "Rebanho" | "Reprodução" | "Sanidade" | "Produção" | "Financeiro" | "Estoque";
@@ -11,7 +12,7 @@ type RelatorioCatalogo = {
   area: Exclude<Area, "Todos">;
   palavras: string[];
   destino?: Tab;
-  interno?: "fechamento";
+  interno?: "fechamento" | "gerencial";
   formato: "Lista operacional" | "Análise" | "Documento";
   disponivel?: boolean;
 };
@@ -32,6 +33,7 @@ export const CATALOGO_RELATORIOS: RelatorioCatalogo[] = [
   { id: "lactacoes", titulo: "Histórico de lactações", descricao: "Produção, duração, pico, persistência e motivo de secagem por ciclo.", area: "Produção", palavras: ["leite", "305", "del", "secagem"], destino: "reb-producao", formato: "Análise" },
   { id: "qualidade-leite", titulo: "Qualidade do leite", descricao: "CCS individual, faixas de atenção e resultados do tanque.", area: "Produção", palavras: ["ccs", "cbt", "gordura", "proteína", "tanque"], destino: "reb-producao", formato: "Análise" },
   { id: "fechamento", titulo: "Fechamento financeiro mensal", descricao: "Documento executivo do mês, com fluxo, leite, café e investimentos.", area: "Financeiro", palavras: ["caixa", "dre", "saldo", "pdf", "mensal"], interno: "fechamento", formato: "Documento", disponivel: true },
+  { id: "financeiro-gerencial", titulo: "Relatório financeiro gerencial", descricao: "Documento configurável por período e propriedade: saldo por conta, entradas e saídas, resultado, compromissos e categorias.", area: "Financeiro", palavras: ["gerencial", "pdf", "csv", "saldo", "conta", "compromissos", "a pagar", "a receber", "categoria", "centro de custo", "período"], interno: "gerencial", formato: "Documento", disponivel: true },
   { id: "custos-rebanho", titulo: "Custos do rebanho", descricao: "Custos produtivos e sanitários por animal, grupo e período.", area: "Financeiro", palavras: ["custo", "animal", "grupo", "sanidade"], destino: "reb-custo", formato: "Análise" },
   { id: "posicao-estoque", titulo: "Posição de estoque", descricao: "Saldos, lotes, locais de armazenamento e produtos a vencer.", area: "Estoque", palavras: ["validade", "lote", "produto", "saldo"], destino: "reb-estoque", formato: "Lista operacional" },
 ];
@@ -77,6 +79,7 @@ export function Relatorios({ onNav }: { onNav: (tab: Tab) => void }) {
   }
 
   if (interno === "fechamento") return <FechamentoMensalRelatorio onNav={onNav} onVoltar={() => setInterno(null)} />;
+  if (interno === "gerencial") return <RelatorioGerencial onVoltar={() => setInterno(null)} />;
 
   return <main className="shell-wide pb-24">
     <header className="border-b border-border pb-6 pt-8">
