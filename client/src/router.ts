@@ -45,18 +45,18 @@ const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
 // `defaultSub` = sub-aba aberta quando a URL é só a base (default "dashboard").
 // TODOS os módulos operacionais abrem no painel (dashboard) — a URL base
 // /pecuaria, /plantio, /milho, /equipe resolve para o painel.
-const MODULO_BASE: Array<{ prefix: string; base: string; defaultSub?: string }> = [
-  { prefix: "reb-", base: "/pecuaria" },
-  { prefix: "pla-", base: "/plantio" },
-  { prefix: "mil-", base: "/milho" },
-  { prefix: "eqp-", base: "/equipe" },
+const MODULO_BASE: Array<{ prefix: string; base: string; subs: readonly string[]; defaultSub?: string }> = [
+  { prefix: "reb-", base: "/pecuaria", subs: ["dashboard", "animal", "reproducao", "acasalamento", "fiv", "relatorios", "sanidade", "nutricao", "producao", "estoque", "custo", "carteira", "sugestoes"] },
+  { prefix: "pla-", base: "/plantio", subs: ["dashboard", "talhao", "fenologia", "fitossanidade", "nutricao", "colheita", "planejamento", "estoque", "custo"] },
+  { prefix: "mil-", base: "/milho", subs: ["dashboard", "safras", "custos", "producao", "silos", "custo"] },
+  { prefix: "eqp-", base: "/equipe", subs: ["dashboard", "funcionarios", "ponto", "folha"] },
 ];
 
 // Compatibilidade de leitura: links/favoritos anteriores continuam abrindo,
 // mas toda navegação nova publica apenas as URLs unificadas acima.
-const MODULO_BASE_LEGADO: Array<{ prefix: string; base: string; defaultSub?: string }> = [
-  { prefix: "reb-", base: "/rebanho" },
-  { prefix: "cor-", base: "/corte" },
+const MODULO_BASE_LEGADO: Array<{ prefix: string; base: string; subs: readonly string[]; defaultSub?: string }> = [
+  { prefix: "reb-", base: "/rebanho", subs: MODULO_BASE[0].subs },
+  { prefix: "cor-", base: "/corte", subs: ["dashboard", "lote", "pesagem", "pasto", "sanidade", "nutricao", "comercial", "custo"] },
 ];
 
 export const DEFAULT_TAB: Tab = "dashboard";
@@ -140,18 +140,18 @@ export function pathToTab(pathname: string): Tab | null {
   const fixed = TAB_BY_PATH[path];
   if (fixed) return fixed;
 
-  for (const { prefix, base, defaultSub } of MODULO_BASE) {
+  for (const { prefix, base, subs, defaultSub } of MODULO_BASE) {
     if (path === base) return `${prefix}${defaultSub ?? "dashboard"}` as Tab;
     if (path.startsWith(`${base}/`)) {
       const sub = path.slice(base.length + 1);
-      if (sub) return `${prefix}${sub}` as Tab;
+      if (subs.includes(sub)) return `${prefix}${sub}` as Tab;
     }
   }
-  for (const { prefix, base, defaultSub } of MODULO_BASE_LEGADO) {
+  for (const { prefix, base, subs, defaultSub } of MODULO_BASE_LEGADO) {
     if (path === base) return `${prefix}${defaultSub ?? "dashboard"}` as Tab;
     if (path.startsWith(`${base}/`)) {
       const sub = path.slice(base.length + 1);
-      if (sub) return `${prefix}${sub}` as Tab;
+      if (subs.includes(sub)) return `${prefix}${sub}` as Tab;
     }
   }
   return null;

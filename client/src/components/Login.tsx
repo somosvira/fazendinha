@@ -12,9 +12,8 @@
  * bloqueada.
  *
  * Adaptações ao backend da fatia 1 (email+senha próprio, sem OAuth): o mockup
- * trazia "Continuar com Google" (sem backend → omitido) e "Esqueci a senha"
- * (reset é por link gerado pelo proprietário → o link revela essa instrução em
- * vez de navegar). Cores/tipografia usam os tokens do tema (var(--…)). */
+ * trazia "Continuar com Google" (sem backend → omitido). Cores/tipografia usam
+ * os tokens do tema (var(--…)). */
 
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { login } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
 import { TerranoSymbol } from "./TerranoLogo";
+import { PasswordInput } from "./PasswordInput";
 
 function IconeEmail() {
   return (
@@ -41,15 +41,6 @@ function IconeSenha() {
   );
 }
 
-function IconeOlho() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
 function IconeSeta() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-[17px] w-[17px] transition-transform duration-200 group-hover:translate-x-[3px]" aria-hidden>
@@ -61,10 +52,8 @@ function IconeSeta() {
 export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: UsuarioSessao) => void }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [validando, setValidando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [dicaReset, setDicaReset] = useState(false);
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
@@ -190,46 +179,31 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
             <label htmlFor="login-senha" className="mb-[7px] block text-[12.5px] font-medium tracking-[0.01em] text-[color:var(--ink-2)]">
               Senha
             </label>
-            <div className="relative flex items-center">
+            <div className="relative">
               <span className="pointer-events-none absolute left-[13px] flex h-[18px] w-[18px] text-[color:var(--ink-mute)]">
                 <IconeSenha />
               </span>
-              <Input
+              <PasswordInput
                 id="login-senha"
-                type={mostrarSenha ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="Sua senha"
                 value={senha}
                 disabled={validando}
                 onChange={(e) => setSenha(e.target.value)}
-                className={`${campoInput} pl-[42px] pr-[42px]`}
+                className={`${campoInput} pl-[42px]`}
               />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha((v) => !v)}
-                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                className={`absolute right-[13px] flex h-[18px] w-[18px] items-center justify-center ${mostrarSenha ? "text-[color:var(--cafe)]" : "text-[color:var(--ink-mute)]"} hover:text-[color:var(--ink-2)]`}
-              >
-                <IconeOlho />
-              </button>
             </div>
           </div>
 
-          {/* esqueci a senha (reset é por link do proprietário) */}
+          {/* recuperação pública sem revelar se o e-mail está cadastrado */}
           <div className="mt-[10px] flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setDicaReset(true)}
+            <a
+              href="/forgot-password"
               className="text-[13.5px] font-medium text-[color:var(--cafe)] hover:text-[color:var(--ink)]"
             >
               Esqueci a senha
-            </button>
+            </a>
           </div>
-          {dicaReset && (
-            <p className="mt-2 text-[13px] leading-[1.5] text-[color:var(--ink-3)]">
-              O acesso é por convite: peça ao proprietário um novo link para redefinir sua senha.
-            </p>
-          )}
 
           {erro && <div className="mt-3 text-[13px] text-[color:var(--prejuizo)]">{erro}</div>}
 

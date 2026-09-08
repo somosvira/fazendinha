@@ -54,10 +54,17 @@ const envSchema = z
     AUTH_BOOTSTRAP_EMAIL: z.string().email().optional(),
     AUTH_BOOTSTRAP_NOME: z.string().default("Proprietário"),
     // Base absoluta para montar links de convite/reset (ex.: https://rionovo.com.br).
-    // Vazio → link relativo "/convite/<token>" (o dono prefixa o domínio).
-    APP_BASE_URL: z.string().default(""),
+    // Vazio → link relativo "/invite/<token>" (o dono prefixa o domínio).
+    APP_BASE_URL: z.union([z.literal(""), z.string().url()]).default(""),
     // Validade da sessão em dias (sliding).
     AUTH_SESSAO_DIAS: z.coerce.number().int().positive().default(30),
+    // Recuperação pública: envio via Resend e rate limit em memória por instância.
+    AUTH_EMAIL_PROVIDER: z.enum(["resend"]).optional(),
+    AUTH_EMAIL_FROM: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
+    AUTH_RESET_RATE_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+    AUTH_RESET_MAX_PER_EMAIL: z.coerce.number().int().positive().default(3),
+    AUTH_RESET_MAX_PER_IP: z.coerce.number().int().positive().default(10),
   })
   .superRefine((v, ctx) => {
     if (v.STORAGE_DRIVER === "r2") {
@@ -69,6 +76,14 @@ const envSchema = z
         ctx.addIssue({ code: "custom", path: ["R2_SECRET_ACCESS_KEY"], message: "obrigatório quando STORAGE_DRIVER=r2" });
       if (!v.R2_BUCKET_NOTAS)
         ctx.addIssue({ code: "custom", path: ["R2_BUCKET_NOTAS"], message: "obrigatório quando STORAGE_DRIVER=r2" });
+    }
+    if (v.AUTH_EMAIL_PROVIDER === "resend") {
+      if (!v.RESEND_API_KEY)
+        ctx.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+      if (!v.AUTH_EMAIL_FROM)
+        ctx.addIssue({ code: "custom", path: ["AUTH_EMAIL_FROM"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+      if (!v.APP_BASE_URL)
+        ctx.addIssue({ code: "custom", path: ["APP_BASE_URL"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
     }
   });
 

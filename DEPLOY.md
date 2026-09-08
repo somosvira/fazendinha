@@ -28,6 +28,10 @@ Os arquivos de config já estão no repo:
 | `DIRECT_URL`    | URL **direct** (não-pooled: mesma sem `-pooler`). **Necessária** — o `db push` da partida usa ela (o schema tem `directUrl`). |
 | `JWT_SECRET`    | String aleatória forte (`openssl rand -hex 32`). **Não** reusar o de dev.                                               |
 | `CORS_ORIGIN`   | Deixe vazio agora (preenchemos depois quando soubermos a URL da CF Pages). Sem ela o CORS fica liberado pra qualquer origem. |
+| `APP_BASE_URL` | URL pública do frontend, sem barra final (usada nos links de convite e recuperação). |
+| `AUTH_EMAIL_PROVIDER` | `resend` para habilitar a entrega de recuperação de senha. |
+| `AUTH_EMAIL_FROM` | Remetente em domínio verificado, por exemplo `Terrano <acesso@dominio.com.br>`. |
+| `RESEND_API_KEY` | Chave do Resend usada somente pelo backend para enviar o link de uso único. |
 | `OPENAI_API_KEY` | Chave da OpenAI. Sem ela: chat/bot desligado (503) e a IA (rebanho/plantio/corte) roda em modo demo. |
 | `DATABASE_URL_READONLY` | (opcional) Role somente-leitura do Neon p/ o escape-hatch de SQL do bot. Sem ela, o SQL livre fica off (ferramentas curadas seguem ok). |
 | `DASHBOARD_MESES_QUEIMA` | (opcional) Nº de meses na média da queima do fôlego. Default 6. |

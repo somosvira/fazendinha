@@ -69,6 +69,11 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/corte/lote")).toBe("cor-lote");
   });
 
+  it("não transforma uma subrota desconhecida em uma aba válida", () => {
+    expect(pathToTab("/pecuaria/nao-existe")).toBeNull();
+    expect(pathToTab("/equipe/admin")).toBeNull();
+  });
+
   it("não confunde filtros financeiros com worklists do rebanho", () => {
     expect(parseRotaWorklistRebanho("/gastos", "?status=vencidas")).toBeNull();
     expect(pathToTab("/gastos")).toBe("gastos");

@@ -28,6 +28,15 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      # Recuperação pública de senha por e-mail (Resend).
+      - key: APP_BASE_URL
+        sync: false
+      - key: AUTH_EMAIL_PROVIDER
+        sync: false
+      - key: AUTH_EMAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
       # OpenAI (chat/bot + IA dos módulos). Sem ela: chat 503 e IA em modo demo.
       - key: OPENAI_API_KEY
         sync: false
