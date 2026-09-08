@@ -6,6 +6,7 @@ import { descartarRascunhoOperacao, useConfiguracoesFinanceiras, useOperacoesFin
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import { idPendenteDeSync } from "../lib/offline/useOfflineMutation";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 type ModoPeriodo = "DIA" | "MES" | "INTERVALO";
@@ -86,7 +87,13 @@ export function OperacoesFinanceiras() {
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} />;
   if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
   const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
-  if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await recarregarListaERascunho(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} filtrosLista={{ inicio, fim }} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => {
+    setForm(false); setOperacaoBase(null); await recarregarListaERascunho(); if (aviso) setErro(aviso);
+    // Offline (ou id ainda otimista): sem detalhe navegável ainda — a
+    // operação já aparece na lista via patch otimista, o usuário volta pra
+    // lá em vez de abrir uma ficha que não existe de verdade no servidor.
+    if (operacao && !idPendenteDeSync(operacao.id)) abrirDetalhe(operacao.id as number); else voltar();
+  }} />;
 
   const erroExibido = erro ?? (erroCarregamento ? (erroCarregamento instanceof Error ? erroCarregamento.message : String(erroCarregamento)) : null);
   return <PaginaFinanceira>
@@ -100,7 +107,7 @@ export function OperacoesFinanceiras() {
         <select aria-label="Filtrar por efeito" value={efeito} onChange={(e) => setEfeito(e.target.value as EfeitoFiltro)} className="h-[42px] w-full min-w-0 flex-[1_1_170px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></select>
         <select aria-label="Filtrar por status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></select>
       </div>
-      {filtradas.length ? <TabelaFinanceira rotulo="Operações do período" itens={filtradas} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} /> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
+      {filtradas.length ? <TabelaFinanceira rotulo="Operações do período" itens={filtradas} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => { if (!idPendenteDeSync(operacao.id)) abrirDetalhe(operacao.id as number); }} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : idPendenteDeSync(operacao.id) ? "opacity-70" : ""} /> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </Panel>
   </PaginaFinanceira>;
 }

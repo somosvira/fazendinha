@@ -24,7 +24,9 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
 
   const confirmarCancelamento = async () => {
     setSalvando(true); setErroEstorno(null);
-    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await operacaoQuery.refetch(); }
+    // Esta tela só abre com id real (nunca navegável a partir de uma operação
+    // ainda otimista — ver guard em OperacoesFinanceiras.tsx).
+    try { await estornarOperacao(operacao.id as number, motivo.trim()); setCancelando(false); setMotivo(""); await operacaoQuery.refetch(); }
     catch (e) { setErroEstorno(e instanceof Error ? e.message : String(e)); }
     finally { setSalvando(false); }
   };

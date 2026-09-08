@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { arredondar } from "@rionovo/shared";
+import { arredondar, preverEfeitosOperacao, type OperacaoInput as OperacaoSchemaInput } from "@rionovo/shared";
 import { comPropriedade } from "../propriedadeScope";
 import { req } from "../lib/offline/req";
-import { useOfflineMutation } from "../lib/offline/useOfflineMutation";
+import { criarIdOtimista, criarIdTemporario, prependItemToCacheList, useOfflineMutation } from "../lib/offline/useOfflineMutation";
 
 export type Conta = { id: number; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
 export type Parceiro = { id: number; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
@@ -11,13 +11,16 @@ export type GrupoCategoria = { id: number; nome: string; categorias: Categoria[]
 export type CentroCusto = { id: number; nome: string; ehInvestimento: boolean };
 export type Produto = { id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; gruposCategorias: GrupoCategoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
-export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; vencido: boolean; parceiro: Parceiro | null; operacao: { id: number; tipo: string; descricao: string | null } };
+// id: number | string — string só quando ainda não sincronizou (id temporário
+// ou "otimista:", ver lib/offline/useOfflineMutation.ts). idPendenteDeSync(id)
+// diz quando uma ação que depende de id real deve ficar indisponível.
+export type Compromisso = { id: number | string; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; vencido: boolean; parceiro: Parceiro | null; operacao: { id: number | string; tipo: string; descricao: string | null } };
 export type ItemOperacao = { id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
 export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
 export type TransacaoOperacao = { id: number; tipo: string; status: string; data?: string; valorTotal: string; formaPagamento?: string | null; movimentos?: { id: number; contaId: number; direcao: "ENTRADA" | "SAIDA"; valor: string }[] };
 export type DocumentoFinanceiro = { id: number; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: number; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
-export type Operacao = { id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: Parceiro | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
+export type Operacao = { id: number | string; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: Parceiro | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: Parceiro | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
 
@@ -124,6 +127,80 @@ export function useLiquidarCompromisso() {
       { queryKey: financeiroKeys.extrato(input.contaId) },
       { queryKey: financeiroKeys.dashboardTodos() },
       { queryKey: financeiroKeys.configuracoes() },
+    ],
+  });
+}
+
+// Mesma forma de entrada que o formulário já monta pro caminho de correção
+// (criarOperacao direto, sem rascunho) — é o que o "Confirmar operação"
+// offline reaproveita, pulando o rascunho inteiro (ver
+// docs/design/offline/PLANO_FINANCEIRO.md).
+export type CriarOperacaoInput = OperacaoSchemaInput;
+
+// itemOtimista é construído a partir de preverEfeitosOperacao (mesma função
+// pura que o server usa em criarOperacaoTx) — não é uma segunda
+// implementação da regra, é a mesma regra lida de outro lugar. Itens/
+// movimentos de estoque/transação embutidos na Operação otimista recebem id
+// numérico sequencial local (nunca olhado por id em lugar nenhum da UI);
+// os compromissos, por serem endereçáveis à parte (liquidação), recebem
+// ID_OTIMISTA_PREFIXO e ficam com a ação bloqueada até sincronizar
+// (idPendenteDeSync).
+function construirOperacaoOtimista(input: CriarOperacaoInput): Operacao {
+  const previsto = preverEfeitosOperacao(input);
+  const id = criarIdTemporario();
+  const dataIso = typeof input.data === "string" ? input.data : (input.data as Date).toISOString();
+  let proximoId = -1;
+  const itens: ItemOperacao[] = previsto.itens.map((item) => ({
+    id: proximoId--, descricao: item.descricao, quantidade: String(item.quantidade), unidade: item.unidade,
+    valorUnitario: String(item.valorUnitario), valorTotal: String(item.valorTotal), estocavel: item.estocavel, produtoId: item.produtoId ?? null,
+  }));
+  const movimentosEstoque: MovimentoEstoqueOperacao[] = previsto.movimentosEstoque.map((m) => ({
+    id: proximoId--, tipo: m.tipo, status: "CONFIRMADO", quantidade: String(m.quantidade), valorTotal: String(m.valorTotal), produtoId: m.produtoId,
+  }));
+  const compromissos: Compromisso[] = previsto.compromissos.map((c) => ({
+    id: criarIdOtimista(), tipo: c.tipo, status: "PENDENTE", valorOriginal: String(c.valorOriginal), valorLiquidado: "0",
+    saldoPendente: String(c.valorOriginal), dataVencimento: c.dataVencimento.toISOString(), vencido: false, parceiro: null,
+    operacao: { id, tipo: input.tipo, descricao: input.descricao },
+  }));
+  const transacoes: TransacaoOperacao[] = previsto.transacao ? [{
+    id: proximoId--, tipo: previsto.transacao.tipo, status: "CONFIRMADA", data: dataIso, valorTotal: String(previsto.transacao.valorTotal),
+    formaPagamento: previsto.transacao.formaPagamento ?? null,
+    movimentos: [{ id: proximoId--, contaId: previsto.transacao.contaId, direcao: previsto.transacao.direcao, valor: String(previsto.transacao.valorTotal) }],
+  }] : [];
+  return {
+    id, tipo: input.tipo, status: "CONFIRMADA", data: dataIso, descricao: input.descricao, valorTotal: String(previsto.valorTotal),
+    parceiro: null, parceiroId: input.parceiroId ?? null, categoriaId: input.categoriaId ?? null, centroCustoId: input.centroCustoId ?? null,
+    corrigeOperacaoId: input.corrigeOperacaoId ?? null, itens, compromissos, transacoes, movimentosEstoque, documentos: [],
+  };
+}
+
+// Patch otimista só na lista de Operações (a tela que o usuário está olhando
+// na hora de confirmar) e, quando a operação cria compromissos, na lista de
+// Compromissos. Dashboard/configurações (saldo agregado) ficam
+// invalidate-only — dado somado no servidor, não dá pra patchar sem duplicar
+// a conta (mesmo critério do useLiquidarCompromisso acima). filtrosLista
+// precisa ser o filtro ATIVO da tela (inicio/fim) — setQueryData exige a
+// chave exata; sem isso o patch escreveria numa entrada de cache que a tela
+// não lê.
+export function useCriarOperacao(filtrosLista?: { inicio?: string; fim?: string }) {
+  return useOfflineMutation<CriarOperacaoInput, Operacao>({
+    mutationKey: "financeiro-criar-operacao",
+    path: () => "/financeiro/operacoes",
+    method: "POST",
+    body: (input) => input,
+    criarOtimista: construirOperacaoOtimista,
+    queryKeys: (_input, itemOtimista) => [
+      {
+        queryKey: financeiroKeys.operacoes(filtrosLista),
+        aplicar: (atual: Operacao[] | undefined) => itemOtimista ? prependItemToCacheList(atual, itemOtimista) : (atual ?? []),
+      },
+      ...(itemOtimista && itemOtimista.compromissos.length ? [{
+        queryKey: financeiroKeys.compromissos(),
+        aplicar: (atual: Compromisso[] | undefined) => [...(atual ?? []), ...itemOtimista.compromissos],
+      }] : []),
+      { queryKey: financeiroKeys.dashboardTodos() },
+      { queryKey: financeiroKeys.configuracoes() },
+      { queryKey: financeiroKeys.rascunho() },
     ],
   });
 }

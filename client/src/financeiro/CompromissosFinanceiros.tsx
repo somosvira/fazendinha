@@ -27,7 +27,9 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     const corpo = { contaId: Number(contaId), valor: Number(valor), data: hoje(), formaPagamento: "PIX" as const };
     const validacao = liquidacaoSchema.safeParse(corpo);
     if (!validacao.success) { setErro(validacao.error.issues[0]?.message ?? "Dados inválidos"); return; }
-    salvar(mutateLiquidar, { compromissoId: pagando.id, ...corpo }, {
+    // O botão que abre este modal já fica desabilitado enquanto o id for
+    // pendente de sync (idPendenteDeSync) — chegar aqui significa id real.
+    salvar(mutateLiquidar, { compromissoId: pagando.id as number, ...corpo }, {
       onSalvo: () => { setPagando(null); setContaId(""); setValor(""); },
       onErroInline: setErro,
       onErroTardio: (mensagem) => toast.error("Falha ao sincronizar a liquidação", mensagem),

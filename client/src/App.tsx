@@ -79,10 +79,10 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 }
 
 // Abas liberadas sem rede — ver docs/design/offline/PLANO_FINANCEIRO.md.
-// dashboard/relatorio (Financeiro) são só leitura. gastos (Compromissos) já
-// cobre a liquidação (useLiquidarCompromisso, update in-place num compromisso
-// existente — sem criação de entidade nova nesta tela).
-const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio", "gastos"]);
+// dashboard/relatorio (Financeiro) são só leitura. gastos (Compromissos) cobre
+// a liquidação. lancar (Operações) cobre criarOperacao — o rascunho no
+// servidor é pulado offline (useCriarOperacao vai direto, sem PUT/autosave).
+const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio", "gastos", "lancar"]);
 
 function OfflineGatedTab() {
   return (
@@ -91,7 +91,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Só Visão geral, Relatórios e Compromissos (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Só Visão geral, Relatórios, Compromissos e Operações (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

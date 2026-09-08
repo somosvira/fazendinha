@@ -1,8 +1,25 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
+import { ToastProvider } from "../components/Toast";
+
+// FormOperacao usa useCriarOperacao (useOfflineMutation, offline) e
+// useToast() (useSalvarOffline) além do fetch cru já testado aqui via
+// vi.stubGlobal("fetch") — precisa de QueryClientProvider/ToastProvider no
+// contexto. A fila real (idb-keyval) não roda em jsdom — mockada, igual
+// useOfflineMutation.test.ts/api.liquidar-compromisso.test.ts.
+vi.mock("../lib/offline/fila", () => {
+  const filaVazia: unknown[] = [];
+  return {
+    enfileirarMutation: vi.fn(() => new Promise(() => {})), // nenhum teste aqui confirma via sync
+    inscrever: () => () => {},
+    obterFila: () => filaVazia,
+    aguardarFilaLivre: () => Promise.resolve(),
+  };
+});
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -17,8 +34,13 @@ const config: ConfiguracoesFinanceiras = {
   produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true, custoUnitario: "5" }],
 };
 
+function comProvedores(node: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={queryClient}><ToastProvider>{node}</ToastProvider></QueryClientProvider>;
+}
+
 function montar() {
-  render(<FormOperacao config={config} onSalvo={vi.fn()} />);
+  render(comProvedores(<FormOperacao config={config} onSalvo={vi.fn()} />));
 }
 
 describe("FormOperacao", () => {
@@ -61,7 +83,7 @@ describe("FormOperacao", () => {
   });
 
   it("retoma os dados persistidos ao recarregar a página", () => {
-    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />);
+    render(comProvedores(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />));
     expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Manutenção programada");
     expect((screen.getByRole("combobox", { name: "Condição financeira" }) as HTMLSelectElement).value).toBe("A_PRAZO");
   });
