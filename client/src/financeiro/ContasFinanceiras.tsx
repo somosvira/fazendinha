@@ -1,8 +1,11 @@
 import { FormEvent, useState } from "react";
 import { ArrowLeftRight, Landmark, Settings2, WalletCards } from "lucide-react";
+import { transferenciaSchema } from "@rionovo/shared";
 import type { Tab } from "../components/Shell";
-import { transferir, useConfiguracoesFinanceiras, useExtratoConta, type Conta, type MovimentoConta } from "./novo-api";
+import { useConfiguracoesFinanceiras, useExtratoConta, useTransferir, type Conta, type MovimentoConta } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
+import { useToast } from "../components/Toast";
 
 /* Colunas do extrato. Entradas e saídas alinhadas à direita no cabeçalho E na
  * célula; dinheiro nunca quebra no meio (whitespace-nowrap). */
@@ -23,9 +26,22 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const extratoQuery = useExtratoConta(selecionada?.id ?? null);
   const extrato = extratoQuery.data ?? [];
   const erroCarregamento = configQuery.error ? (configQuery.error instanceof Error ? configQuery.error.message : String(configQuery.error)) : null;
+  const { mutate: mutateTransferir } = useTransferir();
+  const { salvando: transferindoOffline, salvar: salvarTransferencia } = useSalvarOffline();
+  const toast = useToast();
   if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erroCarregamento} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
-  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await configQuery.refetch(); await extratoQuery.refetch(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const registrarTransferencia = (e: FormEvent) => {
+    e.preventDefault();
+    const corpo = { contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" };
+    const validacao = transferenciaSchema.safeParse(corpo);
+    if (!validacao.success) { setErro(validacao.error.issues[0]?.message ?? "Dados inválidos"); return; }
+    salvarTransferencia(mutateTransferir, corpo, {
+      onSalvo: async () => { setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await Promise.all([configQuery.refetch(), extratoQuery.refetch()]); },
+      onErroInline: setErro,
+      onErroTardio: (mensagem) => toast.error("Falha ao sincronizar a transferência", mensagem),
+    });
+  };
 
   return <PaginaFinanceira>
     <PageHeader titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button><Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
@@ -35,6 +51,6 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
       {extrato.length ? <TabelaFinanceira rotulo={`Extrato de ${selecionada.nome}`} itens={extrato} colunas={COLUNAS_EXTRATO} chaveDe={(m) => m.id} classeLinha={(m) => m.transacao.status === "REVERTIDA" ? "opacity-55" : ""} /> : <Empty>Esta conta ainda não possui movimentos.</Empty>}
     </Panel>}
 
-    {transferindo && <Modal titulo="Nova transferência" eyebrow="Entre contas próprias" onClose={() => setTransferindo(false)}><form onSubmit={registrarTransferencia} className="p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta de origem<select required value={origemId} onChange={(e) => setOrigemId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome} · {brl(c.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Conta de destino<select required value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo && String(c.id) !== origemId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label><label className="text-sm font-medium sm:col-span-2">Valor<input required min="0.01" step="0.01" type="number" value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label></div><div className="mt-5 rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Impacto no saldo geral: {brl(0)}</strong><p className="mt-1 text-xs">O valor sairá da origem e entrará no destino na mesma confirmação.</p></div><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setTransferindo(false)}>Cancelar</Button><Button type="submit" disabled={!origemId || !destinoId || Number(valor) <= 0}>Registrar transferência</Button></div></form></Modal>}
+    {transferindo && <Modal titulo="Nova transferência" eyebrow="Entre contas próprias" onClose={() => setTransferindo(false)}><form onSubmit={registrarTransferencia} className="p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta de origem<select required value={origemId} onChange={(e) => setOrigemId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome} · {brl(c.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Conta de destino<select required value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo && String(c.id) !== origemId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label><label className="text-sm font-medium sm:col-span-2">Valor<input required min="0.01" step="0.01" type="number" value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label></div><div className="mt-5 rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Impacto no saldo geral: {brl(0)}</strong><p className="mt-1 text-xs">O valor sairá da origem e entrará no destino na mesma confirmação.</p></div><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setTransferindo(false)}>Cancelar</Button><Button type="submit" disabled={transferindoOffline || !origemId || !destinoId || Number(valor) <= 0}>{transferindoOffline ? "Confirmando…" : "Registrar transferência"}</Button></div></form></Modal>}
   </PaginaFinanceira>;
 }

@@ -82,7 +82,8 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 // dashboard/relatorio (Financeiro) são só leitura. gastos (Compromissos) cobre
 // a liquidação. lancar (Operações) cobre criarOperacao — o rascunho no
 // servidor é pulado offline (useCriarOperacao vai direto, sem PUT/autosave).
-const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio", "gastos", "lancar"]);
+// caixinha (Contas) cobre transferir (useTransferir).
+const TABS_OFFLINE = new Set<Tab>(["dashboard", "relatorio", "gastos", "lancar", "caixinha"]);
 
 function OfflineGatedTab() {
   return (
@@ -91,7 +92,7 @@ function OfflineGatedTab() {
         <div className="lock">⊘</div>
         <div className="h">Esta área não funciona sem conexão</div>
         <div className="s">
-          Só Visão geral, Relatórios, Compromissos e Operações (Financeiro) têm suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
+          Só Financeiro (exceto Configurações) tem suporte a uso offline por enquanto. Volte a ficar online pra acessar esta aba.
         </div>
       </div>
     </div>

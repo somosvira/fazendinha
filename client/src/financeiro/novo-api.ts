@@ -209,4 +209,46 @@ export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", {
 export const atualizarConta = (id: number, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: unknown) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
+
+export type TransferirInput = { contaOrigemId: number; contaDestinoId: number; valor: number; data: string; descricao?: string };
+
+// A tela que chama isto (Contas) não conhece o filtro inicio/fim ativo em
+// Operações — ao contrário de useCriarOperacao, não dá pra patchar a lista
+// de Operações com chave exata daqui, só invalidar por prefixo
+// (financeiroKeys.operacoesTodos()). Os dois extratos, sim: contaOrigemId/
+// contaDestinoId são conhecidos aqui e viram patch otimista de verdade.
+export function useTransferir() {
+  return useOfflineMutation<TransferirInput, { origem: MovimentoConta; destino: MovimentoConta }>({
+    mutationKey: "financeiro-transferir",
+    path: () => "/financeiro/transferencias",
+    method: "POST",
+    body: (input) => input,
+    criarOtimista: (input) => {
+      // Só a Operação/Transação "primária" de uma escrita ganha id
+      // reconciliável (criarIdTemporario) — esta é embutida no extrato e
+      // nunca endereçada por id em lugar nenhum da UI, então um placeholder
+      // numérico basta (corrige no refetch pós-sync).
+      const transacao = {
+        id: -1, tipo: "TRANSFERENCIA", status: "CONFIRMADA", data: input.data,
+        descricao: input.descricao ?? "Transferência entre contas", formaPagamento: null, parceiro: null, operacao: null,
+      };
+      return {
+        origem: { id: -1, contaId: input.contaOrigemId, direcao: "SAIDA" as const, valor: String(input.valor), transacao },
+        destino: { id: -2, contaId: input.contaDestinoId, direcao: "ENTRADA" as const, valor: String(input.valor), transacao },
+      };
+    },
+    queryKeys: (input, itemOtimista) => [
+      {
+        queryKey: financeiroKeys.extrato(input.contaOrigemId),
+        aplicar: (atual: MovimentoConta[] | undefined) => itemOtimista ? prependItemToCacheList(atual, itemOtimista.origem) : (atual ?? []),
+      },
+      {
+        queryKey: financeiroKeys.extrato(input.contaDestinoId),
+        aplicar: (atual: MovimentoConta[] | undefined) => itemOtimista ? prependItemToCacheList(atual, itemOtimista.destino) : (atual ?? []),
+      },
+      { queryKey: financeiroKeys.operacoesTodos() },
+      { queryKey: financeiroKeys.dashboardTodos() },
+      { queryKey: financeiroKeys.configuracoes() },
+    ],
+  });
+}
