@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 import { ToastProvider } from "../components/Toast";
+import { enfileirarMutation } from "../lib/offline/fila";
+
+const onlineRef = vi.hoisted(() => ({ atual: true }));
+vi.mock("../lib/offline/useOnlineStatus", () => ({ useOnlineStatus: () => onlineRef.atual }));
 
 // FormOperacao usa useCriarOperacao (useOfflineMutation, offline) e
 // useToast() (useSalvarOffline) além do fetch cru já testado aqui via
@@ -21,7 +25,7 @@ vi.mock("../lib/offline/fila", () => {
   };
 });
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); onlineRef.atual = true; });
 
 const config: ConfiguracoesFinanceiras = {
   contas: [{ id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true }],
@@ -147,5 +151,33 @@ describe("FormOperacao", () => {
     montar();
     expect(screen.getByLabelText("Anexar documentos")).toBeTruthy();
     expect(screen.getByText("PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.")).toBeTruthy();
+  });
+
+  it("ao confirmar offline com um rascunho já persistido no servidor, enfileira o descarte dele junto com a criação", () => {
+    // O autosave rodou com sucesso antes de cair a conexão (por isso o
+    // rascunho chega com `versao` preenchida) — sem o descarte enfileirado,
+    // esse rascunho ficaria órfão no servidor depois que a operação real for
+    // criada offline (ver docs/design/offline/PLANO_FINANCEIRO.md).
+    vi.mocked(enfileirarMutation).mockImplementation(() => new Promise(() => {}));
+    onlineRef.atual = false;
+    render(comProvedores(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ mutationKey: "financeiro-descartar-rascunho-pos-offline", path: "/financeiro/operacoes/rascunho", method: "DELETE" }));
+    expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ mutationKey: "financeiro-criar-operacao" }));
+  });
+
+  it("ao confirmar offline sem nenhum rascunho persistido, não enfileira descarte de rascunho", () => {
+    vi.mocked(enfileirarMutation).mockClear();
+    vi.mocked(enfileirarMutation).mockImplementation(() => new Promise(() => {}));
+    onlineRef.atual = false;
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Fornecedor ou parceiro" }), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Manutenção do trator" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "3200" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    expect(enfileirarMutation).toHaveBeenCalledWith(expect.objectContaining({ mutationKey: "financeiro-criar-operacao" }));
+    expect(enfileirarMutation).not.toHaveBeenCalledWith(expect.objectContaining({ mutationKey: "financeiro-descartar-rascunho-pos-offline" }));
   });
 });

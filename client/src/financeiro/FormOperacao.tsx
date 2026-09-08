@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, useCriarOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { enfileirarMutation } from "../lib/offline/fila";
 import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
 import { useToast } from "../components/Toast";
 
@@ -199,6 +200,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       // do server antes de enfileirar (convenção offline).
       const validacao = operacaoSchema.safeParse(operacaoRascunho);
       if (!validacao.success) { setErro(validacao.error.issues[0]?.message ?? "Preencha todos os campos obrigatórios"); return; }
+      // Se o autosave já persistiu um rascunho real no servidor antes de cair
+      // a conexão (versaoRef só tem valor depois de um PUT bem-sucedido), ele
+      // fica órfão: este caminho pula a confirmação de rascunho (que o
+      // consumiria) e cria a operação direto. Sem isto, ao reconectar o
+      // usuário veria "Continuar operação" para um rascunho de uma operação
+      // que já foi criada. Enfileira o DELETE junto — mesma fila, processada
+      // em ordem após o POST de criação.
+      if (!operacaoBase && versaoRef.current != null) {
+        void enfileirarMutation({ mutationKey: "financeiro-descartar-rascunho-pos-offline", path: "/financeiro/operacoes/rascunho", method: "DELETE" });
+      }
       salvarOffline(mutateCriarOperacao, validacao.data, {
         onSalvo: (operacao) => onSalvo(operacao, anexos.length ? "Documentos anexados aqui só sobem depois de sincronizar — anexe pela operação quando reconectar." : undefined),
         onErroInline: setErro,

@@ -212,3 +212,20 @@ manualmente, fila inspecionada via IndexedDB, backend real local.)_
   `localStorage`+IndexedDB, logar, ir offline **antes** de visitar a tela
   — antes do fix mostrava vazio/zerado na hora; depois, fica em
   "Carregando…" até reconectar, e resolve normal.
+- **Rascunho autosalvo antes de cair a conexão fica órfão no servidor
+  depois de confirmar a operação offline.** O caminho offline de
+  `FormOperacao.tsx` pula o rascunho inteiro e enfileira
+  `POST /financeiro/operacoes` direto — mas se o autosave já tinha
+  persistido um rascunho real no servidor (`versaoRef.current` com valor)
+  antes da queda de conexão, esse POST nunca o consome nem o descarta.
+  Ao reconectar, a tela de Operações voltava a oferecer "Continuar
+  operação" para um rascunho de uma operação que **já existe** —
+  confuso, e arriscava o usuário "descartar" um rascunho achando que era
+  lixo. Corrigido: o submit offline agora também enfileira
+  `DELETE /financeiro/operacoes/rascunho` (mutation independente, mesma
+  fila) sempre que `versaoRef.current != null` e não é uma correção
+  (`operacaoBase`). Ordem entre as duas mutations na fila não importa —
+  são independentes, sem substituição de id entre elas. Reproduzido no
+  navegador (preencher online até "Rascunho salvo" → cair a conexão →
+  confirmar → reconectar) e coberto por dois testes novos em
+  `FormOperacao.test.tsx`.
