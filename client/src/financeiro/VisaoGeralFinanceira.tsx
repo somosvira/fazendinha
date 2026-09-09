@@ -3,8 +3,10 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown
 import type { Tab } from "../components/Shell";
 import { useCompromissosFinanceiros, useDashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
+  const online = useOnlineStatus();
   const [mes, setMes] = useState(mesAtual());
   const { inicio, fim } = limitesMes(mes);
   const dashboardQuery = useDashboardFinanceiro(inicio, fim);
@@ -14,7 +16,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const erroQuery = dashboardQuery.error ?? compromissosQuery.error;
   const erro = erroQuery ? (erroQuery instanceof Error ? erroQuery.message : String(erroQuery)) : null;
 
-  if (!dados && !erro) return <PaginaCarregando label="Carregando financeiro" />;
+  if (!dados && !erro) return <PaginaCarregando label="Carregando financeiro" semDadosOffline={!online} />;
   const maior = Math.max(...(dados?.despesasPorCategoria.map((x) => Number(x.valor)) ?? [1]), 1);
   const proximos = compromissos.filter((c) => ["PENDENTE", "PARCIAL"].includes(c.status)).slice(0, 5);
 
