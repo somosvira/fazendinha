@@ -1,7 +1,13 @@
 import { comPropriedade } from "../propriedadeScope";
 
-export type Conta = { id: number; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
-export type Parceiro = { id: number; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
+export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO";
+export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
+export type Conta = { id: number; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean; temMovimentos: boolean };
+export type Parceiro = { id: number; nome: string; documento: string | null; tipo: TipoParceiro; telefone: string | null; email: string | null; ativo: boolean; referencias: number };
+export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string | null; identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean };
+export type ContaPatch = Partial<ContaInput> & { ativo?: boolean };
+export type ParceiroInput = { nome: string; documento?: string | null; tipo: TipoParceiro; telefone?: string | null; email?: string | null };
+export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: number; nome: string };
 export type GrupoCategoria = { id: number; nome: string; categorias: Categoria[] };
 export type CentroCusto = { id: number; nome: string; ehInvestimento: boolean };
@@ -17,13 +23,18 @@ export type Operacao = { id: number; tipo: string; status: string; data: string;
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: Parceiro | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
 
+/** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public code?: string, public campo?: string) { super(message); this.name = "ApiError"; }
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resposta = await fetch(`/api${path}`, {
     ...init,
     headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as T;
 }
 
@@ -46,7 +57,7 @@ export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: stri
   if (input.numero) form.set("numero", input.numero);
   const resposta = await fetch("/api/financeiro/operacoes/rascunho/documentos", { method: "POST", body: form, headers: comPropriedade() });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as DocumentoFinanceiro;
 }
 export async function removerDocumentoRascunho(id: number) {
@@ -64,13 +75,13 @@ export async function anexarDocumentoOperacao(operacaoId: number, input: { arqui
     method: "POST", body: form, headers: comPropriedade(),
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as DocumentoFinanceiro;
 }
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
 export const liquidarCompromisso = (id: number, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
-export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
-export const atualizarConta = (id: number, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
-export const atualizarParceiro = (id: number, input: unknown) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarConta = (input: ContaInput) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
+export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
+export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
