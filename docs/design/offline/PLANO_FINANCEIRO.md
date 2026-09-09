@@ -11,8 +11,36 @@ O Financeiro foi reconstruído do zero em `main` (`Operacao`/
 `CompromissoFinanceiro`/`TransacaoFinanceira`/`MovimentoConta`/
 `RascunhoOperacao` — ver `docs/financeiro-rebuild-contrato.md` e
 `docs/handoff-design-novo-financeiro.md`) depois que a epic offline original
-divergiu. `client/src/financeiro/novo-api.ts` está 100% no padrão antigo
-(`fetch` cru, zero `useQuery`) — nada aqui foi tocado pela fundação ainda.
+divergiu. No início desta fatia, `client/src/financeiro/novo-api.ts` estava
+100% no padrão antigo (`fetch` cru, zero `useQuery`) — nada tinha sido
+tocado pela fundação ainda (ver "Status atual" abaixo pro estado de hoje).
+
+## Status atual
+
+Pra quem está revisando esta branch e quer saber rápido o que já funciona
+sem ler o plano inteiro:
+
+- [x] `criarOperacao` ("Nova operação", os 9 tipos do `FormOperacao`) —
+  otimista completo (itens, movimentos de estoque, compromissos, extrato).
+  Dashboard e `configuracoes.contas[].saldoAtual` ficam invalidate-only —
+  decisão (ninguém pediu o patch ainda), não limitação técnica.
+- [x] `liquidarCompromisso` — otimista completo, incluindo patch real (por
+  delta) do saldo da conta afetada.
+- [x] `transferir` — otimista completo, incluindo patch real do saldo das
+  duas contas envolvidas.
+- [x] Autosave de rascunho — pausa offline sem perder o formulário em
+  memória; confirmar operação offline enfileira o descarte do rascunho
+  órfão em vez de deixá-lo preso no servidor.
+- [x] `TABS_OFFLINE` (`client/src/App.tsx`) — as 5 abas planejadas já
+  destravadas: `dashboard`, `relatorio`, `gastos`, `caixinha`, `lancar`.
+- [ ] Fora de escopo (não é bug, é decisão — detalhe na seção "Fora de
+  escopo" abaixo): anexo de documento na fila, CRUD de `cadastros`, estorno
+  de operação/transação, tipos de operação sem UI hoje, fechamento de
+  período.
+
+Bugs achados em QA: todos os listados na seção "Bugs achados no QA manual"
+abaixo estão corrigidos, exceto o marcado "Ainda não corrigido" no fim
+dessa seção.
 
 ## Pré-requisito: `packages/shared` de volta
 
@@ -262,3 +290,14 @@ manualmente, fila inspecionada via IndexedDB, backend real local.)_
   botão nunca voltava de "Iniciando…") e coberto por testes novos em
   `api.descartar-rascunho.test.ts`, `OperacoesFinanceiras.test.tsx` e
   `CompromissosFinanceiros.test.tsx`.
+
+### Ainda não corrigido
+
+- **`recarregarListaERascunho` (`OperacoesFinanceiras.tsx`), chamado depois
+  de salvar uma operação, faz `.refetch()` incondicional nas duas queries**
+  — mesma classe de bug do item anterior (checagem que não passa pela fila
+  offline), mas achado por inspeção, não reproduzido ao vivo. O efeito
+  prático parece se limitar à URL não voltar para `/financeiro/operacoes`
+  depois de confirmar uma operação offline — cosmético, não bloqueia o
+  usuário, mas seria a mesma classe de correção do bug acima
+  (`useRascunhoOperacao`/cache já existente em vez de `.refetch()` cru).

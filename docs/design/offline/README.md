@@ -12,6 +12,13 @@ Se uma decisão daqui precisar de mais contexto histórico (por que foi feita
 assim, o que foi descartado), procurar no PR que a introduziu — não duplicar
 narrativa de mudança em comentário de código nem aqui.
 
+Este README cobre só a fundação — convenções e armadilhas válidas pra
+qualquer fatia futura, não o que uma fatia específica já cobre hoje. Cada
+fatia que usa essa fundação tem seu próprio `PLANO_<FATIA>.md` nesta mesma
+pasta (ex.: `PLANO_FINANCEIRO.md`) — é lá que fica o que essa fatia
+implementa, o que ficou de fora (e por quê) e o status atual de cada bug
+achado em QA.
+
 ## Como funciona, em uma leitura
 
 1. **Leitura** — todo hook de leitura usa `useQuery` (TanStack). O
@@ -191,7 +198,8 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
 
 O epic original moveu schema/cálculo puro compartilhado (client+server) pra
 um workspace `packages/shared` (`@rionovo/shared`), principalmente pra
-pré-validação (convenção 2 acima). Esse workspace **não existe hoje neste
-branch** — não foi portado porque era acoplado às features antigas
-(Rebanho/Corte). Recriar quando a fatia do Financeiro precisar reusar um
-schema Zod do server no client; não é pré-requisito da fundação.
+pré-validação (convenção 2 acima). Não é pré-requisito da fundação em si —
+esse workspace não veio com ela (não foi portado porque era acoplado às
+features antigas de Rebanho/Corte) e só volta quando uma fatia precisar
+reusar um schema Zod do server no client. A fatia do Financeiro já precisou
+e recriou (ver `PLANO_FINANCEIRO.md`, seção "Pré-requisito").
