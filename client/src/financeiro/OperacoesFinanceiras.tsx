@@ -7,6 +7,7 @@ import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 import { idPendenteDeSync } from "../lib/offline/useOfflineMutation";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 type ModoPeriodo = "DIA" | "MES" | "INTERVALO";
@@ -61,6 +62,7 @@ export function OperacoesFinanceiras() {
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(inicioMes); const [fim, setFim] = useState(hojeLocal);
   const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
+  const online = useOnlineStatus();
   const operacoesQuery = useOperacoesFinanceiras({ inicio, fim });
   const configQuery = useConfiguracoesFinanceiras();
   const rascunhoQuery = useRascunhoOperacao();
@@ -89,7 +91,7 @@ export function OperacoesFinanceiras() {
   // pausada indefinidamente (nunca visitada com este filtro exato, ver
   // docs/design/offline/README.md). Um gate em `!config` mascarava isso como
   // "nenhuma operação encontrada" em vez de "ainda carregando".
-  if (operacoesQuery.isPending) return <PaginaCarregando label="Carregando operações" />;
+  if (operacoesQuery.isPending) return <PaginaCarregando label="Carregando operações" semDadosOffline={!online} />;
   const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
   if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} filtrosLista={{ inicio, fim }} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => {
     setForm(false); setOperacaoBase(null); await recarregarListaERascunho(); if (aviso) setErro(aviso);

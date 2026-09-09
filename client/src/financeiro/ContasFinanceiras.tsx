@@ -4,6 +4,7 @@ import { transferenciaSchema } from "@rionovo/shared";
 import type { Tab } from "../components/Shell";
 import { useConfiguracoesFinanceiras, useExtratoConta, useTransferir, type Conta, type MovimentoConta } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
 import { useToast } from "../components/Toast";
 
@@ -18,6 +19,7 @@ const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
 ];
 
 export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
+  const online = useOnlineStatus();
   const configQuery = useConfiguracoesFinanceiras();
   const config = configQuery.data ?? null;
   const [selecionadaId, setSelecionadaId] = useState<number | null>(null);
@@ -29,7 +31,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const { mutate: mutateTransferir } = useTransferir();
   const { salvando: transferindoOffline, salvar: salvarTransferencia } = useSalvarOffline();
   const toast = useToast();
-  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erroCarregamento} />;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erroCarregamento} semDadosOffline={!online} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
   const registrarTransferencia = (e: FormEvent) => {
     e.preventDefault();
@@ -54,7 +56,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
         // fosse um resultado real (mesma classe de bug de
         // OperacoesFinanceiras.tsx: gate de loading não pode assumir que
         // outra query já resolvida garante que esta também resolveu).
-        ? <Empty>Carregando extrato…</Empty>
+        ? <Empty>{!online ? "Sem conexão — este extrato ainda não foi baixado. Conecte-se para carregar." : "Carregando extrato…"}</Empty>
         : extrato.length ? <TabelaFinanceira rotulo={`Extrato de ${selecionada.nome}`} itens={extrato} colunas={COLUNAS_EXTRATO} chaveDe={(m) => m.id} classeLinha={(m) => m.transacao.status === "REVERTIDA" ? "opacity-55" : ""} /> : <Empty>Esta conta ainda não possui movimentos.</Empty>}
     </Panel>}
 

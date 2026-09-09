@@ -5,11 +5,13 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { descartarRascunhoOperacao, obterRascunhoOperacao, useCompromissosFinanceiros, useConfiguracoesFinanceiras, useLiquidarCompromisso, type Compromisso } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import { idPendenteDeSync } from "../lib/offline/useOfflineMutation";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
 import { useToast } from "../components/Toast";
 import type { Tab } from "../components/Shell";
 
 export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }) {
+  const online = useOnlineStatus();
   const itensQuery = useCompromissosFinanceiros(); const configQuery = useConfiguracoesFinanceiras();
   const itens = itensQuery.data ?? []; const config = configQuery.data ?? null;
   const [pagando, setPagando] = useState<Compromisso | null>(null); const [contaId, setContaId] = useState(""); const [valor, setValor] = useState(""); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS">("PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
@@ -57,7 +59,7 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
   // Gate na query da lista, não em `config` (ver mesmo comentário em
   // OperacoesFinanceiras.tsx) — `config` é opcional aqui (só usado com `?.`
   // no modal de liquidação).
-  if (itensQuery.isPending) return <PaginaCarregando label="Carregando compromissos" />;
+  if (itensQuery.isPending) return <PaginaCarregando label="Carregando compromissos" semDadosOffline={!online} />;
 
   return <PaginaFinanceira>
     <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={<div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div>} />

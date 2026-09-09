@@ -34,17 +34,24 @@ export function PaginaFinanceira({ children }: { children: React.ReactNode }) {
 /* Carregamento em nível de página: ocupa a área de conteúdo (.app-main, que já
  * exclui a sidebar) e centraliza o loader nos dois eixos. Usa `.pagina-carregando`
  * em vez de `PaginaFinanceira` de propósito — o padding vertical da página somaria
- * POR FORA dos 100dvh do loader e criaria barra de rolagem. Ver base.css. */
-export function PaginaCarregando({ label }: { label: string }) {
-  return <div className="shell-wide pagina-carregando"><Loader label={label} full /></div>;
+ * POR FORA dos 100dvh do loader e criaria barra de rolagem. Ver base.css.
+ *
+ * `semDadosOffline`: uma query nunca visitada fica pausada (`fetchStatus:
+ * "paused"`) enquanto offline, com `isPending` permanentemente `true` — sem
+ * distinguir isso do carregamento normal, a tela gira pra sempre sem nenhuma
+ * pista de que só volta ao reconectar (ver docs/design/offline/README.md,
+ * "Armadilhas já batidas"). Quem chama decide a condição
+ * (`!online && query.isPending`); este componente só troca a mensagem. */
+export function PaginaCarregando({ label, semDadosOffline }: { label: string; semDadosOffline?: boolean }) {
+  return <div className="shell-wide pagina-carregando"><Loader label={semDadosOffline ? "Sem conexão — estes dados ainda não foram baixados. Conecte-se para carregar." : label} full /></div>;
 }
 
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
-  if (!erro) return <PaginaCarregando label={label} />;
+export function PaginaSemDados({ titulo, descricao, label, erro, semDadosOffline }: { titulo: string; descricao: string; label: string; erro: string | null; semDadosOffline?: boolean }) {
+  if (!erro) return <PaginaCarregando label={label} semDadosOffline={semDadosOffline} />;
   return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
