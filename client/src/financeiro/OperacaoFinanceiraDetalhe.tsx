@@ -3,8 +3,10 @@ import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
 import { estornarOperacao, useOperacaoFinanceira, type Operacao } from "./novo-api";
 import { Loader } from "../components/Loading";
 import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
+import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 
 export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCorrigir }: { operacaoId: number; onVoltar: () => void; onAbrir: (id: number) => void; onCorrigir: (operacao: Operacao) => void }) {
+  const online = useOnlineStatus();
   const operacaoQuery = useOperacaoFinanceira(operacaoId);
   const operacao = operacaoQuery.data ?? null;
   const [erroEstorno, setErroEstorno] = useState<string | null>(null);
@@ -15,7 +17,10 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
   // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
-  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</div>;
+  // Offline, essa query pode ficar pausada pra sempre se esta operação nunca
+  // foi aberta antes (mesma classe de bug de OperacoesFinanceiras.tsx) — o
+  // label distingue isso de um carregamento normal.
+  if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label={!online ? "Sem conexão — esta operação ainda não foi baixada. Conecte-se para carregar." : "Carregando operação"} full />}</div>;
 
   const transacoesOriginais = operacao.transacoes.filter((item) => item.tipo !== "REVERSAO");
   const valorFinanceiro = transacoesOriginais.reduce((soma, item) => soma + Number(item.valorTotal), 0);
