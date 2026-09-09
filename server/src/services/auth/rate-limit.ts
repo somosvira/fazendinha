@@ -5,25 +5,30 @@ type Entrada = { quantidade: number; reiniciaEm: number };
 export class LimiteFixo {
   private readonly entradas = new Map<string, Entrada>();
 
-  constructor(private readonly maximo: number, private readonly janelaMs: number) {}
+  constructor(
+    private readonly maximo: number,
+    private readonly janelaMs: number,
+    private readonly maximoChaves = 10_000,
+  ) {}
 
   consumir(chave: string, agora = Date.now()): boolean {
     const atual = this.entradas.get(chave);
-    if (!atual || atual.reiniciaEm <= agora) {
-      this.entradas.set(chave, { quantidade: 1, reiniciaEm: agora + this.janelaMs });
-      this.limparExpiradas(agora);
-      return true;
+    if (atual && atual.reiniciaEm > agora) {
+      atual.quantidade += 1;
+      return atual.quantidade <= this.maximo;
     }
-    atual.quantidade += 1;
-    return atual.quantidade <= this.maximo;
-  }
 
-  limpar(): void {
-    this.entradas.clear();
+    if (atual) this.entradas.delete(chave);
+    if (this.entradas.size >= this.maximoChaves) {
+      this.limparExpiradas(agora);
+      if (this.entradas.size >= this.maximoChaves) return false;
+    }
+
+    this.entradas.set(chave, { quantidade: 1, reiniciaEm: agora + this.janelaMs });
+    return true;
   }
 
   private limparExpiradas(agora: number): void {
-    if (this.entradas.size < 1_000) return;
     for (const [chave, entrada] of this.entradas) {
       if (entrada.reiniciaEm <= agora) this.entradas.delete(chave);
     }
@@ -40,16 +45,10 @@ export class LimiteRecuperacaoSenha {
   }
 
   permitir(email: string, origem: string, agora = Date.now()): boolean {
-    const emailHash = crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
-    // Ambas as tentativas são contabilizadas, inclusive quando uma das chaves já
-    // estourou o limite, para impedir rotação de endereços pela mesma origem.
-    const emailPermitido = this.porEmail.consumir(emailHash, agora);
     const origemPermitida = this.porOrigem.consumir(origem || "desconhecida", agora);
-    return emailPermitido && origemPermitida;
-  }
+    if (!origemPermitida) return false;
 
-  limpar(): void {
-    this.porEmail.limpar();
-    this.porOrigem.limpar();
+    const emailHash = crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+    return this.porEmail.consumir(emailHash, agora);
   }
 }

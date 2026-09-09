@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { login } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
 import { TerranoSymbol } from "./TerranoLogo";
-import { PasswordInput } from "./PasswordInput";
+import { CampoSenha } from "./CampoSenha";
 
 function IconeEmail() {
   return (
@@ -183,7 +183,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
               <span className="pointer-events-none absolute left-[13px] flex h-[18px] w-[18px] text-[color:var(--ink-mute)]">
                 <IconeSenha />
               </span>
-              <PasswordInput
+              <CampoSenha
                 id="login-senha"
                 autoComplete="current-password"
                 placeholder="Sua senha"

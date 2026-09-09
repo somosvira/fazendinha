@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 
 type Props = Omit<ComponentProps<typeof Input>, "type">;
 
-export function PasswordInput({ className = "", ...props }: Props) {
+export function CampoSenha({ className = "", ...props }: Props) {
   const [visivel, setVisivel] = useState(false);
   const rotulo = visivel ? "Ocultar senha" : "Mostrar senha";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UsuarioSessao } from "./lib/auth";
-import { destinoDepoisDoLogin, paginaInicialAutorizada, parseAuthRoute, returnToInterna, urlSigninPara } from "./authNavigation";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, returnToInterna, urlSigninPara } from "./navegacaoAuth";
 
 const usuarioPecuaria: UsuarioSessao = {
   id: 20,
@@ -22,14 +22,14 @@ const usuarioFinanceiro: UsuarioSessao = {
 
 describe("rotas públicas de autenticação", () => {
   it("reconhece rotas canônicas e aliases temporários", () => {
-    expect(parseAuthRoute("/signin", "?returnTo=%2Ffinanceiro%2Foperacoes")).toEqual({
+    expect(interpretarRotaAuth("/signin", "?returnTo=%2Ffinanceiro%2Foperacoes")).toEqual({
       kind: "signin",
       returnTo: "/financeiro/operacoes",
     });
-    expect(parseAuthRoute("/forgot-password")).toEqual({ kind: "forgot-password" });
-    expect(parseAuthRoute("/invite/abc")).toEqual({ kind: "invite", token: "abc", alias: false });
-    expect(parseAuthRoute("/convite/abc")).toEqual({ kind: "invite", token: "abc", alias: true });
-    expect(parseAuthRoute("/senha/abc")).toEqual({ kind: "reset-password", token: "abc", alias: true });
+    expect(interpretarRotaAuth("/forgot-password")).toEqual({ kind: "forgot-password" });
+    expect(interpretarRotaAuth("/invite/abc")).toEqual({ kind: "invite", token: "abc", alias: false });
+    expect(interpretarRotaAuth("/convite/abc")).toEqual({ kind: "invite", token: "abc", alias: true });
+    expect(interpretarRotaAuth("/senha/abc")).toEqual({ kind: "reset-password", token: "abc", alias: true });
   });
 
   it("preserva caminho e query ao montar o redirecionamento anônimo", () => {
@@ -55,5 +55,10 @@ describe("returnTo", () => {
     expect(destinoDepoisDoLogin("/financeiro/operacoes", usuarioPecuaria)).toBe("/pecuaria/dashboard");
     expect(destinoDepoisDoLogin("/pecuaria/nao-existe", usuarioPecuaria)).toBe("/pecuaria/dashboard");
     expect(paginaInicialAutorizada(usuarioFinanceiro)).toBe("/financeiro/operacoes");
+  });
+
+  it("mantém compatibilidade de acesso para sessões antigas sem áreas", () => {
+    const usuarioLegado = { ...usuarioPecuaria, areas: undefined } as unknown as UsuarioSessao;
+    expect(podeAcessarTab(usuarioLegado, "reb-dashboard")).toBe(true);
   });
 });

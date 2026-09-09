@@ -5,6 +5,7 @@ import { autenticar, validarConvite, validarReset, aceitarConvite, redefinirSenh
 import { criarSessao, revogarSessao } from "../services/auth/sessao.js";
 import { getUsuario } from "../middleware/permissao.js";
 import { LimiteRecuperacaoSenha } from "../services/auth/rate-limit.js";
+import { canalRecuperacaoConfigurado } from "../services/auth/email.js";
 import { env } from "../env.js";
 
 const loginSchema = z.object({ email: z.string().email(), senha: z.string().min(1) });
@@ -25,15 +26,14 @@ function bearer(h: string | undefined): string | null {
 }
 
 function origem(c: Context): string {
-  const valor = c.req.header("cf-connecting-ip")
-    ?? c.req.header("x-real-ip")
-    ?? c.req.header("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? "desconhecida";
+  // O Render acrescenta o hop recebido ao fim da cadeia; usar o último evita
+  // confiar no primeiro valor, que o cliente pode forjar ao acessar a API direta.
+  const encaminhados = c.req.header("x-forwarded-for")?.split(",").map((item) => item.trim()).filter(Boolean);
+  const valor = encaminhados?.at(-1) ?? "desconhecida";
   return valor.slice(0, 128);
 }
 
-async function concluirReset(c: Context) {
-  const { token, senha } = await c.req.json<{ token: string; senha: string }>();
+async function concluirReset(c: Context, token: string, senha: string) {
   const usuario = await redefinirSenha(token, senha);
   if (!usuario) return c.json({ error: "link inválido, expirado ou já utilizado" }, 404);
   const sessao = await criarSessao(usuario.id, c.req.header("user-agent"));
@@ -51,7 +51,7 @@ export const authPublicoRouter = new Hono()
   })
   .post("/auth/forgot-password", zValidator("json", emailSchema), async (c) => {
     const { email } = c.req.valid("json");
-    if (limiteRecuperacao.permitir(email, origem(c))) {
+    if (canalRecuperacaoConfigurado() && limiteRecuperacao.permitir(email, origem(c))) {
       await solicitarRecuperacaoSenha(email).catch((error) => {
         // A resposta pública continua neutra; detalhes ficam somente no log interno.
         console.error("[auth] falha ao entregar recuperação de senha:", error instanceof Error ? error.message : "erro desconhecido");
@@ -75,9 +75,15 @@ export const authPublicoRouter = new Hono()
     if (!(await validarReset(c.req.param("token")))) return c.json({ error: "link inválido, expirado ou já utilizado" }, 404);
     return c.json({ valido: true as const });
   })
-  .post("/auth/reset-password", zValidator("json", senhaSchema), concluirReset)
+  .post("/auth/reset-password", zValidator("json", senhaSchema), async (c) => {
+    const { token, senha } = c.req.valid("json");
+    return concluirReset(c, token, senha);
+  })
   // Alias de API durante a transição dos clientes antigos.
-  .post("/auth/senha/redefinir", zValidator("json", senhaSchema), concluirReset);
+  .post("/auth/senha/redefinir", zValidator("json", senhaSchema), async (c) => {
+    const { token, senha } = c.req.valid("json");
+    return concluirReset(c, token, senha);
+  });
 
 // Privado — montado DEPOIS do authMiddleware (precisa de sessão resolvida).
 export const authPrivadoRouter = new Hono()

@@ -13,8 +13,9 @@
 
 import type { Tab } from "./components/Shell";
 
-// Abas de slug fixo (financeiro + administração). Slug = parte visível na URL.
-const PATH_BY_TAB: Partial<Record<Tab, string>> = {
+// Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
+// a declarar sua URL e permite validar subrotas sem listas paralelas.
+const PATH_BY_TAB: Record<Tab, string> = {
   dashboard: "/financeiro",
   gastos: "/financeiro/compromissos",
   lancar: "/financeiro/operacoes",
@@ -25,8 +26,28 @@ const PATH_BY_TAB: Partial<Record<Tab, string>> = {
   acessos: "/acessos",
   config: "/configuracoes",
   cadastros: "/financeiro/configuracoes",
-  // Lotes agregados preexistentes vivem como uma subseção da Pecuária, não
-  // como um módulo de corte independente.
+  "reb-dashboard": "/pecuaria/dashboard",
+  "reb-animal": "/pecuaria/animal",
+  "reb-reproducao": "/pecuaria/reproducao",
+  "reb-acasalamento": "/pecuaria/acasalamento",
+  "reb-fiv": "/pecuaria/fiv",
+  "reb-relatorios": "/pecuaria/relatorios",
+  "reb-sanidade": "/pecuaria/sanidade",
+  "reb-nutricao": "/pecuaria/nutricao",
+  "reb-producao": "/pecuaria/producao",
+  "reb-estoque": "/pecuaria/estoque",
+  "reb-custo": "/pecuaria/custo",
+  "reb-carteira": "/pecuaria/carteira",
+  "reb-sugestoes": "/pecuaria/sugestoes",
+  "pla-dashboard": "/plantio/dashboard",
+  "pla-talhao": "/plantio/talhao",
+  "pla-fenologia": "/plantio/fenologia",
+  "pla-fitossanidade": "/plantio/fitossanidade",
+  "pla-nutricao": "/plantio/nutricao",
+  "pla-colheita": "/plantio/colheita",
+  "pla-planejamento": "/plantio/planejamento",
+  "pla-estoque": "/plantio/estoque",
+  "pla-custo": "/plantio/custo",
   "cor-dashboard": "/pecuaria/lotes/resumo",
   "cor-lote": "/pecuaria/lotes",
   "cor-pesagem": "/pecuaria/lotes/pesagens",
@@ -35,29 +56,49 @@ const PATH_BY_TAB: Partial<Record<Tab, string>> = {
   "cor-nutricao": "/pecuaria/lotes/nutricao",
   "cor-comercial": "/pecuaria/lotes/comercializacao",
   "cor-custo": "/pecuaria/lotes/custos",
+  "eqp-dashboard": "/equipe/dashboard",
+  "eqp-funcionarios": "/equipe/funcionarios",
+  "eqp-ponto": "/equipe/ponto",
+  "eqp-folha": "/equipe/folha",
+  "mil-dashboard": "/milho/dashboard",
+  "mil-safras": "/milho/safras",
+  "mil-custos": "/milho/custos",
+  "mil-producao": "/milho/producao",
+  "mil-silos": "/milho/silos",
+  "mil-custo": "/milho/custo",
 };
 
 const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
   Object.entries(PATH_BY_TAB).map(([tab, path]) => [path, tab as Tab]),
 ) as Record<string, Tab>;
 
-// Prefixo da aba (reb-/pla-/cor-/mil-/eqp-) <-> base do caminho aninhado.
-// `defaultSub` = sub-aba aberta quando a URL é só a base (default "dashboard").
-// TODOS os módulos operacionais abrem no painel (dashboard) — a URL base
-// /pecuaria, /plantio, /milho, /equipe resolve para o painel.
-const MODULO_BASE: Array<{ prefix: string; base: string; subs: readonly string[]; defaultSub?: string }> = [
-  { prefix: "reb-", base: "/pecuaria", subs: ["dashboard", "animal", "reproducao", "acasalamento", "fiv", "relatorios", "sanidade", "nutricao", "producao", "estoque", "custo", "carteira", "sugestoes"] },
-  { prefix: "pla-", base: "/plantio", subs: ["dashboard", "talhao", "fenologia", "fitossanidade", "nutricao", "colheita", "planejamento", "estoque", "custo"] },
-  { prefix: "mil-", base: "/milho", subs: ["dashboard", "safras", "custos", "producao", "silos", "custo"] },
-  { prefix: "eqp-", base: "/equipe", subs: ["dashboard", "funcionarios", "ponto", "folha"] },
-];
+const DEFAULT_TAB_BY_PATH: Record<string, Tab> = {
+  "/pecuaria": "reb-dashboard",
+  "/plantio": "pla-dashboard",
+  "/milho": "mil-dashboard",
+  "/equipe": "eqp-dashboard",
+  "/rebanho": "reb-dashboard",
+  "/corte": "cor-dashboard",
+};
 
-// Compatibilidade de leitura: links/favoritos anteriores continuam abrindo,
-// mas toda navegação nova publica apenas as URLs unificadas acima.
-const MODULO_BASE_LEGADO: Array<{ prefix: string; base: string; subs: readonly string[]; defaultSub?: string }> = [
-  { prefix: "reb-", base: "/rebanho", subs: MODULO_BASE[0].subs },
-  { prefix: "cor-", base: "/corte", subs: ["dashboard", "lote", "pesagem", "pasto", "sanidade", "nutricao", "comercial", "custo"] },
-];
+const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
+  "/relatorio": "relatorio",
+  "/relatorios": "relatorio",
+  "/dashboard": "dashboard",
+  "/gastos": "gastos",
+  "/lancar": "lancar",
+  "/caixinha": "caixinha",
+  ...Object.fromEntries(
+    Object.keys(PATH_BY_TAB)
+      .filter((tab) => tab.startsWith("reb-"))
+      .map((tab) => [`/rebanho/${tab.slice(4)}`, tab as Tab]),
+  ),
+  ...Object.fromEntries(
+    Object.keys(PATH_BY_TAB)
+      .filter((tab) => tab.startsWith("cor-"))
+      .map((tab) => [`/corte/${tab.slice(4)}`, tab as Tab]),
+  ),
+};
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
@@ -112,12 +153,7 @@ export function buildRotaWorklistRebanho(chave: RebanhoWorklistChave, tab: Reban
 
 /** Aba ativa -> pathname canônico para a barra de endereço. */
 export function tabToPath(tab: Tab): string {
-  const fixed = PATH_BY_TAB[tab];
-  if (fixed) return fixed;
-  for (const { prefix, base } of MODULO_BASE) {
-    if (tab.startsWith(prefix)) return `${base}/${tab.slice(prefix.length)}`;
-  }
-  return PATH_BY_TAB[DEFAULT_TAB]!;
+  return PATH_BY_TAB[tab];
 }
 
 /** pathname -> aba (ou null se não casar com nenhuma rota conhecida). */
@@ -127,32 +163,8 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
   if (path === "/" || path === "") return DEFAULT_TAB;
-  // Compatibilidade com links e favoritos anteriores à Central de Relatórios.
-  if (path === "/relatorio") return "relatorio";
-  if (path === "/relatorios") return "relatorio";
-  if (path === "/dashboard") return "dashboard";
-  if (path === "/gastos") return "gastos";
-  if (path === "/lancar") return "lancar";
-  if (path === "/caixinha") return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";
 
-  const fixed = TAB_BY_PATH[path];
-  if (fixed) return fixed;
-
-  for (const { prefix, base, subs, defaultSub } of MODULO_BASE) {
-    if (path === base) return `${prefix}${defaultSub ?? "dashboard"}` as Tab;
-    if (path.startsWith(`${base}/`)) {
-      const sub = path.slice(base.length + 1);
-      if (subs.includes(sub)) return `${prefix}${sub}` as Tab;
-    }
-  }
-  for (const { prefix, base, subs, defaultSub } of MODULO_BASE_LEGADO) {
-    if (path === base) return `${prefix}${defaultSub ?? "dashboard"}` as Tab;
-    if (path.startsWith(`${base}/`)) {
-      const sub = path.slice(base.length + 1);
-      if (subs.includes(sub)) return `${prefix}${sub}` as Tab;
-    }
-  }
-  return null;
+  return DEFAULT_TAB_BY_PATH[path] ?? TAB_BY_PATH[path] ?? TAB_BY_PATH_LEGADO[path] ?? null;
 }

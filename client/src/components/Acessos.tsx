@@ -1,7 +1,7 @@
 /* Rio Novo — Acessos (controle de permissões, admin).
  * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
- * mudança via PATCH. Convite/reset devolvem um LINK copiável (não há e-mail
- * automático) — o dono envia por WhatsApp ou como preferir.
+ * mudança via PATCH. Convites devolvem um link copiável; a recuperação pública
+ * de senha envia o link pelo canal configurado no backend.
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
 import { useEffect, useState } from "react";

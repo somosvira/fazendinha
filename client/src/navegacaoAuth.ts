@@ -4,7 +4,7 @@ import type { UsuarioSessao } from "./lib/auth";
 import { areaDaTab, temAcessoArea } from "./lib/areas";
 import { pathToTab, tabToPath } from "./router";
 
-export type AuthRoute =
+export type RotaAuth =
   | { kind: "signin"; returnTo: string | null }
   | { kind: "forgot-password" }
   | { kind: "invite"; token: string; alias: boolean }
@@ -12,7 +12,7 @@ export type AuthRoute =
 
 const PUBLIC_PATHS = new Set(["/signin", "/forgot-password"]);
 
-export function parseAuthRoute(pathname: string, search = ""): AuthRoute | null {
+export function interpretarRotaAuth(pathname: string, search = ""): RotaAuth | null {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   if (path === "/signin") {
     return { kind: "signin", returnTo: new URLSearchParams(search).get("returnTo") };
@@ -40,7 +40,7 @@ export function returnToInterna(raw: string | null | undefined): string | null {
     const base = "https://terrano.internal";
     const url = new URL(raw, base);
     const decodedPath = decodeURIComponent(url.pathname);
-    if (url.origin !== base || decodedPath.startsWith("//") || decodedPath.includes("\\") || PUBLIC_PATHS.has(url.pathname) || parseAuthRoute(url.pathname, url.search)) return null;
+    if (url.origin !== base || decodedPath.startsWith("//") || decodedPath.includes("\\") || PUBLIC_PATHS.has(url.pathname) || interpretarRotaAuth(url.pathname, url.search)) return null;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return null;

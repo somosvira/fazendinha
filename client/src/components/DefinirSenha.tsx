@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { validarConvite, validarReset, aceitarConvite, redefinirSenha } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
-import { PasswordInput } from "./PasswordInput";
+import { CampoSenha } from "./CampoSenha";
 
 export function DefinirSenha({
   modo,
@@ -81,7 +81,7 @@ export function DefinirSenha({
         <Label htmlFor="ds-senha" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
           Nova senha
         </Label>
-        <PasswordInput
+        <CampoSenha
           id="ds-senha"
           autoFocus
           autoComplete="new-password"
@@ -93,7 +93,7 @@ export function DefinirSenha({
         <Label htmlFor="ds-senha2" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
           Repita a senha
         </Label>
-        <PasswordInput
+        <CampoSenha
           id="ds-senha2"
           autoComplete="new-password"
           maxLength={128}

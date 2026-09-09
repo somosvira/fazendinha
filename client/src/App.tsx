@@ -22,12 +22,12 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
-import { ForgotPassword } from "./components/ForgotPassword";
+import { RecuperarSenha } from "./components/RecuperarSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
 import { fetchMe, logout } from "./api/auth";
-import { destinoDepoisDoLogin, paginaInicialAutorizada, parseAuthRoute, urlSigninPara } from "./authNavigation";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
-import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
+import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 
@@ -135,11 +135,10 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // O projeto não usa react-router. Esta revisão força um novo render quando a
-  // própria raiz troca entre rotas públicas com history.replaceState().
+  // Atualiza o parser de rotas públicas após replaceState().
   const [locationRevision, setLocationRevision] = useState(0);
   const authRoute = useMemo(
-    () => typeof window === "undefined" ? null : parseAuthRoute(window.location.pathname, window.location.search),
+    () => typeof window === "undefined" ? null : interpretarRotaAuth(window.location.pathname, window.location.search),
     [locationRevision],
   );
 
@@ -331,7 +330,6 @@ export function App() {
     };
   }, [mobileOpen]);
 
-  // Mantém os aliases antigos funcionais, mas publica imediatamente a URL nova.
   useEffect(() => {
     if (!authRoute || !("alias" in authRoute) || !authRoute.alias) return;
     const base = authRoute.kind === "invite" ? "/invite/" : "/reset-password/";
@@ -339,7 +337,6 @@ export function App() {
     setLocationRevision((valor) => valor + 1);
   }, [authRoute]);
 
-  // Uma rota privada nunca fica visível na barra de endereço sem sessão.
   useEffect(() => {
     if (authRoute || (token && usuario)) return;
     const destino = urlSigninPara(window.location.pathname, window.location.search);
@@ -348,8 +345,6 @@ export function App() {
     setLocationRevision((valor) => valor + 1);
   }, [authRoute, token, usuario]);
 
-  // /signin é apenas uma porta de entrada; uma sessão existente volta à home
-  // permitida, sem confiar em returnTo fornecida antes dessa autenticação.
   useEffect(() => {
     if (!token || !usuario || authRoute?.kind !== "signin") return;
     const destino = paginaInicialAutorizada(usuario);
@@ -457,36 +452,16 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  const canAccessTab = (id: Tab): boolean => {
-    if (id === "acessos") return isAdmin;
-    if (id === "config") return true;
-    const area = areaDaTab(id);
-    if (area && !hasArea(area)) return false;
-    if (area === "financeiro") return visibleTabs.some((t) => t.id === id) || (id === "caixinha" && visibleTabs.some((t) => t.id === "cadastros"));
-    if (area === "equipe" && id === "eqp-folha") return canSeeFolha;
-    return true;
-  };
-
-  const fallbackTab = (): Tab => {
-    if (visibleTabs[0]) return visibleTabs[0].id;
-    if (hasArea("pecuaria")) return "reb-dashboard";
-    if (hasArea("agricultura")) return "pla-dashboard";
-    if (hasArea("equipe")) return "eqp-dashboard";
-    return "config";
-  };
+  const canAccessTab = (id: Tab): boolean => !!usuario && podeAcessarTab(usuario, id);
 
   // URL direta, histórico e deep links também respeitam a mesma matriz da sidebar.
   useEffect(() => {
-    if (!effectiveUser || canAccessTab(tab)) return;
-    setTab(fallbackTab());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleTabs, effectiveUser?.areas, tab]);
+    if (!usuario || podeAcessarTab(usuario, tab)) return;
+    setTab(pathToTab(paginaInicialAutorizada(usuario)) ?? DEFAULT_TAB);
+  }, [usuario, tab]);
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
-  // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
-  // ele renderiza a tela de definir senha. Todos os hooks acima já
-  // rodaram — os early returns aqui não violam as Rules of Hooks.
   if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
     return (
       <DefinirSenha
@@ -498,7 +473,7 @@ export function App() {
       />
     );
   }
-  if (authRoute?.kind === "forgot-password") return <ForgotPassword />;
+  if (authRoute?.kind === "forgot-password") return <RecuperarSenha />;
   if (authRoute?.kind === "signin") {
     return <Login onEntrar={(novoToken, u) => entrar(novoToken, u, authRoute.returnTo)} />;
   }

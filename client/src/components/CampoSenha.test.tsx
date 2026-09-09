@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { PasswordInput } from "./PasswordInput";
+import { CampoSenha } from "./CampoSenha";
 
 afterEach(cleanup);
 
-describe("PasswordInput", () => {
+describe("CampoSenha", () => {
   it("alterna tipo, ícone e nome acessível nos dois estados", () => {
-    const { container } = render(<PasswordInput aria-label="Senha" />);
+    const { container } = render(<CampoSenha aria-label="Senha" />);
     const input = screen.getByLabelText("Senha") as HTMLInputElement;
     const mostrar = screen.getByRole("button", { name: "Mostrar senha" });
 

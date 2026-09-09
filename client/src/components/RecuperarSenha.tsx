@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { solicitarRecuperacao } from "../api/auth";
 import { TerranoSymbol } from "./TerranoLogo";
 
-export function ForgotPassword() {
+export function RecuperarSenha() {
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [concluido, setConcluido] = useState(false);
+  const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
   const submeter = async (event: FormEvent) => {
@@ -16,7 +17,8 @@ export function ForgotPassword() {
     setEnviando(true);
     setErro(null);
     try {
-      await solicitarRecuperacao(email.trim().toLowerCase());
+      const resposta = await solicitarRecuperacao(email.trim().toLowerCase());
+      setMensagem(resposta);
       setConcluido(true);
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Não foi possível enviar a solicitação.");
@@ -39,7 +41,7 @@ export function ForgotPassword() {
         {concluido ? (
           <div aria-live="polite">
             <p className="mt-3 text-[14px] leading-6 text-ink-3">
-              Se existir uma conta com esse e-mail, você receberá um link para redefinir a senha. Verifique também a caixa de spam.
+              {mensagem} Verifique também a caixa de spam.
             </p>
             <a className="mt-6 inline-block text-[14px] font-semibold text-[color:var(--cafe)] hover:underline" href="/signin">
               Voltar para entrar

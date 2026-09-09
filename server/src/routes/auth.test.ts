@@ -9,9 +9,11 @@ const contas = vi.hoisted(() => ({
   solicitarRecuperacaoSenha: vi.fn(),
 }));
 const sessoes = vi.hoisted(() => ({ criarSessao: vi.fn(), revogarSessao: vi.fn() }));
+const email = vi.hoisted(() => ({ canalRecuperacaoConfigurado: vi.fn(() => true) }));
 
 vi.mock("../services/auth/contas.js", () => contas);
 vi.mock("../services/auth/sessao.js", () => sessoes);
+vi.mock("../services/auth/email.js", () => email);
 vi.mock("../middleware/permissao.js", () => ({ getUsuario: vi.fn() }));
 vi.mock("../env.js", () => ({
   env: { AUTH_RESET_MAX_PER_EMAIL: 3, AUTH_RESET_MAX_PER_IP: 10, AUTH_RESET_RATE_WINDOW_MINUTES: 15 },
@@ -19,7 +21,10 @@ vi.mock("../env.js", () => ({
 
 import { authPublicoRouter, MENSAGEM_RECUPERACAO } from "./auth.js";
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  email.canalRecuperacaoConfigurado.mockReturnValue(true);
+});
 
 describe("POST /auth/forgot-password", () => {
   it("responde de forma idêntica sem revelar conta ou token", async () => {
@@ -40,6 +45,20 @@ describe("POST /auth/forgot-password", () => {
     expect(bodyExistente).toEqual({ message: MENSAGEM_RECUPERACAO });
     expect(bodyInexistente).toEqual(bodyExistente);
     expect(JSON.stringify(bodyExistente)).not.toMatch(/token|existente/i);
+  });
+
+  it("mantém a resposta neutra e não emite token quando o canal está desligado", async () => {
+    email.canalRecuperacaoConfigurado.mockReturnValue(false);
+
+    const response = await authPublicoRouter.request("/auth/forgot-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "conta.fixture@example.test" }),
+    });
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({ message: MENSAGEM_RECUPERACAO });
+    expect(contas.solicitarRecuperacaoSenha).not.toHaveBeenCalled();
   });
 });
 
@@ -65,5 +84,16 @@ describe("GET /auth/reset-password/:token", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ token: "nova-sessao", usuario });
     }
+  });
+
+  it("rejeita payload fora do schema antes de concluir o reset", async () => {
+    const response = await authPublicoRouter.request("/auth/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "token-fixture", senha: "curta" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(contas.redefinirSenha).not.toHaveBeenCalled();
   });
 });

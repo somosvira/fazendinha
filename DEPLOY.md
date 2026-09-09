@@ -21,7 +21,7 @@ Os arquivos de config já estão no repo:
 1. `pnpm install --frozen-lockfile` (Node 20, pnpm via `packageManager` do `package.json`).
 2. `pnpm --filter rionovo-server exec prisma generate` — o Prisma Client é necessário para o `tsc`; não conecta ao banco.
 3. `pnpm -r run build` — server (`tsc`) e client (`tsc -b && vite build`).
-4. `pnpm --filter rionovo-server test` — Vitest. Os testes são unitários, mas importam módulos que passam por `env.ts`, que aborta sem `DATABASE_URL`. O workflow injeta uma URL **dummy** (`postgresql://ci:ci@localhost:5432/ci`) só para a validação passar — nada é escrito em banco nenhum.
+4. Sobe um Postgres 16 efêmero, materializa o schema com `prisma db push` e roda `pnpm --filter rionovo-server test`. A integração de recuperação usa somente fixtures `@example.test`, removidas após cada caso; nenhum ambiente ou proprietário real é acessado.
 
 O CI **não** deploya. Os deploys são feitos pelas integrações Git nativas: Render (`autoDeployTrigger: checksPass` → só deploya a `main` depois do CI verde) e Cloudflare Pages (build a cada push). Não há credenciais de infra no GitHub Actions.
 
@@ -48,9 +48,9 @@ Todas são validadas por `server/src/env.ts`; se algo obrigatório faltar o proc
 | `CORS_ORIGIN` | CSV de origens permitidas. Deixe vazio na primeira subida (libera tudo) e preencha depois com a URL do CF Pages (§2.4). |
 | `AUTH_BOOTSTRAP_EMAIL` | E-mail do dono. **Só tem efeito no primeiro boot com a tabela `Usuario` vazia** (ver §1.5). Pode esvaziar depois que o dono foi criado. |
 | `AUTH_BOOTSTRAP_NOME` | (opcional) Nome do dono. Default `Proprietário`. |
-| `APP_BASE_URL` | Base absoluta para montar os links de convite/reset (ex.: `https://rionovo.pages.dev`). Vazio → o link logado é relativo (`/convite/<token>`) e você prefixa o domínio na mão. |
+| `APP_BASE_URL` | Base para montar os links de convite/reset (ex.: `https://rionovo.pages.dev`). Host sem esquema é normalizado para `https://`; vazio gera link relativo. |
 | `AUTH_SESSAO_DIAS` | (opcional) Validade da sessão em dias (sliding). Default 30. |
-| `AUTH_EMAIL_PROVIDER` | `resend` para habilitar a recuperação por e-mail em produção. |
+| `AUTH_EMAIL_PROVIDER` | `resend` para habilitar a recuperação por e-mail em produção. `log` (ou variável ausente) imprime o link em dev/teste e é rejeitado em produção. |
 | `AUTH_EMAIL_FROM` | Remetente em domínio verificado, por exemplo `Terrano <acesso@dominio.com.br>`. Obrigatória com provider `resend`. |
 | `RESEND_API_KEY` | Chave do Resend usada somente pelo backend. Obrigatória com provider `resend`. |
 | `AUTH_RESET_RATE_WINDOW_MINUTES`, `AUTH_RESET_MAX_PER_EMAIL`, `AUTH_RESET_MAX_PER_IP` | (opcionais) Janela e limites da recuperação pública. Defaults: 15 minutos, 3 por e-mail e 10 por origem. |
@@ -144,6 +144,8 @@ Algo como `https://terrano-api.onrender.com`. Anote — vai na env `API_ORIGIN` 
 CF Pages **não** faz proxy para origem externa via `_redirects`. O proxy `/api/*` → Render é o `client/public/_worker.js` (Pages em modo avançado): toda request cujo path começa com `/api/` é repassada (método, headers incluindo `Authorization`, body) para `env.API_ORIGIN + path + query`; o resto vai para `env.ASSETS` (estáticos + SPA fallback do `_redirects`). Se `API_ORIGIN` não estiver setada, o Worker responde `503 { error: "API_ORIGIN não configurada no Cloudflare Pages" }`.
 
 Vite copia `public/` para `client/dist`, então `_worker.js` e `_redirects` chegam ao output sem configuração extra. **Não há nada para editar no repo** ao trocar a URL do Render — é só env.
+
+O rate limit de recuperação usa o último endereço de `X-Forwarded-For`, acrescentado pelo Render. Não confia em `CF-Connecting-IP` nem no primeiro item da cadeia, que podem ser forjados por quem acessa o host do Render diretamente. O fluxo normal deve continuar passando pelo Worker do Pages; o limite por e-mail permanece ativo também em acessos diretos.
 
 ### 2.2. Criar o projeto no CF Pages
 

@@ -3,7 +3,9 @@ import { env } from "../../env.js";
 import { hashSenha, verificarSenha } from "./hash.js";
 import { gerarToken, hashToken, tokenExpirado, expiraConvite, expiraReset } from "./token.js";
 import { usuarioDTO, type UsuarioDTO } from "./usuarios.js";
-import { canalRecuperacaoConfigurado, enviarLinkRecuperacao, type EmailRecuperacao } from "./email.js";
+import { enviarLinkRecuperacao, type EmailRecuperacao } from "./email.js";
+
+export class LinkAcessoError extends Error {}
 
 function montarLink(tipo: "convite" | "senha", raw: string): string {
   const path = tipo === "convite" ? "invite" : "reset-password";
@@ -22,14 +24,18 @@ async function novoToken(usuarioId: number, tipo: "CONVITE" | "RESET"): Promise<
 
 export async function gerarLinkConvite(usuarioId: number): Promise<string> {
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { status: true } });
-  if (!usuario || usuario.status !== "PENDENTE") throw new Error("usuário não está pendente");
+  if (!usuario) throw new LinkAcessoError("usuário não encontrado");
+  if (usuario.status !== "PENDENTE") throw new LinkAcessoError("convite disponível somente para usuário pendente");
   const { raw } = await novoToken(usuarioId, "CONVITE");
   return montarLink("convite", raw);
 }
 
 export async function gerarLinkReset(usuarioId: number): Promise<string> {
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { status: true, senhaHash: true } });
-  if (!usuario || usuario.status !== "ATIVO" || !usuario.senhaHash) throw new Error("usuário não está ativo");
+  if (!usuario) throw new LinkAcessoError("usuário não encontrado");
+  if (usuario.status !== "ATIVO" || !usuario.senhaHash) {
+    throw new LinkAcessoError("redefinição disponível somente para usuário ativo com senha cadastrada");
+  }
   const { raw } = await novoToken(usuarioId, "RESET");
   return montarLink("senha", raw);
 }
@@ -38,11 +44,6 @@ export async function solicitarRecuperacaoSenha(
   email: string,
   entregar: (mensagem: EmailRecuperacao) => Promise<void> = enviarLinkRecuperacao,
 ): Promise<boolean> {
-  // Falha antes de invalidar qualquer link já emitido quando o deploy ainda não
-  // recebeu as credenciais do canal. Entregadores injetados mantêm testes isolados.
-  if (entregar === enviarLinkRecuperacao && !canalRecuperacaoConfigurado()) {
-    throw new Error("canal de recuperação de senha não configurado");
-  }
   const usuario = await prisma.usuario.findUnique({
     where: { email: email.trim().toLowerCase() },
     select: { id: true, email: true, status: true, senhaHash: true },

@@ -22,9 +22,9 @@ vi.mock("./hash.js", () => ({
   hashSenha: (senha: string) => `hash:${senha}`,
   verificarSenha: vi.fn(),
 }));
-vi.mock("./email.js", () => ({ canalRecuperacaoConfigurado: vi.fn(() => true), enviarLinkRecuperacao: vi.fn() }));
+vi.mock("./email.js", () => ({ enviarLinkRecuperacao: vi.fn() }));
 
-import { aceitarConvite, redefinirSenha, solicitarRecuperacaoSenha } from "./contas.js";
+import { aceitarConvite, gerarLinkConvite, gerarLinkReset, LinkAcessoError, redefinirSenha, solicitarRecuperacaoSenha } from "./contas.js";
 
 const usuarioAtivo = {
   id: 41,
@@ -74,8 +74,24 @@ describe("solicitarRecuperacaoSenha", () => {
   });
 });
 
+describe("links administrativos", () => {
+  it("explica por que convite ou redefinição não podem ser emitidos", async () => {
+    mocks.prisma.usuario.findUnique
+      .mockResolvedValueOnce({ status: "ATIVO" })
+      .mockResolvedValueOnce({ status: "PENDENTE", senhaHash: null });
+
+    await expect(gerarLinkConvite(usuarioAtivo.id)).rejects.toEqual(
+      new LinkAcessoError("convite disponível somente para usuário pendente"),
+    );
+    await expect(gerarLinkReset(usuarioAtivo.id)).rejects.toEqual(
+      new LinkAcessoError("redefinição disponível somente para usuário ativo com senha cadastrada"),
+    );
+    expect(mocks.prisma.tokenAcesso.create).not.toHaveBeenCalled();
+  });
+});
+
 describe("consumo de tokens", () => {
-  it("redefine somente o hash, consome uma vez e revoga as sessões anteriores", async () => {
+  it("redefine somente o hash, consome o token e revoga as sessões anteriores", async () => {
     mocks.tx.tokenAcesso.findUnique.mockResolvedValue({
       id: "reset-1",
       usuarioId: usuarioAtivo.id,
@@ -96,9 +112,9 @@ describe("consumo de tokens", () => {
       data: { senhaHash: "hash:nova-senha" },
     });
     expect(mocks.tx.sessao.deleteMany).toHaveBeenCalledWith({ where: { usuarioId: usuarioAtivo.id } });
+  });
 
-    vi.clearAllMocks();
-    mocks.prisma.$transaction.mockImplementation(async (callback: (client: typeof mocks.tx) => unknown) => callback(mocks.tx));
+  it("rejeita uma segunda tentativa quando o consumo atômico perde a corrida", async () => {
     mocks.tx.tokenAcesso.findUnique.mockResolvedValue({
       id: "reset-1",
       usuarioId: usuarioAtivo.id,
@@ -108,7 +124,24 @@ describe("consumo de tokens", () => {
       usuario: usuarioAtivo,
     });
     mocks.tx.tokenAcesso.updateMany.mockResolvedValue({ count: 0 });
+
     await expect(redefinirSenha("token-reset", "outra-senha")).resolves.toBeNull();
+    expect(mocks.tx.usuario.update).not.toHaveBeenCalled();
+    expect(mocks.tx.sessao.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("rejeita token de reset expirado sem tentar consumi-lo", async () => {
+    mocks.tx.tokenAcesso.findUnique.mockResolvedValue({
+      id: "reset-expirado",
+      usuarioId: usuarioAtivo.id,
+      tipo: "RESET",
+      usadoEm: null,
+      expiraEm: new Date(Date.now() - 1),
+      usuario: usuarioAtivo,
+    });
+
+    await expect(redefinirSenha("token-expirado", "outra-senha")).resolves.toBeNull();
+    expect(mocks.tx.tokenAcesso.updateMany).not.toHaveBeenCalled();
     expect(mocks.tx.usuario.update).not.toHaveBeenCalled();
   });
 
