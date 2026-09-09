@@ -103,11 +103,12 @@ export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/
 
 export type LiquidarCompromissoInput = { compromissoId: number; contaId: number; valor: number; data: string; formaPagamento?: string; descricao?: string };
 
-// Update in-place num Compromisso JÁ EXISTENTE (id real — nunca criado
-// offline nesta fatia) — sem criarOtimista, a fórmula (saldo zerou?
-// LIQUIDADO : PARCIAL) é determinística e lida do próprio cache, não
-// duplicada aqui. Extrato/dashboard/saldo de conta são invalidate-only:
-// dado agregado no servidor, não dá pra patchar sem duplicar a conta.
+// Update in-place num Compromisso JÁ EXISTENTE (id real — a única forma de
+// criar um Compromisso é via useCriarOperacao) — sem criarOtimista, a
+// fórmula (saldo zerou? LIQUIDADO : PARCIAL) é determinística e lida do
+// próprio cache, não duplicada aqui. Extrato/dashboard/saldo de conta são
+// invalidate-only: dado agregado no servidor, não dá pra patchar sem
+// duplicar a conta.
 export function useLiquidarCompromisso() {
   return useOfflineMutation<LiquidarCompromissoInput, Compromisso>({
     mutationKey: "financeiro-liquidar-compromisso",

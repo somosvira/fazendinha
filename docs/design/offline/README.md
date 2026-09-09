@@ -118,6 +118,18 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
    visitada, ficha nunca foi aberta individualmente" de graça, e renderiza
    instantâneo mesmo online. Precisa de uma queryKey de "família" curta
    (prefixo, tipo `xTodos()`) que case qualquer combinação de filtro.
+8. **Comentário de código explica lógica, nunca a história da mudança.**
+   Proibido: "nesta fatia", "o fix de hoje", "antes desta implementação",
+   referência a PR/commit/issue, ou qualquer frase que só faz sentido pra
+   quem acompanhou a conversa que gerou o código. Teste: o comentário
+   continua igualmente verdadeiro e útil daqui a um ano, sem nenhum
+   contexto de quando ou por quem foi decidido? Exemplo bom — o JSDoc de
+   `ID_LOTE_PREFIXO` (`useOfflineMutation.ts`) explica por que o prefixo
+   existe e por que não é reconciliado (limitação da fila, não
+   impossibilidade), sem mencionar quando isso foi decidido. Contexto
+   histórico (o que foi descartado, por que essa opção e não outra) mora no
+   doc da fatia (`docs/design/offline/PLANO_*.md`, seção "decisões não
+   planejadas") ou na descrição do commit — nunca em comentário de código.
 
 ## Armadilhas já batidas (não repetir)
 

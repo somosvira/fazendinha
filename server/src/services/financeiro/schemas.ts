@@ -4,8 +4,8 @@ import { z } from "zod";
 // dependem) moraram em @rionovo/shared — o client precisa pré-validar com o
 // mesmo schema antes de enfileirar uma escrita offline (ver
 // docs/design/offline/PLANO_FINANCEIRO.md). O resto (contas, parceiros,
-// transação avulsa, estorno, rascunho) não tem cobertura offline nesta
-// fatia e continua só aqui.
+// transação avulsa, estorno, rascunho) não tem cobertura offline e
+// continua só aqui.
 export {
   formaPagamentoSchema, itemOperacaoSchema, operacaoSchema, liquidacaoSchema, transferenciaSchema,
   type OperacaoInput,

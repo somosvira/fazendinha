@@ -3,7 +3,7 @@ import { z } from "zod";
 // Só os schemas usados por escrita offline (pré-validação no client antes de
 // enfileirar) e por preverEfeitosOperacao. contaSchema/parceiroSchema/
 // transacaoAvulsaSchema/estornoSchema/rascunhoOperacaoSchema ficam só no
-// server — nenhuma dessas mutations tem cobertura offline nesta fatia (ver
+// server — nenhuma dessas mutations tem cobertura offline (ver
 // docs/design/offline/PLANO_FINANCEIRO.md).
 
 const dataIso = z.coerce.date();
