@@ -127,10 +127,10 @@ function Coffee({ className }: { className?: string }) {
 /** Motivo do loader: trator (movimento), colheita crescendo ou café pulando. */
 export type LoadingMotif = "tractor" | "crop" | "coffee";
 
-function Figure({ motif }: { motif: LoadingMotif }) {
-  if (motif === "crop") return <Crop className="crop crop--anim" />;
-  if (motif === "coffee") return <Coffee className="coffee coffee--anim" />;
-  return <Tractor className="tractor tractor--spin" />;
+function Figure({ motif, animado = true }: { motif: LoadingMotif; animado?: boolean }) {
+  if (motif === "crop") return <Crop className={`crop${animado ? " crop--anim" : ""}`} />;
+  if (motif === "coffee") return <Coffee className={`coffee${animado ? " coffee--anim" : ""}`} />;
+  return <Tractor className={`tractor${animado ? " tractor--spin" : ""}`} />;
 }
 
 /** Loader de seção/inline. Troca os "Carregando…" ad-hoc por um único componente.
@@ -142,12 +142,17 @@ export function Loader({
   label = "Carregando…",
   size = "md",
   motif = "coffee",
+  animado = true,
   full = false,
   className,
 }: {
   label?: string;
   size?: "sm" | "md";
   motif?: LoadingMotif;
+  /** `false` renderiza a figura parada — para um estado bloqueado que só
+   *  volta com ação do usuário (ex.: sem conexão), a animação em loop sugere
+   *  "só espera" quando na verdade é "reconecte pra continuar". */
+  animado?: boolean;
   full?: boolean;
   className?: string;
 }) {
@@ -156,10 +161,10 @@ export function Loader({
       className={`loader loader--${size}${full ? " loader--pagina" : ""}${className ? " " + className : ""}`}
       role="status"
       aria-live="polite"
-      aria-busy="true"
+      aria-busy={animado}
     >
       <div className="loader-figure">
-        <Figure motif={motif} />
+        <Figure motif={motif} animado={animado} />
       </div>
       {label && <span className="loader-label">{label}</span>}
     </div>

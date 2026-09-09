@@ -43,7 +43,7 @@ export function PaginaFinanceira({ children }: { children: React.ReactNode }) {
  * "Armadilhas já batidas"). Quem chama decide a condição
  * (`!online && query.isPending`); este componente só troca a mensagem. */
 export function PaginaCarregando({ label, semDadosOffline }: { label: string; semDadosOffline?: boolean }) {
-  return <div className="shell-wide pagina-carregando"><Loader label={semDadosOffline ? "Sem conexão — estes dados ainda não foram baixados. Conecte-se para carregar." : label} full /></div>;
+  return <div className="shell-wide pagina-carregando"><Loader label={semDadosOffline ? "Sem conexão — estes dados ainda não foram baixados. Conecte-se para carregar." : label} animado={!semDadosOffline} full /></div>;
 }
 
 /* Página cujos dados ainda não chegaram: carrega, ou mostra o erro. Existe para
