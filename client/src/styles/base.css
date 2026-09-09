@@ -67,12 +67,13 @@
   --side-mute: #8B8672;
   --side-hair: rgba(232, 220, 196, 0.10);
 
-  /* header (faixa clara enxuta: só busca + conta; começa após a sidebar) */
-  --header-h: 64px;
+  /* A topbar foi removida; a variável permanece para telas que calculam a
+     altura útil a partir dela. */
+  --header-h: 0px;
 }
 
-/* shell único: header fixo no topo, sidebar abaixo do header, main com offset */
-.app { min-height: 100vh; background: var(--bg); color: var(--ink); padding-top: var(--header-h); }
+/* shell único: sidebar fixa e conteúdo ocupando toda a altura disponível */
+.app { min-height: 100vh; background: var(--bg); color: var(--ink); }
 /* overflow-x: clip impede que tabelas densas com colunas de min-width fixo
    (ex.: linhas mono-nums em grids [64px_1fr_auto]) empurrem scroll horizontal
    na PÁGINA inteira em telas estreitas. Cada área rolável interna
@@ -85,25 +86,11 @@
   .app.side-collapsed { --side-w: 64px; }
 }
 
-/* ============================================================
-   APP HEADER — migrado para Tailwind + shadcn DropdownMenu (Header.tsx).
-   Restam só as variáveis --header-h responsivas: .app usa var(--header-h)
-   para o padding-top do shell, e o Header lê a mesma var via arbitrary value.
-   ============================================================ */
 /* Marca Terrano — agora no TOPO da sidebar (não mais no header). O `.ah-brand`
    e o `.ah-brand-symbol` continuam existindo só como âncora do voo da abertura
    (TerranoIntro pousa em `.ah-brand .terrano-symbol`); o wordmark "Terrano" é
    estilizado por Tailwind dentro do AppSidebar. */
 .ah-brand-symbol { display: block; flex: none; }
-
-@media (max-width: 900px) {
-  :root { --header-h: 56px; }
-}
-
-/* viewport realmente pequeno */
-@media (max-width: 560px) {
-  :root { --header-h: 52px; }
-}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -185,6 +172,17 @@ a { color: inherit; }
   /* sem max-width/centralização: o conteúdo preenche a largura do .app-main
      e encosta na sidebar; só o gutter separa da borda. */
   padding: 0 var(--gutter);
+}
+
+/* Páginas do financeiro (PaginaFinanceira). O ritmo vertical mora AQUI e não em
+   utilitários Tailwind: `.shell-wide` é regra não-camada e zera padding-top/bottom
+   de qualquer `pt-*`/`pb-*` (camada utilities perde no cascade). O seletor composto
+   também vence as redefinições de `.shell-wide` nos media queries abaixo. */
+.shell-wide.pagina-financeira { padding-bottom: 40px; }
+@media (max-width: 900px) {
+  /* folga para o botão flutuante "Abrir menu" (fixed left-3 top-3, 40px) não
+     cobrir o cabeçalho da página quando a sidebar vira drawer. */
+  .shell-wide.pagina-financeira { padding-top: 56px; }
 }
 
 
@@ -645,7 +643,7 @@ input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
 @media (max-width: 900px) {
   :root { --gutter: 14px; }
 
-  /* sidebar vira drawer; main perde offset (burger vive no header, ver Header.tsx) */
+  /* sidebar vira drawer; main perde offset e recebe um acionador flutuante */
   .app-main { margin-left: 0; }
 
   .shell, .shell-wide { padding: 0 14px; }
@@ -1076,6 +1074,30 @@ body.no-scroll { overflow: hidden; }
 .loader-sr {
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+/* Estado de carregamento em nível de PÁGINA.
+
+   A coluna `.pagina-carregando` mede exatamente uma viewport e o loader dentro
+   dela cresce para tomar a sobra (`flex: 1`). Assim o total nunca passa de
+   100dvh — nem quando há algo acima do loader (o botão "Voltar" do detalhe da
+   operação, por exemplo). Dar `min-height: 100dvh` direto no loader criava
+   barra de rolagem, porque o padding do contêiner e os irmãos somavam POR FORA
+   dos 100dvh e empurravam a página (40px no desktop, 96px no mobile).
+
+   Vive dentro do `.app-main`, que já desconta a sidebar no margin-left — o
+   centro é o da região de conteúdo, não o da janela, e acompanha o trilho
+   aberto (256px), recolhido (64px) ou o drawer mobile (0). `dvh` evita que a
+   barra do navegador móvel desloque o centro. */
+.pagina-carregando {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.loader--pagina {
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+  padding: 24px;
 }
 
 /* ---- BootSplash (abertura do app) ---- */

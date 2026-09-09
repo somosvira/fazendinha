@@ -27,7 +27,7 @@ const pill = (txt: string, tom?: "warn" | "bad") => <RebPill tone={tom ?? "ok"}>
 
 export const reproducao: DomainConfig = {
   titulo: "Reprodução",
-  eyebrow: "Rebanho · Sítio São Francisco",
+  eyebrow: "Pecuária · Sítio São Francisco",
   kpis: (rs) => {
     const prenhes = rs.filter((r) => r.statusReprodutivo === "PRENHE").length;
     const vazias = rs.filter((r) => r.statusReprodutivo === "VAZIA").length;
@@ -75,24 +75,27 @@ export function worklistDesmame(criterio: CriterioDesmame, semPeso = 0): WorkLis
 }
 
 export const animal: DomainConfig = {
-  titulo: "Animal", eyebrow: "Rebanho · Sítio São Francisco",
+  titulo: "Animais", eyebrow: "Pecuária · Sítio São Francisco",
   kpis: (rs) => [
     { lab: "Total", val: String(rs.length) },
-    { lab: "Em lactação", val: String(rs.filter((r) => r.del != null).length) },
-    { lab: "Prenhes", val: String(rs.filter((r) => r.statusReprodutivo === "PRENHE").length) },
-    { lab: "Vazias", val: String(rs.filter((r) => r.statusReprodutivo === "VAZIA").length), tom: "up" },
+    { lab: "Leite", val: String(rs.filter((r) => r.finalidade === "LEITE").length) },
+    { lab: "Corte", val: String(rs.filter((r) => r.finalidade === "CORTE").length) },
+    { lab: "Dupla aptidão", val: String(rs.filter((r) => r.finalidade === "DUPLA_APTIDAO").length) },
+    { lab: "Não classificados", val: String(rs.filter((r) => !r.finalidade || r.finalidade === "NAO_INFORMADA").length), tom: "up" },
   ],
-  worklists: [{ id: "todas", label: "Todas as fêmeas", selecionar: (rs) => rs }],
+  worklists: [{ id: "todas", label: "Todos os animais", selecionar: (rs) => rs }],
   colunas: [
-    { nome: "Lactação", render: (r) => r.ordemLactacao ? `${r.ordemLactacao}ª` : "—" },
-    { nome: "DEL", render: (r) => r.del ?? "—" },
-    { nome: "Produção", render: (r) => r.producaoMediaDia ? `${r.producaoMediaDia} L/d` : "—" },
-    { nome: "Status", render: (r) => pill(r.statusReprodutivo.toLowerCase()) },
+    { nome: "Finalidade", render: (r) => r.finalidade === "LEITE" ? "Leite" : r.finalidade === "CORTE" ? "Corte" : r.finalidade === "DUPLA_APTIDAO" ? "Dupla aptidão" : "Não informada" },
+    { nome: "Categoria", render: (r) => r.categoria ? r.categoria.toLowerCase() : "—" },
+    { nome: "Grupo", render: (r) => r.grupoNome ?? "—" },
+    { nome: "Localização", render: (r) => r.setor ?? "—" },
+    { nome: "Último peso", render: (r) => r.ultimoPesoKg != null ? `${r.ultimoPesoKg} kg` : "—" },
+    { nome: "Situação reprodutiva", render: (r) => pill(r.statusReprodutivo.toLowerCase()) },
   ],
 };
 
 export const sanidade: DomainConfig = {
-  titulo: "Sanidade", eyebrow: "Rebanho · Sítio São Francisco",
+  titulo: "Sanidade", eyebrow: "Pecuária · Sítio São Francisco",
   kpis: (rs) => {
     const altos = rs.filter((r) => (r.ccs ?? 0) >= 400).length;
     const subindo = rs.filter((r) => r.ccsTendencia === "subindo").length;
@@ -116,7 +119,7 @@ export const sanidade: DomainConfig = {
 };
 
 export const nutricao: DomainConfig = {
-  titulo: "Nutrição", eyebrow: "Rebanho · Sítio São Francisco",
+  titulo: "Nutrição", eyebrow: "Pecuária · Sítio São Francisco",
   kpis: (rs) => [
     { lab: "Lotes ativos", val: "3" },
     { lab: "Alta Produção", val: String(rs.filter((r) => (r.producaoMediaDia ?? 0) >= 28).length) },

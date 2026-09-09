@@ -86,6 +86,7 @@ describe("consumo de dieta por propriedade", () => {
     await expect(reabrirConsumoPeriodo(44, 7)).rejects.toEqual(expect.objectContaining({ code: "NAO_ENCONTRADO" }));
     expect(mocks.consumoFindFirst).toHaveBeenCalledWith({
       where: { id: 44, grupo: { propriedadeId: 7 } },
+      include: { grupo: true },
     });
     expect(mocks.consumoDelete).not.toHaveBeenCalled();
   });

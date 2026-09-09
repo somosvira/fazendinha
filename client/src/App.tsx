@@ -6,15 +6,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
-import { Header } from "./components/Header";
-import { Dashboard } from "./components/Dashboard";
-import { Gastos } from "./components/Gastos";
-import { Lancar } from "./components/Lancar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
-import { Relatorios } from "./components/Relatorios";
+import { FinanceiroContent } from "./financeiro/FinanceiroContent";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -29,6 +25,7 @@ import { DefinirSenha } from "./components/DefinirSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
 import { fetchMe, logout } from "./api/auth";
 import { ABAS, type User } from "./data/acessos";
+import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 
@@ -221,7 +218,7 @@ export function App() {
   const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
     if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    if (![...sp.keys()].length || sp.has("worklist")) return null;
+    if (![...sp.keys()].length || sp.has("worklist") || isNovaOperacaoFinanceira(window.location.pathname)) return null;
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
@@ -319,19 +316,26 @@ export function App() {
   // para o botão "voltar" do navegador funcionar.
   const firstSync = useRef(true);
   useEffect(() => {
+    // Convite e redefinição de senha são rotas públicas independentes das
+    // abas do aplicativo. Não as normalize para a aba padrão enquanto o
+    // usuário estiver criando a senha.
+    if (rotaSenha) return;
     const worklistUrl = rotaWorklist && tab === `reb-${rotaWorklist.tab}`
       ? buildRotaWorklistRebanho(rotaWorklist.chave, rotaWorklist.tab)
       : null;
     const filtrosUrl = deepLinkFiltros?.tab === tab
       ? `${tabToPath(tab)}?${new URLSearchParams(deepLinkFiltros.filtros).toString()}`
       : null;
-    const alvo = worklistUrl ?? filtrosUrl ?? tabToPath(tab);
+    const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
+      ? window.location.pathname + window.location.search
+      : null;
+    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab, rotaWorklist, deepLinkFiltros]);
+  }, [tab, rotaWorklist, deepLinkFiltros, rotaSenha]);
 
   // Botões voltar/avançar restauram pathname + worklist como uma única rota.
   useEffect(() => {
@@ -341,7 +345,7 @@ export function App() {
       setWorklistSnapshot(null);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -380,6 +384,7 @@ export function App() {
             status: usuario.status.toLowerCase() as User["status"],
             ultimoAcesso: "",
             abas: usuario.abas,
+            areas: usuario.areas ?? [...TODAS_AREAS],
             flags: usuario.flags,
             dono: usuario.dono,
           }
@@ -388,6 +393,8 @@ export function App() {
   );
 
   const isAdmin = !!effectiveUser?.flags.includes("gerenciarAcessos") || !!effectiveUser?.dono;
+  const hasArea = (area: (typeof TODAS_AREAS)[number]) =>
+    temAcessoArea(effectiveUser?.areas, area, !!effectiveUser?.dono);
   // Módulo Equipe & Ponto expõe salário, CPF e chave Pix — mesma flag que
   // mascara "Pessoal / Salários" no financeiro. Gestor e consulta ficam de fora.
   const canSeeFolha = !!effectiveUser?.flags.includes("verSalarios") || !!effectiveUser?.dono;
@@ -395,26 +402,37 @@ export function App() {
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
   // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
   const visibleTabs = useMemo<NavTab[]>(() => {
-    if (!effectiveUser) return [];
+    if (!effectiveUser || !hasArea("financeiro")) return [];
     return ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
       id: a.id as Tab,
       label: a.label,
     }));
   }, [effectiveUser]);
 
-  // Redireciona só quando a aba ativa é financeira e não permitida (reb-* / pla-* / cor-* sempre ok;
-  // eqp-* segue o gate `verSalarios` — o próprio `EquipeContent` cai no <GatedTab> se não puder).
+  const canAccessTab = (id: Tab): boolean => {
+    if (id === "acessos") return isAdmin;
+    if (id === "config") return true;
+    const area = areaDaTab(id);
+    if (area && !hasArea(area)) return false;
+    if (area === "financeiro") return visibleTabs.some((t) => t.id === id) || (id === "caixinha" && visibleTabs.some((t) => t.id === "cadastros"));
+    if (area === "equipe" && id === "eqp-folha") return canSeeFolha;
+    return true;
+  };
+
+  const fallbackTab = (): Tab => {
+    if (visibleTabs[0]) return visibleTabs[0].id;
+    if (hasArea("pecuaria")) return "reb-dashboard";
+    if (hasArea("agricultura")) return "pla-dashboard";
+    if (hasArea("equipe")) return "eqp-dashboard";
+    return "config";
+  };
+
+  // URL direta, histórico e deep links também respeitam a mesma matriz da sidebar.
   useEffect(() => {
-    const isReb = String(tab).startsWith("reb-");
-    const isPla = String(tab).startsWith("pla-");
-    const isCor = String(tab).startsWith("cor-");
-    const isEqp = String(tab).startsWith("eqp-");
-    const isMil = String(tab).startsWith("mil-");
-    if (isReb || isPla || isCor || isEqp || isMil || tab === "acessos" || tab === "config" || tab === "cadastros") return;
-    const allowed = visibleTabs.map((t) => t.id);
-    if (!allowed.includes(tab)) setTab(allowed[0] || "dashboard");
+    if (!effectiveUser || canAccessTab(tab)) return;
+    setTab(fallbackTab());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleTabs]);
+  }, [visibleTabs, effectiveUser?.areas, tab]);
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
@@ -440,7 +458,9 @@ export function App() {
     return <Login onEntrar={entrar} />;
   }
 
-  const conteudo = String(tab).startsWith("reb-")
+  const conteudo = !canAccessTab(tab)
+    ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : String(tab).startsWith("reb-")
     ? <RebanhoContent aba={REB[tab]} onNavReb={(s) => navegarTab(("reb-" + s) as Tab)}
         onAbrirWorklist={abrirWorklist}
         worklistChave={rotaWorklist?.chave}
@@ -461,38 +481,13 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
+    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"] as Tab[]).includes(tab)
+    ? <FinanceiroContent tab={tab} onNav={setTab} />
     : (
       <>
-        {tab === "dashboard" &&
-          (canSee("dashboard")
-            ? <Dashboard
-                key={deepLinkFiltros?.tab === "dashboard" ? JSON.stringify(deepLinkFiltros.filtros) : "dashboard"}
-                onNav={setTab}
-                user={effectiveUser}
-                filtrosIniciais={deepLinkFiltros?.tab === "dashboard" ? deepLinkFiltros.filtros : undefined}
-              />
-            : <GatedTab user={effectiveUser} abaLabel="Dashboard" />)}
-        {/* Gastos vira hub: Contas + Caixinha (sub-aba dobrada). /caixinha ainda
-            resolve — abre o hub na sub-aba Caixinha. */}
-        {(tab === "gastos" || tab === "caixinha") &&
-          (canSee("gastos") || (tab === "caixinha" && canSee("caixinha"))
-            ? <Gastos
-                key={deepLinkFiltros?.tab === "gastos" ? JSON.stringify(deepLinkFiltros.filtros) : "gastos"}
-                onNav={setTab}
-                user={effectiveUser}
-                sub={tab === "caixinha" ? "caixinha" : "contas"}
-                podeCaixinha={canSee("caixinha")}
-                filtrosIniciais={deepLinkFiltros?.tab === "gastos" ? deepLinkFiltros.filtros : undefined}
-              />
-            : <GatedTab user={effectiveUser} abaLabel={tab === "caixinha" ? "Caixinha" : "Gastos"} />)}
         {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
-        {tab === "relatorio" &&
-          (canSee("relatorio") ? <Relatorios onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Relatórios" />)}
-        {tab === "lancar" &&
-          (canSee("lancar") ? <Lancar onNav={setTab} /> : <GatedTab user={effectiveUser} abaLabel="Lançar" />)}
-        {/* Configurações vira hub: Geral · Cadastros · Categorias · Acessos.
-            /cadastros, /categorias, /acessos ainda resolvem — abrem a sub-aba. */}
-        {(tab === "config" || tab === "cadastros" || tab === "plano" || tab === "acessos") && (
+        {/* Configurações mantém somente setup global, categorias e acessos. */}
+        {(tab === "config" || tab === "plano" || tab === "acessos") && (
           <ConfiguracoesHub
             tab={tab}
             onNav={setTab}
@@ -518,26 +513,23 @@ export function App() {
       )}
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
-      <Header
-        user={effectiveUser}
-        mobileOpen={mobileOpen}
-        onMobileToggle={setMobileOpen}
-        colapsada={sideColapsada}
-        onToggleColapsar={toggleSidebar}
-        onAbrirBusca={() => setBuscaAberta(true)}
-        onPreferencias={() => setTab("config")}
-        onSair={onSair}
-      />
       <AppSidebar
         current={tab}
         onNav={navegarTab}
         financeiro={visibleTabs}
         isAdmin={isAdmin}
         podeVerFolha={canSeeFolha}
+        areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
+        onAbrirBusca={() => setBuscaAberta(true)}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
+        user={effectiveUser}
+        colapsada={sideColapsada}
+        onToggleColapsar={toggleSidebar}
+        onAcessos={() => setTab("acessos")}
+        onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
@@ -559,12 +551,7 @@ export function App() {
           setDeepLink(entidadeId && temCockpit ? { tab: t, id: entidadeId } : null);
         }}
         podeVer={(t) => {
-          const s = String(t);
-          if (s.startsWith("eqp-")) return canSeeFolha; // gate por verSalarios (PII: salário/CPF/Pix)
-          if (s.startsWith("reb-") || s.startsWith("pla-") || s.startsWith("cor-") || s.startsWith("mil-")) return true;
-          if (t === "config" || t === "cadastros") return true; // sempre visíveis na sidebar
-          if (t === "acessos") return isAdmin;
-          return canSee(t);
+          return canAccessTab(t);
         }}
       />
       {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}

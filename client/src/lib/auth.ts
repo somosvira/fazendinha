@@ -48,6 +48,7 @@ export interface UsuarioSessao {
   email: string;
   papel: string;
   abas: string[];
+  areas: string[];
   flags: string[];
   status: string;
   dono: boolean;

@@ -4,6 +4,9 @@ import { createElement as h } from "react";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { AppSidebar } from "./AppSidebar";
 import type { Tab } from "./Shell";
+import type { User } from "../data/acessos";
+
+const proprietario: User = { id: "u1", nome: "Marco Antônio", email: "marco@riovono.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [] };
 
 // Node 22+ define um `localStorage` global "experimental" (atrás de
 // --localstorage-file) que sombreia o do jsdom e quebra com "Cannot read
@@ -57,82 +60,186 @@ function baseProps(overrides: Partial<{
   financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   podeVerFolha: boolean;
+  areas: string[];
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
+  onAbrirBusca: () => void;
   propAtiva: number | null;
   onTrocarProp: (id: number | null) => void;
+  user: User;
+  colapsada: boolean;
+  onToggleColapsar: () => void;
+  onAcessos: () => void;
+  onSair: () => void;
 }> = {}) {
   return {
     current: "dashboard" as Tab,
     onNav: vi.fn(),
     financeiro: [
       { id: "dashboard" as Tab, label: "Dashboard" },
+      { id: "lancar" as Tab, label: "Operações" },
       { id: "gastos" as Tab, label: "Gastos" },
+      { id: "caixinha" as Tab, label: "Contas e extratos" },
+      { id: "cadastros" as Tab, label: "Configurações financeiras" },
     ],
     isAdmin: true,
     podeVerFolha: true,
+    areas: ["pecuaria", "agricultura", "equipe"],
     mobileOpen: false,
     onMobileToggle: vi.fn(),
+    onAbrirBusca: vi.fn(),
     propAtiva: null,
     onTrocarProp: vi.fn(),
+    user: proprietario,
+    colapsada: false,
+    onToggleColapsar: vi.fn(),
+    onAcessos: vi.fn(),
+    onSair: vi.fn(),
     ...overrides,
   };
 }
 
 describe("AppSidebar", () => {
+  it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
+    render(h(AppSidebar, baseProps()));
+    const pecuaria = screen.getByRole("button", { name: "Expandir Pecuária" });
+    expect(pecuaria.querySelector("svg")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expandir Agronomia" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expandir Equipe" })).toBeTruthy();
+    expect(screen.getByText("Visão geral")).toBeTruthy();
+    expect(screen.getByText("Operações")).toBeTruthy();
+    expect(screen.getByText("Compromissos")).toBeTruthy();
+    expect(screen.getByText("Contas e extratos")).toBeTruthy();
+    expect(screen.getByText("Configurações financeiras")).toBeTruthy();
+  });
+
   it("chama onNav com a Tab certa ao clicar num item", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
-    fireEvent.click(screen.getByText("Gastos"));
+    fireEvent.click(screen.getByText("Compromissos"));
     expect(props.onNav).toHaveBeenCalledWith("gastos");
   });
 
-  it("mostra Acasalamento depois de Reprodução e navega para a Tab dedicada", () => {
+  it("deixa Reprodução em um clique e mantém Acasalamento nas opções especializadas", () => {
     const props = baseProps();
     render(h(AppSidebar, props));
 
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
     const reproducao = screen.getByText("Reprodução");
+    fireEvent.click(reproducao);
+    expect(props.onNav).toHaveBeenCalledWith("reb-reproducao");
+
+    expect(screen.queryByText("Acasalamento")).toBeNull();
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
     const acasalamento = screen.getByText("Acasalamento");
-    expect(reproducao.compareDocumentPosition(acasalamento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(acasalamento);
     expect(props.onNav).toHaveBeenCalledWith("reb-acasalamento");
   });
 
+  it("expõe Controle leiteiro diretamente na área de pecuária", () => {
+    const props = baseProps({ areas: ["pecuaria"] });
+    render(h(AppSidebar, props));
+
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    fireEvent.click(screen.getByText("Controle leiteiro"));
+    expect(props.onNav).toHaveBeenCalledWith("reb-producao");
+  });
+
+  it("reúne animais leiteiros e lotes coletivos na mesma área Pecuária", () => {
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    expect(screen.getByText("Animais")).toBeTruthy();
+    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
+    expect(screen.getByText("Pesagens")).toBeTruthy();
+    expect(screen.queryByText("Gado de corte")).toBeNull();
+  });
+
+  it("normaliza permissões antigas sem duplicar a área", () => {
+    render(h(AppSidebar, baseProps({ areas: ["rebanho", "gado_corte"] })));
+    expect(screen.getAllByText("Pecuária")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    expect(screen.getByText("Animais")).toBeTruthy();
+    expect(screen.getByText("Lotes coletivos")).toBeTruthy();
+  });
+
+  it("abre a busca global pelo atalho visível da sidebar", () => {
+    const props = baseProps();
+    render(h(AppSidebar, props));
+
+    fireEvent.click(screen.getByRole("button", { name: "Buscar páginas, animais e ações" }));
+    expect(props.onAbrirBusca).toHaveBeenCalledOnce();
+  });
+
   it("esconde o módulo Equipe & Ponto quando podeVerFolha=false", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: false })));
-    expect(screen.queryByText("Equipe & Ponto")).toBeNull();
+    expect(screen.queryByText("Equipe")).toBeNull();
   });
 
   it("mostra o módulo Equipe & Ponto quando podeVerFolha=true", () => {
     render(h(AppSidebar, baseProps({ podeVerFolha: true })));
-    expect(screen.getByText("Equipe & Ponto")).toBeTruthy();
+    expect(screen.getByText("Equipe")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Equipe" }));
+    expect(screen.getByText("Ponto")).toBeTruthy();
   });
 
-  it("clicar no cabeçalho de um módulo alterna (acordeão) seus sub-itens", () => {
+  it("mostra somente módulos pertencentes às áreas autorizadas", () => {
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    expect(screen.getByText("Pecuária")).toBeTruthy();
+    expect(screen.queryByText("Agronomia")).toBeNull();
+    expect(screen.queryByText("Gado de corte")).toBeNull();
+    expect(screen.queryByText("Equipe")).toBeNull();
+  });
+
+  it("clicar em Mais opções alterna somente as rotinas menos frequentes", () => {
+    render(h(AppSidebar, baseProps({ areas: ["pecuaria"] })));
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    expect(screen.getByText("Reprodução")).toBeTruthy();
+    expect(screen.queryByText("FIV / TE")).toBeNull();
+
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
+    expect(screen.getByText("FIV / TE")).toBeTruthy();
+
+    fireEvent.click(screen.getByTitle("Mais opções de pecuária"));
+    expect(screen.queryByText("FIV / TE")).toBeNull();
+  });
+
+  it("permite recolher os domínios da sidebar e persiste a escolha", () => {
     render(h(AppSidebar, baseProps()));
-    // Sem localStorage e current="dashboard" (não pertence a nenhum módulo),
-    // o 1º módulo não-desabilitado ("Rebanho leiteiro") abre por padrão.
-    expect(screen.getByText("Painel")).toBeTruthy();
 
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.queryByText("Painel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Pecuária" }));
+    fireEvent.click(screen.getByRole("button", { name: "Recolher Pecuária" }));
+    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+    expect(screen.getByRole("button", { name: "Expandir Pecuária" })).toBeTruthy();
+    expect(localStorage.getItem("rionovo:sidebar:collapsedGroups:v2")).toContain("pecuaria");
 
-    fireEvent.click(screen.getByText("Rebanho leiteiro"));
-    expect(screen.getByText("Painel")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Recolher Financeiro" }));
+    expect(screen.queryByText("Visão geral")).toBeNull();
+
+    expect(screen.queryByText("Compromissos")).toBeNull();
   });
 
-  it("persiste o módulo aberto no localStorage e abre automaticamente o módulo da aba atual ao navegar", () => {
+  it("reabre o domínio recolhido quando a navegação entra nele", () => {
+    localStorage.setItem("rionovo:sidebar:collapsedGroups:v2", JSON.stringify(["pecuaria"]));
+    const { rerender } = render(h(AppSidebar, baseProps({ current: "dashboard" as Tab })));
+    expect(screen.queryByText("Hoje na pecuária")).toBeNull();
+
+    rerender(h(AppSidebar, baseProps({ current: "reb-dashboard" as Tab })));
+    expect(screen.getByText("Hoje na pecuária")).toBeTruthy();
+  });
+
+  it("persiste as opções abertas e revela automaticamente uma rota secundária ativa", () => {
     const { rerender } = render(h(AppSidebar, baseProps()));
 
-    fireEvent.click(screen.getByText("Milho"));
-    expect(localStorage.getItem("rionovo:sidebar:openModulo")).toBe("cultivo");
-    expect(screen.getByText("Safras")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Expandir Agronomia" }));
+    fireEvent.click(screen.getByTitle("Mais opções de agronomia"));
+    expect(localStorage.getItem("rionovo:sidebar:openExtras")).toBe("agronomia");
+    expect(screen.getByText("Safras de milho")).toBeTruthy();
 
-    // navega (via prop `current`, como o App faria) para uma aba de outro módulo:
-    // o efeito de auto-open deve trocar o acordeão sem clique no cabeçalho.
-    rerender(h(AppSidebar, baseProps({ current: "reb-nutricao" as Tab })));
-    expect(screen.getByText("Nutrição")).toBeTruthy();
-    expect(screen.queryByText("Safras")).toBeNull();
+    // Deep-link para uma opção secundária de outra área deve abrir o bloco certo.
+    rerender(h(AppSidebar, baseProps({ current: "reb-custo" as Tab })));
+    expect(screen.getByText("Custos e indicadores")).toBeTruthy();
+    expect(screen.queryByText("Safras de milho")).toBeNull();
   });
 
   it("monta o drawer mobile (Sheet) quando mobileOpen=true e não quando false", () => {
@@ -141,5 +248,18 @@ describe("AppSidebar", () => {
 
     rerender(h(AppSidebar, baseProps({ mobileOpen: true })));
     expect(document.querySelector('[data-slot="sheet-content"]')).toBeTruthy();
+  });
+
+  it("mantém o usuário no rodapé e o recolhimento junto à marca", async () => {
+    const props = baseProps();
+    render(h(AppSidebar, props));
+    fireEvent.click(screen.getByLabelText("Recolher menu lateral"));
+    expect(props.onToggleColapsar).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
+    const acessos = await screen.findByText("Acessos");
+    expect(screen.queryByText("Preferências")).toBeNull();
+    fireEvent.click(acessos);
+    expect(props.onAcessos).toHaveBeenCalledTimes(1);
   });
 });

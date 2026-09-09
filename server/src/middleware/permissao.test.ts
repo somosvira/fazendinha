@@ -4,7 +4,7 @@ import { exigeAba } from "./permissao.js";
 import type { UsuarioContexto } from "../services/auth/sessao.js";
 
 const usuario = (p: Partial<UsuarioContexto>): UsuarioContexto => ({
-  id: 1, nome: "x", email: "x@x", papel: "consulta", abas: [], flags: [], status: "ATIVO", dono: false, ...p,
+  id: 1, nome: "x", email: "x@x", papel: "consulta", abas: [], areas: [], flags: [], status: "ATIVO", dono: false, ...p,
 });
 
 function app(u: UsuarioContexto | null) {

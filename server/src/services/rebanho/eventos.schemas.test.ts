@@ -70,6 +70,16 @@ describe("criarEventoSchema", () => {
       criasVivas: 0, criasNatimortas: 1, criarCria: true, criaNumero: "B-101", sexoCria: "F",
     }).success).toBe(false);
   });
+  it("PARTO aceita um sexo por cria, até três nascimentos", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 3, criasVivas: 3,
+      criarCria: true, criaNumero: "T-30", sexoCria: "FMF",
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 3, criasVivas: 3,
+      criarCria: true, criaNumero: "T-30", sexoCria: "FMFM",
+    }).success).toBe(false);
+  });
   it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {
     expect(criarEventoSchema.safeParse({
       tipo: "EXAME_GINECOLOGICO",

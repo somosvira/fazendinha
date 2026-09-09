@@ -82,7 +82,6 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
     WHERE p."propriedadeId" IS NULL
   `;
   await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.lancamento.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.loteCorte.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.piquete.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.talhao.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
@@ -90,7 +89,6 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   await prisma.funcionario.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.caixinha.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 
   // `prisma db push` cria as colunas do read-model, mas não executa o SQL de
   // backfill da migration. Mantém a tabela da Reprodução útil logo no primeiro

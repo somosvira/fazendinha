@@ -2,14 +2,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Children, createElement, Fragment, isValidElement, type ChangeEvent, type ReactNode } from "react";
+import { createElement, type ChangeEvent, type ReactNode } from "react";
 
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
-  listarReprodutores: vi.fn(),
-  listarEstoqueSemen: vi.fn(),
   listarRacas: vi.fn(),
   listarAnimais: vi.fn(),
+  listarParametros: vi.fn(),
+  obterAnimal: vi.fn(),
 }));
 
 vi.mock("../api", async (importOriginal) => ({
@@ -26,19 +26,11 @@ vi.mock("@/components/rb/RebSelect", () => ({
     children: ReactNode;
     [key: string]: unknown;
   }) => {
-    const selecionado = Children.toArray(children).find((child) =>
-      isValidElement<{ value?: unknown }>(child) && String(child.props.value ?? "") === String(value ?? ""),
-    );
-    return createElement(Fragment, null,
-      isValidElement<{ children?: ReactNode }>(selecionado)
-        ? createElement("span", { style: { pointerEvents: "none" } }, selecionado.props.children)
-        : null,
-      createElement("select", {
-        ...props,
-        value: value == null ? "" : String(value),
-        onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value),
-      }, children),
-    );
+    return createElement("select", {
+      ...props,
+      value: value == null ? "" : String(value),
+      onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value),
+    }, children);
   },
 }));
 
@@ -48,21 +40,13 @@ const base = { animalId: "1", animal: { id: "1", numero: "1188", nome: "Jurema",
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiMocks.listarRacas.mockResolvedValue([]);
+  apiMocks.listarRacas.mockResolvedValue([
+    { id: 1, nome: "Holandês", codigo: "HO", especie: "BOVINO" },
+    { id: 2, nome: "Gir", codigo: "GI", especie: "BOVINO" },
+  ]);
   apiMocks.listarAnimais.mockResolvedValue([]);
-  apiMocks.listarReprodutores.mockResolvedValue({
-    reprodutores: [{
-      id: 7, nome: "Touro Atlas", codigo: "ATL-7", racaId: 1, racaNome: "Holandês",
-      centralSemenId: 2, centralNome: "Central", ptaLeite: null, ptaGordura: null,
-      ptaProteina: null, tpi: null, ativo: true,
-    }, {
-      id: 8, nome: "Touro Bento", codigo: "BEN-8", racaId: 2, racaNome: "Gir",
-      centralSemenId: 2, centralNome: "Central", ptaLeite: null, ptaGordura: null,
-      ptaProteina: null, tpi: null, ativo: true,
-    }],
-    resumo: { total: 2, mediaPtaLeite: null, mediaPtaGordura: null, mediaPtaProteina: null, mediaTpi: null, melhorLeiteId: null, melhorTpiId: null },
-  });
-  apiMocks.listarEstoqueSemen.mockResolvedValue([]);
+  apiMocks.listarParametros.mockResolvedValue([{ chave: "GESTACAO_DIAS", valorNumero: 283 }]);
+  apiMocks.obterAnimal.mockResolvedValue({ ...base.animal, resumo: null });
 });
 
 afterEach(cleanup);
@@ -84,9 +68,47 @@ describe("EventoForm tipoInicial", () => {
     expect(screen.getByRole("option", { name: "Vincular cria existente" })).toBeTruthy();
   });
 
-  it("oferece o seletor de lote de sêmen ao iniciar em inseminação", () => {
+  it("usa somente raça e grau de sangue na inseminação", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "INSEMINACAO" } }));
-    expect(screen.getByLabelText("Lote de sêmen")).toBeTruthy();
+    expect(screen.getByLabelText("Raça do reprodutor*")).toBeTruthy();
+    expect(screen.queryByLabelText("Reprodutor do catálogo (opcional)")).toBeNull();
+    expect(screen.queryByLabelText("Lote de sêmen")).toBeNull();
+  });
+
+  it("calcula o parto previsto pela última cobertura e duração configurada", async () => {
+    render(createElement(EventoForm, {
+      ...base,
+      animal: { ...base.animal, resumo: { animalId: "1", statusReprodutivo: "INSEMINADA", ultimaInseminacao: "2026-05-20" } },
+      dominioFixo: "reproducao",
+      tipoInicial: { dominio: "reproducao", tipo: "DIAGNOSTICO" },
+    }));
+
+    const previsao = await screen.findByLabelText(/^Parto previsto/) as HTMLInputElement;
+    await waitFor(() => expect(previsao.value).toBe("2027-02-27"));
+    expect(previsao.readOnly).toBe(true);
+  });
+
+  it("permite informar o sexo de cada uma de três crias", async () => {
+    apiMocks.registrarEvento.mockResolvedValue({
+      id: "101", animalId: "1", data: "2026-08-31", dominio: "reproducao", titulo: "Parto",
+    });
+    render(createElement(EventoForm, {
+      ...base,
+      dominioFixo: "reproducao",
+      tipoInicial: { dominio: "reproducao", tipo: "PARTO" },
+      dataInicial: "2026-08-31",
+    }));
+
+    fireEvent.change(screen.getByLabelText("Crias vivas"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Sexo da cria 1"), { target: { value: "F" } });
+    fireEvent.change(screen.getByLabelText("Sexo da cria 2"), { target: { value: "M" } });
+    fireEvent.change(screen.getByLabelText("Sexo da cria 3"), { target: { value: "F" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(apiMocks.registrarEvento).toHaveBeenCalledWith("1", expect.objectContaining({
+      criasVivas: 3,
+      sexoCria: "FMF",
+    })));
   });
 
   it("oferece resultado oficial ao iniciar em exame ginecológico", () => {
@@ -100,15 +122,11 @@ describe("EventoForm tipoInicial", () => {
     expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe("Exame");
   });
 
-  it("mantém o modal aberto até confirmar o aviso retornado ao salvar", async () => {
+  it("mantém o modal aberto até confirmar um aviso retornado ao salvar", async () => {
     const onSalvo = vi.fn();
-    apiMocks.listarEstoqueSemen.mockImplementation(async (reprodutorId: number) => reprodutorId === 7 ? [{
-      id: 21, reprodutorId: 7, tipoSemenId: 3, tipoSemenNome: "Sexado",
-      lote: "L-0", localizacao: "Botijão A", dosesDisponiveis: 0,
-    }] : []);
     apiMocks.registrarEvento.mockResolvedValue({
       id: "99", animalId: "1", data: "2026-07-27", dominio: "reproducao",
-      titulo: "Inseminação", aviso: "Estoque zerado: evento salvo sem baixa de dose.",
+      titulo: "Inseminação", aviso: "Evento salvo com uma observação operacional.",
     });
 
     render(createElement(EventoForm, {
@@ -119,28 +137,16 @@ describe("EventoForm tipoInicial", () => {
       dataInicial: "2026-07-27",
     }));
 
-    const seletorReprodutor = await screen.findByLabelText("Reprodutor do catálogo (opcional)");
-    expect(apiMocks.listarEstoqueSemen).not.toHaveBeenCalled();
-    fireEvent.change(seletorReprodutor, { target: { value: "7" } });
-    await waitFor(() => expect(apiMocks.listarEstoqueSemen).toHaveBeenCalledWith(7));
-    const seletorLote = screen.getByLabelText("Lote de sêmen") as HTMLSelectElement;
-    fireEvent.change(seletorLote, { target: { value: "21" } });
-    expect(await screen.findByText("Estoque zerado: o evento será salvo sem baixa de dose.")).toBeTruthy();
-    fireEvent.change(seletorReprodutor, { target: { value: "8" } });
-    expect(seletorLote.value).toBe("");
-    fireEvent.change(seletorReprodutor, { target: { value: "7" } });
-    await waitFor(() => expect(apiMocks.listarEstoqueSemen).toHaveBeenLastCalledWith(7));
-    fireEvent.change(seletorLote, { target: { value: "21" } });
+    fireEvent.change(await screen.findByLabelText("Raça do reprodutor*"), { target: { value: "1" } });
 
     const salvar = screen.getByRole("button", { name: "Salvar" });
     fireEvent.click(salvar);
     fireEvent.click(salvar);
 
-    expect(await screen.findByText("Estoque zerado: evento salvo sem baixa de dose.")).toBeTruthy();
+    expect(await screen.findByText("Evento salvo com uma observação operacional.")).toBeTruthy();
     expect(apiMocks.registrarEvento).toHaveBeenCalledTimes(1);
     expect(apiMocks.registrarEvento).toHaveBeenCalledWith("1", expect.objectContaining({
-      reprodutor: "Touro Atlas",
-      estoqueSemenId: 21,
+      reprodutor: "Holandês",
     }));
     expect(onSalvo).not.toHaveBeenCalled();
     const entendi = screen.getByRole("button", { name: "Entendi" });
@@ -167,7 +173,7 @@ describe("EventoForm tipoInicial", () => {
       dataInicial: "2026-07-27",
     }));
 
-    fireEvent.change(await screen.findByLabelText("Reprodutor do catálogo (opcional)"), { target: { value: "7" } });
+    fireEvent.change(await screen.findByLabelText("Raça do reprodutor*"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(apiMocks.registrarEvento).toHaveBeenCalledTimes(1));
 
@@ -179,9 +185,9 @@ describe("EventoForm tipoInicial", () => {
 
     await act(async () => resolver({
       id: "100", animalId: "1", data: "2026-07-27", dominio: "reproducao",
-      titulo: "Inseminação", aviso: "Estoque zerado: evento salvo sem baixa de dose.",
+      titulo: "Inseminação", aviso: "Evento salvo com uma observação operacional.",
     }));
-    expect(await screen.findByText("Estoque zerado: evento salvo sem baixa de dose.")).toBeTruthy();
+    expect(await screen.findByText("Evento salvo com uma observação operacional.")).toBeTruthy();
     expect(onSalvo).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
 import { Prisma, type StatusFolhaCampo } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { mapearRespostasParaEvento, validarCamposDoTemplate } from "./formularios.campos.js";
+import { mapearRespostasOperacionais, mapearRespostasParaEvento, validarCamposDoTemplate } from "./formularios.campos.js";
 import { registrarEventoNaTransacao } from "./eventos.js";
 import {
   configFormularioSchema,
@@ -10,6 +10,8 @@ import {
 } from "./formularios.schemas.js";
 import { gerarRelatorio, type LinhaRelatorioDTO, type ResultadoRelatorioDTO } from "./relatorios.js";
 import type { IdTemplateRelatorio } from "./relatorios.catalogo.js";
+import { recomputarProducaoDoAnimal } from "./producao.js";
+import { recomputarSanidade } from "./eventos-sanidade.js";
 
 export class FormularioFolhaError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "CONFLITO", message: string) {
@@ -37,6 +39,8 @@ export interface LinhaFolhaCampoDTO {
   respostas: Record<string, unknown> | null;
   motivoNaoRealizado: string | null;
   eventoGeradoId: number | null;
+  resultadoTipo: string | null;
+  resultadoId: number | null;
 }
 
 export interface FolhaCampoDTO {
@@ -92,6 +96,8 @@ function mapearFolha(row: any): FolhaCampoDTO {
       respostas: linha.respostas ? parseObjeto(linha.respostas, "respostas de linha inválidas") : null,
       motivoNaoRealizado: linha.motivoNaoRealizado,
       eventoGeradoId: linha.eventoGeradoId,
+      resultadoTipo: linha.resultadoTipo,
+      resultadoId: linha.resultadoId,
     })),
   };
 }
@@ -202,10 +208,34 @@ export async function concluirFolhaCampo(id: number, propriedadeId: number | nul
   if (atual.status === "CANCELADA") throw new FormularioFolhaError("CONFLITO", "folha cancelada não pode ser concluída");
   const folha = mapearFolha(atual);
   validarRespostasDaFolha(folha);
+  const recomputarProducao = new Set<number>();
+  const recomputarVacina = new Set<number>();
 
   await prisma.$transaction(async (tx) => {
     for (const linha of folha.linhas) {
-      if (linha.status !== "PREENCHIDA" || linha.eventoGeradoId != null) continue;
+      if (linha.status !== "PREENCHIDA" || linha.eventoGeradoId != null || linha.resultadoId != null) continue;
+      const operacional = mapearRespostasOperacionais(folha.templateId, linha.respostas ?? {});
+      if (operacional?.tipo === "CONTROLE_LEITEIRO") {
+        const total = operacional.pesoTotal ?? Number(operacional.peso1 ?? 0) + Number(operacional.peso2 ?? 0) + Number(operacional.peso3 ?? 0);
+        const controle = await tx.controleLeiteiro.create({ data: { animalId: linha.animalId, data: new Date(operacional.data), peso1: operacional.peso1, peso2: operacional.peso2, peso3: operacional.peso3, pesoTotal: total } });
+        recomputarProducao.add(linha.animalId);
+        await tx.linhaFolhaCampo.update({ where: { id: linha.id }, data: { status: "REGISTRADA", resultadoTipo: operacional.tipo, resultadoId: controle.id } });
+        continue;
+      }
+      if (operacional?.tipo === "PESAGEM_CORPORAL") {
+        const anterior = await tx.pesagem.findFirst({ where: { animalId: linha.animalId, data: { lt: new Date(operacional.data) } }, orderBy: { data: "desc" } });
+        const dias = anterior ? Math.max(1, Math.round((new Date(operacional.data).getTime() - anterior.data.getTime()) / 86_400_000)) : null;
+        const gmd = anterior && dias ? (operacional.peso - Number(anterior.peso)) / dias : null;
+        const pesagem = await tx.pesagem.create({ data: { animalId: linha.animalId, data: new Date(operacional.data), peso: operacional.peso, gmd } });
+        await tx.linhaFolhaCampo.update({ where: { id: linha.id }, data: { status: "REGISTRADA", resultadoTipo: operacional.tipo, resultadoId: pesagem.id } });
+        continue;
+      }
+      if (operacional?.tipo === "VACINA") {
+        const vacina = await tx.eventoSanitario.create({ data: { animalId: linha.animalId, tipo: "VACINA", data: new Date(operacional.data), produto: operacional.produto, observacao: operacional.observacao } });
+        recomputarVacina.add(linha.animalId);
+        await tx.linhaFolhaCampo.update({ where: { id: linha.id }, data: { status: "REGISTRADA", resultadoTipo: operacional.tipo, resultadoId: vacina.id } });
+        continue;
+      }
       const payload = mapearRespostasParaEvento(folha.templateId, linha.respostas ?? {});
       const evento = await registrarEventoNaTransacao(tx, linha.animalId, payload, propriedadeId);
       await tx.linhaFolhaCampo.update({
@@ -218,6 +248,8 @@ export async function concluirFolhaCampo(id: number, propriedadeId: number | nul
       data: { status: "CONCLUIDA", concluidoEm: new Date(), linhasProntas: folha.totalLinhas },
     });
   }, { timeout: 120_000 });
+  await Promise.all([...recomputarProducao].map(recomputarProducaoDoAnimal));
+  await Promise.all([...recomputarVacina].map(recomputarSanidade));
   return obterFolhaCampo(id, propriedadeId);
 }
 
@@ -231,6 +263,8 @@ export async function cancelarFolhaCampo(id: number, propriedadeId: number | nul
 export function validarRespostasDaFolha(folha: Pick<FolhaCampoDTO, "templateId" | "linhas">): void {
   for (const linha of folha.linhas) {
     if (linha.status === "PENDENTE") throw new FormularioFolhaError("CONFLITO", "resolva todas as linhas pendentes antes de concluir");
-    if (linha.status === "PREENCHIDA") mapearRespostasParaEvento(folha.templateId, linha.respostas ?? {});
+    if (linha.status === "PREENCHIDA") {
+      if (!mapearRespostasOperacionais(folha.templateId, linha.respostas ?? {})) mapearRespostasParaEvento(folha.templateId, linha.respostas ?? {});
+    }
   }
 }

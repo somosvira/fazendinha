@@ -21,12 +21,12 @@ export function DashboardView({ onNav }: { onNav: (t: CorteTab) => void }) {
   const insight = insightDaFazenda("comercial");
 
   if (loading || !data) {
-    return <RebMain><RebHeader title="Corte · Painel" /><Loader /></RebMain>;
+    return <RebMain><RebHeader title="Pecuária · Lotes coletivos" /><Loader /></RebMain>;
   }
   const k = data.k;
   return (
     <RebMain>
-      <RebHeader eyebrow={`Gado de corte · ${k.totalCabecas} cabeças · ${k.totalAtivos} lotes`} title="Painel da pecuária" />
+      <RebHeader eyebrow={`Pecuária · registros coletivos · ${k.totalCabecas} cabeças · ${k.totalAtivos} lotes`} title="Resumo dos lotes" />
 
       <RebKpiStrip cols={6}>
         <RebKpi lab="Plantel" val={<>{k.totalCabecas}<u>cab</u></>} d={`${k.totalAtivos} lotes ativos`} />

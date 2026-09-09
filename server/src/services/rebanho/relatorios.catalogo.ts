@@ -10,6 +10,9 @@ export const IDS_TEMPLATE_RELATORIO = [
   "partos-previstos",
   "partos-periodo",
   "secagens-periodo",
+  "controle-leiteiro-lote",
+  "pesagem-corporal-lote",
+  "vacinacao-lote",
 ] as const;
 
 export type IdTemplateRelatorio = (typeof IDS_TEMPLATE_RELATORIO)[number];
@@ -65,7 +68,7 @@ export interface TemplateRelatorio {
   id: IdTemplateRelatorio;
   titulo: string;
   descricao: string;
-  fase: "Serviços" | "Gestação" | "Parto e secagem";
+  fase: "Serviços" | "Gestação" | "Parto e secagem" | "Manejo em lote";
   granularidade: GranularidadeRelatorio;
   tipoEvento?: TipoEventoRelatorio;
   statusReprodutivo?: "PRENHE";
@@ -211,6 +214,26 @@ const TEMPLATES: readonly TemplateRelatorio[] = [
     acao: null,
     filtrosEspecificos: [],
   },
+  {
+    id: "controle-leiteiro-lote",
+    titulo: "Controle leiteiro em lote",
+    descricao: "Folha dos animais ativos para coleta das ordenhas ou do total diário.",
+    fase: "Manejo em lote", granularidade: "animal", colunas: [], acao: null, filtrosEspecificos: [],
+  },
+  {
+    id: "pesagem-corporal-lote",
+    titulo: "Pesagem corporal em lote",
+    descricao: "Folha dos animais ativos para registrar peso corporal em campo.",
+    fase: "Manejo em lote", granularidade: "animal",
+    colunas: [{ chave: "ultimoPeso", rotulo: "Último peso (kg)", tipo: "numero", extrair: () => null }],
+    acao: null, filtrosEspecificos: [],
+  },
+  {
+    id: "vacinacao-lote",
+    titulo: "Vacinação em lote",
+    descricao: "Folha dos animais ativos para registrar uma campanha de vacinação.",
+    fase: "Manejo em lote", granularidade: "animal", colunas: [], acao: null, filtrosEspecificos: [],
+  },
 ];
 
 export interface TemplateRelatorioDTO {
@@ -220,11 +243,13 @@ export interface TemplateRelatorioDTO {
   fase: TemplateRelatorio["fase"];
   granularidade: GranularidadeRelatorio;
   filtrosEspecificos: TemplateRelatorio["filtrosEspecificos"];
+  colunas: { chave: string; rotulo: string; tipo: TipoColunaRelatorio }[];
 }
 
 export function listarTemplatesRelatorio(): TemplateRelatorioDTO[] {
-  return TEMPLATES.map(({ id, titulo, descricao, fase, granularidade, filtrosEspecificos }) => ({
+  return TEMPLATES.map(({ id, titulo, descricao, fase, granularidade, filtrosEspecificos, colunas }) => ({
     id, titulo, descricao, fase, granularidade, filtrosEspecificos,
+    colunas: colunas.map(({ chave, rotulo, tipo }) => ({ chave, rotulo, tipo })),
   }));
 }
 

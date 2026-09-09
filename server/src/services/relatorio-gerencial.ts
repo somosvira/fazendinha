@@ -60,72 +60,104 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   const querRealizado = regime !== "previsto";
   const querPrevisto = regime !== "realizado";
 
-  const [rows, contas, anteriores, fechamentos, propriedade] = await Promise.all([
-    prisma.lancamento.findMany({
-      where: {
-        ...escopo,
-        OR: [
-          ...(querRealizado ? [{ dataLiquidacao: { gte: de, lte: ate } }] : []),
-          ...(querPrevisto ? [{ situacao: "ABERTO" as const, dataVencimento: { gte: de, lte: ate } }] : []),
-        ],
-      },
-      select: {
-        id: true,
-        natureza: true,
-        valor: true,
-        situacao: true,
-        estornado: true,
-        dataLiquidacao: true,
-        dataVencimento: true,
-        descricao: true,
-        numeroDocumento: true,
-        contaBancariaId: true,
-        categoria: { select: { nome: true, classificacao: true, grupoCategoria: { select: { nome: true } } } },
-        centroCusto: { select: { nome: true, ehInvestimento: true } },
-        clienteFornecedor: { select: { nome: true } },
-        _count: { select: { notasFiscais: true } },
+  const [movimentos, compromissos, contas, anteriores, fechamentos, propriedade] = await Promise.all([
+    querRealizado ? prisma.movimentoConta.findMany({
+      where: { transacao: { ...escopo, data: { gte: de, lte: ate } } },
+      include: {
+        transacao: {
+          include: {
+            parceiro: true,
+            documentos: true,
+            operacao: { include: { parceiro: true, categoria: { include: { grupoCategoria: true } }, centroCusto: true, documentos: true } },
+          },
+        },
       },
       orderBy: { id: "asc" },
-    }),
+    }) : Promise.resolve([]),
+    querPrevisto ? prisma.compromissoFinanceiro.findMany({
+      where: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: { gte: de, lte: ate }, operacao: escopo },
+      include: {
+        parceiro: true,
+        liquidacoes: true,
+        documentos: true,
+        operacao: { include: { parceiro: true, categoria: { include: { grupoCategoria: true } }, centroCusto: true, documentos: true } },
+      },
+      orderBy: { id: "asc" },
+    }) : Promise.resolve([]),
     querRealizado
-      ? prisma.contaBancaria.findMany({ select: { id: true, nome: true, banco: true, saldoInicial: true }, orderBy: { id: "asc" } })
+      ? prisma.contaFinanceira.findMany({ where: escopo, select: { id: true, nome: true, instituicao: true, saldoAbertura: true }, orderBy: { id: "asc" } })
       : Promise.resolve([]),
     querRealizado
-      ? prisma.lancamento.groupBy({
-          by: ["contaBancariaId", "natureza"],
-          where: { ...escopo, situacao: "LIQUIDADO", estornado: false, dataLiquidacao: { lt: de } },
+      ? prisma.movimentoConta.groupBy({
+          by: ["contaId", "direcao"],
+          where: { transacao: { ...escopo, status: "CONFIRMADA", data: { lt: de } } },
           _sum: { valor: true },
         })
       : Promise.resolve([]),
-    prisma.fechamentoMensal.findMany({ select: { ano: true, mes: true } }),
+    prisma.periodoFinanceiro.findMany({ where: { ...escopo, status: "FECHADO" }, select: { ano: true, mes: true } }),
     propriedadeId != null
       ? prisma.propriedade.findUnique({ where: { id: propriedadeId }, select: { id: true, nome: true } })
       : Promise.resolve(null),
   ]);
 
-  const linhas: LinhaLancamento[] = rows.map((r) => ({
-    id: r.id,
-    natureza: r.natureza,
-    valor: toNum(r.valor),
-    situacao: r.situacao,
-    estornado: r.estornado,
-    dataLiquidacao: iso(r.dataLiquidacao),
-    dataVencimento: iso(r.dataVencimento)!,
-    descricao: r.descricao,
-    numeroDocumento: r.numeroDocumento,
-    categoria: { nome: r.categoria.nome, classificacao: r.categoria.classificacao, grupo: r.categoria.grupoCategoria.nome },
-    centroCusto: { nome: r.centroCusto.nome, ehInvestimento: r.centroCusto.ehInvestimento },
-    contaBancariaId: r.contaBancariaId,
-    fornecedor: r.clienteFornecedor?.nome ?? null,
-    temNotaFiscal: r._count.notasFiscais > 0,
-  }));
+  const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => ({
+    categoria: {
+      nome: operacao?.categoria?.nome ?? "Sem categoria",
+      classificacao: operacao?.categoria?.classificacao ?? null,
+      grupo: operacao?.categoria?.grupoCategoria.nome ?? "Sem grupo",
+    },
+    centroCusto: {
+      nome: operacao?.centroCusto?.nome ?? "(Sem centro de custo)",
+      ehInvestimento: operacao?.centroCusto?.ehInvestimento ?? false,
+    },
+  });
+
+  const linhasRealizadas: LinhaLancamento[] = movimentos.map((movimento) => {
+    const { transacao } = movimento;
+    const documentos = [...transacao.documentos, ...(transacao.operacao?.documentos ?? [])];
+    return {
+      id: movimento.id,
+      natureza: movimento.direcao === "ENTRADA" ? "CREDITO" : "DEBITO",
+      valor: toNum(movimento.valor),
+      situacao: "LIQUIDADO",
+      estornado: transacao.status === "REVERTIDA",
+      dataLiquidacao: iso(transacao.data),
+      dataVencimento: iso(transacao.data)!,
+      descricao: transacao.descricao ?? transacao.operacao?.descricao ?? null,
+      numeroDocumento: documentos.find((documento) => documento.numero)?.numero ?? null,
+      ...linhaBase(transacao.operacao),
+      contaBancariaId: movimento.contaId,
+      fornecedor: transacao.parceiro?.nome ?? transacao.operacao?.parceiro?.nome ?? null,
+      temNotaFiscal: documentos.some((documento) => documento.tipo === "NOTA_FISCAL"),
+    };
+  });
+  const linhasPrevistas: LinhaLancamento[] = compromissos.map((compromisso) => {
+    const documentos = [...compromisso.documentos, ...compromisso.operacao.documentos];
+    const liquidado = compromisso.liquidacoes.reduce((total, item) => total + toNum(item.valor), 0);
+    return {
+      id: -compromisso.id,
+      natureza: compromisso.tipo === "RECEBER" ? "CREDITO" : "DEBITO",
+      valor: Math.max(0, toNum(compromisso.valorOriginal) - liquidado),
+      situacao: "ABERTO",
+      estornado: false,
+      dataLiquidacao: null,
+      dataVencimento: iso(compromisso.dataVencimento)!,
+      descricao: compromisso.operacao.descricao,
+      numeroDocumento: documentos.find((documento) => documento.numero)?.numero ?? null,
+      ...linhaBase(compromisso.operacao),
+      contaBancariaId: null,
+      fornecedor: compromisso.parceiro?.nome ?? compromisso.operacao.parceiro?.nome ?? null,
+      temNotaFiscal: documentos.some((documento) => documento.tipo === "NOTA_FISCAL"),
+    };
+  });
+  const linhas = [...linhasRealizadas, ...linhasPrevistas];
 
   const hoje = new Date().toISOString().slice(0, 10);
   const realizado = querRealizado ? agregarRealizado(linhas, inicio, fim) : null;
   const saldoContas = querRealizado
     ? agregarSaldoContas(
-        contas.map((c) => ({ id: c.id, nome: c.nome, banco: c.banco, saldoInicial: toNum(c.saldoInicial) })),
-        anteriores.map((a) => ({ contaBancariaId: a.contaBancariaId, natureza: a.natureza, total: toNum(a._sum.valor ?? 0) })),
+        contas.map((c) => ({ id: c.id, nome: c.nome, banco: c.instituicao, saldoInicial: toNum(c.saldoAbertura) })),
+        anteriores.map((a) => ({ contaBancariaId: a.contaId, natureza: a.direcao === "ENTRADA" ? "CREDITO" as const : "DEBITO" as const, total: toNum(a._sum.valor ?? 0) })),
         linhas,
         inicio,
         fim,

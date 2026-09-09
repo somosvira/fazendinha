@@ -20,7 +20,7 @@ const SUPLEMENTOS = [
 
 export function NutricaoTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Nutrição" /><Loader /></RebMain>;
+  if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Nutrição" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrarManejo(l); };
 

@@ -37,18 +37,17 @@ export async function agregarCustoProducao(meses = 12, propriedadeId: number | n
 
   // Custeio do leite (real): mesmos filtros do buildDashboard (LIQUIDADO,
   // estornado=false, dataLiquidacao recente) + DEBITO + CCusto "Atividade Leiteira".
-  const lancs = await prisma.lancamento.findMany({
+  const lancs = await prisma.transacaoFinanceira.findMany({
     where: {
-      situacao: "LIQUIDADO",
-      estornado: false,
-      natureza: "DEBITO",
-      dataLiquidacao: { not: null, gte: desde },
-      centroCusto: { nome: "Atividade Leiteira" },
+      status: "CONFIRMADA",
+      tipo: "PAGAMENTO",
+      data: { gte: desde },
+      operacao: { centroCusto: { nome: "Atividade Leiteira" } },
       ...(propriedadeId != null ? { propriedadeId } : {}),
     },
-    select: { valor: true, categoria: { select: { nome: true } } },
+    select: { valorTotal: true, operacao: { select: { categoria: { select: { nome: true } } } } },
   });
-  const quebra = quebrarPorCategoria(lancs.map((l) => ({ categoria: l.categoria.nome, valor: toNum(l.valor) })));
+  const quebra = quebrarPorCategoria(lancs.map((l) => ({ categoria: l.operacao?.categoria?.nome ?? "Sem categoria", valor: toNum(l.valorTotal) })));
 
   // Custo vaca/dia (real): reusa o motor do Estoque (consumo de insumo ÷ vacas×dias).
   const cvd = await calcularCustoVacaDia(30, propriedadeId); // { custoVacaDia, vacasEmLactacao, totalConsumo }

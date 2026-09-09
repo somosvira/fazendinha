@@ -4,9 +4,9 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
 import { authMiddleware } from "./middleware/auth.js";
-import { dashboardRouter } from "./routes/dashboard.js";
-import { simulacaoRouter } from "./routes/simulacao.js";
+import { exigeArea } from "./middleware/permissao.js";
 import { categoriasRouter } from "./routes/categorias.js";
+import { financeiroRouter } from "./routes/financeiro.js";
 import { healthRouter } from "./routes/health.js";
 import { authPublicoRouter, authPrivadoRouter } from "./routes/auth.js";
 import { usuariosRouter } from "./routes/usuarios.js";
@@ -81,16 +81,8 @@ import { cultivoSilosRouter } from "./routes/cultivo/silos.js";
 import { cultivoDashboardRouter } from "./routes/cultivo/dashboard.js";
 import { pontoRouter } from "./routes/ponto/index.js";
 import { pontoDashboardRouter } from "./routes/ponto/dashboard.js";
-import { caixinhaRouter } from "./routes/caixinha.js";
 import { buscaRouter } from "./routes/busca.js";
-import { botRouter } from "./routes/bot.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
-import { lancamentosRouter } from "./routes/lancamentos.js";
-// `cadastrosRouter` já existe (rebanho) — o do financeiro entra com alias.
-import { cadastrosRouter as cadastrosFinanceiroRouter } from "./routes/cadastros.js";
-import { notaFiscalRouter } from "./routes/notaFiscal.js";
-import { vencimentosRouter } from "./routes/vencimentos.js";
-import { iniciarCleanupPendentes } from "./services/notaFiscal/cleanupPendentes.js";
 
 const app = new Hono();
 
@@ -117,13 +109,23 @@ app.route("/api", authPublicoRouter);
 
 app.use("/api/*", authMiddleware);
 
+// Autorização por domínio: o frontend também esconde os módulos, mas este gate
+// impede acesso por URL/cURL. Agricultura reúne os módulos Plantio e Cultivo.
+app.use("/api/rebanho/*", exigeArea("pecuaria"));
+app.use("/api/plantio/*", exigeArea("agricultura"));
+app.use("/api/cultivo/*", exigeArea("agricultura"));
+app.use("/api/corte/*", exigeArea("pecuaria"));
+app.use("/api/ponto/*", exigeArea("equipe"));
+for (const path of [
+  "/api/financeiro", "/api/financeiro/*", "/api/categorias", "/api/categorias/*",
+]) app.use(path, exigeArea("financeiro"));
+
 // Protegidos (exigem sessão resolvida pelo authMiddleware):
 app.route("/api", authPrivadoRouter);
 app.route("/api", usuariosRouter);
 app.route("/api", propriedadeRouter);
-app.route("/api", dashboardRouter);
-app.route("/api", simulacaoRouter);
 app.route("/api", categoriasRouter);
+app.route("/api", financeiroRouter);
 app.route("/api", animaisRouter);
 app.route("/api", filtrosRouter);
 app.route("/api", eventosRouter);
@@ -191,19 +193,11 @@ app.route("/api", cultivoSilosRouter);
 app.route("/api", cultivoDashboardRouter);
 app.route("/api", pontoRouter);
 app.route("/api", pontoDashboardRouter);
-app.route("/api", caixinhaRouter);
 app.route("/api", buscaRouter);
-app.route("/api", botRouter);
-app.route("/api", cadastrosFinanceiroRouter);
-app.route("/api", lancamentosRouter);
-app.route("/api", notaFiscalRouter);
-app.route("/api", vencimentosRouter);
 
 serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
   console.log(`API Rio Novo rodando em http://localhost:${port}`);
 });
-
-iniciarCleanupPendentes();
 
 // Fundação multi-propriedade: cria a principal e backfilla escopos nulos.
 // Idempotente e à prova de `db push` (que não roda o seed/backfill da migration).
