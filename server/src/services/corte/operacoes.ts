@@ -6,7 +6,7 @@
  * lote (VENDIDO em venda de cabeça-cheia; decremento em venda parcial/descarte)
  * e dispara recomputarResumo(loteId).
  *
- * Ponte financeira (lancamentoId) é Onda 3 — fica null aqui.
+ * A operação comercial pode ser vinculada a uma Operacao financeira.
  *
  * Referencial: rendimento de carcaça 52%; @ = 15 kg (Embrapa Gado de Corte).
  */
@@ -62,7 +62,7 @@ export interface OperacaoComercialDTO {
   receitaTotal?: number;
   comprador?: string;
   observacao?: string;
-  lancamentoId?: number;
+  operacaoFinanceiraId?: number;
 }
 
 function toOperacaoDTO(o: any): OperacaoComercialDTO {
@@ -79,7 +79,7 @@ function toOperacaoDTO(o: any): OperacaoComercialDTO {
     receitaTotal: num(o.receitaTotal),
     comprador: o.comprador ?? undefined,
     observacao: o.observacao ?? undefined,
-    lancamentoId: o.lancamentoId ?? undefined,
+    operacaoFinanceiraId: o.operacaoFinanceiraId ?? undefined,
   };
 }
 
@@ -121,8 +121,8 @@ export async function criarOperacaoComercial(
       receitaTotal: calc.receitaTotal,
       comprador: input.comprador ?? null,
       observacao: input.observacao ?? null,
-      // Ponte financeira (lancamentoId) é Onda 3 — fica null aqui.
-      lancamentoId: null,
+      // A operação financeira pode ser vinculada depois, sem duplicar o fato comercial.
+      operacaoFinanceiraId: null,
     },
   });
 

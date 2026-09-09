@@ -22,7 +22,8 @@ const partoObject = z.object({
   numCrias: z.number().int().min(0).max(3).optional(),
   criasVivas: z.number().int().min(0).max(3).optional(),
   criasNatimortas: z.number().int().min(0).max(3).optional(),
-  sexoCria: z.enum(["F", "M", "FM", "MF"]).optional(),
+  // Um caractere por cria viva, na ordem informada (ex.: FMF para três crias).
+  sexoCria: z.string().regex(/^[FM]{1,3}$/, "informe o sexo de cada cria").optional(),
   tipoParto: z.string().max(20).optional(),
   auxilioParto: z.string().max(20).optional(),
   criarCria: z.boolean().optional(),
@@ -38,7 +39,7 @@ const criarEventoBase = z.discriminatedUnion("tipo", [
   // TE: embrião numa receptora. `doadoraId` = animal doador da genética (opcional);
   // `reprodutor` = touro/sêmen do embrião (opcional); `protocolo` = sincronização.
   z.object({ tipo: z.literal("TRANSFERENCIA_EMBRIAO"), ...comum, doadoraId: z.number().int().positive().optional(), reprodutor: z.string().max(60).optional(), protocolo: z.string().max(40).optional(), embriaoColetaId: z.number().int().positive().optional() }),
-  z.object({ tipo: z.literal("DIAGNOSTICO"), ...comum, resultado: z.enum(["positivo", "negativo"]), dtPartoPrevista: isoDate.optional() }),
+  z.object({ tipo: z.literal("DIAGNOSTICO"), ...comum, resultado: z.enum(["positivo", "negativo"]), dtPartoPrevista: isoDate.optional(), metodo: z.string().max(20).optional() }),
   partoObject,
   z.object({ tipo: z.literal("SECAGEM"), ...comum, motivoSecagem: z.string().max(40).optional() }),
   // Exame ginecológico: achado clínico do trato (→ campo `resultado`). `metodo` (palpação/US) → `protocolo`.

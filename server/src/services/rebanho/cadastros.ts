@@ -91,13 +91,13 @@ export async function listarFornecedores(f?: { tipo?: string; q?: string }) {
   const where: any = {};
   if (f?.tipo) where.tipo = f.tipo;
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
-  return (await prisma.clienteFornecedor.findMany({ where, orderBy: { nome: "asc" } })).map(fornDTO);
+  return (await prisma.parceiro.findMany({ where, orderBy: { nome: "asc" } })).map(fornDTO);
 }
 export async function criarFornecedor(input: FornecedorInput) {
-  if (await prisma.clienteFornecedor.findUnique({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
-  return fornDTO(await prisma.clienteFornecedor.create({ data: { ...input, email: input.email || null } }));
+  if (await prisma.parceiro.findFirst({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
+  return fornDTO(await prisma.parceiro.create({ data: { ...input, tipo: input.tipo ?? "FORNECEDOR", email: input.email || null } }));
 }
 export async function editarFornecedor(id: number, input: Partial<FornecedorInput>) {
-  if (!(await prisma.clienteFornecedor.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "fornecedor não encontrado");
-  return fornDTO(await prisma.clienteFornecedor.update({ where: { id }, data: { ...input, email: input.email === "" ? null : input.email } }));
+  if (!(await prisma.parceiro.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "fornecedor não encontrado");
+  return fornDTO(await prisma.parceiro.update({ where: { id }, data: { ...input, email: input.email === "" ? null : input.email } }));
 }

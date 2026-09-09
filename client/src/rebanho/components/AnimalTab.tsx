@@ -4,7 +4,7 @@ import { HerdDomainView, RB_TOOLBAR } from "./HerdDomainView";
 import { RebHeader } from "./RebHeader";
 import { DOMAINS } from "../domains";
 import { Loader } from "../../components/Loading";
-import type { ResumoAnimal } from "../types";
+import type { FinalidadeAnimal, ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebMain } from "@/components/rb/RebPrimitives";
@@ -23,26 +23,36 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
   const [setor, setSetor] = useState<string>("");
   const [grupoId, setGrupoId] = useState<number | undefined>(undefined);
   const [categoria, setCategoria] = useState<string | undefined>(undefined);
+  const [finalidade, setFinalidade] = useState<FinalidadeAnimal | undefined>(undefined);
   const [busca, setBusca] = useState<string | undefined>(undefined);
   const [bulkAberto, setBulkAberto] = useState(false);
   const [promptFiltroAberto, setPromptFiltroAberto] = useState(false);
-  const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined, grupoId, categoria, q: busca });
+  const { data, loading, erro, recarregar } = useAnimais({ status, setor: setor || undefined, grupoId, categoria, finalidade, q: busca });
   const { data: setores } = useSetores();
   const filtros = useFiltrosAnimais();
 
   // Aplica um filtro salvo: joga os critérios normalizados nos estados de filtro.
   function aplicarFiltro(c: FiltroCriterios) {
-    setStatus(c.status); setSetor(c.setor ?? ""); setGrupoId(c.grupoId); setCategoria(c.categoria); setBusca(c.q);
+    setStatus(c.status); setSetor(c.setor ?? ""); setGrupoId(c.grupoId); setCategoria(c.categoria); setFinalidade(c.finalidade); setBusca(c.q);
   }
   async function confirmarSalvarFiltro(nome: string) {
     setPromptFiltroAberto(false);
-    await criarFiltroAnimal({ nome, status, grupoId: grupoId ?? null, setor: setor || null, categoria: categoria ?? null, busca: busca ?? null });
+    await criarFiltroAnimal({ nome, status, grupoId: grupoId ?? null, setor: setor || null, categoria: categoria ?? null, finalidade: finalidade ?? null, busca: busca ?? null });
     filtros.recarregar();
   }
   async function removerFiltro(id: number) { await excluirFiltroAnimal(id); filtros.recarregar(); }
 
   // ResumoAnimal[] que o HerdDomainView consome — cada animal traz seu resumo embutido.
-  const resumos: ResumoAnimal[] = data.map((a) => ({ ...(a.resumo ?? { statusReprodutivo: "VAZIA" }), animalId: a.id }) as ResumoAnimal);
+  const resumos: ResumoAnimal[] = data.map((a) => ({
+    ...(a.resumo ?? { statusReprodutivo: "VAZIA" }),
+    animalId: a.id,
+    categoria: a.categoria,
+    finalidade: a.finalidade,
+    dataNascimento: a.dataNascimento,
+    ultimoPesoKg: a.ultimoPesoKg,
+    grupoNome: a.grupoNome,
+    setor: a.setor,
+  }) as ResumoAnimal);
   // Para baixados, anexa data/motivo da baixa ao nome (espelha o Ideagri).
   const nomes = Object.fromEntries(
     data.map((a) => [
@@ -68,10 +78,22 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         ))}
       </div>
       <ToolbarSelect
+        value={finalidade ?? ""}
+        onChange={(value) => setFinalidade((value || undefined) as FinalidadeAnimal | undefined)}
+        ariaLabel="Filtrar por finalidade produtiva"
+        options={[
+          { value: "", label: "Todas as finalidades" },
+          { value: "LEITE", label: "Leite" },
+          { value: "CORTE", label: "Corte" },
+          { value: "DUPLA_APTIDAO", label: "Dupla aptidão" },
+          { value: "NAO_INFORMADA", label: "Não informada" },
+        ]}
+      />
+      <ToolbarSelect
         value={setor}
         onChange={setSetor}
-        ariaLabel="Filtrar por setor"
-        options={[{ value: "", label: "Todos os setores" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
+        ariaLabel="Filtrar por localização"
+        options={[{ value: "", label: "Todas as localizações" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
       />
       {(filtros.data ?? []).length > 0 && (
         <select
@@ -91,7 +113,7 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         open={promptFiltroAberto}
         title="Salvar filtro"
         label="Nome do filtro"
-        placeholder="Ex.: Vacas em lactação · setor 2"
+        placeholder="Ex.: Animais de corte · retiro Mexicana"
         onConfirm={confirmarSalvarFiltro}
         onCancel={() => setPromptFiltroAberto(false)}
       />

@@ -8,7 +8,7 @@ import type { ResumoLote, Lote } from "../types";
 
 export function PesagemTab({ onAbrirLote, onPesar }: { onAbrirLote: (id: string) => void; onPesar?: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Pesagem" /><Loader /></RebMain>;
+  if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Pesagem" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   // Quando há handler de pesagem, clicar numa linha abre o drawer de registro;
   // caso contrário, cai no comportamento de leitura (abre o cockpit do lote).

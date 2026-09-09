@@ -234,17 +234,16 @@ export async function agregarCustoCorte(meses = 12): Promise<CustoCorteData> {
   let custoFinanceiroExtra = 0;
   let temCentroCorte = false;
   if (centrosCorte.length) {
-    const lancs = await prisma.lancamento.findMany({
+    const lancs = await prisma.transacaoFinanceira.findMany({
       where: {
-        situacao: "LIQUIDADO",
-        estornado: false,
-        natureza: "DEBITO",
-        dataLiquidacao: { not: null, gte: desde },
-        centroCustoId: { in: centrosCorte.map((c) => c.id) },
+        status: "CONFIRMADA",
+        tipo: "PAGAMENTO",
+        data: { gte: desde },
+        operacao: { centroCustoId: { in: centrosCorte.map((c) => c.id) } },
       },
-      select: { valor: true },
+      select: { valorTotal: true },
     });
-    custoFinanceiroExtra = lancs.reduce((s, l) => s + toNum(l.valor), 0);
+    custoFinanceiroExtra = lancs.reduce((s, l) => s + toNum(l.valorTotal), 0);
     temCentroCorte = lancs.length > 0;
   }
 

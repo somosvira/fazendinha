@@ -13,15 +13,16 @@ export interface FiltroAnimalDTO {
   grupoId: number | null;
   setor: string | null;
   categoria: string | null;
+  finalidade: string | null;
   busca: string | null;
   // Critérios normalizados prontos para aplicar no listarAnimais.
   criterios: ReturnType<typeof criteriosParaQuery>;
 }
 
-function toDTO(f: { id: number; nome: string; status: string; grupoId: number | null; setor: string | null; categoria: string | null; busca: string | null }): FiltroAnimalDTO {
+function toDTO(f: { id: number; nome: string; status: string; grupoId: number | null; setor: string | null; categoria: string | null; finalidade: string | null; busca: string | null }): FiltroAnimalDTO {
   return {
-    id: f.id, nome: f.nome, status: f.status, grupoId: f.grupoId, setor: f.setor, categoria: f.categoria, busca: f.busca,
-    criterios: criteriosParaQuery({ status: f.status, grupoId: f.grupoId, setor: f.setor, categoria: f.categoria, busca: f.busca }),
+    id: f.id, nome: f.nome, status: f.status, grupoId: f.grupoId, setor: f.setor, categoria: f.categoria, finalidade: f.finalidade, busca: f.busca,
+    criterios: criteriosParaQuery({ status: f.status, grupoId: f.grupoId, setor: f.setor, categoria: f.categoria, finalidade: f.finalidade, busca: f.busca }),
   };
 }
 
@@ -41,6 +42,7 @@ export async function criarFiltro(input: CriarFiltroInput, propriedadeId: number
       grupoId: input.grupoId ?? null,
       setor: input.setor ?? null,
       categoria: input.categoria ?? null,
+      finalidade: input.finalidade ?? null,
       busca: input.busca ?? null,
       propriedadeId,
     },

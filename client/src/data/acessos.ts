@@ -5,7 +5,8 @@
 
 export type Aba = { id: string; label: string; desc: string };
 export type Flag = { id: string; label: string; desc: string };
-export type Papel = { nome: string; desc: string; abas: string[]; flags: string[] };
+export type Area = { id: string; label: string; desc: string };
+export type Papel = { nome: string; desc: string; abas: string[]; areas: string[]; flags: string[] };
 export type User = {
   id: string;
   nome: string;
@@ -15,6 +16,7 @@ export type User = {
   status: "ativo" | "pendente" | "inativo";
   ultimoAcesso: string;
   abas: string[];
+  areas?: string[];
   flags: string[];
   dono?: boolean;
 };
@@ -23,13 +25,21 @@ export const UPDATED_AT = "04/mai/2026, recebido do BPO";
 
 // Abas do sistema (ordem de exibição na navegação)
 export const ABAS: Aba[] = [
-  { id: "dashboard", label: "Dashboard", desc: "Visão executiva, gráficos e números" },
-  { id: "gastos", label: "Gastos", desc: "Tabela de lançamentos e notas fiscais" },
-  { id: "lancar", label: "Lançar", desc: "Registrar entrada (receita) ou saída (gasto)" },
-  { id: "caixinha", label: "Caixinha", desc: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
+  { id: "dashboard", label: "Visão geral", desc: "Saldos, realizado e compromissos" },
+  { id: "lancar", label: "Operações", desc: "Compras, vendas, serviços e demais fatos de negócio" },
+  { id: "gastos", label: "Compromissos", desc: "Valores futuros a pagar e a receber" },
+  { id: "caixinha", label: "Contas e extratos", desc: "Saldos, extratos e transferências entre contas" },
+  { id: "cadastros", label: "Configurações financeiras", desc: "Contas, caixas, clientes e fornecedores" },
   // "plano" (Categorias) e "ia" (IA financeira) ocultos até terem backend real —
   // as telas ainda usam dados mock. Reversível: reinserir aqui religa a aba.
-  { id: "relatorio", label: "Relatório", desc: "Relatório gerencial editorial" },
+  { id: "relatorio", label: "Relatórios", desc: "Central de relatórios de toda a fazenda" },
+];
+
+export const AREAS: Area[] = [
+  { id: "financeiro", label: "Financeiro", desc: "Saldos, operações, compromissos, contas, extratos e relatórios financeiros" },
+  { id: "pecuaria", label: "Pecuária", desc: "Animais, grupos e lotes, reprodução, sanidade, produção, nutrição e comercialização" },
+  { id: "agricultura", label: "Agricultura", desc: "Plantio de café, milho, safras, talhões e silos" },
+  { id: "equipe", label: "Equipe e ponto", desc: "Funcionários, marcações de ponto e folha" },
 ];
 
 // Permissões sensíveis (além da visibilidade de abas)
@@ -37,7 +47,7 @@ export const FLAGS: Flag[] = [
   { id: "verValores", label: "Ver valores em R$", desc: "Sem isso, vê estrutura e categorias mas com valores ocultos" },
   { id: "verInvestimento", label: "Ver pilha de Investimento", desc: "Compra de gado, máquinas, benfeitorias" },
   { id: "verSalarios", label: "Ver Pessoal / Salários", desc: "Folha, salários e detalhe de pessoal" },
-  { id: "lancar", label: "Registrar lançamentos", desc: "Criar entradas (receitas) e saídas (gastos)" },
+  { id: "lancar", label: "Registrar operações", desc: "Criar compras, vendas, serviços e seus efeitos financeiros" },
   { id: "exportar", label: "Exportar / baixar", desc: "Gerar PDF, CSV e relatórios" },
   { id: "gerenciarAcessos", label: "Gerenciar acessos", desc: "Convidar pessoas e definir permissões (admin)" },
 ];
@@ -47,31 +57,36 @@ export const PAPEIS: Record<string, Papel> = {
   proprietario: {
     nome: "Proprietário",
     desc: "Acesso total. Gerencia quem entra e o que cada um vê.",
-    abas: ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"],
+    abas: ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"],
+    areas: AREAS.map((a) => a.id),
     flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
   },
   secretaria: {
     nome: "Secretária / Administrativo",
     desc: "Opera o dia a dia: lança gastos e organiza categorias.",
-    abas: ["gastos", "lancar", "caixinha", "plano", "ia"],
+    abas: ["gastos", "lancar", "caixinha", "cadastros"],
+    areas: ["financeiro"],
     flags: ["verValores", "verSalarios", "lancar"],
   },
   contador: {
     nome: "Contador / BPO",
     desc: "Lê e concilia. Exporta relatórios. Não lança no operacional.",
-    abas: ["dashboard", "gastos", "plano", "relatorio"],
+    abas: ["dashboard", "gastos", "caixinha", "cadastros", "relatorio"],
+    areas: ["financeiro"],
     flags: ["verValores", "verInvestimento", "verSalarios", "exportar"],
   },
   gestor: {
     nome: "Gerente da fazenda",
     desc: "Acompanha operação e desempenho, sem dados de folha.",
     abas: ["dashboard", "gastos", "ia", "relatorio"],
+    areas: AREAS.map((a) => a.id),
     flags: ["verValores", "verInvestimento"],
   },
   consulta: {
     nome: "Sócio / Consulta",
     desc: "Apenas leitura do panorama. Não vê detalhe operacional.",
     abas: ["dashboard", "relatorio"],
+    areas: ["financeiro"],
     flags: ["verValores", "verInvestimento"],
   },
 };

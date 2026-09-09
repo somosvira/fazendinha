@@ -1,6 +1,6 @@
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
-import { aplicarPreset } from "./papeis.js";
+import { aplicarPreset, normalizarAreas } from "./papeis.js";
 import { revogarSessoesDoUsuario } from "./sessao.js";
 import { gerarLinkConvite } from "./contas.js";
 
@@ -10,6 +10,7 @@ export type UsuarioDTO = {
   email: string;
   papel: string;
   abas: string[];
+  areas: string[];
   flags: string[];
   status: string;
   dono: boolean;
@@ -23,10 +24,10 @@ export class UsuarioError extends Error {
 }
 
 export function usuarioDTO(u: {
-  id: number; nome: string; email: string; papel: string; abas: string[]; flags: string[]; status: string; dono: boolean; ultimoAcesso: Date | null;
+  id: number; nome: string; email: string; papel: string; abas: string[]; areas: string[]; flags: string[]; status: string; dono: boolean; ultimoAcesso: Date | null;
 }): UsuarioDTO {
   return {
-    id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, flags: u.flags,
+    id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, areas: normalizarAreas(u.areas), flags: u.flags,
     status: u.status, dono: u.dono, ultimoAcesso: u.ultimoAcesso ? u.ultimoAcesso.toISOString() : null,
   };
 }
@@ -42,14 +43,14 @@ export async function criarUsuario(input: { nome: string; email: string; papel: 
     throw new UsuarioError("EMAIL_DUPLICADO", `já existe um acesso com o e-mail ${email}`);
   const preset = aplicarPreset(input.papel);
   const u = await prisma.usuario.create({
-    data: { nome: input.nome.trim(), email, papel: input.papel, abas: preset.abas, flags: preset.flags, status: "PENDENTE" },
+    data: { nome: input.nome.trim(), email, papel: input.papel, abas: preset.abas, areas: preset.areas, flags: preset.flags, status: "PENDENTE" },
   });
   return usuarioDTO(u);
 }
 
 export async function atualizarUsuario(
   id: number,
-  patch: { papel?: string; abas?: string[]; flags?: string[]; status?: "PENDENTE" | "ATIVO" | "INATIVO" },
+  patch: { papel?: string; abas?: string[]; areas?: string[]; flags?: string[]; status?: "PENDENTE" | "ATIVO" | "INATIVO" },
 ): Promise<UsuarioDTO> {
   const atual = await prisma.usuario.findUnique({ where: { id } });
   if (!atual) throw new UsuarioError("NAO_ENCONTRADO", "usuário não encontrado");
@@ -63,6 +64,7 @@ export async function atualizarUsuario(
     data: {
       papel: patch.papel ?? undefined,
       abas: patch.abas ?? undefined,
+      areas: patch.areas ? normalizarAreas(patch.areas) : undefined,
       flags: patch.flags ?? undefined,
       status: patch.status ?? undefined,
     },
@@ -89,6 +91,7 @@ export async function garantirDonoBootstrap(): Promise<void> {
       email: env.AUTH_BOOTSTRAP_EMAIL.toLowerCase(),
       papel: "proprietario",
       abas: preset.abas,
+      areas: preset.areas,
       flags: preset.flags,
       status: "PENDENTE",
       dono: true,

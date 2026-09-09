@@ -9,7 +9,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import R from "../data/rionovo";
 import { fmtMoney, MiniBarChart } from "./charts";
-import { ActivityPill } from "./Gastos";
+import { ActivityPill } from "./ActivityPill";
 import { Simulador } from "./Simulador";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";

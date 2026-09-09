@@ -94,6 +94,46 @@ export async function fetchDashboard(opts?: { from?: string; to?: string }): Pro
   return d;
 }
 
+export interface ResumoMensalRebanho {
+  meta: {
+    periodo: { from: string; to: string };
+    comparacao: { from: string; to: string };
+    geradoEm: string;
+    dadoRebanhoMaisRecente: string | null;
+  };
+  atual: {
+    rebanhoAtivo: number;
+    vacasAtivas: number;
+    vacasEmLactacao: number;
+    partos: number;
+    prenhezes: number;
+    secagens: number;
+    baixas: number;
+  };
+  anterior: {
+    rebanhoAtivo: number;
+    vacasAtivas: number;
+    vacasEmLactacao: number;
+    partos: number;
+    prenhezes: number;
+    secagens: number;
+    baixas: number;
+  };
+  alertasAtuais: {
+    chave: string;
+    titulo: string;
+    quantidade: number;
+    severidade: "alta" | "media" | "baixa";
+    tab: "reproducao" | "sanidade" | "nutricao" | "animal" | "producao";
+  }[];
+}
+
+/** Resumo histórico do rebanho no mês e alertas operacionais atuais. */
+export function fetchResumoMensalRebanho(from: string, to: string): Promise<ResumoMensalRebanho> {
+  const qs = new URLSearchParams({ from, to });
+  return getJson(`/rebanho/resumo-mensal?${qs.toString()}`);
+}
+
 export interface LancamentoDrill {
   data: string | null;
   valor: number;

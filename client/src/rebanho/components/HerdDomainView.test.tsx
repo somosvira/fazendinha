@@ -15,6 +15,14 @@ const config: DomainConfig = {
   colunas: [],
 };
 
+const configComColunas: DomainConfig = {
+  ...config,
+  colunas: [
+    { nome: "DEL", render: (r) => r.del ?? "—" },
+    { nome: "Situação reprodutiva", render: (r) => r.statusReprodutivo },
+  ],
+};
+
 describe("HerdDomainView — identidade do animal", () => {
   it("mostra o número preservado antes do nome", () => {
     const { container } = render(createElement(HerdDomainView, {
@@ -43,5 +51,21 @@ describe("HerdDomainView — identidade do animal", () => {
     expect(screen.getByRole("button", { name: "Todos" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /Abrir ficha do animal número 0042/i }));
     expect(onAbrirAnimal).toHaveBeenCalledWith("1");
+  });
+
+  it("permite escolher e persiste as colunas da tabela", () => {
+    render(createElement(HerdDomainView, {
+      config: configComColunas,
+      resumos: [{ animalId: "1", statusReprodutivo: "INSEMINADA", del: 82 }],
+      nomes: { "1": { numero: "0042", nome: "Jurema" } },
+      onAbrirAnimal: () => {},
+    }));
+
+    expect(screen.getByRole("columnheader", { name: "DEL" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Colunas \(2\/2\)/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "DEL" }));
+
+    expect(screen.queryByRole("columnheader", { name: "DEL" })).toBeNull();
+    expect(localStorage.getItem("rionovo:tarefas-colunas:animal")).toBe('["Situação reprodutiva"]');
   });
 });

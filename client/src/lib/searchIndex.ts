@@ -12,9 +12,8 @@ import type { Tab } from "../components/Shell";
 
 export type GrupoComando =
   | "Financeiro"
-  | "Rebanho"
+  | "Pecuária"
   | "Plantio"
-  | "Gado de corte"
   | "Milho"
   | "Administração"
   | "Ações";
@@ -52,19 +51,19 @@ export const COMANDOS: Comando[] = [
   { id: "fin-caixinha", tab: "caixinha", label: "Caixinha", grupo: "Financeiro", sinonimos: ["fundo fixo", "dinheiro", "troco", "caixa pequeno", "vale"], descricao: "Fundo fixo em dinheiro — entradas, saídas e saldo" },
   // "fin-plano"/"fin-ia" removidos: abas Categorias e IA financeira ocultas até
   // terem backend real (ver data/acessos.ts).
-  { id: "fin-relatorio", tab: "relatorio", label: "Relatório", grupo: "Financeiro", sinonimos: ["relatório gerencial", "editorial", "executivo", "dre", "fluxo de caixa", "leite paga o leite"], descricao: "Relatório gerencial editorial" },
+  { id: "fin-relatorio", tab: "relatorio", label: "Relatórios", grupo: "Financeiro", sinonimos: ["central de relatórios", "relatório gerencial", "rebanho", "reprodução", "sanidade", "produção", "dre", "fluxo de caixa"], descricao: "Central de relatórios de toda a fazenda" },
 
-  // — Rebanho leiteiro (MODULOS[rebanho].subs) —
-  { id: "reb-dashboard", tab: "reb-dashboard", label: "Painel", grupo: "Rebanho", sinonimos: ["rebanho", "leite", "leiteiro", "visão geral", "início"], descricao: "Painel do rebanho leiteiro" },
-  { id: "reb-animal", tab: "reb-animal", label: "Animal", grupo: "Rebanho", sinonimos: ["vaca", "vacas", "boi", "gado", "rebanho", "bovino", "brinco", "ficha do animal"] },
-  { id: "reb-reproducao", tab: "reb-reproducao", label: "Reprodução", grupo: "Rebanho", sinonimos: ["cio", "inseminação", "iatf", "prenhez", "gestação", "dg", "diagnóstico", "parto", "secagem"] },
-  { id: "reb-acasalamento", tab: "reb-acasalamento", label: "Acasalamento", grupo: "Rebanho", sinonimos: ["cruzamento", "touro", "genética", "consanguinidade", "plano", "pedigree"] },
-  { id: "reb-fiv", tab: "reb-fiv", label: "FIV / TE", grupo: "Rebanho", sinonimos: ["fiv", "te", "transferência de embrião", "coleta", "oócito", "embrião", "doadora", "pool", "aspiração"] },
-  { id: "reb-sanidade", tab: "reb-sanidade", label: "Sanidade", grupo: "Rebanho", sinonimos: ["vacina", "vacinação", "doença", "carência", "tratamento", "mastite", "ccs", "saúde"] },
-  { id: "reb-nutricao", tab: "reb-nutricao", label: "Nutrição", grupo: "Rebanho", sinonimos: ["dieta", "ração", "alimentação", "lote", "trato", "concentrado", "volumoso"] },
-  { id: "reb-producao", tab: "reb-producao", label: "Produção", grupo: "Rebanho", sinonimos: ["leite", "litros", "ordenha", "tanque", "controle leiteiro"] },
-  { id: "reb-estoque", tab: "reb-estoque", label: "Estoque", grupo: "Rebanho", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto"] },
-  { id: "reb-custo", tab: "reb-custo", label: "Custo", grupo: "Rebanho", sinonimos: ["custeio", "custo vaca/dia", "rentabilidade", "margem", "despesa", "litro"] },
+  // — Pecuária: cadastro individual único, independentemente da finalidade —
+  { id: "reb-dashboard", tab: "reb-dashboard", label: "Painel", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "leite", "corte", "visão geral", "início"], descricao: "Painel unificado da pecuária" },
+  { id: "reb-animal", tab: "reb-animal", label: "Animal", grupo: "Pecuária", sinonimos: ["vaca", "vacas", "boi", "gado", "rebanho", "bovino", "brinco", "ficha do animal"] },
+  { id: "reb-reproducao", tab: "reb-reproducao", label: "Reprodução", grupo: "Pecuária", sinonimos: ["cio", "inseminação", "iatf", "prenhez", "gestação", "dg", "diagnóstico", "parto", "secagem"] },
+  { id: "reb-acasalamento", tab: "reb-acasalamento", label: "Acasalamento", grupo: "Pecuária", sinonimos: ["cruzamento", "touro", "genética", "consanguinidade", "plano", "pedigree"] },
+  { id: "reb-fiv", tab: "reb-fiv", label: "FIV / TE", grupo: "Pecuária", sinonimos: ["fiv", "te", "transferência de embrião", "coleta", "oócito", "embrião", "doadora", "pool", "aspiração"] },
+  { id: "reb-sanidade", tab: "reb-sanidade", label: "Sanidade", grupo: "Pecuária", sinonimos: ["vacina", "vacinação", "doença", "carência", "tratamento", "mastite", "ccs", "saúde"] },
+  { id: "reb-nutricao", tab: "reb-nutricao", label: "Nutrição", grupo: "Pecuária", sinonimos: ["dieta", "ração", "alimentação", "lote", "trato", "concentrado", "volumoso"] },
+  { id: "reb-producao", tab: "reb-producao", label: "Controle leiteiro", grupo: "Pecuária", sinonimos: ["produção", "leite", "litros", "ordenha", "tanque", "controle leiteiro"] },
+  { id: "reb-estoque", tab: "reb-estoque", label: "Estoque", grupo: "Pecuária", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto"] },
+  { id: "reb-custo", tab: "reb-custo", label: "Custo", grupo: "Pecuária", sinonimos: ["custeio", "custo vaca/dia", "rentabilidade", "margem", "despesa", "litro"] },
 
   // — Plantio · café (MODULOS[plantio].subs) —
   { id: "pla-dashboard", tab: "pla-dashboard", label: "Painel", grupo: "Plantio", sinonimos: ["plantio", "lavoura", "café", "visão geral", "início"], descricao: "Painel da lavoura de café" },
@@ -77,15 +76,15 @@ export const COMANDOS: Comando[] = [
   { id: "pla-estoque", tab: "pla-estoque", label: "Estoque", grupo: "Plantio", sinonimos: ["insumo", "insumos", "saldo", "defensivo", "fertilizante", "almoxarifado"] },
   { id: "pla-custo", tab: "pla-custo", label: "Custo", grupo: "Plantio", sinonimos: ["custeio", "custo por saca", "rentabilidade", "margem", "despesa"] },
 
-  // — Gado de corte (MODULOS[corte].subs — módulo "em breve", mas indexado) —
-  { id: "cor-dashboard", tab: "cor-dashboard", label: "Painel", grupo: "Gado de corte", sinonimos: ["corte", "plantel", "boi", "engorda", "visão geral", "início"], descricao: "Painel do gado de corte" },
-  { id: "cor-lote", tab: "cor-lote", label: "Lote", grupo: "Gado de corte", sinonimos: ["lote", "boiada", "grupo", "tropa", "animais"] },
-  { id: "cor-pesagem", tab: "cor-pesagem", label: "Pesagem", grupo: "Gado de corte", sinonimos: ["peso", "gmd", "arroba", "balança", "ganho de peso"] },
-  { id: "cor-pasto", tab: "cor-pasto", label: "Pasto", grupo: "Gado de corte", sinonimos: ["pastagem", "piquete", "capim", "lotação", "forragem"] },
-  { id: "cor-sanidade", tab: "cor-sanidade", label: "Sanidade", grupo: "Gado de corte", sinonimos: ["vacina", "doença", "carência", "tratamento", "vermífugo", "saúde"] },
-  { id: "cor-nutricao", tab: "cor-nutricao", label: "Nutrição", grupo: "Gado de corte", sinonimos: ["dieta", "ração", "suplemento", "sal mineral", "cocho", "confinamento"] },
-  { id: "cor-comercial", tab: "cor-comercial", label: "Comercial", grupo: "Gado de corte", sinonimos: ["venda", "vendas", "abate", "frigorífico", "preço", "arroba", "negócio"] },
-  { id: "cor-custo", tab: "cor-custo", label: "Custo", grupo: "Gado de corte", sinonimos: ["custeio", "custo por arroba", "rentabilidade", "margem", "despesa"] },
+  // Registros coletivos preexistentes permanecem acessíveis dentro de Pecuária.
+  { id: "cor-dashboard", tab: "cor-dashboard", label: "Resumo dos lotes", grupo: "Pecuária", sinonimos: ["corte", "plantel", "boi", "engorda", "visão geral", "lotes coletivos"], descricao: "Resumo dos registros coletivos" },
+  { id: "cor-lote", tab: "cor-lote", label: "Lotes coletivos", grupo: "Pecuária", sinonimos: ["lote", "boiada", "grupo", "tropa", "animais", "histórico"] },
+  { id: "cor-pesagem", tab: "cor-pesagem", label: "Pesagens", grupo: "Pecuária", sinonimos: ["peso", "gmd", "arroba", "balança", "ganho de peso"] },
+  { id: "cor-pasto", tab: "cor-pasto", label: "Pasto", grupo: "Pecuária", sinonimos: ["pastagem", "piquete", "capim", "lotação", "forragem"] },
+  { id: "cor-sanidade", tab: "cor-sanidade", label: "Sanidade coletiva", grupo: "Pecuária", sinonimos: ["vacina", "doença", "carência", "tratamento", "vermífugo", "saúde", "lote"] },
+  { id: "cor-nutricao", tab: "cor-nutricao", label: "Nutrição coletiva", grupo: "Pecuária", sinonimos: ["dieta", "ração", "suplemento", "sal mineral", "cocho", "confinamento", "lote"] },
+  { id: "cor-comercial", tab: "cor-comercial", label: "Comercialização", grupo: "Pecuária", sinonimos: ["venda", "vendas", "abate", "frigorífico", "preço", "arroba", "negócio"] },
+  { id: "cor-custo", tab: "cor-custo", label: "Custos dos lotes", grupo: "Pecuária", sinonimos: ["custeio", "custo por arroba", "rentabilidade", "margem", "despesa"] },
 
   // — Milho (MODULOS[cultivo].subs) —
   { id: "mil-dashboard", tab: "mil-dashboard", label: "Painel", grupo: "Milho", sinonimos: ["milho", "cultivo", "safra", "visão geral", "início", "painel"], descricao: "Painel do milho" },
@@ -108,7 +107,7 @@ export const COMANDOS: Comando[] = [
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
   { id: "acao-novo-talhao", tab: "pla-talhao", label: "Novo talhão", grupo: "Ações", acao: true, sinonimos: ["cadastrar talhão", "nova lavoura", "nova gleba", "novo plantio", "nova área"], descricao: "Cadastrar um novo talhão" },
   { id: "acao-novo-animal", tab: "reb-animal", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal" },
-  { id: "acao-relatorio", tab: "relatorio", label: "Relatório executivo", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "exportar relatório", "dre", "fluxo de caixa"], descricao: "Abrir o relatório gerencial" },
+  { id: "acao-relatorio", tab: "relatorio", label: "Abrir relatórios", grupo: "Ações", acao: true, sinonimos: ["criar relatório", "exportar", "pdf", "csv", "fechamento"], descricao: "Abrir a central de relatórios" },
   { id: "acao-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Ações", acao: true, sinonimos: ["produtos", "fornecedores", "registrar cadastro"], descricao: "Abrir os cadastros" },
 ];
 

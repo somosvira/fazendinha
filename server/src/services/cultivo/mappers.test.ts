@@ -72,7 +72,7 @@ describe("toLancamentoCustoDTO", () => {
     descricao: "Adubo NPK", valor: new Prisma.Decimal("1500.00"),
     qtd: new Prisma.Decimal("300.000"), unidade: "kg",
     horasMaquina: new Prisma.Decimal("4.50"), numMaquinas: 1, numCaminhoes: null,
-    lancamentoId: null, observacao: null,
+    operacaoFinanceiraId: null, observacao: null,
   };
 
   it("mapeia campos e resolve areaCodigo da relação", () => {

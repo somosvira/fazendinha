@@ -10,16 +10,17 @@ import { EstoqueTab } from "./components/EstoqueTab";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
-import { AcasalamentoPlanosTab } from "./components/AcasalamentoPlanosTab";
+import { AcasalamentoHub } from "./components/AcasalamentoHub";
+import { RelatoriosTab } from "./components/RelatoriosTab";
 import { AnimalForm } from "./components/AnimalForm";
 import { EventoForm } from "./components/EventoForm";
 import { DashboardView } from "./components/DashboardView";
 import type { Animal } from "./types";
-import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, WorklistRebanho } from "./api";
+import type { ChaveWorklistRebanho, EventoPayload, EventoSanidadePayload, LinhaRelatorioRebanhoDTO, ResultadoRelatorioRebanhoDTO, WorklistRebanho } from "./api";
 import type { AcaoItemWorklist } from "./components/WorklistCanonica";
 import { HOJE } from "./HOJE";
 
-export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "fiv" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
+export type RebSub = "dashboard" | "animal" | "reproducao" | "acasalamento" | "fiv" | "relatorios" | "sanidade" | "nutricao" | "producao" | "estoque" | "custo" | "carteira" | "sugestoes";
 
 export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, worklistSnapshot, abrirId, onAbriuEntidade }: { aba: RebSub; onNavReb?: (aba: RebSub) => void; onAbrirWorklist?: (worklist: WorklistRebanho) => void; worklistChave?: ChaveWorklistRebanho; worklistSnapshot?: WorklistRebanho; abrirId?: string; onAbriuEntidade?: () => void }) {
   const [animalId, setAnimalId] = useState<string | null>(null);
@@ -29,13 +30,14 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     dominio: "reproducao" | "sanidade";
     tipoInicial?: { dominio: "reproducao"; tipo: EventoPayload["tipo"] } | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
     dataInicial?: string;
-    // Para onde ir após salvar: "lista" mantém a fila (registro vindo de worklist),
+    // Para onde ir após salvar: lista/relatório mantêm o contexto operacional;
     // "cockpit" abre a ficha do animal (registro genérico). Ausente = "cockpit".
-    retorno?: "lista" | "cockpit";
+    retorno?: "lista" | "relatorio" | "cockpit";
   } | null>(null);
   const [flashEventoId, setFlashEventoId] = useState<string | null>(null);
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
+  const [recargaRelatorio, setRecargaRelatorio] = useState(0);
   // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
   // remonta este conteúdo inteiro via `key`, então aqui não há estado de escopo.
 
@@ -44,16 +46,34 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   // o id que deve ser aberto, para sobreviver à mudança de prop `aba`.
   const proximoAnimalRef = useRef<string | null>(null);
 
-  // Trocar de aba normalmente fecha o cockpit, exceto quando estamos navegando após salvar
-  // um evento (nesse caso, abrimos a ficha do animal que acabou de receber o evento).
+  // A ficha do animal possui rota própria. Centralizar a abertura aqui evita
+  // manter um cockpit "por cima" da rota de Sanidade/Reprodução/Estoque.
+  const abrirAnimal = (id: string) => {
+    if (aba === "animal") {
+      setAnimalId(id);
+      return;
+    }
+    proximoAnimalRef.current = id;
+    onNavReb?.("animal");
+  };
+
+  // A rota sempre vence o estado local do cockpit. A referência transitória só
+  // pode abrir uma ficha quando o destino é explicitamente a aba Animal; se ela
+  // sobreviver a uma recarga/mutação, nunca deve prender a UI ao animal ao navegar
+  // para Estoque, Sanidade ou qualquer outra aba.
   useEffect(() => {
-    if (proximoAnimalRef.current) {
+    if (aba === "animal" && proximoAnimalRef.current) {
       setAnimalId(proximoAnimalRef.current);
       proximoAnimalRef.current = null;
     } else {
+      proximoAnimalRef.current = null;
       setAnimalId(null);
       setFlashEventoId(null);
     }
+    // Formulários pertencem à tela de origem e não podem manter um overlay sobre
+    // a nova rota quando a pessoa navega logo após salvar/editar/excluir.
+    setForm(null);
+    setRegistroInline(null);
   }, [aba]);
 
   // Deep-link do ⌘K: quando `abrirId` muda, abrimos a ficha desse animal usando
@@ -77,20 +97,29 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
     setRegistroInline({ animal, dominio: worklist.acao.dominio, tipoInicial, dataInicial, retorno: "lista" });
   };
 
+  const registrarDoRelatorio = ({ linha, acao }: { linha: LinhaRelatorioRebanhoDTO; acao: NonNullable<ResultadoRelatorioRebanhoDTO["acao"]> }) => {
+    const animal = { id: String(linha.animalId), numero: linha.numero, nome: linha.nome ?? "", categoria: linha.categoria as Animal["categoria"] };
+    const tipoInicial = { dominio: "reproducao" as const, tipo: acao.tipoEvento as EventoPayload["tipo"] };
+    const dataInicial = acao.tipoEvento === "SECAGEM" ? HOJE : undefined;
+    setRegistroInline({ animal, dominio: "reproducao", tipoInicial, dataInicial, retorno: "relatorio" });
+  };
+
   return (
     <div className="rb">
-      {animalId
-        ? <AnimalCockpit key={recarga} animalId={animalId} onVoltar={() => setAnimalId(null)} onAbrirAnimal={setAnimalId} onEditar={(a) => setForm({ modo: "editar", animal: a })} onBaixa={(a) => setForm({ modo: "baixa", animal: a })} flashEventoId={flashEventoId} flashKey={flashKey} />
+      {aba === "animal" && animalId
+        ? <AnimalCockpit key={recarga} animalId={animalId} onVoltar={() => setAnimalId(null)} onAbrirAnimal={abrirAnimal} onEditar={(a) => setForm({ modo: "editar", animal: a })} onBaixa={(a) => setForm({ modo: "baixa", animal: a })} flashEventoId={flashEventoId} flashKey={flashKey} />
         : aba === "animal"
-          ? <AnimalTab key={recarga} onAbrirAnimal={setAnimalId} onNovo={() => setForm({ modo: "novo" })} />
+          ? <AnimalTab key={recarga} onAbrirAnimal={abrirAnimal} onNovo={() => setForm({ modo: "novo" })} />
           : aba === "reproducao"
-            ? <ReproducaoTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
+            ? <ReproducaoTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "reproducao", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={abrirAnimal} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
             : aba === "acasalamento"
-              ? <AcasalamentoPlanosTab onAbrirFicha={setAnimalId} />
+              ? <AcasalamentoHub onAbrirFicha={abrirAnimal} />
             : aba === "fiv"
               ? <FivTab key={recarga} />
+            : aba === "relatorios"
+              ? <RelatoriosTab onAbrirFicha={abrirAnimal} onRegistrar={registrarDoRelatorio} refreshToken={recargaRelatorio} />
             : aba === "sanidade"
-              ? <SanidadeTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={setAnimalId} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
+              ? <SanidadeTab key={recarga} onRegistrarEvento={(animal) => setRegistroInline({ animal, dominio: "sanidade", retorno: "cockpit" })} onRegistrarWorklist={registrarDaWorklist} onAbrirFicha={abrirAnimal} worklistChave={worklistChave} worklistSnapshot={worklistSnapshot} />
               : aba === "nutricao"
                 ? <NutricaoTab />
                 : aba === "producao"
@@ -100,9 +129,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"
-                        ? <CarteiraTab onAbrirFicha={(id) => setAnimalId(String(id))} />
+                        ? <CarteiraTab onAbrirFicha={(id) => abrirAnimal(String(id))} />
                         : aba === "sugestoes"
-                          ? <SugestoesTab onNav={(t) => onNavReb?.(t as RebSub)} onAbrirFicha={(id) => setAnimalId(String(id))} />
+                          ? <SugestoesTab onNav={(t) => onNavReb?.(t as RebSub)} onAbrirFicha={(id) => abrirAnimal(String(id))} />
                         : <DashboardView onNav={(t) => onNavReb?.(t as RebSub)} onAbrirWorklist={onAbrirWorklist} />}
       {form && <AnimalForm modo={form.modo} animal={form.animal} onFechar={() => setForm(null)} onSalvo={() => { setForm(null); setRecarga((n) => n + 1); }} />}
       {registroInline && (
@@ -121,6 +150,11 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
               // Permanece na fila; remontar a aba (via key=recarga) refaz o fetch da worklist,
               // e o animal recém-tratado sai da lista porque o resumo não satisfaz mais a regra.
               setRecarga((n) => n + 1);
+              return;
+            }
+            if (retorno === "relatorio") {
+              // Mantém o formulário e os filtros; só repete a consulta já aplicada.
+              setRecargaRelatorio((n) => n + 1);
               return;
             }
             setFlashEventoId(evento?.id ?? null);

@@ -5,14 +5,10 @@ const numeroOpcional = (valor: string): number | undefined => valor.trim() === "
 export function camposInseminacao(form: {
   reprodutor: string;
   protocolo: string | undefined;
-  estoqueSemenId: string;
 }): Partial<EventoPayload> {
-  const estoqueSemenId = Number(form.estoqueSemenId);
-  const loteValido = Number.isInteger(estoqueSemenId) && estoqueSemenId > 0;
   return {
     reprodutor: form.reprodutor,
     protocolo: form.protocolo,
-    ...(loteValido ? { estoqueSemenId } : {}),
   };
 }
 
@@ -69,7 +65,7 @@ export function camposParto(form: CamposPartoForm): Partial<EventoPayload> {
     numCrias: total,
     criasVivas: vivos ?? (form.tipoParto === "4" ? 0 : total),
     criasNatimortas: natimortos ?? (form.tipoParto === "4" ? total : 0),
-    sexoCria: form.sexoCria as EventoPayload["sexoCria"],
+    ...(form.sexoCria ? { sexoCria: form.sexoCria } : {}),
     ...(form.criaAcao === "criar" ? {
       criarCria: true,
       criaNumero: form.criaNumero.trim() || undefined,

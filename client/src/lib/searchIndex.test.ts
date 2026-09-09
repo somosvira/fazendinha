@@ -50,9 +50,9 @@ describe("buscar()", () => {
   });
 
   it('ranking: prefixo de label vem antes de match por sinônimo', () => {
-    // "rel" começa o label "Relatório" → deve vir antes de qualquer match indireto
+    // "rel" começa o label "Relatórios" → deve vir antes de qualquer match indireto
     const r = labels("rel");
-    expect(r[0]).toBe("Relatório");
+    expect(r[0]).toBe("Relatórios");
   });
 
   it("ranking: label-prefix antes de substring no meio da palavra", () => {

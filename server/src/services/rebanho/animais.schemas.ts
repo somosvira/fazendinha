@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const sexo = z.enum(["F", "M"]);
 const categoria = z.enum(["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "TOURO", "CABRITA", "CABRA", "CABRITO", "BODE"]);
+const finalidade = z.enum(["LEITE", "CORTE", "DUPLA_APTIDAO", "NAO_INFORMADA"]);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 
 export const criarAnimalSchema = z.object({
@@ -9,6 +10,7 @@ export const criarAnimalSchema = z.object({
   nome: z.string().max(60).optional(),
   sexo,
   categoria,
+  finalidade: finalidade.default("NAO_INFORMADA"),
   racaId: z.number().int().positive().optional(),
   grauSangue: z.string().max(30).optional(),
   dataNascimento: isoDate.optional(),
@@ -33,13 +35,14 @@ export const baixaSchema = z.object({
   data: isoDate.optional(),
 });
 
-// Alteração coletiva (bulk): aplica grupo e/ou setor a vários animais. Ao menos um dos dois.
+// Alteração coletiva: grupo, localização e/ou finalidade produtiva.
 export const bulkAnimaisSchema = z.object({
   animalIds: z.array(z.number().int().positive()).min(1, "selecione ao menos um animal").max(1000),
   grupoId: z.number().int().positive().nullable().optional(),
   setor: z.string().max(40).nullable().optional(),
-}).refine((v) => v.grupoId !== undefined || v.setor !== undefined, {
-  message: "informe grupo e/ou setor para alterar",
+  finalidade: finalidade.optional(),
+}).refine((v) => v.grupoId !== undefined || v.setor !== undefined || v.finalidade !== undefined, {
+  message: "informe grupo, localização e/ou finalidade para alterar",
   path: ["grupoId"],
 });
 export type BulkAnimaisInput = z.infer<typeof bulkAnimaisSchema>;
@@ -52,6 +55,7 @@ export const listFiltrosSchema = z.object({
   q: z.string().max(40).optional(),
   setor: z.string().max(40).optional(),
   categoria: z.enum(CATEGORIAS).optional(),
+  finalidade: finalidade.optional(),
   propriedadeId: z.coerce.number().int().positive().optional(), // filtro por sítio
 });
 
@@ -63,6 +67,7 @@ export const criarFiltroSchema = z.object({
   grupoId: z.number().int().positive().nullable().optional(),
   setor: z.string().max(40).nullable().optional(),
   categoria: z.enum(CATEGORIAS).nullable().optional(),
+  finalidade: finalidade.nullable().optional(),
   busca: z.string().max(40).nullable().optional(),
 });
 export type CriarFiltroInput = z.infer<typeof criarFiltroSchema>;

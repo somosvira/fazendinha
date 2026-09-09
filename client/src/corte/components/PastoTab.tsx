@@ -22,7 +22,7 @@ export function PastoTab() {
   const { data: piquetes } = usePiquetes();
   const { data: lotes, loading: loadingLotes } = useLotes({ estado: "ATIVO" });
 
-  if (loadingLotes) return <RebMain><RebHeader eyebrow="Corte · pasto" title="Pasto & piquetes" /><Loader /></RebMain>;
+  if (loadingLotes) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Pasto & piquetes" /><Loader /></RebMain>;
 
   const ocupados = piquetes.filter((p) => p.estado === "OCUPADO");
   const areaAtiva = ocupados.reduce((a, p) => a + p.areaHa, 0);
@@ -31,7 +31,7 @@ export function PastoTab() {
 
   return (
     <RebMain>
-      <RebHeader eyebrow="Corte · gestão de pasto" title="Pasto & piquetes" />
+      <RebHeader eyebrow="Pecuária · gestão de pasto" title="Pasto & piquetes" />
 
       <RebKpiStrip cols={4}>
         <RebKpi

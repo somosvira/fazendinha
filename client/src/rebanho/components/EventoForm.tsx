@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { registrarEvento, registrarEventoSanidade, listarRacas, listarAnimais, listarReprodutores, listarEstoqueSemen, listarEmbrioesDisponiveis, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type ReprodutorDTO, type EstoqueSemenDTO, type EmbriaoDisponivelDTO } from "../api";
+import { registrarEvento, registrarEventoSanidade, editarEventoSanidade, listarRacas, listarAnimais, listarEmbrioesDisponiveis, listarParametros, obterAnimal, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type EmbriaoDisponivelDTO } from "../api";
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
@@ -71,24 +71,29 @@ type TipoInicialEvento =
   | { dominio: "reproducao"; tipo: EventoPayload["tipo"] }
   | { dominio: "sanidade"; tipo: EventoSanidadePayload["tipo"] };
 
-type AnimalEvento = Pick<Animal, "id" | "numero" | "nome" | "categoria">;
+type AnimalEvento = Pick<Animal, "id" | "numero" | "nome" | "categoria" | "resumo">;
 
-export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataInicial, onFechar, onSalvo }: { animalId: string; animal?: AnimalEvento; dominioFixo?: "reproducao" | "sanidade"; tipoInicial?: TipoInicialEvento; dataInicial?: string; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
+function somarDiasIso(data: string, dias: number): string {
+  const resultado = new Date(`${data}T00:00:00Z`);
+  resultado.setUTCDate(resultado.getUTCDate() + dias);
+  return resultado.toISOString().slice(0, 10);
+}
+
+export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataInicial, eventoEdicao, onFechar, onSalvo }: { animalId: string; animal?: AnimalEvento; dominioFixo?: "reproducao" | "sanidade"; tipoInicial?: TipoInicialEvento; dataInicial?: string; eventoEdicao?: EventoTimeline; onFechar: () => void; onSalvo: (evento?: EventoTimeline) => void }) {
+  const dadosEdicao = eventoEdicao?.dadosEdicao as any | undefined;
   const dominioInicial = tipoInicial?.dominio ?? dominioFixo ?? "reproducao";
   const [dominio, setDominio] = useState<"reproducao" | "sanidade">(dominioInicial);
   const [tipo, setTipo] = useState<EventoPayload["tipo"]>(() => tipoInicial?.dominio === "reproducao" ? tipoInicial.tipo : "INSEMINACAO");
-  const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>(() => tipoInicial?.dominio === "sanidade" ? tipoInicial.tipo : "EXAME");
+  const [tipoSan, setTipoSan] = useState<EventoSanidadePayload["tipo"]>(() => dadosEdicao?.tipo ?? (tipoInicial?.dominio === "sanidade" ? tipoInicial.tipo : "EXAME"));
   const [racas, setRacas] = useState<RacaDTO[]>([]);
   const [animais, setAnimais] = useState<Animal[]>([]); // catálogo p/ escolher a doadora na TE
   const [embrioes, setEmbrioes] = useState<EmbriaoDisponivelDTO[]>([]); // estoque FIV disponível p/ TE
-  const [reprodutores, setReprodutores] = useState<ReprodutorDTO[]>([]);
-  const [carregandoReprodutores, setCarregandoReprodutores] = useState(false);
-  const [estoquesSemen, setEstoquesSemen] = useState<EstoqueSemenDTO[]>([]);
-  const [carregandoEstoqueSemen, setCarregandoEstoqueSemen] = useState(false);
+  const [ultimaCobertura, setUltimaCobertura] = useState<string | null>(animal?.resumo?.ultimaInseminacao ?? null);
+  const [gestacaoDias, setGestacaoDias] = useState(283);
+  const [carregandoPrevisao, setCarregandoPrevisao] = useState(false);
   const [f, setF] = useState<any>({
-    data: dataInicial ?? "",
-    // Reprodutor estruturado (catálogo opcional ou fallback de raça + grau de sangue).
-    reprodutorCatalogoId: "", estoqueSemenId: "",
+    data: dadosEdicao?.data ?? dataInicial ?? "",
+    // Reprodutor informado pela raça + grau de sangue.
     racaReprodutorId: "", fracaoReprodutor: "8/8", racaSecReprodutorId: "",
     protocolo: PROTOCOLOS[0], protocoloOutro: "",
     deteccaoCio: DETECCAO_CIO[0],
@@ -102,13 +107,13 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     achado: ACHADOS_GINE[0].v, metodoExame: METODOS_EXAME[0], resultadoGinecologicoId: "",
     // Desmame (peso opcional).
     pesoDesmame: "",
-    observacao: "",
+    observacao: dadosEdicao?.observacao ?? "",
     // Sanidade.
-    doenca: "", diasTratamento: "", produto: "", dose: "", carencia: "", loteProduto: "",
+    doenca: dadosEdicao?.doenca ?? "", diasTratamento: dadosEdicao?.diasTratamento ?? "", produto: dadosEdicao?.produto ?? "", dose: dadosEdicao?.dose ?? "", carencia: dadosEdicao?.carencia ?? "", loteProduto: dadosEdicao?.loteProduto ?? "",
     // Vínculo opcional com o estoque (baixa automática): produto cadastrado + quantidade usada.
-    estoqueProdutoId: "", estoqueQtd: "",
-    ccs: "", gordura: "", proteina: "",
-    quarto: QUARTOS_UBERE[0], severidade: SEVERIDADES_MASTITE[0], resultadoCultivo: "",
+    estoqueProdutoId: dadosEdicao?.produtoId ?? "", estoqueQtd: dadosEdicao?.quantidadeUsada ?? "",
+    ccs: dadosEdicao?.ccs ?? "", gordura: dadosEdicao?.gordura ?? "", proteina: dadosEdicao?.proteina ?? "",
+    quarto: dadosEdicao?.quarto || QUARTOS_UBERE[0], severidade: dadosEdicao?.severidade || SEVERIDADES_MASTITE[0], resultadoCultivo: dadosEdicao?.resultadoCultivo ?? "",
   });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -124,38 +129,28 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     tipo: "APLICACAO" | "VACINA";
   } | null>(null);
   const set = (k: string, v: string) => setF((s: any) => ({ ...s, [k]: v }));
-  const alterarReprodutorCatalogo = (reprodutorCatalogoId: string) => {
-    setF((s: any) => ({ ...s, reprodutorCatalogoId, estoqueSemenId: "" }));
-    setEstoquesSemen([]);
-    setCarregandoEstoqueSemen(Boolean(reprodutorCatalogoId));
-  };
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
   // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
   const { data: produtosEstoque } = useProdutos({ ativo: true });
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
-    if (dominio !== "reproducao" || tipo !== "INSEMINACAO") return;
+    if (dominio !== "reproducao" || tipo !== "DIAGNOSTICO") return;
     let ativo = true;
-    setCarregandoReprodutores(true);
-    listarReprodutores()
-      .then((resultado) => { if (ativo) setReprodutores(resultado.reprodutores); })
-      .catch(() => { if (ativo) setReprodutores([]); })
-      .finally(() => { if (ativo) setCarregandoReprodutores(false); });
+    setCarregandoPrevisao(true);
+    const animalComResumo = animal && "resumo" in animal
+      ? Promise.resolve(animal)
+      : obterAnimal(animalId).catch(() => null);
+    Promise.all([animalComResumo, listarParametros().catch(() => [])])
+      .then(([detalhado, parametros]) => {
+        if (!ativo) return;
+        setUltimaCobertura(detalhado?.resumo?.ultimaInseminacao ?? null);
+        const configurado = parametros.find((p) => p.chave === "GESTACAO_DIAS")?.valorNumero;
+        if (configurado != null && configurado > 0) setGestacaoDias(configurado);
+      })
+      .finally(() => { if (ativo) setCarregandoPrevisao(false); });
     return () => { ativo = false; };
-  }, [dominio, tipo]);
-  useEffect(() => {
-    let ativo = true;
-    if (dominio !== "reproducao" || tipo !== "INSEMINACAO" || !f.reprodutorCatalogoId) {
-      return () => { ativo = false; };
-    }
-    setCarregandoEstoqueSemen(true);
-    listarEstoqueSemen(Number(f.reprodutorCatalogoId))
-      .then((itens) => { if (ativo) setEstoquesSemen(itens); })
-      .catch(() => { if (ativo) setEstoquesSemen([]); })
-      .finally(() => { if (ativo) setCarregandoEstoqueSemen(false); });
-    return () => { ativo = false; };
-  }, [dominio, tipo, f.reprodutorCatalogoId]);
+  }, [animal, animalId, dominio, tipo]);
   // Só carrega o catálogo de animais quando a TE ou vínculo de cria precisarem dele.
   useEffect(() => {
     if ((tipo === "TRANSFERENCIA_EMBRIAO" || (tipo === "PARTO" && f.criaAcao === "vincular")) && animais.length === 0) {
@@ -177,9 +172,6 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     [racas, especie],
   );
 
-  const reprodutorCatalogo = reprodutores.find((r) => String(r.id) === f.reprodutorCatalogoId);
-  const loteSelecionado = estoquesSemen.find((e) => String(e.id) === f.estoqueSemenId);
-  const loteZerado = loteSelecionado != null && loteSelecionado.dosesDisponiveis === 0;
   const racaReprodutor = racas.find((r) => String(r.id) === f.racaReprodutorId);
   const racaSecReprodutor = racas.find((r) => String(r.id) === f.racaSecReprodutorId);
   const opcoesSecReprodutor = racaReprodutor
@@ -187,6 +179,31 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
     : [];
   const ehPuroRep = f.fracaoReprodutor === "8/8";
   const fracCompRep = complementoLabel(f.fracaoReprodutor);
+  const previsaoPartoAutomatica = ultimaCobertura ? somarDiasIso(ultimaCobertura, gestacaoDias) : "";
+  const quantidadeCriasVivas = Math.max(0, Math.min(3, Number(f.criasVivas) || 0));
+
+  useEffect(() => {
+    if (dominio !== "reproducao" || tipo !== "DIAGNOSTICO" || f.resultado !== "positivo" || !previsaoPartoAutomatica) return;
+    setF((atual: any) => atual.dtPartoPrevista === previsaoPartoAutomatica
+      ? atual
+      : { ...atual, dtPartoPrevista: previsaoPartoAutomatica });
+  }, [dominio, tipo, f.resultado, previsaoPartoAutomatica]);
+
+  const alterarCriasVivas = (valor: string) => {
+    const quantidade = Math.max(0, Math.min(3, Number(valor) || 0));
+    setF((atual: any) => ({
+      ...atual,
+      criasVivas: valor,
+      sexoCria: Array.from({ length: quantidade }, (_, indice) => atual.sexoCria?.[indice] ?? "F").join(""),
+    }));
+  };
+  const alterarSexoCria = (indice: number, sexo: string) => {
+    setF((atual: any) => {
+      const sexos = Array.from({ length: quantidadeCriasVivas }, (_, posicao) => atual.sexoCria?.[posicao] ?? "F");
+      sexos[indice] = sexo;
+      return { ...atual, sexoCria: sexos.join("") };
+    });
+  };
 
   async function salvar() {
     if (salvamentoEmCurso.current || avisoSalvo) return;
@@ -201,13 +218,12 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           p.observacao = [f.deteccaoCio, f.observacao].filter(Boolean).join(" · ") || undefined;
         }
         if (tipo === "INSEMINACAO") {
-          const rep = reprodutorCatalogo?.nome ?? montarRacaDisplay(f.fracaoReprodutor, racaReprodutor, racaSecReprodutor);
-          if (!rep) throw new Error("Selecione o reprodutor do catálogo ou a raça do reprodutor.");
+          const rep = montarRacaDisplay(f.fracaoReprodutor, racaReprodutor, racaSecReprodutor);
+          if (!rep) throw new Error("Selecione a raça do reprodutor.");
           const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
           Object.assign(p, camposInseminacao({
             reprodutor: rep,
             protocolo: proto || undefined,
-            estoqueSemenId: f.estoqueSemenId,
           }));
         }
         if (tipo === "COBERTURA") {
@@ -217,7 +233,10 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           const proto = f.protocolo === "Outro" ? f.protocoloOutro.trim() : f.protocolo;
           Object.assign(p, camposTransferenciaEmbriao({ embriaoColetaId: f.embriaoColetaId, doadoraId: f.doadoraId, semenTE: f.semenTE, protocolo: proto }));
         }
-        if (tipo === "DIAGNOSTICO") { p.resultado = f.resultado; p.dtPartoPrevista = f.dtPartoPrevista || undefined; }
+        if (tipo === "DIAGNOSTICO") {
+          p.resultado = f.resultado;
+          p.dtPartoPrevista = f.resultado === "positivo" ? (f.dtPartoPrevista || undefined) : undefined;
+        }
         if (tipo === "PARTO") Object.assign(p, camposParto(f));
         if (tipo === "SECAGEM") p.motivoSecagem = f.motivoSecagem || undefined;
         if (tipo === "EXAME_GINECOLOGICO") Object.assign(p, camposExameGinecologico(f));
@@ -233,9 +252,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         // Vínculo de estoque (baixa automática): só quando produto cadastrado + quantidade informados.
         const usaEstoque = (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.estoqueProdutoId && num(f.estoqueQtd);
         if (usaEstoque) { p.produtoId = Number(f.estoqueProdutoId); p.quantidadeUsada = num(f.estoqueQtd); }
-        criado = await registrarEventoSanidade(animalId, p);
+        criado = eventoEdicao ? await editarEventoSanidade(eventoEdicao.id, p) : await registrarEventoSanidade(animalId, p);
         // Se a baixa foi automática (produtoId), NÃO abre o card manual (evita baixa dupla).
-        if (!usaEstoque && (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {
+        if (!eventoEdicao && !usaEstoque && (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {
           setBaixaCtx({
             criado,
             produto: f.produto,
@@ -289,7 +308,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
 
   return (
     <RebModal
-      title={`Registrar evento${dominioFixo ? ` · ${dominioFixo === "reproducao" ? "Reprodução" : "Sanidade"}` : ""}`}
+      title={`${eventoEdicao ? "Editar" : "Registrar"} evento${dominioFixo ? ` · ${dominioFixo === "reproducao" ? "Reprodução" : "Sanidade"}` : ""}`}
       onClose={fecharModal}
       actions={
         avisoSalvo
@@ -309,7 +328,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         {!dominioFixo && <RebField label="Domínio"><RebSelect value={dominio} onChange={(v) => setDominio(v as any)}><option value="reproducao">Reprodução</option><option value="sanidade">Sanidade</option></RebSelect></RebField>}
         {dominio === "reproducao"
           ? <RebField label="Tipo"><RebSelect value={tipo} onChange={(v) => setTipo(v as any)}>{TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</RebSelect></RebField>
-          : <RebField label="Tipo"><RebSelect value={tipoSan} onChange={(v) => setTipoSan(v as any)}>{TIPOS_SAN.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</RebSelect></RebField>}
+          : <RebField label="Tipo"><RebSelect value={tipoSan} onChange={(v) => setTipoSan(v as any)} disabled={Boolean(eventoEdicao)}>{TIPOS_SAN.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}</RebSelect></RebField>}
         <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
         {dominio === "reproducao" && <>
           {tipo === "CIO" && (
@@ -320,50 +339,6 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             </RebField>
           )}
           {tipo === "INSEMINACAO" && <>
-            <RebField label="Reprodutor do catálogo (opcional)">
-              <select
-                className="rb-field-select"
-                value={f.reprodutorCatalogoId}
-                onChange={(e) => alterarReprodutorCatalogo(e.target.value)}
-                disabled={carregandoReprodutores}
-              >
-                <option value="">{carregandoReprodutores ? "Carregando catálogo…" : "— usar raça e grau de sangue —"}</option>
-                {reprodutores.map((r) => (
-                  <option key={r.id} value={r.id}>{r.nome}{r.codigo ? ` · ${r.codigo}` : ""}</option>
-                ))}
-              </select>
-            </RebField>
-            <RebField label="Lote de sêmen">
-              <select
-                className="rb-field-select"
-                value={f.estoqueSemenId}
-                onChange={(e) => set("estoqueSemenId", e.target.value)}
-                disabled={!f.reprodutorCatalogoId || carregandoEstoqueSemen}
-              >
-                <option value="">{
-                  !f.reprodutorCatalogoId
-                    ? "Selecione um reprodutor do catálogo"
-                    : carregandoEstoqueSemen
-                      ? "Carregando lotes…"
-                      : estoquesSemen.length === 0
-                        ? "Nenhum lote cadastrado"
-                        : "— não baixar dose —"
-                }</option>
-                {estoquesSemen.map((estoque) => (
-                  <option key={estoque.id} value={estoque.id}>
-                    {estoque.lote || `Lote #${estoque.id}`}
-                    {estoque.tipoSemenNome ? ` · ${estoque.tipoSemenNome}` : ""}
-                    {estoque.localizacao ? ` · ${estoque.localizacao}` : ""}
-                    {` · saldo ${estoque.dosesDisponiveis}`}
-                  </option>
-                ))}
-              </select>
-              {loteZerado && (
-                <small role="status" aria-live="polite" className="font-sans text-xs not-italic text-prejuizo">
-                  Estoque zerado: o evento será salvo sem baixa de dose.
-                </small>
-              )}
-            </RebField>
             <RebField label="Raça do reprodutor*">
               <RebSelect value={f.racaReprodutorId} onChange={(v) => set("racaReprodutorId", v)}>
                 <option value="">—</option>
@@ -411,24 +386,24 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             </p>
             {embrioes.length > 0 && (
               <RebField label="Embrião do estoque (FIV/TE)">
-                <select className="rb-field-select" value={f.embriaoColetaId} onChange={(e) => set("embriaoColetaId", e.target.value)}>
+                <RebSelect value={f.embriaoColetaId} onChange={(v) => set("embriaoColetaId", v)}>
                   <option value="">— usar doadora/touro manualmente —</option>
                   {embrioes.map((emb) => (
                     <option key={emb.id} value={emb.id}>
                       {`doadora ${emb.fertilizacao.coleta.doadora.nome ?? emb.fertilizacao.coleta.doadora.numero} · touro ${emb.fertilizacao.reprodutor.nome}${emb.classificacao ? ` · ${emb.classificacao.sigla}` : ""}`}
                     </option>
                   ))}
-                </select>
+                </RebSelect>
               </RebField>
             )}
             {usaEstoque && <p style={{ margin: "-4px 0 8px", fontSize: 12, color: "var(--leite)" }}>Doadora e touro vêm do embrião selecionado.</p>}
             <RebField label="Doadora (genética)">
-              <select className="rb-field-select" value={f.doadoraId} disabled={usaEstoque} onChange={(e) => set("doadoraId", e.target.value)}>
+              <RebSelect value={f.doadoraId} disabled={usaEstoque} onChange={(v) => set("doadoraId", v)}>
                 <option value="">— selecionar —</option>
                 {animais.filter((a) => a.id !== animalId).map((a) => (
                   <option key={a.id} value={a.id}>{rotuloAnimal(a.numero, a.nome)}</option>
                 ))}
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Touro / sêmen do embrião"><input value={f.semenTE} disabled={usaEstoque} onChange={(e) => set("semenTE", e.target.value)} placeholder="ex.: Holandês GEN 12" /></RebField>
             <RebField label="Protocolo">
@@ -443,32 +418,48 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           </>;
           })()}
           {tipo === "DIAGNOSTICO" && <>
-            <RebField label="Resultado"><select className="rb-field-select" value={f.resultado} onChange={(e) => set("resultado", e.target.value)}><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></RebField>
-            <RebField label="Parto previsto"><input type="date" value={f.dtPartoPrevista} onChange={(e) => set("dtPartoPrevista", e.target.value)} /></RebField>
+            <RebField label="Resultado"><RebSelect value={f.resultado} onChange={(v) => set("resultado", v)}><option value="positivo">Positivo</option><option value="negativo">Negativo</option></RebSelect></RebField>
+            {f.resultado === "positivo" && (
+              <RebField label="Parto previsto">
+                <input type="date" value={f.dtPartoPrevista} readOnly={Boolean(previsaoPartoAutomatica)} onChange={(e) => set("dtPartoPrevista", e.target.value)} />
+                {carregandoPrevisao
+                  ? <small className="font-sans text-xs not-italic text-ink-3">Calculando pela última cobertura…</small>
+                  : previsaoPartoAutomatica
+                    ? <small className="font-sans text-xs not-italic text-ink-3">Automático: cobertura em {ultimaCobertura} + {gestacaoDias} dias.</small>
+                    : <small className="font-sans text-xs not-italic text-ink-3">Sem cobertura anterior encontrada; informe a data.</small>}
+              </RebField>
+            )}
           </>}
           {tipo === "PARTO" && <>
             <RebField label="Tipo de parto">
-              <select className="rb-field-select" value={f.tipoParto} onChange={(e) => set("tipoParto", e.target.value)}>
+              <RebSelect value={f.tipoParto} onChange={(v) => set("tipoParto", v)}>
                 {TIPOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
             {f.tipoParto === "2" && (
               <RebField label="Auxílio">
-                <select className="rb-field-select" value={f.auxilioParto} onChange={(e) => set("auxilioParto", e.target.value)}>
+                <RebSelect value={f.auxilioParto} onChange={(v) => set("auxilioParto", v)}>
                   {AUXILIOS_PARTO.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
-                </select>
+                </RebSelect>
               </RebField>
             )}
             {f.tipoParto !== "3" && <>
-              <RebField label="Crias vivas"><input type="number" min={0} max={3} value={f.criasVivas} onChange={(e) => set("criasVivas", e.target.value)} /></RebField>
+              <RebField label="Crias vivas"><input type="number" min={0} max={3} value={f.criasVivas} onChange={(e) => alterarCriasVivas(e.target.value)} /></RebField>
               <RebField label="Natimortos"><input type="number" min={0} max={3} value={f.criasNatimortas} onChange={(e) => set("criasNatimortas", e.target.value)} /></RebField>
-              <RebField label="Sexo da cria"><select className="rb-field-select" value={f.sexoCria} onChange={(e) => set("sexoCria", e.target.value)}><option value="F">Fêmea</option><option value="M">Macho</option><option value="FM">Gemelar · fêmea e macho</option><option value="MF">Gemelar · macho e fêmea</option></select></RebField>
+              {Array.from({ length: quantidadeCriasVivas }, (_, indice) => (
+                <RebField key={indice} label={quantidadeCriasVivas === 1 ? "Sexo da cria" : `Sexo da cria ${indice + 1}`}>
+                  <RebSelect value={f.sexoCria?.[indice] ?? "F"} onChange={(v) => alterarSexoCria(indice, v)}>
+                    <option value="F">Fêmea</option>
+                    <option value="M">Macho</option>
+                  </RebSelect>
+                </RebField>
+              ))}
               <RebField label="Destino da cria">
-                <select className="rb-field-select" value={f.criaAcao} onChange={(e) => set("criaAcao", e.target.value)}>
+                <RebSelect value={f.criaAcao} onChange={(v) => set("criaAcao", v)}>
                   <option value="nenhuma">Não cadastrar agora</option>
                   <option value="criar">Cadastrar a cria</option>
                   <option value="vincular">Vincular cria existente</option>
-                </select>
+                </RebSelect>
               </RebField>
               {f.criaAcao === "criar" && (
                 <RebField label="Número da cria*">
@@ -478,12 +469,12 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
               )}
               {f.criaAcao === "vincular" && (
                 <RebField label="Cria existente*">
-                  <select className="rb-field-select" value={f.criaId} onChange={(e) => set("criaId", e.target.value)}>
+                  <RebSelect value={f.criaId} onChange={(v) => set("criaId", v)}>
                     <option value="">— selecionar —</option>
                     {animais.filter((a) => a.id !== animalId && (a.categoria === "BEZERRA" || a.categoria === "BEZERRO")).map((a) => (
                       <option key={a.id} value={a.id}>{rotuloAnimal(a.numero, a.nome)}</option>
                     ))}
-                  </select>
+                  </RebSelect>
                   {Number(f.criasVivas) !== 1 && <small className="font-sans text-xs not-italic text-prejuizo">O vínculo exige exatamente uma cria viva.</small>}
                 </RebField>
               )}
@@ -491,9 +482,9 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           </>}
           {tipo === "SECAGEM" && (
             <RebField label="Motivo">
-              <select className="rb-field-select" value={f.motivoSecagem} onChange={(e) => set("motivoSecagem", e.target.value)}>
+              <RebSelect value={f.motivoSecagem} onChange={(v) => set("motivoSecagem", v)}>
                 {MOTIVOS_SECAGEM.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
           )}
           {tipo === "DESMAME" && (
@@ -503,20 +494,20 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           )}
           {tipo === "EXAME_GINECOLOGICO" && <>
             <RebField label="Resultado oficial">
-              <select className="rb-field-select" value={f.resultadoGinecologicoId} onChange={(e) => set("resultadoGinecologicoId", e.target.value)} disabled={resultadosGinecologicos.loading}>
+              <RebSelect value={f.resultadoGinecologicoId} onChange={(v) => set("resultadoGinecologicoId", v)} disabled={resultadosGinecologicos.loading}>
                 <option value="">{resultadosGinecologicos.loading ? "Carregando catálogo…" : "— selecionar —"}</option>
                 {(resultadosGinecologicos.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.nomeResumido}{r.tipo ? ` · ${r.tipo.toLowerCase()}` : ""}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Achado operacional*">
-              <select className="rb-field-select" value={f.achado} onChange={(e) => set("achado", e.target.value)}>
+              <RebSelect value={f.achado} onChange={(v) => set("achado", v)}>
                 {ACHADOS_GINE.map((a) => <option key={a.v} value={a.v}>{a.label}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Método">
-              <select className="rb-field-select" value={f.metodoExame} onChange={(e) => set("metodoExame", e.target.value)}>
+              <RebSelect value={f.metodoExame} onChange={(v) => set("metodoExame", v)}>
                 {METODOS_EXAME.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
           </>}
         </>}
@@ -531,13 +522,13 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             <RebField label="Dose"><input value={f.dose} onChange={(e) => set("dose", e.target.value)} placeholder="1 bisnaga" /></RebField>
             <RebField label="Carência (h)"><input type="number" min={0} value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
             <RebField label="Lote do produto"><input value={f.loteProduto} onChange={(e) => set("loteProduto", e.target.value)} placeholder="MAST-2231" /></RebField>
-            <RebField label="Baixar do estoque">
-              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => set("estoqueProdutoId", e.target.value)}>
-                <option value="">— não baixar —</option>
+            <RebField label="Produto do estoque*">
+              <RebSelect value={f.estoqueProdutoId} onChange={(id) => { setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
+                <option value="">— selecione —</option>
                 {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
-              </select>
+              </RebSelect>
             </RebField>
-            {f.estoqueProdutoId && <RebField label="Qtd. usada"><input type="number" min={0} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
+            {f.estoqueProdutoId && <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
           </>}
           {tipoSan === "OCORRENCIA" && <>
             <RebField label="Doença*"><input value={f.doenca} onChange={(e) => set("doenca", e.target.value)} placeholder="Mastite clínica" /></RebField>
@@ -545,26 +536,26 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
           </>}
           {tipoSan === "MASTITE" && <>
             <RebField label="Quarto">
-              <select className="rb-field-select" value={f.quarto} onChange={(e) => set("quarto", e.target.value)}>
+              <RebSelect value={f.quarto} onChange={(v) => set("quarto", v)}>
                 {QUARTOS_UBERE.map((q) => <option key={q} value={q}>{q}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Severidade">
-              <select className="rb-field-select" value={f.severidade} onChange={(e) => set("severidade", e.target.value)}>
+              <RebSelect value={f.severidade} onChange={(v) => set("severidade", v)}>
                 {SEVERIDADES_MASTITE.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Resultado do cultivo"><input value={f.resultadoCultivo} onChange={(e) => set("resultadoCultivo", e.target.value)} placeholder="ex.: Staphylococcus aureus" /></RebField>
           </>}
           {tipoSan === "VACINA" && <>
             <RebField label="Produto*"><input value={f.produto} onChange={(e) => set("produto", e.target.value)} /></RebField>
-            <RebField label="Baixar do estoque">
-              <select className="rb-field-select" value={f.estoqueProdutoId} onChange={(e) => set("estoqueProdutoId", e.target.value)}>
-                <option value="">— não baixar —</option>
+            <RebField label="Produto do estoque*">
+              <RebSelect value={f.estoqueProdutoId} onChange={(id) => { setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
+                <option value="">— selecione —</option>
                 {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
-              </select>
+              </RebSelect>
             </RebField>
-            {f.estoqueProdutoId && <RebField label="Qtd. usada"><input type="number" min={0} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
+            {f.estoqueProdutoId && <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
           </>}
         </>}
         <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} /></RebField>

@@ -243,12 +243,15 @@ async function persistirPlanosDeCria(
   return ids;
 }
 
-export async function registrarEvento(
+type AnimalEventoValidado = { id: number; propriedadeId: number | null };
+
+async function validarContextoEvento(
+  cliente: Pick<Prisma.TransactionClient, "animal" | "resultadoExameGinecologico">,
   animalId: number,
   input: CriarEventoInput,
-  propriedadeId: number | null = null,
-): Promise<EventoTimelineDTO & { aviso?: string }> {
-  const animal = await prisma.animal.findFirst({
+  propriedadeId: number | null,
+): Promise<AnimalEventoValidado> {
+  const animal = await cliente.animal.findFirst({
     where: animalNoEscopo(animalId, propriedadeId),
     select: { id: true, propriedadeId: true },
   });
@@ -259,33 +262,37 @@ export async function registrarEvento(
   const doadoraIdInformada = (input as any).doadoraId as number | undefined;
   const embriaoColetaId = input.tipo === "TRANSFERENCIA_EMBRIAO" ? input.embriaoColetaId : undefined;
   if (doadoraIdInformada != null && embriaoColetaId == null) {
-    const doadora = await prisma.animal.findFirst({
+    const doadora = await cliente.animal.findFirst({
       where: animalNoEscopo(doadoraIdInformada, propriedadeId),
       select: { id: true },
     });
     if (!doadora) throw new EventoError("NAO_ENCONTRADO", "doadora não encontrada");
   }
-  const resultadoGinecologicoId = input.tipo === "EXAME_GINECOLOGICO"
-    ? input.resultadoGinecologicoId
-    : undefined;
+  const resultadoGinecologicoId = input.tipo === "EXAME_GINECOLOGICO" ? input.resultadoGinecologicoId : undefined;
   if (resultadoGinecologicoId != null) {
-    const resultado = await prisma.resultadoExameGinecologico.findUnique({
-      where: { id: resultadoGinecologicoId },
-      select: { id: true },
-    });
+    const resultado = await cliente.resultadoExameGinecologico.findUnique({ where: { id: resultadoGinecologicoId }, select: { id: true } });
     if (!resultado) throw new EventoError("NAO_ENCONTRADO", "resultado ginecológico não encontrado");
   }
-  // Evento + baixa de dose + crias + sincronização de lactações + resumo na mesma
-  // transação: se qualquer etapa recusar, nada é gravado — o evento não vaza sem
-  // estoque, genealogia e read-model coerentes.
-  return prisma.$transaction(async (tx) => {
-    let estoqueSemenDoseBaixada = false;
-    let aviso: string | null = null;
-    let doadoraId = doadoraIdInformada;
-    let doadoraNumero: string | undefined;
-    let doadoraNome: string | undefined;
-    let reprodutor = (input as any).reprodutor as string | undefined;
-    const propriedadeEventoId = animal.propriedadeId ?? propriedadeId;
+  return animal;
+}
+
+async function persistirEventoNaTransacao(
+  tx: Tx,
+  animal: AnimalEventoValidado,
+  animalId: number,
+  input: CriarEventoInput,
+  propriedadeId: number | null,
+): Promise<EventoTimelineDTO & { aviso?: string }> {
+  const doadoraIdInformada = (input as any).doadoraId as number | undefined;
+  const embriaoColetaId = input.tipo === "TRANSFERENCIA_EMBRIAO" ? input.embriaoColetaId : undefined;
+  const resultadoGinecologicoId = input.tipo === "EXAME_GINECOLOGICO" ? input.resultadoGinecologicoId : undefined;
+  let estoqueSemenDoseBaixada = false;
+  let aviso: string | null = null;
+  let doadoraId = doadoraIdInformada;
+  let doadoraNumero: string | undefined;
+  let doadoraNome: string | undefined;
+  let reprodutor = (input as any).reprodutor as string | undefined;
+  const propriedadeEventoId = animal.propriedadeId ?? propriedadeId;
     if (embriaoColetaId != null) {
       const embriao = await tx.embriaoColeta.findFirst({
         where: { id: embriaoColetaId, ...(propriedadeEventoId != null ? { propriedadeId: propriedadeEventoId } : {}) },
@@ -382,8 +389,28 @@ export async function registrarEvento(
     if (input.tipo === "TRANSFERENCIA_EMBRIAO") await tx.animal.update({ where: { id: animalId }, data: { ehReceptora: true } });
     await recomputarAnimal(tx, animalId, { tipo: "CRIACAO", evento: { id: e.id, tipo: e.tipo, data: iso(e.data)!, motivoSecagem: e.motivoSecagem, tipoParto: e.tipoParto } });
     const timeline = toTimeline(e);
-    return aviso ? { ...timeline, aviso } : timeline;
-  });
+  return aviso ? { ...timeline, aviso } : timeline;
+}
+
+export async function registrarEventoNaTransacao(
+  tx: Tx,
+  animalId: number,
+  input: CriarEventoInput,
+  propriedadeId: number | null = null,
+): Promise<EventoTimelineDTO & { aviso?: string }> {
+  const animal = await validarContextoEvento(tx, animalId, input, propriedadeId);
+  return persistirEventoNaTransacao(tx, animal, animalId, input, propriedadeId);
+}
+
+export async function registrarEvento(
+  animalId: number,
+  input: CriarEventoInput,
+  propriedadeId: number | null = null,
+): Promise<EventoTimelineDTO & { aviso?: string }> {
+  // Preserva as validações pré-transação do endpoint individual. Folhas usam a
+  // variante com `tx`, para que várias linhas compartilhem a mesma atomicidade.
+  const animal = await validarContextoEvento(prisma, animalId, input, propriedadeId);
+  return prisma.$transaction((tx) => persistirEventoNaTransacao(tx, animal, animalId, input, propriedadeId));
 }
 
 export async function excluirEvento(eventoId: number, propriedadeId: number | null = null): Promise<void> {

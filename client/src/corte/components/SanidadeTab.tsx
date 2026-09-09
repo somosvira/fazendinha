@@ -11,7 +11,7 @@ import type { ResumoLote, Lote } from "../types";
 
 export function SanidadeTab({ onRegistrarManejo }: { onRegistrarManejo: (lote: Lote) => void }) {
   const { data, loading } = useLotes({ estado: "ATIVO" });
-  if (loading) return <RebMain><RebHeader eyebrow="Corte" title="Sanidade" /><Loader /></RebMain>;
+  if (loading) return <RebMain><RebHeader eyebrow="Pecuária · Lotes coletivos" title="Sanidade" /><Loader /></RebMain>;
   const resumos: ResumoLote[] = data.map((l) => l.resumo ?? ({ loteId: l.id } as ResumoLote));
   const abrir = (id: string) => { const l = data.find((x) => x.id === id); if (l) onRegistrarManejo(l); };
 

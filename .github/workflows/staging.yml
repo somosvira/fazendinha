@@ -1,23 +1,12 @@
-name: Staging
+name: CI
 
-# CI (build + testes) como gate; deploy pra staging só depois que o CI passa.
-# Deploy roda em push na `main` (ou `staging`) — não em PR. PRs rodam só o CI.
-#
-# Setup único (uma vez):
-#   1. Neon: DB de staging (URL pooled + direct).
-#   2. Render: serviço da API com autoDeploy OFF; copie o "Deploy Hook" URL.
-#      Envs no Render: DATABASE_URL, DIRECT_URL, JWT_SECRET, SHARED_ACCESS_TOKEN,
-#      OPENAI_API_KEY, CORS_ORIGIN, DATABASE_URL_READONLY (ver DEPLOY.md).
-#      O start:prod roda `prisma db push` → o schema do banco sincroniza sozinho.
-#   3. Cloudflare Pages: projeto `rionovo-staging` (deploy é feito aqui via wrangler).
-#   4. GitHub → Settings → Environments → "staging" → Secrets:
-#        RENDER_STAGING_DEPLOY_HOOK  (dispara o deploy da API no Render)
-#        CLOUDFLARE_API_TOKEN        (template "Edit Cloudflare Pages")
-#        CLOUDFLARE_ACCOUNT_ID       (ID da conta CF)
+# Build e testes são o gate da `main`. Os deploys são feitos pelas integrações
+# Git nativas de cada provedor: Cloudflare Pages para o frontend e Render para
+# a API. Isso evita credenciais e deploy hooks de infra antiga no GitHub Actions.
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -49,39 +38,3 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm --filter rionovo-server test
-
-  deploy:
-    name: deploy staging
-    needs: ci
-    # só em push (main/staging) ou disparo manual — nunca em PR
-    if: ${{ github.event_name != 'pull_request' }}
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build client
-        run: pnpm --filter rionovo-client build
-
-      - name: Deploy client → Cloudflare Pages
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler pages deploy client/dist --project-name=rionovo-staging --branch=main --commit-dirty=true
-
-      - name: Deploy API → Render (dispara build + start:prod, que roda `db push`)
-        env:
-          HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$HOOK" ]; then
-            echo "::error::RENDER_STAGING_DEPLOY_HOOK não configurado no environment 'staging'."
-            exit 1
-          fi
-          curl -fsSL -X POST "$HOOK"
-          echo "Deploy da API disparado no Render (o start:prod sincroniza o banco via db push)."

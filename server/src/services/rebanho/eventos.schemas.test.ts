@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { criarEventoSchema } from "./eventos.schemas.js";
 
 describe("criarEventoSchema", () => {
-  it("DIAGNOSTICO exige resultado válido", () => {
-    expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "positivo" }).success).toBe(true);
+  it("DIAGNOSTICO exige resultado válido e aceita método estruturado", () => {
+    expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "positivo", metodo: "Ultrassom" }).success).toBe(true);
     expect(criarEventoSchema.safeParse({ tipo: "DIAGNOSTICO", data: "2026-05-28", resultado: "talvez" }).success).toBe(false);
   });
   it("INSEMINACAO exige reprodutor", () => {
@@ -68,6 +68,16 @@ describe("criarEventoSchema", () => {
     expect(criarEventoSchema.safeParse({
       tipo: "PARTO", data: "2026-07-26", tipoParto: "4", numCrias: 1,
       criasVivas: 0, criasNatimortas: 1, criarCria: true, criaNumero: "B-101", sexoCria: "F",
+    }).success).toBe(false);
+  });
+  it("PARTO aceita um sexo por cria, até três nascimentos", () => {
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 3, criasVivas: 3,
+      criarCria: true, criaNumero: "T-30", sexoCria: "FMF",
+    }).success).toBe(true);
+    expect(criarEventoSchema.safeParse({
+      tipo: "PARTO", data: "2026-07-26", numCrias: 3, criasVivas: 3,
+      criarCria: true, criaNumero: "T-30", sexoCria: "FMFM",
     }).success).toBe(false);
   });
   it("EXAME_GINECOLOGICO aceita vínculo opcional com resultado oficial", () => {

@@ -17,37 +17,24 @@ describe("camposTransferenciaEmbriao", () => {
 });
 
 describe("camposInseminacao", () => {
-  it("inclui o lote selecionado como número", () => {
+  it("envia raça/grau de sangue e protocolo", () => {
     expect(camposInseminacao({
       reprodutor: "Holandês 8/8",
       protocolo: "IATF 11 dias",
-      estoqueSemenId: "42",
     })).toEqual({
       reprodutor: "Holandês 8/8",
       protocolo: "IATF 11 dias",
-      estoqueSemenId: 42,
     });
   });
 
-  it("omite o lote vazio e mantém reprodutor e protocolo", () => {
+  it("mantém o reprodutor quando o protocolo está vazio", () => {
     expect(camposInseminacao({
       reprodutor: "Gir 3/4 + Holandês 1/4",
       protocolo: undefined,
-      estoqueSemenId: "",
     })).toEqual({
       reprodutor: "Gir 3/4 + Holandês 1/4",
       protocolo: undefined,
     });
-  });
-
-  it("ignora lote não inteiro positivo em vez de mandar payload inválido", () => {
-    for (const invalido of ["abc", "1.5", "-2", "0"]) {
-      expect(camposInseminacao({
-        reprodutor: "Holandês 8/8",
-        protocolo: "Ovsynch",
-        estoqueSemenId: invalido,
-      })).toEqual({ reprodutor: "Holandês 8/8", protocolo: "Ovsynch" });
-    }
   });
 });
 
@@ -87,6 +74,20 @@ describe("camposParto", () => {
       criaNumero: "",
       criaId: "77",
     })).toMatchObject({ criarCria: undefined, criaId: 77, sexoCria: "M" });
+  });
+
+  it("preserva um sexo por cria quando há três nascimentos vivos", () => {
+    expect(camposParto({
+      tipoParto: "1",
+      auxilioParto: "1",
+      numCrias: "3",
+      criasVivas: "3",
+      criasNatimortas: "0",
+      sexoCria: "FMF",
+      criaAcao: "criar",
+      criaNumero: "T-10",
+      criaId: "",
+    })).toMatchObject({ numCrias: 3, criasVivas: 3, sexoCria: "FMF" });
   });
 
   it("aborto zera contagens e não envia cadastro nem vínculo", () => {

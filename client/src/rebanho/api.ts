@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import type { Animal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
+import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
 export interface AnimalForm {
   numero: string; nome?: string; sexo: "F" | "M"; categoria: Animal["categoria"];
+  finalidade?: FinalidadeAnimal;
   racaId?: number; grauSangue?: string; dataNascimento?: string; dataEntrada: string;
   brincoEletronico?: string; sisbov?: string; maeId?: number; paiNome?: string; grupoId?: number; setor?: string;
 }
@@ -30,7 +31,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // monta a query string a partir de um objeto (ignora undefined/null/"") — ?a=1&b=2 ou ""
-function qs(f?: Record<string, string | number | boolean | undefined | null>): string {
+function qs(f?: object): string {
   if (!f) return "";
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(f)) if (v != null && v !== "") p.set(k, String(v));
@@ -38,26 +39,26 @@ function qs(f?: Record<string, string | number | boolean | undefined | null>): s
   return s ? `?${s}` : "";
 }
 
-export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string }) =>
+export const listarAnimais = (f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) =>
   req<Animal[]>(`/rebanho/animais${qs(f)}`);
 export const obterAnimal = (id: string) => req<Animal>(`/rebanho/animais/${id}`);
 export const criarAnimal = (input: AnimalForm) => req<Animal>(`/rebanho/animais`, { method: "POST", body: JSON.stringify(input) });
 export const editarAnimal = (id: string, input: Partial<AnimalForm>) => req<Animal>(`/rebanho/animais/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const darBaixa = (id: string, input: { motivo: string; data?: string }) => req<Animal>(`/rebanho/animais/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
-// Alteração coletiva: aplica grupo e/ou setor a vários animais de uma vez (grava movimentações).
-export const alterarAnimaisColetivo = (animalIds: number[], patch: { grupoId?: number | null; setor?: string | null }) =>
+// Alteração coletiva: aplica grupo, localização e/ou finalidade a vários animais.
+export const alterarAnimaisColetivo = (animalIds: number[], patch: { grupoId?: number | null; setor?: string | null; finalidade?: FinalidadeAnimal }) =>
   req<{ atualizados: number; movimentacoes: number }>(`/rebanho/animais/bulk`, { method: "PATCH", body: JSON.stringify({ animalIds, ...patch }) });
 
 // ── Filtros de animais salvos (nomeados) ─────────────────────────────────────
-export interface FiltroCriterios { status: "ATIVO" | "BAIXADO" | "TODOS"; grupoId?: number; setor?: string; categoria?: string; q?: string }
+export interface FiltroCriterios { status: "ATIVO" | "BAIXADO" | "TODOS"; grupoId?: number; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal; q?: string }
 export interface FiltroAnimalDTO {
   id: number; nome: string; status: string;
-  grupoId: number | null; setor: string | null; categoria: string | null; busca: string | null;
+  grupoId: number | null; setor: string | null; categoria: string | null; finalidade: FinalidadeAnimal | null; busca: string | null;
   criterios: FiltroCriterios;
 }
 export interface FiltroAnimalInput {
   nome: string; status?: "ATIVO" | "BAIXADO" | "TODOS";
-  grupoId?: number | null; setor?: string | null; categoria?: string | null; busca?: string | null;
+  grupoId?: number | null; setor?: string | null; categoria?: string | null; finalidade?: FinalidadeAnimal | null; busca?: string | null;
 }
 export const listarFiltrosAnimais = () => req<FiltroAnimalDTO[]>(`/rebanho/filtros`);
 export const criarFiltroAnimal = (body: FiltroAnimalInput) => req<FiltroAnimalDTO>(`/rebanho/filtros`, { method: "POST", body: JSON.stringify(body) });
@@ -73,6 +74,14 @@ export function useFiltrosAnimais() {
   return { data, loading, recarregar };
 }
 export const listarGrupos = () => req<GrupoDTO[]>(`/rebanho/grupos`);
+export function useGrupos() {
+  const [data, setData] = useState<GrupoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarGrupos().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}
 export const listarRacas = () => req<RacaDTO[]>(`/rebanho/racas`);
 export const listarSetores = () => req<string[]>(`/rebanho/setores`);
 
@@ -85,7 +94,7 @@ export function useSetores() {
   return { data, loading, erro, recarregar };
 }
 
-export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string }) {
+export function useAnimais(f?: { status?: string; grupoId?: number; q?: string; setor?: string; categoria?: string; finalidade?: FinalidadeAnimal }) {
   const [data, setData] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -108,7 +117,7 @@ export interface EventoPayload {
   reprodutor?: string; protocolo?: string; estoqueSemenId?: number;
   resultado?: "positivo" | "negativo" | AchadoGinecologico; dtPartoPrevista?: string;
   numCrias?: number; criasVivas?: number; criasNatimortas?: number;
-  sexoCria?: "F" | "M" | "FM" | "MF"; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
+  sexoCria?: string; tipoParto?: string; auxilioParto?: string; motivoSecagem?: string;
   criarCria?: boolean; criaNumero?: string; criaId?: number;
   doadoraId?: number; // TE: animal doador da genética
   embriaoColetaId?: number; // TE: embrião interno do estoque FIV (deriva doadora/touro)
@@ -217,6 +226,8 @@ export interface EventoSanidadePayload {
 }
 export const montarTimeline = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/timeline`);
 export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/animais/${id}/sanidade`, { method: "POST", body: JSON.stringify(p) });
+export const editarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/sanidade/${id}`, { method: "PUT", body: JSON.stringify(p) });
+export const excluirEventoSanidade = (id: string) => req<{ ok: true }>(`/rebanho/sanidade/${id}`, { method: "DELETE" });
 
 export function useTimeline(id: string | null) {
   const [data, setData] = useState<EventoTimeline[]>([]);
@@ -1585,3 +1596,153 @@ export const obterRelatorioReproducao = (de?: string, ate?: string) => {
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return req<RelatorioReproducaoDTO>(`/rebanho/reproducao/relatorio${suffix}`);
 };
+
+// ─── Relatórios configuráveis do rebanho ───────────────────────────────────
+export type IdTemplateRelatorioRebanho = "novilhas-aptas" | "ia-periodo" | "cobertura-periodo" | "te-periodo" | "dg-periodo" | "gestantes-atual" | "partos-previstos" | "partos-periodo" | "secagens-periodo" | "controle-leiteiro-lote" | "pesagem-corporal-lote" | "vacinacao-lote";
+export type TipoEventoRelatorioRebanho = EventoPayload["tipo"];
+export interface TemplateRelatorioRebanhoDTO {
+  id: IdTemplateRelatorioRebanho;
+  titulo: string;
+  descricao: string;
+  fase: "Serviços" | "Gestação" | "Parto e secagem" | "Manejo em lote";
+  granularidade: "evento" | "animal";
+  filtrosEspecificos: readonly ("reprodutor" | "protocolo" | "resultado")[];
+  colunas?: ColunaRelatorioRebanhoDTO[];
+}
+export interface FiltroColunaRelatorioRebanho {
+  chave: string;
+  tipo: "texto" | "numero" | "data";
+  valor?: string;
+  minimo?: string | number;
+  maximo?: string | number;
+}
+export interface FiltrosRelatorioRebanho {
+  templateId: IdTemplateRelatorioRebanho;
+  dataInicio?: string;
+  dataFim?: string;
+  status: "ATIVO" | "BAIXADO" | "TODOS";
+  grupoId?: number;
+  setor?: string;
+  categoria?: string;
+  animal?: string;
+  reprodutor?: string;
+  protocolo?: string;
+  resultado?: "positivo" | "negativo";
+  filtrosColunas?: string;
+}
+export interface ColunaRelatorioRebanhoDTO { chave: string; rotulo: string; tipo: "texto" | "numero" | "data" }
+export interface LinhaRelatorioRebanhoDTO {
+  animalId: number; numero: string; nome: string | null; categoria: string;
+  grupo: string | null; setor: string | null; eventoId: number | null; data: string | null;
+  celulas: (string | number | null)[];
+}
+export interface ResultadoRelatorioRebanhoDTO {
+  templateId: IdTemplateRelatorioRebanho;
+  titulo: string;
+  descricao: string;
+  granularidade: "evento" | "animal";
+  colunas: ColunaRelatorioRebanhoDTO[];
+  acao: { tipoEvento: TipoEventoRelatorioRebanho; rotulo: string } | null;
+  linhas: LinhaRelatorioRebanhoDTO[];
+  total: number;
+  truncado: boolean;
+  meta: { geradoEm: string; periodo: { inicio: string | null; fim: string | null }; propriedadeId: number | null };
+}
+
+export const listarTemplatesRelatorioRebanho = () => req<TemplateRelatorioRebanhoDTO[]>(`/rebanho/relatorios/templates`);
+export const gerarRelatorioRebanho = (filtros: FiltrosRelatorioRebanho, signal?: AbortSignal) =>
+  req<ResultadoRelatorioRebanhoDTO>(`/rebanho/relatorios${qs(filtros)}`, { signal });
+
+export function useRelatorioRebanho(filtros: FiltrosRelatorioRebanho | null) {
+  const [data, setData] = useState<ResultadoRelatorioRebanhoDTO | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
+  const key = filtros ? JSON.stringify(filtros) : "";
+  useEffect(() => {
+    if (!filtros) { setData(null); setLoading(false); setErro(null); return; }
+    const ctrl = new AbortController();
+    setLoading(true); setErro(null);
+    gerarRelatorioRebanho(filtros, ctrl.signal)
+      .then(setData)
+      .catch((e) => { if (e?.name !== "AbortError") setErro(e instanceof Error ? e.message : "Falha ao gerar relatório."); })
+      .finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, tentativa]);
+  return { data, loading, erro, recarregar };
+}
+
+// ─── Formulários de campo — modelos, folhas e lançamento em grade ───────────
+export type ChaveCampoFormulario = "resultado_dg" | "data_evento" | "metodo_dg" | "dt_parto_prevista" | "tipo_parto" | "auxilio_parto" | "num_crias" | "crias_vivas" | "crias_natimortas" | "sexo_cria" | "observacao" | "peso_1" | "peso_2" | "peso_3" | "peso_total" | "peso_corporal" | "vacina";
+export type ChaveColunaSistemaFormulario = "animal" | "categoria" | "grupo_setor" | "data" | "idadeMeses" | "ultimoPeso" | "criterioAptidao" | "reprodutor" | "protocolo" | "doadora" | "resultado" | "partoPrevisto" | "diasGestacao" | "ultimaTentativa" | "previsaoSecagem" | "tipoParto" | "auxilio" | "crias" | "vivas" | "natimortas" | "sexo" | "motivo" | "observacao";
+export interface ConfigFormularioCampo { colunasSistema: ChaveColunaSistemaFormulario[]; camposPapel: ChaveCampoFormulario[] }
+export interface CampoFormularioCampoDTO {
+  chave: ChaveCampoFormulario;
+  rotulo: string;
+  tipoUi: "opcoes" | "data" | "texto" | "numero";
+  obrigatorio: boolean;
+  eventoAlvo: TipoEventoRelatorioRebanho | "CONTROLE_LEITEIRO" | "PESAGEM_CORPORAL" | "VACINA";
+  opcoes?: readonly { valor: string; rotulo: string }[];
+}
+export interface ModeloFormularioCampoDTO {
+  id: number; nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo;
+  propriedadeId: number | null; createdAt: string; updatedAt: string;
+}
+export type StatusFolhaCampo = "RASCUNHO" | "EM_CAMPO" | "AGUARDANDO_LANCAMENTO" | "CONCLUIDA" | "CANCELADA";
+export type StatusLinhaFolha = "PENDENTE" | "PREENCHIDA" | "NAO_REALIZADO" | "REGISTRADA";
+export interface SnapshotLinhaFolhaCampo {
+  numero: string; nome: string | null; categoria: string; grupo: string | null; setor: string | null; data: string | null;
+  valores: Record<string, string | number | null>;
+}
+export interface LinhaFolhaCampoDTO {
+  id: number; ordem: number; animalId: number; eventoOrigemId: number | null; snapshot: SnapshotLinhaFolhaCampo;
+  status: StatusLinhaFolha; respostas: Record<string, unknown> | null; motivoNaoRealizado: string | null; eventoGeradoId: number | null; resultadoTipo?: string | null; resultadoId?: number | null;
+}
+export interface FolhaCampoDTO {
+  id: number; nome: string; templateId: IdTemplateRelatorioRebanho; status: StatusFolhaCampo;
+  filtros: Record<string, unknown>; config: ConfigFormularioCampo; modeloId: number | null;
+  totalLinhas: number; linhasProntas: number; propriedadeId: number | null; geradoEm: string; concluidoEm: string | null;
+  linhas: LinhaFolhaCampoDTO[];
+}
+export type AtualizacaoLinhaFolha =
+  | { id: number; status: "PENDENTE"; respostas?: Record<string, unknown> }
+  | { id: number; status: "PREENCHIDA"; respostas: Record<string, unknown> }
+  | { id: number; status: "NAO_REALIZADO"; motivoNaoRealizado: string };
+
+export const listarCamposFormulario = (templateId: IdTemplateRelatorioRebanho) =>
+  req<CampoFormularioCampoDTO[]>(`/rebanho/formularios/campos${qs({ templateId })}`);
+export const listarModelosFormularioCampo = (templateId?: IdTemplateRelatorioRebanho) =>
+  req<ModeloFormularioCampoDTO[]>(`/rebanho/formularios/modelos${qs({ templateId })}`);
+export const criarModeloFormularioCampo = (body: { nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo }) =>
+  req<ModeloFormularioCampoDTO>(`/rebanho/formularios/modelos`, { method: "POST", body: JSON.stringify(body) });
+export const editarModeloFormularioCampo = (id: number, body: Partial<{ nome: string; templateId: IdTemplateRelatorioRebanho; config: ConfigFormularioCampo }>) =>
+  req<ModeloFormularioCampoDTO>(`/rebanho/formularios/modelos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const excluirModeloFormularioCampo = (id: number) =>
+  req<{ ok: true }>(`/rebanho/formularios/modelos/${id}`, { method: "DELETE" });
+export const listarFolhasCampo = (status?: StatusFolhaCampo) =>
+  req<FolhaCampoDTO[]>(`/rebanho/formularios/folhas${qs({ status })}`);
+export const obterFolhaCampo = (id: number) => req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}`);
+export const criarFolhaCampo = (body: { nome: string; filtros: FiltrosRelatorioRebanho; config: ConfigFormularioCampo; modeloId?: number }) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas`, { method: "POST", body: JSON.stringify(body) });
+export const salvarLinhasFolhaCampo = (id: number, linhas: AtualizacaoLinhaFolha[]) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/linhas`, { method: "PATCH", body: JSON.stringify({ linhas }) });
+export const concluirFolhaCampo = (id: number) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/concluir`, { method: "POST" });
+export const cancelarFolhaCampo = (id: number) =>
+  req<FolhaCampoDTO>(`/rebanho/formularios/folhas/${id}/cancelar`, { method: "POST" });
+
+export function useFolhasCampo(abertas = true) {
+  const [data, setData] = useState<FolhaCampoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setLoading(true); setErro(null);
+    listarFolhasCampo().then((folhas) => setData(abertas ? folhas.filter((f) => !["CONCLUIDA", "CANCELADA"].includes(f.status)) : folhas))
+      .catch((e) => setErro(e instanceof Error ? e.message : "Falha ao listar folhas."))
+      .finally(() => setLoading(false));
+  }, [abertas]);
+  useEffect(() => { recarregar(); }, [recarregar]);
+  return { data, loading, erro, recarregar };
+}

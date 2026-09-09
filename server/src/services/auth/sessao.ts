@@ -1,6 +1,7 @@
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
 import { gerarToken, hashToken, tokenExpirado } from "./token.js";
+import { normalizarAreas } from "./papeis.js";
 
 export type UsuarioContexto = {
   id: number;
@@ -8,6 +9,7 @@ export type UsuarioContexto = {
   email: string;
   papel: string;
   abas: string[];
+  areas: string[];
   flags: string[];
   status: string;
   dono: boolean;
@@ -38,7 +40,7 @@ export async function resolverSessao(rawToken: string): Promise<UsuarioContexto 
   await prisma.sessao.update({ where: { id: s.id }, data: { ultimoUso: agora, expiraEm: expiraSessao(agora) } });
   await prisma.usuario.update({ where: { id: s.usuarioId }, data: { ultimoAcesso: agora } });
   const u = s.usuario;
-  return { id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, flags: u.flags, status: u.status, dono: u.dono };
+  return { id: u.id, nome: u.nome, email: u.email, papel: u.papel, abas: u.abas, areas: normalizarAreas(u.areas), flags: u.flags, status: u.status, dono: u.dono };
 }
 
 export async function revogarSessao(rawToken: string): Promise<void> {

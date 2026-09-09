@@ -36,7 +36,7 @@ export function CustoTab() {
 
   return (
     <RebMain>
-      <RebHeader eyebrow="Corte · custo de produção" title="Custo de produção" />
+      <RebHeader eyebrow="Pecuária · lotes coletivos" title="Custo de produção" />
 
       {erro ? (
         <p className="text-sm text-prejuizo">Não foi possível carregar o custo: {erro}</p>
@@ -50,7 +50,7 @@ export function CustoTab() {
               <div className={RB_K_VAL} style={{ fontSize: 30, color: "var(--cafe)" }}>{moneyN(data.custoArroba)}</div>
               <div className={RB_K_D}>{data.custoArroba == null ? "sem @ produzida no período" : "custeio ÷ @ produzidas"}</div>
             </div>
-            <RebKpi lab="Custo / ha" val={moneyN(data.custoHa)} valClassName="text-[22px]" d={`${data.periodoMeses} meses · Atividade Corte`} />
+            <RebKpi lab="Custo / ha" val={moneyN(data.custoHa)} valClassName="text-[22px]" d={`${data.periodoMeses} meses · lotes coletivos`} />
             <RebKpi lab="Custeio total" val={moneyN(data.custeioTotal)} valClassName="text-[22px]" d={`últimos ${data.periodoMeses} meses`} />
             <RebKpi lab="@ produzidas" val={<>{data.arrobasProduzidas.toLocaleString("pt-BR")}<u>@</u></>} d="vendidas + ganho de peso estoque" />
           </RebKpiStrip>
@@ -60,7 +60,7 @@ export function CustoTab() {
             <thead><tr><th>Categoria</th><th style={{ width: "45%" }}>Participação</th><th>Valor</th><th>%</th></tr></thead>
             <tbody>
               {data.breakdown.length === 0 && (
-                <tr><td colSpan={4} className="text-sm text-ink-3">Nenhum custo da Atividade Corte lançado no período.</td></tr>
+                <tr><td colSpan={4} className="text-sm text-ink-3">Nenhum custo dos lotes coletivos lançado no período.</td></tr>
               )}
               {data.breakdown.map((l) => (
                 <tr key={l.categoria}>

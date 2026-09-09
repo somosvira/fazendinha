@@ -1,13 +1,29 @@
 # Deploy — Rio Novo
 
-Stack: **Cloudflare Pages** (frontend estático) + **Render** (backend Hono) + **Neon** (Postgres, já existente).
+Stack: **Cloudflare Pages** (frontend estático + Worker de proxy) + **Render** (backend Hono, serviço `terrano-api`) + **Neon** (Postgres, já existente).
 
 Os arquivos de config já estão no repo:
 
-- `render.yaml` — blueprint do serviço web no Render.
-- `client/public/_redirects` — SPA fallback + reverse proxy `/api/*` → Render.
-- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback para `*` se não setada).
-- `server/package.json` — script `start:prod` (sem `--env-file`, rodando `prisma migrate deploy` antes do node).
+- `render.yaml` — blueprint do serviço web `terrano-api` no Render (branch `main`, `autoDeployTrigger: checksPass`).
+- `client/public/_worker.js` — Worker do CF Pages (modo avançado) que faz o proxy `/api/*` → Render, lendo a env `API_ORIGIN`.
+- `client/public/_redirects` — **só** o SPA fallback (`/* → /index.html`). Não faz mais proxy.
+- `.github/workflows/staging.yml` — CI (build + testes). É o gate da `main`; não faz deploy.
+- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback `*` se não setada); no boot roda os backfills idempotentes (`garantirFundacaoPropriedade`, `garantirDonoBootstrap`, etc.).
+- `server/src/env.ts` — validação Zod das envs (fonte de verdade da tabela abaixo).
+- `server/package.json` — `start:prod` é **só** `node dist/index.js`. Nenhum sync de schema roda no start (ver §1.4).
+
+---
+
+## 0. CI (GitHub Actions)
+
+`.github/workflows/staging.yml` roda em `push` e `pull_request` para `main` (e manual via `workflow_dispatch`), job único `build + test`:
+
+1. `pnpm install --frozen-lockfile` (Node 20, pnpm via `packageManager` do `package.json`).
+2. `pnpm --filter rionovo-server exec prisma generate` — o Prisma Client é necessário para o `tsc`; não conecta ao banco.
+3. `pnpm -r run build` — server (`tsc`) e client (`tsc -b && vite build`).
+4. `pnpm --filter rionovo-server test` — Vitest. Os testes são unitários, mas importam módulos que passam por `env.ts`, que aborta sem `DATABASE_URL`. O workflow injeta uma URL **dummy** (`postgresql://ci:ci@localhost:5432/ci`) só para a validação passar — nada é escrito em banco nenhum.
+
+O CI **não** deploya. Os deploys são feitos pelas integrações Git nativas: Render (`autoDeployTrigger: checksPass` → só deploya a `main` depois do CI verde) e Cloudflare Pages (build a cada push). Não há credenciais de infra no GitHub Actions.
 
 ---
 
@@ -16,100 +32,153 @@ Os arquivos de config já estão no repo:
 ### 1.1. Conectar o repo
 
 1. Em https://render.com → **New** → **Blueprint**.
-2. Conecte sua conta GitHub. Como o repo é do Felps, na hora de instalar o GitHub App escolha **"Only select repositories"** e marque só o `fazendinha`. Se o repo estiver numa org e ela bloquear third-party apps, o Felps precisa aprovar uma vez (notificação aparece pra ele em github.com/settings/installations).
-3. Aponte para a branch que você quer servir (`Homolog` ou `main`).
-4. Render detecta o `render.yaml` e propõe criar o service `rionovo-api`.
+2. Conecte a conta GitHub. Na instalação do GitHub App escolha **"Only select repositories"** e marque só o `fazendinha`. Se o repo estiver numa org que bloqueia third-party apps, o dono da org precisa aprovar uma vez (github.com/settings/installations).
+3. Render detecta o `render.yaml` e propõe criar o service **`terrano-api`** apontado para a branch `main`.
 
 ### 1.2. Setar envs (modal que aparece no Apply)
 
-| Env             | Valor                                                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`  | URL **pooled** do Neon (`?sslmode=require`). Mesma que em `server/.env`.                                                |
-| `DIRECT_URL`    | URL **direct** (não-pooled: mesma sem `-pooler`). **Necessária** — o `db push` da partida usa ela (o schema tem `directUrl`). |
-| `JWT_SECRET`    | String aleatória forte (`openssl rand -hex 32`). **Não** reusar o de dev.                                               |
-| `CORS_ORIGIN`   | Deixe vazio agora (preenchemos depois quando soubermos a URL da CF Pages). Sem ela o CORS fica liberado pra qualquer origem. |
-| `OPENAI_API_KEY` | Chave da OpenAI. Sem ela: chat/bot desligado (503) e a IA (rebanho/plantio/corte) roda em modo demo. |
-| `DATABASE_URL_READONLY` | (opcional) Role somente-leitura do Neon p/ o escape-hatch de SQL do bot. Sem ela, o SQL livre fica off (ferramentas curadas seguem ok). |
+Todas são validadas por `server/src/env.ts`; se algo obrigatório faltar o processo aborta no boot com `[env] configuração inválida`.
+
+| Env | Valor |
+| --- | --- |
+| `DATABASE_URL` | **Obrigatória.** URL **pooled** do Neon (`-pooler` no host, `?sslmode=require&channel_binding=require`). Runtime usa esta. |
+| `DIRECT_URL` | URL **direct** do Neon (mesma sem `-pooler`). O `schema.prisma` declara `directUrl = env("DIRECT_URL")`, então os comandos `prisma *` exigem que ela exista. Reservada para sync de schema controlado (§1.4). Se não tiver a direct à mão, pode apontar para a pooled — `migrate deploy` funciona via pooler. |
+| `NODE_ENV` | `production` (já vem do `render.yaml`). Em produção o boot **avisa** se `CORS_ORIGIN` ou `SHARED_ACCESS_TOKEN` estiverem vazios. |
+| `JWT_SECRET` | String aleatória forte (`openssl rand -hex 32`, ≥ 8 chars). **Não** reusar o de dev. |
+| `CORS_ORIGIN` | CSV de origens permitidas. Deixe vazio na primeira subida (libera tudo) e preencha depois com a URL do CF Pages (§2.4). |
+| `AUTH_BOOTSTRAP_EMAIL` | E-mail do dono. **Só tem efeito no primeiro boot com a tabela `Usuario` vazia** (ver §1.5). Pode esvaziar depois que o dono foi criado. |
+| `AUTH_BOOTSTRAP_NOME` | (opcional) Nome do dono. Default `Proprietário`. |
+| `APP_BASE_URL` | Base absoluta para montar os links de convite/reset (ex.: `https://rionovo.pages.dev`). Vazio → o link logado é relativo (`/convite/<token>`) e você prefixa o domínio na mão. |
+| `AUTH_SESSAO_DIAS` | (opcional) Validade da sessão em dias (sliding). Default 30. |
+| `SHARED_ACCESS_TOKEN` | (opcional, ≥ 16 chars) **Ponte de transição**: se setado, este token vale como acesso de dono via `Authorization: Bearer`. Não é sistema de usuários — as contas reais vivem em `Usuario`/`Sessao`. Útil para o smoke test e para o piloto; remover quando as contas estiverem de pé. |
+| `OPENAI_API_KEY` (+ `OPENAI_MODEL`) | Chave da OpenAI. Sem ela: chat/bot desligado (503) e a IA dos módulos (rebanho/plantio/corte) roda em modo demo. Default do modelo: `gpt-4o`. |
+| `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET` | (opcionais) Canal Meta Cloud API. Os quatro são necessários para o webhook `/api/whatsapp/*` funcionar. |
+| `STORAGE_DRIVER` | `local` (default; grava em `LOCAL_STORAGE_DIR`, `.uploads/`) ou `r2`. **No Render free o disco é efêmero** — anexos em `local` somem a cada deploy. Em produção use `r2`. |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NOTAS` | Obrigatórias **quando** `STORAGE_DRIVER=r2` (validado por `superRefine`). |
+| `LOCAL_DOWNLOAD_SECRET` | (≥ 16 chars) Segredo HMAC que assina as URLs de download no modo `local`. Tem default de dev — trocar em produção se usar `local`. |
+| `OCR_ENABLED` | `true`/`false`. Tesseract baixa ~70MB de dados de português no primeiro uso; ligue só se a extração de notas for usada. |
 | `DASHBOARD_MESES_QUEIMA` | (opcional) Nº de meses na média da queima do fôlego. Default 6. |
 
-### 1.3. Apply
+> `DATABASE_URL_READONLY` **não existe mais** no código — o bot consulta via motor estruturado (`server/src/services/consulta/`), sem SQL gerado pelo LLM. Se ainda estiver no dashboard do Render, pode apagar.
 
-Render roda:
+### 1.3. Apply — o que o Render roda
+
+Build (`buildCommand` do `render.yaml`):
 
 ```
 corepack enable
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile        # o postinstall do server já roda prisma generate
 pnpm --filter rionovo-server exec prisma generate
-pnpm --filter rionovo-server run build
+pnpm --filter rionovo-server run build   # tsc → server/dist
 ```
 
-E na partida:
+Start (`startCommand`):
 
 ```
-prisma db push --skip-generate   # sincroniza o schema no banco (cria tabelas que faltam)
-node dist/index.js               # bind em $PORT injetado pelo Render
+pnpm --filter rionovo-server run start:prod   # = node dist/index.js, bind em $PORT
 ```
 
-> **Por que `db push` e não `migrate deploy`?** O schema vem sendo gerenciado por
-> `db push` (o banco atual tem drift: só 2 de N migrations registradas). `db push`
-> sincroniza o schema direto — robusto pra staging, independe do histórico. As
-> migrations existem no repo (inclusive a consolidada `20260701_...`, que cobre 100%
-> do schema — `migrate diff` dá "No difference"), então dá pra migrar pra
-> `migrate deploy` num banco limpo depois se quiser.
+Health check: `GET /api/health`. Build inicial: 3-5 min. Com `autoDeployTrigger: checksPass`, cada push na `main` só vira deploy depois do CI (§0) ficar verde.
 
-Health check: `GET /api/health`. Tempo médio de build inicial: 3-5 min.
+### 1.4. Sincronizar o schema no Neon (passo manual, controlado)
 
-### 1.4. Pegar a URL pública
+**Não há passo automático de schema no start em produção.** `start:prod` é só `node dist/index.js`; quem roda `prisma db push --skip-generate` é o script `dev` **local**. Se o código novo depende de coluna/tabela nova e o banco não foi sincronizado, a API sobe e quebra na primeira query (`P2021`/`P2022`).
 
-Algo como `https://rionovo-api.onrender.com`. Anote — vamos plugar no CF Pages no passo seguinte.
+Sempre que um deploy trouxer mudança em `server/prisma/schema.prisma`, sincronize **antes** (ou logo depois) do deploy, com o `server/.env` apontando para o Neon de produção (ou via Shell do Render):
 
-> **Free tier:** o serviço dorme após 15 min ociosos. Primeira requisição depois de dormir leva ~30s pra acordar. Pra evitar, paga $7/mês no Starter (sempre on) ou agenda um cron de ping em qualquer serviço (UptimeRobot etc.).
+**Opção A — `migrate deploy` (preferida, funciona via pooler):**
+
+```bash
+pnpm --filter rionovo-server exec prisma migrate deploy
+```
+
+Aplica só as migrations de `server/prisma/migrations/` ainda não registradas. Não precisa de shadow DB, então a `DATABASE_URL` pooled basta.
+
+**Opção B — `db push` (sem histórico, exige `DIRECT_URL` válida):**
+
+```bash
+pnpm --filter rionovo-server run db:push
+```
+
+Sincroniza o schema direto, ignorando o histórico de migrations. É o que historicamente materializou o schema no Neon, então o banco tem **drift** em relação à tabela `_prisma_migrations`.
+
+**Pegadinhas (detalhe em `docs/design/multi-propriedade.md`, seção 9):**
+
+- `db push` **não roda o SQL de backfill** das migrations (`UPDATE ... SET propriedadeId = 1`). Por isso os backfills vivem no boot (`garantirFundacaoPropriedade`) e são idempotentes — o app corrige sozinho na primeira subida.
+- Como o Neon de prod foi sincronizado por `db push`, migrations que **criam** tabelas já existentes (ex.: `20260706185000_add_caixinha_movimento_caixinha`) precisam ser marcadas como aplicadas uma vez antes do primeiro `migrate deploy`: `pnpm --filter rionovo-server exec prisma migrate resolve --applied <nome_da_migration>`. Sem isso o deploy falha com "already exists".
+- Se um `migrate deploy` travar no meio (`P3018`), recupere com `prisma migrate resolve --rolled-back <migration>` e depois `db push`.
+- `prisma migrate dev` (criar migration nova) precisa da `DIRECT_URL` real — ver "Pooled vs direct URL" no `CLAUDE.md`.
+
+### 1.5. Bootstrap do dono (primeiro boot)
+
+O login é por conta real (`Usuario` + `Sessao`). No **primeiro boot** com a tabela `Usuario` vazia e `AUTH_BOOTSTRAP_EMAIL` setado, `garantirDonoBootstrap()` (`server/src/services/auth/usuarios.ts`):
+
+1. Cria o usuário com papel `proprietario`, `dono: true`, status **`PENDENTE`**.
+2. Gera um token de convite e **loga no stdout** um link único para definir a senha:
+
+   ```
+   [auth] Dono criado (email@...). Link único para definir a senha:
+     https://<APP_BASE_URL>/convite/<token>
+   ```
+
+3. Abra o link (Logs do Render), defina a senha, faça login. A partir daí `AUTH_BOOTSTRAP_EMAIL` não faz mais nada (tabela não está vazia) e pode ser esvaziada.
+
+Enquanto o dono não define a senha, ou em ambientes sem conta nenhuma, o `SHARED_ACCESS_TOKEN` serve de ponte: o `authMiddleware` aceita esse token como um "dono sintético" com acesso total. Em dev local, sem `SHARED_ACCESS_TOKEN` **e** sem nenhum usuário no banco, a porta fica aberta.
+
+### 1.6. Pegar a URL pública
+
+Algo como `https://terrano-api.onrender.com`. Anote — vai na env `API_ORIGIN` do CF Pages (§2.2).
+
+> **Free tier:** o serviço dorme após 15 min ociosos; a primeira requisição depois leva ~30s. Pra evitar, Starter ($7/mês) ou um cron de ping (UptimeRobot etc.) em `/api/health`.
 
 ---
 
 ## 2. Cloudflare Pages (frontend)
 
-### 2.1. Atualizar o `_redirects` com a URL do Render
+### 2.1. Como o proxy funciona
 
-Em `client/public/_redirects`, troque `RIONOVO_API_URL` pelo subdomínio que o Render te deu:
+CF Pages **não** faz proxy para origem externa via `_redirects`. O proxy `/api/*` → Render é o `client/public/_worker.js` (Pages em modo avançado): toda request cujo path começa com `/api/` é repassada (método, headers incluindo `Authorization`, body) para `env.API_ORIGIN + path + query`; o resto vai para `env.ASSETS` (estáticos + SPA fallback do `_redirects`). Se `API_ORIGIN` não estiver setada, o Worker responde `503 { error: "API_ORIGIN não configurada no Cloudflare Pages" }`.
 
-```
-/api/*  https://rionovo-api.onrender.com/api/:splat  200
-/*      /index.html                                  200
-```
-
-Commit + push.
+Vite copia `public/` para `client/dist`, então `_worker.js` e `_redirects` chegam ao output sem configuração extra. **Não há nada para editar no repo** ao trocar a URL do Render — é só env.
 
 ### 2.2. Criar o projeto no CF Pages
 
 1. https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
-2. Autorize o GitHub App da CF; mesma lógica do Render (Only select repos → `fazendinha`).
-3. Selecione o repo + branch.
+2. Autorize o GitHub App da CF (Only select repos → `fazendinha`).
+3. Selecione o repo + branch `main`.
 4. Configurações de build:
 
-| Campo                       | Valor                                                              |
-| --------------------------- | ------------------------------------------------------------------ |
-| Framework preset            | None (ou Vite, dá no mesmo)                                        |
-| Build command               | `corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-client run build` |
-| Build output directory      | `client/dist`                                                      |
-| Root directory              | (vazio, deixa na raiz do repo)                                     |
-| Node version (env var)      | `NODE_VERSION=20`                                                  |
+| Campo | Valor |
+| --- | --- |
+| Framework preset | None (ou Vite) |
+| Build command | `corepack enable && pnpm install --frozen-lockfile && pnpm --filter rionovo-client run build` |
+| Build output directory | `client/dist` |
+| Root directory | (vazio — raiz do repo, por causa do lockfile único) |
+
+5. Variáveis de ambiente (**Settings → Environment variables**, em Production e Preview):
+
+| Env | Valor |
+| --- | --- |
+| `NODE_VERSION` | `20` |
+| `API_ORIGIN` | URL pública do Render, ex.: `https://terrano-api.onrender.com` (sem barra final; o Worker tolera, mas evite). |
 
 Salvar e deployar. Build inicial: 1-2 min.
 
+> O build do client roda `tsc -b && vite build` — erro de tipo derruba o deploy, igual ao CI.
+
 ### 2.3. Pegar a URL
 
-Algo como `https://rionovo.pages.dev` (ou o slug que você escolher). Cada PR ganha uma preview tipo `https://abc123.rionovo.pages.dev`.
+Algo como `https://rionovo.pages.dev` (ou o slug escolhido). Cada PR ganha uma preview `https://<hash>.rionovo.pages.dev`, que usa a env `API_ORIGIN` do ambiente Preview — aponte para o mesmo Render se quiser previews funcionais.
 
 ### 2.4. Fechar o CORS no Render
 
-Voltar no dashboard Render → service `rionovo-api` → **Environment** → editar `CORS_ORIGIN`:
+Render → service `terrano-api` → **Environment** → `CORS_ORIGIN`:
 
 ```
-https://rionovo.pages.dev,https://*.rionovo.pages.dev
+https://rionovo.pages.dev
 ```
 
-> Hono cors suporta wildcard de subdomínio? **Não** nativamente. Se quiser bloquear strict, liste só `https://rionovo.pages.dev` e aceite que previews vão dar erro de CORS — mas como o `_redirects` faz proxy server-side, a request sai com origem `pages.dev` do mesmo domínio do front, então CORS nem entra na história nesse setup. Pode deixar `CORS_ORIGIN` vazio sem problema.
+> Como o browser só fala com o domínio do Pages e é o Worker que chama o Render server-side, CORS não entra no caminho normal — `CORS_ORIGIN` só importa se alguém chamar `terrano-api.onrender.com` direto do browser. Ainda assim, setar em produção silencia o warning do boot e fecha a porta. O `cors()` do Hono não aceita wildcard de subdomínio, então previews de PR chamando a API direto dariam erro — via Worker não dão.
 
 Salvar dispara redeploy do backend.
 
@@ -117,38 +186,55 @@ Salvar dispara redeploy do backend.
 
 ## 3. Domínio custom (opcional)
 
-- **CF Pages:** Custom domains → add → aponta CNAME ou hospeda DNS no CF.
-- **Render:** Custom Domain no service → ele dá um CNAME pra você apontar.
+- **CF Pages:** Custom domains → add → CNAME ou DNS hospedado no CF.
+- **Render:** Custom Domain no service → CNAME para apontar.
 
-Se for usar domínio próprio no front (ex.: `rionovo.com.br`), atualizar `CORS_ORIGIN` no Render pra incluí-lo.
+Com domínio próprio no front (ex.: `rionovo.com.br`): atualizar `CORS_ORIGIN` no Render e `APP_BASE_URL` (para os links de convite/reset saírem com o domínio certo).
 
 ---
 
 ## 4. Smoke test pós-deploy
 
 ```bash
-# 1. API responde
-curl https://rionovo-api.onrender.com/api/health
+API=https://terrano-api.onrender.com
+FRONT=https://rionovo.pages.dev
+TOKEN=<SHARED_ACCESS_TOKEN ou token de sessão obtido em POST /api/auth/login>
+
+# 1. API responde (sem auth)
+curl $API/api/health
 
 # 2. Front carrega
-curl -I https://rionovo.pages.dev
+curl -I $FRONT
 
-# 3. Proxy do front para a API funciona
-curl https://rionovo.pages.dev/api/health
+# 3. Worker do Pages faz proxy para o Render
+curl $FRONT/api/health
 
-# 4. Dashboard agrega do Neon
-curl https://rionovo-api.onrender.com/api/dashboard | jq '.dre2025'
+# 4. Sem token → 401 (auth está ligada)
+curl -i $API/api/financeiro/dashboard | head -1
+
+# 5. Com token → dashboard financeiro agrega do Neon (exige área "financeiro")
+curl -H "Authorization: Bearer $TOKEN" $FRONT/api/financeiro/dashboard | jq 'keys'
 ```
 
-Os 4 devem voltar 200 com payload válido. O passo 3 prova que o reverse proxy do CF Pages tá indo no Render.
+1–3 e 5 devem voltar 200 com JSON; 4 deve ser `401 {"error":"não autenticado"}`. O passo 3 prova que o `_worker.js` está indo no Render; o 5 prova que o `Authorization` atravessa o proxy.
+
+Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X POST $API/api/auth/login -H 'content-type: application/json' -d '{"email":"...","senha":"..."}'` — o token vem no corpo da resposta.
 
 ---
 
 ## 5. Troubleshooting
 
-- **Build do Render falha em `pnpm install`:** verifique `NODE_VERSION=20` e que o `corepack enable` aparece nos logs antes do install.
-- **`prisma migrate deploy` falha:** confirme que `DATABASE_URL` é a URL **pooled** do Neon e tem `?sslmode=require`. Migrations via pooler funcionam para `deploy` (não funcionam para `dev`).
+- **Build do Render falha em `pnpm install`:** confira `NODE_VERSION=20` e que `corepack enable` aparece nos logs antes do install.
+- **API sobe mas cai com `[env] configuração inválida`:** faltou env obrigatória (`DATABASE_URL`), ou `STORAGE_DRIVER=r2` sem as quatro `R2_*`, ou `SHARED_ACCESS_TOKEN`/`LOCAL_DOWNLOAD_SECRET` com menos de 16 chars. O log lista os campos.
+- **API sobe e queries dão `P2021`/`P2022` (tabela/coluna não existe):** o schema não foi sincronizado — o `start:prod` **não** faz isso. Rodar `migrate deploy` ou `db push` (§1.4).
+- **`prisma migrate deploy` falha com "already exists":** tabela criada por `db push` antes da migration existir. `prisma migrate resolve --applied <migration>` e repetir (§1.4).
+- **`prisma migrate deploy` falha com `P3018`:** migration parcial. `prisma migrate resolve --rolled-back <migration>` → `db push`.
+- **Comando `prisma *` reclama de `DIRECT_URL`:** o `schema.prisma` declara `directUrl`, então a env precisa existir para o CLI. Aponte para a direct do Neon (ou, no aperto, para a própria pooled — `migrate deploy` funciona via pooler; `migrate dev` não).
 - **Prisma engine "Cannot find module" no runtime:** adicionar `binaryTargets = ["native", "debian-openssl-3.0.x"]` no `generator client` do `schema.prisma` e redeployar.
-- **CF Pages serve `index.html` mas `/api/*` dá 404:** o `_redirects` está em `client/public/_redirects`? Confira no build output `client/dist/_redirects` — Vite copia tudo de `public/` automaticamente.
-- **CORS error mesmo com proxy:** o cliente está chamando `https://rionovo-api.onrender.com` direto (em vez de relativo)? Conferir `client/src/api.ts` — deve usar `fetch('/api/...')`.
-- **Free tier do Render dormindo:** ping a cada 10 min via UptimeRobot/cron-job.org pra manter quente.
+- **`/api/*` no Pages responde `503 API_ORIGIN não configurada`:** a env `API_ORIGIN` não está setada no ambiente (Production/Preview) que serviu a request. Setar e redeployar o Pages.
+- **`/api/*` no Pages dá 404 ou volta o `index.html`:** o `_worker.js` não chegou ao output. Confira `client/dist/_worker.js` no build — precisa estar em `client/public/`.
+- **Front carrega mas tudo dá 401:** ninguém logado. Ou o dono ainda não definiu a senha (link nos logs do primeiro boot, §1.5) ou o token do `localStorage` expirou (`AUTH_SESSAO_DIAS`). Como ponte, `SHARED_ACCESS_TOKEN` na tela de login.
+- **Dono não foi criado no primeiro boot:** `AUTH_BOOTSTRAP_EMAIL` vazio ou a tabela `Usuario` já tinha registro. Ver log `[auth]`; se precisar recriar, criar o usuário direto (Prisma Studio) e gerar convite pelo app.
+- **Anexos de nota fiscal somem após deploy:** `STORAGE_DRIVER=local` no Render (disco efêmero). Migrar para `r2`.
+- **CORS error:** o cliente está chamando `terrano-api.onrender.com` direto (em vez de `/api/...` relativo)? Toda request deve sair via `comPropriedade()` com path relativo para passar pelo Worker.
+- **Free tier do Render dormindo:** ping a cada 10 min em `/api/health` via UptimeRobot/cron-job.org.
