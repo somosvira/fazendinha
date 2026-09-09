@@ -126,9 +126,16 @@ export type LiquidarCompromissoInput = { compromissoId: number; tipo: "PAGAR" | 
 // Update in-place num Compromisso JÁ EXISTENTE (id real — a única forma de
 // criar um Compromisso é via useCriarOperacao) — sem criarOtimista, a
 // fórmula (saldo zerou? LIQUIDADO : PARCIAL) é determinística e lida do
-// próprio cache, não duplicada aqui. Extrato/dashboard/saldo de conta são
-// invalidate-only: dado agregado no servidor, não dá pra patchar sem
-// duplicar a conta.
+// próprio cache, não duplicada aqui.
+//
+// `configuracoes.contas[].saldoAtual` ganha patch de verdade (delta, não
+// invalidate-only): o servidor computa isso como `saldoAbertura + soma de
+// TODOS os movimentos` (sem corte de data — ver server/.../contas.ts), uma
+// soma corrida sem condição nenhuma, então ajustar por delta aqui não
+// duplica cálculo nenhum do servidor (ao contrário de dado genuinamente
+// agregado com regra própria, tipo o saldoGeral do Dashboard, que continua
+// invalidate-only). Extrato fica invalidate-only por falta de consumidor
+// que precise da lista reconstruída, não por limitação técnica.
 export function useLiquidarCompromisso() {
   return useOfflineMutation<LiquidarCompromissoInput, Compromisso>({
     mutationKey: "financeiro-liquidar-compromisso",
@@ -147,7 +154,15 @@ export function useLiquidarCompromisso() {
       },
       { queryKey: financeiroKeys.extrato(input.contaId) },
       { queryKey: financeiroKeys.dashboardTodos() },
-      { queryKey: financeiroKeys.configuracoes() },
+      {
+        queryKey: financeiroKeys.configuracoes(),
+        aplicar: (atual: ConfiguracoesFinanceiras | undefined) => !atual ? atual : {
+          ...atual,
+          contas: atual.contas.map((c) => c.id !== input.contaId ? c : {
+            ...c, saldoAtual: String(arredondar(Number(c.saldoAtual) + (input.tipo === "RECEBER" ? input.valor : -input.valor))),
+          }),
+        },
+      },
     ],
   });
 }
@@ -237,7 +252,10 @@ export type TransferirInput = { contaOrigemId: number; contaDestinoId: number; v
 // Operações — ao contrário de useCriarOperacao, não dá pra patchar a lista
 // de Operações com chave exata daqui, só invalidar por prefixo
 // (financeiroKeys.operacoesTodos()). Os dois extratos, sim: contaOrigemId/
-// contaDestinoId são conhecidos aqui e viram patch otimista de verdade.
+// contaDestinoId são conhecidos aqui e viram patch otimista de verdade —
+// e por isso `configuracoes.contas[].saldoAtual` também (mesmo raciocínio
+// do useLiquidarCompromisso: soma corrida sem corte de data, ajustar por
+// delta não duplica o cálculo do servidor).
 export function useTransferir() {
   return useOfflineMutation<TransferirInput, { origem: MovimentoConta; destino: MovimentoConta }>({
     mutationKey: "financeiro-transferir",
@@ -269,7 +287,17 @@ export function useTransferir() {
       },
       { queryKey: financeiroKeys.operacoesTodos() },
       { queryKey: financeiroKeys.dashboardTodos() },
-      { queryKey: financeiroKeys.configuracoes() },
+      {
+        queryKey: financeiroKeys.configuracoes(),
+        aplicar: (atual: ConfiguracoesFinanceiras | undefined) => !atual ? atual : {
+          ...atual,
+          contas: atual.contas.map((c) => {
+            if (c.id === input.contaOrigemId) return { ...c, saldoAtual: String(arredondar(Number(c.saldoAtual) - input.valor)) };
+            if (c.id === input.contaDestinoId) return { ...c, saldoAtual: String(arredondar(Number(c.saldoAtual) + input.valor)) };
+            return c;
+          }),
+        },
+      },
     ],
   });
 }

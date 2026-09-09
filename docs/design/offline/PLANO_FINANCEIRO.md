@@ -73,8 +73,10 @@ enquanto o id for de um dos dois prefixos.
   id `lote:`.
 - `TransacaoFinanceira`+`MovimentoConta` (0 ou 1) — patch otimista no
   extrato da conta, se estiver em cache.
-- Dashboard e saldo agregado de Conta: **sempre invalidate-only** (somas do
-  servidor, não patcháveis sem duplicar a conta).
+- Dashboard e `configuracoes.contas[].saldoAtual`: **invalidate-only**
+  (achado no QA manual: dava pra patchar por delta como em
+  `liquidarCompromisso`/`transferir` abaixo — ficou de fora aqui só porque
+  ninguém pediu ainda, não por limitação técnica).
 
 **`liquidarCompromisso`**
 - Atualiza um `CompromissoFinanceiro` **já existente** (id real) — patch
@@ -82,11 +84,22 @@ enquanto o id for de um dos dois prefixos.
   (`saldo zerou? LIQUIDADO : PARCIAL`).
 - `TransacaoFinanceira`+`MovimentoConta` (1) — patch no extrato, se em cache.
 - `Liquidacao` — sem cache próprio.
+- `configuracoes.contas[].saldoAtual` — patch por delta (±`valor`, sinal
+  vem de `tipo` PAGAR/RECEBER). Achado no QA manual: o server computa isso
+  como soma corrida (`saldoAbertura` + todos os `MovimentoConta`, sem corte
+  de data — `server/.../financeiro/contas.ts`), então ajustar por delta não
+  duplica cálculo nenhum — diferente de um agregado com regra própria
+  (tipo o saldoGeral do Dashboard, que segue invalidate-only). Tela mostra
+  "saldo estimado — sincronizando" enquanto a mutation não sincronizou
+  (`useLiquidarCompromisso().pendentes`/`useTransferir().pendentes`).
 
 **`transferir`**
 - `Operacao` (1, tipo fixo, sem itens) — patch na lista de Operações.
 - `TransacaoFinanceira` (1) + `MovimentoConta` (2) — patch no extrato das
   duas contas, se em cache.
+- `configuracoes.contas[].saldoAtual` das duas contas — mesmo patch por
+  delta de `liquidarCompromisso` acima (−`valor` na origem, +`valor` no
+  destino).
 
 ## O desvio do rascunho offline
 
@@ -229,3 +242,21 @@ manualmente, fila inspecionada via IndexedDB, backend real local.)_
   navegador (preencher online até "Rascunho salvo" → cair a conexão →
   confirmar → reconectar) e coberto por dois testes novos em
   `FormOperacao.test.tsx`.
+- **Checagem de rascunho existente antes de abrir um formulário novo não
+  passava pela fila offline — travava ou falhava, dependendo do caminho.**
+  "Nova operação" (Operações) e "Criar a pagar"/"Criar a receber"
+  (Compromissos) checam "existe rascunho em andamento?" antes de abrir o
+  formulário em branco. `OperacoesFinanceiras.tsx` fazia
+  `await rascunhoQuery.refetch()` incondicional — offline,
+  `networkMode: "online"` nunca resolve essa promise (fica pausada até
+  reconectar), travando o botão em "Iniciando…" pra sempre.
+  `CompromissosFinanceiros.tsx` chamava `obterRascunhoOperacao`/
+  `descartarRascunhoOperacao` cru (fetch direto, fora da fila) — offline,
+  falhava na hora com "Failed to fetch". Corrigido: as duas telas passam a
+  ler o cache já existente de `useRascunhoOperacao` (sem fetch novo), e o
+  descarte vira `useDescartarRascunho` — um `useOfflineMutation` de
+  verdade, que enfileira offline em vez de travar/falhar. Reproduzido no
+  navegador (offline, sem rascunho em cache, clicar "Nova operação" — o
+  botão nunca voltava de "Iniciando…") e coberto por testes novos em
+  `api.descartar-rascunho.test.ts`, `OperacoesFinanceiras.test.tsx` e
+  `CompromissosFinanceiros.test.tsx`.

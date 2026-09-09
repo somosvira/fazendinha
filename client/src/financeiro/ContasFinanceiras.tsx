@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { ArrowLeftRight, Landmark, Settings2, WalletCards } from "lucide-react";
 import { transferenciaSchema } from "@rionovo/shared";
 import type { Tab } from "../components/Shell";
-import { useConfiguracoesFinanceiras, useExtratoConta, useTransferir, type Conta, type MovimentoConta } from "./novo-api";
+import { useConfiguracoesFinanceiras, useExtratoConta, useLiquidarCompromisso, useTransferir, type Conta, type MovimentoConta } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
 import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
@@ -28,8 +28,17 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const extratoQuery = useExtratoConta(selecionada?.id ?? null);
   const extrato = extratoQuery.data ?? [];
   const erroCarregamento = configQuery.error ? (configQuery.error instanceof Error ? configQuery.error.message : String(configQuery.error)) : null;
-  const { mutate: mutateTransferir } = useTransferir();
+  const { mutate: mutateTransferir, pendentes: transferenciasPendentes } = useTransferir();
   const { salvando: transferindoOffline, salvar: salvarTransferencia } = useSalvarOffline();
+  // Só lê `.pendentes` (fila global via useSyncExternalStore) — não dispara
+  // liquidação nenhuma daqui. É como esta tela sabe quais saldos vieram de
+  // um patch por delta (useLiquidarCompromisso/useTransferir em novo-api.ts)
+  // e ainda não foram confirmados pelo servidor.
+  const { pendentes: liquidacoesPendentes } = useLiquidarCompromisso();
+  const contasComSaldoPendente = new Set([
+    ...liquidacoesPendentes.map((p) => p.contaId),
+    ...transferenciasPendentes.flatMap((p) => [p.contaOrigemId, p.contaDestinoId]),
+  ]);
   const toast = useToast();
   if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erroCarregamento} semDadosOffline={!online} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
@@ -48,8 +57,8 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   return <PaginaFinanceira>
     <PageHeader titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button><Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
     <ErrorBox erro={erro} />
-    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric label="Saldo geral" valor={brl(saldoGeral)} detalhe={`${config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).length} contas consideradas`} icon={WalletCards} />{config.contas.slice(0, 3).map((c) => <button key={c.id} onClick={() => setSelecionadaId(c.id)} className="min-w-0 text-left"><Panel className={`h-full p-5 transition ${selecionada?.id === c.id ? "border-[#5f7859] ring-1 ring-[#5f7859]" : "hover:border-stone-400"}`}><div className="flex justify-between gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={18} /> : <WalletCards size={18} />}</div>{!c.incluirNoSaldoGeral && <Pill>fora do geral</Pill>}</div><div className="mt-4 break-words font-semibold">{c.nome}</div><div className="mt-1 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}</div><div className="mt-4 break-words font-serif text-2xl">{brl(c.saldoAtual)}</div></Panel></button>)}</div>
-    {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)} · saldo atual {brl(selecionada.saldoAtual)}</p></div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
+    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4"><Metric label="Saldo geral" valor={brl(saldoGeral)} detalhe={`${config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).length} contas consideradas`} icon={WalletCards} />{config.contas.slice(0, 3).map((c) => <button key={c.id} onClick={() => setSelecionadaId(c.id)} className="min-w-0 text-left"><Panel className={`h-full p-5 transition ${selecionada?.id === c.id ? "border-[#5f7859] ring-1 ring-[#5f7859]" : "hover:border-stone-400"}`}><div className="flex justify-between gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={18} /> : <WalletCards size={18} />}</div>{!c.incluirNoSaldoGeral && <Pill>fora do geral</Pill>}</div><div className="mt-4 break-words font-semibold">{c.nome}</div><div className="mt-1 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}</div><div className="mt-4 break-words font-serif text-2xl">{brl(c.saldoAtual)}</div>{contasComSaldoPendente.has(c.id) && <div className="mt-2"><Pill tone="amber">saldo estimado — sincronizando</Pill></div>}</Panel></button>)}</div>
+    {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)} · saldo atual {brl(selecionada.saldoAtual)}{contasComSaldoPendente.has(selecionada.id) && " (estimado, sincronizando)"}</p></div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
       {extratoQuery.isPending
         // Extrato desta conta nunca foi buscado e a query está pausada
         // (offline) — sem isto, mostraria "não possui movimentos" como se
