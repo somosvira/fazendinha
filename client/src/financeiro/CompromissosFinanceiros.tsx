@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
 import { liquidacaoSchema } from "@rionovo/shared";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { descartarRascunhoOperacao, obterRascunhoOperacao, useCompromissosFinanceiros, useConfiguracoesFinanceiras, useLiquidarCompromisso, type Compromisso } from "./novo-api";
+import { useCompromissosFinanceiros, useConfiguracoesFinanceiras, useDescartarRascunho, useLiquidarCompromisso, useRascunhoOperacao, type Compromisso } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import { idPendenteDeSync } from "../lib/offline/useOfflineMutation";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
@@ -12,14 +12,16 @@ import type { Tab } from "../components/Shell";
 
 export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }) {
   const online = useOnlineStatus();
-  const itensQuery = useCompromissosFinanceiros(); const configQuery = useConfiguracoesFinanceiras();
-  const itens = itensQuery.data ?? []; const config = configQuery.data ?? null;
+  const itensQuery = useCompromissosFinanceiros(); const configQuery = useConfiguracoesFinanceiras(); const rascunhoQuery = useRascunhoOperacao();
+  const itens = itensQuery.data ?? []; const config = configQuery.data ?? null; const rascunho = rascunhoQuery.data ?? null;
   const [pagando, setPagando] = useState<Compromisso | null>(null); const [contaId, setContaId] = useState(""); const [valor, setValor] = useState(""); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS">("PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
-  const [novoCompromissoPendente, setNovoCompromissoPendente] = useState<"PAGAR" | "RECEBER" | null>(null); const [preparando, setPreparando] = useState(false);
+  const [novoCompromissoPendente, setNovoCompromissoPendente] = useState<"PAGAR" | "RECEBER" | null>(null);
   const lista = itens.filter((c) => aba === "LIQUIDADOS" ? c.status === "LIQUIDADO" : c.tipo === aba && c.status !== "LIQUIDADO").filter((c) => !soVencidos || c.vencido);
   const total = lista.reduce((s, c) => s + Number(c.saldoPendente), 0);
   const { mutate: mutateLiquidar } = useLiquidarCompromisso();
   const { salvando, salvar } = useSalvarOffline();
+  const { mutate: mutateDescartarRascunho } = useDescartarRascunho();
+  const { salvando: descartandoRascunho, salvar: salvarDescarteRascunho } = useSalvarOffline();
   const toast = useToast();
   const pagar = () => {
     if (!pagando) return;
@@ -31,29 +33,33 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     if (!validacao.success) { setErro(validacao.error.issues[0]?.message ?? "Dados inválidos"); return; }
     // O botão que abre este modal já fica desabilitado enquanto o id for
     // pendente de sync (idPendenteDeSync) — chegar aqui significa id real.
-    salvar(mutateLiquidar, { compromissoId: pagando.id as number, ...corpo }, {
+    // `tipo` vem do próprio `pagando` (não é enviado ao server, só orienta o
+    // patch otimista do saldo da conta em useLiquidarCompromisso).
+    salvar(mutateLiquidar, { compromissoId: pagando.id as number, tipo: pagando.tipo, ...corpo }, {
       onSalvo: () => { setPagando(null); setContaId(""); setValor(""); },
       onErroInline: setErro,
       onErroTardio: (mensagem) => toast.error("Falha ao sincronizar a liquidação", mensagem),
     });
   };
   const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", `/financeiro/operacoes/nova?compromisso=${tipo}`); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); };
-  const prepararNovoCompromisso = async (tipo: "PAGAR" | "RECEBER") => {
-    setPreparando(true); setErro(null);
-    try {
-      const rascunho = await obterRascunhoOperacao();
-      if (rascunho) setNovoCompromissoPendente(tipo);
-      else criarCompromisso(tipo);
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setPreparando(false); }
+  // `rascunho` vem do cache de useRascunhoOperacao — checar isso aqui era um
+  // fetch cru direto (`obterRascunhoOperacao`), fora da fila offline: offline
+  // falhava com "Failed to fetch" em vez de decidir com o que já está em
+  // cache. Idem `descartarECriarCompromisso` abaixo (era `descartarRascunhoOperacao`
+  // cru — mesma falha offline, corrigida usando useDescartarRascunho).
+  const prepararNovoCompromisso = (tipo: "PAGAR" | "RECEBER") => {
+    setErro(null);
+    if (rascunho) setNovoCompromissoPendente(tipo);
+    else criarCompromisso(tipo);
   };
-  const descartarECriarCompromisso = async () => {
+  const descartarECriarCompromisso = () => {
     const tipo = novoCompromissoPendente;
     if (!tipo) return;
-    setPreparando(true); setErro(null);
-    try { await descartarRascunhoOperacao(); setNovoCompromissoPendente(null); criarCompromisso(tipo); }
-    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setPreparando(false); }
+    salvarDescarteRascunho(mutateDescartarRascunho, undefined, {
+      onSalvo: () => { setNovoCompromissoPendente(null); criarCompromisso(tipo); },
+      onErroInline: setErro,
+      onErroTardio: (mensagem) => toast.error("Falha ao sincronizar o descarte do rascunho", mensagem),
+    });
   };
 
   // Gate na query da lista, não em `config` (ver mesmo comentário em
@@ -62,7 +68,7 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
   if (itensQuery.isPending) return <PaginaCarregando label="Carregando compromissos" semDadosOffline={!online} />;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={<div className="flex flex-wrap gap-2"><Button secondary disabled={preparando} onClick={() => { void prepararNovoCompromisso("RECEBER"); }}>Criar a receber</Button><Button disabled={preparando} onClick={() => { void prepararNovoCompromisso("PAGAR"); }}>Criar a pagar</Button></div>} />
+    <PageHeader titulo="Compromissos" descricao="Agenda de valores futuros. Vencimento indica prazo; o status informa se a obrigação está pendente, parcial ou liquidada." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => prepararNovoCompromisso("RECEBER")}>Criar a receber</Button><Button onClick={() => prepararNovoCompromisso("PAGAR")}>Criar a pagar</Button></div>} />
     <ErrorBox erro={erro} />
     <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="A pagar" valor={brl(itens.filter((c) => c.tipo === "PAGAR" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowUpRight} /><Metric label="A receber" valor={brl(itens.filter((c) => c.tipo === "RECEBER" && !["LIQUIDADO", "CANCELADO"].includes(c.status)).reduce((s, c) => s + Number(c.saldoPendente), 0))} detalhe="Saldo pendente" icon={ArrowDownLeft} /><Metric label="Vencidos" valor={String(itens.filter((c) => c.vencido).length)} detalhe="Condição de prazo, não status" icon={CalendarDays} tone="red" /></div>
     <Panel className="mt-6 overflow-hidden">
@@ -72,6 +78,6 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     </Panel>
 
     {pagando && <Modal titulo={`Registrar ${pagando.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={() => setPagando(null)}><div className="p-5"><div className="rounded-lg bg-[#f7f5ed] p-4"><strong className="break-words">{pagando.operacao.descricao}</strong><div className="mt-1 break-words text-sm text-ink-3">{pagando.parceiro?.nome ?? "Sem parceiro"} · pendente {brl(pagando.saldoPendente)}</div></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta<select className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" value={contaId} onChange={(e) => setContaId(e.target.value)}><option value="">Selecione</option>{config?.contas.filter((x) => x.ativo).map((x) => <option key={x.id} value={x.id}>{x.nome} · {brl(x.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Valor<input type="number" min="0.01" max={Number(pagando.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} /></label></div><div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setPagando(null)}>Cancelar</Button><Button disabled={salvando || !contaId || Number(valor) <= 0 || Number(valor) > Number(pagando.saldoPendente)} onClick={pagar}>{salvando ? "Confirmando…" : "Confirmar liquidação"}</Button></div></div></Modal>}
-    <ConfirmDialog open={novoCompromissoPendente != null} title="Substituir rascunho em andamento?" message="Já existe uma operação em andamento. Ao continuar, os dados preenchidos e documentos anexados a esse rascunho serão excluídos para iniciar uma nova operação. Esta ação não poderá ser desfeita." confirmLabel="Descartar e continuar" cancelLabel="Manter rascunho" tone="danger" onCancel={() => setNovoCompromissoPendente(null)} onConfirm={() => { void descartarECriarCompromisso(); }} />
+    <ConfirmDialog open={novoCompromissoPendente != null} title="Substituir rascunho em andamento?" message="Já existe uma operação em andamento. Ao continuar, os dados preenchidos e documentos anexados a esse rascunho serão excluídos para iniciar uma nova operação. Esta ação não poderá ser desfeita." confirmLabel={descartandoRascunho ? "Descartando…" : "Descartar e continuar"} cancelLabel="Manter rascunho" tone="danger" onCancel={() => setNovoCompromissoPendente(null)} onConfirm={descartarECriarCompromisso} />
   </PaginaFinanceira>;
 }

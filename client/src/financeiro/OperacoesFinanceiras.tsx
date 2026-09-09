@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarRange, ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { isNovaOperacaoFinanceira, parseOperacaoFinanceiraId } from "../router";
-import { descartarRascunhoOperacao, useConfiguracoesFinanceiras, useOperacoesFinanceiras, useRascunhoOperacao, type Operacao } from "./novo-api";
+import { useConfiguracoesFinanceiras, useDescartarRascunho, useOperacoesFinanceiras, useRascunhoOperacao, type Operacao } from "./novo-api";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 import { idPendenteDeSync } from "../lib/offline/useOfflineMutation";
 import { useOnlineStatus } from "../lib/offline/useOnlineStatus";
+import { useSalvarOffline } from "../lib/offline/useSalvarOffline";
+import { useToast } from "../components/Toast";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 type ModoPeriodo = "DIA" | "MES" | "INTERVALO";
@@ -59,7 +61,6 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 
 export function OperacoesFinanceiras() {
   const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [erro, setErro] = useState<string | null>(null);
-  const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(inicioMes); const [fim, setFim] = useState(hojeLocal);
   const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   const online = useOnlineStatus();
@@ -69,18 +70,26 @@ export function OperacoesFinanceiras() {
   const itens = operacoesQuery.data ?? []; const config = configQuery.data ?? null; const rascunho = rascunhoQuery.data ?? null;
   const erroCarregamento = operacoesQuery.error ?? configQuery.error;
   const recarregarListaERascunho = () => Promise.all([operacoesQuery.refetch(), rascunhoQuery.refetch()]);
+  const { mutate: mutateDescartarRascunho } = useDescartarRascunho();
+  const { salvando: descartandoRascunho, salvar: salvarDescarteRascunho } = useSalvarOffline();
+  const toast = useToast();
   useEffect(() => { const onPop = () => { setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname)); }; window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
   const filtradas = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id}`.toLowerCase().includes(busca.toLowerCase())), [itens, busca, status, tipo, efeito]);
   const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
   const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); setDetalheId(null); setOperacaoBase(base); setForm(true); };
-  const abrirNovaOperacao = async () => {
-    setIniciandoNova(true); setErro(null);
-    try {
-      if (rascunho) await descartarRascunhoOperacao();
-      await rascunhoQuery.refetch(); abrirFormulario();
-    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setIniciandoNova(false); }
+  // `rascunho` já vem do cache de useRascunhoOperacao (sem fetch novo aqui) —
+  // evita repetir o bug corrigido nesta mesma leva: um `.refetch()`
+  // incondicional nunca resolve offline (`networkMode: "online"` pausa pra
+  // sempre), travando o botão em "Iniciando…" pra sempre.
+  const abrirNovaOperacao = () => {
+    setErro(null);
+    if (!rascunho) { abrirFormulario(); return; }
+    salvarDescarteRascunho(mutateDescartarRascunho, undefined, {
+      onSalvo: () => abrirFormulario(),
+      onErroInline: setErro,
+      onErroTardio: (mensagem) => toast.error("Falha ao sincronizar o descarte do rascunho", mensagem),
+    });
   };
   const continuarRascunho = () => abrirFormulario();
   const corrigir = (operacao: Operacao) => abrirFormulario(operacao);
@@ -103,7 +112,7 @@ export function OperacoesFinanceiras() {
 
   const erroExibido = erro ?? (erroCarregamento ? (erroCarregamento instanceof Error ? erroCarregamento.message : String(erroCarregamento)) : null);
   return <PaginaFinanceira>
-    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={<div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div>} />
+    <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={<div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={descartandoRascunho} onClick={abrirNovaOperacao}><Plus size={16} /> {descartandoRascunho ? "Iniciando…" : "Nova operação"}</Button></div>} />
     <ErrorBox erro={erroExibido} />
     <Panel className="mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">

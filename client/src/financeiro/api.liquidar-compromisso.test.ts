@@ -29,7 +29,7 @@ describe("useLiquidarCompromisso — patch otimista e invalidação", () => {
     queryClient.setQueryData(financeiroKeys.compromissos(), [compromissoBase]);
 
     const { result } = renderHook(() => useLiquidarCompromisso(), { wrapper: wrapper(queryClient) });
-    result.current.mutate({ compromissoId: 10, contaId: 3, valor: 400, data: "2026-09-08" });
+    result.current.mutate({ compromissoId: 10, tipo: "PAGAR", contaId: 3, valor: 400, data: "2026-09-08" });
 
     const lista = queryClient.getQueryData<Compromisso[]>(financeiroKeys.compromissos())!;
     expect(lista[0]).toMatchObject({ valorLiquidado: "400", saldoPendente: "600", status: "PARCIAL" });
@@ -40,7 +40,7 @@ describe("useLiquidarCompromisso — patch otimista e invalidação", () => {
     queryClient.setQueryData(financeiroKeys.compromissos(), [compromissoBase]);
 
     const { result } = renderHook(() => useLiquidarCompromisso(), { wrapper: wrapper(queryClient) });
-    result.current.mutate({ compromissoId: 10, contaId: 3, valor: 1000, data: "2026-09-08" });
+    result.current.mutate({ compromissoId: 10, tipo: "PAGAR", contaId: 3, valor: 1000, data: "2026-09-08" });
 
     const lista = queryClient.getQueryData<Compromisso[]>(financeiroKeys.compromissos())!;
     expect(lista[0]).toMatchObject({ valorLiquidado: "1000", saldoPendente: "0", status: "LIQUIDADO" });
@@ -52,7 +52,7 @@ describe("useLiquidarCompromisso — patch otimista e invalidação", () => {
     queryClient.setQueryData(financeiroKeys.compromissos(), [compromissoBase, outro]);
 
     const { result } = renderHook(() => useLiquidarCompromisso(), { wrapper: wrapper(queryClient) });
-    result.current.mutate({ compromissoId: 10, contaId: 3, valor: 200, data: "2026-09-08" });
+    result.current.mutate({ compromissoId: 10, tipo: "PAGAR", contaId: 3, valor: 200, data: "2026-09-08" });
 
     const lista = queryClient.getQueryData<Compromisso[]>(financeiroKeys.compromissos())!;
     expect(lista[1]).toEqual(outro);
@@ -67,7 +67,7 @@ describe("useLiquidarCompromisso — patch otimista e invalidação", () => {
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     const { result } = renderHook(() => useLiquidarCompromisso(), { wrapper: wrapper(queryClient) });
-    result.current.mutate({ compromissoId: 10, contaId: 3, valor: 400, data: "2026-09-08" });
+    result.current.mutate({ compromissoId: 10, tipo: "PAGAR", contaId: 3, valor: 400, data: "2026-09-08" });
 
     await vi.waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: financeiroKeys.extrato(3) });

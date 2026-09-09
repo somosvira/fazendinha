@@ -43,6 +43,7 @@ vi.mock("./novo-api", () => ({
   useOperacaoFinanceira: vi.fn(),
   useLiquidarCompromisso: vi.fn().mockReturnValue({ mutate: vi.fn(), pendentes: [] }),
   useTransferir: vi.fn().mockReturnValue({ mutate: vi.fn(), pendentes: [] }),
+  useDescartarRascunho: vi.fn().mockReturnValue({ mutate: vi.fn(), pendentes: [] }),
   criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),

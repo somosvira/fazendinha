@@ -72,6 +72,23 @@ export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/oper
 export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho");
 export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) });
 export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" });
+
+// Descarte deliberado de um rascunho existente pra abrir um formulário novo
+// (botões "Nova operação"/"Criar a pagar"/"Criar a receber" nas telas de
+// lista) — diferente do `descartarRascunhoOperacao` cru usado por
+// `FormOperacao.tsx` (que já enfileira manualmente o próprio caso de
+// rascunho órfão pós-confirmação offline). Usar `useOfflineMutation` aqui
+// em vez do fetch cru é o que evita o "Failed to fetch"/travar offline: a
+// checagem "existe rascunho?" já usa o cache de `useRascunhoOperacao`, e só
+// este descarte precisa ir pra fila quando não há conexão.
+export function useDescartarRascunho() {
+  return useOfflineMutation<void, undefined, RascunhoOperacao | null>({
+    mutationKey: "financeiro-descartar-rascunho",
+    path: () => "/financeiro/operacoes/rascunho",
+    method: "DELETE",
+    queryKeys: () => [{ queryKey: financeiroKeys.rascunho(), aplicar: () => null }],
+  });
+}
 export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
 export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData(); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
@@ -101,7 +118,10 @@ export async function anexarDocumentoOperacao(operacaoId: number, input: { arqui
 }
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
 
-export type LiquidarCompromissoInput = { compromissoId: number; contaId: number; valor: number; data: string; formaPagamento?: string; descricao?: string };
+// `tipo` não é enviado ao server (ver `body` abaixo, que whitelista os
+// campos) — só orienta o sinal do patch otimista de saldo (PAGAR reduz,
+// RECEBER aumenta a conta), lido do próprio Compromisso pela tela que chama.
+export type LiquidarCompromissoInput = { compromissoId: number; tipo: "PAGAR" | "RECEBER"; contaId: number; valor: number; data: string; formaPagamento?: string; descricao?: string };
 
 // Update in-place num Compromisso JÁ EXISTENTE (id real — a única forma de
 // criar um Compromisso é via useCriarOperacao) — sem criarOtimista, a
