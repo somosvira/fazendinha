@@ -4,6 +4,7 @@
 
 import { buildVolumeLeite } from "./data/cockpitSupplements";
 import { comPropriedade } from "./propriedadeScope";
+import type { RegimeRelatorio, RelatorioGerencialDTO } from "./components/relatorio-gerencial/types";
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`/api${path}`, { headers: comPropriedade() });
@@ -221,3 +222,21 @@ export const simularPrecoLeite = (variacaoPct: number) =>
   postJson<SimPrecoLeite>("/simulacao/preco-leite", { variacaoPct });
 export const simularRacao = (params: { variacaoPct?: number; custoVacaDiaNovo?: number; periodoDias?: number }) =>
   postJson<SimRacao>("/simulacao/racao", params);
+
+/**
+ * GET /api/financeiro/relatorio-gerencial — agregados do relatório gerencial.
+ * `propriedadeId` explícito sobrescreve o sítio ativo; `null` pede o consolidado
+ * (o servidor devolve a principal quando só há um sítio).
+ */
+export async function fetchRelatorioGerencial(p: { inicio: string; fim: string; regime: RegimeRelatorio; propriedadeId: number | null }): Promise<RelatorioGerencialDTO> {
+  const qs = new URLSearchParams({ inicio: p.inicio, fim: p.fim, regime: p.regime });
+  const headers: Record<string, string> = { ...comPropriedade() };
+  if (p.propriedadeId != null) headers["X-Propriedade-Id"] = String(p.propriedadeId);
+  else delete headers["X-Propriedade-Id"];
+  const res = await fetch(`/api/financeiro/relatorio-gerencial?${qs}`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
+  }
+  return res.json();
+}
