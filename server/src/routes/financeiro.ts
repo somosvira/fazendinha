@@ -8,7 +8,7 @@ import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
@@ -27,14 +27,11 @@ function exigirUsuarioId(c: Context): number {
 function falha(c: Context, erro: unknown) {
   if (erro instanceof FinanceiroError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
-    return c.json({ error: erro.message, code: erro.code }, status);
+    return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
   }
   console.error("[financeiro]", erro);
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
 }
-
-const patchContaSchema = contaSchema.pick({ nome: true, instituicao: true, identificacao: true, incluirNoSaldoGeral: true }).partial().extend({ ativo: z.boolean().optional() });
-const patchParceiroSchema = parceiroSchema.partial().extend({ ativo: z.boolean().optional() });
 
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {

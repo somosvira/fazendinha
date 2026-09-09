@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { auditar, FinanceiroError } from "./regras.js";
+import type { z } from "zod";
+import { auditar, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
+import type { patchContaSchema } from "./schemas.js";
+
+const CONFLITOS = { nome: "Já existe uma conta com este nome nesta propriedade" };
 
 export async function listarContas(propriedadeId?: number | null, incluirInativas = false) {
   const contas = await prisma.contaFinanceira.findMany({
@@ -17,7 +21,7 @@ export async function listarContas(propriedadeId?: number | null, incluirInativa
       (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
       new Prisma.Decimal(conta.saldoAbertura),
     );
-    return { ...conta, saldoAtual: saldo };
+    return { ...conta, saldoAtual: saldo, temMovimentos: movimentos.length > 0 };
   });
 }
 
@@ -35,27 +39,39 @@ export async function criarConta(input: {
   identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: Date; incluirNoSaldoGeral: boolean;
   propriedadeId: number; usuarioId?: number | null;
 }) {
-  return prisma.$transaction(async (tx) => {
-    const { usuarioId, ...dados } = input;
-    const conta = await tx.contaFinanceira.create({ data: dados });
-    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
-    return conta;
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { usuarioId, ...dados } = input;
+      const conta = await tx.contaFinanceira.create({ data: dados });
+      await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
+      return conta;
+    });
+  } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
 export async function atualizarConta(
   id: number,
   propriedadeId: number,
-  input: Partial<{ nome: string; instituicao: string | null; identificacao: string | null; incluirNoSaldoGeral: boolean; ativo: boolean }>,
+  input: z.infer<typeof patchContaSchema>,
   usuarioId?: number | null,
 ) {
-  return prisma.$transaction(async (tx) => {
-    const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
-    if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
-    const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
-    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
-    return conta;
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
+      if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
+      /* Saldo/data de abertura só mudam enquanto a conta não tem movimentos —
+       * depois disso o saldo atual derivado do razão perderia a referência. */
+      const mexeSaldo = input.saldoAbertura !== undefined && !new Prisma.Decimal(input.saldoAbertura).equals(anterior.saldoAbertura);
+      const mexeData = input.dataSaldoAbertura !== undefined && input.dataSaldoAbertura.getTime() !== anterior.dataSaldoAbertura.getTime();
+      if (mexeSaldo || mexeData) {
+        const movimentos = await tx.movimentoConta.count({ where: { contaId: id } });
+        if (movimentos > 0) throw new FinanceiroError("VALIDACAO", "Saldo e data de abertura não podem ser alterados em conta que já possui movimentos", mexeSaldo ? "saldoAbertura" : "dataSaldoAbertura");
+      }
+      const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
+      await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
+      return conta;
+    });
+  } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
 export async function listarExtrato(contaId: number, propriedadeId: number, inicio?: Date, fim?: Date) {

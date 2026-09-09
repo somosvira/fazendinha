@@ -63,3 +63,36 @@ describe("rascunho de operação", () => {
     expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 2 }).success).toBe(true);
   });
 });
+
+describe("schemas de conta e parceiro (cadastros)", async () => {
+  const { contaSchema, parceiroSchema, patchContaSchema, patchParceiroSchema } = await import("./schemas.js");
+
+  it("patch de conta não reaplica defaults quando a chave está ausente", () => {
+    const r = patchContaSchema.parse({ nome: "Caixa" });
+    expect(r).toEqual({ nome: "Caixa" });
+    expect("saldoAbertura" in r).toBe(false); expect("incluirNoSaldoGeral" in r).toBe(false);
+  });
+
+  it("patch de conta aceita tipo, saldo e data de abertura", () => {
+    const r = patchContaSchema.parse({ tipo: "APLICACAO", saldoAbertura: "10.5", dataSaldoAbertura: "2026-01-02" });
+    expect(r.tipo).toBe("APLICACAO"); expect(r.saldoAbertura).toBe(10.5); expect(r.dataSaldoAbertura).toBeInstanceOf(Date);
+  });
+
+  it("conta: instituição e identificação vazias viram null", () => {
+    const r = contaSchema.parse({ nome: "Banco", tipo: "BANCO", dataSaldoAbertura: "2026-01-01", instituicao: "  ", identificacao: "" });
+    expect(r.instituicao).toBeNull(); expect(r.identificacao).toBeNull();
+  });
+
+  it("parceiro: normaliza documento para dígitos e valida tamanho", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "123.456.789-09" }).documento).toBe("12345678909");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "12.345.678/0001-95" }).documento).toBe("12345678000195");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "" }).documento).toBeNull();
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", documento: "1234567890" }).success).toBe(false);
+  });
+
+  it("parceiro: e-mail vazio vira null e inválido é rejeitado", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", email: "" }).email).toBeNull();
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", email: "x" }).success).toBe(false);
+    expect(patchParceiroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+});

@@ -3,23 +3,68 @@ import { z } from "zod";
 const dataIso = z.coerce.date();
 const valorPositivo = z.coerce.number().positive();
 
+/* Texto opcional vindo de formulário: "" e espaços viram null. */
+const textoOpcional = (max: number) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), z.string().trim().max(max).nullable().optional());
+
+/** Só dígitos; null quando vazio. Formato (11 = CPF, 14 = CNPJ) é validado no schema. */
+export function normalizarDocumento(valor: unknown): string | null | undefined {
+  if (valor === undefined) return undefined;
+  if (valor === null) return null;
+  if (typeof valor !== "string") return valor as never;
+  const digitos = valor.replace(/\D/g, "");
+  return digitos === "" ? null : digitos;
+}
+
+const documentoSchema = z.preprocess(
+  normalizarDocumento,
+  z.string().refine((d) => d.length === 11 || d.length === 14, "CPF deve ter 11 dígitos e CNPJ 14").nullable().optional(),
+);
+
+const emailSchema = z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), z.string().trim().email("E-mail inválido").nullable().optional());
+
+const tipoContaSchema = z.enum(["BANCO", "CAIXA", "APLICACAO", "DINHEIRO"]);
+const tipoParceiroSchema = z.enum(["CLIENTE", "FORNECEDOR", "AMBOS", "FUNCIONARIO", "PROPRIETARIO", "OUTRO"]);
+
 export const contaSchema = z.object({
   nome: z.string().trim().min(2).max(80),
-  tipo: z.enum(["BANCO", "CAIXA", "APLICACAO", "DINHEIRO"]),
-  instituicao: z.string().trim().max(100).optional().nullable(),
-  identificacao: z.string().trim().max(100).optional().nullable(),
+  tipo: tipoContaSchema,
+  instituicao: textoOpcional(100),
+  identificacao: textoOpcional(100),
   saldoAbertura: z.coerce.number().default(0),
   dataSaldoAbertura: dataIso,
   incluirNoSaldoGeral: z.boolean().default(true),
   propriedadeId: z.number().int().positive().optional(),
 });
 
+/* PATCH declarado campo a campo (sem defaults) para que um PATCH só de `ativo`
+ * nunca reaplique saldoAbertura=0 / incluirNoSaldoGeral=true. */
+export const patchContaSchema = z.object({
+  nome: z.string().trim().min(2).max(80).optional(),
+  tipo: tipoContaSchema.optional(),
+  instituicao: textoOpcional(100),
+  identificacao: textoOpcional(100),
+  saldoAbertura: z.coerce.number().optional(),
+  dataSaldoAbertura: dataIso.optional(),
+  incluirNoSaldoGeral: z.boolean().optional(),
+  ativo: z.boolean().optional(),
+});
+
 export const parceiroSchema = z.object({
   nome: z.string().trim().min(2).max(120),
-  documento: z.string().trim().max(30).optional().nullable(),
-  tipo: z.enum(["CLIENTE", "FORNECEDOR", "AMBOS", "FUNCIONARIO", "PROPRIETARIO", "OUTRO"]),
-  telefone: z.string().trim().max(30).optional().nullable(),
-  email: z.string().email().optional().nullable(),
+  documento: documentoSchema,
+  tipo: tipoParceiroSchema,
+  telefone: textoOpcional(30),
+  email: emailSchema,
+});
+
+export const patchParceiroSchema = z.object({
+  nome: z.string().trim().min(2).max(120).optional(),
+  documento: documentoSchema,
+  tipo: tipoParceiroSchema.optional(),
+  telefone: textoOpcional(30),
+  email: emailSchema,
+  ativo: z.boolean().optional(),
 });
 
 export const formaPagamentoSchema = z.enum([
