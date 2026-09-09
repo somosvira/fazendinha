@@ -175,6 +175,37 @@ Ao dar suporte offline a uma feature nova, nessa ordem:
 5. Confirmar que todo hook de leitura que a tela usa está em `useQuery`, não
    só o do formulário de escrita.
 
+## Pontos de revisão (pra quem revisa um PR que toca a fundação ou uma fatia)
+
+Checklist rápido pra ler o diff, não pra quem está implementando (isso já
+está nas convenções acima):
+
+- Algum hook de leitura novo é `useState`+`fetch` cru em vez de `useQuery`?
+  Não sobrevive a F5 offline, mesmo que pareça funcionar no teste manual
+  online.
+- Alguma escrita nova chama `fetch`/`useMutation` puro em vez de
+  `useOfflineMutation`? Mesmo problema, mais grave (perde o dado, não só a
+  tela).
+- Alguma entrada de `queryKeys` tem `aplicar` pra um dado **agregado**
+  recomputado no servidor (saldo, resumo, ranking)? Isso duplicaria a conta
+  do servidor — deveria ser invalidate-only, a menos que o autor tenha
+  checado o cálculo real no servidor e confirmado que é uma soma simples
+  (sem regra própria) que um patch por delta reproduz sem duplicar nada.
+- Algum gate de loading (`isPending`/`!dados`) depende de uma query
+  **diferente** da que a tela realmente precisa? Sintoma: mostra resultado
+  vazio/zerado em vez de "carregando" quando só uma das duas queries
+  irmãs está pausada offline.
+- A PR alega ter testado offline — foi contra o **build de produção**
+  (`vite preview`), com offline disparado de verdade, ou só contra
+  `pnpm dev`/emulação de rede do DevTools (que não bloqueia `localhost`,
+  não prova nada aqui)?
+- Testou o caso "nunca visitado" offline, não só o caminho já com cache
+  aquecido?
+- Algum comentário de código narra a mudança ("nesta fatia", "o fix de
+  hoje", referência a PR/commit) em vez de só explicar a lógica atual? O
+  teste: continua igualmente verdadeiro e útil sem nenhum contexto de
+  quando foi escrito?
+
 ## Nota: `packages/shared`
 
 O epic original moveu schema/cálculo puro compartilhado (client+server) pra
