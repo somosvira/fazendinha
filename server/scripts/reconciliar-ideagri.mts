@@ -1,6 +1,6 @@
 // Reconciliação da reprodução importada contra o baseline do IDEAGRI
 // (DADOS777.FDB, backup 2026-07-28 12:48). Baseline colado da fonte — não embutido
-// em código de produção. Roda: node --env-file=.env scripts/reconciliar-ideagri.mts
+// em código de produção. Roda: pnpm run reconciliar:ideagri
 import { readFileSync } from "node:fs";
 import { prisma } from "../src/db.js";
 import { reconciliarContagens, haDivergencia } from "../src/services/rebanho/reconciliacao-reproducao.calc.js";

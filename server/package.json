@@ -24,6 +24,7 @@
     "seed:usuarios": "tsx --env-file=.env prisma/seed-usuarios.ts",
     "import": "tsx --env-file=.env prisma/import.ts",
     "import:rebanho": "tsx --env-file=.env prisma/import-rebanho.ts",
+    "reconciliar:ideagri": "tsx --env-file=.env scripts/reconciliar-ideagri.mts",
     "seed:all": "tsx --env-file=.env prisma/seed-all.ts",
     "bateria:gabarito": "tsx --env-file=.env scripts/bateria-ia.gabarito.ts",
     "bateria:run": "tsx scripts/bateria-ia.run.ts",
