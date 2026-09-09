@@ -35,81 +35,142 @@
 | Janelas | Sempre indicar período (`últimos 30 dias`, `2026 YTD`, etc.). |
 | Tabular nums | Sempre em totais e KPIs (`font-variant-numeric: tabular-nums`). |
 
+### Vocabulário financeiro
+
+| Termo | Regra |
+|---|---|
+| **Regime** | **Caixa.** Só existe "realizado" onde houve `MovimentoConta` (ponta de uma `TransacaoFinanceira`). `CompromissoFinanceiro` é agenda: **nunca** altera saldo. |
+| **Data de caixa** | `TransacaoFinanceira.data` (`@db.Date`). É o eixo temporal de tudo que é realizado. Compromisso usa `dataVencimento`. |
+| **Período** | Janela `[inicio, fim]` sobre a data de caixa. Default do dashboard = **mês corrente** (`Date.UTC(ano, mes, 1)` → `Date.UTC(ano, mes+1, 0, 23:59:59)`), em `server/src/routes/financeiro.ts`. |
+| **Escopo de propriedade** | Toda leitura financeira resolve `propriedadeId` via `resolverEscopoLeitura(c)`. `null` = sem recorte (todas as propriedades). Transação filtra por `propriedadeId` direto; compromisso filtra por `operacao.propriedadeId`. |
+| **Transferência** | `TransacaoFinanceira.tipo = TRANSFERENCIA` só redistribui disponibilidade entre contas próprias. **Sempre excluída** de entradas/saídas e de despesas por categoria — se entrar, infla os dois lados. |
+| **Estorno** | Não apaga: cria uma `TransacaoFinanceira(tipo = REVERSAO)` com movimentos de direção invertida e marca a original como `REVERTIDA`. Saldo volta sozinho. |
+| **Sinal** | Não existe campo de sinal. O sentido do dinheiro vem de `MovimentoConta.direcao` (`ENTRADA`/`SAIDA`). |
+| **Decimal** | Todos os valores são `Decimal(14,2)`. Somar sempre com `Prisma.Decimal`, nunca `number` JS. |
+
 ---
 
 ## 2. Métricas financeiras
 
-### 2.1 Receita Realizada (período)
+> **Modelo de dados.** `Operacao` (+`ItemOperacao`) é o fato de negócio; `CompromissoFinanceiro` (+`Liquidacao`) é valor pendente; `TransacaoFinanceira` → `MovimentoConta` é dinheiro realizado e a **única** fonte de saldo de `ContaFinanceira`; `PeriodoFinanceiro` trava escrita em mês fechado; `Parceiro` é a contraparte.
+> Todo o dashboard financeiro vive em **um** service: `server/src/services/financeiro/dashboard.ts:obterDashboard`, servido por `GET /api/financeiro/dashboard?inicio&fim` (`server/src/routes/financeiro.ts`) e consumido por `client/src/financeiro/VisaoGeralFinanceira.tsx`.
+
+### 2.1 Recebimentos realizados (período)
 
 | Item | Detalhe |
 |---|---|
-| **Fórmula** | `Σ Lancamento.valor` onde `natureza = CREDITO`, `situacao = LIQUIDADO`, `estornado = false`, `dataLiquidacao ∈ período` |
-| **Origem** | `Lancamento` (regime de caixa) |
-| **Apresentação** | KPI grande, currency BRL |
-| **Interpretação** | Dinheiro **que entrou de fato** no caixa no período |
-| **Implementação** | `server/src/services/dashboard.ts` |
+| **Fórmula** | `Σ MovimentoConta.valor` onde `direcao = ENTRADA`, `transacao.tipo ≠ TRANSFERENCIA` e `transacao.data ∈ [inicio, fim]` |
+| **Origem** | `MovimentoConta` × `TransacaoFinanceira` (regime de caixa) |
+| **Escopo** | `transacao.propriedadeId` quando há propriedade ativa |
+| **Implementação** | `services/financeiro/dashboard.ts` → `realizado.entradas` |
+| **Onde aparece** | KPI "Recebimentos" na Visão geral financeira |
+| **Interpretação** | Dinheiro **que entrou de fato** nas contas no período |
 
-### 2.2 Despesa Realizada (período)
-
-| Item | Detalhe |
-|---|---|
-| **Fórmula** | `Σ Lancamento.valor` onde `natureza = DEBITO`, `situacao = LIQUIDADO`, `estornado = false`, `dataLiquidacao ∈ período` |
-| **Origem** | `Lancamento` |
-| **Apresentação** | KPI, com delta vs período anterior |
-| **Interpretação** | Dinheiro **que saiu de fato** do caixa |
-
-### 2.3 Saldo / Fluxo do Período
+### 2.2 Pagamentos realizados (período)
 
 | Item | Detalhe |
 |---|---|
-| **Fórmula** | `Receita Realizada − Despesa Realizada` (no mesmo período) |
+| **Fórmula** | Idem 2.1 com `direcao = SAIDA` |
+| **Implementação** | `services/financeiro/dashboard.ts` → `realizado.saidas` |
+| **Onde aparece** | KPI "Pagamentos" na Visão geral financeira |
+| **Interpretação** | Dinheiro **que saiu de fato** das contas no período |
+
+> **Atenção (comportamento real do código):** `obterDashboard` **não filtra `transacao.status`**. Uma transação estornada continua somando, e o `REVERSAO` gerado soma na direção oposta. O **resultado (2.3) fica correto**, mas entradas e saídas ficam infladas pelo par estorno/reversão. Motores que precisam do valor limpo filtram `status = "CONFIRMADA"` explicitamente — é o que fazem `services/consulta/registro/financeiro.ts`, `services/rebanho/custo-producao.ts` e `custo-sanidade.ts`.
+
+### 2.3 Resultado do período
+
+| Item | Detalhe |
+|---|---|
+| **Fórmula** | `entradas − saídas` (2.1 − 2.2, mesmo período) |
+| **Implementação** | `services/financeiro/dashboard.ts` → `realizado.resultado` |
 | **Cor** | `--pos` se positivo, `--neg` se negativo |
-| **Apresentação** | Hero KPI no Dashboard |
+| **Onde aparece** | Devolvido pela API; a Visão geral hoje exibe entradas e saídas separadas |
 
-### 2.4 Projeção (a vencer)
-
-| Item | Detalhe |
-|---|---|
-| **Fórmula** | `Σ Lancamento.valor × sinal_natureza` onde `situacao = ABERTO`, `estornado = false`, `dataVencimento ∈ período futuro` |
-| **Origem** | `Lancamento` |
-| **Interpretação** | O que ainda **vai entrar/sair** se nada mudar |
-| **Apresentação** | Card "Projeção" com ícone `≈` |
-
-### 2.5 DRE Simplificado
-
-Recortes por período (anos completos e YTD). Em `services/dashboard.ts`:
-
-- **Receita Leite** = `Σ Lancamento(CREDITO)` com categoria "Venda de Leite" e CCusto Leiteira.
-- **Custeio Leite Puro** = `Σ Lancamento(DEBITO)` com CCusto "Atividade Leiteira" excluindo aquisição de animais e RN Caminhão.
-- **Animal Aquisição** = `Σ Lancamento(DEBITO)` com categoria "Animal Aquisição" — pode ser **reclassificado custeio/investimento** (Fatia 22).
-- **RN Caminhão** = `Σ Lancamento(DEBITO)` com categoria "RN — Caminhão e Trator".
-- **Investimento Leite** = `Σ Lancamento(DEBITO)` em CCusto.ehInvestimento = true.
-- **Custeio BPO** = `custeioLeitePuro + animalAquisição + rnCaminhao`.
-
-### 2.6 Top 12 Categorias (despesa)
+### 2.4 Saldo por conta e saldo geral
 
 | Item | Detalhe |
 |---|---|
-| **Fórmula** | `Σ Lancamento(DEBITO)` agrupado por categoria, ordenado desc, top 12 |
-| **Janela** | 23 meses (Jul/24 → Mai/26) |
-| **Delta YoY** | `(YTD 2026 ÷ YTD 2025 − 1) × 100` para mesma janela Jan–Mai |
-| **Implementação** | `dashboard.ts:217–242` |
-| **Apresentação** | Tabela com nome + total + barra horizontal + delta |
+| **Saldo da conta** | `saldoAbertura + Σ MovimentoConta(ENTRADA) − Σ MovimentoConta(SAIDA)` — **todos** os movimentos da conta, sem recorte de período |
+| **Saldo geral** | `Σ saldoAtual` das contas com `ativo = true` **e** `incluirNoSaldoGeral = true` |
+| **Origem** | `ContaFinanceira` × `MovimentoConta` |
+| **Implementação** | `services/financeiro/contas.ts:listarContas` (saldo por conta) e `resumoSaldos` (saldo geral) |
+| **Onde aparece** | KPI "Saldo geral" + painel "Contas e disponibilidades" (Visão geral) e a tela de Contas |
+| **Interpretação** | Disponibilidade **agora**, não no período selecionado. Transferência entre contas próprias não muda o saldo geral. |
 
-### 2.7 Inconsistências contábeis
+### 2.5 Compromissos a pagar / a receber
 
-Cards no Dashboard sinalizando lançamentos que pedem revisão:
+| Item | Detalhe |
+|---|---|
+| **Fórmula** | `Σ (valorOriginal − Σ Liquidacao.valor com transacao.status = CONFIRMADA)` sobre `CompromissoFinanceiro` com `status ∈ (PENDENTE, PARCIAL)`, separado por `tipo` (`PAGAR` / `RECEBER`) |
+| **Janela** | **Nenhuma.** O dashboard soma todo o pendente, não só o que vence no período. |
+| **Escopo** | `operacao.propriedadeId` |
+| **Implementação** | `services/financeiro/dashboard.ts` → `compromissos.aPagar` / `aReceber` |
+| **Onde aparece** | KPIs "A pagar" / "A receber" e o painel "Próximos compromissos" |
+| **Interpretação** | Agenda financeira. **Não** compõe o saldo até virar liquidação. |
 
-- **Animal Aquisição não classificado** — categoria precisa de override.
-- **RN Caminhão grande** — lançamento atípico.
-- **Atv Plantio** — pode estar no CCusto errado.
-- **Sem CCusto** — `Lancamento.centroCustoId IS NULL`.
+A listagem (`services/financeiro/operacoes.ts:listarCompromissos`, `GET /api/financeiro/compromissos`) devolve por compromisso:
 
-Cada card mostra contagem e total, com link para correção.
+- `valorLiquidado` = soma das `Liquidacao` cuja transação está `CONFIRMADA`;
+- `saldoPendente` = `valorOriginal − valorLiquidado`;
+- `vencido` = `status ∉ (LIQUIDADO, CANCELADO)` **e** `dataVencimento < hoje`.
 
-### 2.8 Fechamento mensal
+Uma liquidação nunca pode exceder o saldo pendente (`FinanceiroError("VALIDACAO")`), e ao zerar o saldo o compromisso vira `LIQUIDADO`; caso contrário, `PARCIAL`.
 
-`FechamentoMensal(ano, mes)` é flag. Lancamentos cuja **data de caixa** (`dataLiquidacao` se LIQUIDADO, senão `dataVencimento`) caia em mês fechado **não podem ser editados**.
+### 2.6 Despesas realizadas por categoria
+
+| Item | Detalhe |
+|---|---|
+| **Fórmula** | Agrupa os `MovimentoConta` do período por `transacao.operacao.categoria.nome` (fallback `"Sem categoria"`), somando `+valor` para `SAIDA` e `−valor` para `ENTRADA` |
+| **Exclusões** | `transacao.tipo = TRANSFERENCIA` e `operacao.tipo = VENDA`; depois descarta os grupos com total **≤ 0** |
+| **Ordenação** | Total desc, sem corte no backend |
+| **Implementação** | `services/financeiro/dashboard.ts` → `despesasPorCategoria` |
+| **Onde aparece** | Painel "Despesas realizadas" (Visão geral) — a UI mostra **top 6** com barra horizontal proporcional ao maior valor |
+| **Interpretação** | Onde o dinheiro saiu no período. Transação avulsa (sem operação) cai em `"Sem categoria"`. |
+
+Não há delta YoY nem recorte por centro de custo nesta métrica.
+
+### 2.7 Período financeiro (bloqueio de escrita)
+
+`PeriodoFinanceiro(propriedadeId, ano, mes)` com `status = FECHADO` **bloqueia toda escrita financeira** daquele mês. Implementado em `services/financeiro/regras.ts:exigirPeriodoAberto`, que resolve `ano`/`mes` da data em **UTC** e lança `FinanceiroError("PERIODO_FECHADO")` → HTTP **409**.
+
+Chamado em `services/financeiro/operacoes.ts` por:
+
+| Escrita | Data avaliada |
+|---|---|
+| Criar operação (inclusive confirmação de rascunho) | `operacao.data` |
+| Criar transação (à vista, parcial e liquidação de compromisso) | `transacao.data` |
+| Transferência entre contas | `data` da transferência |
+| Estorno de transação e cancelamento de operação | **data de hoje** |
+
+O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/rebanho/estoque.ts`, `services/rebanho/nutricao.consumo.ts` e `services/plantio/timeline.ts`.
+
+> **Sem endpoint.** Não existe rota HTTP para fechar ou reabrir período — os registros só nascem via banco/seed. A trava funciona; a operação de fechamento ainda não tem UI nem API.
+
+### 2.8 Relatórios financeiros (base auditável)
+
+Calculado **no cliente** (`client/src/financeiro/RelatoriosFinanceiros.tsx`) a partir de `GET /api/financeiro/operacoes` + `GET /api/financeiro/compromissos`:
+
+| Métrica | Fórmula |
+|---|---|
+| Operações confirmadas | `count(Operacao.status = CONFIRMADA)` |
+| Volume econômico | `Σ Operacao.valorTotal` das confirmadas (base **econômica**, não de caixa) |
+| Com efeito de estoque | `count(Operacao com movimentosEstoque ≠ [])` |
+| Volume por tipo de operação | `Σ valorTotal` das confirmadas agrupado por `Operacao.tipo`, desc |
+| Rastreabilidade | contagem de compromissos, de operações `CANCELADA` e de operações com `parceiro` |
+
+A própria tela avisa que exportação, conciliação bancária e relatórios documentais **não existem** na API.
+
+### 2.9 Métricas sem implementação atual
+
+Estavam neste documento sobre o modelo antigo (`Lancamento`/`FechamentoMensal`) e **não têm equivalente no código hoje**. Ficam listadas para não serem reinventadas por engano:
+
+| Métrica antiga | Situação | O que existe no lugar |
+|---|---|---|
+| **DRE simplificado** (Receita Leite, Custeio Leite Puro, Animal Aquisição, RN Caminhão, Investimento Leite, Custeio BPO) | Sem implementação | Nenhuma. O único recorte por centro de custo que sobrou é o custeio da Atividade Leiteira em `services/rebanho/custo-producao.ts` (§7.2). |
+| **Timeline de 23 meses** e **delta YoY** de categorias | Sem implementação | `despesasPorCategoria` (§2.6), de um único período, sem comparação. |
+| **Projeção de fluxo / a vencer** | Sem implementação | Saldo pendente dos compromissos (§2.5) — total, não distribuído no tempo. |
+| **Cards de inconsistência contábil** (Animal Aquisição não classificado, RN Caminhão grande, Atv Plantio, Sem CCusto) | Sem implementação | Só sobrou o override de classificação da categoria: `PATCH /api/categorias/:id/classificacao` (`server/src/routes/categorias.ts`, grava `Categoria.classificacao ∈ CUSTEIO/INVESTIMENTO`). Nada calcula nem exibe os cards. |
+| **Fôlego de caixa / queima mensal** | Sem implementação | `DASHBOARD_MESES_QUEIMA` continua declarado em `server/src/env.ts:34` mas **não é lido em lugar nenhum** do server. No front, `client/src/api.ts:fetchDashboard` ainda monta `d.folego` a partir de `GET /api/dashboard` — rota que **não existe mais** no backend. |
 
 ---
 
@@ -310,43 +371,49 @@ Função pura: `producao.recompute.ts:ratearProducao(litros, vacasEmLactacao)`.
 
 | Item | Detalhe |
 |---|---|
-| **Custeio total** | `Σ Lancamento(DEBITO, CCusto="Atividade Leiteira", últimos 12 meses).valor` |
-| **Litros estimados** | `Σ ResumoAnimal.producaoMediaDia × dias do período` |
-| **Fórmula** | `custeioTotal ÷ litrosEstimados` |
-| **Implementação** | `services/rebanho/custo-producao.ts` |
+| **Custeio total** | `Σ TransacaoFinanceira.valorTotal` onde `status = CONFIRMADA`, `tipo = PAGAMENTO`, `data ≥ hoje − N meses` e `operacao.centroCusto.nome = "Atividade Leiteira"` (escopo por `propriedadeId`) |
+| **Litros estimados** | `Σ ResumoAnimal.producaoMediaDia` dos animais `ATIVO` com `del ≠ null`, × `N × 30` dias |
+| **Fórmula** | `custeioTotal ÷ litrosEstimados` (2 casas; `null` quando os litros estimados são 0) |
+| **Janela** | `N = 12` meses por padrão |
+| **Implementação** | `services/rebanho/custo-producao.ts:agregarCustoProducao` |
 | **Apresentação** | `R$ X,XX /L` (hero do módulo Custo) |
-| **Marca** | Marcar como **estimativa** quando litros ainda são projetados |
+| **Marca** | Sempre **estimativa** — os litros são projetados da produção atual, não medidos no período |
 
 ### 7.3 Breakdown por categoria
 
-Lista categorias do custeio com:
+Quebra o **mesmo** custeio de 7.2 por `operacao.categoria.nome` (fallback `"Sem categoria"`), com:
 
-- Total no período
-- % do custeio total
-- Barra horizontal proporcional
+- Total por categoria (2 casas)
+- `pct = valor ÷ total` (1 casa)
+- Ordenação desc; barra horizontal proporcional
 
-Implementação: `quebrarPorCategoria(ItemCusto[])` em `custo-producao.ts`.
+Motor puro: `quebrarPorCategoria(ItemCusto[])` em `services/rebanho/custo-producao.ts` — testável sem Prisma.
 
 ### 7.4 Custo de sanidade
 
 | Item | Detalhe |
 |---|---|
-| **Específico** | `Σ Produto.custoUnitario` das aplicações registradas para o animal |
-| **Por rateio** | `Lancamento("Medicamento Animal") ÷ total aplicações no rebanho × aplicações do animal` |
-| **Implementação** | `services/rebanho/custo-sanidade.ts` |
+| **Gasto financeiro** | `Σ TransacaoFinanceira.valorTotal` com `status = CONFIRMADA`, `tipo = PAGAMENTO`, `data ≥ hoje − N meses` e `operacao.categoria.nome = "Medicamento Animal"` |
+| **Aplicações** | `EventoSanitario` com `tipo ∈ (APLICACAO, VACINA)` na mesma janela |
+| **Rateio por volume** | `custoPorAplicacao = gastoFinanceiro ÷ totalAplicações`; custo do animal = `nºAplicações × custoPorAplicacao` |
+| **Custo exato** | `Σ Produto.custoUnitario` dos produtos **precificados** aplicados no animal (`null` quando não precificado) |
+| **Implementação** | `services/rebanho/custo-sanidade.ts` — motor puro `ratearCustoSanidade(total, porAnimal[])` |
+| **Marca** | Estimativa por **volume**: uma aplicação cara conta igual a uma barata enquanto os produtos não tiverem custo unitário no Cadastro |
 
 ### 7.5 Margem (animal)
 
 | Item | Detalhe |
 |---|---|
 | **Receita** | `acumuladoLitros × precoLeite` |
-| **Custos** | `custoVacaDia × DEL + custoSanidade` |
+| **Custos** | `custoVacaDia × DEL + custoSanidadeAnimal` |
 | **Lucro** | `receita − custos` |
-| **Margem** | `lucro ÷ receita` |
+| **Margem** | `lucro ÷ receita` (0 quando a receita é 0) |
 | **Tom** | `--pos` ≥ 20% · `--warn` 0–20% · `--neg` < 0% |
-| **Implementação** | `services/rebanho/insights.ts:256–274` |
+| **Implementação** | `services/rebanho/insights.ts:221–225` |
 
-`precoLeite` = `Configuracao.precoLeite` ou fallback **R$ 2,40/L** (`insights.ts:9`).
+`custoSanidadeAnimal` = custo **exato** (soma dos `Produto.custoUnitario` aplicados nos últimos 12 meses) quando > 0; senão o **rateio** do gasto real de "Medicamento Animal" — mesma consulta de 7.4, sobre `TransacaoFinanceira` `CONFIRMADA`/`PAGAMENTO` (`insights.ts:198–209`).
+
+`precoLeite` = `Configuracao.precoLeite` ou fallback **R$ 2,40/L** (`insights.ts:13`).
 
 ---
 
@@ -422,13 +489,13 @@ Cada insight tem `tom: "pos" | "warn" | "neg"`.
 | **Hoje** | 2026-05-28 (fixo no mock); `new Date()` em produção | KPIs voláteis |
 | **Últimos 7 dias** | `[hoje − 7, hoje]` | Atividade recente |
 | **Últimos 30 dias** | `[hoje − 30, hoje]` | Custo vaca/dia, dashboards diários |
-| **12 meses** | `[hoje − 365, hoje]` | Custo de produção, custo sanidade |
-| **YTD 2026** | `[2026-01-01, hoje]` | DRE atual |
-| **Ano 2025** | `[2025-01-01, 2025-12-31]` | Comparação anual |
-| **23 meses Rio Novo** | Jul/2024 → Mai/2026 | Timeline gráfica do dashboard |
-| **2024 H2** | Jul/24 → Dez/24 | DRE histórica |
+| **12 meses** | `[hoje − 12 meses, hoje]` | Custo de produção (§7.2), custo sanidade (§7.4) |
+| **Mês corrente** | `[Date.UTC(a, m, 1), Date.UTC(a, m+1, 0, 23:59:59)]` | Default do dashboard financeiro (`routes/financeiro.ts`) |
+| **Mês selecionado** | `[inicio, fim]` do seletor de mês | Visão geral financeira (`limitesMes` em `financeiro-ui.tsx`) |
 | **Lactação 305** | `[dataParto, dataParto + 305]` | Curva e P305 |
 | **Período seco** | `[secagem, próximo parto]` (~60d) | Manejo |
+
+> Janelas de comparação anual (YTD, ano cheio, 23 meses) **não existem mais** no financeiro — não há DRE nem timeline histórica implementadas (§2.9).
 
 ---
 
@@ -445,7 +512,7 @@ Alertas aparecem no Dashboard Rebanho e em cards das telas de domínio. Regras e
 | Partos ≤ 30d | PRENHE & `diasGestacao ≥ 250` | `--pos` | Preparar parto |
 | Estoque mínimo | `Produto.saldo < minimoEstoque` | `--warn` | Comprar |
 | Carência ativa | `EventoSanitario.carencia` ainda válida | `--warn` | Não vender leite desta vaca |
-| Mês fechado | Tentativa de editar lancamento em mês fechado | `--neg` (bloqueio) | Reabrir mês ou ajustar em mês corrente |
+| Período fechado | Escrita financeira em mês com `PeriodoFinanceiro.status = FECHADO` | `--neg` (bloqueio) | Erro `PERIODO_FECHADO` (HTTP 409) — registrar em período aberto |
 
 ---
 
@@ -476,7 +543,12 @@ Alertas aparecem no Dashboard Rebanho e em cards das telas de domínio. Regras e
 - [`DOMAIN.md`](./DOMAIN.md) — definições e metas dos indicadores.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — onde cada cálculo vive no código.
 - [`PRODUCT.md`](./PRODUCT.md) — por que cada métrica existe.
-- `server/src/services/dashboard.ts` — agregados financeiros.
+- [`docs/financeiro-rebuild-contrato.md`](./docs/financeiro-rebuild-contrato.md) — contrato do modelo financeiro atual.
+- `server/src/services/financeiro/dashboard.ts` — agregados financeiros (realizado, compromissos, categorias).
+- `server/src/services/financeiro/contas.ts` — saldo por conta e saldo geral.
+- `server/src/services/financeiro/regras.ts` — trava de `PeriodoFinanceiro` e auditoria.
+- `server/src/services/financeiro/operacoes.ts` — operações, compromissos, liquidações, transferências, estorno.
+- `server/src/services/consulta/registro/financeiro.ts` — fatos financeiros expostos à IA.
 - `server/src/services/rebanho/insights.ts` — score + financeiro por animal.
 - `server/src/services/rebanho/custo-producao.ts` — R$/litro.
 - `server/src/services/rebanho/estoque.calc.ts` — custo vaca/dia.
