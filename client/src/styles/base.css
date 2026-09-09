@@ -174,6 +174,17 @@ a { color: inherit; }
   padding: 0 var(--gutter);
 }
 
+/* Páginas do financeiro (PaginaFinanceira). O ritmo vertical mora AQUI e não em
+   utilitários Tailwind: `.shell-wide` é regra não-camada e zera padding-top/bottom
+   de qualquer `pt-*`/`pb-*` (camada utilities perde no cascade). O seletor composto
+   também vence as redefinições de `.shell-wide` nos media queries abaixo. */
+.shell-wide.pagina-financeira { padding-bottom: 40px; }
+@media (max-width: 900px) {
+  /* folga para o botão flutuante "Abrir menu" (fixed left-3 top-3, 40px) não
+     cobrir o cabeçalho da página quando a sidebar vira drawer. */
+  .shell-wide.pagina-financeira { padding-top: 56px; }
+}
+
 
 
 /* period switcher */
@@ -1064,6 +1075,30 @@ body.no-scroll { overflow: hidden; }
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
+/* Estado de carregamento em nível de PÁGINA.
+
+   A coluna `.pagina-carregando` mede exatamente uma viewport e o loader dentro
+   dela cresce para tomar a sobra (`flex: 1`). Assim o total nunca passa de
+   100dvh — nem quando há algo acima do loader (o botão "Voltar" do detalhe da
+   operação, por exemplo). Dar `min-height: 100dvh` direto no loader criava
+   barra de rolagem, porque o padding do contêiner e os irmãos somavam POR FORA
+   dos 100dvh e empurravam a página (40px no desktop, 96px no mobile).
+
+   Vive dentro do `.app-main`, que já desconta a sidebar no margin-left — o
+   centro é o da região de conteúdo, não o da janela, e acompanha o trilho
+   aberto (256px), recolhido (64px) ou o drawer mobile (0). `dvh` evita que a
+   barra do navegador móvel desloque o centro. */
+.pagina-carregando {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.loader--pagina {
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+  padding: 24px;
+}
 
 /* ---- BootSplash (abertura do app) ---- */
 .boot-splash {
@@ -1155,3 +1190,56 @@ body.no-scroll { overflow: hidden; }
 @media (max-width: 720px) {
   .dash-skeleton-kpis { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Relatório financeiro gerencial: documento (pré-visualização = PDF).
+   Papel creme, Newsreader nos títulos, DM Sans no corpo, latão nos eyebrows. */
+.rg-previa { display: flex; justify-content: center; }
+.rg-doc {
+  width: 190mm;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 12mm 12mm 10mm;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 1px 0 var(--rule), 0 12px 32px rgba(20, 25, 26, .08);
+}
+.rg-capa { border-bottom: 1.5px solid var(--ink); padding-bottom: 5mm; margin-bottom: 6mm; }
+.rg-marca { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6mm; }
+.rg-eyebrow { margin: 0; font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--leite); }
+.rg-doc h1 { margin: 2mm 0 1mm; font-family: var(--serif); font-size: 26px; font-weight: 500; line-height: 1.1; letter-spacing: -.01em; }
+.rg-subtitulo { margin: 0 0 2mm; font-family: var(--serif); font-size: 14px; font-style: italic; color: var(--ink-2); }
+.rg-meta, .rg-nota, .rg-rodape { margin: 1.5mm 0 0; font-size: 9.5px; color: var(--ink-3); }
+.rg-secao { margin: 0 0 6mm; padding-top: 2mm; border-top: 1px solid var(--rule); }
+.rg-secao-cabecalho { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2.5mm; }
+.rg-secao h2 { margin: 0; font-family: var(--serif); font-size: 16px; font-weight: 500; }
+.rg-secao h3 { margin: 3mm 0 1.5mm; font-family: var(--serif); font-size: 12.5px; font-weight: 600; }
+.rg-secao h3 small { font-family: var(--sans); font-size: 9.5px; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+.rg-regime { font-size: 8.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-3); }
+.rg-regime-realizado { border-color: var(--leite); color: var(--leite); }
+.rg-regime-previsto { border-color: var(--cafe); color: var(--cafe); }
+.rg-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3mm; }
+.rg-kpis-previsto { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 3mm; padding-top: 3mm; border-top: 1px dashed var(--rule); }
+.rg-kpi { display: flex; flex-direction: column; gap: 1px; padding: 2.5mm; background: var(--bg-card); border: 1px solid var(--rule-soft); border-radius: 4px; }
+.rg-kpi-rotulo { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.rg-kpi strong { font-family: var(--serif); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.rg-pos { color: var(--lucro); }
+.rg-neg { color: var(--prejuizo); }
+.rg-tabela { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10.5px; }
+.rg-tabela th, .rg-tabela td { padding: 1.6mm 2mm; border-bottom: 1px solid var(--rule-soft); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.rg-tabela th { font-family: var(--serif); font-style: italic; font-weight: 600; color: var(--ink-2); border-bottom-color: var(--rule); }
+.rg-tabela .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rg-tabela .rg-data { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rg-tabela tfoot td { font-weight: 600; border-top: 1px solid var(--ink); border-bottom: 0; }
+.rg-tabela .rg-grupo td { font-weight: 600; background: var(--bg-card-2); }
+.rg-tabela .rg-recuo { padding-left: 6mm; }
+.rg-vazio { margin: 1mm 0; padding: 3mm; border: 1px dashed var(--rule); border-radius: 4px; color: var(--ink-3); font-style: italic; text-align: center; }
+.rg-lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2mm 6mm; margin: 0; }
+.rg-lista div { display: flex; justify-content: space-between; gap: 4mm; border-bottom: 1px solid var(--rule-soft); padding: 1.2mm 0; }
+.rg-lista dt { color: var(--ink-3); }
+.rg-lista dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rg-observacoes { white-space: pre-wrap; margin: 0; }
+.rg-rodape { margin-top: 6mm; padding-top: 2mm; border-top: 1px solid var(--rule); }
+.rg-bloco { break-inside: avoid; page-break-inside: avoid; }

@@ -481,14 +481,22 @@ Use `include`/`select` Prisma para trazer relações em 1 query. Auditar consult
 
 ## 13. Segurança e privacidade
 
-### 13.1 Auth ainda não está implementada
+### 13.1 Auth existe — respeite as duas camadas
 
-Não confundir CLAUDE.md / handoffs com estado real. **Confirmar com humano** antes de assumir que existe sessão de usuário.
+Há contas reais (`Usuario`, `Sessao`, `TokenAcesso`). O `authMiddleware` resolve
+`Authorization: Bearer <token>` e injeta `c.set("usuario", ...)`; acima dele há gates de
+**área** (`exigeArea`) e de **flag** (`exigePermissao`). Rota nova sob um módulo já coberto
+herda o gate montado em `index.ts` — rota fora desses prefixos precisa do gate explícito.
+
+`SHARED_ACCESS_TOKEN` é ponte de transição (vale como dono) e não deve virar base de
+feature nova. Sem token no env e com a tabela `Usuario` vazia, o dev local fica aberto —
+não confundir isso com "não há auth".
 
 ### 13.2 Dados financeiros são sensíveis
 
 - Não logar valores em texto plano em produção.
-- Não expor `Lancamento` por rota pública sem filtro de propriedade.
+- Não expor `Operacao` / `TransacaoFinanceira` / `CompromissoFinanceiro` por rota pública
+  sem filtro de propriedade (`resolverEscopoLeitura/Escrita`).
 - Nunca commitar `.env`, `*.json` com credenciais.
 
 ### 13.3 LGPD

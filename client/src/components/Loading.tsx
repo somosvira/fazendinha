@@ -133,21 +133,27 @@ function Figure({ motif }: { motif: LoadingMotif }) {
   return <Tractor className="tractor tractor--spin" />;
 }
 
-/** Loader de seção/inline. Troca os "Carregando…" ad-hoc por um único componente. */
+/** Loader de seção/inline. Troca os "Carregando…" ad-hoc por um único componente.
+ *  `full` promove o loader a estado de PÁGINA: ocupa a altura da área de conteúdo
+ *  e centraliza nos dois eixos (`.loader--pagina` em base.css). Como ele vive
+ *  dentro do `.app-main` — que já desconta a sidebar via margin-left — o centro
+ *  é o da região de conteúdo, e acompanha a sidebar aberta ou recolhida. */
 export function Loader({
   label = "Carregando…",
   size = "md",
   motif = "coffee",
+  full = false,
   className,
 }: {
   label?: string;
   size?: "sm" | "md";
   motif?: LoadingMotif;
+  full?: boolean;
   className?: string;
 }) {
   return (
     <div
-      className={`loader loader--${size}${className ? " " + className : ""}`}
+      className={`loader loader--${size}${full ? " loader--pagina" : ""}${className ? " " + className : ""}`}
       role="status"
       aria-live="polite"
       aria-busy="true"

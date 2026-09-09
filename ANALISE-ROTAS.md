@@ -3,6 +3,24 @@
 > Levantamento de completude de cada rota da sidebar + navegação por URL.
 > Gerado em 30/jun/2026.
 
+> ⚠️ **Documento histórico — não usar como estado atual.** Este é um retrato de
+> 30/jun/2026 e foi superado pela reconstrução do financeiro (#243) e pela fatia de
+> contas e acessos. O que mudou desde então:
+>
+> - O modelo financeiro citado aqui (`Lancamento`, `FechamentoMensal`, `ClienteFornecedor`,
+>   `POST /api/lancamentos`) **não existe mais**. O financeiro hoje é `Operacao`,
+>   `CompromissoFinanceiro`, `TransacaoFinanceira`/`MovimentoConta`, `Parceiro` e
+>   `PeriodoFinanceiro`, com CRUD real sob `/api/financeiro/*`.
+> - As telas financeiras deixaram de ser protótipo sobre `data/rionovo.ts`: hoje leem a
+>   API por `client/src/financeiro/novo-api.ts`.
+> - `/acessos` deixou de ser frontend-only: existem `Usuario`, `Sessao` e `TokenAcesso`,
+>   com login, convite, reset e gates por área e flag.
+> - Os caminhos mudaram: o financeiro vive em `/financeiro/*` e o rebanho em `/pecuaria/*`.
+> - O deploy não é mais Vercel; é Cloudflare Pages com Worker de proxy mais Render.
+>   O `client/vercel.json` citado abaixo é resíduo.
+>
+> Para o estado atual, ver `CLAUDE.md`, `ARCHITECTURE.md` e `METRICS.md`.
+
 ## Navegação por URL
 
 A navegação passou a refletir o path na barra de endereço (sem `react-router` —

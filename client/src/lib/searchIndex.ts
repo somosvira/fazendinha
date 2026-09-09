@@ -107,6 +107,7 @@ export const COMANDOS: Comando[] = [
   { id: "acao-lancar-gasto", tab: "lancar", label: "Lançar gasto", grupo: "Ações", acao: true, sinonimos: ["nova despesa", "registrar saída", "novo lançamento", "lançar despesa", "registrar gasto"], descricao: "Registrar uma nova saída" },
   { id: "acao-novo-talhao", tab: "pla-talhao", label: "Novo talhão", grupo: "Ações", acao: true, sinonimos: ["cadastrar talhão", "nova lavoura", "nova gleba", "novo plantio", "nova área"], descricao: "Cadastrar um novo talhão" },
   { id: "acao-novo-animal", tab: "reb-animal", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal" },
+  { id: "acao-relatorio-gerencial", tab: "relatorio", label: "Relatório financeiro gerencial", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "saldo por conta", "compromissos", "exportar pdf", "exportar csv", "relatório financeiro"], descricao: "Montar e exportar o relatório financeiro do período" },
   { id: "acao-relatorio", tab: "relatorio", label: "Abrir relatórios", grupo: "Ações", acao: true, sinonimos: ["criar relatório", "exportar", "pdf", "csv", "fechamento"], descricao: "Abrir a central de relatórios" },
   { id: "acao-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Ações", acao: true, sinonimos: ["produtos", "fornecedores", "registrar cadastro"], descricao: "Abrir os cadastros" },
 ];

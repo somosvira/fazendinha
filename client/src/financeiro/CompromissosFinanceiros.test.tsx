@@ -24,7 +24,7 @@ describe("CompromissosFinanceiros — criação", () => {
     const onNav = vi.fn();
     render(<CompromissosFinanceiros onNav={onNav} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Criar a pagar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Criar a pagar" }));
     expect(await screen.findByRole("heading", { name: "Substituir rascunho em andamento?" })).toBeTruthy();
     expect(screen.getByText(/dados preenchidos e documentos anexados/)).toBeTruthy();
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
@@ -39,7 +39,7 @@ describe("CompromissosFinanceiros — criação", () => {
     const onNav = vi.fn();
     render(<CompromissosFinanceiros onNav={onNav} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Criar a receber" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Criar a receber" }));
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
     expect(screen.queryByRole("heading", { name: "Substituir rascunho em andamento?" })).toBeNull();
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
