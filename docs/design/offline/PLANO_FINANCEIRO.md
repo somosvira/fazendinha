@@ -90,8 +90,10 @@ enquanto o id for de um dos dois prefixos.
   de data — `server/.../financeiro/contas.ts`), então ajustar por delta não
   duplica cálculo nenhum — diferente de um agregado com regra própria
   (tipo o saldoGeral do Dashboard, que segue invalidate-only). Tela mostra
-  "saldo estimado — sincronizando" enquanto a mutation não sincronizou
-  (`useLiquidarCompromisso().pendentes`/`useTransferir().pendentes`).
+  "offline — saldo estimado" enquanto a mutation não sincronizou
+  (`useLiquidarCompromisso().pendentes`/`useTransferir().pendentes`) — não
+  "sincronizando", porque nada sincroniza enquanto está offline; o valor só
+  atualiza de fato ao reconectar.
 
 **`transferir`**
 - `Operacao` (1, tipo fixo, sem itens) — patch na lista de Operações.
