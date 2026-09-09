@@ -4,55 +4,57 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Domínio
 
-Sistema de gestão da **Fazenda Rio Novo**. Nasceu como o relatório gerencial de fluxo de caixa (hoje feito em Excel, com tabelas dinâmicas lendo bancos Access do BPO) e cresceu para um **ERP de fazenda** com módulos operacionais além do financeiro. Identificadores no código (modelos, campos, rotas) seguem **português** — `Lancamento`, `Categoria`, `CentroCusto`, `GrupoCategoria`, `ClienteFornecedor`, `FechamentoMensal`. Mensagens ao usuário também em PT-BR.
+Sistema de gestão da **Fazenda Rio Novo** (produto: **Fazendinha / Terrano**). Nasceu como o relatório gerencial de fluxo de caixa (feito em Excel lendo bancos Access do BPO) e cresceu para um **ERP de fazenda** com módulos operacionais além do financeiro. Identificadores no código (modelos, campos, rotas) seguem **português** — `Operacao`, `CompromissoFinanceiro`, `Categoria`, `CentroCusto`, `Parceiro`, `Animal`, `Talhao`. Mensagens ao usuário também em PT-BR.
 
-**Financeiro** (núcleo): regime de **caixa** — lançamentos `LIQUIDADO` alimentam o *Realizado*; `ABERTO` (a vencer) alimentam a *Projeção*. Existe um Excel real (`Relatório Rio Novo 2026.05.04.xlsx`) e um extrator Python (`scripts/extract_rio_novo.py`) que lê o pivotCache, filtra `*Fonte = RIO NOVO` e gera ~6.700 lançamentos em `server/prisma/rio_novo.json`. O schema Prisma foi modelado contra esses dados reais — **não inventar campos**, sempre conferir o schema antes de propor mudanças.
+**Financeiro** (núcleo, **reconstruído em ago/set 2026** — branch `financeiro-rebuild`, PR #243): o modelo separa o **fato de negócio** (`Operacao` + `ItemOperacao`), o **valor pendente** (`CompromissoFinanceiro` + `Liquidacao`), o **dinheiro realizado** (`TransacaoFinanceira` → `MovimentoConta`, única fonte de alteração de saldo de `ContaFinanceira`) e o **efeito físico** (`MovimentoEstoque`). Regras fixadas em [docs/financeiro-rebuild-contrato.md](docs/financeiro-rebuild-contrato.md) — ler antes de mexer: compromisso não altera saldo; compra à vista não cria compromisso; liquidação nunca supera o saldo pendente; registros confirmados **não são apagados, são estornados** com evento inverso e `AuditoriaFinanceira`; `PeriodoFinanceiro` FECHADO bloqueia escrita/estorno no mês. O modelo legado (`Lancamento`, `FechamentoMensal`, `Caixinha`, `ClienteFornecedor`, `NotaFiscal*`) **não existe mais** no schema. O Excel histórico e o extrator (`scripts/extract_rio_novo.py` → `server/prisma/rio_novo.json`) seguem no repo como referência, mas **não há importador** para o modelo novo. **Não inventar campos** — sempre conferir o schema antes de propor mudanças.
 
 **Módulos operacionais** (fatos próprios, cada um com dashboard + IA):
-- **rebanho** — gado leiteiro (animais, reprodução, sanidade, nutrição, produção de leite, estoque de insumos, custo de produção/sanidade).
-- **corte** — gado de corte (lotes, piquetes, pesagens, manejo sanitário, suplementação, operações comerciais).
-- **plantio** — lavoura de café (talhões, fenologia, MIP, adubação, colheita, apontamento de máquinas).
+- **rebanho / pecuária** — gado leiteiro (animais, reprodução, IATF, FIV/TE, acasalamento, genética, sanidade, nutrição/dieta, produção de leite e tanque, estoque de insumos, custo de produção/sanidade, formulários de campo, relatórios configuráveis).
+- **corte** — lotes de gado de corte (lotes, piquetes, pesagens, manejo sanitário, suplementação, operações comerciais). Na navegação vive como subseção **"Lotes" da Pecuária** (`/pecuaria/lotes/*`), não como módulo independente ([docs/design/pecuaria-unificada.md](docs/design/pecuaria-unificada.md)).
+- **plantio** — lavoura de café (talhões, fenologia, MIP, adubação, colheita, planejamento, apontamento de máquinas).
 - **cultivo / milho** — safras de grãos e silos (áreas, produção, movimentos de silo, custo por safra).
 - **equipe / ponto** — funcionários, registro de ponto, folha, rateio de custo de mão de obra por setor.
-- **caixinha** — caixa/dinheiro físico (petty cash), com movimentos que espelham lançamentos.
-- **WhatsApp bot** — assistente conversacional (OpenAI) que responde perguntas e lança gastos via Meta Cloud API.
-- **Notas fiscais** — upload + OCR (Tesseract) para extrair dados e validar contra lançamentos.
+- **Contas e acessos** — usuários reais com papéis, áreas (`financeiro`/`pecuaria`/`agricultura`/`equipe`) e flags de permissão (ver seção Auth).
+- **WhatsApp bot** — assistente conversacional (OpenAI) via Meta Cloud API; consulta pelo motor estruturado (`services/consulta/`), sem SQL gerado pelo LLM.
+- **Documentos financeiros** — upload de comprovantes/notas anexados a operações e rascunhos (`DocumentoFinanceiro`), storage local ou R2. OCR (`lib/ocr.ts`) existe mas **não está ligado a nenhuma rota** hoje.
 
-Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.md`, `PRODUCT.md`, `METRICS.md`, `DEPLOY.md`, `ROADMAP.md`, `AI_RULES.md`) e em `docs/` (design specs e planos por fatia). Consultar quando precisar de detalhe além deste arquivo — **não criar novos** salvo pedido.
+Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.md`, `PRODUCT.md`, `METRICS.md`, `DEPLOY.md`, `ROADMAP.md`, `AI_RULES.md`, `DESIGN.md`, `COMPONENTS.md`) e em `docs/` (design specs em `docs/design/`, planos/specs em `docs/superpowers/`, handoffs e auditorias datadas). Em caso de conflito, **este arquivo e o schema prevalecem**. Consultar quando precisar de detalhe além deste arquivo — **não criar novos `.md`** salvo pedido.
 
 ## Stack
 
-- Monorepo **pnpm workspaces** (lockfile único na raiz). Workspaces: `client`, `server`.
-- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). OCR via **`tesseract.js`** + **`sharp`** + **`pdf-parse`**. Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2, S3-compatible) ou disco local.
-- Frontend: **React 18 + Vite 6 + TypeScript**. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `recharts` e `html2pdf.js` estão instalados e em uso pontual.
-- Testes: **Vitest** nos dois workspaces (`*.test.ts` colocados ao lado do código, ~60 arquivos — a maioria em `server/src/services/**` cobrindo cálculos financeiros/zootécnicos).
-- Banco: **Neon** (Postgres serverless). Conexão usa endpoint **pooled** (PgBouncer transaction mode).
+- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20.
+- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. `tesseract.js` + `sharp` + `pdf-parse` instalados para OCR (dormente).
+- Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
+- Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
+- Banco: **Neon** (Postgres serverless). Runtime usa endpoint **pooled**; `schema.prisma` declara `directUrl = env("DIRECT_URL")`.
+- CI: `.github/workflows/staging.yml` — build + testes do server em push/PR na `main`. Deploy é pelas integrações Git dos provedores: **Cloudflare Pages** (client, `_worker.js` faz proxy de `/api/*` → API) e **Render** (server, `render.yaml`).
 
 ## Comandos
 
 Tudo é orquestrado pela raiz:
 
 ```bash
-pnpm install            # workspace inteiro
+pnpm install            # workspace inteiro (postinstall do server roda prisma generate)
 pnpm dev                # sobe server (41873) e client (41875) em paralelo
-pnpm dev:server         # só backend
+pnpm dev:server         # só backend — roda `prisma db push --skip-generate` ANTES do tsx watch
 pnpm dev:client         # só frontend
 pnpm build              # build dos dois workspaces (tsc + vite build)
 pnpm prisma:generate    # regera Prisma Client (delega ao server)
 pnpm prisma:migrate     # prisma migrate dev (requer DIRECT_URL — ver abaixo)
 pnpm prisma:studio      # abre Prisma Studio
+pnpm gen:nav-doc        # regera docs/NAVEGACAO.md a partir de services/bot/navegacao.ts
 ```
 
 Scripts no workspace `server/`:
 
 ```bash
 pnpm --filter rionovo-server exec prisma migrate deploy  # aplica migrations existentes (funciona via pooler)
-pnpm --filter rionovo-server run db:push                 # sincroniza schema sem migration (é o que roda em prod)
-pnpm --filter rionovo-server run seed                    # dados de exemplo do financeiro (prisma/seed.ts)
-pnpm --filter rionovo-server run seed:rebanho            # (+ seed:plantio, seed:corte, seed:ponto, seed:plantios)
-pnpm --filter rionovo-server run import                  # importa o histórico real do rio_novo.json
+pnpm --filter rionovo-server run db:push                 # sincroniza schema sem migration
+pnpm --filter rionovo-server run seed                    # seed pequeno e determinístico do financeiro novo (prisma/seed.ts)
+pnpm --filter rionovo-server run seed:usuarios           # usuários de exemplo (+ seed:rebanho, seed:plantio, seed:plantios, seed:corte, seed:ponto, seed:all)
 pnpm --filter rionovo-server run import:rebanho          # importa rebanho_real.json
 pnpm --filter rionovo-server run whatsapp:user           # gerencia allowlist de números do bot
+pnpm --filter rionovo-server run bateria:gabarito        # bateria de perguntas da IA (gabarito) / bateria:run
 ```
 
 Testes (Vitest, na raiz de cada workspace):
@@ -60,53 +62,52 @@ Testes (Vitest, na raiz de cada workspace):
 ```bash
 pnpm --filter rionovo-server run test          # roda todos os testes do backend (vitest run)
 pnpm --filter rionovo-client run test          # roda os testes do frontend
-pnpm --filter rionovo-server exec vitest run src/services/ponto/folha.test.ts   # um arquivo só
-pnpm --filter rionovo-server exec vitest -t "nome do teste"                      # por nome (watch)
+pnpm --filter rionovo-server exec vitest run src/services/financeiro/rascunhos.test.ts   # um arquivo só
+pnpm --filter rionovo-server exec vitest -t "nome do teste"                              # por nome (watch)
 ```
 
-Não há target `test` na raiz — rodar por workspace via `--filter`.
+Não há target `test` na raiz — rodar por workspace via `--filter`. Os testes do server importam módulos que passam por `env.ts`; sem `server/.env` exporte `DATABASE_URL` dummy (é o que o CI faz).
 
 ## Variáveis de ambiente
 
 `server/.env` (copiar de `server/.env.example`). Validado por Zod em `server/src/env.ts` — importar de lá, nunca `process.env`. Muitas são opcionais e desligam features graciosamente quando ausentes:
 
-- `DATABASE_URL` — string Neon pooled (`?sslmode=require&channel_binding=require`). **Única obrigatória.**
-- `PORT` — porta do backend (default 41873). `NODE_ENV`, `JWT_SECRET` (placeholder).
-- `CORS_ORIGIN` — CSV de origens permitidas; vazio libera tudo (dev). Setar em prod.
-- `SHARED_ACCESS_TOKEN` — senha compartilhada de porta de entrada (piloto, ≥16 chars). Se setado, todas as rotas exceto `/api/health` e `/api/whatsapp/*` exigem `Authorization: Bearer <token>`. Vazio = porta aberta (dev). **Não** é sistema de usuários — é auth mínima até escalar.
-- `OPENAI_API_KEY` (+ `OPENAI_MODEL`, default `gpt-4o`) — cérebro do bot e da IA do rebanho. Sem a chave: bot desligado (503) e IA em modo demonstração (regras locais).
+- `DATABASE_URL` — string Neon pooled (`?sslmode=require&channel_binding=require`). **Única obrigatória.** `DIRECT_URL` — URL direct (sem `-pooler`), usada por `migrate dev` e `db push`.
+- `PORT` — porta do backend (default 41873). `NODE_ENV`, `JWT_SECRET`.
+- `CORS_ORIGIN` — CSV de origens permitidas; vazio libera tudo (dev). Setar em prod (o boot avisa).
+- **Auth** — `AUTH_BOOTSTRAP_EMAIL` (+ `AUTH_BOOTSTRAP_NOME`): se setado e a tabela `Usuario` estiver vazia, o boot cria o dono PENDENTE e loga o link de definir senha. `APP_BASE_URL` — prefixo dos links de convite/reset. `AUTH_SESSAO_DIAS` — validade da sessão (sliding, default 30). `SHARED_ACCESS_TOKEN` (≥16 chars) — **ponte de transição**: se setado, vale como acesso de dono; sem ele e sem usuários no banco, a porta fica aberta (dev).
+- `OPENAI_API_KEY` (+ `OPENAI_MODEL`, default `gpt-4o`) — cérebro do bot e das IAs dos módulos. Sem a chave: bot desligado (503) e IA em modo demonstração (regras locais).
 - `WHATSAPP_*` (`VERIFY_TOKEN`, `ACCESS_TOKEN`, `PHONE_NUMBER_ID`, `APP_SECRET`) — canal Meta Cloud API; todos necessários p/ o webhook.
-- (removida) `DATABASE_URL_READONLY`/`consulta_sql` não existem mais — o bot consulta via motor estruturado (`server/src/services/consulta/`), sem SQL gerado pelo LLM.
-- `STORAGE_DRIVER` (`local`|`r2`) — anexos de nota fiscal. `r2` exige `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NOTAS` (validado por `superRefine`). `local` guarda em `LOCAL_STORAGE_DIR` (`.uploads/`).
-- `OCR_ENABLED` — Tesseract; deixe `false` em dev p/ boot rápido (evita baixar ~70MB de dados de português).
-- `DASHBOARD_MESES_QUEIMA` — meses na média da "queima mensal" do fôlego de caixa (default 6).
+- `STORAGE_DRIVER` (`local`|`r2`) — anexos de documentos financeiros. `r2` exige `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NOTAS` (validado por `superRefine`). `local` guarda em `LOCAL_STORAGE_DIR` (`.uploads/`); `LOCAL_DOWNLOAD_SECRET` assina links locais.
+- `OCR_ENABLED` — Tesseract; deixe `false` (evita baixar ~70MB de dados de português).
+- `DASHBOARD_MESES_QUEIMA` — meses na média da "queima mensal" (default 6).
+- (removida) `DATABASE_URL_READONLY`/`consulta_sql` não existem mais — o bot consulta via motor estruturado, sem SQL gerado pelo LLM.
 
-`tsx` e `node` **não carregam `.env` automaticamente** neste projeto — os scripts `dev` e `start` em `server/package.json` passam `--env-file=.env` ao Node (Node 20+ suporta nativo). Se for criar um script que executa código TS, mantenha esse flag ou a validação Zod em `server/src/env.ts` vai abortar com `DATABASE_URL: ['Required']`.
+`tsx` e `node` **não carregam `.env` automaticamente** — os scripts em `server/package.json` passam `--env-file=.env` ao Node/tsx. Se for criar um script que executa código TS, mantenha esse flag ou a validação Zod em `server/src/env.ts` vai abortar com `DATABASE_URL: ['Required']`. Prisma carrega `.env` por conta própria.
 
-Prisma carrega `.env` por conta própria — comandos `prisma *` funcionam sem o flag.
+Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/hoje.ts`) — útil para demos/screenshots; não usar em prod.
 
 ## Pooled vs direct URL (Neon)
 
-- A `DATABASE_URL` é a **pooled** (`-pooler` no host). Funciona para runtime e para `prisma migrate deploy` (apenas aplica SQL).
-- `prisma migrate dev` precisa de uma **shadow database** e geralmente falha via pooler. Quando for criar uma migration nova:
-  1. Pegar a URL **direct** do Neon (mesma URL sem `-pooler`).
-  2. Adicionar `directUrl = env("DIRECT_URL")` no bloco `datasource db` do `schema.prisma`.
-  3. Adicionar `DIRECT_URL=...` em `server/.env`.
+- A `DATABASE_URL` é a **pooled** (`-pooler` no host). Funciona para runtime e para `prisma migrate deploy`.
+- `prisma migrate dev` precisa de shadow database e falha via pooler — por isso o schema já tem `directUrl = env("DIRECT_URL")`. Para criar migration nova basta ter `DIRECT_URL` em `server/.env`.
+- `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). Há 45 migrations em `server/prisma/migrations/`; nem toda tabela tem `CREATE TABLE` nelas — recuperar com `migrate resolve --rolled-back <migration> && db push` se `migrate deploy` do zero quebrar.
 
 ## Arquitetura
 
 ### Backend (`server/src/`)
 
-Hono modular com ~50 roteadores por domínio, montados em `index.ts`:
+Hono modular com ~80 roteadores por domínio, montados em `index.ts`:
 
-- `index.ts` — bootstrap. Aplica `logger()` global, depois `cors()` e `authMiddleware` em `/api/*`, e monta cada router via `app.route("/api", router)`. **Ordem importa:** rotas isentas de auth (`health`, `whatsapp`) precisam ser montadas antes do `authMiddleware`. No boot também dispara `garantirFundacaoPropriedade()` (backfill multi-propriedade) e `iniciarCleanupPendentes()` (limpeza de uploads pendentes de NF).
-- `env.ts` — valida `process.env` com Zod; falha rápido (`process.exit(1)`) se inválido. Importar daqui em vez de `process.env`.
-- `db.ts` — singleton `PrismaClient` à prova de HMR (guarda em `globalThis` em dev).
-- `middleware/auth.ts` — Bearer token vs `SHARED_ACCESS_TOKEN` (timing-safe). Sem token no env, libera tudo (dev).
-- `routes/` — cada arquivo exporta um `Hono()` chained. Roteadores dos módulos operacionais ficam em subpastas (`routes/rebanho/`, `routes/corte/`, `routes/plantio/`, `routes/cultivo/`, `routes/ponto/`). As rotas são **finas**: validam com `zValidator` e delegam a lógica para `services/`.
-- `services/` — **onde vive a regra de negócio e o que é testado.** Mesma organização por domínio (`services/rebanho/`, `services/corte/`, etc.). Arquivos com sufixos como `.calc.ts`, `.recompute.ts`, `.agg.ts`, `.mappers.ts`, `.schemas.ts` isolam cálculo puro (fácil de testar) de I/O Prisma. Ao criar uma rota nova, siga esse split: rota → service → (calc puro + mappers + schemas).
-- `lib/` — infra transversal: `ocr.ts` (Tesseract), `storage.ts` (local vs R2).
-- `scripts/allowlist.ts` — CLI de manutenção (allowlist do WhatsApp).
+- `index.ts` — bootstrap. Aplica `logger()` global, `cors()` em `/api/*`, monta as rotas **isentas** (`health`, `whatsapp`, `authPublicoRouter` = login/convite/reset) **antes** de `authMiddleware`, depois os gates de área por prefixo (`exigeArea("pecuaria")` em `/api/rebanho/*` e `/api/corte/*`, `agricultura` em `/api/plantio/*` e `/api/cultivo/*`, `equipe` em `/api/ponto/*`, `financeiro` em `/api/financeiro*` e `/api/categorias*`), e só então os routers protegidos. **Ordem importa.** No boot também dispara `garantirFundacaoPropriedade()` (backfill multi-propriedade), `garantirResultadosGinecologicosSemente()` e `garantirDonoBootstrap()`.
+- `env.ts` — valida `process.env` com Zod; falha rápido (`process.exit(1)`) se inválido.
+- `db.ts` — singleton `PrismaClient` à prova de HMR.
+- `middleware/auth.ts` — resolve `Authorization: Bearer <token>` → `Sessao` → `Usuario` e injeta `c.set("usuario", ...)`. Aceita `SHARED_ACCESS_TOKEN` como dono sintético (ponte). Sem token no env e sem usuários no banco, libera (dev).
+- `middleware/permissao.ts` — `getUsuario(c)`, `exigeArea(area)`, `exigePermissao(flag)`. Papéis/presets/flags em `services/auth/papeis.ts` (`PAPEIS`, `AREAS_IDS`, `FLAGS_IDS`).
+- `routes/` — cada arquivo exporta um `Hono()` chained. Raiz: `auth.ts`, `usuarios.ts`, `propriedade.ts`, `financeiro.ts`, `categorias.ts`, `busca.ts`, `bot.ts`, `whatsapp.ts`, `health.ts`. Módulos operacionais em subpastas (`routes/rebanho/` ~50 arquivos, `routes/corte/`, `routes/plantio/`, `routes/cultivo/`, `routes/ponto/`). As rotas são **finas**: validam com `zValidator` e delegam a `services/`.
+- `services/` — **onde vive a regra de negócio e o que é testado.** Mesma organização por domínio. `services/financeiro/` = `operacoes.ts`, `contas.ts`, `parceiros.ts`, `rascunhos.ts`, `documentos.ts`, `dashboard.ts`, `schemas.ts` e `regras.ts` (`FinanceiroError` com códigos `NAO_ENCONTRADO|VALIDACAO|PERIODO_FECHADO|SALDO_INSUFICIENTE|JA_REVERTIDO|CONFLITO`, `dinheiro()`, `exigirPeriodoAberto`, `exigirContaAtiva`). `services/auth/` = sessão, hash, tokens de convite/reset, papéis, usuários. `services/consulta/` = motor estruturado de consultas da IA (registro por domínio). `services/bot/` = agente OpenAI, tools, navegação (deep-links). Sufixos `.calc.ts`, `.recompute.ts`, `.agg.ts`, `.mappers.ts`, `.schemas.ts` isolam cálculo puro de I/O Prisma. Ao criar rota nova, siga: rota → service → (calc puro + mappers + schemas).
+- `lib/` — `storage.ts` (local vs R2, usado por `documentos.ts`), `ocr.ts` (dormente).
+- `scripts/allowlist.ts` — CLI da allowlist do WhatsApp.
 
 Padrão de validação de payload:
 
@@ -118,58 +119,61 @@ router.post("/x", zValidator("json", schema), async (c) => {
 });
 ```
 
+Padrão de escrita financeira: toda mutação roda em `prisma.$transaction`, chama `exigirPeriodoAberto`, registra `AuditoriaFinanceira` e nunca faz `delete` de registro confirmado (estorno via `/financeiro/operacoes/:id/estorno` e `/financeiro/transacoes/:id/estorno`). O usuário criador vem de `c.get("usuario")`.
+
 ### Frontend (`client/src/`)
 
-- `main.tsx` → `App.tsx`. O `App.tsx` troca de "aba" via `useState<Tab>` (**sem react-router**). `router.ts` faz só a ponte bidirecional `Tab ⇄ pathname` (deep-link, reload, back/forward) — abas financeiras têm slug fixo; módulos operacionais viram caminhos aninhados por prefixo (`reb-`, `pla-`, `cor-`, `mil-`, `eqp-` → `/rebanho/<sub>`, etc.).
-- `components/Shell.tsx` exporta o tipo `Tab` (fonte de verdade das abas). `AppSidebar.tsx` é a navegação principal. `CommandPalette.tsx` (⌘K) usa `lib/searchIndex.ts`. `Login.tsx` + `lib/auth.ts` guardam o token do piloto.
-- **Módulos operacionais** (`client/src/rebanho/`, `corte/`, `plantio/`, `cultivo/`, `equipe/`, `financeiro/`) seguem um layout repetido: `nav.ts` (sub-abas) · `domains.tsx` · `<Modulo>Content.tsx` (entrypoint) · `api.ts` (fetch tipado do módulo) · `types.ts` · `HOJE.ts` (data corrente via `lib/hoje.ts`) · `components/` · `mock/` (fallback/demo) · `lib/` (derive/worklists puros, com testes). Ao adicionar um módulo, copie essa forma.
-- **Estado de dados: híbrido.** Cada módulo tem seu `api.ts` que bate na API real; o financeiro usa `client/src/api.ts` (nota o mapeamento de compat mock↔API dentro de `fetchDashboard`). Partes ainda sem backend leem de `data/*` (mock). `data/rionovo.ts` (export default `R`, `any`) é a referência da forma do financeiro (planilha real Jul/2024→Mai/2026).
+- `main.tsx` → `App.tsx`. O `App.tsx` troca de "aba" via `useState<Tab>` (**sem react-router**). `router.ts` faz a ponte bidirecional `Tab ⇄ pathname` (deep-link, reload, back/forward) — abas financeiras têm slug fixo (`/financeiro`, `/financeiro/operacoes`, `/financeiro/compromissos`, `/financeiro/contas`, `/financeiro/configuracoes`, `/financeiro/relatorios`); módulos operacionais viram caminhos aninhados por prefixo (`reb-` → `/pecuaria/<sub>`, `cor-` → `/pecuaria/lotes/<sub>`, `pla-` → `/plantio`, `mil-` → `/milho`, `eqp-` → `/equipe`; `/rebanho` e `/corte` são legados redirecionados). Deep-links de auth: `/convite/<token>` e `/senha/<token>` renderizam `DefinirSenha` mesmo deslogado.
+- `components/Shell.tsx` exporta o tipo `Tab` (fonte de verdade das abas; os ids financeiros ainda usam nomes legados: `dashboard`=visão geral, `lancar`=operações, `gastos`=compromissos, `caixinha`=contas, `cadastros`=configurações, `plano`=categorias). `AppSidebar.tsx` é a navegação principal (áreas de trabalho Pecuária/Agronomia/Equipe + Financeiro, filtradas por permissão). `CommandPalette.tsx` (⌘K) usa `lib/searchIndex.ts`. `Login.tsx`, `DefinirSenha.tsx`, `Acessos.tsx`; `lib/auth.ts` guarda token + usuário da sessão em localStorage; `api/auth.ts` fala com `/api/auth/*`. `lib/areas.ts` decide visibilidade por área.
+- **Módulos operacionais** (`client/src/rebanho/`, `corte/`, `plantio/`, `cultivo/`, `equipe/`) seguem um layout repetido: `<Modulo>Content.tsx` (entrypoint; no corte é `PlantelContent.tsx`) · `api.ts` (fetch tipado) · `types.ts` · `HOJE.ts` (via `lib/hoje.ts`) · `components/` · `mock/` (referência de forma) · `lib/` (derive/worklists puros, com testes); rebanho/corte/plantio têm ainda `nav.ts` + `domains.tsx`. Ao adicionar um módulo, copie essa forma.
+- **Financeiro** (`client/src/financeiro/`): `FinanceiroContent.tsx` roteia as abas para `VisaoGeralFinanceira`, `OperacoesFinanceiras` (+ `FormOperacao`, `OperacaoFinanceiraDetalhe`, rascunho único por usuário/propriedade), `CompromissosFinanceiros`, `ContasFinanceiras`, `ConfiguracoesFinanceiras`, `RelatoriosFinanceiros`. Fetch tipado em `financeiro/novo-api.ts` (tipos = contrato da API). `client/src/api.ts` é o cliente legado ainda usado por relatório/cockpit; `data/*` (`rionovo.ts`, `projecao.ts`, etc.) são mocks/planilha de referência.
 - `propriedadeScope.ts` — sítio ativo (multi-propriedade). `comPropriedade(headers)` é o envelope padrão de TODA request: injeta `Authorization` (via `lib/auth`) e `X-Propriedade-Id`. **Usar sempre** ao escrever fetch novo.
-- `components/charts.tsx` — SVG inline: `MonthlyFlowChart`, `WaterfallChart`, `MiniBarChart`, `MonthlyTrendChart`, `Donut`. Exporta os formatadores `fmt`, `fmtBR`, `fmtMoney`, `fmtMoneyExact` — **reusar daqui**, não recriar.
-- `components/Gastos.tsx` exporta `ActivityPill` (Leite/Café/Outros/Misto) — reusado em vez de duplicado.
-- `components/DateRangePicker.tsx` / `MonthRangePicker.tsx` — calendários pt-BR com presets.
+- `components/charts.tsx` — SVG inline: `MonthlyFlowChart`, `WaterfallChart`, `MiniBarChart`, `MonthlyTrendChart`, `Donut`. Exporta `fmt`, `fmtBR`, `fmtMoney`, `fmtMoneyExact`, `fmtBRL` — **reusar daqui**, não recriar.
+- `components/ActivityPill.tsx` (Leite/Café/Outros/Misto), `components/rb/*` (primitivas do rebanho: `RebButton`, `RebField`, `RebModal`, `RebTable`, `RebKpiStrip`), `components/report/primitives.tsx`, `components/ui/*` (shadcn-style), `DateRangePicker` / `MonthRangePicker` (pt-BR com presets), `ConfirmDialog`, `Toast`, `EmptyState`, `Loading`.
 
-Estilos em `client/src/styles/` (importados de `main.tsx`) + CSS por módulo (`rebanho/styles/rebanho.css`):
-- `base.css` (paleta + tipografia + componentes compartilhados, **define as variáveis CSS**), depois `dashboard.css`, `dashboard-v2.css`, `forms.css`, `datepicker.css`, `cockpit.css`, `command-palette.css`, `relatorio.css`, `simulador.css`, `vigilancia.css`, `chat.css`, `acessos.css`, `terrano-intro.css`, `typescale.css`.
+Estilos: `main.tsx` importa, nesta ordem, `styles/theme.css` (Tailwind v4 + tokens), `base.css` (paleta, tipografia, componentes compartilhados — **define as variáveis CSS**), `dashboard.css`, `dashboard-v2.css`, `cockpit.css`, `forms.css`, `acessos.css`, `terrano-intro.css`, `typescale.css` (override de escala, por último). CSS por módulo em `rebanho/styles/`. Componentes novos usam classes Tailwind + tokens; não hardcodar hex.
 
-Cores de atividade são variáveis CSS — `--leite` (brass), `--cafe` (deep coffee), `--outros` (sage olive). **Sempre referenciar via var()**, não hardcodar hex.
+Cores de atividade são variáveis CSS — `--leite` (brass), `--cafe` (deep coffee), `--outros` (sage olive). **Sempre referenciar via var()**.
 
 Fontes carregadas de Google Fonts no `index.html`: Newsreader (serif, displays) + DM Sans (sans, body). Não bundlar.
 
 Vite (porta 41875) faz proxy de `/api` para `http://localhost:41873` (ver `vite.config.ts`).
 
-#### Padrão de "olhar a fonte de dados real" no Dashboard
-A pergunta editorial "**O leite paga o leite?**" foi removida do Dashboard a pedido do usuário e existe **só no Relatório**. Dashboard tem 4 seções numeradas (I Timeline 23m · II DRE · III Categorias · IV Inconsistências). Não recolocar no Dashboard.
+A pergunta editorial "**O leite paga o leite?**" existe **só no Relatório** — não recolocar na visão geral.
 
 ### Schema Prisma
 
-`server/prisma/schema.prisma` é grande (~110 models + enums). Núcleo financeiro:
+`server/prisma/schema.prisma` é grande (~120 models, ~65 enums). Núcleo financeiro:
 
-- `Lancamento` — fato central. Tem `natureza` (CREDITO/DEBITO), `valor` sempre **positivo** (o sinal vem da natureza), três datas (`dataCompetencia`, `dataVencimento`, `dataLiquidacao`), `situacao` (ABERTO/LIQUIDADO/LIQUIDADO_PARCIAL), `estornado`.
-- Dimensões: `Categoria` ⊂ `GrupoCategoria` (plano de contas gerencial), `CentroCusto` (Leite/Café/Investimento), `ContaBancaria`, `ClienteFornecedor`, `Produto`.
-- `FechamentoMensal` — meses fechados; lançamentos cuja data de caixa cai num mês fechado **não podem ser criados/editados/excluídos**. Qualquer rota CRUD de `Lancamento` precisa respeitar isso.
-- `Caixinha`/`MovimentoCaixinha` — caixa físico. Notas: `NotaFiscalArquivo`, `NotaFiscalUploadPendente`.
+- `Operacao` — fato central (`tipo: TipoOperacaoFinanceira`, `status: StatusOperacao` default RASCUNHO, `data`, `valorTotal`, `propriedadeId` **obrigatório**, `parceiroId?`, `categoriaId?`, `centroCustoId?`, `corrigeOperacaoId?` para correções, `criadoPorId?`). Relações: `ItemOperacao[]`, `CompromissoFinanceiro[]`, `TransacaoFinanceira[]`, `MovimentoEstoque[]`, `DocumentoFinanceiro[]`, e ponte para fatos operacionais (`OperacaoAgricola`, `ManejoSanitario`, `OperacaoComercial`, `LancamentoCusto`).
+- `CompromissoFinanceiro` (PAGAR/RECEBER, `valorOriginal`/`valorLiquidado`/saldo pendente, `Liquidacao[]`), `TransacaoFinanceira` (dinheiro realizado, `FormaPagamento`, `MovimentoConta[]` ENTRADA/SAIDA por `ContaFinanceira`), `ContaFinanceira` (BANCO/CAIXA/APLICACAO/DINHEIRO, `saldoAbertura`, `incluirNoSaldoGeral`).
+- `RascunhoOperacao` — um por `(propriedadeId, criadoPorId)`, `dados Json` + `versao` (concorrência otimista), sem efeito contábil.
+- `PeriodoFinanceiro` — `(propriedadeId, ano, mes)` ABERTO/FECHADO; mês fechado bloqueia qualquer escrita/estorno. `AuditoriaFinanceira` — trilha de toda mutação.
+- Dimensões: `Categoria` ⊂ `GrupoCategoria`, `CentroCusto`, `Parceiro` (`TipoParceiro`), `Produto` (com `estocavel`, `LocalArmazenamento`, `LoteProduto`).
 
-Blocos dos módulos operacionais (todos com resumos pré-computados por `*.recompute.ts`): rebanho (`Animal`, `ResumoAnimal`, `EventoReprodutivo`, `EventoSanitario`, `Lactacao`, `Pesagem`, `Dieta`, `MovimentoEstoque`, `Raca`, `Grupo`), corte (`LoteCorte`, `ResumoLote`, `Piquete`, `PesagemLote`, `Suplementacao`, `OperacaoComercial`), plantio (`Talhao`, `ResumoTalhao`, `Lavoura`, `SafraTalhao`, `OperacaoAgricola`, `InspecaoMIP`, `PassadaColheita`), cultivo/milho (`SafraCultivo`, `AreaCultivo`, `Silo`, `MovimentoSilo`, `ProducaoCultivo`), ponto (`Funcionario`, `RegistroPonto`), WhatsApp (`UsuarioWhatsapp`, `ConversaWhatsapp`, `MensagemWhatsapp`, `LancamentoRascunho`).
+Auth: `Usuario` (`papel`, `abas[]`, `areas[]`, `flags[]`, `status PENDENTE|ATIVO|INATIVO`, `dono`), `Sessao` (token hash, sliding), `TokenAcesso` (CONVITE/RESET).
 
-Decimal usa `@db.Decimal(14, 2)` — sempre converter via Prisma Decimal, nunca tratar como `number` JS direto em cálculos financeiros.
+Blocos dos módulos operacionais (todos com resumos pré-computados por `*.recompute.ts`): rebanho (`Animal`, `ResumoAnimal`, `EventoReprodutivo`, `EventoSanitario`, `Lactacao`, `Pesagem`, `Dieta`, `MovimentoEstoque`, `ProtocoloIATF`, `Coleta`/`EmbriaoColeta` (FIV/TE), `PlanoAcasalamento`, `Reprodutor` + indicadores genéticos, `ModeloFormularioCampo`/`FolhaCampo`), corte (`LoteCorte`, `ResumoLote`, `Piquete`, `PesagemLote`, `ManejoSanitario`, `Suplementacao`, `OperacaoComercial`), plantio (`Talhao`, `ResumoTalhao`, `Lavoura`, `SafraTalhao`, `OperacaoAgricola`, `InspecaoMIP`, `PassadaColheita`, `TarefaAgricola`, `ApontamentoMaquina`), cultivo/milho (`SafraCultivo`, `AreaCultivo`, `Silo`, `MovimentoSilo`, `ProducaoCultivo`, `LancamentoCusto`), ponto (`Funcionario`, `RegistroPonto`), WhatsApp (`UsuarioWhatsapp`, `ConversaWhatsapp`, `MensagemWhatsapp`).
 
-**Sync de schema:** em prod o `start:prod` roda `prisma db push` (não `migrate deploy`). Migrations em `server/prisma/migrations/` existem mas nem tudo tem migration de `CREATE TABLE` (ver pegadinha de deploy abaixo). Para schema novo em dev, `prisma migrate dev` exige `DIRECT_URL` (ver seção Pooled vs direct URL).
+Decimal usa `@db.Decimal(14, 2)` (quantidades `(12, 3)`, unitário `(14, 4)`) — sempre via `Prisma.Decimal` (`dinheiro()` em `regras.ts`), nunca `number` JS direto em cálculos financeiros.
 
 ### Multi-propriedade (escopo de sítio) — IMPLEMENTADO
 
-Feature transversal (toca quase todos os módulos): cada fato ganha `propriedadeId Int?` nullable e as leituras filtram por sítio; fazenda de 1 sítio não percebe a camada (a principal é resolvida invisivelmente). **Design + estado final + decisões em [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md) (seções 8 e 9)** — ler antes de escopar um fato novo. Padrão resumido: `propriedadeId Int?` + `@@index` + inverse em `Propriedade` → migration aditiva (`ADD COLUMN`+`UPDATE SET=1`+index+FK) → **backfill no boot** (`garantirFundacaoPropriedade` em `server/src/services/propriedade.ts`) → rota resolve `resolverEscopoLeitura/Escrita(c)` → front usa `comPropriedade()` (`client/src/propriedadeScope.ts`). Cadastros de referência (Produto, Raca, CentroCusto, etc.) e `FechamentoMensal` são **compartilhados** de propósito.
+Feature transversal: fatos ganham `propriedadeId` (nullable nos módulos antigos, **obrigatório** no financeiro novo) e as leituras filtram por sítio; fazenda de 1 sítio não percebe a camada. **Design + estado final + decisões em [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md) (seções 8 e 9)** — ler antes de escopar um fato novo. Padrão: coluna + `@@index` + inverse em `Propriedade` → migration aditiva → **backfill no boot** (`garantirFundacaoPropriedade` em `server/src/services/propriedade.ts`) → rota resolve `resolverEscopoLeitura/Escrita(c)` → front usa `comPropriedade()`. Cadastros de referência (Produto, Raca, CentroCusto, Categoria, Parceiro, etc.) são **compartilhados** de propósito.
 
-**Pegadinha de deploy:** o sync real é `prisma db push` (roda no `start:prod`), que **não executa** o SQL de backfill das migrations — por isso o backfill vive no boot. `Caixinha`/`MovimentoCaixinha` **não têm migration de `CREATE TABLE`** (só nascem via `db push`), então `migrate deploy` do zero quebra no `ALTER TABLE "Caixinha"` (`P3018`); recuperar com `migrate resolve --rolled-back <migration> && db push`. Detalhes na seção 9 do doc.
+### Auth e permissões
+
+- Login por e-mail/senha (`POST /auth/login` → token de sessão). Convite (`/auth/convite/:token`, `/auth/convite/aceitar`) e reset (`/auth/senha/redefinir`) são públicos; `/auth/me`, `/auth/logout` e `/usuarios/*` (CRUD, convite, reset — só dono/`gerenciarAcessos`) são protegidos.
+- Autorização em duas camadas: **área** (`exigeArea` por prefixo de rota em `index.ts`) e **flag** (`exigePermissao`: `verValores`, `verInvestimento`, `verSalarios`, `lancar`, `exportar`, `gerenciarAcessos`). O front esconde módulos pelas mesmas áreas (`lib/areas.ts`), mas o gate real é o servidor.
+- `SHARED_ACCESS_TOKEN` é ponte de rollout — não construir feature nova em cima dele.
 
 ## Convenções
 
-- ESM em tudo (`"type": "module"`). No **server**, imports relativos de `.ts` precisam terminar em `.js` (ex.: `import { env } from "./env.js"`) — Node ESM exige. No **client** (Vite + bundler resolution), imports relativos **não** levam extensão.
-- Code/comments podem ser em PT-BR (consistente com a base existente).
-- Não criar arquivos `.md` de documentação extra a não ser que pedido — o README e este arquivo já cobrem.
+- ESM em tudo (`"type": "module"`). No **server**, imports relativos de `.ts` precisam terminar em `.js` (ex.: `import { env } from "./env.js"`). No **client** (Vite), imports relativos **não** levam extensão.
+- Code/comments podem ser em PT-BR (consistente com a base existente). Commits em PT-BR no formato `tipo(escopo): descrição` (`feat(financeiro): ...`, `fix(auth): ...`).
+- Não criar arquivos `.md` de documentação extra a não ser que pedido.
 
 ## Ligando uma tela nova ao backend
 
-O backend já está plugado na maior parte do app; ainda há telas em mock. Para migrar uma:
-1. **Backend:** rota fina em `server/src/routes/<modulo>/` → service em `services/<modulo>/`, com o cálculo puro isolado em `*.calc.ts` e testado (`*.calc.test.ts`). Respeitar escopo de propriedade (`resolverEscopoLeitura/Escrita(c)`) e `FechamentoMensal` em qualquer escrita de `Lancamento`.
-2. **Frontend:** função no `api.ts` do módulo usando `comPropriedade()` nos headers. Trocar o import de `data/*` (mock) pela chamada real. Manter o mock como referência da forma até estabilizar.
+1. **Backend:** rota fina em `server/src/routes/<modulo>/` → service em `services/<modulo>/`, com o cálculo puro isolado em `*.calc.ts` e testado. Respeitar escopo de propriedade (`resolverEscopoLeitura/Escrita(c)`), o gate de área do módulo e, em qualquer escrita financeira, `exigirPeriodoAberto` + auditoria + estorno em vez de delete.
+2. **Frontend:** função no `api.ts` do módulo (ou `financeiro/novo-api.ts`) usando `comPropriedade()` nos headers. Trocar o import de `mock/` pela chamada real; manter o mock como referência da forma até estabilizar.

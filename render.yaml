@@ -22,15 +22,22 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      # Senha compartilhada do piloto — se setada, exige Authorization: Bearer <token>
-      # em todas as rotas (exceto /health e /whatsapp). O client tem tela de login.
+      # Ponte de transição: se setada, vale como acesso de dono. Opcional — as
+      # contas reais (Usuario/Sessao) já são o caminho principal.
       - key: SHARED_ACCESS_TOKEN
+        sync: false
+      # Bootstrap do dono: no primeiro boot com a tabela Usuario vazia, cria o
+      # dono PENDENTE com este e-mail e loga o link de definir senha.
+      - key: AUTH_BOOTSTRAP_EMAIL
+        sync: false
+      # Base absoluta dos links de convite/reset (ex.: https://app.terrano.com.br).
+      - key: APP_BASE_URL
+        sync: false
+      # Assina links de download locais (STORAGE_DRIVER=local). Trocar em prod.
+      - key: LOCAL_DOWNLOAD_SECRET
         sync: false
       - key: CORS_ORIGIN
         sync: false
       # OpenAI (chat/bot + IA dos módulos). Sem ela: chat 503 e IA em modo demo.
       - key: OPENAI_API_KEY
-        sync: false
-      # Opcional: role somente-leitura p/ o escape-hatch de SQL do bot.
-      - key: DATABASE_URL_READONLY
         sync: false

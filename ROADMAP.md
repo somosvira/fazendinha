@@ -34,13 +34,20 @@
 
 ## 2. Onde estamos hoje (status snapshot)
 
-**Data:** 2026-07-19.
+**Data:** 2026-09-09.
 
 ### Em produção (Fazenda Rio Novo)
 
-- ✅ Dashboard financeiro 23 meses (Jul/24 → Mai/26).
-- ✅ DRE simplificada com classificação custeio/investimento (Fatia 22).
-- ✅ Top 12 categorias, inconsistências, fechamento mensal.
+- ✅ **Financeiro reconstruído** (#243): `Operacao` como fato de negócio, `CompromissoFinanceiro`
+  para o pendente, `TransacaoFinanceira`/`MovimentoConta` para o dinheiro realizado e
+  `MovimentoEstoque` para o efeito físico. Contrato em `docs/financeiro-rebuild-contrato.md`.
+- ✅ Operações com itens, parcelas, liquidação, transferência entre contas, correção e
+  estorno com trilha de auditoria (nada confirmado é apagado).
+- ✅ Rascunho único de operação por usuário e propriedade, com documentos anexos (#250).
+- ✅ Dashboard financeiro por período: saldo por conta, realizado, a pagar/receber e
+  despesas por categoria.
+- ✅ `PeriodoFinanceiro` bloqueia escrita e estorno em mês fechado.
+- ✅ Contas e acessos: login por e-mail e senha, convite, reset, papéis com áreas e flags.
 - ✅ Cadastro de animais (bovinos e caprinos) com raça pura + grau de sangue composto + categoria por espécie.
 - ✅ Ficha do animal com **painel executivo** (score, financeiro, tendências, percentis, projeções, genealogia).
 - ✅ Timeline por animal (reprodução, sanidade, produção).
@@ -49,8 +56,8 @@
 - ✅ Custo de produção (R$/litro estimado).
 - ✅ Custo de sanidade com rateio.
 - ✅ Configuração de modo de produção (ORDENHA / TOTAL_DIARIO / TANQUE_LOTE) e preço do leite.
-- ✅ IA conversacional "Rúmi" sobre o rebanho (Claude).
-- ✅ Recepção de NF por WhatsApp com confirmação assistida (em estabilização).
+- ✅ IA conversacional "Rúmi" sobre o rebanho (OpenAI), consultando pelo motor estruturado.
+- ✅ Bot de WhatsApp respondendo consultas pelo motor estruturado, sem SQL gerado pelo LLM.
 - ✅ Worklists reprodutivas finalizadas (aInseminar, dgPendente, aSecar, partosPrevistos).
 - ✅ Painel "Hoje" (Cockpit do Dia) — 5 ações do dia cross-domínio + saldo + fechar o dia (#155, #157, #162).
 - ✅ Carência de leite ativa na produção (#153) e curva de lactação por animal (#154, #158).
@@ -61,15 +68,24 @@
 - ✅ Simulações financeiras read-only (preço do leite ±X%, troca de ração → custo vaca/dia) (#164).
 - ✅ Recompute automático de `ResumoAnimal` na criação de evento.
 
-### Em desenvolvimento (julho/26)
+### Em desenvolvimento (setembro/26)
 
-- 🔄 Estabilização do fluxo NF→WhatsApp→Lancamento.
-- 🔄 Migração das telas restantes de mock (`R`) para chamadas reais.
+- 🔄 Estabilização do financeiro reconstruído em uso real (telas, filtros e responsividade).
+- 🔄 Migração das telas restantes de mock (`R` e `mock/` por módulo) para chamadas reais.
+- 🔄 Novos deploys de produção (Render `terrano-api` + Cloudflare Pages) com o banco Neon novo.
 
 ### Conhecidos abertos
 
-- Frontend ainda mistura mocks (`R`) com chamadas reais em telas pontuais; transição em andamento.
-- Sem autenticação real ainda (porta de entrada por `SHARED_ACCESS_TOKEN`).
+- Frontend ainda mistura mocks com chamadas reais: os módulos operacionais têm arquivos
+  lendo de `mock/`, e `IA.tsx` / `PlanoContas.tsx` ainda leem `data/rionovo`.
+- Sem importador do histórico do Excel para o modelo financeiro novo — a base histórica
+  (`rio_novo.json`) segue no repo apenas como referência.
+- Sem rota para fechar e reabrir `PeriodoFinanceiro` (o bloqueio já é respeitado na escrita).
+- Catálogo de deep-links da IA (`services/bot/navegacao.ts`) ainda aponta para os caminhos
+  legados do financeiro; o roteador os aceita, mas a IA não linka as telas novas.
+- OCR (`lib/ocr.ts`) instalado e desligado: nenhuma rota o consome hoje.
+- `SHARED_ACCESS_TOKEN` segue como ponte ao lado das contas reais; remover quando o
+  rollout terminar.
 - Sem suite de testes E2E.
 - Multi-propriedade implementado; multi-tenant/SaaS (cobrança, isolamento por conta) ainda não.
 
