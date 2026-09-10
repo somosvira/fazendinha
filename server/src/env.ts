@@ -99,11 +99,18 @@ const envSchema = z
     }
   });
 
+// Exportado pra /api/health revalidar sem duplicar o schema (server/src/routes/health.ts).
+export { envSchema };
+
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error("[env] configuração inválida:");
   console.error(parsed.error.flatten().fieldErrors);
-  process.exit(1);
+  // `throw`, não `process.exit(1)`: dentro de um Cloudflare Worker essa API
+  // não existe/não faz sentido (não há processo de SO pra terminar) — um throw
+  // no module-load falha o boot igual, em Node e em Worker, sem depender de
+  // uma API específica de runtime.
+  throw new Error("[env] configuração inválida — ver console.error acima");
 }
 
 export const env = parsed.data;
