@@ -57,10 +57,6 @@ const envSchema = z
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NOTAS: z.string().optional(),
 
-    // OCR via Tesseract.js (gratuito, roda em Node). Em dev/teste deixe "false" para
-    // boot mais rápido (sem download dos ~70MB de language data português).
-    OCR_ENABLED: z.coerce.boolean().default(false),
-
     // --- Contas / login (Fatia auth) ---
     // Se setado e a tabela Usuario estiver vazia, o boot cria o dono com este
     // e-mail (status PENDENTE) e loga um link de definir-senha uma vez.

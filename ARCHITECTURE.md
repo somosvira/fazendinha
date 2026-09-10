@@ -652,7 +652,6 @@ Detalhe operacional em `DEPLOY.md`.
 | `STORAGE_DRIVER` | não (default `local`) | `local` \| `r2` |
 | `LOCAL_STORAGE_DIR` / `LOCAL_DOWNLOAD_SECRET` | não | Storage local + assinatura de download |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NOTAS` | se `r2` | Cloudflare R2 (`superRefine`) |
-| `OCR_ENABLED` | não (default `false`) | Tesseract (dormente) |
 | `DASHBOARD_MESES_QUEIMA` | não (default 6) | Média de queima mensal |
 
 `env.ts` valida via Zod e **falha rápido** (`process.exit(1)`) se inválido. **Sempre importar de `env.ts`**, nunca `process.env`. Client: `VITE_HOJE_ISO` fixa a data "hoje" em builds de demo.

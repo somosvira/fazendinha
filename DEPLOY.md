@@ -60,7 +60,6 @@ Todas são validadas por `server/src/env.ts`; se algo obrigatório faltar o proc
 | `STORAGE_DRIVER` | `local` (default; grava em `LOCAL_STORAGE_DIR`, `.uploads/`) ou `r2`. **No Render free o disco é efêmero** — anexos em `local` somem a cada deploy. Em produção use `r2`. |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NOTAS` | Obrigatórias **quando** `STORAGE_DRIVER=r2` (validado por `superRefine`). |
 | `LOCAL_DOWNLOAD_SECRET` | (≥ 16 chars) Segredo HMAC que assina as URLs de download no modo `local`. Tem default de dev — trocar em produção se usar `local`. |
-| `OCR_ENABLED` | `true`/`false`. Tesseract baixa ~70MB de dados de português no primeiro uso; ligue só se a extração de notas for usada. |
 | `DASHBOARD_MESES_QUEIMA` | (opcional) Nº de meses na média da queima do fôlego. Default 6. |
 
 > `DATABASE_URL_READONLY` **não existe mais** no código — o bot consulta via motor estruturado (`server/src/services/consulta/`), sem SQL gerado pelo LLM. Se ainda estiver no dashboard do Render, pode apagar.

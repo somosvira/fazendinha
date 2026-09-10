@@ -157,7 +157,7 @@ Abra `http://localhost:41875`.
 - pnpm **10+**.
 - Conta Neon (free tier basta).
 - `OPENAI_API_KEY` opcional — sem ela, bot desligado (503) e IA em modo demo.
-- Demais variáveis (`WHATSAPP_*`, `STORAGE_DRIVER`/`R2_*`, `CORS_ORIGIN`, `OCR_ENABLED`, `APP_BASE_URL`, `AUTH_SESSAO_DIAS`) são opcionais e validadas por Zod em `server/src/env.ts`.
+- Demais variáveis (`WHATSAPP_*`, `STORAGE_DRIVER`/`R2_*`, `CORS_ORIGIN`, `APP_BASE_URL`, `AUTH_SESSAO_DIAS`) são opcionais e validadas por Zod em `server/src/env.ts`.
 
 ---
 

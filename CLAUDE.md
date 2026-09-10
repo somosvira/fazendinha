@@ -16,14 +16,14 @@ Sistema de gestão da **Fazenda Rio Novo** (produto: **Fazendinha / Terrano**). 
 - **equipe / ponto** — funcionários, registro de ponto, folha, rateio de custo de mão de obra por setor.
 - **Contas e acessos** — usuários reais com papéis, áreas (`financeiro`/`pecuaria`/`agricultura`/`equipe`) e flags de permissão (ver seção Auth).
 - **WhatsApp bot** — assistente conversacional (OpenAI) via Meta Cloud API; consulta pelo motor estruturado (`services/consulta/`), sem SQL gerado pelo LLM.
-- **Documentos financeiros** — upload de comprovantes/notas anexados a operações e rascunhos (`DocumentoFinanceiro`), storage local ou R2. OCR (`lib/ocr.ts`) existe mas **não está ligado a nenhuma rota** hoje.
+- **Documentos financeiros** — upload de comprovantes/notas anexados a operações e rascunhos (`DocumentoFinanceiro`), storage local ou R2. Sem OCR/extração de dados.
 
 Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.md`, `PRODUCT.md`, `METRICS.md`, `DEPLOY.md`, `ROADMAP.md`, `AI_RULES.md`, `DESIGN.md`, `COMPONENTS.md`) e em `docs/` (design specs em `docs/design/`, planos/specs em `docs/superpowers/`, handoffs e auditorias datadas). Em caso de conflito, **este arquivo e o schema prevalecem**. Consultar quando precisar de detalhe além deste arquivo — **não criar novos `.md`** salvo pedido.
 
 ## Stack
 
 - Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20.
-- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. `tesseract.js` + `sharp` + `pdf-parse` instalados para OCR (dormente).
+- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. Sem OCR — `tesseract.js`/`sharp`/`pdf-parse` foram removidos por não estarem em uso (2026-09-10).
 - Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
 - Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
 - Banco: **Neon** (Postgres serverless). Runtime usa endpoint **pooled**; `schema.prisma` declara `directUrl = env("DIRECT_URL")`.
@@ -79,7 +79,6 @@ Não há target `test` na raiz — rodar por workspace via `--filter`. Os testes
 - `OPENAI_API_KEY` (+ `OPENAI_MODEL`, default `gpt-4o`) — cérebro do bot e das IAs dos módulos. Sem a chave: bot desligado (503) e IA em modo demonstração (regras locais).
 - `WHATSAPP_*` (`VERIFY_TOKEN`, `ACCESS_TOKEN`, `PHONE_NUMBER_ID`, `APP_SECRET`) — canal Meta Cloud API; todos necessários p/ o webhook.
 - `STORAGE_DRIVER` (`local`|`r2`) — anexos de documentos financeiros. `r2` exige `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NOTAS` (validado por `superRefine`). `local` guarda em `LOCAL_STORAGE_DIR` (`.uploads/`); `LOCAL_DOWNLOAD_SECRET` assina links locais.
-- `OCR_ENABLED` — Tesseract; deixe `false` (evita baixar ~70MB de dados de português).
 - `DASHBOARD_MESES_QUEIMA` — meses na média da "queima mensal" (default 6).
 - (removida) `DATABASE_URL_READONLY`/`consulta_sql` não existem mais — o bot consulta via motor estruturado, sem SQL gerado pelo LLM.
 
@@ -106,7 +105,7 @@ Hono modular com ~80 roteadores por domínio, montados em `index.ts`:
 - `middleware/permissao.ts` — `getUsuario(c)`, `exigeArea(area)`, `exigePermissao(flag)`. Papéis/presets/flags em `services/auth/papeis.ts` (`PAPEIS`, `AREAS_IDS`, `FLAGS_IDS`).
 - `routes/` — cada arquivo exporta um `Hono()` chained. Raiz: `auth.ts`, `usuarios.ts`, `propriedade.ts`, `financeiro.ts`, `categorias.ts`, `busca.ts`, `bot.ts`, `whatsapp.ts`, `health.ts`. Módulos operacionais em subpastas (`routes/rebanho/` ~50 arquivos, `routes/corte/`, `routes/plantio/`, `routes/cultivo/`, `routes/ponto/`). As rotas são **finas**: validam com `zValidator` e delegam a `services/`.
 - `services/` — **onde vive a regra de negócio e o que é testado.** Mesma organização por domínio. `services/financeiro/` = `operacoes.ts`, `contas.ts`, `parceiros.ts`, `rascunhos.ts`, `documentos.ts`, `dashboard.ts`, `schemas.ts` e `regras.ts` (`FinanceiroError` com códigos `NAO_ENCONTRADO|VALIDACAO|PERIODO_FECHADO|SALDO_INSUFICIENTE|JA_REVERTIDO|CONFLITO`, `dinheiro()`, `exigirPeriodoAberto`, `exigirContaAtiva`). `services/auth/` = sessão, hash, tokens de convite/reset, papéis, usuários. `services/consulta/` = motor estruturado de consultas da IA (registro por domínio). `services/bot/` = agente OpenAI, tools, navegação (deep-links). Sufixos `.calc.ts`, `.recompute.ts`, `.agg.ts`, `.mappers.ts`, `.schemas.ts` isolam cálculo puro de I/O Prisma. Ao criar rota nova, siga: rota → service → (calc puro + mappers + schemas).
-- `lib/` — `storage.ts` (local vs R2, usado por `documentos.ts`), `ocr.ts` (dormente).
+- `lib/` — `storage.ts` (local vs R2, usado por `documentos.ts`).
 - `scripts/allowlist.ts` — CLI da allowlist do WhatsApp.
 
 Padrão de validação de payload:
