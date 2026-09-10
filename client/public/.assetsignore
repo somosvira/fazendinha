@@ -1,7 +1,0 @@
-# _worker.js aqui é o proxy do Cloudflare Pages (client/public/_worker.js,
-# ver DEPLOY.md) — usado pelo deploy atual (Pages + Render). O Worker novo
-# (server/src/worker.ts, wrangler.jsonc na raiz) não usa esse arquivo; sem
-# este ignore, `wrangler deploy` recusa subir os assets porque um arquivo
-# chamado _worker.js dentro do diretório de assets pareceria um Worker
-# script sendo exposto por engano como estático.
-_worker.js

@@ -269,7 +269,7 @@ Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X PO
   - `server/src/worker.ts` — Cloudflare Worker (`export { app as default }`, padrão oficial do Hono). Referenciado por `main` em `wrangler.jsonc` (raiz do repo).
 - `server/src/db.ts` — escolhe o driver do Prisma pelo runtime (`server/src/lib/runtime.ts`, `isCloudflareWorkers()`): `PrismaNeon` (HTTP/WebSocket) dentro do Worker, `PrismaPg` (TCP) em Node. Mesma `DATABASE_URL` nos dois casos.
 - `wrangler.jsonc` — `assets.directory` aponta pro `client/dist` (build do Vite); `run_worker_first: ["/api/*"]` garante que só `/api/*` invoca o Worker, o resto é asset estático ou cai no `index.html` (SPA) via `not_found_handling: "single-page-application"`. `keep_vars: true` evita que um deploy apague as variáveis "Text" criadas no dashboard.
-- `client/public/.assetsignore` — ignora o `_worker.js` do Pages atual (§2.1) pra não ser subido como asset do Worker novo. O arquivo continua no repo, intacto, pro deploy do Pages não quebrar.
+- `client/public/_worker.js`, `_redirects` (proxy/SPA fallback do Cloudflare Pages, §2) **removidos nesta branch** — o teste do Worker novo roda direto nela, sem passar por `main`, então não tem risco de quebrar o Pages ao vivo (que continua intacto em `main`). Se um dia esta branch for mergeada substituindo o Pages, essa remoção vai junto; se não, não mergear esses três arquivos removidos.
 
 ### 6.2. Criar o Worker via dashboard (Git integration — Workers Builds)
 
@@ -325,7 +325,7 @@ curl -i $WORKER/api/financeiro/dashboard | head -1   # 401 sem token
 
 ### 6.5. Troubleshooting específico do Worker
 
-- **`wrangler deploy` recusa subir um asset chamado `_worker.js`:** falta o `client/public/.assetsignore` (já existe no repo) ou ele não chegou ao `client/dist` — rodar `pnpm cf:build` de novo.
+- **`wrangler deploy` recusa subir um asset chamado `_worker.js`:** só acontece se `client/public/_worker.js` (do Pages) voltar a existir nesta branch — nela ele foi removido de propósito (§6.1). Se reaparecer (ex.: merge de `main`), resolver com `.assetsignore` (conteúdo `_worker.js`, na raiz de `client/public/`) em vez de recriar o arquivo removido.
 - **Erro de import/módulo Node no bundle do Worker:** algo importou um módulo `node:*` sem suporte no `nodejs_compat` (ex.: `node:fs` fora do padrão lazy-import que `storage.ts` já usa) estaticamente no topo de um arquivo alcançável a partir de `worker.ts`. Ver o comentário em `server/src/lib/storage.ts` sobre por que isso importa.
 - **`STORAGE_DRIVER=local não funciona dentro de um Cloudflare Worker`:** erro esperado — trocar pra `r2` nas envs do Worker (§6.2).
 - **`/api/health` volta `database.connected:false`:** confira se a secret `DATABASE_URL` está setada no Worker (não só no `.dev.vars` local) e se é a connection string **pooled** do Neon.
