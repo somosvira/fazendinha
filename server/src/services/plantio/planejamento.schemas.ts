@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entityIdSchema } from "@fazendinha/shared";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 
@@ -20,7 +21,7 @@ export const criarSafraSchema = z.object({
   nome: z.string().min(1, "nome é obrigatório").max(80),
   dataInicio: isoDate,
   dataFim: isoDate,
-  centroCustoId: z.number().int().positive().optional(),
+  centroCustoId: entityIdSchema.optional(),
 });
 
 export const editarSafraSchema = criarSafraSchema.partial().extend({

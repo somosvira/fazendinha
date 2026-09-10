@@ -12,7 +12,7 @@ import {
 } from "./relatorio-gerencial.calc.js";
 
 const base: LinhaLancamento = {
-  id: 1,
+  id: "1",
   natureza: "DEBITO",
   valor: 100,
   situacao: "LIQUIDADO",
@@ -23,11 +23,20 @@ const base: LinhaLancamento = {
   numeroDocumento: "NF 1",
   categoria: { nome: "Ração", classificacao: null, grupo: "Nutrição" },
   centroCusto: { nome: "Atv. Leiteira", ehInvestimento: false },
-  contaBancariaId: 1,
+  contaBancariaId: "1",
   fornecedor: "Coop",
   temNotaFiscal: true,
 };
-const linha = (p: Partial<LinhaLancamento>): LinhaLancamento => ({ ...base, ...p });
+type LinhaPatch = Omit<Partial<LinhaLancamento>, "id" | "contaBancariaId"> & {
+  id?: string | number;
+  contaBancariaId?: string | number | null;
+};
+const linha = (p: LinhaPatch): LinhaLancamento => ({
+  ...base,
+  ...p,
+  id: String(p.id ?? base.id),
+  contaBancariaId: p.contaBancariaId === null ? null : String(p.contaBancariaId ?? base.contaBancariaId),
+});
 
 describe("classificarLinha", () => {
   it("separa estorno, parcial, transferência, receita, custeio e investimento", () => {
@@ -121,7 +130,7 @@ describe("agregarPrevisto", () => {
     ];
     const r = agregarPrevisto(linhas, "2026-03-10");
     expect(r.aPagar).toMatchObject({ total: 300, vencido: 100, aVencer: 200, quantidade: 2 });
-    expect(r.aPagar.itens.map((i) => i.id)).toEqual([1, 2]);
+    expect(r.aPagar.itens.map((i) => i.id)).toEqual(["1", "2"]);
     expect(r.aPagar.itens[0]).toMatchObject({ dataVencimento: "2026-03-01", diasAtraso: 9, vencido: true });
     expect(r.aReceber).toMatchObject({ total: 500, vencido: 0, aVencer: 500, quantidade: 1 });
   });
@@ -130,12 +139,12 @@ describe("agregarPrevisto", () => {
 describe("agregarSaldoContas", () => {
   it("parte do saldo inicial + movimentos anteriores e aplica o período, incluindo transferências", () => {
     const contas = [
-      { id: 1, nome: "Sicoob", banco: "756", saldoInicial: 1000 },
-      { id: 2, nome: "Caixa", banco: null, saldoInicial: 0 },
+      { id: "1", nome: "Sicoob", banco: "756", saldoInicial: 1000 },
+      { id: "2", nome: "Caixa", banco: null, saldoInicial: 0 },
     ];
     const anteriores = [
-      { contaBancariaId: 1, natureza: "CREDITO" as const, total: 500 },
-      { contaBancariaId: 1, natureza: "DEBITO" as const, total: 200 },
+      { contaBancariaId: "1", natureza: "CREDITO" as const, total: 500 },
+      { contaBancariaId: "1", natureza: "DEBITO" as const, total: 200 },
       { contaBancariaId: null, natureza: "DEBITO" as const, total: 999 },
     ];
     const linhas = [
@@ -149,8 +158,8 @@ describe("agregarSaldoContas", () => {
     ];
     const r = agregarSaldoContas(contas, anteriores, linhas, "2026-03-01", "2026-03-31");
     expect(r.contas).toEqual([
-      { id: 1, nome: "Sicoob", banco: "756", saldoInicial: 1300, entradas: 100, saidas: 80, saldoFinal: 1320 },
-      { id: 2, nome: "Caixa", banco: null, saldoInicial: 0, entradas: 50, saidas: 0, saldoFinal: 50 },
+      { id: "1", nome: "Sicoob", banco: "756", saldoInicial: 1300, entradas: 100, saidas: 80, saldoFinal: 1320 },
+      { id: "2", nome: "Caixa", banco: null, saldoInicial: 0, entradas: 50, saidas: 0, saldoFinal: 50 },
     ]);
     expect(r.total).toEqual({ saldoInicial: 1300, entradas: 150, saidas: 80, saldoFinal: 1370 });
   });

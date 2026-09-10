@@ -1,5 +1,6 @@
 import { prisma } from "../../db.js";
 import { z } from "zod";
+import { entityIdSchema } from "@fazendinha/shared";
 
 export class CadastroError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "DUPLICADO", message: string) {
@@ -26,8 +27,8 @@ export const produtoSchema = z.object({
   // Setor operacional (atividade). Nullable/opcional — sem setor = GERAL na exibição.
   setor: z.enum(SETORES_ESTOQUE).nullable().optional(),
   // Mapeamento contábil (ponte com o financeiro). Nullable para permitir desvincular.
-  categoriaId: z.number().int().nullable().optional(),
-  centroCustoId: z.number().int().nullable().optional(),
+  categoriaId: entityIdSchema.nullable().optional(),
+  centroCustoId: entityIdSchema.nullable().optional(),
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 
@@ -68,6 +69,7 @@ export async function editarProduto(id: number, input: Partial<ProdutoInput>) {
 }
 
 export const fornecedorSchema = z.object({
+  id: entityIdSchema.optional(),
   nome: z.string().min(1).max(120),
   documento: z.string().max(20).optional(),
   tipo: z.enum(["CLIENTE", "FORNECEDOR", "AMBOS"]).optional(),
@@ -97,7 +99,7 @@ export async function criarFornecedor(input: FornecedorInput) {
   if (await prisma.parceiro.findFirst({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
   return fornDTO(await prisma.parceiro.create({ data: { ...input, tipo: input.tipo ?? "FORNECEDOR", email: input.email || null } }));
 }
-export async function editarFornecedor(id: number, input: Partial<FornecedorInput>) {
+export async function editarFornecedor(id: string, input: Partial<FornecedorInput>) {
   if (!(await prisma.parceiro.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "fornecedor não encontrado");
   return fornDTO(await prisma.parceiro.update({ where: { id }, data: { ...input, email: input.email === "" ? null : input.email } }));
 }

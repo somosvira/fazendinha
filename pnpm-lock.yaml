@@ -10,6 +10,9 @@ importers:
 
   client:
     dependencies:
+      '@fazendinha/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@radix-ui/react-dialog':
         specifier: ^1.1.19
         version: 1.1.19(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -55,6 +58,9 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.2
@@ -90,6 +96,19 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.19)(jsdom@29.1.1)(lightningcss@1.32.0)
 
+  packages/shared:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)(jsdom@29.1.1)(lightningcss@1.32.0)
+
   server:
     dependencies:
       '@aws-sdk/client-s3':
@@ -98,6 +117,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1057.0
         version: 3.1078.0
+      '@fazendinha/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.14(hono@4.12.23)

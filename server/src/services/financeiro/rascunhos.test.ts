@@ -15,12 +15,17 @@ vi.mock("./operacoes.js", () => ({ confirmarRascunhoOperacao: mocks.confirmarOpe
 
 import { confirmarRascunho, salvarRascunho } from "./rascunhos.js";
 
+const RASCUNHO_ID = "00000000-0000-4000-8000-000000000009";
+const DOCUMENTO_ID = "00000000-0000-4000-8000-000000000012";
+const OPERACAO_ID = "00000000-0000-4000-8000-000000000020";
+const PARCEIRO_ID = "00000000-0000-4000-8000-000000000001";
+
 describe("rascunho único de operação", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("faz upsert pela combinação propriedade e usuário", async () => {
     mocks.findUnique.mockResolvedValue(null);
-    mocks.upsert.mockResolvedValue({ id: 1, versao: 1, dados: {}, documentos: [] });
+    mocks.upsert.mockResolvedValue({ id: RASCUNHO_ID, versao: 1, dados: {}, documentos: [] });
     await salvarRascunho({ propriedadeId: 7, usuarioId: 3, dados: { formulario: {} } });
     expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { propriedadeId_criadoPorId: { propriedadeId: 7, criadoPorId: 3 } },
@@ -35,18 +40,18 @@ describe("rascunho único de operação", () => {
 
   it("confirma efeitos, promove documentos e remove o rascunho na mesma transação", async () => {
     const tx = {
-      rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: 9, versao: 2, dados: { operacao: {
+      rascunhoOperacao: { findUnique: vi.fn().mockResolvedValue({ id: RASCUNHO_ID, versao: 2, dados: { operacao: {
         tipo: "SERVICO", data: "2026-09-07", descricao: "Manutenção do trator", valorTotal: 500,
-        parceiroId: 1, itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },
-      } }, documentos: [{ id: 12 }] }), delete: mocks.delete },
+        parceiroId: PARCEIRO_ID, itens: [], financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: "2026-10-07" }] },
+      } }, documentos: [{ id: DOCUMENTO_ID }] }), delete: mocks.delete },
       documentoFinanceiro: { updateMany: mocks.documentoUpdateMany },
       operacao: { findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
     };
     mocks.transaction.mockImplementation((callback) => callback(tx));
-    mocks.confirmarOperacao.mockResolvedValue({ id: 20 });
-    mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: 20, status: "CONFIRMADA" });
-    await expect(confirmarRascunho(7, 3, 2)).resolves.toMatchObject({ id: 20 });
-    expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: 9 }, data: { rascunhoId: null, operacaoId: 20 } });
-    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: 9 } });
+    mocks.confirmarOperacao.mockResolvedValue({ id: OPERACAO_ID });
+    mocks.operacaoFindUniqueOrThrow.mockResolvedValue({ id: OPERACAO_ID, status: "CONFIRMADA" });
+    await expect(confirmarRascunho(7, 3, 2)).resolves.toMatchObject({ id: OPERACAO_ID });
+    expect(mocks.documentoUpdateMany).toHaveBeenCalledWith({ where: { rascunhoId: RASCUNHO_ID }, data: { rascunhoId: null, operacaoId: OPERACAO_ID } });
+    expect(mocks.delete).toHaveBeenCalledWith({ where: { id: RASCUNHO_ID } });
   });
 });

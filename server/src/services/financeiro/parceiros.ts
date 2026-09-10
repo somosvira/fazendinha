@@ -6,6 +6,7 @@ export async function listarParceiros(incluirInativos = false) {
 }
 
 export async function criarParceiro(input: {
+  id?: string;
   nome: string; documento?: string | null; tipo: "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
   telefone?: string | null; email?: string | null; usuarioId?: number | null;
 }) {
@@ -17,7 +18,7 @@ export async function criarParceiro(input: {
   });
 }
 
-export async function atualizarParceiro(id: number, input: Record<string, unknown>, usuarioId?: number | null) {
+export async function atualizarParceiro(id: string, input: Record<string, unknown>, usuarioId?: number | null) {
   return prisma.$transaction(async (tx) => {
     const anterior = await tx.parceiro.findUnique({ where: { id } });
     if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Parceiro não encontrado");

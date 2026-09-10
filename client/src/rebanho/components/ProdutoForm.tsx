@@ -46,8 +46,8 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         estocavel: f.estocavel,
         minimoEstoque: f.minimoEstoque ? Number(f.minimoEstoque) : undefined,
         setor: f.setor ? (f.setor as SetorEstoque) : null,
-        categoriaId: f.categoriaId ? Number(f.categoriaId) : null,
-        centroCustoId: f.centroCustoId ? Number(f.centroCustoId) : null,
+        categoriaId: f.categoriaId || null,
+        centroCustoId: f.centroCustoId || null,
       };
       if (produto) { await editarProduto(produto.id, payload); onSalvo(); }
       else { const criado = await criarProduto(payload); onSalvo(criado); }

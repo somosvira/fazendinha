@@ -31,6 +31,7 @@ export async function resumoSaldos(propriedadeId?: number | null) {
 }
 
 export async function criarConta(input: {
+  id?: string;
   nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao?: string | null;
   identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: Date; incluirNoSaldoGeral: boolean;
   propriedadeId: number; usuarioId?: number | null;
@@ -44,7 +45,7 @@ export async function criarConta(input: {
 }
 
 export async function atualizarConta(
-  id: number,
+  id: string,
   propriedadeId: number,
   input: Partial<{ nome: string; instituicao: string | null; identificacao: string | null; incluirNoSaldoGeral: boolean; ativo: boolean }>,
   usuarioId?: number | null,
@@ -58,7 +59,7 @@ export async function atualizarConta(
   });
 }
 
-export async function listarExtrato(contaId: number, propriedadeId: number, inicio?: Date, fim?: Date) {
+export async function listarExtrato(contaId: string, propriedadeId: number, inicio?: Date, fim?: Date) {
   const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, propriedadeId } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
   return prisma.movimentoConta.findMany({
@@ -67,6 +68,6 @@ export async function listarExtrato(contaId: number, propriedadeId: number, inic
       transacao: { ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     },
     include: { transacao: { include: { parceiro: true, operacao: true } } },
-    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+    orderBy: [{ transacao: { data: "desc" } }, { transacao: { registradoEm: "desc" } }, { ordem: "asc" }],
   });
 }

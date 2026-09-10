@@ -53,7 +53,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
         tipo: f.tipo,
         data: f.data,
         quantidade: Number(f.quantidade),
-        fornecedorId: ehEntrada && f.fornecedorId ? Number(f.fornecedorId) : undefined,
+        fornecedorId: ehEntrada && f.fornecedorId ? f.fornecedorId : undefined,
         grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
         observacao: f.observacao || undefined,
         gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,

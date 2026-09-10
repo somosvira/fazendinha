@@ -72,7 +72,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
           },
         },
       },
-      orderBy: { id: "asc" },
+      orderBy: { createdAt: "asc" },
     }) : Promise.resolve([]),
     querPrevisto ? prisma.compromissoFinanceiro.findMany({
       where: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: { gte: de, lte: ate }, operacao: escopo },
@@ -82,10 +82,10 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
         documentos: true,
         operacao: { include: { parceiro: true, categoria: { include: { grupoCategoria: true } }, centroCusto: true, documentos: true } },
       },
-      orderBy: { id: "asc" },
+      orderBy: [{ dataVencimento: "asc" }, { numeroParcela: "asc" }],
     }) : Promise.resolve([]),
     querRealizado
-      ? prisma.contaFinanceira.findMany({ where: escopo, select: { id: true, nome: true, instituicao: true, saldoAbertura: true }, orderBy: { id: "asc" } })
+      ? prisma.contaFinanceira.findMany({ where: escopo, select: { id: true, nome: true, instituicao: true, saldoAbertura: true }, orderBy: { nome: "asc" } })
       : Promise.resolve([]),
     querRealizado
       ? prisma.movimentoConta.groupBy({
@@ -135,7 +135,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     const documentos = [...compromisso.documentos, ...compromisso.operacao.documentos];
     const liquidado = compromisso.liquidacoes.reduce((total, item) => total + toNum(item.valor), 0);
     return {
-      id: -compromisso.id,
+      id: compromisso.id,
       natureza: compromisso.tipo === "RECEBER" ? "CREDITO" : "DEBITO",
       valor: Math.max(0, toNum(compromisso.valorOriginal) - liquidado),
       situacao: "ABERTO",

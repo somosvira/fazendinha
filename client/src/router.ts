@@ -12,6 +12,7 @@
  */
 
 import type { Tab } from "./components/Shell";
+import { entityIdSchema, type EntityId } from "@fazendinha/shared";
 
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
 // a declarar sua URL e permite validar subrotas sem listas paralelas.
@@ -102,9 +103,10 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
-export function parseOperacaoFinanceiraId(pathname: string): number | null {
-  const match = /^\/financeiro\/operacoes\/(\d+)\/?$/i.exec(pathname);
-  return match ? Number(match[1]) : null;
+export function parseOperacaoFinanceiraId(pathname: string): EntityId | null {
+  const match = /^\/financeiro\/operacoes\/([^/]+)\/?$/i.exec(pathname);
+  const parsed = entityIdSchema.safeParse(match?.[1]);
+  return parsed.success ? parsed.data : null;
 }
 
 export function isNovaOperacaoFinanceira(pathname: string): boolean {

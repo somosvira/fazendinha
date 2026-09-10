@@ -36,6 +36,7 @@ export async function salvarRascunho(input: SalvarRascunhoInput) {
   return prisma.rascunhoOperacao.upsert({
     where,
     create: {
+      id: input.id,
       propriedadeId: input.propriedadeId,
       criadoPorId: input.usuarioId,
       dados: input.dados as Prisma.InputJsonObject,

@@ -32,6 +32,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@fazendinha/shared": "workspace:*",
     "@aws-sdk/client-s3": "^3.1057.0",
     "@aws-sdk/s3-request-presigner": "^3.1057.0",
     "@hono/node-server": "^1.13.7",

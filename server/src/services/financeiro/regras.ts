@@ -34,7 +34,7 @@ export async function exigirPeriodoAberto(db: DbFinanceiro, propriedadeId: numbe
   }
 }
 
-export async function exigirContaAtiva(db: DbFinanceiro, contaId: number, propriedadeId: number) {
+export async function exigirContaAtiva(db: DbFinanceiro, contaId: string, propriedadeId: number) {
   const conta = await db.contaFinanceira.findFirst({ where: { id: contaId, propriedadeId, ativo: true } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada ou inativa");
   return conta;

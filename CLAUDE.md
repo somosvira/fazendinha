@@ -22,7 +22,7 @@ Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.
 
 ## Stack
 
-- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20.
+- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`, `packages/*`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20. Contratos compartilhados vivem em `packages/shared`.
 - Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. `tesseract.js` + `sharp` + `pdf-parse` instalados para OCR (dormente).
 - Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
 - Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
@@ -91,7 +91,7 @@ Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/
 
 - A `DATABASE_URL` é a **pooled** (`-pooler` no host). Funciona para runtime e para `prisma migrate deploy`.
 - `prisma migrate dev` precisa de shadow database e falha via pooler — por isso o schema já tem `directUrl = env("DIRECT_URL")`. Para criar migration nova basta ter `DIRECT_URL` em `server/.env`.
-- `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). O histórico experimental foi consolidado em uma baseline única em `server/prisma/migrations/`; bancos locais anteriores à baseline devem ser resetados e semeados novamente.
+- `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). O histórico experimental foi consolidado em uma baseline única em `server/prisma/migrations/`; bancos locais anteriores à baseline ou ao corte UUID devem ser resetados e semeados novamente.
 
 ## Arquitetura
 
@@ -156,6 +156,15 @@ Auth: `Usuario` (`papel`, `abas[]`, `areas[]`, `flags[]`, `status PENDENTE|ATIVO
 Blocos dos módulos operacionais (todos com resumos pré-computados por `*.recompute.ts`): rebanho (`Animal`, `ResumoAnimal`, `EventoReprodutivo`, `EventoSanitario`, `Lactacao`, `Pesagem`, `Dieta`, `MovimentoEstoque`, `ProtocoloIATF`, `Coleta`/`EmbriaoColeta` (FIV/TE), `PlanoAcasalamento`, `Reprodutor` + indicadores genéticos, `ModeloFormularioCampo`/`FolhaCampo`), corte (`LoteCorte`, `ResumoLote`, `Piquete`, `PesagemLote`, `ManejoSanitario`, `Suplementacao`, `OperacaoComercial`), plantio (`Talhao`, `ResumoTalhao`, `Lavoura`, `SafraTalhao`, `OperacaoAgricola`, `InspecaoMIP`, `PassadaColheita`, `TarefaAgricola`, `ApontamentoMaquina`), cultivo/milho (`SafraCultivo`, `AreaCultivo`, `Silo`, `MovimentoSilo`, `ProducaoCultivo`, `LancamentoCusto`), ponto (`Funcionario`, `RegistroPonto`), WhatsApp (`UsuarioWhatsapp`, `ConversaWhatsapp`, `MensagemWhatsapp`).
 
 Decimal usa `@db.Decimal(14, 2)` (quantidades `(12, 3)`, unitário `(14, 4)`) — sempre via `Prisma.Decimal` (`dinheiro()` em `regras.ts`), nunca `number` JS direto em cálculos financeiros.
+
+### Identidade offline-first
+
+- Entidades financeiras sincronizáveis usam `String @id @default(uuid()) @db.Uuid`. O cliente deve gerar o UUID antes de persistir na fila e o servidor deve aceitar o mesmo `id` no Zod e no `create` do Prisma. Reusar `entityIdSchema`, `EntityId`, `newEntityId()` e os schemas de criação de `@fazendinha/shared`; não criar validadores, geradores ou contratos paralelos no cliente e no servidor.
+- `id` é identidade técnica opaca: não converter com `Number`, não incrementar, não exibir como número de negócio e não usar para ordenar dados. URLs e FKs transportam o UUID como `string`.
+- Ordem de negócio é explícita (`ordem`, `numeroParcela`, `registradoEm`, `data`). Identificação humana também é separada; operações exibem `Operacao.numero` como `OP-0042`, nunca um trecho do UUID.
+- Uma criação financeira composta offline deve atribuir IDs a todas as entidades financeiras no mesmo payload (operação, itens, parcelas, transações e movimentos de conta). Esses IDs precisam permanecer estáveis entre autosaves e retries; não regenerar UUID ao serializar o mesmo rascunho. IDs próprios do estoque permanecem numéricos até a migração desse domínio.
+- IDs numéricos ainda existentes pertencem a áreas não migradas. Ao migrar outro domínio, faça o grafo inteiro em PR próprio: PKs, FKs, schema Prisma/migration, Zod, serviços, rotas, tipos do cliente, seeds, testes, ordenação e apresentação.
+- A baseline experimental não converte os inteiros antigos. `20260910160000_finance_offline_structure` separa ordem e identificação humana; `20260910161000_finance_uuid` troca as identidades técnicas financeiras. Em ambiente de desenvolvimento com dados anteriores, resetar e semear novamente em vez de tentar preservar identidades incompatíveis.
 
 ### Multi-propriedade (escopo de sítio) — IMPLEMENTADO
 

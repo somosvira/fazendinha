@@ -9,7 +9,7 @@ import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, 
 const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
   { chave: "data", titulo: "Data", larguraMinima: 110, celula: (m) => <span className="whitespace-nowrap text-ink-3">{dataBR(m.transacao.data)}</span> },
   { chave: "descricao", titulo: "Descrição", larguraMinima: 260, principal: true, celula: (m) => <><strong className="break-words">{m.transacao.descricao || m.transacao.tipo}</strong><div className="mt-1 break-words text-xs text-ink-3">{m.transacao.formaPagamento?.replaceAll("_", " ") ?? "Movimento financeiro"}{m.transacao.parceiro ? ` · ${m.transacao.parceiro.nome}` : ""}</div></> },
-  { chave: "origem", titulo: "Origem", larguraMinima: 150, celula: (m) => <span className="whitespace-nowrap">{m.transacao.operacao ? `OP-${String(m.transacao.operacao.id).padStart(4, "0")}` : "Transação avulsa"}</span> },
+  { chave: "origem", titulo: "Origem", larguraMinima: 150, celula: (m) => <span className="whitespace-nowrap">{m.transacao.operacao ? `OP-${String(m.transacao.operacao.numero).padStart(4, "0")}` : "Transação avulsa"}</span> },
   { chave: "entrada", titulo: "Entrada", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap font-semibold text-green-800">{m.direcao === "ENTRADA" ? brl(m.valor) : "—"}</span> },
   { chave: "saida", titulo: "Saída", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap font-semibold">{m.direcao === "SAIDA" ? brl(m.valor) : "—"}</span> },
 ];
@@ -21,7 +21,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   useEffect(() => { if (!selecionada) return; obterExtratoConta(selecionada.id).then(setExtrato).catch((e) => setErro(e.message)); }, [selecionada]);
   if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erro} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
-  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: origemId, contaDestinoId: destinoId, valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 
   return <PaginaFinanceira>
     <PageHeader titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button><Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />

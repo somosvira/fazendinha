@@ -18,7 +18,8 @@ const MIME_POR_EXTENSAO: Record<string, string> = Object.fromEntries(Object.entr
 MIME_POR_EXTENSAO.jpeg = "image/jpeg";
 
 export type NovoDocumentoOperacao = {
-  operacaoId: number;
+  id?: string;
+  operacaoId: string;
   propriedadeId: number;
   tipo: TipoDocumentoFinanceiro;
   nome: string;
@@ -29,7 +30,7 @@ export type NovoDocumentoOperacao = {
 };
 
 export type NovoDocumentoRascunho = Omit<NovoDocumentoOperacao, "operacaoId"> & {
-  rascunhoId: number;
+  rascunhoId: string;
 };
 
 function validarArquivo(input: { nome: string; mimeType: string; buffer: Buffer }) {
@@ -48,7 +49,7 @@ export async function anexarDocumentoOperacao(input: NovoDocumentoOperacao) {
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
   const { nome, mimeType, extensao, sha256 } = validarArquivo(input);
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
-  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+  if (duplicado) throw new FinanceiroError("CONFLITO", "Este arquivo já está anexado");
 
   const storage = await getStorage();
   const storageKey = `financeiro/operacoes/${input.operacaoId}/${sha256}.${extensao}`;
@@ -56,6 +57,7 @@ export async function anexarDocumentoOperacao(input: NovoDocumentoOperacao) {
 
   try {
     const documento = await prisma.documentoFinanceiro.create({ data: {
+      id: input.id,
       tipo: input.tipo,
       nome,
       numero: input.numero?.trim().slice(0, 80) || null,
@@ -82,12 +84,13 @@ export async function anexarDocumentoRascunho(input: NovoDocumentoRascunho) {
   if (!rascunho) throw new FinanceiroError("NAO_ENCONTRADO", "Rascunho não encontrado");
   const { nome, mimeType, extensao, sha256 } = validarArquivo(input);
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256 } });
-  if (duplicado) throw new FinanceiroError("CONFLITO", `Este arquivo já está anexado ao documento #${duplicado.id}`);
+  if (duplicado) throw new FinanceiroError("CONFLITO", "Este arquivo já está anexado");
   const storage = await getStorage();
   const storageKey = `financeiro/rascunhos/${input.rascunhoId}/${sha256}.${extensao}`;
   const put = await storage.putObject({ key: storageKey, body: input.buffer, contentType: mimeType });
   try {
     return await prisma.documentoFinanceiro.create({ data: {
+      id: input.id,
       tipo: input.tipo, nome, numero: input.numero?.trim().slice(0, 80) || null,
       storageDriver: put.storageDriver, bucket: put.bucket, storageKey: put.storageKey,
       mimeType, tamanhoBytes: input.buffer.length, sha256, rascunhoId: input.rascunhoId,
@@ -98,7 +101,7 @@ export async function anexarDocumentoRascunho(input: NovoDocumentoRascunho) {
   }
 }
 
-export async function removerDocumentoRascunho(id: number, rascunhoId: number, propriedadeId: number, usuarioId: number) {
+export async function removerDocumentoRascunho(id: string, rascunhoId: string, propriedadeId: number, usuarioId: number) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, rascunhoId, rascunho: { propriedadeId, criadoPorId: usuarioId } },
   });
@@ -107,7 +110,7 @@ export async function removerDocumentoRascunho(id: number, rascunhoId: number, p
   if (documento.storageKey) await (await getStorage()).deleteObject({ key: documento.storageKey });
 }
 
-export async function atualizarDocumentoRascunho(id: number, rascunhoId: number, propriedadeId: number, usuarioId: number, input: { tipo?: TipoDocumentoFinanceiro; numero?: string | null }) {
+export async function atualizarDocumentoRascunho(id: string, rascunhoId: string, propriedadeId: number, usuarioId: number, input: { tipo?: TipoDocumentoFinanceiro; numero?: string | null }) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, rascunhoId, rascunho: { propriedadeId, criadoPorId: usuarioId } },
   });
@@ -117,7 +120,7 @@ export async function atualizarDocumentoRascunho(id: number, rascunhoId: number,
   } });
 }
 
-export async function obterDocumento(id: number, propriedadeId: number) {
+export async function obterDocumento(id: string, propriedadeId: number) {
   const documento = await prisma.documentoFinanceiro.findFirst({
     where: { id, operacao: { propriedadeId } },
   });

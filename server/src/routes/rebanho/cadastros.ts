@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/cadastros.js";
+import { parseEntityId } from "../../lib/ids.js";
 
 type Status = 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
@@ -20,4 +21,4 @@ export const cadastrosRouter = new Hono()
   .patch("/rebanho/produtos/:id", zValidator("json", svc.produtoSchema.partial()), async (c) => { try { return c.json(await svc.editarProduto(Number(c.req.param("id")), c.req.valid("json"))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .get("/rebanho/fornecedores", async (c) => c.json(await svc.listarFornecedores({ tipo: c.req.query("tipo"), q: c.req.query("q") })))
   .post("/rebanho/fornecedores", zValidator("json", svc.fornecedorSchema), async (c) => { try { return c.json(await svc.criarFornecedor(c.req.valid("json")), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
-  .patch("/rebanho/fornecedores/:id", zValidator("json", svc.fornecedorSchema.partial()), async (c) => { try { return c.json(await svc.editarFornecedor(Number(c.req.param("id")), c.req.valid("json"))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });
+  .patch("/rebanho/fornecedores/:id", zValidator("json", svc.fornecedorSchema.omit({ id: true }).partial()), async (c) => { try { return c.json(await svc.editarFornecedor(parseEntityId(c.req.param("id")), c.req.valid("json"))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });

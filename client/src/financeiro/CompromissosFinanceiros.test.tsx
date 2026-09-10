@@ -20,7 +20,7 @@ afterEach(cleanup);
 
 describe("CompromissosFinanceiros — criação", () => {
   it("pede confirmação antes de substituir um rascunho", async () => {
-    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: 8, versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
+    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: "00000000-0000-4000-8000-000000000008", versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
     const onNav = vi.fn();
     render(<CompromissosFinanceiros onNav={onNav} />);
 

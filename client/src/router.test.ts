@@ -10,8 +10,10 @@ import {
 
 describe("roteamento da pecuária", () => {
   it("reconhece o detalhe de uma operação financeira", () => {
-    expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");
-    expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBe(42);
+    const operacaoId = "00000000-0000-4000-8000-000000000042";
+    expect(pathToTab(`/financeiro/operacoes/${operacaoId}`)).toBe("lancar");
+    expect(parseOperacaoFinanceiraId(`/financeiro/operacoes/${operacaoId}`)).toBe(operacaoId);
+    expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBeNull();
     expect(parseOperacaoFinanceiraId("/financeiro/operacoes")).toBeNull();
   });
   it("reconhece a página independente de nova operação", () => {

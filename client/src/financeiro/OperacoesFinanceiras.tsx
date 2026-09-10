@@ -6,6 +6,7 @@ import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceir
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
+import type { EntityId } from "@fazendinha/shared";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 type ModoPeriodo = "DIA" | "MES" | "INTERVALO";
@@ -46,7 +47,7 @@ const hojeLocal = () => { const data = new Date(); return `${data.getFullYear()}
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
 const COLUNAS: ColunaTabela<Operacao>[] = [
   { chave: "data", titulo: "Data", larguraMinima: 100, celula: (operacao) => <span className="whitespace-nowrap text-ink-3">{dataBR(operacao.data)}</span> },
-  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">OP-{String(operacao.id).padStart(4, "0")}</div></> },
+  { chave: "operacao", titulo: "Operação", larguraMinima: 230, principal: true, celula: (operacao) => <><strong className="break-words">{operacao.descricao || TIPO_OPERACAO[operacao.tipo]}</strong><div className="mt-1 text-xs text-ink-3">OP-{String(operacao.numero).padStart(4, "0")}</div></> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 145, celula: (operacao) => <span className="break-words text-ink-2">{TIPO_OPERACAO[operacao.tipo] ?? operacao.tipo}</span> },
   { chave: "parceiro", titulo: "Parceiro", larguraMinima: 175, celula: (operacao) => <span className="break-words">{operacao.parceiro?.nome ?? "—"}</span> },
   { chave: "efeitos", titulo: "Efeitos", larguraMinima: 140, celula: (operacao) => <Efeitos operacao={operacao} /> },
@@ -59,12 +60,12 @@ export function OperacoesFinanceiras() {
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [rascunho, setRascunho] = useState<RascunhoOperacao | null>(null); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(inicioMes); const [fim, setFim] = useState(hojeLocal);
-  const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
+  const [detalheId, setDetalheId] = useState<EntityId | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   const carregar = useCallback(async () => { setLoading(true); setErro(null); try { const [ops, cfg, draft] = await Promise.all([listarOperacoes({ inicio, fim }), obterConfiguracoesFinanceiras(), obterRascunhoOperacao()]); setItens(ops); setConfig(cfg); setRascunho(draft); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setLoading(false); } }, [inicio, fim]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { const onPop = () => { setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname)); }; window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
   const filtradas = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id}`.toLowerCase().includes(busca.toLowerCase())), [itens, busca, status, tipo, efeito]);
-  const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
+  const abrirDetalhe = (id: EntityId) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
   const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); setDetalheId(null); setOperacaoBase(base); setForm(true); };
   const abrirNovaOperacao = async () => {

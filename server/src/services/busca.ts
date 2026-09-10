@@ -78,7 +78,7 @@ export function mapearLote(row: {
 }
 
 export function mapearCategoria(row: {
-  id: number;
+  id: string;
   nome: string;
   grupoCategoria: { nome: string };
 }): ResultadoBusca {
@@ -93,7 +93,7 @@ export function mapearCategoria(row: {
 }
 
 export function mapearFornecedor(row: {
-  id: number;
+  id: string;
   nome: string;
   tipo: string;
 }): ResultadoBusca {

@@ -201,7 +201,7 @@ export interface SafraInput {
   nome: string;
   dataInicio: string;       // YYYY-MM-DD
   dataFim: string;          // YYYY-MM-DD
-  centroCustoId?: number | null;
+  centroCustoId?: string | null;
 }
 
 export interface TarefaInput {

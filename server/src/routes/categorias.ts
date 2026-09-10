@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../db.js";
+import { entityIdSchema } from "@fazendinha/shared";
 
 const schema = z.object({ classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable() });
 
@@ -11,8 +12,9 @@ export const categoriasRouter = new Hono().patch(
   "/categorias/:id/classificacao",
   zValidator("json", schema),
   async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isFinite(id)) return c.json({ error: "id inválido" }, 400);
+    const parsedId = entityIdSchema.safeParse(c.req.param("id"));
+    if (!parsedId.success) return c.json({ error: "id inválido" }, 400);
+    const id = parsedId.data;
     const { classificacao } = c.req.valid("json");
     try {
       const cat = await prisma.categoria.update({ where: { id }, data: { classificacao } });

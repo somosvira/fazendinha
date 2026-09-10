@@ -15,7 +15,7 @@ vi.mock("./FormOperacao", () => ({
   FormOperacao: ({ rascunho }: { rascunho: unknown }) => <div>{rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>,
 }));
 
-const rascunho = { id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
+const rascunho = { id: "00000000-0000-4000-8000-000000000008", versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
 
 beforeEach(() => {
   cleanup(); vi.clearAllMocks();

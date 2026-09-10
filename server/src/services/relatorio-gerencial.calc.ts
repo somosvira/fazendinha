@@ -19,7 +19,7 @@ export type TipoOperacao = "receita" | "custeio" | "investimento" | "transferenc
 export const CENTRO_TRANSFERENCIA = "(Sem centro de custo)";
 
 export interface LinhaLancamento {
-  id: number;
+  id: string;
   natureza: Natureza;
   valor: number;
   situacao: Situacao;
@@ -30,7 +30,7 @@ export interface LinhaLancamento {
   numeroDocumento: string | null;
   categoria: { nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; grupo: string };
   centroCusto: { nome: string; ehInvestimento: boolean };
-  contaBancariaId: number | null;
+  contaBancariaId: string | null;
   fornecedor: string | null;
   temNotaFiscal: boolean;
 }
@@ -159,7 +159,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
 }
 
 export interface ItemCompromisso {
-  id: number;
+  id: string;
   descricao: string | null;
   fornecedor: string | null;
   categoria: string;
@@ -179,7 +179,7 @@ export function agregarPrevisto(linhas: LinhaLancamento[], hoje: string): Previs
   const bloco = (natureza: Natureza): BlocoCompromisso => {
     const itens = linhas
       .filter((l) => classificarLinha(l) === "compromisso" && l.natureza === natureza)
-      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.id - b.id)
+      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.id.localeCompare(b.id))
       .map((l): ItemCompromisso => {
         const diasAtraso = diffDias(l.dataVencimento, hoje);
         return { id: l.id, descricao: l.descricao, fornecedor: l.fornecedor, categoria: l.categoria.nome, valor: l.valor, dataVencimento: l.dataVencimento, diasAtraso, vencido: diasAtraso > 0 };
@@ -192,9 +192,9 @@ export function agregarPrevisto(linhas: LinhaLancamento[], hoje: string): Previs
   return { hoje, aPagar: bloco("DEBITO"), aReceber: bloco("CREDITO") };
 }
 
-export interface ContaEntrada { id: number; nome: string; banco: string | null; saldoInicial: number }
-export interface MovimentoAnterior { contaBancariaId: number | null; natureza: Natureza; total: number }
-export interface SaldoConta { id: number; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
+export interface ContaEntrada { id: string; nome: string; banco: string | null; saldoInicial: number }
+export interface MovimentoAnterior { contaBancariaId: string | null; natureza: Natureza; total: number }
+export interface SaldoConta { id: string; nome: string; banco: string | null; saldoInicial: number; entradas: number; saidas: number; saldoFinal: number }
 export interface SaldoContasAgregado { contas: SaldoConta[]; total: { saldoInicial: number; entradas: number; saidas: number; saldoFinal: number } }
 
 /** Saldo por conta: saldo de abertura + movimentos liquidados antes do período
@@ -207,7 +207,7 @@ export function agregarSaldoContas(
   inicio: string,
   fim: string,
 ): SaldoContasAgregado {
-  const acc = new Map<number, { inicial: number; entradas: number; saidas: number }>();
+  const acc = new Map<string, { inicial: number; entradas: number; saidas: number }>();
   for (const c of contas) acc.set(c.id, { inicial: cents(c.saldoInicial), entradas: 0, saidas: 0 });
   for (const m of anteriores) {
     if (m.contaBancariaId == null) continue;

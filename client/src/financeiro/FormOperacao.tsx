@@ -3,11 +3,12 @@ import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { entityIdSchema, newEntityId, type EntityId } from "@fazendinha/shared";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
-type ItemForm = { id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
-type ParcelaForm = { id: number; valor: string; vencimento: string };
+type ItemForm = { id: EntityId; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
+type ParcelaForm = { id: EntityId; valor: string; vencimento: string };
 type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
 type EstadoFormulario = {
   tipo: string; condicao: Condicao; descricao: string; valorOperacao: string; itens: ItemForm[];
@@ -26,21 +27,27 @@ const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
 
 let proximoId = 1;
-const novoItem = (): ItemForm => ({ id: proximoId++, produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
-const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", vencimento: emDias(30 * (indice + 1)) });
+const uuidOuNovo = (valor: unknown): EntityId => {
+  const resultado = entityIdSchema.safeParse(valor);
+  return resultado.success ? resultado.data : newEntityId();
+};
+const novoItem = (): ItemForm => ({ id: newEntityId(), produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
+const novaParcela = (indice = 0): ParcelaForm => ({ id: newEntityId(), valor: "", vencimento: emDias(30 * (indice + 1)) });
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
 
 export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
   const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+  const operacaoPersistida = (!operacaoBase ? rascunho?.dados.operacao : null) as Record<string, unknown> | null;
+  const financeiroPersistido = operacaoPersistida?.financeiro as Record<string, unknown> | undefined;
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
   const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? "A_VISTA" : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
   const [tipo, setTipo] = useState(inicial?.tipo ?? operacaoBase?.tipo ?? tipoInicial ?? "COMPRA_ESTOQUE");
   const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
-  const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da OP-${String(operacaoBase.id).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
+  const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da OP-${String(operacaoBase.numero).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
   const [valorOperacao, setValorOperacao] = useState(inicial?.valorOperacao ?? operacaoBase?.valorTotal ?? "");
-  const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens ?? (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
+  const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens?.map((item) => ({ ...item, id: uuidOuNovo(item.id) })) ?? (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: newEntityId(), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
   const [parceiroId, setParceiroId] = useState(inicial?.parceiroId ?? (operacaoBase?.parceiro?.id ? String(operacaoBase.parceiro.id) : ""));
   const [categoriaId, setCategoriaId] = useState(inicial?.categoriaId ?? (operacaoBase?.categoriaId ? String(operacaoBase.categoriaId) : ""));
   const [centroCustoId, setCentroCustoId] = useState(inicial?.centroCustoId ?? (operacaoBase?.centroCustoId ? String(operacaoBase.centroCustoId) : ""));
@@ -48,7 +55,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [formaPagamento, setFormaPagamento] = useState(inicial?.formaPagamento ?? transacaoBase?.formaPagamento ?? "PIX");
   const [data, setData] = useState(inicial?.data ?? hoje());
   const [valorAgora, setValorAgora] = useState(inicial?.valorAgora ?? (condicaoBase === "PARCIAL" ? transacaoBase?.valorTotal ?? "" : ""));
-  const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => inicial?.parcelas ?? (operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: proximoId++, valor: item.valorOriginal, vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]));
+  const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => inicial?.parcelas?.map((parcela) => ({ ...parcela, id: uuidOuNovo(parcela.id) })) ?? (operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: newEntityId(), valor: item.valorOriginal, vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]));
   const [anexos, setAnexos] = useState<AnexoForm[]>([]);
   const [documentosSalvos, setDocumentosSalvos] = useState<DocumentoFinanceiro[]>(rascunho?.documentos ?? []);
   const [salvando, setSalvando] = useState(false);
@@ -57,6 +64,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
   const iniciouRef = useRef(false);
+  const rascunhoIdRef = useRef(uuidOuNovo(rascunho?.id));
+  const identidadesRef = useRef({
+    operacaoId: uuidOuNovo(operacaoPersistida?.id),
+    registradoEm: typeof operacaoPersistida?.registradoEm === "string" ? operacaoPersistida.registradoEm : new Date().toISOString(),
+    transacaoId: uuidOuNovo(financeiroPersistido?.transacaoId),
+    movimentoContaId: uuidOuNovo(financeiroPersistido?.movimentoId),
+  });
   const [erro, setErro] = useState<string | null>(null);
 
   const comItens = TIPOS_COM_ITENS.has(tipo);
@@ -81,18 +95,19 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     contaId, formaPagamento, data, valorAgora, parcelas,
   }), [tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroCustoId, contaId, formaPagamento, data, valorAgora, parcelas]);
   const operacaoRascunho = useMemo(() => {
-    const financeiro = condicao === "A_VISTA" ? { condicao, contaId: Number(contaId), formaPagamento }
-      : condicao === "A_PRAZO" ? { condicao, parcelas: parcelas.map((parcela) => ({ valor: Number(parcela.valor), dataVencimento: parcela.vencimento })) }
-        : condicao === "PARCIAL" ? { condicao, contaId: Number(contaId), valorPago: realizadoAgora, formaPagamento, parcelas: parcelas.map((parcela) => ({ valor: Number(parcela.valor), dataVencimento: parcela.vencimento })) }
+    const financeiro = condicao === "A_VISTA" ? { condicao, contaId, formaPagamento, transacaoId: identidadesRef.current.transacaoId, movimentoId: identidadesRef.current.movimentoContaId }
+      : condicao === "A_PRAZO" ? { condicao, parcelas: parcelas.map((parcela, indice) => ({ id: parcela.id, numeroParcela: indice + 1, valor: Number(parcela.valor), dataVencimento: parcela.vencimento })) }
+        : condicao === "PARCIAL" ? { condicao, contaId, valorPago: realizadoAgora, formaPagamento, transacaoId: identidadesRef.current.transacaoId, movimentoId: identidadesRef.current.movimentoContaId, parcelas: parcelas.map((parcela, indice) => ({ id: parcela.id, numeroParcela: indice + 1, valor: Number(parcela.valor), dataVencimento: parcela.vencimento })) }
           : { condicao: "SEM_EFEITO_FINANCEIRO" };
     return {
+      id: identidadesRef.current.operacaoId, registradoEm: identidadesRef.current.registradoEm,
       tipo, data, descricao: descricao.trim(), valorTotal: comItens ? undefined : total,
-      parceiroId: parceiroId ? Number(parceiroId) : undefined, categoriaId: categoriaId ? Number(categoriaId) : undefined,
-      centroCustoId: centroCustoId ? Number(centroCustoId) : undefined, corrigeOperacaoId: operacaoBase?.id,
+      parceiroId: parceiroId || undefined, categoriaId: categoriaId || undefined,
+      centroCustoId: centroCustoId || undefined, corrigeOperacaoId: operacaoBase?.id,
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
         const quantidade = Number(item.quantidade); const valorItem = Number(item.valorTotal);
-        return { produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade, unidade: item.unidade || produto?.unidade || "un", valorUnitario: item.modoValor === "TOTAL" ? (quantidade ? valorItem / quantidade : 0) : Number(item.valorUnitario), estocavel: movimentaEstoque && !!produto?.estocavel };
+        return { id: item.id, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade, unidade: item.unidade || produto?.unidade || "un", valorUnitario: item.modoValor === "TOTAL" ? (quantidade ? valorItem / quantidade : 0) : Number(item.valorUnitario), estocavel: movimentaEstoque && !!produto?.estocavel };
       }) : [], financeiro,
     };
   }, [categoriaId, centroCustoId, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, realizadoAgora, tipo, total]);
@@ -106,7 +121,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const persistirRascunho = async () => {
     if (salvamentoEmCursoRef.current) await salvamentoEmCursoRef.current.catch(() => undefined);
     setEstadoSalvamento("SALVANDO");
-    const requisicao = salvarRascunhoOperacao(dadosRascunho, versaoRef.current);
+    const requisicao = salvarRascunhoOperacao(dadosRascunho, versaoRef.current, rascunhoIdRef.current);
     salvamentoEmCursoRef.current = requisicao;
     try {
       const salvo = await requisicao;
@@ -128,8 +143,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosRascunho, operacaoBase]);
 
-  const atualizarItem = (id: number, patch: Partial<ItemForm>) => setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
-  const alterarProduto = (id: number, produtoId: string) => {
+  const atualizarItem = (id: EntityId, patch: Partial<ItemForm>) => setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const alterarProduto = (id: EntityId, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === Number(produtoId));
     atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: produto.unidade, valorUnitario: produto.custoUnitario ?? "" } : { produtoId });
   };
@@ -190,7 +205,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         try { await anexarDocumentoOperacao(operacao.id, anexo); }
         catch (falha) { falhas.push(`${anexo.arquivo.name}: ${falha instanceof Error ? falha.message : String(falha)}`); }
       }
-      onSalvo(operacao, falhas.length ? `A operação OP-${String(operacao.id).padStart(4, "0")} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
+      onSalvo(operacao, falhas.length ? `A operação OP-${String(operacao.numero).padStart(4, "0")} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
     finally { setSalvando(false); }
   };
@@ -202,11 +217,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); setSalvando(false); }
   };
 
-  const removerDocumentoSalvo = async (id: number) => {
+  const removerDocumentoSalvo = async (id: EntityId) => {
     try { await removerDocumentoRascunho(id); setDocumentosSalvos((atuais) => atuais.filter((documento) => documento.id !== id)); }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
   };
-  const atualizarDocumentoSalvo = async (id: number, patch: { tipo?: string; numero?: string | null }) => {
+  const atualizarDocumentoSalvo = async (id: EntityId, patch: { tipo?: string; numero?: string | null }) => {
     setDocumentosSalvos((atuais) => atuais.map((documento) => documento.id === id ? { ...documento, ...patch } : documento));
     try { const atualizado = await atualizarDocumentoRascunho(id, patch); setDocumentosSalvos((atuais) => atuais.map((documento) => documento.id === id ? atualizado : documento)); }
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
@@ -217,7 +232,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
-        {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na OP-{String(operacaoBase.id).padStart(4, "0")}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
+        {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na OP-{String(operacaoBase.numero).padStart(4, "0")}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -247,7 +262,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarItem, alterarProduto }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void }) {
+function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarItem, alterarProduto }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; movimentaEstoque: boolean; atualizarItem: (id: EntityId, patch: Partial<ItemForm>) => void; alterarProduto: (id: EntityId, produtoId: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -274,7 +289,7 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
   return <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>{permite ? <div className="space-y-4"><div className="grid gap-4 md:grid-cols-3"><label className="text-sm font-medium">Condição<select aria-label="Condição financeira" className={SELECT} value={condicao} onChange={(e) => alterarCondicao(e.target.value as Condicao)}><option value="A_VISTA">Liquidação integral na operação</option><option value="A_PRAZO">Liquidação integral a prazo</option><option value="PARCIAL">Liquidação parcial com saldo a prazo</option><option value="SEM_EFEITO_FINANCEIRO">Sem movimentação financeira</option></select></label>{(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<select aria-label="Conta financeira" required className={SELECT} value={contaId} onChange={(e) => setContaId(e.target.value)}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label className="text-sm font-medium">Forma de liquidação<select aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label></> }</div>{condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<input aria-label="Valor liquidado na operação" required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO} value={valorAgora} onChange={(e) => setValorAgora(e.target.value)} /></label>}{(condicao === "A_PRAZO" || condicao === "PARCIAL") && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><div className="mb-3 flex items-center justify-between gap-3"><div><strong className="text-sm">Parcelas do compromisso</strong><p className="mt-1 text-xs text-ink-3">Cada parcela será criada como um compromisso vinculado a esta operação.</p></div><Button type="button" secondary onClick={() => setParcelas((atuais) => [...atuais, novaParcela(atuais.length)])}><Plus size={15} /> Parcela</Button></div><div className="space-y-3">{parcelas.map((parcela, indice) => <div key={parcela.id} className="grid items-end gap-3 sm:grid-cols-[80px_1fr_1fr_40px]"><strong className="pb-2.5 text-sm">{indice + 1}/{parcelas.length}</strong><label className="text-sm font-medium">Valor<input aria-label={`Valor da parcela ${indice + 1}`} required min="0.01" step="0.01" type="number" className={CAMPO} value={parcela.valor} onChange={(e) => setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, valor: e.target.value } : atual))} /></label><label className="text-sm font-medium">Vencimento<input aria-label={`Vencimento da parcela ${indice + 1}`} required type="date" className={CAMPO} value={parcela.vencimento} onChange={(e) => setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, vencimento: e.target.value } : atual))} /></label><button type="button" disabled={parcelas.length === 1} aria-label={`Remover parcela ${indice + 1}`} onClick={() => setParcelas((atuais) => atuais.filter((atual) => atual.id !== parcela.id))} className="mb-1 rounded-lg p-2 text-red-700 hover:bg-red-50 disabled:opacity-30"><Trash2 size={16} /></button></div>)}</div>{!parcelasValidas && <p className="mt-3 text-xs font-medium text-red-700">A soma das parcelas deve corresponder a {brl(condicao === "PARCIAL" ? saldoFuturo : total)}.</p>}</div>}</div> : <div className="rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Sem movimentação financeira</strong><p className="mt-1 text-xs leading-5">Este tipo registra somente o efeito físico ou de valorização. Nenhuma conta ou compromisso será criado.</p></div>}</section>;
 }
 
-function Documentos({ anexos, setAnexos, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: number, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: number) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
+function Documentos({ anexos, setAnexos, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: EntityId, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: EntityId) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
   const vazio = !anexos.length && !documentosSalvos.length;
   return <section><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Documentos</h3><p className="mt-1 text-xs text-ink-3">PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.</p></div><label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-[#faf9f4]"><Paperclip size={15} /> Anexar<input aria-label="Anexar documentos" type="file" multiple accept=".pdf,.xml,.jpg,.jpeg,.png,.webp,application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp" className="sr-only" onChange={selecionarAnexos} /></label></div>{!vazio ? <div className="space-y-2">{documentosSalvos.map((documento) => <div key={`salvo-${documento.id}`} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{documento.nome}</div><div className="text-xs text-ink-3">Salvo no rascunho</div></div></div><select aria-label={`Tipo do documento ${documento.nome}`} className={`${SELECT} mt-0 p-2 text-sm`} value={documento.tipo} onChange={(e) => atualizarDocumentoSalvo(documento.id, { tipo: e.target.value })}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${documento.nome}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm" value={documento.numero ?? ""} onChange={(e) => atualizarDocumentoSalvo(documento.id, { numero: e.target.value })} /><button type="button" aria-label={`Remover documento ${documento.nome}`} onClick={() => removerDocumentoSalvo(documento.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexos.map((anexo) => <div key={anexo.id} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{anexo.arquivo.name}</div><div className="text-xs text-ink-3">{(anexo.arquivo.size / 1024 / 1024).toFixed(2)} MB</div></div></div><select aria-label={`Tipo do documento ${anexo.arquivo.name}`} className={`${SELECT} mt-0 p-2 text-sm`} value={anexo.tipo} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, tipo: e.target.value } : atual))}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${anexo.arquivo.name}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={anexo.numero} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, numero: e.target.value } : atual))} /><button type="button" aria-label={`Remover documento ${anexo.arquivo.name}`} onClick={() => setAnexos((atuais) => atuais.filter((atual) => atual.id !== anexo.id))} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}</div> : <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-ink-3">Nenhum documento anexado.</div>}</section>;
 }

@@ -111,7 +111,7 @@ enum StatusPeriodoFinanceiro {
 
 // Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
 model CentroCusto {
-  id             Int        @id @default(autoincrement())
+  id             String     @id @default(uuid()) @db.Uuid
   nome           String     @unique
   ehInvestimento Boolean    @default(false)
   ordem          Int        @default(0)
@@ -122,7 +122,7 @@ model CentroCusto {
 
 // Plano de contas gerencial: Grupo -> Categoria.
 model GrupoCategoria {
-  id         Int         @id @default(autoincrement())
+  id         String      @id @default(uuid()) @db.Uuid
   nome       String      @unique
   ordem      Int         @default(0)
   categorias Categoria[]
@@ -136,10 +136,10 @@ enum ClassificacaoCategoria {
 }
 
 model Categoria {
-  id               Int                     @id @default(autoincrement())
+  id               String                  @id @default(uuid()) @db.Uuid
   nome             String
   grupoCategoria   GrupoCategoria          @relation(fields: [grupoCategoriaId], references: [id])
-  grupoCategoriaId Int
+  grupoCategoriaId String                  @db.Uuid
   classificacao    ClassificacaoCategoria?
   operacoes        Operacao[]
   produtos         Produto[]
@@ -148,7 +148,7 @@ model Categoria {
 }
 
 model ContaFinanceira {
-  id                  Int                 @id @default(autoincrement())
+  id                  String              @id @default(uuid()) @db.Uuid
   nome                String
   tipo                TipoContaFinanceira
   instituicao         String?
@@ -221,9 +221,9 @@ model Produto {
   // Mapeamento contábil (ponte com o financeiro): default da categoria/centro de custo
   // que a compra (ENTRADA) deste produto deve lançar.
   categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId        Int?
+  categoriaId        String?                 @db.Uuid
   centroCusto        CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId      Int?
+  centroCustoId      String?                 @db.Uuid
   movimentos         MovimentoEstoque[]
   itensOperacao      ItemOperacao[]
   eventosSanitarios  EventoSanitario[]
@@ -342,7 +342,7 @@ model ProdutoPrincipioAtivo {
 }
 
 model Parceiro {
-  id           Int                     @id @default(autoincrement())
+  id           String                  @id @default(uuid()) @db.Uuid
   nome         String
   documento    String?
   tipo         TipoParceiro            @default(FORNECEDOR)
@@ -361,7 +361,7 @@ model Parceiro {
 }
 
 model PeriodoFinanceiro {
-  id            Int                     @id @default(autoincrement())
+  id            String                  @id @default(uuid()) @db.Uuid
   propriedade   Propriedade             @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int
   ano           Int
@@ -378,7 +378,7 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
-  id                  Int                     @id @default(autoincrement())
+  id                  String                  @id @default(uuid()) @db.Uuid
   numero              Int                     @unique @default(autoincrement())
   tipo                TipoOperacaoFinanceira
   status              StatusOperacao          @default(RASCUNHO)
@@ -388,13 +388,13 @@ model Operacao {
   propriedade         Propriedade             @relation(fields: [propriedadeId], references: [id])
   propriedadeId       Int
   parceiro            Parceiro?               @relation(fields: [parceiroId], references: [id])
-  parceiroId          Int?
+  parceiroId          String?                 @db.Uuid
   categoria           Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId         Int?
+  categoriaId         String?                 @db.Uuid
   centroCusto         CentroCusto?            @relation(fields: [centroCustoId], references: [id])
-  centroCustoId       Int?
+  centroCustoId       String?                 @db.Uuid
   corrigeOperacao     Operacao?               @relation("CorrecaoOperacao", fields: [corrigeOperacaoId], references: [id])
-  corrigeOperacaoId   Int?
+  corrigeOperacaoId   String?                 @db.Uuid
   correcoes           Operacao[]              @relation("CorrecaoOperacao")
   criadoPor           Usuario?                @relation("OperacaoCriador", fields: [criadoPorId], references: [id])
   criadoPorId         Int?
@@ -421,7 +421,7 @@ model Operacao {
 // um rascunho por propriedade; nenhum efeito contabil, financeiro ou fisico
 // deriva desta entidade antes da confirmacao.
 model RascunhoOperacao {
-  id            Int                   @id @default(autoincrement())
+  id            String                @id @default(uuid()) @db.Uuid
   propriedade   Propriedade           @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
   propriedadeId Int
   criadoPor     Usuario               @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
@@ -437,9 +437,9 @@ model RascunhoOperacao {
 }
 
 model ItemOperacao {
-  id                Int                @id @default(autoincrement())
+  id                String             @id @default(uuid()) @db.Uuid
   operacao          Operacao           @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
-  operacaoId        Int
+  operacaoId        String             @db.Uuid
   produto           Produto?           @relation(fields: [produtoId], references: [id])
   produtoId         Int?
   ordem             Int                @default(0)
@@ -458,9 +458,9 @@ model ItemOperacao {
 }
 
 model CompromissoFinanceiro {
-  id             Int                   @id @default(autoincrement())
+  id             String                @id @default(uuid()) @db.Uuid
   operacao       Operacao              @relation(fields: [operacaoId], references: [id])
-  operacaoId     Int
+  operacaoId     String                @db.Uuid
   tipo           TipoCompromisso
   status         StatusCompromisso     @default(PENDENTE)
   valorOriginal  Decimal               @db.Decimal(14, 2)
@@ -468,7 +468,7 @@ model CompromissoFinanceiro {
   numeroParcela  Int                   @default(1)
   totalParcelas  Int                   @default(1)
   parceiro       Parceiro?             @relation(fields: [parceiroId], references: [id])
-  parceiroId     Int?
+  parceiroId     String?               @db.Uuid
   liquidacoes    Liquidacao[]
   documentos     DocumentoFinanceiro[]
   createdAt      DateTime              @default(now())
@@ -480,7 +480,7 @@ model CompromissoFinanceiro {
 }
 
 model TransacaoFinanceira {
-  id             Int                       @id @default(autoincrement())
+  id             String                    @id @default(uuid()) @db.Uuid
   tipo           TipoTransacaoFinanceira
   status         StatusTransacaoFinanceira @default(CONFIRMADA)
   data           DateTime                  @db.Date
@@ -489,9 +489,9 @@ model TransacaoFinanceira {
   formaPagamento FormaPagamento?
   descricao      String?
   operacao       Operacao?                 @relation(fields: [operacaoId], references: [id])
-  operacaoId     Int?
+  operacaoId     String?                   @db.Uuid
   parceiro       Parceiro?                 @relation(fields: [parceiroId], references: [id])
-  parceiroId     Int?
+  parceiroId     String?                   @db.Uuid
   propriedade    Propriedade               @relation(fields: [propriedadeId], references: [id])
   propriedadeId  Int
   criadoPor      Usuario?                  @relation("TransacaoCriador", fields: [criadoPorId], references: [id])
@@ -500,7 +500,7 @@ model TransacaoFinanceira {
   liquidacoes    Liquidacao[]
   documentos     DocumentoFinanceiro[]
   reversaoDe     TransacaoFinanceira?      @relation("ReversaoTransacao", fields: [reversaoDeId], references: [id])
-  reversaoDeId   Int?                      @unique
+  reversaoDeId   String?                   @unique @db.Uuid
   revertidaPor   TransacaoFinanceira?      @relation("ReversaoTransacao")
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
@@ -511,11 +511,11 @@ model TransacaoFinanceira {
 }
 
 model MovimentoConta {
-  id          Int                   @id @default(autoincrement())
+  id          String                @id @default(uuid()) @db.Uuid
   transacao   TransacaoFinanceira   @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
-  transacaoId Int
+  transacaoId String                @db.Uuid
   conta       ContaFinanceira       @relation(fields: [contaId], references: [id])
-  contaId     Int
+  contaId     String                @db.Uuid
   ordem       Int                   @default(0)
   direcao     DirecaoMovimentoConta
   valor       Decimal               @db.Decimal(14, 2)
@@ -526,11 +526,11 @@ model MovimentoConta {
 }
 
 model Liquidacao {
-  id            Int                   @id @default(autoincrement())
+  id            String                @id @default(uuid()) @db.Uuid
   compromisso   CompromissoFinanceiro @relation(fields: [compromissoId], references: [id])
-  compromissoId Int
+  compromissoId String                @db.Uuid
   transacao     TransacaoFinanceira   @relation(fields: [transacaoId], references: [id])
-  transacaoId   Int
+  transacaoId   String                @db.Uuid
   valor         Decimal               @db.Decimal(14, 2)
   createdAt     DateTime              @default(now())
 
@@ -539,7 +539,7 @@ model Liquidacao {
 }
 
 model DocumentoFinanceiro {
-  id            Int                     @id @default(autoincrement())
+  id            String                  @id @default(uuid()) @db.Uuid
   tipo          TipoDocumentoFinanceiro
   nome          String
   numero        String?
@@ -550,13 +550,13 @@ model DocumentoFinanceiro {
   tamanhoBytes  Int?
   sha256        String?                 @unique
   operacao      Operacao?               @relation(fields: [operacaoId], references: [id])
-  operacaoId    Int?
+  operacaoId    String?                 @db.Uuid
   transacao     TransacaoFinanceira?    @relation(fields: [transacaoId], references: [id])
-  transacaoId   Int?
+  transacaoId   String?                 @db.Uuid
   compromisso   CompromissoFinanceiro?  @relation(fields: [compromissoId], references: [id])
-  compromissoId Int?
+  compromissoId String?                 @db.Uuid
   rascunho      RascunhoOperacao?       @relation(fields: [rascunhoId], references: [id], onDelete: Cascade)
-  rascunhoId    Int?
+  rascunhoId    String?                 @db.Uuid
   createdAt     DateTime                @default(now())
 
   @@index([operacaoId])
@@ -566,7 +566,7 @@ model DocumentoFinanceiro {
 }
 
 model AuditoriaFinanceira {
-  id              Int      @id @default(autoincrement())
+  id              String   @id @default(uuid()) @db.Uuid
   entidade        String
   entidadeId      String
   acao            String
@@ -1949,9 +1949,9 @@ model MovimentoEstoque {
   // Operações financeiras são a origem normal de entradas; consumos automáticos
   // podem ser justificados pelo evento operacional específico abaixo.
   operacao         Operacao?              @relation(fields: [operacaoId], references: [id])
-  operacaoId       Int?
+  operacaoId       String?                @db.Uuid
   itemOperacao     ItemOperacao?          @relation(fields: [itemOperacaoId], references: [id])
-  itemOperacaoId   Int?
+  itemOperacaoId   String?                @db.Uuid
   // Escopo de propriedade (estoque físico é por sítio). Nullable + default principal.
   propriedade      Propriedade?           @relation(fields: [propriedadeId], references: [id])
   propriedadeId    Int?
@@ -2260,7 +2260,7 @@ model OperacaoAgricola {
   carenciaDias         Int?
   // Referência lógica opcional à operação financeira que originou o custo.
   operacaoFinanceira   Operacao?       @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?            @unique
+  operacaoFinanceiraId String?         @unique @db.Uuid
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
@@ -2400,7 +2400,7 @@ model Safra {
   fechada       Boolean              @default(false)
   // Ponte com o financeiro: centro de custo do plantio (ex.: "Plantio Café").
   centroCusto   CentroCusto?         @relation(fields: [centroCustoId], references: [id])
-  centroCustoId Int?
+  centroCustoId String?              @db.Uuid
   tarefas       TarefaAgricola[]
   apontamentos  ApontamentoMaquina[]
   createdAt     DateTime             @default(now())
@@ -2669,7 +2669,7 @@ model ManejoSanitario {
   observacao           String?
   // Referência lógica opcional à operação financeira que originou o custo.
   operacaoFinanceira   Operacao?     @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?          @unique
+  operacaoFinanceiraId String?       @unique @db.Uuid
   createdAt            DateTime      @default(now())
 
   @@index([loteId, data])
@@ -2710,7 +2710,7 @@ model OperacaoComercial {
   comprador            String?
   observacao           String?
   operacaoFinanceira   Operacao?     @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?          @unique
+  operacaoFinanceiraId String?       @unique @db.Uuid
   createdAt            DateTime      @default(now())
 
   @@index([loteId, data])
@@ -2940,7 +2940,7 @@ model LancamentoCusto {
   numMaquinas          Int?
   numCaminhoes         Int?
   operacaoFinanceira   Operacao?              @relation(fields: [operacaoFinanceiraId], references: [id])
-  operacaoFinanceiraId Int?                   @unique
+  operacaoFinanceiraId String?                @unique @db.Uuid
   observacao           String?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt

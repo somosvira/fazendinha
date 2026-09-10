@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
+const PARCEIRO_ID = "00000000-0000-4000-8000-000000000001";
+const PRODUTO_ID = 2;
+const CONTA_ID = "00000000-0000-4000-8000-000000000003";
+
 const base = {
   data: "2026-09-02",
   descricao: "Operação de teste",
-  parceiroId: 1,
+  parceiroId: PARCEIRO_ID,
   financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" as const },
 };
 
 const item = {
-  produtoId: 1,
+  produtoId: PRODUTO_ID,
   descricao: "Ração",
   quantidade: 10,
   unidade: "kg",
@@ -36,7 +40,7 @@ describe("schema de criação de operação", () => {
   });
 
   it("impede efeito financeiro em inventário e ajustes físicos", () => {
-    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: 1 } });
+    const resultado = operacaoSchema.safeParse({ ...base, tipo: "INVENTARIO_INICIAL", itens: [item], financeiro: { condicao: "A_VISTA", contaId: CONTA_ID } });
     expect(resultado.success).toBe(false);
     expect(resultado.error?.issues.some((issue) => issue.path.join(".") === "financeiro.condicao")).toBe(true);
   });
