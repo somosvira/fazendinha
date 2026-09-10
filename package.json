@@ -14,10 +14,18 @@
     "prisma:studio": "pnpm --filter rionovo-server run prisma:studio",
     "gen:nav-doc": "pnpm --filter rionovo-server exec tsx ../scripts/gen-nav-doc.ts",
     "db:local:up": "docker compose up -d postgres",
-    "db:local:down": "docker compose down"
+    "db:local:down": "docker compose down",
+    "cf:build": "pnpm --filter rionovo-client run build",
+    "cf:dev": "pnpm cf:build && wrangler dev",
+    "cf:deploy": "pnpm cf:build && wrangler deploy"
   },
   "engines": {
     "node": ">=20"
   },
-  "pnpm": {}
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd"]
+  }
 }
