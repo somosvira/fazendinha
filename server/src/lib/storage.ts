@@ -3,9 +3,28 @@
 // por env.STORAGE_DRIVER.
 
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import path from "node:path";
 import { env } from "../env.js";
+
+// `node:crypto` e `node:path` são só lógica pura (sem I/O de SO) e o
+// `nodejs_compat` do Workers cobre os dois bem — import estático é seguro
+// mesmo se este arquivo algum dia for bundlado num Worker. Já `node:fs`
+// depende de filesystem real, que não existe lá: por isso ele é importado
+// só dentro dos métodos do `LocalStorage`, nunca aqui no topo — um import
+// estático rodaria no module-load do Worker mesmo que `LocalStorage` nunca
+// fosse instanciado (ver `isCloudflareWorkers()` abaixo), quebrando o boot
+// inteiro em vez de só o caminho que usa disco.
+
+/**
+ * Detecta se o código está rodando dentro de um Cloudflare Worker (workerd),
+ * em produção ou sob `wrangler dev` — mesmo truque documentado pela própria
+ * Cloudflare (usado no adapter do Prisma do kumon): `navigator.userAgent`
+ * só tem esse valor lá. Em Node (dev local, testes, Render) dá `false`.
+ */
+export function isCloudflareWorkers(): boolean {
+  const runtime = globalThis as { navigator?: { userAgent?: string } };
+  return runtime.navigator?.userAgent === "Cloudflare-Workers";
+}
 
 export type StorageDriver = "local" | "r2";
 
@@ -44,6 +63,7 @@ class LocalStorage implements Storage {
   }
 
   async putObject({ key, body }: PutObjectArgs): Promise<PutObjectResult> {
+    const fs = await import("node:fs/promises");
     const abs = this.absPath(key);
     await fs.mkdir(path.dirname(abs), { recursive: true });
     await fs.writeFile(abs, body);
@@ -58,10 +78,12 @@ class LocalStorage implements Storage {
   }
 
   async getObjectBuffer({ key }: { key: string }): Promise<Buffer> {
+    const fs = await import("node:fs/promises");
     return fs.readFile(this.absPath(key));
   }
 
   async deleteObject({ key }: { key: string }): Promise<void> {
+    const fs = await import("node:fs/promises");
     try {
       await fs.unlink(this.absPath(key));
     } catch (e: any) {
@@ -155,6 +177,12 @@ export async function getStorage(): Promise<Storage> {
   if (cached) return cached;
 
   if (env.STORAGE_DRIVER === "local") {
+    // Dentro de um Worker não existe filesystem — falha aqui, com mensagem clara,
+    // em vez de deixar o primeiro putObject/getObjectBuffer estourar um erro
+    // confuso de import lá na frente.
+    if (isCloudflareWorkers()) {
+      throw new Error("STORAGE_DRIVER=local não funciona dentro de um Cloudflare Worker (sem filesystem) — configure STORAGE_DRIVER=r2");
+    }
     cached = new LocalStorage(env.LOCAL_STORAGE_DIR);
     return cached;
   }
