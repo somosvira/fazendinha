@@ -86,6 +86,16 @@ describe("FormOperacao", () => {
     expect(screen.queryByRole("option", { name: /Banco principal.*R\$/ })).toBeNull();
   });
 
+  it("não oferece contas ou parceiros inativos em uma nova operação", () => {
+    render(<FormOperacao config={{
+      ...config,
+      contas: [...config.contas, { ...config.contas[0], id: 9, nome: "Conta inativa", ativo: false }],
+      parceiros: [...config.parceiros, { ...config.parceiros[0], id: 9, nome: "Fornecedor inativo", ativo: false }],
+    }} onSalvo={vi.fn()} />);
+    expect(screen.queryByRole("option", { name: "Conta inativa" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Fornecedor inativo" })).toBeNull();
+  });
+
   it("formata o valor informado com duas casas decimais", () => {
     montar();
     const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" });

@@ -13,7 +13,7 @@
  *   5. toda página financeira usa o mesmo envelope (gutter + folga do menu).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 
 const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao } = vi.hoisted(() => ({
@@ -100,6 +100,19 @@ describe("TabelaFinanceira", () => {
     // não vira role="button": isso tiraria a linha da semântica de tabela
     expect(linha.getAttribute("role")).toBeNull();
     expect(container.querySelector("ul button")).toBeTruthy(); // no cartão, um botão de verdade
+  });
+
+  it("não abre a linha quando uma ação interna é acionada", () => {
+    const abrir = vi.fn(); const acao = vi.fn();
+    const colunas: ColunaTabela<Linha>[] = [...COLUNAS, {
+      chave: "acoes", titulo: "Ações", acao: true,
+      celula: () => <button type="button" onClick={acao}>Editar</button>,
+    }];
+    const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={colunas} chaveDe={(l) => l.id} onAbrir={abrir} />);
+    fireEvent.click(container.querySelector("tbody button")!);
+    expect(acao).toHaveBeenCalledOnce();
+    expect(abrir).not.toHaveBeenCalled();
+    expect(container.querySelector("ul > li > div:last-child button")).toBeTruthy();
   });
 });
 

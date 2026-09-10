@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { buildRotaWorklistRebanho, isConfiguracaoFinanceira, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
@@ -203,7 +203,7 @@ export function App() {
   const [deepLinkFiltros, setDeepLinkFiltros] = useState<{ tab: Tab; filtros: Record<string, string> } | null>(() => {
     if (typeof window === "undefined") return null;
     const sp = new URLSearchParams(window.location.search);
-    if (![...sp.keys()].length || sp.has("worklist") || isNovaOperacaoFinanceira(window.location.pathname)) return null;
+    if (![...sp.keys()].length || sp.has("worklist") || isNovaOperacaoFinanceira(window.location.pathname) || isConfiguracaoFinanceira(window.location.pathname)) return null;
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
@@ -259,7 +259,7 @@ export function App() {
       setDeepLinkFiltros(null);
     } else {
       setDeepLink(null);
-      setDeepLinkFiltros(Object.keys(filtros).length ? { tab: t, filtros } : null);
+      setDeepLinkFiltros(Object.keys(filtros).length && !isConfiguracaoFinanceira(path) ? { tab: t, filtros } : null);
     }
     setRotaWorklist(null);
     setWorklistSnapshot(null);
@@ -371,7 +371,10 @@ export function App() {
     const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
       ? window.location.pathname + window.location.search
       : null;
-    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
+    const configuracaoFinanceiraUrl = tab === "cadastros" && isConfiguracaoFinanceira(window.location.pathname)
+      ? window.location.pathname + window.location.search
+      : null;
+    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? configuracaoFinanceiraUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
@@ -388,7 +391,7 @@ export function App() {
       setWorklistSnapshot(null);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
-      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
+      setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) && !isConfiguracaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);

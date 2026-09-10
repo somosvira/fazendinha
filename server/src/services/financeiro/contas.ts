@@ -33,28 +33,39 @@ export async function resumoSaldos(propriedadeId?: number | null) {
 export async function criarConta(input: {
   nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao?: string | null;
   identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: Date; incluirNoSaldoGeral: boolean;
-  propriedadeId: number; usuarioId?: number | null;
+  ativo: boolean; propriedadeId: number; usuarioId?: number | null;
 }) {
   return prisma.$transaction(async (tx) => {
     const { usuarioId, ...dados } = input;
     const conta = await tx.contaFinanceira.create({ data: dados });
     await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
-    return conta;
+    return { ...conta, saldoAtual: conta.saldoAbertura };
   });
 }
 
 export async function atualizarConta(
   id: number,
   propriedadeId: number,
-  input: Partial<{ nome: string; instituicao: string | null; identificacao: string | null; incluirNoSaldoGeral: boolean; ativo: boolean }>,
+  input: Partial<{
+    nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null;
+    identificacao: string | null; saldoAbertura: number; dataSaldoAbertura: Date;
+    incluirNoSaldoGeral: boolean; ativo: boolean;
+  }>,
   usuarioId?: number | null,
 ) {
   return prisma.$transaction(async (tx) => {
     const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
     if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
     const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
-    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
-    return conta;
+    const acao = input.ativo === false && anterior.ativo ? "DESATIVADA"
+      : input.ativo === true && !anterior.ativo ? "REATIVADA" : "ATUALIZADA";
+    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao, usuarioId, antes: anterior, depois: conta });
+    const movimentos = await tx.movimentoConta.findMany({ where: { contaId: id }, select: { direcao: true, valor: true } });
+    const saldoAtual = movimentos.reduce(
+      (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
+      new Prisma.Decimal(conta.saldoAbertura),
+    );
+    return { ...conta, saldoAtual };
   });
 }
 

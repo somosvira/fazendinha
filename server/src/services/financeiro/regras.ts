@@ -40,6 +40,12 @@ export async function exigirContaAtiva(db: DbFinanceiro, contaId: number, propri
   return conta;
 }
 
+export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: number) {
+  const parceiro = await db.parceiro.findFirst({ where: { id: parceiroId, ativo: true } });
+  if (!parceiro) throw new FinanceiroError("NAO_ENCONTRADO", "Parceiro não encontrado ou inativo");
+  return parceiro;
+}
+
 export async function auditar(
   db: DbFinanceiro,
   input: { entidade: string; entidadeId: string | number; acao: string; motivo?: string; usuarioId?: number | null; antes?: unknown; depois?: unknown },

@@ -33,8 +33,8 @@ function falha(c: Context, erro: unknown) {
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
 }
 
-const patchContaSchema = contaSchema.pick({ nome: true, instituicao: true, identificacao: true, incluirNoSaldoGeral: true }).partial().extend({ ativo: z.boolean().optional() });
-const patchParceiroSchema = parceiroSchema.partial().extend({ ativo: z.boolean().optional() });
+const patchContaSchema = contaSchema.omit({ propriedadeId: true }).partial();
+const patchParceiroSchema = parceiroSchema.partial();
 
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRotaWorklistRebanho,
+  isConfiguracaoFinanceira,
   isNovaOperacaoFinanceira,
   parseOperacaoFinanceiraId,
   parseRotaWorklistRebanho,
@@ -23,6 +24,11 @@ describe("roteamento da pecuária", () => {
     expect(tabToPath("caixinha")).toBe("/financeiro/contas");
     expect(pathToTab("/financeiro/contas")).toBe("caixinha");
     expect(pathToTab("/caixinha")).toBe("caixinha");
+  });
+  it("reconhece a rota em que o detalhe navegável dos cadastros é mantido", () => {
+    expect(isConfiguracaoFinanceira("/financeiro/configuracoes")).toBe(true);
+    expect(isConfiguracaoFinanceira("/financeiro/configuracoes/")).toBe(true);
+    expect(isConfiguracaoFinanceira("/financeiro/configuracoes/categorias")).toBe(false);
   });
   it("ancora relatórios no módulo financeiro e mantém endereços antigos compatíveis", () => {
     expect(tabToPath("relatorio")).toBe("/financeiro/relatorios");

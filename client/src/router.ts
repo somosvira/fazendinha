@@ -111,6 +111,10 @@ export function isNovaOperacaoFinanceira(pathname: string): boolean {
   return /^\/financeiro\/operacoes\/nova\/?$/i.test(pathname);
 }
 
+export function isConfiguracaoFinanceira(pathname: string): boolean {
+  return /^\/financeiro\/configuracoes\/?$/i.test(pathname);
+}
+
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
   "vazia-pos-pev": "reproducao",

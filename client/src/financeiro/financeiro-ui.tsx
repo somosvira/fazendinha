@@ -124,6 +124,8 @@ export type ColunaTabela<T> = {
   principal?: boolean;
   /** já representada no título do cartão — não repetir como par rótulo/valor */
   ocultarNoCartao?: boolean;
+  /** controles internos da linha; no cartão ficam fora do botão que abre o detalhe */
+  acao?: boolean;
 };
 
 const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
@@ -138,7 +140,9 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
-  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && coluna.titulo);
+  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acao && coluna.titulo);
+  const acoes = colunas.filter((coluna) => coluna.acao);
+  const alvoInterativo = (alvo: EventTarget | null) => alvo instanceof Element && !!alvo.closest("button, a, input, select, textarea, [data-stop-row-click]");
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
@@ -153,7 +157,13 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             key={chaveDe(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
-            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(item); } } } : {})}
+            {...(onAbrir ? {
+              onClick: (e: React.MouseEvent) => { if (!alvoInterativo(e.target)) onAbrir(item); },
+              tabIndex: 0,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); }
+              },
+            } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
           >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
         </tbody>
@@ -176,6 +186,9 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
           {onAbrir
             ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
             : <div className="p-4">{corpo}</div>}
+          {acoes.length > 0 && <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
+            {acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}
+          </div>}
         </li>;
       })}
     </ul>
