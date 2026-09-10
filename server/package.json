@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
+    "backfill:propriedade": "tsx --env-file=.env src/scripts/backfill-propriedade.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx --env-file=.env prisma/seed.ts",

@@ -8,7 +8,7 @@ Os arquivos de config já estão no repo:
 - `client/public/_worker.js` — Worker do CF Pages (modo avançado) que faz o proxy `/api/*` → Render, lendo a env `API_ORIGIN`.
 - `client/public/_redirects` — **só** o SPA fallback (`/* → /index.html`). Não faz mais proxy.
 - `.github/workflows/staging.yml` — CI (build + testes). É o gate da `main`; não faz deploy.
-- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback `*` se não setada); no boot roda os backfills idempotentes (`garantirFundacaoPropriedade`, `garantirDonoBootstrap`, etc.).
+- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback `*` se não setada); no boot roda backfills idempotentes (`garantirDonoBootstrap`, etc.) — mas **não** o de multi-propriedade, que virou script manual (ver §1.4).
 - `server/src/env.ts` — validação Zod das envs (fonte de verdade da tabela abaixo).
 - `server/package.json` — `start:prod` é **só** `node dist/index.js`. Nenhum sync de schema roda no start (ver §1.4).
 
@@ -87,7 +87,13 @@ Health check: `GET /api/health`. Build inicial: 3-5 min. Com `autoDeployTrigger:
 
 **Não há passo automático de schema no start em produção.** `start:prod` é só `node dist/index.js`; quem roda `prisma db push --skip-generate` é o script `dev` **local**. Se o código novo depende de coluna/tabela nova e o banco não foi sincronizado, a API sobe e quebra na primeira query (`P2021`/`P2022`).
 
-Sempre que um deploy trouxer mudança em `server/prisma/schema.prisma`, sincronize **antes** (ou logo depois) do deploy, com o `server/.env` apontando para o Neon de produção (ou via Shell do Render):
+Sempre que um deploy trouxer mudança em `server/prisma/schema.prisma`, sincronize **antes** (ou logo depois) do deploy, com o `server/.env` apontando para o Neon de produção (ou via Shell do Render). Depois de sincronizar, rode também o backfill de multi-propriedade (não dispara mais sozinho no boot):
+
+```bash
+pnpm --filter rionovo-server run backfill:propriedade
+```
+
+Idempotente — seguro rodar de novo mesmo se nada mudou.
 
 **Opção A — `migrate deploy` (preferida, funciona via pooler):**
 
@@ -107,7 +113,7 @@ Sincroniza o schema direto, ignorando o histórico de migrations. É o que histo
 
 **Pegadinhas (detalhe em `docs/design/multi-propriedade.md`, seção 9):**
 
-- `db push` **não roda o SQL de backfill** das migrations (`UPDATE ... SET propriedadeId = 1`). Por isso os backfills vivem no boot (`garantirFundacaoPropriedade`) e são idempotentes — o app corrige sozinho na primeira subida.
+- `db push` **não roda o SQL de backfill** das migrations (`UPDATE ... SET propriedadeId = 1`). Por isso existe `garantirFundacaoPropriedade` — rode `pnpm --filter rionovo-server run backfill:propriedade` manualmente depois de sincronizar o schema (não dispara mais sozinho no boot).
 - Como o Neon de prod foi sincronizado por `db push`, migrations que **criam** tabelas já existentes (ex.: `20260706185000_add_caixinha_movimento_caixinha`) precisam ser marcadas como aplicadas uma vez antes do primeiro `migrate deploy`: `pnpm --filter rionovo-server exec prisma migrate resolve --applied <nome_da_migration>`. Sem isso o deploy falha com "already exists".
 - Se um `migrate deploy` travar no meio (`P3018`), recupere com `prisma migrate resolve --rolled-back <migration>` e depois `db push`.
 - `prisma migrate dev` (criar migration nova) precisa da `DIRECT_URL` real — ver "Pooled vs direct URL" no `CLAUDE.md`.
