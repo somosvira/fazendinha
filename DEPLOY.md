@@ -260,7 +260,7 @@ Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X PO
 
 ## 6. Alternativa: Cloudflare Worker único (front + back)
 
-**Ainda não é o deploy de produção** — as seções 1-5 continuam sendo a verdade sobre o que está no ar. Isto aqui é a infraestrutura pronta pra rodar front (estático) e back (API Hono) num único Cloudflare Worker, sem Render, testada localmente (build real + `wrangler deploy --dry-run`), mas **nunca deployada contra uma conta Cloudflare de verdade**. Antes de considerar substituir o caminho atual, rode `wrangler dev` e um deploy de teste (§6.3) e confira que tudo funciona igual.
+**Ainda não é o deploy de produção** — as seções 1-5 continuam sendo a verdade sobre o que está no ar. Isto aqui é a infraestrutura pronta pra rodar front (estático) e back (API Hono) num único Cloudflare Worker, sem Render, testada localmente (build real + `wrangler deploy --dry-run`), mas **nunca deployada contra uma conta Cloudflare de verdade**. O fluxo é **dashboard-first** (§6.2), igual ao Render e ao Pages hoje — Git integration builda e deploya a cada push, sem precisar de `wrangler login` local. Antes de considerar substituir o caminho atual, conecte o repo (§6.2) e confira que tudo funciona igual.
 
 ### 6.1. O que muda
 
@@ -271,19 +271,36 @@ Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X PO
 - `wrangler.jsonc` — `assets.directory` aponta pro `client/dist` (build do Vite); `run_worker_first: ["/api/*"]` garante que só `/api/*` invoca o Worker, o resto é asset estático ou cai no `index.html` (SPA) via `not_found_handling: "single-page-application"`. `keep_vars: true` evita que um deploy apague as variáveis "Text" criadas no dashboard.
 - `client/public/.assetsignore` — ignora o `_worker.js` do Pages atual (§2.1) pra não ser subido como asset do Worker novo. O arquivo continua no repo, intacto, pro deploy do Pages não quebrar.
 
-### 6.2. Criar o Worker e setar as envs
+### 6.2. Criar o Worker via dashboard (Git integration — Workers Builds)
 
-1. `npx wrangler login` (uma vez, abre o browser).
-2. Todas as envs de `server/.env.example` precisam existir no Worker. Em produção: dashboard da Cloudflare → Workers & Pages → o Worker → **Settings → Variables and Secrets**. Use tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar).
-3. Em dev local, `wrangler dev` lê um `.dev.vars` na raiz (formato `.env`, git-ignorado — não existe ainda, criar na hora).
+Mesmo modelo do Render (§1) e do Pages (§2): conecta o repo, Cloudflare builda e deploya sozinho a cada push. **Não precisa de `wrangler login` nem de rodar deploy local** — é a Cloudflare quem builda, com um token dela mesma, não com credencial sua.
 
-### 6.3. Build e deploy
+1. Dashboard da Cloudflare → **Workers & Pages** → **Create** → **Workers** → **Import a repository** (é a feature "Workers Builds").
+2. Autorize o GitHub App da Cloudflare (Only select repos → `fazendinha`), igual já fez pro Pages.
+3. Selecione o repo + branch `main`.
+4. Configurações de build (mesma lógica do Pages em §2.2, adaptada — **Root directory** fica vazio/raiz do repo, é onde `wrangler.jsonc` e o lockfile único vivem):
+
+| Campo | Valor |
+| --- | --- |
+| Root directory | (vazio — raiz do repo) |
+| Build command | `corepack enable && pnpm install --frozen-lockfile && pnpm cf:build` |
+| Deploy command | `npx wrangler deploy` (default — já lê `wrangler.jsonc` da raiz) |
+
+   `pnpm install` na raiz já dispara o `postinstall` do `server/` (`prisma generate`), então o client Prisma existe antes do bundle do Worker rodar — mesma engrenagem que já funciona no build do Render (§1.3).
+
+5. Variáveis de ambiente (**Settings → Variables and Secrets**, depois de criado): as mesmas de `server/.env.example`. Tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar). `keep_vars: true` no `wrangler.jsonc` garante que essas variáveis sobrevivem aos próximos deploys automáticos.
+6. Salvar dispara o primeiro build. Depois disso, todo push na `main` builda e deploya sozinho — igual ao Pages hoje.
+
+### 6.3. Teste local opcional (sem afetar o Worker do dashboard)
+
+`wrangler dev` roda o Worker localmente via Miniflare — **não precisa de login** pra isso, desde que não use nenhum binding remoto (o único binding daqui é `ASSETS`, que é local):
 
 ```bash
 pnpm cf:build     # só o client (vite build → client/dist)
 pnpm cf:dev       # build + wrangler dev (Worker de teste local, com Miniflare)
-pnpm cf:deploy    # build + wrangler deploy (produção)
 ```
+
+Cria um `.dev.vars` na raiz (formato `.env`, git-ignorado) com as mesmas envs, pra `wrangler dev` ter o que validar. Isso é só pra testar antes de dar `git push` — quem builda/deploya de verdade é o dashboard (§6.2), não o `wrangler deploy` local (`pnpm cf:deploy` continua existindo no `package.json` só como via de emergência, não é o fluxo esperado).
 
 Schema do banco e os três bootstraps continuam manuais e iguais ao fluxo do Render (§1.4, §1.5) — são scripts Node, rodam local ou em CI apontando `DATABASE_URL` pro Neon, não dentro do Worker:
 
