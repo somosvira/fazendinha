@@ -32,6 +32,11 @@ export const healthRouter = new Hono()
         database,
         config,
         migrations,
+        // Setadas via `--var` pelo scripts/cf-deploy.sh (Deploy command do
+        // Workers Builds) — confirmam qual commit/build está de fato no ar
+        // depois de um deploy, sem precisar reler logs.
+        commit: process.env.WORKERS_CI_COMMIT_SHA ?? null,
+        buildId: process.env.WORKERS_CI_BUILD_UUID ?? null,
       },
       saudavel ? 200 : 503,
     );

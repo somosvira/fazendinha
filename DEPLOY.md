@@ -270,6 +270,7 @@ Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X PO
 - `server/src/db.ts` — escolhe o driver do Prisma pelo runtime (`server/src/lib/runtime.ts`, `isCloudflareWorkers()`): `PrismaNeon` (HTTP/WebSocket) dentro do Worker, `PrismaPg` (TCP) em Node. Mesma `DATABASE_URL` nos dois casos.
 - `wrangler.jsonc` — `assets.directory` aponta pro `client/dist` (build do Vite); `run_worker_first: ["/api/*"]` garante que só `/api/*` invoca o Worker, o resto é asset estático ou cai no `index.html` (SPA) via `not_found_handling: "single-page-application"`. `keep_vars: true` evita que um deploy apague as variáveis "Text" criadas no dashboard.
 - `client/public/_worker.js`, `_redirects` (proxy/SPA fallback do Cloudflare Pages, §2) **removidos nesta branch** — o teste do Worker novo roda direto nela, sem passar por `main`, então não tem risco de quebrar o Pages ao vivo (que continua intacto em `main`). Se um dia esta branch for mergeada substituindo o Pages, essa remoção vai junto; se não, não mergear esses três arquivos removidos.
+- `scripts/cf-deploy.sh` — Deploy command do Workers Builds (§6.2), baseado no `scripts/deploy.sh` do kumon: roda `prisma migrate deploy`, só chama `wrangler deploy` se as migrations passarem, e confere pós-deploy via `/api/health` que o commit novo está de fato no ar.
 
 ### 6.2. Criar o Worker via dashboard (Git integration — Workers Builds)
 
@@ -284,12 +285,15 @@ Mesmo modelo do Render (§1) e do Pages (§2): conecta o repo, Cloudflare builda
 | --- | --- |
 | Root directory | (vazio — raiz do repo) |
 | Build command | `corepack enable && pnpm install --frozen-lockfile && pnpm cf:build` |
-| Deploy command | `npx wrangler deploy` (default — já lê `wrangler.jsonc` da raiz) |
+| Deploy command | `sh scripts/cf-deploy.sh` |
 
-   `pnpm install` na raiz já dispara o `postinstall` do `server/` (`prisma generate`), então o client Prisma existe antes do bundle do Worker rodar — mesma engrenagem que já funciona no build do Render (§1.3).
+   `pnpm install` na raiz já dispara o `postinstall` do `server/` (`prisma generate`), então o client Prisma existe antes do bundle do Worker rodar — mesma engrenagem que já funciona no build do Render (§1.3). O `scripts/cf-deploy.sh` (baseado no `scripts/deploy.sh` do kumon) substitui o `npx wrangler deploy` default: roda `prisma migrate deploy` antes, aborta o build se as migrations falharem (nunca deploya um Worker contra um schema desatualizado), e depois de deployar confere via `/api/health` que o commit novo está de fato no ar, com retry pra dar tempo da propagação nas edges da Cloudflare.
 
-5. Variáveis de ambiente (**Settings → Variables and Secrets**, depois de criado): as mesmas de `server/.env.example`. Tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar). `keep_vars: true` no `wrangler.jsonc` garante que essas variáveis sobrevivem aos próximos deploys automáticos.
-6. Salvar dispara o primeiro build. Depois disso, todo push na `main` builda e deploya sozinho — igual ao Pages hoje.
+5. **Build variables and secrets** (aba própria, escopo só do build — não confundir com as Variables/Secrets de runtime do passo 6): `DATABASE_URL` e `DIRECT_URL` (tipo **Secret**), únicas que `cf-deploy.sh` lê pra rodar `prisma migrate deploy`. `WORKER_HEALTH_URL` (tipo Text, ex.: `https://fazendinha.<subdomínio>.workers.dev/api/health`) é opcional — sem ela o script pula a checagem pós-deploy em vez de falhar; setar assim que souber a URL do Worker (só existe depois do primeiro deploy).
+6. Variáveis de ambiente de **runtime** (**Settings → Variables and Secrets**, depois de criado): as mesmas de `server/.env.example`. Tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar). `keep_vars: true` no `wrangler.jsonc` garante que essas variáveis sobrevivem aos próximos deploys automáticos.
+7. Salvar dispara o primeiro build. Depois disso, todo push na `main` builda e deploya sozinho — igual ao Pages hoje.
+
+**Pegadinha conhecida (já mapeada, não é bug deste setup):** `prisma migrate deploy` do zero quebra hoje na migration `20260724120000_resumo_reproducao_cobertura_protocolo` — ela usa o valor `'COBERTURA'` do enum `TipoEventoReprodutivo` antes dele existir (só é adicionado 3h depois, em `20260724150000_reproducao_origem_ideagri`). Existe um PR de consolidação das migrations a caminho que deve corrigir isso; até lá, `cf-deploy.sh` vai abortar o deploy com esse erro se rodar contra um banco vazio.
 
 ### 6.3. Teste local opcional (sem afetar o Worker do dashboard)
 
@@ -316,7 +320,7 @@ pnpm --filter rionovo-server run bootstrap:resultados-ginecologicos
 ```bash
 WORKER=https://fazendinha.<subdomínio>.workers.dev
 
-curl $WORKER/api/health | jq            # {status, runtime:"cloudflare-workers", database, config, migrations}
+curl $WORKER/api/health | jq            # {status, runtime:"cloudflare-workers", database, config, migrations, commit, buildId}
 curl -I $WORKER                          # front (index.html)
 curl -i $WORKER/api/financeiro/dashboard | head -1   # 401 sem token
 ```
