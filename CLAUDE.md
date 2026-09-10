@@ -27,7 +27,8 @@ Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.
 - Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
 - Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
 - Banco: **Neon** (Postgres serverless). Runtime usa endpoint **pooled**; `schema.prisma` declara `directUrl = env("DIRECT_URL")`.
-- CI: `.github/workflows/staging.yml` — build + testes do server em push/PR na `main`. Deploy é pelas integrações Git dos provedores: **Cloudflare Pages** (client, `_worker.js` faz proxy de `/api/*` → API) e **Render** (server, `render.yaml`).
+- CI: `.github/workflows/staging.yml` — build + testes do server em push/PR na `main`. Deploy em produção hoje: **Cloudflare Pages** (client, `_worker.js` faz proxy de `/api/*` → API) e **Render** (server, `render.yaml`). Existe também um **Cloudflare Worker único** (front+back, sem Render) preparado mas ainda não deployado de verdade — ver DEPLOY.md §6.
+- `db.ts` escolhe o driver do Prisma por runtime (`@prisma/adapter-pg` fora de um Worker, `@prisma/adapter-neon` dentro — `lib/runtime.ts`), então o mesmo código já fala com Postgres local (`docker-compose.yml` na raiz, `pnpm db:local:up`) sem precisar de conta Neon em dev.
 
 ## Comandos
 
@@ -43,6 +44,10 @@ pnpm prisma:generate    # regera Prisma Client (delega ao server)
 pnpm prisma:migrate     # prisma migrate dev (requer DIRECT_URL — ver abaixo)
 pnpm prisma:studio      # abre Prisma Studio
 pnpm gen:nav-doc        # regera docs/NAVEGACAO.md a partir de services/bot/navegacao.ts
+pnpm db:local:up        # Postgres local via docker-compose (porta 54332), sem depender do Neon em dev
+pnpm cf:build            # build só do client (assets do Cloudflare Worker)
+pnpm cf:dev              # build + wrangler dev (Worker de teste local — ver DEPLOY.md §6)
+pnpm cf:deploy           # build + wrangler deploy (produção — ver DEPLOY.md §6)
 ```
 
 Scripts no workspace `server/`:
@@ -55,6 +60,9 @@ pnpm --filter rionovo-server run seed:usuarios           # usuários de exemplo 
 pnpm --filter rionovo-server run import:rebanho          # importa rebanho_real.json
 pnpm --filter rionovo-server run whatsapp:user           # gerencia allowlist de números do bot
 pnpm --filter rionovo-server run bateria:gabarito        # bateria de perguntas da IA (gabarito) / bateria:run
+pnpm --filter rionovo-server run backfill:propriedade                 # scripts de bootstrap idempotentes — não
+pnpm --filter rionovo-server run bootstrap:dono                       # rodam mais sozinhos no boot (Node ou
+pnpm --filter rionovo-server run bootstrap:resultados-ginecologicos   # Worker); rodar manual pós-deploy
 ```
 
 Testes (Vitest, na raiz de cada workspace):
@@ -98,7 +106,8 @@ Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/
 
 Hono modular com ~80 roteadores por domínio, montados em `index.ts`:
 
-- `index.ts` — bootstrap. Aplica `logger()` global, `cors()` em `/api/*`, monta as rotas **isentas** (`health`, `whatsapp`, `authPublicoRouter` = login/convite/reset) **antes** de `authMiddleware`, depois os gates de área por prefixo (`exigeArea("pecuaria")` em `/api/rebanho/*` e `/api/corte/*`, `agricultura` em `/api/plantio/*` e `/api/cultivo/*`, `equipe` em `/api/ponto/*`, `financeiro` em `/api/financeiro*` e `/api/categorias*`), e só então os routers protegidos. **Ordem importa.** No boot também dispara `garantirResultadosGinecologicosSemente()` e `garantirDonoBootstrap()`. O backfill multi-propriedade (`garantirFundacaoPropriedade()`) **não** roda mais sozinho no boot — é script manual, ver `server/src/scripts/backfill-propriedade.ts` (`pnpm --filter rionovo-server run backfill:propriedade`).
+- `app.ts` — o app Hono em si: `logger()` global, `cors()` em `/api/*`, monta as rotas **isentas** (`health`, `whatsapp`, `authPublicoRouter` = login/convite/reset) **antes** de `authMiddleware`, depois os gates de área por prefixo (`exigeArea("pecuaria")` em `/api/rebanho/*` e `/api/corte/*`, `agricultura` em `/api/plantio/*` e `/api/cultivo/*`, `equipe` em `/api/ponto/*`, `financeiro` em `/api/financeiro*` e `/api/categorias*`), e só então os routers protegidos. **Ordem importa.** Runtime-agnóstico de propósito — não sabe se vai rodar em Node ou num Cloudflare Worker.
+- `index.ts` — entrypoint Node (`@hono/node-server`, dev local e Render). `worker.ts` — entrypoint Cloudflare Worker (`export { app as default }`, `main` do `wrangler.jsonc` na raiz — ver DEPLOY.md §6). Nenhum dos dois dispara bootstrap sozinho: `garantirFundacaoPropriedade()`, `garantirDonoBootstrap()` e `garantirResultadosGinecologicosSemente()` viraram scripts manuais em `server/src/scripts/` (`backfill:propriedade`, `bootstrap:dono`, `bootstrap:resultados-ginecologicos`) — não existe "boot" de processo dentro de um Worker pra disparar isso sozinho, então o mesmo tratamento vale pros dois runtimes.
 - `env.ts` — valida `process.env` com Zod; falha rápido (`process.exit(1)`) se inválido.
 - `db.ts` — singleton `PrismaClient` à prova de HMR.
 - `middleware/auth.ts` — resolve `Authorization: Bearer <token>` → `Sessao` → `Usuario` e injeta `c.set("usuario", ...)`. Aceita `SHARED_ACCESS_TOKEN` como dono sintético (ponte). Sem token no env e sem usuários no banco, libera (dev).

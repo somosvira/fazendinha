@@ -1,6 +1,6 @@
 # Deploy — Rio Novo
 
-Stack: **Cloudflare Pages** (frontend estático + Worker de proxy) + **Render** (backend Hono, serviço `terrano-api`) + **Neon** (Postgres, já existente).
+Stack: **Cloudflare Pages** (frontend estático + Worker de proxy) + **Render** (backend Hono, serviço `terrano-api`) + **Neon** (Postgres, já existente). Esse é o deploy em produção hoje — descrito nas seções 1-5. Existe também um **Cloudflare Worker único** (front + back no mesmo Worker, sem Render) preparado e testado localmente (build, dry-run), mas ainda **não deployado de verdade** — falta testar contra uma conta Cloudflare real antes de considerar substituir o caminho atual. Ver §6.
 
 Os arquivos de config já estão no repo:
 
@@ -8,7 +8,7 @@ Os arquivos de config já estão no repo:
 - `client/public/_worker.js` — Worker do CF Pages (modo avançado) que faz o proxy `/api/*` → Render, lendo a env `API_ORIGIN`.
 - `client/public/_redirects` — **só** o SPA fallback (`/* → /index.html`). Não faz mais proxy.
 - `.github/workflows/staging.yml` — CI (build + testes). É o gate da `main`; não faz deploy.
-- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback `*` se não setada); no boot roda backfills idempotentes (`garantirDonoBootstrap`, etc.) — mas **não** o de multi-propriedade, que virou script manual (ver §1.4).
+- `server/src/index.ts` — CORS lê de `CORS_ORIGIN` (fallback `*` se não setada). Não dispara mais nenhum bootstrap sozinho no boot (dono, resultados ginecológicos, multi-propriedade) — todos viraram scripts manuais (ver §1.5).
 - `server/src/env.ts` — validação Zod das envs (fonte de verdade da tabela abaixo).
 - `server/package.json` — `start:prod` é **só** `node dist/index.js`. Nenhum sync de schema roda no start (ver §1.4).
 
@@ -46,7 +46,7 @@ Todas são validadas por `server/src/env.ts`; se algo obrigatório faltar o proc
 | `NODE_ENV` | `production` (já vem do `render.yaml`). Em produção o boot **avisa** se `CORS_ORIGIN` ou `SHARED_ACCESS_TOKEN` estiverem vazios. |
 | `JWT_SECRET` | String aleatória forte (`openssl rand -hex 32`, ≥ 8 chars). **Não** reusar o de dev. |
 | `CORS_ORIGIN` | CSV de origens permitidas. Deixe vazio na primeira subida (libera tudo) e preencha depois com a URL do CF Pages (§2.4). |
-| `AUTH_BOOTSTRAP_EMAIL` | E-mail do dono. **Só tem efeito no primeiro boot com a tabela `Usuario` vazia** (ver §1.5). Pode esvaziar depois que o dono foi criado. |
+| `AUTH_BOOTSTRAP_EMAIL` | E-mail do dono. **Só tem efeito quando alguém roda o script de bootstrap com a tabela `Usuario` vazia** (ver §1.5). Pode esvaziar depois que o dono foi criado. |
 | `AUTH_BOOTSTRAP_NOME` | (opcional) Nome do dono. Default `Proprietário`. |
 | `APP_BASE_URL` | Base para montar os links de convite/reset (ex.: `https://rionovo.pages.dev`). Host sem esquema é normalizado para `https://`; vazio gera link relativo. |
 | `AUTH_SESSAO_DIAS` | (opcional) Validade da sessão em dias (sliding). Default 30. |
@@ -118,9 +118,13 @@ Sincroniza o schema direto, ignorando o histórico de migrations. É o que histo
 - Se um `migrate deploy` travar no meio (`P3018`), recupere com `prisma migrate resolve --rolled-back <migration>` e depois `db push`.
 - `prisma migrate dev` (criar migration nova) precisa da `DIRECT_URL` real — ver "Pooled vs direct URL" no `CLAUDE.md`.
 
-### 1.5. Bootstrap do dono (primeiro boot)
+### 1.5. Bootstrap do dono (script manual)
 
-O login é por conta real (`Usuario` + `Sessao`). No **primeiro boot** com a tabela `Usuario` vazia e `AUTH_BOOTSTRAP_EMAIL` setado, `garantirDonoBootstrap()` (`server/src/services/auth/usuarios.ts`):
+O login é por conta real (`Usuario` + `Sessao`). `garantirDonoBootstrap()` não dispara mais sozinho no boot (nem em Node, nem faria sentido num Worker) — rode manualmente depois do primeiro deploy, com `AUTH_BOOTSTRAP_EMAIL` setado e a tabela `Usuario` vazia:
+
+```bash
+pnpm --filter rionovo-server run bootstrap:dono
+```
 
 1. Cria o usuário com papel `proprietario`, `dono: true`, status **`PENDENTE`**.
 2. Gera um token de convite e **loga no stdout** um link único para definir a senha:
@@ -130,7 +134,9 @@ O login é por conta real (`Usuario` + `Sessao`). No **primeiro boot** com a tab
      https://<APP_BASE_URL>/convite/<token>
    ```
 
-3. Abra o link (Logs do Render), defina a senha, faça login. A partir daí `AUTH_BOOTSTRAP_EMAIL` não faz mais nada (tabela não está vazia) e pode ser esvaziada.
+3. Abra o link, defina a senha, faça login. A partir daí `AUTH_BOOTSTRAP_EMAIL` não faz mais nada (tabela não está vazia) e pode ser esvaziada. Rodar o script de novo com a tabela já povoada é seguro — não faz nada.
+
+Mesmo comando serve pro deploy no Worker (§6) — é um script Node, roda local (ou em CI) apontando `DATABASE_URL` pro banco de produção, não dentro do runtime do Worker.
 
 Enquanto o dono não define a senha, ou em ambientes sem conta nenhuma, o `SHARED_ACCESS_TOKEN` serve de ponte: o `authMiddleware` aceita esse token como um "dono sintético" com acesso total. Em dev local, sem `SHARED_ACCESS_TOKEN` **e** sem nenhum usuário no banco, a porta fica aberta.
 
@@ -244,8 +250,66 @@ Para obter um token de sessão real em vez do `SHARED_ACCESS_TOKEN`: `curl -X PO
 - **Prisma engine "Cannot find module" no runtime:** adicionar `binaryTargets = ["native", "debian-openssl-3.0.x"]` no `generator client` do `schema.prisma` e redeployar.
 - **`/api/*` no Pages responde `503 API_ORIGIN não configurada`:** a env `API_ORIGIN` não está setada no ambiente (Production/Preview) que serviu a request. Setar e redeployar o Pages.
 - **`/api/*` no Pages dá 404 ou volta o `index.html`:** o `_worker.js` não chegou ao output. Confira `client/dist/_worker.js` no build — precisa estar em `client/public/`.
-- **Front carrega mas tudo dá 401:** ninguém logado. Ou o dono ainda não definiu a senha (link nos logs do primeiro boot, §1.5) ou o token do `localStorage` expirou (`AUTH_SESSAO_DIAS`). Como ponte, `SHARED_ACCESS_TOKEN` na tela de login.
-- **Dono não foi criado no primeiro boot:** `AUTH_BOOTSTRAP_EMAIL` vazio ou a tabela `Usuario` já tinha registro. Ver log `[auth]`; se precisar recriar, criar o usuário direto (Prisma Studio) e gerar convite pelo app.
+- **Front carrega mas tudo dá 401:** ninguém logado. Ou o dono ainda não definiu a senha (link no output de `bootstrap:dono`, §1.5) ou o token do `localStorage` expirou (`AUTH_SESSAO_DIAS`). Como ponte, `SHARED_ACCESS_TOKEN` na tela de login.
+- **`bootstrap:dono` não criou o dono:** `AUTH_BOOTSTRAP_EMAIL` vazio ou a tabela `Usuario` já tinha registro. Ver log `[auth]`; se precisar recriar, criar o usuário direto (Prisma Studio) e gerar convite pelo app.
 - **Anexos de nota fiscal somem após deploy:** `STORAGE_DRIVER=local` no Render (disco efêmero). Migrar para `r2`.
 - **CORS error:** o cliente está chamando `terrano-api.onrender.com` direto (em vez de `/api/...` relativo)? Toda request deve sair via `comPropriedade()` com path relativo para passar pelo Worker.
 - **Free tier do Render dormindo:** ping a cada 10 min em `/api/health` via UptimeRobot/cron-job.org.
+
+---
+
+## 6. Alternativa: Cloudflare Worker único (front + back)
+
+**Ainda não é o deploy de produção** — as seções 1-5 continuam sendo a verdade sobre o que está no ar. Isto aqui é a infraestrutura pronta pra rodar front (estático) e back (API Hono) num único Cloudflare Worker, sem Render, testada localmente (build real + `wrangler deploy --dry-run`), mas **nunca deployada contra uma conta Cloudflare de verdade**. Antes de considerar substituir o caminho atual, rode `wrangler dev` e um deploy de teste (§6.3) e confira que tudo funciona igual.
+
+### 6.1. O que muda
+
+- `server/src/app.ts` — construção do Hono (rotas, CORS, gates de área). Compartilhado pelos dois entrypoints:
+  - `server/src/index.ts` — Node (`@hono/node-server`), o que já existe hoje (dev local, Render).
+  - `server/src/worker.ts` — Cloudflare Worker (`export { app as default }`, padrão oficial do Hono). Referenciado por `main` em `wrangler.jsonc` (raiz do repo).
+- `server/src/db.ts` — escolhe o driver do Prisma pelo runtime (`server/src/lib/runtime.ts`, `isCloudflareWorkers()`): `PrismaNeon` (HTTP/WebSocket) dentro do Worker, `PrismaPg` (TCP) em Node. Mesma `DATABASE_URL` nos dois casos.
+- `wrangler.jsonc` — `assets.directory` aponta pro `client/dist` (build do Vite); `run_worker_first: ["/api/*"]` garante que só `/api/*` invoca o Worker, o resto é asset estático ou cai no `index.html` (SPA) via `not_found_handling: "single-page-application"`. `keep_vars: true` evita que um deploy apague as variáveis "Text" criadas no dashboard.
+- `client/public/.assetsignore` — ignora o `_worker.js` do Pages atual (§2.1) pra não ser subido como asset do Worker novo. O arquivo continua no repo, intacto, pro deploy do Pages não quebrar.
+
+### 6.2. Criar o Worker e setar as envs
+
+1. `npx wrangler login` (uma vez, abre o browser).
+2. Todas as envs de `server/.env.example` precisam existir no Worker. Em produção: dashboard da Cloudflare → Workers & Pages → o Worker → **Settings → Variables and Secrets**. Use tipo **Secret** pra `DATABASE_URL`, `JWT_SECRET`, `SHARED_ACCESS_TOKEN`, `OPENAI_API_KEY`, `LOCAL_DOWNLOAD_SECRET`, `RESEND_API_KEY`, `R2_*`, `WHATSAPP_*` — como "Text" ficam legíveis por qualquer um com acesso ao dashboard. `STORAGE_DRIVER` **precisa ser `r2`** — o driver `local` não funciona dentro do Worker (sem filesystem; `getStorage()` recusa com erro claro se tentar).
+3. Em dev local, `wrangler dev` lê um `.dev.vars` na raiz (formato `.env`, git-ignorado — não existe ainda, criar na hora).
+
+### 6.3. Build e deploy
+
+```bash
+pnpm cf:build     # só o client (vite build → client/dist)
+pnpm cf:dev       # build + wrangler dev (Worker de teste local, com Miniflare)
+pnpm cf:deploy    # build + wrangler deploy (produção)
+```
+
+Schema do banco e os três bootstraps continuam manuais e iguais ao fluxo do Render (§1.4, §1.5) — são scripts Node, rodam local ou em CI apontando `DATABASE_URL` pro Neon, não dentro do Worker:
+
+```bash
+pnpm --filter rionovo-server exec prisma migrate deploy   # ou db:push
+pnpm --filter rionovo-server run backfill:propriedade
+pnpm --filter rionovo-server run bootstrap:dono
+pnpm --filter rionovo-server run bootstrap:resultados-ginecologicos
+```
+
+### 6.4. Smoke test
+
+```bash
+WORKER=https://fazendinha.<subdomínio>.workers.dev
+
+curl $WORKER/api/health | jq            # {status, runtime:"cloudflare-workers", database, config, migrations}
+curl -I $WORKER                          # front (index.html)
+curl -i $WORKER/api/financeiro/dashboard | head -1   # 401 sem token
+```
+
+`runtime: "cloudflare-workers"` na resposta do `/api/health` confirma que é o adapter do Neon (não o `pg`) respondendo — se aparecer `"node"`, o Worker não está rodando onde deveria.
+
+### 6.5. Troubleshooting específico do Worker
+
+- **`wrangler deploy` recusa subir um asset chamado `_worker.js`:** falta o `client/public/.assetsignore` (já existe no repo) ou ele não chegou ao `client/dist` — rodar `pnpm cf:build` de novo.
+- **Erro de import/módulo Node no bundle do Worker:** algo importou um módulo `node:*` sem suporte no `nodejs_compat` (ex.: `node:fs` fora do padrão lazy-import que `storage.ts` já usa) estaticamente no topo de um arquivo alcançável a partir de `worker.ts`. Ver o comentário em `server/src/lib/storage.ts` sobre por que isso importa.
+- **`STORAGE_DRIVER=local não funciona dentro de um Cloudflare Worker`:** erro esperado — trocar pra `r2` nas envs do Worker (§6.2).
+- **`/api/health` volta `database.connected:false`:** confira se a secret `DATABASE_URL` está setada no Worker (não só no `.dev.vars` local) e se é a connection string **pooled** do Neon.
+- **`/api/health` volta `config.ok:false`:** alguma env obrigatória falhou a validação Zod — olhar os logs do Worker (dashboard → Logs, com `observability.enabled` já ligado) pra ver o `[health] configuração inválida:` com os campos.
