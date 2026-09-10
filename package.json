@@ -12,7 +12,9 @@
     "prisma:generate": "pnpm --filter rionovo-server run prisma:generate",
     "prisma:migrate": "pnpm --filter rionovo-server run prisma:migrate",
     "prisma:studio": "pnpm --filter rionovo-server run prisma:studio",
-    "gen:nav-doc": "pnpm --filter rionovo-server exec tsx ../scripts/gen-nav-doc.ts"
+    "gen:nav-doc": "pnpm --filter rionovo-server exec tsx ../scripts/gen-nav-doc.ts",
+    "db:local:up": "docker compose up -d postgres",
+    "db:local:down": "docker compose down"
   },
   "engines": {
     "node": ">=20"
