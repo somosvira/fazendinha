@@ -22,10 +22,12 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
+import { RecuperarSenha } from "./components/RecuperarSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
 import { fetchMe, logout } from "./api/auth";
+import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
-import { areaDaTab, temAcessoArea, TODAS_AREAS } from "./lib/areas";
+import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 
@@ -133,14 +135,12 @@ const MIL: Record<string, MilSub> = {
 };
 
 export function App() {
-  // Deep-link de convite/reset: /convite/<token> ou /senha/<token>. Renderiza a
-  // tela de definir senha independentemente do gate de login (ver render abaixo).
-  const rotaSenha = (() => {
-    if (typeof window === "undefined") return null;
-    const m = /^\/(convite|senha)\/(.+)$/.exec(window.location.pathname);
-    if (!m) return null;
-    return { modo: (m[1] === "convite" ? "convite" : "senha") as "convite" | "senha", token: m[2] };
-  })();
+  // Atualiza o parser de rotas públicas após replaceState().
+  const [locationRevision, setLocationRevision] = useState(0);
+  const authRoute = useMemo(
+    () => typeof window === "undefined" ? null : interpretarRotaAuth(window.location.pathname, window.location.search),
+    [locationRevision],
+  );
 
   // Sessão real (usuários do backend). O login por e-mail+senha grava token +
   // usuário e transiciona EM ESTADO — sem window.location.reload(). Um reload
@@ -166,21 +166,6 @@ export function App() {
       ? false
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
-  const entrar = (novoToken: string, u: UsuarioSessao) => {
-    setSessao(novoToken, u); // persiste token + usuário pras próximas requests
-    setTokenState(novoToken); // transiciona pro app SEM reload (gesto vivo p/ o áudio)
-    setUsuario(u);
-    setShowIntro(deveTocarIntro(tab)); // abertura logo após o login → play() liberado
-  };
-  const onSair = token
-    ? () => {
-        void logout();
-        clearSessao();
-        setTokenState(null);
-        setUsuario(null);
-        setShowIntro(false);
-      }
-    : undefined;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
@@ -222,6 +207,40 @@ export function App() {
     const t = pathToTab(window.location.pathname);
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
+
+  const entrar = (novoToken: string, u: UsuarioSessao, returnTo?: string | null) => {
+    const destino = destinoDepoisDoLogin(returnTo, u);
+    const url = new URL(destino, window.location.origin);
+    const tabDestino = pathToTab(url.pathname) ?? DEFAULT_TAB;
+    setSessao(novoToken, u);
+    setTokenState(novoToken);
+    setUsuario(u);
+    setTab(tabDestino);
+    setRotaWorklist(parseRotaWorklistRebanho(url.pathname, url.search));
+    setWorklistSnapshot(null);
+    const parametros = url.searchParams;
+    setDeepLinkFiltros(
+      [...parametros.keys()].length && !parametros.has("worklist") && !isNovaOperacaoFinanceira(url.pathname)
+        ? { tab: tabDestino, filtros: Object.fromEntries(parametros.entries()) }
+        : null,
+    );
+    setDeepLink(null);
+    setShowIntro(deveTocarIntro(tabDestino));
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  };
+
+  const onSair = token
+    ? () => {
+        void logout();
+        clearSessao();
+        setTokenState(null);
+        setUsuario(null);
+        setShowIntro(false);
+        window.history.replaceState(null, "", "/signin");
+        setLocationRevision((valor) => valor + 1);
+      }
+    : undefined;
 
   // Navega a partir de um link da IA ("/caminho?filtros"): troca a aba e guarda os
   // filtros pra tela consumir na montagem. `id=` em módulo de cockpit (reb/pla/cor)
@@ -311,6 +330,29 @@ export function App() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!authRoute || !("alias" in authRoute) || !authRoute.alias) return;
+    const base = authRoute.kind === "invite" ? "/invite/" : "/reset-password/";
+    window.history.replaceState(null, "", `${base}${encodeURIComponent(authRoute.token)}`);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute]);
+
+  useEffect(() => {
+    if (authRoute || (token && usuario)) return;
+    const destino = urlSigninPara(window.location.pathname, window.location.search);
+    if (window.location.pathname + window.location.search === destino) return;
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute, token, usuario]);
+
+  useEffect(() => {
+    if (!token || !usuario || authRoute?.kind !== "signin") return;
+    const destino = paginaInicialAutorizada(usuario);
+    setTab(pathToTab(destino) ?? DEFAULT_TAB);
+    window.history.replaceState(null, "", destino);
+    setLocationRevision((valor) => valor + 1);
+  }, [authRoute, token, usuario]);
+
   // Reflete a aba ativa na URL. Primeiro render usa replaceState (não empilha
   // histórico ao normalizar "/" → "/dashboard); trocas seguintes usam pushState
   // para o botão "voltar" do navegador funcionar.
@@ -319,7 +361,7 @@ export function App() {
     // Convite e redefinição de senha são rotas públicas independentes das
     // abas do aplicativo. Não as normalize para a aba padrão enquanto o
     // usuário estiver criando a senha.
-    if (rotaSenha) return;
+    if (authRoute || !token || !usuario) return;
     const worklistUrl = rotaWorklist && tab === `reb-${rotaWorklist.tab}`
       ? buildRotaWorklistRebanho(rotaWorklist.chave, rotaWorklist.tab)
       : null;
@@ -335,12 +377,13 @@ export function App() {
       else window.history.pushState(null, "", alvo);
     }
     firstSync.current = false;
-  }, [tab, rotaWorklist, deepLinkFiltros, rotaSenha]);
+  }, [tab, rotaWorklist, deepLinkFiltros, authRoute, token, usuario]);
 
   // Botões voltar/avançar restauram pathname + worklist como uma única rota.
   useEffect(() => {
     const onPop = () => {
       setTab(pathToTab(window.location.pathname) ?? DEFAULT_TAB);
+      setLocationRevision((valor) => valor + 1);
       setRotaWorklist(parseRotaWorklistRebanho(window.location.pathname, window.location.search));
       setWorklistSnapshot(null);
       const sp = new URLSearchParams(window.location.search);
@@ -409,53 +452,36 @@ export function App() {
     }));
   }, [effectiveUser]);
 
-  const canAccessTab = (id: Tab): boolean => {
-    if (id === "acessos") return isAdmin;
-    if (id === "config") return true;
-    const area = areaDaTab(id);
-    if (area && !hasArea(area)) return false;
-    if (area === "financeiro") return visibleTabs.some((t) => t.id === id) || (id === "caixinha" && visibleTabs.some((t) => t.id === "cadastros"));
-    if (area === "equipe" && id === "eqp-folha") return canSeeFolha;
-    return true;
-  };
-
-  const fallbackTab = (): Tab => {
-    if (visibleTabs[0]) return visibleTabs[0].id;
-    if (hasArea("pecuaria")) return "reb-dashboard";
-    if (hasArea("agricultura")) return "pla-dashboard";
-    if (hasArea("equipe")) return "eqp-dashboard";
-    return "config";
-  };
+  const canAccessTab = (id: Tab): boolean => !!usuario && podeAcessarTab(usuario, id);
 
   // URL direta, histórico e deep links também respeitam a mesma matriz da sidebar.
   useEffect(() => {
-    if (!effectiveUser || canAccessTab(tab)) return;
-    setTab(fallbackTab());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleTabs, effectiveUser?.areas, tab]);
+    if (!usuario || podeAcessarTab(usuario, tab)) return;
+    setTab(pathToTab(paginaInicialAutorizada(usuario)) ?? DEFAULT_TAB);
+  }, [usuario, tab]);
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
-  // Gate de acesso. Deep-link de convite/reset tem prioridade: mesmo deslogado,
-  // /convite|/senha renderiza a tela de definir senha. Todos os hooks acima já
-  // rodaram — os early returns aqui não violam as Rules of Hooks.
-  if (rotaSenha) {
+  if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
     return (
       <DefinirSenha
-        modo={rotaSenha.modo}
-        token={rotaSenha.token}
+        modo={authRoute.kind === "invite" ? "convite" : "senha"}
+        token={authRoute.token}
         onPronto={(t, u) => {
           entrar(t, u);
-          window.history.replaceState(null, "", "/dashboard");
         }}
       />
     );
+  }
+  if (authRoute?.kind === "forgot-password") return <RecuperarSenha />;
+  if (authRoute?.kind === "signin") {
+    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u, authRoute.returnTo)} />;
   }
   // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
   // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
   // liberando o play() da música da abertura.
   if (!token || !usuario || !effectiveUser) {
-    return <Login onEntrar={entrar} />;
+    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
   const conteudo = !canAccessTab(tab)

@@ -2,6 +2,8 @@
 // UMA vez; no banco guardamos só o sha256. Helpers de expiração puros.
 import crypto from "node:crypto";
 
+export const RESET_TOKEN_TTL_MINUTES = 60;
+
 export function hashToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
 }
@@ -20,5 +22,5 @@ export function expiraConvite(agora: Date = new Date()): Date {
 }
 
 export function expiraReset(agora: Date = new Date()): Date {
-  return new Date(agora.getTime() + 60 * 60 * 1000);
+  return new Date(agora.getTime() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
 }

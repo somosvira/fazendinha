@@ -1,16 +1,16 @@
 /* Tela "Definir senha" — usada em dois deep-links:
- *   /convite/<token> → pessoa recém-convidada cria a primeira senha
- *   /senha/<token>   → redefinição de senha (reset)
+ *   /invite/<token>         → pessoa recém-convidada cria a primeira senha
+ *   /reset-password/<token> → redefinição de senha (reset)
  *
  * Ao concluir, o backend já devolve uma sessão pronta (token + usuário) e
  * `onPronto` entra direto no app — mesmo padrão do Login (sem reload). */
 
 import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { validarConvite, aceitarConvite, redefinirSenha } from "../api/auth";
+import { validarConvite, validarReset, aceitarConvite, redefinirSenha } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
+import { CampoSenha } from "./CampoSenha";
 
 export function DefinirSenha({
   modo,
@@ -29,9 +29,11 @@ export function DefinirSenha({
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (modo !== "convite") return;
-    validarConvite(token)
-      .then((d) => setNome(d.nome))
+    const validacao = modo === "convite" ? validarConvite(token) : validarReset(token);
+    validacao
+      .then((dados) => {
+        if ("nome" in dados) setNome(dados.nome);
+      })
       .catch(() => setInvalido(true));
   }, [modo, token]);
 
@@ -55,7 +57,10 @@ export function DefinirSenha({
     return (
       <div className="grid min-h-screen place-items-center bg-background p-6">
         <div className="max-w-[380px] text-center text-[15px] text-ink-3">
-          Este link é inválido ou expirou. Peça um novo ao proprietário.
+          <p>Este link é inválido, expirou ou já foi utilizado.</p>
+          <a className="mt-4 inline-block font-semibold text-[color:var(--cafe)] hover:underline" href={modo === "senha" ? "/forgot-password" : "/signin"}>
+            {modo === "senha" ? "Solicitar nova recuperação" : "Voltar para entrar"}
+          </a>
         </div>
       </div>
     );
@@ -76,11 +81,11 @@ export function DefinirSenha({
         <Label htmlFor="ds-senha" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
           Nova senha
         </Label>
-        <Input
+        <CampoSenha
           id="ds-senha"
-          type="password"
           autoFocus
           autoComplete="new-password"
+          maxLength={128}
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           className="rounded-[8px] bg-background text-[15px]"
@@ -88,10 +93,10 @@ export function DefinirSenha({
         <Label htmlFor="ds-senha2" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
           Repita a senha
         </Label>
-        <Input
+        <CampoSenha
           id="ds-senha2"
-          type="password"
           autoComplete="new-password"
+          maxLength={128}
           value={senha2}
           onChange={(e) => setSenha2(e.target.value)}
           className="rounded-[8px] bg-background text-[15px]"

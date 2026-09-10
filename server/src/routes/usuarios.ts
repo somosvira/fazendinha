@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { exigePermissao } from "../middleware/permissao.js";
 import { listarUsuarios, criarUsuario, atualizarUsuario, revogarUsuario, UsuarioError } from "../services/auth/usuarios.js";
-import { gerarLinkConvite, gerarLinkReset } from "../services/auth/contas.js";
+import { gerarLinkConvite, gerarLinkReset, LinkAcessoError } from "../services/auth/contas.js";
 
 const criarSchema = z.object({ nome: z.string().min(1), email: z.string().email(), papel: z.string().min(1) });
 const patchSchema = z.object({
@@ -57,14 +57,16 @@ export const usuariosRouter = new Hono()
   .post("/usuarios/:id/convite", async (c) => {
     try {
       return c.json({ conviteLink: await gerarLinkConvite(Number(c.req.param("id"))) });
-    } catch {
-      return c.json({ error: "não foi possível gerar o link — usuário inválido" }, 422);
+    } catch (error) {
+      if (error instanceof LinkAcessoError) return c.json({ error: error.message }, 422);
+      throw error;
     }
   })
   .post("/usuarios/:id/reset", async (c) => {
     try {
       return c.json({ resetLink: await gerarLinkReset(Number(c.req.param("id"))) });
-    } catch {
-      return c.json({ error: "não foi possível gerar o link — usuário inválido" }, 422);
+    } catch (error) {
+      if (error instanceof LinkAcessoError) return c.json({ error: error.message }, 422);
+      throw error;
     }
   });
