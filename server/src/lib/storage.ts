@@ -5,6 +5,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { env } from "../env.js";
+import { isCloudflareWorkers } from "./runtime.js";
 
 // `node:crypto` e `node:path` são só lógica pura (sem I/O de SO) e o
 // `nodejs_compat` do Workers cobre os dois bem — import estático é seguro
@@ -12,19 +13,8 @@ import { env } from "../env.js";
 // depende de filesystem real, que não existe lá: por isso ele é importado
 // só dentro dos métodos do `LocalStorage`, nunca aqui no topo — um import
 // estático rodaria no module-load do Worker mesmo que `LocalStorage` nunca
-// fosse instanciado (ver `isCloudflareWorkers()` abaixo), quebrando o boot
-// inteiro em vez de só o caminho que usa disco.
-
-/**
- * Detecta se o código está rodando dentro de um Cloudflare Worker (workerd),
- * em produção ou sob `wrangler dev` — mesmo truque documentado pela própria
- * Cloudflare (usado no adapter do Prisma do kumon): `navigator.userAgent`
- * só tem esse valor lá. Em Node (dev local, testes, Render) dá `false`.
- */
-export function isCloudflareWorkers(): boolean {
-  const runtime = globalThis as { navigator?: { userAgent?: string } };
-  return runtime.navigator?.userAgent === "Cloudflare-Workers";
-}
+// fosse instanciado (ver `isCloudflareWorkers()` em `./runtime.js`),
+// quebrando o boot inteiro em vez de só o caminho que usa disco.
 
 export type StorageDriver = "local" | "r2";
 
