@@ -17,14 +17,20 @@ async function main() {
   const grupoId: Record<string, number> = {};
   for (const nome of grupos) grupoId[nome] = (await prisma.grupo.upsert({ where: { nome }, update: {}, create: { nome } })).id;
 
-  // Raças puras são semeadas pela migration 20260625220000_racas_puras_especie_codigo;
-  // aqui só fazemos lookup por nome.
-  const racasUsadas = ["Girolando", "Holandês"] as const;
+  // A baseline contém somente estrutura. O seed é responsável pelos catálogos
+  // mínimos que o cenário de demonstração utiliza.
+  const racasUsadas = [
+    { nome: "Girolando", codigo: "GL" },
+    { nome: "Holandês", codigo: "HO" },
+  ] as const;
   const racaId: Record<string, number> = {};
-  for (const nome of racasUsadas) {
-    const r = await prisma.raca.findUnique({ where: { nome } });
-    if (!r) throw new Error(`Raça "${nome}" não encontrada — rode prisma migrate deploy primeiro.`);
-    racaId[nome] = r.id;
+  for (const raca of racasUsadas) {
+    const row = await prisma.raca.upsert({
+      where: { nome: raca.nome },
+      update: { codigo: raca.codigo, especie: "BOVINO" },
+      create: { nome: raca.nome, codigo: raca.codigo, especie: "BOVINO" },
+    });
+    racaId[raca.nome] = row.id;
   }
 
   // grauSangue agora segue o padrão composto "fração1 SIGLA1, SIGLA2" (ex.: "5/8 GL, HO").
