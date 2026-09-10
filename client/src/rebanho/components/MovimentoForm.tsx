@@ -6,6 +6,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { fmtMoneyExact } from "@/components/charts";
+import type { EntityId } from "@fazendinha/shared";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -26,7 +27,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
   const [novoProduto, setNovoProduto] = useState(false);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
 
-  async function carregarProdutos(selecionarId?: number) {
+  async function carregarProdutos(selecionarId?: EntityId) {
     const ps = await listarProdutos({ ativo: true });
     const estocaveis = ps.filter((p) => p.estocavel);
     setProdutos(estocaveis);
@@ -49,7 +50,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     try {
       const ehEntrada = f.tipo === "ENTRADA";
       const payload: MovimentoInput = {
-        produtoId: Number(f.produtoId),
+        produtoId: f.produtoId,
         tipo: f.tipo,
         data: f.data,
         quantidade: Number(f.quantidade),

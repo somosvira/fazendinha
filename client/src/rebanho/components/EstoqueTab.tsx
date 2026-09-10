@@ -15,6 +15,7 @@ import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
+import type { EntityId } from "@fazendinha/shared";
 
 const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -104,7 +105,7 @@ export function EstoqueTab() {
       .sort((a, b) => setorLabel(a.setor).localeCompare(setorLabel(b.setor), "pt-BR"));
   }, [saldosVisiveis]);
 
-  function abrirEdicao(produtoId: number) {
+  function abrirEdicao(produtoId: EntityId) {
     const p = produtos.find((x) => x.id === produtoId);
     if (p) setEditando(p);
   }

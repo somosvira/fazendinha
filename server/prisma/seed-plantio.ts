@@ -328,7 +328,7 @@ async function main() {
   // Data recente fixa para a ENTRADA inicial (mês não fechado — fora do range de fechamentos).
   const dataEntradaInicial = new Date("2026-03-15");
 
-  const insumoIds: number[] = [];
+  const insumoIds: string[] = [];
   for (const ins of INSUMOS_PLANTIO) {
     const data = {
       tipo: "INSUMO" as const,

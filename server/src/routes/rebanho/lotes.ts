@@ -1,18 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import * as svc from "../../services/rebanho/lotes.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
+import { localArmazenamentoSchema, loteProdutoSchema } from "@fazendinha/shared";
+import { parseEntityId } from "../../lib/ids.js";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
-const criarLocalSchema = z.object({ nome: z.string().min(1).max(80), ativo: z.boolean().optional() });
-const criarLoteSchema = z.object({
-  produtoId: z.number().int().positive(),
-  codigo: z.string().min(1, "informe o código do lote").max(60),
-  validade: isoDate.nullable().optional(),
-  localId: z.number().int().positive().nullable().optional(),
-  quantidade: z.number().min(0).max(9_999_999).nullable().optional(),
-});
+const criarLocalSchema = localArmazenamentoSchema;
+const criarLoteSchema = loteProdutoSchema;
 
 function fail(e: unknown): { status: 404 | 500; body: { error: string } } {
   if (e instanceof svc.LoteError) return { status: 404, body: { error: e.message } };
@@ -28,7 +22,7 @@ export const lotesRouter = new Hono()
     return c.json(await svc.criarLocal(c.req.valid("json"), propriedadeId), 201);
   })
   .delete("/rebanho/locais-armazenamento/:id", async (c) => {
-    try { await svc.excluirLocal(Number(c.req.param("id"))); return c.json({ ok: true }); }
+    try { await svc.excluirLocal(parseEntityId(c.req.param("id"))); return c.json({ ok: true }); }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .get("/rebanho/lotes-produto", async (c) => c.json(await svc.listarLotes(await resolverEscopoLeitura(c))))
@@ -39,6 +33,6 @@ export const lotesRouter = new Hono()
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .delete("/rebanho/lotes-produto/:id", async (c) => {
-    try { await svc.excluirLote(Number(c.req.param("id"))); return c.json({ ok: true }); }
+    try { await svc.excluirLote(parseEntityId(c.req.param("id"))); return c.json({ ok: true }); }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   });

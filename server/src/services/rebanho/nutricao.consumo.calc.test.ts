@@ -3,21 +3,21 @@ import { consumoEsperado, diasNoPeriodo, type ItemConsumo } from "./nutricao.con
 
 describe("consumoEsperado", () => {
   const itens: ItemConsumo[] = [
-    { produtoId: 1, qtdPorCabecaDia: 12 }, // 12 kg de silagem
-    { produtoId: 2, qtdPorCabecaDia: 0.12 }, // 120 g de mineral
+    { produtoId: "produto-1", qtdPorCabecaDia: 12 }, // 12 kg de silagem
+    { produtoId: "produto-2", qtdPorCabecaDia: 0.12 }, // 120 g de mineral
   ];
 
   it("multiplica qtd × cabeças × dias por item", () => {
     const r = consumoEsperado(itens, 50, 30);
     expect(r).toEqual([
-      { produtoId: 1, quantidade: 18000 }, // 12 × 50 × 30
-      { produtoId: 2, quantidade: 180 }, //  0.12 × 50 × 30
+      { produtoId: "produto-1", quantidade: 18000 }, // 12 × 50 × 30
+      { produtoId: "produto-2", quantidade: 180 }, //  0.12 × 50 × 30
     ]);
   });
 
   it("contém ruído de float arredondando a 4 casas", () => {
     // 0.1 × 3 × 1 = 0.30000000000000004 em float
-    const r = consumoEsperado([{ produtoId: 9, qtdPorCabecaDia: 0.1 }], 3, 1);
+    const r = consumoEsperado([{ produtoId: "produto-9", qtdPorCabecaDia: 0.1 }], 3, 1);
     expect(r[0].quantidade).toBe(0.3);
   });
 

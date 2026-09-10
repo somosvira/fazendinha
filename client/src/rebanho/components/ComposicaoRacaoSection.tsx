@@ -16,7 +16,7 @@ export function ComposicaoRacaoSection() {
   useEffect(() => { listarProdutos({ ativo: true }).then(setProdutos).catch(() => setProdutos([])); }, []);
   useEffect(() => {
     if (!produtoId) { setComp(null); setItens([]); return; }
-    obterComposicaoRacao(Number(produtoId))
+    obterComposicaoRacao(produtoId)
       .then((c) => { setComp(c); setItens(c.itens.map((i) => ({ ingredienteId: String(i.ingredienteId), proporcao: String(i.proporcao) }))); })
       .catch(() => { setComp(null); setItens([]); });
   }, [produtoId]);
@@ -35,8 +35,8 @@ export function ComposicaoRacaoSection() {
     try {
       const limpos = itens
         .filter((i) => i.ingredienteId && i.proporcao.trim() !== "")
-        .map((i) => ({ ingredienteId: Number(i.ingredienteId), proporcao: Number(i.proporcao) }));
-      const c = await definirComposicaoRacao(Number(produtoId), limpos);
+        .map((i) => ({ ingredienteId: i.ingredienteId, proporcao: Number(i.proporcao) }));
+      const c = await definirComposicaoRacao(produtoId, limpos);
       setComp(c);
     } catch (e) { setErro(e instanceof Error ? e.message : "Falha ao salvar receita."); }
     finally { setSalvando(false); }

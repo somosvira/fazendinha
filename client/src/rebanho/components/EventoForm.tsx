@@ -251,7 +251,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
         if (tipoSan === "VACINA") p.produto = f.produto;
         // Vínculo de estoque (baixa automática): só quando produto cadastrado + quantidade informados.
         const usaEstoque = (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.estoqueProdutoId && num(f.estoqueQtd);
-        if (usaEstoque) { p.produtoId = Number(f.estoqueProdutoId); p.quantidadeUsada = num(f.estoqueQtd); }
+        if (usaEstoque) { p.produtoId = f.estoqueProdutoId; p.quantidadeUsada = num(f.estoqueQtd); }
         criado = eventoEdicao ? await editarEventoSanidade(eventoEdicao.id, p) : await registrarEventoSanidade(animalId, p);
         // Se a baixa foi automática (produtoId), NÃO abre o card manual (evita baixa dupla).
         if (!eventoEdicao && !usaEstoque && (tipoSan === "APLICACAO" || tipoSan === "VACINA") && f.produto && f.produto.trim()) {

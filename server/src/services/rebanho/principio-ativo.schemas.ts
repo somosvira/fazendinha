@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { composicaoPrincipiosAtivosSchema } from "@fazendinha/shared";
 
 // Catálogo de princípios ativos.
 export const criarPrincipioSchema = z.object({
@@ -20,10 +21,5 @@ export const atualizarPrincipioSchema = z.object({
 export type AtualizarPrincipioInput = z.infer<typeof atualizarPrincipioSchema>;
 
 // Composição de um produto: a lista completa de princípios (substitui a existente).
-export const definirComposicaoSchema = z.object({
-  principios: z.array(z.object({
-    principioAtivoId: z.number().int().positive(),
-    concentracao: z.string().max(60).optional(),
-  })).max(30),
-});
+export const definirComposicaoSchema = composicaoPrincipiosAtivosSchema;
 export type DefinirComposicaoInput = z.infer<typeof definirComposicaoSchema>;

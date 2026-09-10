@@ -1,6 +1,10 @@
 import { prisma } from "../../db.js";
-import { z } from "zod";
-import { entityIdSchema } from "@fazendinha/shared";
+import {
+  fornecedorEstoqueSchema,
+  produtoEstoqueSchema,
+  type FornecedorEstoqueInput,
+  type ProdutoEstoqueInput,
+} from "@fazendinha/shared";
 
 export class CadastroError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "DUPLICADO", message: string) {
@@ -8,29 +12,11 @@ export class CadastroError extends Error {
   }
 }
 
-// Limites compatíveis com Produto.custoUnitario / minimoEstoque (Decimal(12,2))
-const MAX_PRODUTO_VALOR = 9_999_999_999.99;
-
 // Setor operacional do produto (dimensão separada da categoria contábil).
 export const SETORES_ESTOQUE = ["LEITE", "CAFE", "CORTE", "MILHO", "GERAL"] as const;
 
-export const produtoSchema = z.object({
-  nome: z.string().min(1).max(80),
-  tipo: z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]),
-  unidade: z.string().min(1).max(12).default("un"),
-  custoUnitario: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "custo muito alto").optional(),
-  carencia: z.number().int().nonnegative().max(9999, "carência muito alta").optional(),
-  percentualMS: z.number().min(0).max(100).optional(),
-  estocavel: z.boolean().optional(),
-  minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").optional(),
-  ativo: z.boolean().optional(),
-  // Setor operacional (atividade). Nullable/opcional — sem setor = GERAL na exibição.
-  setor: z.enum(SETORES_ESTOQUE).nullable().optional(),
-  // Mapeamento contábil (ponte com o financeiro). Nullable para permitir desvincular.
-  categoriaId: entityIdSchema.nullable().optional(),
-  centroCustoId: entityIdSchema.nullable().optional(),
-});
-export type ProdutoInput = z.infer<typeof produtoSchema>;
+export const produtoSchema = produtoEstoqueSchema;
+export type ProdutoInput = ProdutoEstoqueInput;
 
 const produtoDTO = (p: any) => ({
   id: p.id,
@@ -63,21 +49,13 @@ export async function criarProduto(input: ProdutoInput) {
   if (await prisma.produto.findUnique({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `produto ${input.nome} já existe`);
   return produtoDTO(await prisma.produto.create({ data: input, include: produtoInclude }));
 }
-export async function editarProduto(id: number, input: Partial<ProdutoInput>) {
+export async function editarProduto(id: string, input: Partial<ProdutoInput>) {
   if (!(await prisma.produto.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "produto não encontrado");
   return produtoDTO(await prisma.produto.update({ where: { id }, data: input, include: produtoInclude }));
 }
 
-export const fornecedorSchema = z.object({
-  id: entityIdSchema.optional(),
-  nome: z.string().min(1).max(120),
-  documento: z.string().max(20).optional(),
-  tipo: z.enum(["CLIENTE", "FORNECEDOR", "AMBOS"]).optional(),
-  telefone: z.string().max(20).optional(),
-  email: z.string().email().max(120).optional().or(z.literal("")),
-  ativo: z.boolean().optional(),
-});
-export type FornecedorInput = z.infer<typeof fornecedorSchema>;
+export const fornecedorSchema = fornecedorEstoqueSchema;
+export type FornecedorInput = FornecedorEstoqueInput;
 
 const fornDTO = (f: any) => ({
   id: f.id,

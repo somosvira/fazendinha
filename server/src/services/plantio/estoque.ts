@@ -5,7 +5,7 @@ import { calcularSaldo, calcularValor, abaixoDoMinimo, type MovEstoque } from ".
 // `tipo` é o subtipoPlantio do Produto (FERTILIZANTE/DEFENSIVO/…). Decimals do
 // Prisma já chegam como number; minimoEstoque pode ser null.
 export interface SaldoPlantio {
-  produtoId: number;
+  produtoId: string;
   nome: string;
   tipo: string;            // TipoInsumoPlantio
   saldo: number;

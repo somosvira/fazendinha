@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const PARCEIRO_ID = "00000000-0000-4000-8000-000000000001";
-const PRODUTO_ID = 2;
+const PRODUTO_ID = "00000000-0000-4000-8000-000000000002";
 const CONTA_ID = "00000000-0000-4000-8000-000000000003";
 
 const base = {

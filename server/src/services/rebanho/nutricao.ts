@@ -2,6 +2,7 @@ import { prisma } from "../../db.js";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { registrarMovimentacoes } from "./movimentacao.js";
+import { entityIdSchema } from "@fazendinha/shared";
 
 export const dietaSchema = z.object({
   nome: z.string().min(1).max(60),
@@ -177,7 +178,7 @@ export const dietaItensSchema = z.object({
   itens: z
     .array(
       z.object({
-        produtoId: z.number().int(),
+        produtoId: entityIdSchema,
         qtdPorCabecaDia: z.number().positive("quantidade por cabeça/dia deve ser maior que zero").max(MAX_QTD_CAB_DIA, "quantidade por cabeça/dia muito alta"),
       }),
     )
@@ -198,7 +199,7 @@ const dietaItemDTO = (i: any) => ({
 
 export async function listarItensDieta(dietaId: number) {
   if (!(await prisma.dieta.findUnique({ where: { id: dietaId } }))) throw new NutricaoError("NAO_ENCONTRADO", "dieta não encontrada");
-  const itens = await prisma.dietaItem.findMany({ where: { dietaId }, orderBy: [{ ordem: "asc" }, { id: "asc" }], include: { produto: true } });
+  const itens = await prisma.dietaItem.findMany({ where: { dietaId }, orderBy: { ordem: "asc" }, include: { produto: true } });
   return itens.map(dietaItemDTO);
 }
 

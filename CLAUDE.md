@@ -159,12 +159,12 @@ Decimal usa `@db.Decimal(14, 2)` (quantidades `(12, 3)`, unitário `(14, 4)`) �
 
 ### Identidade offline-first
 
-- Entidades financeiras sincronizáveis usam `String @id @default(uuid()) @db.Uuid`. O cliente deve gerar o UUID antes de persistir na fila e o servidor deve aceitar o mesmo `id` no Zod e no `create` do Prisma. Reusar `entityIdSchema`, `EntityId`, `newEntityId()` e os schemas de criação de `@fazendinha/shared`; não criar validadores, geradores ou contratos paralelos no cliente e no servidor.
+- Entidades sincronizáveis novas usam `String @id @default(uuid()) @db.Uuid`. O cliente deve gerar o UUID antes de persistir na fila e o servidor deve aceitar o mesmo `id` no Zod e no `create` do Prisma. Reusar `entityIdSchema`, `EntityId`, `newEntityId()` e os schemas de criação de `@fazendinha/shared`; não criar validadores, geradores ou contratos paralelos no cliente e no servidor.
 - `id` é identidade técnica opaca: não converter com `Number`, não incrementar, não exibir como número de negócio e não usar para ordenar dados. URLs e FKs transportam o UUID como `string`.
 - Ordem de negócio é explícita (`ordem`, `numeroParcela`, `registradoEm`, `data`). Identificação humana também é separada; operações exibem `Operacao.numero` como `OP-0042`, nunca um trecho do UUID.
-- Uma criação financeira composta offline deve atribuir IDs a todas as entidades financeiras no mesmo payload (operação, itens, parcelas, transações e movimentos de conta). Esses IDs precisam permanecer estáveis entre autosaves e retries; não regenerar UUID ao serializar o mesmo rascunho. IDs próprios do estoque permanecem numéricos até a migração desse domínio.
+- Uma criação composta offline deve atribuir IDs a todas as entidades no mesmo payload (pai, itens, parcelas, transações e movimentos). Esses IDs precisam permanecer estáveis entre autosaves e retries; não regenerar UUID ao serializar o mesmo rascunho.
 - IDs numéricos ainda existentes pertencem a áreas não migradas. Ao migrar outro domínio, faça o grafo inteiro em PR próprio: PKs, FKs, schema Prisma/migration, Zod, serviços, rotas, tipos do cliente, seeds, testes, ordenação e apresentação.
-- A baseline experimental não converte os inteiros antigos. `20260910160000_finance_offline_structure` separa ordem e identificação humana; `20260910161000_finance_uuid` troca as identidades técnicas financeiras. Em ambiente de desenvolvimento com dados anteriores, resetar e semear novamente em vez de tentar preservar identidades incompatíveis.
+- A baseline experimental não converte os inteiros antigos. `20260910160000_finance_offline_structure` separa ordem e identificação humana; `20260910161000_finance_uuid` converte o Financeiro; `20260910162000_stock_uuid` converte o Estoque. Em ambiente de desenvolvimento com dados anteriores, resetar e semear novamente em vez de tentar preservar identidades incompatíveis.
 
 ### Multi-propriedade (escopo de sítio) — IMPLEMENTADO
 

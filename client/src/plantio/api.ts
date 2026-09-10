@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, TipoInsumoPlantio, IaInsight } from "./types";
 import { HOJE } from "./HOJE";
 import { comPropriedade } from "../propriedadeScope";
+import type { EntityId } from "@fazendinha/shared";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -474,7 +475,7 @@ export function useCustoOperacionalCafe(safraId: number | null) {
 // Espelha o DTO SaldoPlantio do backend (server/.../plantio/estoque.ts). `tipo`
 // é o subtipoPlantio (FERTILIZANTE/DEFENSIVO/…); minimoEstoque pode ser null.
 export interface Saldo {
-  produtoId: number;
+  produtoId: EntityId;
   nome: string;
   tipo: TipoInsumoPlantio;
   saldo: number;

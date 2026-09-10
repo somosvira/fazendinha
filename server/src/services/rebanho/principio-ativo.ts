@@ -17,7 +17,7 @@ export interface PrincipioAtivoDTO {
 }
 
 export interface ComposicaoProdutoDTO {
-  produtoId: number;
+  produtoId: string;
   produtoNome: string;
   principios: { principioAtivoId: number; nome: string; concentracao: string | null; ehAntibiotico: boolean }[];
   // Derivado da composição (composicao.calc): flags no nível do produto.
@@ -86,7 +86,7 @@ export async function excluirPrincipio(id: number): Promise<void> {
 
 // ── Composição de um produto ──────────────────────────────────────────────────
 
-export async function obterComposicao(produtoId: number): Promise<ComposicaoProdutoDTO> {
+export async function obterComposicao(produtoId: string): Promise<ComposicaoProdutoDTO> {
   const produto = await prisma.produto.findUnique({
     where: { id: produtoId },
     include: { principiosAtivos: { include: { principioAtivo: true } } },
@@ -117,7 +117,7 @@ export async function obterComposicao(produtoId: number): Promise<ComposicaoProd
 }
 
 // Substitui a composição inteira do produto (o front sempre manda a lista completa).
-export async function definirComposicao(produtoId: number, input: DefinirComposicaoInput): Promise<ComposicaoProdutoDTO> {
+export async function definirComposicao(produtoId: string, input: DefinirComposicaoInput): Promise<ComposicaoProdutoDTO> {
   if (!(await prisma.produto.findUnique({ where: { id: produtoId } }))) throw new PrincipioError("NAO_ENCONTRADO", "produto não encontrado");
   // Só princípios que existem entram (ignora ids fantasma); dedup por principioAtivoId.
   const ids = [...new Set(input.principios.map((p) => p.principioAtivoId))];
@@ -128,7 +128,7 @@ export async function definirComposicao(produtoId: number, input: DefinirComposi
     await tx.produtoPrincipioAtivo.deleteMany({ where: { produtoId } });
     if (validos.length) {
       await tx.produtoPrincipioAtivo.createMany({
-        data: validos.map((p) => ({ produtoId, principioAtivoId: p.principioAtivoId, concentracao: p.concentracao ?? null })),
+        data: validos.map((p) => ({ id: p.id, produtoId, principioAtivoId: p.principioAtivoId, concentracao: p.concentracao ?? null })),
       });
     }
   });

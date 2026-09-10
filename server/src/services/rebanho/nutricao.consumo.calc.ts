@@ -3,12 +3,12 @@
 // o service resolve cabeças/dias e persiste as SAIDAs.
 
 export interface ItemConsumo {
-  produtoId: number;
+  produtoId: string;
   qtdPorCabecaDia: number;
 }
 
 export interface LinhaConsumo {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
 }
 

@@ -7,6 +7,7 @@ import { RebField } from "@/components/rb/RebField";
 import { RebAnm } from "@/components/rb/RebPrimitives";
 import { getHoje } from "@/lib/hoje";
 import { fmtMoneyExact } from "@/components/charts";
+import { newEntityId, type EntityId } from "@fazendinha/shared";
 
 const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -46,13 +47,13 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
   async function fechar() {
     setSalvando(true); setMsg(null);
     try {
-      const r = await fecharConsumo(lote.id, { dataInicio, dataFim });
+      const r = await fecharConsumo(lote.id, { dataInicio, dataFim, movimentoIds: prev?.linhas.map(() => newEntityId()) });
       setMsg({ tom: "ok", texto: `Consumo fechado: ${r.movimentos} baixa(s), ${money(r.custoTotal)}${r.temInsuficiencia ? " — atenção: houve saldo negativo" : ""}.` });
       carregarPrevisao(); carregarHistorico(); onMudou?.();
     } catch (e: any) { setMsg({ tom: "erro", texto: e.message }); } finally { setSalvando(false); }
   }
 
-  async function estornar(id: number) {
+  async function estornar(id: EntityId) {
     setMsg(null);
     try { await estornarConsumo(id); setMsg({ tom: "ok", texto: "Fechamento estornado — estoque devolvido." }); carregarPrevisao(); carregarHistorico(); onMudou?.(); }
     catch (e: any) { setMsg({ tom: "erro", texto: e.message }); }

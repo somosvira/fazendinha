@@ -1,10 +1,10 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
-import { z } from "zod";
 import { saldoProduto, type MovIn } from "./estoque.calc.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { consumoPeriodoSchema, type ConsumoPeriodoInput } from "@fazendinha/shared";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -14,19 +14,15 @@ async function assertPeriodoAberto(propriedadeId: number, data: Date) {
 }
 
 // Janela de fechamento de consumo: lote + intervalo de datas.
-export const consumoSchema = z.object({
-  dataInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data inválida"),
-  dataFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data inválida"),
-  observacao: z.string().max(200).optional(),
-});
-export type ConsumoInput = z.infer<typeof consumoSchema>;
+export const consumoSchema = consumoPeriodoSchema;
+export type ConsumoInput = ConsumoPeriodoInput;
 
 // Carrega lote + dieta + composição, resolve cabeças/dias e devolve as linhas de
 // consumo já casadas com saldo atual. Base comum de previsão e fechamento.
 async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: string, propriedadeId: number | null = null) {
   const grupo = await prisma.grupo.findFirst({
     where: { id: grupoId, ...(propriedadeId != null ? { propriedadeId } : {}) },
-    include: { dieta: { include: { itens: { include: { produto: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] } } } },
+    include: { dieta: { include: { itens: { include: { produto: true }, orderBy: { ordem: "asc" } } } } },
   });
   if (!grupo) throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
   if (!grupo.dieta) throw new NutricaoError("SEM_DIETA", "lote não tem dieta atribuída — atribua uma dieta antes de fechar o consumo");
@@ -47,7 +43,7 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
   // Saldo atual de cada produto envolvido (Σ entradas − Σ saídas).
   const produtoIds = itens.map((i) => i.produtoId);
   const movs = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtoIds }, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { produtoId: true, tipo: true, quantidade: true, valorTotal: true, data: true } });
-  const saldoPorProduto = new Map<number, number>();
+  const saldoPorProduto = new Map<string, number>();
   for (const pid of produtoIds) {
     const doProduto: MovIn[] = movs.filter((m) => m.produtoId === pid).map((m) => ({ tipo: m.tipo, quantidade: Number(m.quantidade), valorTotal: Number(m.valorTotal), data: iso(m.data) }));
     saldoPorProduto.set(pid, saldoProduto(doProduto).saldo);
@@ -110,6 +106,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
     const periodo = await prisma.$transaction(async (tx) => {
       const cp = await tx.consumoPeriodo.create({
         data: {
+          id: input.id,
           grupoId,
           dietaId: prev.dietaId,
           dataInicio: new Date(input.dataInicio + "T00:00:00Z"),
@@ -122,16 +119,18 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
       });
 
       let custoTotal = new Prisma.Decimal(0);
-      for (const l of prev.linhas) {
+      for (const [indice, l] of prev.linhas.entries()) {
         if (l.quantidade <= 0) continue; // 0 cabeças/dias → nada a baixar
         const valorTotal = new Prisma.Decimal(l.quantidade).mul(l.custoUnitario).toDecimalPlaces(2);
         custoTotal = custoTotal.plus(valorTotal);
         await tx.movimentoEstoque.create({
           data: {
+            id: input.movimentoIds?.[indice],
             produtoId: l.produtoId,
             tipo: "SAIDA",
             origem: "NUTRICAO",
             data: dataMov,
+            ordem: indice,
             quantidade: l.quantidade,
             custoUnitario: l.custoUnitario,
             valorTotal,
@@ -156,7 +155,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
 }
 
 // Estorna um período fechado: apaga as SAIDAs geradas (cascade) e o cabeçalho.
-export async function reabrirConsumoPeriodo(id: number, propriedadeId: number | null = null) {
+export async function reabrirConsumoPeriodo(id: string, propriedadeId: number | null = null) {
   const cp = await prisma.consumoPeriodo.findFirst({ where: { id, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, include: { grupo: true } });
   if (!cp) throw new NutricaoError("NAO_ENCONTRADO", "fechamento de consumo não encontrado");
   await assertPeriodoAberto(cp.grupo.propriedadeId ?? await propriedadePrincipalId(), cp.dataFim);
@@ -169,7 +168,7 @@ export async function listarConsumosPeriodo(grupoId: number, propriedadeId: numb
   if (propriedadeId != null && !(await prisma.grupo.findFirst({ where: { id: grupoId, propriedadeId }, select: { id: true } }))) {
     throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
   }
-  const periodos = await prisma.consumoPeriodo.findMany({ where: { grupoId, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, orderBy: { dataFim: "desc" }, include: { _count: { select: { movimentos: true } } } });
+  const periodos = await prisma.consumoPeriodo.findMany({ where: { grupoId, ...(propriedadeId != null ? { grupo: { propriedadeId } } : {}) }, orderBy: [{ dataFim: "desc" }, { criadoEm: "desc" }], include: { _count: { select: { movimentos: true } } } });
   const fechados = await prisma.periodoFinanceiro.findMany({ where: { status: "FECHADO", ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { ano: true, mes: true } });
   const mesFechado = (d: Date) => fechados.some((f) => f.ano === d.getUTCFullYear() && f.mes === d.getUTCMonth() + 1);
   return periodos.map((p) => ({

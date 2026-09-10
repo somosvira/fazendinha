@@ -13,6 +13,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebPill } from "@/components/rb/RebPrimitives";
+import type { EntityId } from "@fazendinha/shared";
 
 interface Props {
   animalId: string;
@@ -64,7 +65,7 @@ export function BaixaEstoqueCard({
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [saldos, setSaldos] = useState<SaldoDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [produtoId, setProdutoId] = useState<number | null>(null);
+  const [produtoId, setProdutoId] = useState<EntityId | null>(null);
   const [quantidade, setQuantidade] = useState<string>("1");
   const [observacao, setObservacao] = useState<string>(() => {
     const partes = [
@@ -159,7 +160,7 @@ export function BaixaEstoqueCard({
         <RebField label="Produto do estoque a abater">
           <RebSelect
             value={produtoId ?? ""}
-            onChange={(v) => setProdutoId(v ? Number(v) : null)}
+            onChange={(v) => setProdutoId(v || null)}
             disabled={carregando}
           >
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>

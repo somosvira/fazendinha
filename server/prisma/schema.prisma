@@ -203,7 +203,7 @@ enum TipoInsumoPlantio {
 }
 
 model Produto {
-  id                 Int                     @id @default(autoincrement())
+  id                 String                  @id @default(uuid()) @db.Uuid
   nome               String                  @unique
   tipo               TipoProduto             @default(INSUMO)
   // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
@@ -242,11 +242,11 @@ model Produto {
 // Um ingrediente da receita de um produto (ração formulada): produto-mãe → ingrediente + proporção.
 // Espelha "Composição de produto" do IDEagri; mesmo padrão do ProdutoPrincipioAtivo (#174).
 model ComposicaoProdutoItem {
-  id            Int      @id @default(autoincrement())
+  id            String   @id @default(uuid()) @db.Uuid
   produto       Produto  @relation("ComposicaoDaRacao", fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId     Int
+  produtoId     String   @db.Uuid
   ingrediente   Produto  @relation("IngredienteEmComposicao", fields: [ingredienteId], references: [id], onDelete: Cascade)
-  ingredienteId Int
+  ingredienteId String   @db.Uuid
   proporcao     Decimal  @db.Decimal(6, 3) // % do ingrediente na receita
   createdAt     DateTime @default(now())
 
@@ -257,7 +257,7 @@ model ComposicaoProdutoItem {
 
 // Local físico de armazenamento (galpão, farmácia…). Espelha "local de armazenamento" do IDEagri.
 model LocalArmazenamento {
-  id            Int           @id @default(autoincrement())
+  id            String        @id @default(uuid()) @db.Uuid
   nome          String
   ativo         Boolean       @default(true)
   lotes         LoteProduto[]
@@ -272,13 +272,13 @@ model LocalArmazenamento {
 // Lote de um produto (código + validade + local). Cadastro/registro paralelo — NÃO é o razão de
 // estoque (o saldo continua em MovimentoEstoque). Espelha "Lote de produto" do IDEagri.
 model LoteProduto {
-  id            Int                 @id @default(autoincrement())
+  id            String              @id @default(uuid()) @db.Uuid
   produto       Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId     Int
+  produtoId     String              @db.Uuid
   codigo        String
   validade      DateTime?           @db.Date
   local         LocalArmazenamento? @relation(fields: [localId], references: [id])
-  localId       Int?
+  localId       String?             @db.Uuid
   quantidade    Decimal?            @db.Decimal(12, 2)
   propriedade   Propriedade?        @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int?
@@ -328,9 +328,9 @@ model PrincipioAtivo {
 // Composição: quais princípios ativos um Produto (medicamento) contém. Join N:N com
 // concentração opcional. Espelha PRODUTOPRINCIPIOATIVO (12445) do IDEagri.
 model ProdutoPrincipioAtivo {
-  id               Int            @id @default(autoincrement())
+  id               String         @id @default(uuid()) @db.Uuid
   produto          Produto        @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId        Int
+  produtoId        String         @db.Uuid
   principioAtivo   PrincipioAtivo @relation(fields: [principioAtivoId], references: [id], onDelete: Cascade)
   principioAtivoId Int
   concentracao     String? // ex.: "150 mg/mL" — texto livre (a unidade varia por fármaco)
@@ -441,7 +441,7 @@ model ItemOperacao {
   operacao          Operacao           @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
   operacaoId        String             @db.Uuid
   produto           Produto?           @relation(fields: [produtoId], references: [id])
-  produtoId         Int?
+  produtoId         String?            @db.Uuid
   ordem             Int                @default(0)
   descricao         String
   quantidade        Decimal            @db.Decimal(12, 3)
@@ -1244,7 +1244,7 @@ model DietaItem {
   dieta           Dieta    @relation(fields: [dietaId], references: [id], onDelete: Cascade)
   dietaId         Int
   produto         Produto  @relation(fields: [produtoId], references: [id])
-  produtoId       Int
+  produtoId       String   @db.Uuid
   // Quantidade por cabeça por dia, na unidade abaixo (= Produto.unidade em v1).
   qtdPorCabecaDia Decimal  @db.Decimal(12, 4)
   unidade         String // "kg", "g", "L" — informativa; em v1 igual à do produto
@@ -1677,10 +1677,10 @@ model EventoSanitario {
   // produtoRef + quantidadeUsada geram uma SAIDA automática (movimentoEstoque). O texto livre
   // `produto` acima continua para retrocompatibilidade/exibição.
   produtoRef         Produto?            @relation(fields: [produtoId], references: [id])
-  produtoId          Int?
+  produtoId          String?             @db.Uuid
   quantidadeUsada    Decimal?            @db.Decimal(12, 2)
   movimentoEstoque   MovimentoEstoque?   @relation(fields: [movimentoEstoqueId], references: [id])
-  movimentoEstoqueId Int?                @unique
+  movimentoEstoqueId String?             @unique @db.Uuid
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -1934,13 +1934,14 @@ enum StatusMovimentoEstoque {
 }
 
 model MovimentoEstoque {
-  id               Int                    @id @default(autoincrement())
+  id               String                 @id @default(uuid()) @db.Uuid
   produto          Produto                @relation(fields: [produtoId], references: [id])
-  produtoId        Int
+  produtoId        String                 @db.Uuid
   tipo             TipoMovimento
   origem           OrigemMovimentoEstoque
   status           StatusMovimentoEstoque @default(CONFIRMADO)
   data             DateTime               @db.Date
+  ordem            Int                    @default(0)
   quantidade       Decimal                @db.Decimal(12, 2)
   custoUnitario    Decimal                @db.Decimal(12, 2)
   valorTotal       Decimal                @db.Decimal(14, 2)
@@ -1958,16 +1959,17 @@ model MovimentoEstoque {
   criadoPor        Usuario?               @relation("MovimentoEstoqueCriador", fields: [criadoPorId], references: [id])
   criadoPorId      Int?
   reversaoDe       MovimentoEstoque?      @relation("ReversaoEstoque", fields: [reversaoDeId], references: [id])
-  reversaoDeId     Int?                   @unique
+  reversaoDeId     String?                @unique @db.Uuid
   revertidoPor     MovimentoEstoque?      @relation("ReversaoEstoque")
   // Fechamento de consumo (Fatia 2) que gerou esta SAIDA, se automática.
   consumoPeriodo   ConsumoPeriodo?        @relation(fields: [consumoPeriodoId], references: [id], onDelete: Cascade)
-  consumoPeriodoId Int?
+  consumoPeriodoId String?                @db.Uuid
   // Evento sanitário que gerou esta SAIDA (origem SANIDADE), se automática. Back-ref da FK
   // EventoSanitario.movimentoEstoqueId.
   eventoSanitario  EventoSanitario?
   observacao       String?
   createdAt        DateTime               @default(now())
+  registradoEm     DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 
   @@index([produtoId, data])
@@ -1982,7 +1984,7 @@ model MovimentoEstoque {
 // (uma por produto da dieta), dá idempotência (unique por lote+janela) e permite
 // estornar o período inteiro numa transação.
 model ConsumoPeriodo {
-  id         Int                @id @default(autoincrement())
+  id         String             @id @default(uuid()) @db.Uuid
   grupo      Grupo              @relation(fields: [grupoId], references: [id])
   grupoId    Int
   dieta      Dieta?             @relation(fields: [dietaId], references: [id]) // snapshot de qual dieta valia

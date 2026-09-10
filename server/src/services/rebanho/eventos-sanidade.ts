@@ -34,6 +34,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { id: true, propriedadeId: true } });
   if (!animal) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
   const produtoId = (input as any).produtoId ?? null;
+  const movimentoEstoqueId = (input as any).movimentoEstoqueId ?? undefined;
   const quantidadeUsada = (input as any).quantidadeUsada ?? null;
 
   // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado.
@@ -45,14 +46,14 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   const data = new Date(input.data);
 
   // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
-  const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
+  const { produtoId: _pid, movimentoEstoqueId: _mid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
   const e = await prisma.$transaction(async (tx) => {
     // SAIDA de consumo NÃO gera Lancamento (a compra ENTRADA já lançou no financeiro).
     const mov = plano
       ? await tx.movimentoEstoque.create({
           data: {
-            produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
+            id: movimentoEstoqueId, produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
             quantidade: new Prisma.Decimal(plano.quantidade),
             custoUnitario: new Prisma.Decimal(plano.custoUnitario),
             valorTotal: new Prisma.Decimal(plano.valorTotal),
@@ -87,7 +88,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const plano = planejarBaixaSanidade({ tipo: input.tipo, produtoId, quantidadeUsada, custoUnitario: produto?.custoUnitario != null ? Number(produto.custoUnitario) : null });
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
+  const { produtoId: _pid, movimentoEstoqueId: _mid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
   const atualizado = await prisma.$transaction(async (tx) => {
     let movimentoEstoqueId = existente.movimentoEstoqueId;

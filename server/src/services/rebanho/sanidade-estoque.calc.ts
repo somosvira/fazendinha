@@ -9,13 +9,13 @@ const TIPOS_CONSOMEM_ESTOQUE = new Set(["APLICACAO", "VACINA"]);
 
 export interface BaixaSanidadeIn {
   tipo: string;
-  produtoId: number | null;
+  produtoId: string | null;
   quantidadeUsada: number | null;
   custoUnitario: number | null;
 }
 
 export interface BaixaSanidadePlan {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   custoUnitario: number;
   valorTotal: number;

@@ -5,6 +5,7 @@ import { dietaSchema, loteSchema, dietaItensSchema } from "../../services/rebanh
 import * as svc from "../../services/rebanho/nutricao.js";
 import { consumoSchema } from "../../services/rebanho/nutricao.consumo.js";
 import * as consumo from "../../services/rebanho/nutricao.consumo.js";
+import { parseEntityId } from "../../lib/ids.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
 
 type Status = 404 | 409 | 500;
@@ -35,4 +36,4 @@ export const nutricaoRouter = new Hono()
   .get("/rebanho/lotes/:id/consumo/previsao", async (c) => { try { const di = c.req.query("dataInicio") ?? ""; const df = c.req.query("dataFim") ?? ""; return c.json(await consumo.previsaoConsumo(Number(c.req.param("id")), di, df, await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .post("/rebanho/lotes/:id/consumo/fechar", zValidator("json", consumoSchema), async (c) => { try { return c.json(await consumo.fecharConsumoPeriodo(Number(c.req.param("id")), c.req.valid("json"), await resolverEscopoEscrita(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .get("/rebanho/lotes/:id/consumo", async (c) => { try { return c.json(await consumo.listarConsumosPeriodo(Number(c.req.param("id")), await resolverEscopoLeitura(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
-  .delete("/rebanho/consumo/:id", async (c) => { try { await consumo.reabrirConsumoPeriodo(Number(c.req.param("id")), await resolverEscopoEscrita(c)); return c.json({ ok: true }); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });
+  .delete("/rebanho/consumo/:id", async (c) => { try { await consumo.reabrirConsumoPeriodo(parseEntityId(c.req.param("id")), await resolverEscopoEscrita(c)); return c.json({ ok: true }); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } });

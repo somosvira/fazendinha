@@ -15,11 +15,11 @@ export type Parceiro = { id: EntityId; nome: string; documento: string | null; t
 export type Categoria = { id: EntityId; nome: string };
 export type GrupoCategoria = { id: EntityId; nome: string; categorias: Categoria[] };
 export type CentroCusto = { id: EntityId; nome: string; ehInvestimento: boolean };
-export type Produto = { id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
+export type Produto = { id: EntityId; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; gruposCategorias: GrupoCategoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
 export type Compromisso = { id: EntityId; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; numeroParcela: number; totalParcelas: number; vencido: boolean; parceiro: Parceiro | null; operacao: { id: EntityId; numero: number; tipo: string; descricao: string | null } };
-export type ItemOperacao = { id: EntityId; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
-export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
+export type ItemOperacao = { id: EntityId; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: EntityId | null };
+export type MovimentoEstoqueOperacao = { id: EntityId; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: EntityId };
 export type TransacaoOperacao = { id: EntityId; tipo: string; status: string; data?: string; valorTotal: string; formaPagamento?: string | null; movimentos?: { id: EntityId; contaId: EntityId; direcao: "ENTRADA" | "SAIDA"; valor: string }[] };
 export type DocumentoFinanceiro = { id: EntityId; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: EntityId; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
@@ -60,7 +60,7 @@ function comIdentidadesOperacao(input: unknown) {
     id: newEntityId(),
     registradoEm: new Date().toISOString(),
     ...operacao,
-    itens: operacao.itens?.map((item, ordem) => ({ id: newEntityId(), ordem, ...item })),
+    itens: operacao.itens?.map((item, ordem) => ({ id: newEntityId(), movimentoEstoqueId: newEntityId(), ordem, ...item })),
     financeiro,
   };
 }

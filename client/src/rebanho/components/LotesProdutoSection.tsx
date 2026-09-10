@@ -5,6 +5,7 @@ import {
   type LocalArmazenamentoDTO, type ProdutoDTO, type StatusValidadeLote,
 } from "../api";
 import { PromptDialog } from "@/components/PromptDialog";
+import type { EntityId } from "@fazendinha/shared";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const STATUS_COR: Record<StatusValidadeLote, string> = { vencido: "var(--prejuizo)", "a-vencer": "var(--atencao)", ok: "var(--lucro)", "sem-validade": "var(--ink-mute)" };
@@ -36,14 +37,14 @@ export function LotesProdutoSection() {
     setErro(null);
     try {
       await criarLoteProduto({
-        produtoId: Number(f.produtoId), codigo: f.codigo.trim(),
-        validade: f.validade || null, localId: f.localId ? Number(f.localId) : null,
+        produtoId: f.produtoId, codigo: f.codigo.trim(),
+        validade: f.validade || null, localId: f.localId || null,
         quantidade: f.quantidade.trim() ? Number(f.quantidade) : null,
       });
       setF({ produtoId: "", codigo: "", validade: "", localId: "", quantidade: "" }); setAberto(false); recarregar();
     } catch (err) { setErro(err instanceof Error ? err.message : "Falha ao salvar lote."); }
   }
-  async function excluir(id: number) { await excluirLoteProduto(id); recarregar(); }
+  async function excluir(id: EntityId) { await excluirLoteProduto(id); recarregar(); }
   async function confirmarNovoLocal(nome: string) {
     setPromptLocalAberto(false);
     await criarLocalArmazenamento({ nome });

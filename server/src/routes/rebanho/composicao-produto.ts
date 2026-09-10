@@ -1,14 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { obterComposicao, definirComposicao, ComposicaoProdutoError } from "../../services/rebanho/composicao-produto.js";
+import { composicaoRacaoSchema } from "@fazendinha/shared";
+import { parseEntityId } from "../../lib/ids.js";
 
-const definirSchema = z.object({
-  itens: z.array(z.object({
-    ingredienteId: z.number().int().positive(),
-    proporcao: z.number().min(0).max(100),
-  })).max(50),
-});
+const definirSchema = composicaoRacaoSchema;
 
 function fail(e: unknown): { status: 404 | 500; body: { error: string } } {
   if (e instanceof ComposicaoProdutoError) return { status: 404, body: { error: e.message } };
@@ -19,10 +15,10 @@ function fail(e: unknown): { status: 404 | 500; body: { error: string } } {
 // Composição (receita) de um produto — ração formulada.
 export const composicaoProdutoRouter = new Hono()
   .get("/rebanho/produtos/:id/composicao-racao", async (c) => {
-    try { return c.json(await obterComposicao(Number(c.req.param("id")))); }
+    try { return c.json(await obterComposicao(parseEntityId(c.req.param("id")))); }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .put("/rebanho/produtos/:id/composicao-racao", zValidator("json", definirSchema), async (c) => {
-    try { return c.json(await definirComposicao(Number(c.req.param("id")), c.req.valid("json"))); }
+    try { return c.json(await definirComposicao(parseEntityId(c.req.param("id")), c.req.valid("json"))); }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   });

@@ -1,8 +1,8 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
-import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { movimentoEstoqueSchema, type MovimentoEstoqueInput } from "@fazendinha/shared";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA", m: string) {
@@ -11,29 +11,8 @@ export class EstoqueError extends Error {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
-
-// Limites compatíveis com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma
-const MAX_QTD = 9_999_999_999.99;
-const MAX_CUSTO = 9_999_999_999.99;
-
-export const movimentoSchema = z
-  .object({
-    produtoId: z.number().int(),
-    tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]),
-    data: naoFutura,
-    quantidade: z.number().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta"),
-    custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
-    grupoId: z.number().int().optional(),
-    observacao: z.string().min(5, "justificativa é obrigatória").max(200),
-    propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
-  })
-  // ENTRADA/SAIDA exigem quantidade positiva; AJUSTE aceita negativa (correção de saldo) mas nunca zero.
-  .superRefine((v, ctx) => {
-    if (v.quantidade === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "quantidade não pode ser zero", path: ["quantidade"] });
-    else if (v.tipo !== "AJUSTE" && v.quantidade < 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "quantidade deve ser positiva", path: ["quantidade"] });
-  });
-export type MovimentoInput = z.infer<typeof movimentoSchema>;
+export const movimentoSchema = movimentoEstoqueSchema;
+export type MovimentoInput = MovimentoEstoqueInput;
 
 // Setor é opcional no produto; sem setor o item conta como GERAL (insumo compartilhado).
 const setorOuGeral = (s: string | null | undefined): string => s ?? "GERAL";
@@ -70,7 +49,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
   return f?.setor ? linhas.filter((l) => l.setor === f.setor) : linhas;
 }
 
-export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
+export async function listarMovimentos(f?: { produtoId?: string; tipo?: string; propriedadeId?: number | null }) {
   const where: any = {};
   where.status = "CONFIRMADO";
   if (f?.produtoId) where.produtoId = f.produtoId;
@@ -78,7 +57,7 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
   const ms = await prisma.movimentoEstoque.findMany({
     where,
-    orderBy: { data: "desc" },
+    orderBy: [{ data: "desc" }, { registradoEm: "desc" }, { ordem: "asc" }],
     take: 200,
     include: { produto: true, operacao: { include: { parceiro: true } }, grupo: true },
   });
@@ -122,12 +101,15 @@ export async function registrarMovimento(input: MovimentoInput) {
     }
     if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
     const operacao = await tx.operacao.create({ data: {
+      id: input.operacaoId,
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId,
-      itens: { create: { produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: produto.unidade, valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
+      registradoEm: input.registradoEm,
+      itens: { create: { id: input.itemOperacaoId, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: produto.unidade, valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
     }, include: { itens: true } });
     const m = await tx.movimentoEstoque.create({
       data: {
+        id: input.id,
         produtoId: input.produtoId,
         tipo: input.tipo,
         origem: "AJUSTE_INVENTARIO",
@@ -140,6 +122,7 @@ export async function registrarMovimento(input: MovimentoInput) {
         itemOperacaoId: operacao.itens[0]?.id,
         propriedadeId,
         observacao: input.observacao,
+        registradoEm: input.registradoEm,
       },
     });
 
@@ -147,7 +130,7 @@ export async function registrarMovimento(input: MovimentoInput) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function excluirMovimento(id: number, propriedadeId: number | null = null) {
+export async function excluirMovimento(id: string, propriedadeId: number | null = null) {
   return prisma.$transaction(async (tx) => {
     const mov = await tx.movimentoEstoque.findFirst({
       where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
@@ -170,7 +153,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
       quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
       custoUnitario: mov.custoUnitario, valorTotal: mov.valorTotal,
       propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id,
-      observacao: `Estorno do movimento #${mov.id}`,
+      observacao: "Estorno de movimento de estoque",
     } });
     await tx.movimentoEstoque.update({ where: { id }, data: { status: "REVERTIDO" } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

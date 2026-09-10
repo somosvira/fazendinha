@@ -7,6 +7,7 @@ import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { REB_SUB } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
+import type { EntityId } from "@fazendinha/shared";
 
 const money = fmtMoneyExact;
 
@@ -117,7 +118,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   const estocaveis = useMemo(() => produtos.filter((p) => p.estocavel), [produtos]);
   const prodPorId = useMemo(() => new Map(estocaveis.map((p) => [p.id, p])), [estocaveis]);
 
-  const [linhas, setLinhas] = useState<{ produtoId: number; qtd: string }[]>([]);
+  const [linhas, setLinhas] = useState<{ produtoId: EntityId; qtd: string }[]>([]);
   const [novoProduto, setNovoProduto] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -138,13 +139,13 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   }, 0);
 
   function adicionar() {
-    const id = Number(novoProduto);
+    const id = novoProduto;
     if (!id || linhas.some((l) => l.produtoId === id)) return;
     setLinhas((s) => [...s, { produtoId: id, qtd: "" }]);
     setNovoProduto("");
   }
-  const setQtd = (produtoId: number, v: string) => setLinhas((s) => s.map((l) => (l.produtoId === produtoId ? { ...l, qtd: v } : l)));
-  const remover = (produtoId: number) => setLinhas((s) => s.filter((l) => l.produtoId !== produtoId));
+  const setQtd = (produtoId: EntityId, v: string) => setLinhas((s) => s.map((l) => (l.produtoId === produtoId ? { ...l, qtd: v } : l)));
+  const remover = (produtoId: EntityId) => setLinhas((s) => s.filter((l) => l.produtoId !== produtoId));
 
   async function salvar() {
     const payload: DietaItemInput[] = linhas.map((l) => ({ produtoId: l.produtoId, qtdPorCabecaDia: Number(l.qtd) }));

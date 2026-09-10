@@ -117,7 +117,7 @@ function ComposicaoEditor({ principios, onMudou }: { principios: PrincipioAtivoD
   useEffect(() => { listarProdutos({ tipo: "MEDICAMENTO", ativo: true }).then(setProdutos).catch(() => setProdutos([])); }, []);
   useEffect(() => {
     if (!produtoId) { setComp(null); setSel(new Set()); return; }
-    obterComposicaoProduto(Number(produtoId)).then((c) => { setComp(c); setSel(new Set(c.principios.map((p) => p.principioAtivoId))); }).catch(() => setComp(null));
+    obterComposicaoProduto(produtoId).then((c) => { setComp(c); setSel(new Set(c.principios.map((p) => p.principioAtivoId))); }).catch(() => setComp(null));
   }, [produtoId]);
 
   function toggle(id: number) {
@@ -128,7 +128,7 @@ function ComposicaoEditor({ principios, onMudou }: { principios: PrincipioAtivoD
     if (!produtoId) return;
     setSalvando(true);
     try {
-      const c = await definirComposicaoProduto(Number(produtoId), [...sel].map((principioAtivoId) => ({ principioAtivoId })));
+      const c = await definirComposicaoProduto(produtoId, [...sel].map((principioAtivoId) => ({ principioAtivoId })));
       setComp(c); onMudou();
     } catch { /* erro silencioso; a lista fica como está */ }
     finally { setSalvando(false); }

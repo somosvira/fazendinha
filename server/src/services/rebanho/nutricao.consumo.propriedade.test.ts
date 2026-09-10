@@ -33,6 +33,8 @@ vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: vi.fn().mockResolv
 
 import { listarConsumosPeriodo, previsaoConsumo, reabrirConsumoPeriodo } from "./nutricao.consumo.js";
 
+const PRODUTO_ID = "00000000-0000-4000-8000-000000000004";
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.animalCount.mockResolvedValue(3);
@@ -52,10 +54,10 @@ describe("consumo de dieta por propriedade", () => {
         id: 2,
         nome: "Lactação",
         itens: [{
-          produtoId: 4,
+          produtoId: PRODUTO_ID,
           unidade: "kg",
           qtdPorCabecaDia: 2,
-          produto: { id: 4, nome: "Ração", custoUnitario: 3 },
+          produto: { id: PRODUTO_ID, nome: "Ração", custoUnitario: 3 },
         }],
       },
     });
@@ -69,7 +71,7 @@ describe("consumo de dieta por propriedade", () => {
       where: { grupoId: 10, status: "ATIVO", propriedadeId: 7 },
     });
     expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { produtoId: { in: [4] }, propriedadeId: 7 },
+      where: { produtoId: { in: [PRODUTO_ID] }, propriedadeId: 7 },
     }));
   });
 
@@ -83,9 +85,9 @@ describe("consumo de dieta por propriedade", () => {
   it("não estorna fechamento de outro sítio", async () => {
     mocks.consumoFindFirst.mockResolvedValue(null);
 
-    await expect(reabrirConsumoPeriodo(44, 7)).rejects.toEqual(expect.objectContaining({ code: "NAO_ENCONTRADO" }));
+    await expect(reabrirConsumoPeriodo("00000000-0000-4000-8000-000000000044", 7)).rejects.toEqual(expect.objectContaining({ code: "NAO_ENCONTRADO" }));
     expect(mocks.consumoFindFirst).toHaveBeenCalledWith({
-      where: { id: 44, grupo: { propriedadeId: 7 } },
+      where: { id: "00000000-0000-4000-8000-000000000044", grupo: { propriedadeId: 7 } },
       include: { grupo: true },
     });
     expect(mocks.consumoDelete).not.toHaveBeenCalled();

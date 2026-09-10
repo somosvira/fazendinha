@@ -1,6 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Animal, FinalidadeAnimal, ResumoAnimal, EventoTimeline, IaInsight } from "./types";
-import { newEntityId, type EntityId } from "@fazendinha/shared";
+import {
+  composicaoPrincipiosAtivosSchema,
+  composicaoRacaoSchema,
+  consumoPeriodoSchema,
+  eventoSanitarioEstoqueSchema,
+  fornecedorEstoqueSchema,
+  localArmazenamentoSchema,
+  loteProdutoSchema,
+  movimentoEstoqueSchema,
+  newEntityId,
+  produtoEstoqueSchema,
+  type EntityId,
+} from "@fazendinha/shared";
 
 export interface RacaDTO { id: number; nome: string; codigo: string | null; especie: "BOVINO" | "CAPRINO" }
 export interface GrupoDTO { id: number; nome: string }
@@ -221,12 +233,12 @@ export interface EventoSanidadePayload {
   doenca?: string; diasTratamento?: number;
   produto?: string; dose?: string; carencia?: number; loteProduto?: string;
   // Vínculo com o estoque: produtoId + quantidadeUsada geram baixa (SAIDA) automática no backend.
-  produtoId?: number; quantidadeUsada?: number;
+  produtoId?: EntityId; movimentoEstoqueId?: EntityId; quantidadeUsada?: number;
   ccs?: number; gordura?: number; proteina?: number;
   quarto?: string; severidade?: string; resultadoCultivo?: string;
 }
 export const montarTimeline = (id: string) => req<EventoTimeline[]>(`/rebanho/animais/${id}/timeline`);
-export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/animais/${id}/sanidade`, { method: "POST", body: JSON.stringify(p) });
+export const registrarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/animais/${id}/sanidade`, { method: "POST", body: JSON.stringify(eventoSanitarioEstoqueSchema.parse({ ...p, ...(p.produtoId ? { movimentoEstoqueId: p.movimentoEstoqueId ?? newEntityId() } : {}) })) });
 export const editarEventoSanidade = (id: string, p: EventoSanidadePayload) => req<EventoTimeline>(`/rebanho/sanidade/${id}`, { method: "PUT", body: JSON.stringify(p) });
 export const excluirEventoSanidade = (id: string) => req<{ ok: true }>(`/rebanho/sanidade/${id}`, { method: "DELETE" });
 
@@ -418,8 +430,8 @@ export function useAnimaisDisponiveis() {
 }
 
 // ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
-export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; setor: SetorEstoque | null; ordem: number; }
-export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
+export interface DietaItemDTO { id: number; produtoId: EntityId; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; setor: SetorEstoque | null; ordem: number; }
+export interface DietaItemInput { produtoId: EntityId; qtdPorCabecaDia: number; }
 export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
 export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
 
@@ -437,14 +449,14 @@ export function useItensDieta(dietaId: number | null) {
 }
 
 // ── Consumo de dieta → baixa de estoque (Fatia 2) ───────────────────────────
-export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: string; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
+export interface PrevisaoLinhaDTO { produtoId: EntityId; produtoNome: string; unidade: string; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
 export interface PrevisaoConsumoDTO { grupoId: number; grupoNome: string; dietaId: number; dietaNome: string; dataInicio: string; dataFim: string; dias: number; numCabecas: number; linhas: PrevisaoLinhaDTO[]; custoTotal: number; temInsuficiencia: boolean; }
-export interface ConsumoPeriodoDTO { id: number; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
-export interface FecharConsumoResult { id: number; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }
+export interface ConsumoPeriodoDTO { id: EntityId; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
+export interface FecharConsumoResult { id: EntityId; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }
 export const previsaoConsumo = (grupoId: number, dataInicio: string, dataFim: string) => req<PrevisaoConsumoDTO>(`/rebanho/lotes/${grupoId}/consumo/previsao${qs({ dataInicio, dataFim })}`);
-export const fecharConsumo = (grupoId: number, body: { dataInicio: string; dataFim: string; observacao?: string }) => req<FecharConsumoResult>(`/rebanho/lotes/${grupoId}/consumo/fechar`, { method: "POST", body: JSON.stringify(body) });
+export const fecharConsumo = (grupoId: number, body: { dataInicio: string; dataFim: string; observacao?: string; movimentoIds?: EntityId[] }) => req<FecharConsumoResult>(`/rebanho/lotes/${grupoId}/consumo/fechar`, { method: "POST", body: JSON.stringify(consumoPeriodoSchema.parse({ id: newEntityId(), ...body })) });
 export const listarConsumos = (grupoId: number) => req<ConsumoPeriodoDTO[]>(`/rebanho/lotes/${grupoId}/consumo`);
-export const estornarConsumo = (id: number) => req<{ ok: true }>(`/rebanho/consumo/${id}`, { method: "DELETE" });
+export const estornarConsumo = (id: EntityId) => req<{ ok: true }>(`/rebanho/consumo/${id}`, { method: "DELETE" });
 
 export type PeriodoDashboard = "hoje" | "7d" | "30d";
 export type AbaAlertaDashboard = "animal" | "reproducao" | "sanidade" | "nutricao" | "producao";
@@ -987,17 +999,17 @@ export const SETORES_ESTOQUE: { id: SetorEstoque; label: string }[] = [
   { id: "GERAL", label: "Geral" },
 ];
 export const setorLabel = (s?: string | null): string => SETORES_ESTOQUE.find((x) => x.id === s)?.label ?? "Geral";
-export interface ProdutoDTO { id: number; nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; carencia: number | null; percentualMS: number | null; estocavel: boolean; minimoEstoque: number | null; ativo: boolean; setor: SetorEstoque | null; categoriaId: EntityId | null; centroCustoId: EntityId | null; categoriaNome: string | null; centroCustoNome: string | null; }
+export interface ProdutoDTO { id: EntityId; nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; carencia: number | null; percentualMS: number | null; estocavel: boolean; minimoEstoque: number | null; ativo: boolean; setor: SetorEstoque | null; categoriaId: EntityId | null; centroCustoId: EntityId | null; categoriaNome: string | null; centroCustoNome: string | null; }
 export interface ProdutoInput { nome: string; tipo: TipoProduto; unidade: string; custoUnitario?: number; carencia?: number; percentualMS?: number; estocavel?: boolean; minimoEstoque?: number; ativo?: boolean; setor?: SetorEstoque | null; categoriaId?: EntityId | null; centroCustoId?: EntityId | null; }
 export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
-export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(p) });
-export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(produtoEstoqueSchema.parse({ id: newEntityId(), ...p })) });
+export const editarProduto = (id: EntityId, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
 export type TipoPessoa = "CLIENTE" | "FORNECEDOR" | "AMBOS";
 export interface FornecedorDTO { id: EntityId; nome: string; documento: string | null; tipo: TipoPessoa; telefone: string | null; email: string | null; ativo: boolean; }
 export interface FornecedorInput { nome: string; documento?: string; tipo?: TipoPessoa; telefone?: string; email?: string; ativo?: boolean; }
 export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<FornecedorDTO[]>(`/rebanho/fornecedores${qs(f)}`);
-export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify({ id: newEntityId(), ...p }) });
+export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(fornecedorEstoqueSchema.parse({ id: newEntityId(), ...p })) });
 export const editarFornecedor = (id: EntityId, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
 export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
@@ -1025,7 +1037,7 @@ export interface PrincipioAtivoInput {
   carenciaLeiteHoras?: number | null; carenciaCarneDias?: number | null; ativo?: boolean;
 }
 export interface ComposicaoProdutoDTO {
-  produtoId: number; produtoNome: string;
+  produtoId: EntityId; produtoNome: string;
   principios: { principioAtivoId: number; nome: string; concentracao: string | null; ehAntibiotico: boolean }[];
   ehAntibiotico: boolean; carenciaLeiteHorasSugerida: number | null; carenciaCarneDiasSugerida: number | null;
 }
@@ -1038,37 +1050,37 @@ export const atualizarPrincipioAtivo = (id: number, body: Partial<PrincipioAtivo
   req<PrincipioAtivoDTO>(`/rebanho/principios-ativos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 export const excluirPrincipioAtivo = (id: number) =>
   req<{ ok: true }>(`/rebanho/principios-ativos/${id}`, { method: "DELETE" });
-export const obterComposicaoProduto = (produtoId: number) =>
+export const obterComposicaoProduto = (produtoId: EntityId) =>
   req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`);
-export const definirComposicaoProduto = (produtoId: number, principios: { principioAtivoId: number; concentracao?: string }[]) =>
-  req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`, { method: "PUT", body: JSON.stringify({ principios }) });
+export const definirComposicaoProduto = (produtoId: EntityId, principios: { principioAtivoId: number; concentracao?: string }[]) =>
+  req<ComposicaoProdutoDTO>(`/rebanho/produtos/${produtoId}/composicao`, { method: "PUT", body: JSON.stringify(composicaoPrincipiosAtivosSchema.parse({ principios: principios.map((principio) => ({ id: newEntityId(), ...principio })) })) });
 
 // ── Composição de produto / ração formulada (receita = ingredientes × proporção %) ──
 export interface ResumoComposicaoRacaoDTO { soma: number; somaOk: boolean; nIngredientes: number }
-export interface ItemComposicaoRacaoDTO { ingredienteId: number; ingredienteNome: string; proporcao: number }
-export interface ComposicaoRacaoDTO { produtoId: number; produtoNome: string; itens: ItemComposicaoRacaoDTO[]; resumo: ResumoComposicaoRacaoDTO }
-export const obterComposicaoRacao = (produtoId: number) => req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`);
-export const definirComposicaoRacao = (produtoId: number, itens: { ingredienteId: number; proporcao: number }[]) =>
-  req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`, { method: "PUT", body: JSON.stringify({ itens }) });
+export interface ItemComposicaoRacaoDTO { ingredienteId: EntityId; ingredienteNome: string; proporcao: number }
+export interface ComposicaoRacaoDTO { produtoId: EntityId; produtoNome: string; itens: ItemComposicaoRacaoDTO[]; resumo: ResumoComposicaoRacaoDTO }
+export const obterComposicaoRacao = (produtoId: EntityId) => req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`);
+export const definirComposicaoRacao = (produtoId: EntityId, itens: { ingredienteId: EntityId; proporcao: number }[]) =>
+  req<ComposicaoRacaoDTO>(`/rebanho/produtos/${produtoId}/composicao-racao`, { method: "PUT", body: JSON.stringify(composicaoRacaoSchema.parse({ itens: itens.map((item) => ({ id: newEntityId(), ...item })) })) });
 
 // ── Lotes de produto (código + validade + local) + locais de armazenamento ────
 export type StatusValidadeLote = "vencido" | "a-vencer" | "ok" | "sem-validade";
-export interface LocalArmazenamentoDTO { id: number; nome: string; ativo: boolean; totalLotes: number }
+export interface LocalArmazenamentoDTO { id: EntityId; nome: string; ativo: boolean; totalLotes: number }
 export interface LoteProdutoDTO {
-  id: number; produtoId: number; produtoNome: string; codigo: string;
-  validade: string | null; localId: number | null; localNome: string | null;
+  id: EntityId; produtoId: EntityId; produtoNome: string; codigo: string;
+  validade: string | null; localId: EntityId | null; localNome: string | null;
   quantidade: number | null; status: StatusValidadeLote;
 }
 export interface ResumoLotesDTO { vencido: number; "a-vencer": number; ok: number; "sem-validade": number; total: number }
 export interface LotesRespDTO { lotes: LoteProdutoDTO[]; resumo: ResumoLotesDTO }
-export interface LoteProdutoInput { produtoId: number; codigo: string; validade?: string | null; localId?: number | null; quantidade?: number | null }
+export interface LoteProdutoInput { produtoId: EntityId; codigo: string; validade?: string | null; localId?: EntityId | null; quantidade?: number | null }
 
 export const listarLocaisArmazenamento = () => req<LocalArmazenamentoDTO[]>(`/rebanho/locais-armazenamento`);
-export const criarLocalArmazenamento = (body: { nome: string }) => req<LocalArmazenamentoDTO>(`/rebanho/locais-armazenamento`, { method: "POST", body: JSON.stringify(body) });
-export const excluirLocalArmazenamento = (id: number) => req<{ ok: true }>(`/rebanho/locais-armazenamento/${id}`, { method: "DELETE" });
+export const criarLocalArmazenamento = (body: { nome: string }) => req<LocalArmazenamentoDTO>(`/rebanho/locais-armazenamento`, { method: "POST", body: JSON.stringify(localArmazenamentoSchema.parse({ id: newEntityId(), ...body })) });
+export const excluirLocalArmazenamento = (id: EntityId) => req<{ ok: true }>(`/rebanho/locais-armazenamento/${id}`, { method: "DELETE" });
 export const listarLotesProduto = () => req<LotesRespDTO>(`/rebanho/lotes-produto`);
-export const criarLoteProduto = (body: LoteProdutoInput) => req<LoteProdutoDTO>(`/rebanho/lotes-produto`, { method: "POST", body: JSON.stringify(body) });
-export const excluirLoteProduto = (id: number) => req<{ ok: true }>(`/rebanho/lotes-produto/${id}`, { method: "DELETE" });
+export const criarLoteProduto = (body: LoteProdutoInput) => req<LoteProdutoDTO>(`/rebanho/lotes-produto`, { method: "POST", body: JSON.stringify(loteProdutoSchema.parse({ id: newEntityId(), ...body })) });
+export const excluirLoteProduto = (id: EntityId) => req<{ ok: true }>(`/rebanho/lotes-produto/${id}`, { method: "DELETE" });
 export function useLotesProduto() {
   const [data, setData] = useState<LotesRespDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1103,17 +1115,17 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 }
 
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
-export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export interface SaldoDTO { produtoId: EntityId; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "MANUAL" | "NUTRICAO" | "PERDA" | "AJUSTE_INVENTARIO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
-export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: EntityId; observacao?: string; gerarLancamento?: boolean; categoriaId?: EntityId; centroCustoId?: EntityId; }
-export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
+export interface MovimentoDTO { id: EntityId; produtoId: EntityId; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export interface MovimentoInput { produtoId: EntityId; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: EntityId; observacao?: string; gerarLancamento?: boolean; categoriaId?: EntityId; centroCustoId?: EntityId; }
+export interface MovimentoResult { id: EntityId; operacaoId: EntityId; lancamentoCriado?: boolean; lancamentoId?: EntityId; motivo?: string; }
 export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
 
 export const listarSaldos = (f?: { setor?: string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
-export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
-export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
-export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
+export const listarMovimentos = (f?: { produtoId?: EntityId; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
+export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(movimentoEstoqueSchema.parse({ id: newEntityId(), operacaoId: newEntityId(), itemOperacaoId: newEntityId(), registradoEm: new Date().toISOString(), ...p })) });
+export const excluirMovimento = (id: EntityId) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
 export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
 
 export function useSaldos(f?: { setor?: string }) {

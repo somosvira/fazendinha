@@ -9,7 +9,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.use
 const CONTA_ID = "00000000-0000-4000-8000-000000000001";
 const FORNECEDOR_ID = "00000000-0000-4000-8000-000000000002";
 const CLIENTE_ID = "00000000-0000-4000-8000-000000000003";
-const PRODUTO_ID = 4;
+const PRODUTO_ID = "00000000-0000-4000-8000-000000000004";
 const RASCUNHO_ID = "00000000-0000-4000-8000-000000000005";
 
 const config: ConfiguracoesFinanceiras = {
@@ -61,6 +61,7 @@ describe("FormOperacao", () => {
     expect(primeiroPayload.id).toMatch(/^[0-9a-f-]{36}$/i);
     expect(primeiroPayload.dados.operacao.id).toMatch(/^[0-9a-f-]{36}$/i);
     expect(primeiroPayload.dados.operacao.itens[0].id).toBe(primeiroPayload.dados.formulario.itens[0].id);
+    expect(primeiroPayload.dados.operacao.itens[0].movimentoEstoqueId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(primeiroPayload.dados.operacao.financeiro.transacaoId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(primeiroPayload.dados.operacao.financeiro.movimentoId).toMatch(/^[0-9a-f-]{36}$/i);
 

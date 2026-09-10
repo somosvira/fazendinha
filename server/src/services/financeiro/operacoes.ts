@@ -136,11 +136,13 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
           : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
       for (const item of operacao.itens.filter((item) => item.estocavel && item.produtoId)) {
+        const inputItem = input.itens.find((candidate) => candidate.id === item.id || (candidate.ordem ?? input.itens.indexOf(candidate)) === item.ordem);
         await tx.movimentoEstoque.create({ data: {
-          produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
+          id: inputItem?.movimentoEstoqueId,
+          produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, ordem: item.ordem, quantidade: item.quantidade,
           custoUnitario: item.valorUnitario, valorTotal: item.valorTotal, operacaoId: operacao.id, itemOperacaoId: item.id,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
-          observacao: input.descricao,
+          observacao: input.descricao, registradoEm: input.registradoEm,
         } });
       }
     }

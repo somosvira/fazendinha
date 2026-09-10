@@ -207,7 +207,7 @@ async function main() {
   const racaoCatId = await catId("Ração");
   const medCatId = await catId("Medicamento Animal");
   const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: "Atividade Leiteira" } }))?.id ?? null;
-  const mapaContabil: Record<string, number | null> = {
+  const mapaContabil: Record<string, string | null> = {
     "Ração Lactação Alta": racaoCatId,
     "Núcleo Mineral": racaoCatId,
     "Mastijet": medCatId,
@@ -237,13 +237,13 @@ async function main() {
   // Estoque: movimentos (entradas de compra + saídas de consumo recente). Idempotente
   // (a tabela já foi limpa acima, antes do produto.deleteMany, por causa da FK).
   // Saldo é computado (entradas − saídas); custo vaca/dia = Σ saídas valorizadas ÷ (vacas×dias).
-  const prodByName: Record<string, { id: number; custo: number }> = {};
+  const prodByName: Record<string, { id: string; custo: number }> = {};
   for (const p of await prisma.produto.findMany({ where: { nome: { in: ["Ração Lactação Alta", "Núcleo Mineral"] } } })) {
     prodByName[p.nome] = { id: p.id, custo: p.custoUnitario != null ? Number(p.custoUnitario) : 0 };
   }
   const racao = prodByName["Ração Lactação Alta"];
   const nucleo = prodByName["Núcleo Mineral"];
-  const movimento = (produto: { id: number; custo: number } | undefined, tipo: "ENTRADA" | "SAIDA", quantidade: number, offsetDias: number, observacao?: string) => {
+  const movimento = (produto: { id: string; custo: number } | undefined, tipo: "ENTRADA" | "SAIDA", quantidade: number, offsetDias: number, observacao?: string) => {
     if (!produto) return null;
     const valorTotal = Math.round(quantidade * produto.custo * 100) / 100;
     return prisma.movimentoEstoque.create({

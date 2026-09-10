@@ -35,7 +35,8 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 
 export const itemOperacaoSchema = z.object({
   id: entityIdSchema.optional(),
-  produtoId: z.number().int().positive().optional(),
+  movimentoEstoqueId: entityIdSchema.optional(),
+  produtoId: entityIdSchema.optional(),
   ordem: z.number().int().nonnegative().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,

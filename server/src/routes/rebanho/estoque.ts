@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/estoque.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
+import { parseEntityId } from "../../lib/ids.js";
 
 type Status = 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
@@ -17,7 +18,7 @@ export const estoqueRouter = new Hono()
   .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos({ setor: c.req.query("setor"), propriedadeId: await resolverEscopoLeitura(c) })))
   .get("/rebanho/estoque/movimentos", async (c) => {
     const produtoId = c.req.query("produtoId");
-    return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo"), propriedadeId: await resolverEscopoLeitura(c) }));
+    return c.json(await svc.listarMovimentos({ produtoId: produtoId ? parseEntityId(produtoId) : undefined, tipo: c.req.query("tipo"), propriedadeId: await resolverEscopoLeitura(c) }));
   })
   .post("/rebanho/estoque/movimentos", zValidator("json", svc.movimentoSchema), async (c) => {
     try {
@@ -30,7 +31,7 @@ export const estoqueRouter = new Hono()
   .delete("/rebanho/estoque/movimentos/:id", async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      await svc.excluirMovimento(Number(c.req.param("id")), propriedadeId);
+      await svc.excluirMovimento(parseEntityId(c.req.param("id")), propriedadeId);
       return c.json({ ok: true });
     }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
