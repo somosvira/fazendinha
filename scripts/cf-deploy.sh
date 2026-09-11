@@ -64,14 +64,19 @@ fi
 # ainda cair na versão anterior do Worker (que responde 200 normalmente,
 # mascarando um deploy novo quebrado como se estivesse tudo bem).
 #
-# WORKER_HEALTH_URL não tem como ter um default de verdade (a URL só existe
-# depois do primeiro deploy) — setar em Build variables assim que souber a URL
-# do Worker (ex.: https://fazendinha.<subdominio>.workers.dev/api/health).
-# Sem essa var, o script avisa e pula a checagem em vez de falhar o build.
-if [ -z "$WORKER_HEALTH_URL" ]; then
-  echo "--- WORKER_HEALTH_URL não setada (Build variables) — pulando a checagem pós-deploy. Setar assim que souber a URL do Worker. ---"
+# Reusa APP_BASE_URL (mesma env de server/src/env.ts, já usada pros links de
+# convite/reset — DEPLOY.md §1.2) em vez de inventar uma env só pra isso: no
+# Worker único, front e back são o mesmo host, então a URL pública do app já É
+# a base do health check. Ela não tem como ter um default de verdade (só
+# existe depois do primeiro deploy) — setar em Build variables assim que
+# souber a URL do Worker (ex.: https://fazendinha.<subdominio>.workers.dev).
+# Sem ela, o script avisa e pula a checagem em vez de falhar o build.
+if [ -z "$APP_BASE_URL" ]; then
+  echo "--- APP_BASE_URL não setada (Build variables) — pulando a checagem pós-deploy. Setar assim que souber a URL do Worker. ---"
   exit 0
 fi
+
+WORKER_HEALTH_URL="${APP_BASE_URL%/}/api/health"
 
 TENTATIVAS=5
 ESPERA_INICIAL=6
