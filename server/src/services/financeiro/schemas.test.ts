@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { contaSchema, operacaoSchema, parceiroSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const base = {
   data: "2026-09-02",
@@ -64,9 +64,7 @@ describe("rascunho de operação", () => {
   });
 });
 
-describe("schemas de conta e parceiro (cadastros)", async () => {
-  const { contaSchema, parceiroSchema, patchContaSchema, patchParceiroSchema } = await import("./schemas.js");
-
+describe("schemas de conta e parceiro (cadastros)", () => {
   it("patch de conta não reaplica defaults quando a chave está ausente", () => {
     const r = patchContaSchema.parse({ nome: "Caixa" });
     expect(r).toEqual({ nome: "Caixa" });

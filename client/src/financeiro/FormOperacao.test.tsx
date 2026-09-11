@@ -7,10 +7,14 @@ import type { ConfiguracoesFinanceiras } from "./novo-api";
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 const config: ConfiguracoesFinanceiras = {
-  contas: [{ id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false }],
+  contas: [
+    { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+    { id: 2, nome: "Conta desativada", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
+  ],
   parceiros: [
     { id: 1, nome: "Fornecedor Rural", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
     { id: 2, nome: "Cliente Regional", documento: null, tipo: "CLIENTE", telefone: null, email: null, ativo: true, referencias: 0 },
+    { id: 3, nome: "Fornecedor desativado", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: false, referencias: 4 },
   ],
   gruposCategorias: [],
   centrosCusto: [],
@@ -84,6 +88,14 @@ describe("FormOperacao", () => {
     montar();
     expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Banco principal.*R\$/ })).toBeNull();
+  });
+
+  it("não oferece contas nem parceiros inativos em uma nova operação", () => {
+    montar();
+    expect(screen.queryByRole("option", { name: "Conta desativada" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Fornecedor desativado" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Fornecedor Rural" })).toBeTruthy();
   });
 
   it("formata o valor informado com duas casas decimais", () => {

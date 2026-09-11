@@ -44,8 +44,8 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
   if (confirmacao.tipo === "conta") return "A conta deixa de aparecer em novas operações e transferências. O extrato e todos os movimentos continuam disponíveis. Você pode reativar quando quiser.";
   const { nome, referencias } = confirmacao.item;
   return referencias > 0
-    ? `${nome} deixa de aparecer em novas operações. ${referencias === 1 ? "O 1 registro já ligado" : `Os ${referencias} registros já ligados`} a este cadastro (operações, compromissos e transações) continuam intactos.`
-    : `${nome} deixa de aparecer em novas operações. Nenhuma operação está ligada a este cadastro.`;
+    ? `${nome} deixa de aparecer em novas operações. ${referencias === 1 ? "O registro já ligado" : `Os ${referencias} registros já ligados`} a este cadastro (operações, compromissos e transações) ${referencias === 1 ? "continua intacto" : "continuam intactos"}.`
+    : `${nome} deixa de aparecer em novas operações. Nenhum registro está ligado a este cadastro.`;
 }
 
 export function ConfiguracoesFinanceiras() {

@@ -14,7 +14,12 @@ import { atualizarParceiro, criarParceiro, listarParceiros } from "./parceiros.j
 const p2002 = (target: string[]) => new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "6", meta: { target } });
 
 describe("parceiros", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findUnique.mockResolvedValue({ id: 5, nome: "Zé", ativo: true, _count: { operacoes: 2, compromissos: 1, transacoes: 1 } });
+    mocks.update.mockResolvedValue({ id: 5, nome: "Zé", ativo: false });
+    mocks.create.mockResolvedValue({ id: 6, nome: "Maria", ativo: true });
+  });
 
   it("traduz documento duplicado em CONFLITO apontando o campo", async () => {
     mocks.create.mockRejectedValue(p2002(["documento"]));
@@ -27,11 +32,15 @@ describe("parceiros", () => {
   });
 
   it("desativar audita antes e depois e envia só ativo", async () => {
-    mocks.findUnique.mockResolvedValue({ id: 5, nome: "Zé", ativo: true });
-    mocks.update.mockResolvedValue({ id: 5, nome: "Zé", ativo: false });
-    await atualizarParceiro(5, { ativo: false }, 9);
+    const parceiro = await atualizarParceiro(5, { ativo: false }, 9);
     expect(mocks.update).toHaveBeenCalledWith({ where: { id: 5 }, data: { ativo: false } });
     expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entidade: "Parceiro", acao: "ATUALIZADO", usuarioId: 9 }) }));
+    expect(parceiro).toMatchObject({ id: 5, ativo: false, referencias: 4 });
+  });
+
+  it("criação devolve zero referências", async () => {
+    const parceiro = await criarParceiro({ nome: "Maria", tipo: "CLIENTE" });
+    expect(parceiro).toMatchObject({ id: 6, referencias: 0 });
   });
 
   it("agrega referencias a partir das contagens", async () => {

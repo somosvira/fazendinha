@@ -122,6 +122,19 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(7, { ativo: false }));
   });
 
+  it.each([
+    [0, "Nenhum registro está ligado"],
+    [1, "O registro já ligado"],
+  ])("descreve corretamente o impacto com %i referência(s)", async (referencias, mensagem) => {
+    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
+      ...config,
+      parceiros: [{ ...config.parceiros[0], referencias }],
+    });
+    await montar("parceiros");
+    fireEvent.click(primeiro("button", "Desativar Cooperativa"));
+    expect(await screen.findByText(new RegExp(mensagem))).toBeTruthy();
+  });
+
   it("valida e-mail e documento junto ao campo sem chamar a API", async () => {
     await montar("parceiros");
     fireEvent.click(screen.getByRole("button", { name: /Novo parceiro/ }));

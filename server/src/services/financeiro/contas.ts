@@ -6,6 +6,16 @@ import type { patchContaSchema } from "./schemas.js";
 
 const CONFLITOS = { nome: "Já existe uma conta com este nome nesta propriedade" };
 
+type MovimentoSaldo = { direcao: "ENTRADA" | "SAIDA"; valor: Prisma.Decimal };
+
+function comResumo<T extends { saldoAbertura: Prisma.Decimal }>(conta: T, movimentos: MovimentoSaldo[]) {
+  const saldoAtual = movimentos.reduce(
+    (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
+    new Prisma.Decimal(conta.saldoAbertura),
+  );
+  return { ...conta, saldoAtual, temMovimentos: movimentos.length > 0 };
+}
+
 export async function listarContas(propriedadeId?: number | null, incluirInativas = false) {
   const contas = await prisma.contaFinanceira.findMany({
     where: { ...(propriedadeId ? { propriedadeId } : {}), ...(!incluirInativas ? { ativo: true } : {}) },
@@ -16,13 +26,7 @@ export async function listarContas(propriedadeId?: number | null, incluirInativa
     },
     orderBy: [{ ativo: "desc" }, { nome: "asc" }],
   });
-  return contas.map(({ movimentos, ...conta }) => {
-    const saldo = movimentos.reduce(
-      (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
-      new Prisma.Decimal(conta.saldoAbertura),
-    );
-    return { ...conta, saldoAtual: saldo, temMovimentos: movimentos.length > 0 };
-  });
+  return contas.map(({ movimentos, ...conta }) => comResumo(conta, movimentos));
 }
 
 export async function resumoSaldos(propriedadeId?: number | null) {
@@ -44,7 +48,7 @@ export async function criarConta(input: {
       const { usuarioId, ...dados } = input;
       const conta = await tx.contaFinanceira.create({ data: dados });
       await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
-      return conta;
+      return comResumo(conta, []);
     });
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
@@ -69,7 +73,11 @@ export async function atualizarConta(
       }
       const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
       await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
-      return conta;
+      const movimentos = await tx.movimentoConta.findMany({
+        where: { contaId: id },
+        select: { direcao: true, valor: true },
+      });
+      return comResumo(conta, movimentos);
     });
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }

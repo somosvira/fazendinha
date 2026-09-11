@@ -2,17 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
-  findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), count: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(),
+  contasFindMany: vi.fn(), movimentosFindMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), count: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
   const tx = {
     contaFinanceira: { findFirst: mocks.findFirst, update: mocks.update, create: mocks.create },
-    movimentoConta: { count: mocks.count },
+    movimentoConta: { count: mocks.count, findMany: mocks.movimentosFindMany },
     auditoriaFinanceira: { create: mocks.auditoria },
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
-  return { prisma: { contaFinanceira: { findMany: mocks.findMany }, $transaction: mocks.transaction } };
+  return { prisma: { contaFinanceira: { findMany: mocks.contasFindMany }, $transaction: mocks.transaction } };
 });
 
 import { atualizarConta, criarConta, listarContas } from "./contas.js";
@@ -22,12 +22,19 @@ const anterior = { id: 1, propriedadeId: 1, nome: "Caixa", saldoAbertura: new Pr
 const p2002 = (target: string[]) => new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "6", meta: { target } });
 
 describe("contas financeiras", () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.findFirst.mockResolvedValue(anterior); mocks.update.mockImplementation(async ({ data }) => ({ ...anterior, ...data })); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.findFirst.mockResolvedValue(anterior);
+    mocks.update.mockImplementation(async ({ data }) => ({ ...anterior, ...data }));
+    mocks.create.mockResolvedValue({ ...anterior, id: 3, saldoAbertura: new Prisma.Decimal(25) });
+    mocks.movimentosFindMany.mockResolvedValue([]);
+  });
 
   it("PATCH só de ativo não toca em nenhum outro campo", async () => {
-    await atualizarConta(1, 1, { ativo: false });
+    const conta = await atualizarConta(1, 1, { ativo: false });
     expect(mocks.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { ativo: false } });
     expect(mocks.count).not.toHaveBeenCalled();
+    expect(conta).toMatchObject({ ativo: false, saldoAtual: new Prisma.Decimal(50), temMovimentos: false });
   });
 
   it("recusa alterar saldo de abertura quando a conta tem movimentos", async () => {
@@ -58,8 +65,13 @@ describe("contas financeiras", () => {
       .rejects.toMatchObject({ code: "CONFLITO", campo: "nome" });
   });
 
+  it("criação devolve saldo e indicador de movimentos consistentes", async () => {
+    const conta = await criarConta({ nome: "Reserva", tipo: "CAIXA", saldoAbertura: 25, dataSaldoAbertura: new Date(), incluirNoSaldoGeral: true, propriedadeId: 1 });
+    expect(conta).toMatchObject({ id: 3, saldoAtual: new Prisma.Decimal(25), temMovimentos: false });
+  });
+
   it("calcula saldo atual e temMovimentos a partir do razão", async () => {
-    mocks.findMany.mockResolvedValue([
+    mocks.contasFindMany.mockResolvedValue([
       { ...anterior, movimentos: [{ direcao: "ENTRADA", valor: new Prisma.Decimal(100) }, { direcao: "SAIDA", valor: new Prisma.Decimal(30) }] },
       { ...anterior, id: 2, movimentos: [] },
     ]);
