@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../db.js";
-import { Prisma } from "@prisma/client";
 import { EntityIdError, parseEntityId } from "../lib/ids.js";
 
 const schema = z.object({ classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable() });
@@ -20,7 +19,6 @@ export const categoriasRouter = new Hono().patch(
       return c.json({ id: cat.id, nome: cat.nome, classificacao: cat.classificacao });
     } catch (erro) {
       if (erro instanceof EntityIdError) return c.json({ error: erro.message }, 400);
-      if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2025") return c.json({ error: "categoria não encontrada" }, 404);
       console.error("[categorias]", erro);
       return c.json({ error: "Erro inesperado ao processar. Tente novamente." }, 500);
     }
