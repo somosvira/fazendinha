@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
@@ -24,6 +25,22 @@ describe("App — gate de autenticação", () => {
       expect(location.pathname).toBe("/signin");
       expect(new URLSearchParams(location.search).get("returnTo")).toBe("/financeiro/operacoes?status=aberta");
     });
+  });
+
+  // O app monta sob StrictMode (ver main.tsx), que executa cada efeito duas
+  // vezes. O redirecionamento anônimo lê e escreve a mesma URL, então a segunda
+  // execução precisa reconhecer que já está numa rota pública e não sobrescrever
+  // o returnTo que a primeira gravou.
+  it("preserva o returnTo quando o efeito de redirecionamento repete", async () => {
+    history.replaceState(null, "", "/financeiro/operacoes?status=aberta");
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(location.pathname).toBe("/signin"));
+    expect(new URLSearchParams(location.search).get("returnTo")).toBe("/financeiro/operacoes?status=aberta");
   });
 
   it("não normaliza rota pública e converte o alias antigo para a URL canônica", async () => {

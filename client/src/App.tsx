@@ -338,7 +338,12 @@ export function App() {
   }, [authRoute]);
 
   useEffect(() => {
-    if (authRoute || (token && usuario)) return;
+    if (token && usuario) return;
+    // A rota vem da barra de endereço, não de `authRoute`: o memo é do render
+    // anterior e este efeito escreve na mesma URL que lê. Sem reler aqui, uma
+    // segunda execução (StrictMode, remontagem) montaria o destino a partir do
+    // `/signin?returnTo=…` que ela mesma gravou e descartaria o returnTo.
+    if (interpretarRotaAuth(window.location.pathname, window.location.search)) return;
     const destino = urlSigninPara(window.location.pathname, window.location.search);
     if (window.location.pathname + window.location.search === destino) return;
     window.history.replaceState(null, "", destino);
