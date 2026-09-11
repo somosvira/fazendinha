@@ -366,6 +366,7 @@ async function main() {
       data: {
         produtoId: produto.id,
         tipo: "ENTRADA",
+        origem: "INVENTARIO_INICIAL",
         data: dataEntradaInicial,
         quantidade: ins.saldoInicial,
         custoUnitario: ins.custo,
