@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { entityIdSchema } from "@fazendinha/shared";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA", m: string) {
@@ -25,6 +26,12 @@ export const movimentoSchema = z
     quantidade: z.number().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta"),
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
     grupoId: z.number().int().optional(),
+    operacaoId: entityIdSchema,
+    itemOperacaoId: entityIdSchema,
+    fornecedorId: entityIdSchema.optional(),
+    categoriaId: entityIdSchema.optional(),
+    centroCustoId: entityIdSchema.optional(),
+    gerarLancamento: z.boolean().optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
   })
@@ -122,9 +129,12 @@ export async function registrarMovimento(input: MovimentoInput) {
     }
     if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
     const operacao = await tx.operacao.create({ data: {
+      id: input.operacaoId,
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
-      valorTotal: valorTotal.abs(), propriedadeId,
-      itens: { create: { produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: produto.unidade, valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
+      valorTotal: valorTotal.abs(), propriedadeId, parceiroId: input.fornecedorId,
+      categoriaId: input.categoriaId ?? produto.categoriaId,
+      centroCustoId: input.centroCustoId ?? produto.centroCustoId,
+      itens: { create: { id: input.itemOperacaoId, ordem: 0, produtoId: produto.id, descricao: `Ajuste: ${produto.nome}`, quantidade: new Prisma.Decimal(input.quantidade).abs(), unidade: produto.unidade, valorUnitario: custo, valorTotal: valorTotal.abs(), estocavel: true } },
     }, include: { itens: true } });
     const m = await tx.movimentoEstoque.create({
       data: {

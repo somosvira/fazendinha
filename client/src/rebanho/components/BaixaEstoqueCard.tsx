@@ -13,6 +13,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
 import { RebPill } from "@/components/rb/RebPrimitives";
+import { newEntityId } from "@fazendinha/shared";
 
 interface Props {
   animalId: string;
@@ -77,6 +78,7 @@ export function BaixaEstoqueCard({
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [idsMovimento] = useState(() => ({ operacaoId: newEntityId(), itemOperacaoId: newEntityId() }));
 
   useEffect(() => {
     let vivo = true;
@@ -114,6 +116,7 @@ export function BaixaEstoqueCard({
     setErro(null);
     try {
       await registrarMovimento({
+        ...idsMovimento,
         produtoId: produtoSel.id,
         tipo: "SAIDA",
         data,

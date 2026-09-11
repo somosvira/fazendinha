@@ -1,3 +1,5 @@
+import type { EntityId } from "@fazendinha/shared";
+
 /* Tipos do módulo Cultivo (milho).
  * Espelham EXATAMENTE os DTOs devolvidos por server/src/services/cultivo/mappers.ts
  * (toSafraCultivoDTO, toAreaCultivoDTO, toLancamentoCustoDTO, toProducaoCultivoDTO,
@@ -73,7 +75,7 @@ export interface LancamentoCusto {
   horasMaquina: number | null;
   numMaquinas: number | null;
   numCaminhoes: number | null;
-  operacaoFinanceiraId: number | null;
+  operacaoFinanceiraId: EntityId | null;
   observacao: string | null;
 }
 

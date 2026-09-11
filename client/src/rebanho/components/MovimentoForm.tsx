@@ -6,6 +6,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { fmtMoneyExact } from "@/components/charts";
+import { newEntityId } from "@fazendinha/shared";
 
 const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
   { id: "ENTRADA", label: "Entrada (compra)" },
@@ -24,6 +25,7 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<MovimentoResult | null>(null);
   const [novoProduto, setNovoProduto] = useState(false);
+  const [idsMovimento] = useState(() => ({ operacaoId: newEntityId(), itemOperacaoId: newEntityId() }));
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
 
   async function carregarProdutos(selecionarId?: number) {
@@ -49,11 +51,14 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     try {
       const ehEntrada = f.tipo === "ENTRADA";
       const payload: MovimentoInput = {
+        ...idsMovimento,
         produtoId: Number(f.produtoId),
         tipo: f.tipo,
         data: f.data,
         quantidade: Number(f.quantidade),
         fornecedorId: ehEntrada && f.fornecedorId ? f.fornecedorId : undefined,
+        categoriaId: produtoSel?.categoriaId ?? undefined,
+        centroCustoId: produtoSel?.centroCustoId ?? undefined,
         grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
         observacao: f.observacao || undefined,
         gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,

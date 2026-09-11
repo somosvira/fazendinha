@@ -62,7 +62,7 @@ export interface OperacaoComercialDTO {
   receitaTotal?: number;
   comprador?: string;
   observacao?: string;
-  operacaoFinanceiraId?: number;
+  operacaoFinanceiraId?: string;
 }
 
 function toOperacaoDTO(o: any): OperacaoComercialDTO {
