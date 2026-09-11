@@ -57,10 +57,6 @@ const envSchema = z
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NOTAS: z.string().optional(),
 
-    // OCR via Tesseract.js (gratuito, roda em Node). Em dev/teste deixe "false" para
-    // boot mais rápido (sem download dos ~70MB de language data português).
-    OCR_ENABLED: z.coerce.boolean().default(false),
-
     // --- Contas / login (Fatia auth) ---
     // Se setado e a tabela Usuario estiver vazia, o boot cria o dono com este
     // e-mail (status PENDENTE) e loga um link de definir-senha uma vez.
@@ -103,11 +99,18 @@ const envSchema = z
     }
   });
 
+// Exportado pra /api/health revalidar sem duplicar o schema (server/src/routes/health.ts).
+export { envSchema };
+
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error("[env] configuração inválida:");
   console.error(parsed.error.flatten().fieldErrors);
-  process.exit(1);
+  // `throw`, não `process.exit(1)`: dentro de um Cloudflare Worker essa API
+  // não existe/não faz sentido (não há processo de SO pra terminar) — um throw
+  // no module-load falha o boot igual, em Node e em Worker, sem depender de
+  // uma API específica de runtime.
+  throw new Error("[env] configuração inválida — ver console.error acima");
 }
 
 export const env = parsed.data;

@@ -1,3 +1,0 @@
-# O proxy /api/* → Render é feito pelo _worker.js (CF Pages não faz proxy externo
-# via _redirects). Aqui fica só o SPA fallback.
-/*      /index.html      200
