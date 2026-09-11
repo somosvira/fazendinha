@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+const appBaseUrlSchema = z.string().trim().transform((valor, ctx) => {
+  if (!valor) return "";
+  const candidato = /^https?:\/\//i.test(valor) ? valor : `https://${valor}`;
+  try {
+    const url = new URL(candidato);
+    if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("protocolo inválido");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    ctx.addIssue({ code: "custom", message: "APP_BASE_URL deve ser uma URL ou host válido" });
+    return z.NEVER;
+  }
+});
+
 const envSchema = z
   .object({
     DATABASE_URL: z.string().url("DATABASE_URL ausente ou inválida — copie de server/.env.example"),
@@ -53,11 +66,18 @@ const envSchema = z
     // e-mail (status PENDENTE) e loga um link de definir-senha uma vez.
     AUTH_BOOTSTRAP_EMAIL: z.string().email().optional(),
     AUTH_BOOTSTRAP_NOME: z.string().default("Proprietário"),
-    // Base absoluta para montar links de convite/reset (ex.: https://rionovo.com.br).
-    // Vazio → link relativo "/convite/<token>" (o dono prefixa o domínio).
-    APP_BASE_URL: z.string().default(""),
+    // Base para links de convite/reset. Host sem esquema recebe https://.
+    // Vazio → link relativo "/invite/<token>" (o dono prefixa o domínio).
+    APP_BASE_URL: appBaseUrlSchema.default(""),
     // Validade da sessão em dias (sliding).
     AUTH_SESSAO_DIAS: z.coerce.number().int().positive().default(30),
+    // Recuperação pública: Resend em produção; log é restrito a dev/teste.
+    AUTH_EMAIL_PROVIDER: z.enum(["resend", "log"]).optional(),
+    AUTH_EMAIL_FROM: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
+    AUTH_RESET_RATE_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+    AUTH_RESET_MAX_PER_EMAIL: z.coerce.number().int().positive().default(3),
+    AUTH_RESET_MAX_PER_IP: z.coerce.number().int().positive().default(10),
   })
   .superRefine((v, ctx) => {
     if (v.STORAGE_DRIVER === "r2") {
@@ -69,6 +89,17 @@ const envSchema = z
         ctx.addIssue({ code: "custom", path: ["R2_SECRET_ACCESS_KEY"], message: "obrigatório quando STORAGE_DRIVER=r2" });
       if (!v.R2_BUCKET_NOTAS)
         ctx.addIssue({ code: "custom", path: ["R2_BUCKET_NOTAS"], message: "obrigatório quando STORAGE_DRIVER=r2" });
+    }
+    if (v.AUTH_EMAIL_PROVIDER === "resend") {
+      if (!v.RESEND_API_KEY)
+        ctx.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+      if (!v.AUTH_EMAIL_FROM)
+        ctx.addIssue({ code: "custom", path: ["AUTH_EMAIL_FROM"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+      if (!v.APP_BASE_URL)
+        ctx.addIssue({ code: "custom", path: ["APP_BASE_URL"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+    }
+    if (v.NODE_ENV === "production" && v.AUTH_EMAIL_PROVIDER === "log") {
+      ctx.addIssue({ code: "custom", path: ["AUTH_EMAIL_PROVIDER"], message: "log não pode ser usado em produção" });
     }
   });
 

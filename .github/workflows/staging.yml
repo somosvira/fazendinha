@@ -19,6 +19,24 @@ jobs:
   ci:
     name: build + test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: fazendinha_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d fazendinha_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/fazendinha_test
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/fazendinha_test
+      AUTH_DB_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # lê packageManager (pnpm@10.7.1) do package.json
@@ -31,10 +49,7 @@ jobs:
       - run: pnpm --filter rionovo-server exec prisma generate
       - name: Build (server + client)
         run: pnpm -r run build
+      - name: Preparar banco isolado dos testes
+        run: pnpm --filter rionovo-server exec prisma db push --skip-generate
       - name: Testes (server)
-        # Testes unitários (não conectam ao banco), mas importam módulos que passam
-        # por env.ts — que aborta (process.exit) se DATABASE_URL faltar. No CI não há
-        # server/.env, então injetamos uma URL dummy só pra validação passar.
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm --filter rionovo-server test

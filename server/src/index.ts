@@ -11,6 +11,7 @@ import { healthRouter } from "./routes/health.js";
 import { authPublicoRouter, authPrivadoRouter } from "./routes/auth.js";
 import { usuariosRouter } from "./routes/usuarios.js";
 import { garantirDonoBootstrap } from "./services/auth/usuarios.js";
+import { canalRecuperacaoConfigurado } from "./services/auth/email.js";
 import { animaisRouter } from "./routes/rebanho/animais.js";
 import { filtrosRouter } from "./routes/rebanho/filtros.js";
 import { eventosRouter } from "./routes/rebanho/eventos.js";
@@ -57,6 +58,7 @@ import { chuvaRouter } from "./routes/rebanho/chuva.js";
 import { sugestoesRouter } from "./routes/rebanho/sugestoes.js";
 import { relatorioReproducaoRouter } from "./routes/rebanho/relatorio-reproducao.js";
 import { relatoriosRouter } from "./routes/rebanho/relatorios.js";
+import { relatorioGerencialRouter } from "./routes/relatorio-gerencial.js";
 import { formulariosRouter } from "./routes/rebanho/formularios.js";
 import { plantioTalhoesRouter } from "./routes/plantio/talhoes.js";
 import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
@@ -93,6 +95,9 @@ if (env.NODE_ENV === "production" && (!corsOrigins || corsOrigins.length === 0))
 }
 if (env.NODE_ENV === "production" && !env.SHARED_ACCESS_TOKEN) {
   console.warn("[auth] SHARED_ACCESS_TOKEN vazio em produção — API está aberta a qualquer requisição. Setar antes do teste com dono.");
+}
+if (env.NODE_ENV === "production" && !canalRecuperacaoConfigurado()) {
+  console.warn("[auth] recuperação de senha sem canal configurado — defina APP_BASE_URL, AUTH_EMAIL_PROVIDER, AUTH_EMAIL_FROM e RESEND_API_KEY.");
 }
 app.use(
   "/api/*",
@@ -168,6 +173,7 @@ app.route("/api", chuvaRouter);
 app.route("/api", sugestoesRouter);
 app.route("/api", relatorioReproducaoRouter);
 app.route("/api", relatoriosRouter);
+app.route("/api", relatorioGerencialRouter);
 app.route("/api", formulariosRouter);
 app.route("/api", plantioTalhoesRouter);
 app.route("/api", plantioDashboardRouter);

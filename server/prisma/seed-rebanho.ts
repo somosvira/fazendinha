@@ -17,14 +17,20 @@ async function main() {
   const grupoId: Record<string, number> = {};
   for (const nome of grupos) grupoId[nome] = (await prisma.grupo.upsert({ where: { nome }, update: {}, create: { nome } })).id;
 
-  // Raças puras são semeadas pela migration 20260625220000_racas_puras_especie_codigo;
-  // aqui só fazemos lookup por nome.
-  const racasUsadas = ["Girolando", "Holandês"] as const;
+  // A baseline contém somente estrutura. O seed é responsável pelos catálogos
+  // mínimos que o cenário de demonstração utiliza.
+  const racasUsadas = [
+    { nome: "Girolando", codigo: "GL" },
+    { nome: "Holandês", codigo: "HO" },
+  ] as const;
   const racaId: Record<string, number> = {};
-  for (const nome of racasUsadas) {
-    const r = await prisma.raca.findUnique({ where: { nome } });
-    if (!r) throw new Error(`Raça "${nome}" não encontrada — rode prisma migrate deploy primeiro.`);
-    racaId[nome] = r.id;
+  for (const raca of racasUsadas) {
+    const row = await prisma.raca.upsert({
+      where: { nome: raca.nome },
+      update: { codigo: raca.codigo, especie: "BOVINO" },
+      create: { nome: raca.nome, codigo: raca.codigo, especie: "BOVINO" },
+    });
+    racaId[raca.nome] = row.id;
   }
 
   // grauSangue agora segue o padrão composto "fração1 SIGLA1, SIGLA2" (ex.: "5/8 GL, HO").
@@ -182,11 +188,9 @@ async function main() {
 
   // Cadastros: Produtos (catálogo remédio/ração/insumo). Idempotente: limpa e recria.
   // Movimentos de estoque referenciam Produto (FK) — limpar antes de apagar os produtos.
-  // Ponte compra→financeiro: as ENTRADAS geram Lancamento ("Compra: …"). Para não
-  // acumular a cada seed, limpar os lançamentos gerados ANTES de recriar os movimentos.
-  // (Os movimentos referenciam o lançamento por FK — limpá-los primeiro libera o delete.)
+  // O estoque demonstrativo é recriado de forma isolada. Compras financeiras reais
+  // devem nascer pelo fluxo de Operacao; este seed usa INVENTARIO_INICIAL.
   await prisma.movimentoEstoque.deleteMany({});
-  await prisma.lancamento.deleteMany({ where: { descricao: { startsWith: "Compra:" } } });
   await prisma.produto.deleteMany({});
   const produtos = [
     { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, carencia: 96, estocavel: true, minimoEstoque: 4 },
@@ -198,8 +202,7 @@ async function main() {
   for (const p of produtos) await prisma.produto.create({ data: p as any });
 
   // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
-  // todos no centro de custo "Atividade Leiteira". O Sêmen fica SEM categoria de propósito,
-  // para demonstrar o caminho "compra sem lançamento" (lancamentoCriado:false).
+  // todos no centro de custo "Atividade Leiteira". O Sêmen fica sem categoria de propósito.
   const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
   const racaoCatId = await catId("Ração");
   const medCatId = await catId("Medicamento Animal");
@@ -216,16 +219,19 @@ async function main() {
     await prisma.produto.update({ where: { nome }, data: { categoriaId, centroCustoId: leiteiraId } });
   }
 
-  // Cadastros: Fornecedores (estende ClienteFornecedor). Upsert por nome — não duplica
-  // os que o financeiro já criou, só garante tipo/contato.
+  // Cadastros: parceiros fornecedores. Documento é a chave estável do seed.
   const fornecedores = [
     { nome: "Cargill", tipo: "FORNECEDOR", documento: "60.498.706/0001-57", telefone: "1130991000", email: "atendimento@cargill.com" },
     { nome: "Coop. Boa Vista", tipo: "FORNECEDOR", documento: "12.345.678/0001-99", telefone: "3432221100", email: "contato@coopboavista.com.br" },
     { nome: "Agropecuária Rio Novo", tipo: "AMBOS", telefone: "3499887766" },
   ] as const;
   for (const f of fornecedores) {
-    const { nome, ...rest } = f;
-    await prisma.clienteFornecedor.upsert({ where: { nome }, update: rest as any, create: { nome, ...(rest as any) } });
+    const documento = "documento" in f ? f.documento : undefined;
+    const existente = documento
+      ? await prisma.parceiro.findUnique({ where: { documento } })
+      : await prisma.parceiro.findFirst({ where: { nome: f.nome } });
+    if (existente) await prisma.parceiro.update({ where: { id: existente.id }, data: f });
+    else await prisma.parceiro.create({ data: f });
   }
 
   // Estoque: movimentos (entradas de compra + saídas de consumo recente). Idempotente
@@ -235,42 +241,30 @@ async function main() {
   for (const p of await prisma.produto.findMany({ where: { nome: { in: ["Ração Lactação Alta", "Núcleo Mineral"] } } })) {
     prodByName[p.nome] = { id: p.id, custo: p.custoUnitario != null ? Number(p.custoUnitario) : 0 };
   }
-  const cargill = await prisma.clienteFornecedor.findUnique({ where: { nome: "Cargill" } });
   const racao = prodByName["Ração Lactação Alta"];
   const nucleo = prodByName["Núcleo Mineral"];
-  const isoOffset = (offsetDias: number) => ddmm(offsetDias).toISOString().slice(0, 10);
-  // SAIDA: criação direta (não passa pela ponte — consumo não gera lançamento).
-  const saida = (produto: { id: number; custo: number } | undefined, quantidade: number, offsetDias: number, observacao?: string) => {
+  const movimento = (produto: { id: number; custo: number } | undefined, tipo: "ENTRADA" | "SAIDA", quantidade: number, offsetDias: number, observacao?: string) => {
     if (!produto) return null;
     const valorTotal = Math.round(quantidade * produto.custo * 100) / 100;
     return prisma.movimentoEstoque.create({
-      data: { produtoId: produto.id, tipo: "SAIDA", data: ddmm(offsetDias), quantidade, custoUnitario: produto.custo, valorTotal, observacao: observacao ?? null },
+      data: { produtoId: produto.id, tipo, origem: tipo === "ENTRADA" ? "INVENTARIO_INICIAL" : "CONSUMO_DIRETO", data: ddmm(offsetDias), quantidade, custoUnitario: produto.custo, valorTotal, observacao: observacao ?? null },
     });
   };
 
-  // ENTRADA (compra): passa pela ponte real (registrarMovimento) → gera Lancamento financeiro.
-  const { registrarMovimento } = await import("../src/services/rebanho/estoque.js");
-  let lancamentosGerados = 0;
-  const comprar = async (produto: { id: number; custo: number } | undefined, quantidade: number, offsetDias: number, observacao?: string) => {
-    if (!produto) return;
-    const r = await registrarMovimento({ produtoId: produto.id, tipo: "ENTRADA", data: isoOffset(offsetDias), quantidade, custoUnitario: produto.custo, fornecedorId: cargill?.id, observacao });
-    if (r.lancamentoCriado) lancamentosGerados++;
-  };
-  // Entradas (compras via Cargill) — geram lançamentos (ponte compra→financeiro).
-  await comprar(racao, 1500, 20, "Compra de ração — Cargill");
-  await comprar(nucleo, 200, 20, "Compra de núcleo mineral — Cargill");
+  await movimento(racao, "ENTRADA", 1500, 20, "Saldo inicial de ração");
+  await movimento(nucleo, "ENTRADA", 200, 20, "Saldo inicial de núcleo mineral");
 
   // Saídas de consumo recente (~900 kg de ração nos últimos dias) — não geram lançamento.
   const saidas = [
-    saida(racao, 300, 6, "Consumo lote Alta Produção"),
-    saida(racao, 300, 4, "Consumo lote Alta Produção"),
-    saida(racao, 300, 2, "Consumo lote Alta Produção"),
-    saida(nucleo, 40, 3, "Consumo núcleo mineral"),
+    movimento(racao, "SAIDA", 300, 6, "Consumo lote Alta Produção"),
+    movimento(racao, "SAIDA", 300, 4, "Consumo lote Alta Produção"),
+    movimento(racao, "SAIDA", 300, 2, "Consumo lote Alta Produção"),
+    movimento(nucleo, "SAIDA", 40, 3, "Consumo núcleo mineral"),
   ].filter(Boolean);
   await Promise.all(saidas as Promise<unknown>[]);
   const totalMovimentos = 2 + saidas.length;
 
-  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${totalMovimentos} movimentos de estoque (${lancamentosGerados} lançamentos de compra gerados).`);
+  console.log(`Seed rebanho ok: ${animais.length} animais, ${produtos.length} produtos, ${fornecedores.length} fornecedores, ${totalMovimentos} movimentos de estoque.`);
   console.log("Para o rebanho REAL, rode em seguida: pnpm --filter rionovo-server run import:rebanho");
 }
 
