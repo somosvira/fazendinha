@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { env } from "./env.js";
+import { resetPrismaPorRequisicao } from "./db.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { exigeArea } from "./middleware/permissao.js";
 import { categoriasRouter } from "./routes/categorias.js";
@@ -85,6 +86,15 @@ import { buscaRouter } from "./routes/busca.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
 
 export const app = new Hono();
+
+// Precisa ser o PRIMEIRO middleware, antes até das rotas isentas de auth
+// (health, whatsapp): garante um PrismaClient novo por requisição dentro do
+// Worker, antes de qualquer query rodar (ver comentário em db.ts). Fora do
+// Worker é um no-op.
+app.use("*", async (c, next) => {
+  resetPrismaPorRequisicao();
+  await next();
+});
 
 app.use("*", logger());
 

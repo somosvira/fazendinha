@@ -22,13 +22,38 @@ function criarPrismaClient(): PrismaClient {
 }
 
 // Fora do Worker, cachear em globalThis sobrevive ao HMR do `tsx watch` (evita
-// esgotar conexões a cada reload). Dentro do Worker isso não existe — cada
-// isolate recomeça do zero, e o adapter HTTP/WebSocket do Neon não mantém pool
-// próprio da mesma forma que uma conexão TCP de vida longa, então recriar por
-// invocação não tem o mesmo custo que teria em Node.
+// esgotar conexões a cada reload) — um processo Node de vida longa, uma conexão
+// TCP de vida longa, sem problema em reusar entre chamadas.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma = globalForPrisma.prisma ?? criarPrismaClient();
+// Dentro do Worker o singleton acima quebra: um isolate NÃO reinicia a cada
+// requisição (é reaproveitado entre muitas, é assim que o modelo de isolate
+// ganha performance) — só reinicia em cold start. Um PrismaClient criado uma
+// vez no module scope, então, fica compartilhado entre requisições diferentes,
+// e o I/O do adapter do Neon (fetch/WebSocket) fica atrelado à requisição em
+// que foi originado. O runtime do Cloudflare detecta esse reuso entre
+// requisições e cancela a promise ("A promise was resolved or rejected from a
+// different request context...") — reproduzido em produção em várias rotas
+// (/api/auth/me, /api/rebanho/parametros), sempre como pendurar/500 ("Worker's
+// code had hung"). Por isso, dentro do Worker, cada requisição usa seu próprio
+// PrismaClient — `resetPrismaPorRequisicao()` é chamado por um middleware logo
+// no topo de app.ts, antes de qualquer rota (inclusive as isentas de auth).
+let prismaDaRequisicaoAtual: PrismaClient | undefined;
+
+export function resetPrismaPorRequisicao(): void {
+  if (isCloudflareWorkers()) prismaDaRequisicaoAtual = criarPrismaClient();
+}
+
+function criarPrismaProxyPorRequisicao(): PrismaClient {
+  return new Proxy({} as PrismaClient, {
+    get(_target, prop) {
+      if (!prismaDaRequisicaoAtual) prismaDaRequisicaoAtual = criarPrismaClient();
+      return Reflect.get(prismaDaRequisicaoAtual, prop, prismaDaRequisicaoAtual);
+    },
+  });
+}
+
+export const prisma: PrismaClient = isCloudflareWorkers() ? criarPrismaProxyPorRequisicao() : globalForPrisma.prisma ?? criarPrismaClient();
 
 if (!isCloudflareWorkers() && env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
