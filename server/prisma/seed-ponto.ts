@@ -9,9 +9,8 @@
 //
 //   pnpm --filter rionovo-server run seed:ponto
 
-import { PrismaClient, type TipoDiaPonto } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { type TipoDiaPonto } from "@prisma/client";
+import { prisma } from "../src/db.js";
 
 const MES = "2026-05"; // âncora de datas do app
 

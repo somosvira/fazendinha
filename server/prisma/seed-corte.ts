@@ -7,11 +7,9 @@
 //
 //   pnpm --filter rionovo-server run seed:corte
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { lotes, resumos, piquetes } from "../src/services/corte/mock.js";
 import { recomputarResumo } from "../src/services/corte/resumos.recompute.js";
-
-const prisma = new PrismaClient();
 
 const MS = 86_400_000;
 const HOJE = "2026-05-28"; // âncora do app

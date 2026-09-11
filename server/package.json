@@ -32,7 +32,7 @@
     "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed-all.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",

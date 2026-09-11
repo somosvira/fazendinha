@@ -3,11 +3,10 @@
 // de consulta e dos where do Prisma). Recalcula sozinho — sobrevive a mudanças
 // de dados. Rodar: pnpm --filter rionovo-server run bateria:gabarito [saida.json]
 // As perguntas correspondentes estão em bateria-ia.run.ts (mesmos ids).
-import { PrismaClient } from "@prisma/client";
 import { writeFileSync } from "node:fs";
+import { prisma } from "../src/db.js";
 
-const p = new PrismaClient();
-const q = (s: string) => p.$queryRawUnsafe<Record<string, unknown>[]>(s);
+const q = (s: string) => prisma.$queryRawUnsafe<Record<string, unknown>[]>(s);
 
 // Regime de caixa: LIQUIDADO + estornado=false, por dataLiquidacao.
 const CAIXA = `l.situacao='LIQUIDADO' AND l.estornado=false`;

@@ -140,7 +140,7 @@ cp server/.env.example server/.env
 pnpm dev
 
 # 4. (Opcional) Dados de exemplo
-pnpm --filter rionovo-server run seed:all      # ou seed, seed:usuarios, seed:rebanho, ...
+pnpm --filter rionovo-server run seed:all       # todos os módulos, sem apagar o banco
 pnpm --filter rionovo-server run import:rebanho # rebanho real (rebanho_real.json)
 ```
 
@@ -227,7 +227,7 @@ fazendinha/
 | `pnpm --filter rionovo-server run seed` | Dados de exemplo do financeiro. |
 | `pnpm --filter rionovo-server run seed:usuarios` | Usuários de exemplo. |
 | `pnpm --filter rionovo-server run seed:rebanho` / `seed:plantio` / `seed:plantios` / `seed:corte` / `seed:ponto` | Seeds por módulo. |
-| `pnpm --filter rionovo-server run seed:all` | Todos os seeds. |
+| `pnpm --filter rionovo-server run seed:all` | Todos os seeds, sem resetar o banco; também roda automaticamente após `prisma migrate reset`. |
 | `pnpm --filter rionovo-server run import:rebanho` | Importa `rebanho_real.json`. |
 | `pnpm --filter rionovo-server run whatsapp:user` | Gerencia a allowlist de números do bot. |
 | `pnpm --filter rionovo-server run bateria:gabarito` / `bateria:run` | Bateria de consultas de IA (gera gabarito / executa). |

@@ -1,11 +1,16 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { criarOperacao, transferir } from "../src/services/financeiro/operacoes.js";
 
-const prisma = new PrismaClient();
 const hoje = new Date();
 const data = (dias: number) => new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() + dias));
 
 async function main() {
+  const existente = await prisma.propriedade.findUnique({ where: { nome: "Fazenda Demonstração" }, select: { id: true } });
+  if (existente) {
+    console.log("Seed financeiro já existe; etapa ignorada.");
+    return;
+  }
+
   const propriedade = await prisma.propriedade.create({
     data: { nome: "Fazenda Demonstração", apelido: "Sede", cidade: "Varginha", uf: "MG", principal: true },
   });
