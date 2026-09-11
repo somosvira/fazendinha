@@ -91,7 +91,9 @@ Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/
 
 - A `DATABASE_URL` é a **pooled** (`-pooler` no host). Funciona para runtime e para `prisma migrate deploy`.
 - `prisma migrate dev` precisa de shadow database e falha via pooler — por isso o schema já tem `directUrl = env("DIRECT_URL")`. Para criar migration nova basta ter `DIRECT_URL` em `server/.env`.
+
 - `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). O histórico experimental foi consolidado em uma baseline única em `server/prisma/migrations/`; bancos locais anteriores à baseline ou ao corte UUID devem ser resetados e semeados novamente.
+
 
 ## Arquitetura
 
