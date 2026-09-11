@@ -20,7 +20,7 @@
     "cf:deploy": "pnpm cf:build && wrangler deploy"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

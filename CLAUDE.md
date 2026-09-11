@@ -22,7 +22,7 @@ Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.
 
 ## Stack
 
-- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20.
+- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 22 (`wrangler` exige `>=22`).
 - Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. Sem OCR — `tesseract.js`/`sharp`/`pdf-parse` foram removidos por não estarem em uso (2026-09-10).
 - Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
 - Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
