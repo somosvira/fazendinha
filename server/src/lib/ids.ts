@@ -1,4 +1,4 @@
-import { entityIdSchema } from "@fazendinha/shared";
+import { entityIdSchema, type EntityId } from "@fazendinha/shared";
 
 export class EntityIdError extends Error {
   constructor() {
@@ -6,7 +6,7 @@ export class EntityIdError extends Error {
   }
 }
 
-export function parseEntityId(value: string): string {
+export function parseEntityId(value: string): EntityId {
   const parsed = entityIdSchema.safeParse(value);
   if (!parsed.success) throw new EntityIdError();
   return parsed.data;

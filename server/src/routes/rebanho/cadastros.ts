@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/cadastros.js";
-import { parseEntityId } from "../../lib/ids.js";
+import { EntityIdError, parseEntityId } from "../../lib/ids.js";
 
-type Status = 404 | 409 | 500;
+type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
+  if (e instanceof EntityIdError) return { status: 400, body: { error: e.message } };
   if (e instanceof svc.CadastroError) {
     const map = { NAO_ENCONTRADO: 404, DUPLICADO: 409 } as const;
     return { status: map[e.code], body: { error: e.message } };
