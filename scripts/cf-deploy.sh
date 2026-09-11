@@ -49,34 +49,42 @@ esac
 # pro runtime do Worker, sem precisar declará-las no wrangler.jsonc — é o
 # GET /api/health que devolve elas de volta, pra confirmar depois qual commit
 # está de fato no ar (server/src/routes/health.ts).
-npx wrangler deploy \
+#
+# Capturado (em vez de deixar correr direto pro terminal) porque a saída do
+# `wrangler deploy` imprime a URL workers.dev do Worker — serve de fallback
+# pra achar onde bater o health check no PRIMEIRO deploy, antes de existir
+# um APP_BASE_URL setado (ver abaixo). `echo` logo depois preserva a saída
+# nos logs do build normalmente.
+OUTPUT=$(npx wrangler deploy \
   --var WORKERS_CI_COMMIT_SHA:"$WORKERS_CI_COMMIT_SHA" \
-  --var WORKERS_CI_BUILD_UUID:"$WORKERS_CI_BUILD_UUID"
+  --var WORKERS_CI_BUILD_UUID:"$WORKERS_CI_BUILD_UUID" 2>&1)
 DEPLOY_STATUS=$?
+echo "$OUTPUT"
 
 if [ "$DEPLOY_STATUS" -ne 0 ]; then
   echo "--- wrangler deploy saiu com exit code $DEPLOY_STATUS. ---"
   exit 1
 fi
 
-# wrangler deploy já retornou, mas a propagação pelas edges da Cloudflare não
-# é instantânea — sem essa espera, o primeiro curl abaixo tem chance real de
-# ainda cair na versão anterior do Worker (que responde 200 normalmente,
-# mascarando um deploy novo quebrado como se estivesse tudo bem).
-#
-# Reusa APP_BASE_URL (mesma env de server/src/env.ts, já usada pros links de
+# Prefere APP_BASE_URL (mesma env de server/src/env.ts, já usada pros links de
 # convite/reset — DEPLOY.md §1.2) em vez de inventar uma env só pra isso: no
 # Worker único, front e back são o mesmo host, então a URL pública do app já É
-# a base do health check. Ela não tem como ter um default de verdade (só
-# existe depois do primeiro deploy) — setar em Build variables assim que
-# souber a URL do Worker (ex.: https://fazendinha.<subdominio>.workers.dev).
-# Sem ela, o script avisa e pula a checagem em vez de falhar o build.
-if [ -z "$APP_BASE_URL" ]; then
-  echo "--- APP_BASE_URL não setada (Build variables) — pulando a checagem pós-deploy. Setar assim que souber a URL do Worker. ---"
+# a base do health check. Setar em Build variables assim que souber a URL
+# definitiva do Worker (custom domain, se tiver um).
+#
+# Sem ela (tipicamente só no primeiro deploy, antes de existir uma URL pra
+# configurar), cai pro workers.dev que o próprio `wrangler deploy` acabou de
+# imprimir acima — assim o build já verifica envs/config mesmo nesse deploy
+# inicial, em vez de simplesmente pular a checagem.
+DEPLOYED_URL=$(printf '%s' "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -1)
+BASE_URL="${APP_BASE_URL:-$DEPLOYED_URL}"
+
+if [ -z "$BASE_URL" ]; then
+  echo "--- Nem APP_BASE_URL setada nem uma URL workers.dev na saída do wrangler deploy (ex.: workers_dev desativado + sem custom domain) — pulando a checagem pós-deploy. ---"
   exit 0
 fi
 
-WORKER_HEALTH_URL="${APP_BASE_URL%/}/api/health"
+WORKER_HEALTH_URL="${BASE_URL%/}/api/health"
 
 TENTATIVAS=5
 ESPERA_INICIAL=6
