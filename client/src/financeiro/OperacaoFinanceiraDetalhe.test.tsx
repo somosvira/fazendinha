@@ -36,6 +36,9 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect((confirmar as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Motivo do cancelamento"), { target: { value: "Nota fiscal incorreta" } });
     fireEvent.click(confirmar);
-    await waitFor(() => expect(estornarOperacao).toHaveBeenCalledWith(OPERACAO_ID, "Nota fiscal incorreta"));
+    await waitFor(() => expect(estornarOperacao).toHaveBeenCalledWith(OPERACAO_ID, {
+      motivo: "Nota fiscal incorreta",
+      transacoes: [{ originalId: TRANSACAO_ID, id: expect.any(String), movimentos: [] }],
+    }));
   });
 });

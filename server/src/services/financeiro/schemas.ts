@@ -9,6 +9,7 @@ export {
   liquidacaoSchema,
   transferenciaSchema,
   transacaoAvulsaSchema,
-  estornoSchema,
+  estornoOperacaoSchema,
+  estornoTransacaoSchema,
   rascunhoOperacaoSchema,
 } from "@fazendinha/shared";

@@ -3,7 +3,7 @@ import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
 import { estornarOperacao, obterOperacao, type Operacao } from "./novo-api";
 import { Loader } from "../components/Loading";
 import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
-import type { EntityId } from "@fazendinha/shared";
+import { newEntityId, type EntityId } from "@fazendinha/shared";
 
 export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCorrigir }: { operacaoId: EntityId; onVoltar: () => void; onAbrir: (id: EntityId) => void; onCorrigir: (operacao: Operacao) => void }) {
   const [operacao, setOperacao] = useState<Operacao | null>(null);
@@ -11,8 +11,21 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [idsEstorno, setIdsEstorno] = useState<{ originalId: EntityId; id: EntityId; movimentos: { originalId: EntityId; id: EntityId }[] }[]>([]);
   const carregar = useCallback(async () => { try { setErro(null); setOperacao(await obterOperacao(operacaoId)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } }, [operacaoId]);
   useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => {
+    if (!cancelando || !operacao) return;
+    setIdsEstorno(operacao.transacoes
+      .filter((transacao) => transacao.tipo !== "REVERSAO" && transacao.status === "CONFIRMADA")
+      .map((transacao) => ({
+        originalId: transacao.id,
+        id: newEntityId(),
+        movimentos: (transacao.movimentos ?? []).map((movimento) => ({ originalId: movimento.id, id: newEntityId() })),
+      })));
+    // As identidades nascem ao abrir o fluxo e permanecem durante novas tentativas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelando]);
 
   // `.pagina-carregando` mede exatamente uma viewport e o loader toma a sobra —
   // com PaginaFinanceira o botão e o padding somariam por fora dos 100dvh.
@@ -25,7 +38,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
 
   const confirmarCancelamento = async () => {
     setSalvando(true); setErro(null);
-    try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await carregar(); }
+    try { await estornarOperacao(operacao.id, { motivo: motivo.trim(), transacoes: idsEstorno }); setCancelando(false); setMotivo(""); await carregar(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setSalvando(false); }
   };

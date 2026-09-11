@@ -8,7 +8,7 @@ import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { contaSchema, estornoOperacaoSchema, estornoTransacaoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
@@ -159,8 +159,8 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarOperacao(entityId(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/operacoes/:id/estorno", zValidator("json", estornoOperacaoSchema), async (c) => {
+    try { const input = c.req.valid("json"); return c.json(await operacoes.estornarOperacao(entityId(c.req.param("id")), input.motivo, input.transacoes, usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/documentos", async (c) => {
@@ -218,7 +218,7 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarTransacaoAvulsa({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarTransacao(entityId(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/transacoes/:id/estorno", zValidator("json", estornoTransacaoSchema), async (c) => {
+    try { return c.json(await operacoes.estornarTransacao(entityId(c.req.param("id")), c.req.valid("json"), usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   });

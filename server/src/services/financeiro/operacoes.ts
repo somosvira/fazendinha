@@ -2,13 +2,15 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import type { z } from "zod";
-import type { liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
+import type { estornoOperacaoSchema, estornoTransacaoSchema, liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 import { newEntityId } from "@fazendinha/shared";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
+type IdentidadeEstornoTransacao = Omit<z.infer<typeof estornoTransacaoSchema>, "motivo">;
+type IdentidadesEstornoOperacao = z.infer<typeof estornoOperacaoSchema>["transacoes"];
 
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
@@ -250,16 +252,22 @@ export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
   });
 }
 
-async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, motivo: string, usuarioId?: number | null) {
+async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, identidade: IdentidadeEstornoTransacao, motivo: string, usuarioId?: number | null) {
     const original = await tx.transacaoFinanceira.findUnique({ where: { id }, include: { movimentos: true, liquidacoes: true, revertidaPor: true } });
     if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
     if (original.status === "REVERTIDA" || original.revertidaPor) throw new FinanceiroError("JA_REVERTIDO", "A transação já foi estornada");
     await exigirPeriodoAberto(tx, original.propriedadeId, new Date());
+    const idsMovimentos = new Map(identidade.movimentos.map((movimento) => [movimento.originalId, movimento.id]));
+    if (idsMovimentos.size !== original.movimentos.length || original.movimentos.some((movimento) => !idsMovimentos.has(movimento.id))) {
+      throw new FinanceiroError("VALIDACAO", "Informe os IDs de todos os movimentos do estorno");
+    }
     const estorno = await tx.transacaoFinanceira.create({ data: {
+      id: identidade.transacaoId,
       tipo: "REVERSAO", data: new Date(), valorTotal: original.valorTotal, descricao: `Estorno de transação: ${motivo}`,
       propriedadeId: original.propriedadeId, operacaoId: original.operacaoId, parceiroId: original.parceiroId,
       criadoPorId: usuarioId && usuarioId > 0 ? usuarioId : null, reversaoDeId: original.id,
       movimentos: { create: original.movimentos.map((movimento) => ({
+        id: idsMovimentos.get(movimento.id),
         contaId: movimento.contaId, direcao: movimento.direcao === "ENTRADA" ? "SAIDA" : "ENTRADA", valor: movimento.valor,
       })) },
     }, include: { movimentos: true } });
@@ -275,11 +283,11 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: string, mot
     return estorno;
 }
 
-export async function estornarTransacao(id: string, motivo: string, usuarioId?: number | null) {
-  return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, motivo, usuarioId));
+export async function estornarTransacao(id: string, input: z.infer<typeof estornoTransacaoSchema>, usuarioId?: number | null) {
+  return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, input, input.motivo, usuarioId));
 }
 
-export async function estornarOperacao(id: string, motivo: string, usuarioId?: number | null) {
+export async function estornarOperacao(id: string, motivo: string, identidades: IdentidadesEstornoOperacao, usuarioId?: number | null) {
   return prisma.$transaction(async (tx) => {
     const operacao = await tx.operacao.findUnique({
       where: { id },
@@ -289,8 +297,14 @@ export async function estornarOperacao(id: string, motivo: string, usuarioId?: n
     if (operacao.status === "CANCELADA") throw new FinanceiroError("JA_REVERTIDO", "A operação já foi cancelada");
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
-    for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
-      await estornarTransacaoTx(tx, transacao.id, `Cancelamento da OP-${String(operacao.numero).padStart(4, "0")}: ${motivo}`, usuarioId);
+    const transacoesOriginais = operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO");
+    const identidadesPorOriginal = new Map(identidades.map((item) => [item.originalId, item]));
+    if (identidadesPorOriginal.size !== transacoesOriginais.length || transacoesOriginais.some((transacao) => !identidadesPorOriginal.has(transacao.id))) {
+      throw new FinanceiroError("VALIDACAO", "Informe os IDs de todas as transações do estorno");
+    }
+    for (const transacao of transacoesOriginais) {
+      const identidade = identidadesPorOriginal.get(transacao.id)!;
+      await estornarTransacaoTx(tx, transacao.id, { transacaoId: identidade.id, movimentos: identidade.movimentos }, `Cancelamento da OP-${String(operacao.numero).padStart(4, "0")}: ${motivo}`, usuarioId);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
       await tx.movimentoEstoque.create({ data: {

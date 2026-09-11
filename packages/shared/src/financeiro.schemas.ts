@@ -142,7 +142,22 @@ export const transacaoAvulsaSchema = z.object({
   propriedadeId: z.number().int().positive().optional(),
 });
 
-export const estornoSchema = z.object({ motivo: z.string().trim().min(5).max(300) });
+const movimentoEstornoSchema = z.object({ originalId: entityIdSchema, id: entityIdSchema });
+
+export const estornoTransacaoSchema = z.object({
+  motivo: z.string().trim().min(5).max(300),
+  transacaoId: entityIdSchema,
+  movimentos: z.array(movimentoEstornoSchema),
+});
+
+export const estornoOperacaoSchema = z.object({
+  motivo: z.string().trim().min(5).max(300),
+  transacoes: z.array(z.object({
+    originalId: entityIdSchema,
+    id: entityIdSchema,
+    movimentos: z.array(movimentoEstornoSchema),
+  })),
+});
 
 export const rascunhoOperacaoSchema = z.object({
   id: entityIdSchema.optional(),

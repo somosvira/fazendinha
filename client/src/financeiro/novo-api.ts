@@ -77,7 +77,7 @@ export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { id:
   if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
   return corpo as DocumentoFinanceiro;
 }
-export const estornarOperacao = (id: EntityId, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
+export const estornarOperacao = (id: EntityId, input: { motivo: string; transacoes: { originalId: EntityId; id: EntityId; movimentos: { originalId: EntityId; id: EntityId }[] }[] }) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify(input) });
 export const liquidarCompromisso = (id: EntityId, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(liquidacaoSchema.parse(input)) });
 export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(contaSchema.parse(input)) });
 export const atualizarConta = (id: EntityId, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
