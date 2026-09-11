@@ -9,7 +9,7 @@ type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
 type ItemForm = { id: EntityId; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
 type ParcelaForm = { id: EntityId; valor: string; vencimento: string };
-type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
+type AnexoForm = { id: EntityId; arquivo: File; tipo: string; numero: string };
 type EstadoFormulario = {
   tipo: string; condicao: Condicao; descricao: string; valorOperacao: string; itens: ItemForm[];
   parceiroId: string; categoriaId: string; centroCustoId: string; contaId: string;
@@ -26,7 +26,6 @@ const CAMPO = "mt-1.5 w-full rounded-lg border border-[#d8cfbb] bg-white px-3 py
 const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
 
-let proximoId = 1;
 const uuidOuNovo = (valor: unknown): EntityId => {
   const resultado = entityIdSchema.safeParse(valor);
   return resultado.success ? resultado.data : newEntityId();
@@ -169,12 +168,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     const invalidos = arquivos.filter((arquivo) => arquivo.size > 10 * 1024 * 1024 || !permitidas.has(arquivo.name.split(".").pop()?.toLowerCase() ?? ""));
     if (invalidos.length) setErro(`Alguns arquivos não foram adicionados por formato ou tamanho inválido: ${invalidos.map((arquivo) => arquivo.name).join(", ")}`);
     const validos = arquivos.filter((arquivo) => !invalidos.includes(arquivo));
-    if (operacaoBase) setAnexos((atuais) => [...atuais, ...validos.map((arquivo) => ({ id: proximoId++, arquivo, tipo: "NOTA_FISCAL", numero: "" }))]);
+    if (operacaoBase) setAnexos((atuais) => [...atuais, ...validos.map((arquivo) => ({ id: newEntityId(), arquivo, tipo: "NOTA_FISCAL", numero: "" }))]);
     else if (validos.length) {
       try {
         await persistirRascunho();
         for (const arquivo of validos) {
-          const documento = await anexarDocumentoRascunho({ arquivo, tipo: "NOTA_FISCAL" });
+          const documento = await anexarDocumentoRascunho({ id: newEntityId(), arquivo, tipo: "NOTA_FISCAL" });
           setDocumentosSalvos((atuais) => [...atuais, documento]);
         }
       } catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }

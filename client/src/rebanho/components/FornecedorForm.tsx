@@ -3,6 +3,7 @@ import { criarFornecedor, editarFornecedor, type FornecedorDTO, type TipoPessoa 
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { newEntityId } from "@fazendinha/shared";
 
 const TIPOS: { id: TipoPessoa; label: string }[] = [
   { id: "FORNECEDOR", label: "Fornecedor" },
@@ -20,6 +21,7 @@ export function FornecedorForm({ fornecedor, onFechar, onSalvo }: { fornecedor?:
   });
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [criacaoId] = useState(newEntityId);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
   async function salvar() {
@@ -33,7 +35,7 @@ export function FornecedorForm({ fornecedor, onFechar, onSalvo }: { fornecedor?:
         email: f.email || undefined,
       };
       if (fornecedor) await editarFornecedor(fornecedor.id, payload);
-      else await criarFornecedor(payload);
+      else await criarFornecedor(criacaoId, payload);
       onSalvo();
     } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
   }

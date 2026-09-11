@@ -2,7 +2,6 @@ import { comPropriedade } from "../propriedadeScope";
 import {
   contaSchema,
   liquidacaoSchema,
-  newEntityId,
   operacaoSchema,
   parceiroSchema,
   rascunhoOperacaoSchema,
@@ -46,32 +45,13 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
 export const obterOperacao = (id: EntityId) => req<Operacao>(`/financeiro/operacoes/${id}`);
 export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
 export const obterExtratoConta = (id: EntityId) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
-function comIdentidadesOperacao(input: unknown) {
-  const operacao = input as Record<string, unknown> & { itens?: Record<string, unknown>[]; financeiro?: Record<string, unknown> & { parcelas?: Record<string, unknown>[] } };
-  const financeiro = operacao.financeiro ? { ...operacao.financeiro } : undefined;
-  if (financeiro && (financeiro.condicao === "A_VISTA" || financeiro.condicao === "PARCIAL")) {
-    financeiro.transacaoId ??= newEntityId();
-    financeiro.movimentoId ??= newEntityId();
-  }
-  if (financeiro?.parcelas) {
-    financeiro.parcelas = financeiro.parcelas.map((parcela, indice) => ({ id: newEntityId(), numeroParcela: indice + 1, ...parcela }));
-  }
-  return {
-    id: newEntityId(),
-    registradoEm: new Date().toISOString(),
-    ...operacao,
-    itens: operacao.itens?.map((item, ordem) => ({ id: newEntityId(), ordem, ...item })),
-    financeiro,
-  };
-}
-
-export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(operacaoSchema.parse(comIdentidadesOperacao(input))) });
+export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(operacaoSchema.parse(input)) });
 export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho");
-export const salvarRascunhoOperacao = (dados: unknown, versao?: number, id: EntityId = newEntityId()) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify(rascunhoOperacaoSchema.parse({ id, dados, versao })) });
+export const salvarRascunhoOperacao = (dados: unknown, versao: number | undefined, id: EntityId) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify(rascunhoOperacaoSchema.parse({ id, dados, versao })) });
 export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" });
 export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
-export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
-  const form = new FormData(); form.set("id", newEntityId()); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
+export async function anexarDocumentoRascunho(input: { id: EntityId; arquivo: File; tipo: string; numero?: string }) {
+  const form = new FormData(); form.set("id", input.id); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
   if (input.numero) form.set("numero", input.numero);
   const resposta = await fetch("/api/financeiro/operacoes/rascunho/documentos", { method: "POST", body: form, headers: comPropriedade() });
   const corpo = await resposta.json().catch(() => ({}));
@@ -83,9 +63,9 @@ export async function removerDocumentoRascunho(id: EntityId) {
   if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`); }
 }
 export const atualizarDocumentoRascunho = (id: EntityId, input: { tipo?: string; numero?: string | null }) => req<DocumentoFinanceiro>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { arquivo: File; tipo: string; numero?: string }) {
+export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { id: EntityId; arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData();
-  form.set("id", newEntityId());
+  form.set("id", input.id);
   form.set("arquivo", input.arquivo);
   form.set("nome", input.arquivo.name);
   form.set("tipo", input.tipo);
@@ -98,9 +78,9 @@ export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { arq
   return corpo as DocumentoFinanceiro;
 }
 export const estornarOperacao = (id: EntityId, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
-export const liquidarCompromisso = (id: EntityId, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(liquidacaoSchema.parse({ liquidacaoId: newEntityId(), transacaoId: newEntityId(), movimentoId: newEntityId(), registradoEm: new Date().toISOString(), ...(input as object) })) });
-export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(contaSchema.parse({ id: newEntityId(), ...(input as object) })) });
+export const liquidarCompromisso = (id: EntityId, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(liquidacaoSchema.parse(input)) });
+export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(contaSchema.parse(input)) });
 export const atualizarConta = (id: EntityId, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(parceiroSchema.parse({ id: newEntityId(), ...(input as object) })) });
+export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(parceiroSchema.parse(input)) });
 export const atualizarParceiro = (id: EntityId, input: unknown) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(transferenciaSchema.parse({ operacaoId: newEntityId(), transacaoId: newEntityId(), movimentoOrigemId: newEntityId(), movimentoDestinoId: newEntityId(), registradoEm: new Date().toISOString(), ...(input as object) })) });
+export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(transferenciaSchema.parse(input)) });

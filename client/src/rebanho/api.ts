@@ -997,7 +997,7 @@ export type TipoPessoa = "CLIENTE" | "FORNECEDOR" | "AMBOS";
 export interface FornecedorDTO { id: EntityId; nome: string; documento: string | null; tipo: TipoPessoa; telefone: string | null; email: string | null; ativo: boolean; }
 export interface FornecedorInput { nome: string; documento?: string; tipo?: TipoPessoa; telefone?: string; email?: string; ativo?: boolean; }
 export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<FornecedorDTO[]>(`/rebanho/fornecedores${qs(f)}`);
-export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify({ id: newEntityId(), ...p }) });
+export const criarFornecedor = (id: EntityId, p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify({ id, ...p }) });
 export const editarFornecedor = (id: EntityId, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
 export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {

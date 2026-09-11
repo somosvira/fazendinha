@@ -3,6 +3,7 @@ import { ArrowLeftRight, Landmark, Settings2, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
 import { obterConfiguracoesFinanceiras, obterExtratoConta, transferir, type ConfiguracoesFinanceiras, type Conta, type MovimentoConta } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { newEntityId } from "@fazendinha/shared";
 
 /* Colunas do extrato. Entradas e saídas alinhadas à direita no cabeçalho E na
  * célula; dinheiro nunca quebra no meio (whitespace-nowrap). */
@@ -16,12 +17,13 @@ const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
 
 export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [selecionada, setSelecionada] = useState<Conta | null>(null); const [extrato, setExtrato] = useState<MovimentoConta[]>([]); const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
+  const [idsTransferencia, setIdsTransferencia] = useState(() => ({ operacaoId: newEntityId(), transacaoId: newEntityId(), movimentoOrigemId: newEntityId(), movimentoDestinoId: newEntityId(), registradoEm: new Date().toISOString() }));
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg); setSelecionada((atual) => cfg.contas.find((c) => c.id === atual?.id) ?? cfg.contas[0] ?? null); }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { if (!selecionada) return; obterExtratoConta(selecionada.id).then(setExtrato).catch((e) => setErro(e.message)); }, [selecionada]);
   if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." label="Carregando contas" erro={erro} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
-  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: origemId, contaDestinoId: destinoId, valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ ...idsTransferencia, contaOrigemId: origemId, contaDestinoId: destinoId, valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setIdsTransferencia({ operacaoId: newEntityId(), transacaoId: newEntityId(), movimentoOrigemId: newEntityId(), movimentoDestinoId: newEntityId(), registradoEm: new Date().toISOString() }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 
   return <PaginaFinanceira>
     <PageHeader titulo="Contas e extratos" descricao="Disponibilidades calculadas pelo razão. Transferências redistribuem valores entre contas sem alterar o saldo geral." acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button><Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
