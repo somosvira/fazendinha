@@ -10,6 +10,13 @@ esperados, o estado da validação e a correspondência com os 26 testes. Inclui
 os cenários mínimos da #249 e identifica separadamente falhas, execução
 pendente e lacunas de suporte. Todo QA pela interface continua pendente.
 
+## QA manual e massa de teste
+
+O [roteiro pela interface](249-roteiro-interface.md) descreve 18 fluxos, as
+entidades necessárias, os saldos esperados e como preparar uma rodada persistente
+com `qa249:prepare` e abrir o ambiente isolado com `qa249:dev`. Essa seed é
+separada dos bancos descartáveis usados na suíte automatizada abaixo.
+
 ## Executar
 
 Na raiz da worktree, após `pnpm install --frozen-lockfile`:
