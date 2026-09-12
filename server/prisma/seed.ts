@@ -26,16 +26,18 @@ async function main() {
 
   const banco = await prisma.contaFinanceira.create({ data: {
     nome: "Banco principal", tipo: "BANCO", instituicao: "Banco local", identificacao: "Agência 0001 · Conta 12345-6",
+    tipoBancario: "CORRENTE", agencia: "0001", numeroConta: "12345", digito: "6", titular: "Fazenda Demonstração", ordem: 1,
     saldoAbertura: 125_000, dataSaldoAbertura: data(-30), incluirNoSaldoGeral: true, propriedadeId: propriedade.id,
   } });
   const caixa = await prisma.contaFinanceira.create({ data: {
     nome: "Caixa pequeno", tipo: "CAIXA", identificacao: "Responsável: Administrativo",
+    local: "Escritório", responsavel: "Administrativo", ordem: 2,
     saldoAbertura: 2_500, dataSaldoAbertura: data(-30), incluirNoSaldoGeral: true, propriedadeId: propriedade.id,
   } });
 
-  const cooperativa = await prisma.parceiro.create({ data: { nome: "Cooperativa Agropecuária", documento: "00.000.000/0001-01", tipo: "FORNECEDOR" } });
-  const laticinio = await prisma.parceiro.create({ data: { nome: "Laticínio Regional", documento: "00.000.000/0001-02", tipo: "CLIENTE" } });
-  const oficina = await prisma.parceiro.create({ data: { nome: "Oficina Rural", documento: "00.000.000/0001-03", tipo: "FORNECEDOR" } });
+  const cooperativa = await prisma.parceiro.create({ data: { nome: "Cooperativa Agropecuária", documento: "00000000000101", tipo: "FORNECEDOR", papeis: { create: [{ papel: "FORNECEDOR" }] }, formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] } });
+  const laticinio = await prisma.parceiro.create({ data: { nome: "Laticínio Regional", documento: "00000000000102", tipo: "CLIENTE", papeis: { create: [{ papel: "CLIENTE" }] } } });
+  const oficina = await prisma.parceiro.create({ data: { nome: "Oficina Rural", documento: "00000000000103", tipo: "FORNECEDOR", papeis: { create: [{ papel: "PRESTADOR_SERVICO" }, { papel: "FORNECEDOR" }] }, pessoaContato: "Equipe da oficina", formaPagamentoPreferida: "PIX" } });
   const produtoRacao = await prisma.produto.create({ data: {
     nome: "Ração para lactação", tipo: "RACAO", unidade: "kg", estocavel: true, setor: "LEITE",
     custoUnitario: 12, minimoEstoque: 300, categoriaId: racao.id, centroCustoId: centroLeite.id,

@@ -7,10 +7,14 @@ import type { ConfiguracoesFinanceiras } from "./novo-api";
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 const config: ConfiguracoesFinanceiras = {
-  contas: [{ id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true }],
+  contas: [
+    { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1000", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+    { id: 2, nome: "Conta desativada", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
+  ],
   parceiros: [
-    { id: 1, nome: "Fornecedor Rural", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true },
-    { id: 2, nome: "Cliente Regional", documento: null, tipo: "CLIENTE", telefone: null, email: null, ativo: true },
+    { id: 1, nome: "Fornecedor Rural", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
+    { id: 2, nome: "Cliente Regional", documento: null, tipo: "CLIENTE", telefone: null, email: null, ativo: true, referencias: 0 },
+    { id: 3, nome: "Fornecedor desativado", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: false, referencias: 4 },
   ],
   gruposCategorias: [],
   centrosCusto: [],
@@ -22,6 +26,31 @@ function montar() {
 }
 
 describe("FormOperacao", () => {
+  it("sugere pagamento sem aplicar automaticamente e permite escolher outra forma", () => {
+    render(<FormOperacao config={{ ...config, parceiros: [{ ...config.parceiros[0], papeis: ["PRESTADOR_SERVICO"], formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] }] }} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_VISTA");
+    expect((screen.getByLabelText("Forma de liquidação") as HTMLSelectElement).value).toBe("PIX");
+    fireEvent.click(screen.getByRole("button", { name: "Usar sugestão" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_VISTA");
+    fireEvent.click(screen.getByRole("button", { name: "Usar sugestão" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar sugestão" }));
+    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_PRAZO");
+    expect((screen.getByLabelText("Valor da parcela 1") as HTMLInputElement).value).toBe("50.00");
+    expect((screen.getByLabelText("Valor da parcela 2") as HTMLInputElement).value).toBe("50.00");
+    fireEvent.change(screen.getByLabelText("Condição financeira"), { target: { value: "A_VISTA" } });
+    fireEvent.change(screen.getByLabelText("Forma de liquidação"), { target: { value: "DINHEIRO" } });
+    expect((screen.getByLabelText("Forma de liquidação") as HTMLSelectElement).value).toBe("DINHEIRO");
+  });
+
+  it("bloqueia confirmação de rascunho cujo parceiro perdeu o papel necessário", () => {
+    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "2", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
+    expect(screen.getByRole("alert").textContent).toContain("não tem um papel compatível");
+    expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("abre como página e remove campos físicos quando o tipo é serviço", () => {
     montar();
     expect(screen.getByRole("heading", { name: "Nova operação" })).toBeTruthy();
@@ -84,6 +113,14 @@ describe("FormOperacao", () => {
     montar();
     expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Banco principal.*R\$/ })).toBeNull();
+  });
+
+  it("não oferece contas nem parceiros inativos em uma nova operação", () => {
+    montar();
+    expect(screen.queryByRole("option", { name: "Conta desativada" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Fornecedor desativado" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Fornecedor Rural" })).toBeTruthy();
   });
 
   it("formata o valor informado com duas casas decimais", () => {

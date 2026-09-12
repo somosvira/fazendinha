@@ -1,5 +1,6 @@
 import { prisma } from "../../db.js";
 import { z } from "zod";
+import { papeisDoParceiro, papeisLegados } from "../financeiro/papeis.js";
 
 export class CadastroError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "DUPLICADO", message: string) {
@@ -95,9 +96,20 @@ export async function listarFornecedores(f?: { tipo?: string; q?: string }) {
 }
 export async function criarFornecedor(input: FornecedorInput) {
   if (await prisma.parceiro.findFirst({ where: { nome: input.nome } })) throw new CadastroError("DUPLICADO", `${input.nome} já existe`);
-  return fornDTO(await prisma.parceiro.create({ data: { ...input, tipo: input.tipo ?? "FORNECEDOR", email: input.email || null } }));
+  const tipo = input.tipo ?? "FORNECEDOR";
+  return fornDTO(await prisma.parceiro.create({ data: { ...input, tipo, email: input.email || null, papeis: { create: papeisLegados(tipo).map((papel) => ({ papel })) } } }));
 }
 export async function editarFornecedor(id: number, input: Partial<FornecedorInput>) {
-  if (!(await prisma.parceiro.findUnique({ where: { id } }))) throw new CadastroError("NAO_ENCONTRADO", "fornecedor não encontrado");
-  return fornDTO(await prisma.parceiro.update({ where: { id }, data: { ...input, email: input.email === "" ? null : input.email } }));
+  return prisma.$transaction(async (tx) => {
+    const anterior = await tx.parceiro.findUnique({ where: { id }, include: { papeis: true } });
+    if (!anterior) throw new CadastroError("NAO_ENCONTRADO", "fornecedor não encontrado");
+    // A tela legada edita somente os papéis comerciais, sem apagar prestador/sócio.
+    const papeis = input.tipo && input.tipo !== anterior.tipo
+      ? [...papeisDoParceiro(anterior).filter((p) => p !== "CLIENTE" && p !== "FORNECEDOR"), ...papeisLegados(input.tipo)]
+      : null;
+    return fornDTO(await tx.parceiro.update({ where: { id }, data: {
+      ...input, email: input.email === "" ? null : input.email,
+      ...(papeis ? { papeis: { deleteMany: {}, create: papeis.map((papel) => ({ papel })) } } : {}),
+    } }));
+  });
 }

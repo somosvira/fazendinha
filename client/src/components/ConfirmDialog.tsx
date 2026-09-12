@@ -21,6 +21,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   tone = "neutral",
+  processando = false,
   onConfirm,
   onCancel,
 }: {
@@ -30,6 +31,7 @@ export function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: ConfirmTone;
+  processando?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -39,7 +41,7 @@ export function ConfirmDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!o) onCancel();
+        if (!o && !processando) onCancel();
       }}
     >
       <DialogContent
@@ -49,7 +51,8 @@ export function ConfirmDialog({
           e.preventDefault();
           confirmRef.current?.focus();
         }}
-        className="gap-0"
+        overlayClassName="z-[1200]"
+        className="z-[1200] gap-0"
       >
         <DialogHeader className="border-b border-[color:var(--rule-soft)] px-[22px] pb-3 pt-[18px]">
           <DialogTitle>{title}</DialogTitle>
@@ -62,6 +65,7 @@ export function ConfirmDialog({
             variant="outline"
             className="h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
             onClick={onCancel}
+            disabled={processando}
           >
             {cancelLabel}
           </Button>
@@ -74,6 +78,7 @@ export function ConfirmDialog({
                 : "h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
             }
             onClick={onConfirm}
+            disabled={processando}
           >
             {confirmLabel}
           </Button>

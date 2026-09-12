@@ -1,6 +1,6 @@
 import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { auditar, dinheiro, exigirContaAtiva, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
+import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
@@ -58,6 +58,7 @@ async function criarTransacaoComMovimento(
 
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
       const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId } });
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
@@ -227,6 +228,7 @@ export async function transferir(input: TransferenciaInput) {
 
 export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
   return prisma.$transaction(async (tx) => {
+    if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId);
     const transacao = await criarTransacaoComMovimento(tx, input);
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: transacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: transacao });
     return transacao;

@@ -118,6 +118,14 @@ Sincroniza o schema direto, ignorando o histórico de migrations. É o que histo
 - Se um `migrate deploy` travar no meio (`P3018`), recupere com `prisma migrate resolve --rolled-back <migration>` e depois `db push`.
 - `prisma migrate dev` (criar migration nova) precisa da `DIRECT_URL` real — ver "Pooled vs direct URL" no `CLAUDE.md`.
 
+#### PR #259 — cadastros financeiros ampliados
+
+A migration `20260911180000_cadastros_financeiros` é aditiva e faz os backfills `DINHEIRO → CAIXA` e `AMBOS → CLIENTE + FORNECEDOR`, sem recriar contas/parceiros ou alterar seus IDs. Aplicar **antes de disponibilizar a nova API/UI**, após backup e conferência do ambiente. A baseline desta branch é `20260910150000_baseline`.
+
+Em banco vazio, `prisma migrate deploy` aplica baseline + ampliação. Em banco existente sem histórico, comparar primeiro o schema existente com a baseline e só registrar a baseline como aplicada se forem equivalentes; depois aplicar a ampliação. Se as colunas já vieram de `db push`, conferir o schema e executar/verificar o backfill antes de registrar a migration como aplicada. Não executar a baseline de criação sobre tabelas existentes nem resetar banco com dados.
+
+Após `db push`, executar `pnpm --filter rionovo-server run backfill:cadastros-financeiros` para o backfill idempotente (`garantirCadastrosFinanceiros`). Assim como os demais bootstraps da main, ele é manual e roda em Node apontando para o banco do ambiente, inclusive quando o app usa Worker. Não dispara no boot nem em requests. Isso **não substitui** a aplicação controlada do schema em produção. Não manter instâncias antigas escrevendo os tipos legados durante o rollout. Nenhuma migration de produção é executada automaticamente pelo PR.
+
 ### 1.5. Bootstrap do dono (script manual)
 
 O login é por conta real (`Usuario` + `Sessao`). `garantirDonoBootstrap()` não dispara mais sozinho no boot (nem em Node, nem faria sentido num Worker) — rode manualmente depois do primeiro deploy, com `AUTH_BOOTSTRAP_EMAIL` setado e a tabela `Usuario` vazia:

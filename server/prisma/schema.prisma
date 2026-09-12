@@ -30,6 +30,21 @@ enum TipoParceiro {
   OUTRO
 }
 
+enum PapelParceiro {
+  CLIENTE
+  FORNECEDOR
+  PRESTADOR_SERVICO
+  FUNCIONARIO
+  PROPRIETARIO
+  OUTRO
+}
+
+enum TipoBancario {
+  CORRENTE
+  POUPANCA
+  PAGAMENTO
+}
+
 enum TipoOperacaoFinanceira {
   COMPRA_ESTOQUE
   COMPRA_CONSUMO_DIRETO
@@ -154,6 +169,15 @@ model ContaFinanceira {
   tipo                TipoContaFinanceira
   instituicao         String?
   identificacao       String?
+  tipoBancario        TipoBancario?
+  agencia             String?
+  numeroConta         String?
+  digito              String?
+  titular             String?
+  local               String?
+  responsavel         String?
+  observacoes         String?
+  ordem               Int                 @default(0)
   saldoAbertura       Decimal             @default(0) @db.Decimal(14, 2)
   dataSaldoAbertura   DateTime            @db.Date
   incluirNoSaldoGeral Boolean             @default(true)
@@ -343,22 +367,46 @@ model ProdutoPrincipioAtivo {
 }
 
 model Parceiro {
-  id           Int                     @id @default(autoincrement())
-  nome         String
-  documento    String?
-  tipo         TipoParceiro            @default(FORNECEDOR)
-  telefone     String?
-  email        String?
-  ativo        Boolean                 @default(true)
-  operacoes    Operacao[]
-  compromissos CompromissoFinanceiro[]
-  transacoes   TransacaoFinanceira[]
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
+  id                         Int                     @id @default(autoincrement())
+  nome                       String
+  documento                  String?
+  tipo                       TipoParceiro            @default(FORNECEDOR)
+  telefone                   String?
+  email                      String?
+  nomeFantasia               String?
+  pessoaContato              String?
+  telefoneWhatsapp           Boolean                 @default(false)
+  cep                        String?
+  logradouro                 String?
+  numero                     String?
+  complemento                String?
+  bairro                     String?
+  cidade                     String?
+  uf                         String?
+  referencia                 String?
+  observacoes                String?
+  formaPagamentoPreferida    FormaPagamento?
+  condicaoPagamentoPreferida String?
+  prazosPagamento            Int[]                   @default([])
+  papeis                     ParceiroPapel[]
+  ativo                      Boolean                 @default(true)
+  operacoes                  Operacao[]
+  compromissos               CompromissoFinanceiro[]
+  transacoes                 TransacaoFinanceira[]
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
 
   @@unique([documento])
   @@index([nome])
   @@index([tipo, ativo])
+}
+
+model ParceiroPapel {
+  parceiroId Int
+  papel      PapelParceiro
+  parceiro   Parceiro      @relation(fields: [parceiroId], references: [id], onDelete: Cascade)
+
+  @@id([parceiroId, papel])
 }
 
 model PeriodoFinanceiro {
