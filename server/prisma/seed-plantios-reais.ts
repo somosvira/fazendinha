@@ -35,10 +35,9 @@
 //   sair sem a nota de "saída mista" (ver resumo.recompute.ts).
 // -----------------------------------------------------------------------------
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { recomputarResumoSafra } from "../src/services/cultivo/resumo.recompute.js";
-
-const prisma = new PrismaClient();
 
 const D = (x: number) => new Prisma.Decimal(x.toFixed(2));
 const D3 = (x: number) => new Prisma.Decimal(x.toFixed(3));

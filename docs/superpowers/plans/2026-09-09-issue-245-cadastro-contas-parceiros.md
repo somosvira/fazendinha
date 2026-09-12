@@ -31,7 +31,7 @@ Esta seção substitui as exclusões de campos/schema do plano original abaixo.
 
 ### Banco e execução local
 
-Aplicar `20260911180000_cadastros_financeiros` após a baseline; não resetar bancos com dados. `pnpm prisma:generate` e `pnpm dev` usam o banco configurado em `server/.env`: confirmar `DATABASE_URL` e `DIRECT_URL` locais antes. O boot também faz backfill idempotente para o fluxo local de `db push`. Para ambientes existentes sem histórico de migrations, seguir a verificação/baseline descrita em `DEPLOY.md`, nunca marcar migration como aplicada sem conferir o schema/SQL.
+Aplicar `20260911180000_cadastros_financeiros` após a baseline; não resetar bancos com dados. `pnpm prisma:generate` e `pnpm dev` usam o banco configurado em `server/.env`: confirmar `DATABASE_URL` e `DIRECT_URL` locais antes. Após `db push`, rodar `pnpm --filter rionovo-server run backfill:cadastros-financeiros` (idempotente e manual, conforme a arquitetura Node/Worker da main). Para ambientes existentes sem histórico de migrations, seguir a verificação/baseline descrita em `DEPLOY.md`, nunca marcar migration como aplicada sem conferir o schema/SQL.
 
 ---
 

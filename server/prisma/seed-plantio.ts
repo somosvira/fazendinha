@@ -7,10 +7,8 @@
 //
 //   pnpm --filter rionovo-server run seed:plantio
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { talhoes, resumos, lavouras, planosAdubacao, eventos } from "../src/services/plantio/mock.js";
-
-const prisma = new PrismaClient();
 
 // Cultivares resistentes à ferrugem (Hemileia vastatrix) — Embrapa/Procafé.
 const RESISTENTE = /Acauã|Arara|Icatu|Catucaí|Paraíso|Asa Branca/i;
