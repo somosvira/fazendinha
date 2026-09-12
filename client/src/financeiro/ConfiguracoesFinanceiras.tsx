@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Building2, Pencil, Plus, Power, PowerOff, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
@@ -14,22 +14,28 @@ type Confirmacao = { tipo: "conta"; item: Conta } | { tipo: "parceiro"; item: Pa
 
 /* Coluna de ações: editar e desativar/reativar. Os botões param a propagação
  * para não disparar o `onAbrir` da linha (que também abre a edição). */
-function AcoesLinha({ nome, ativo, onEditar, onAlternar }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void }) {
+function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
   const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
   return <div className="flex items-center justify-end gap-1">
+    {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
+    {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
     <button type="button" onClick={parar(onEditar)} aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
     <button type="button" onClick={parar(onAlternar)} aria-label={`${ativo ? "Desativar" : "Reativar"} ${nome}`} className={cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
   </div>;
 }
 
-const colunasContas = (editar: (c: Conta) => void, alternar: (c: Conta) => void): ColunaTabela<Conta>[] => [
+const colunasContas = (contas: Conta[], editar: (c: Conta) => void, alternar: (c: Conta) => void, mover: (c: Conta, direcao: -1 | 1) => void): ColunaTabela<Conta>[] => [
   { chave: "conta", titulo: "Conta", larguraMinima: 230, principal: true, celula: (c) => <><strong className="break-words">{c.nome}</strong><div className="mt-1 break-words text-xs text-ink-3">{c.instituicao || c.identificacao || "Sem identificação adicional"}</div></> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (c) => <span className="whitespace-nowrap">{TIPO_CONTA[c.tipo] ?? c.tipo}</span> },
   { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 130, celula: (c) => <><span className="whitespace-nowrap">{brl(c.saldoAbertura)}</span><div className="whitespace-nowrap text-xs text-ink-3">{dataBR(c.dataSaldoAbertura)}</div></> },
   { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 130, celula: (c) => <strong className="whitespace-nowrap font-semibold">{brl(c.saldoAtual)}</strong> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 180, acoes: true, celula: (c) => {
+    const grupo = contas.filter((item) => item.ativo === c.ativo);
+    const indice = grupo.findIndex((item) => item.id === c.id);
+    return <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} onSubir={() => mover(c, -1)} onDescer={() => mover(c, 1)} podeSubir={indice > 0} podeDescer={indice >= 0 && indice < grupo.length - 1} />;
+  } },
 ];
 
 const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro) => void): ColunaTabela<Parceiro>[] => [
@@ -81,6 +87,15 @@ export function ConfiguracoesFinanceiras() {
     if (p.ativo) { setConfirmando({ tipo: "parceiro", item: p }); return; }
     await executar(() => atualizarParceiro(p.id, { ativo: true }));
   };
+  const moverConta = async (conta: Conta, direcao: -1 | 1) => {
+    const grupo = config.contas.filter((item) => item.ativo === conta.ativo);
+    const atual = grupo.findIndex((item) => item.id === conta.id);
+    const destino = atual + direcao;
+    if (atual < 0 || destino < 0 || destino >= grupo.length) return;
+    const reordenadas = [...grupo];
+    [reordenadas[atual], reordenadas[destino]] = [reordenadas[destino], reordenadas[atual]];
+    await executar(() => Promise.all(reordenadas.map((item, ordem) => item.ordem === ordem ? Promise.resolve(item) : atualizarConta(item.id, { ordem }))));
+  };
   const confirmarDesativacao = async () => {
     if (!confirmando) return;
     await executar(async () => {
@@ -101,10 +116,10 @@ export function ConfiguracoesFinanceiras() {
     <ErrorBox erro={erro} />
     <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users]] as const).map(([k, label, Icon]) => <button key={k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${aba === k ? "border-mast text-ink" : "border-transparent text-ink-3"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0"><Panel className="mt-5 overflow-hidden">{aba === "contas"
-      ? <TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(editar, alternarConta)} chaveDe={(c) => c.id} onAbrir={editar} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
+      ? <TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(config.contas, editar, alternarConta, moverConta)} chaveDe={(c) => c.id} onAbrir={editar} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
       : <TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros(editar, alternarParceiro)} chaveDe={(p) => p.id} onAbrir={editar} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} />}</Panel></fieldset>
 
-    {painel && aba === "contas" && <FormConta key={chavePainel} aberto conta={contaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel && aba === "contas" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel && aba === "parceiros" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 
     <ConfirmDialog

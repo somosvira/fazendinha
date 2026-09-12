@@ -44,8 +44,17 @@ function validarInstituicao(conta: { tipo: string; instituicao?: string | null }
   }
 }
 
+function validarDadosBancarios(conta: { tipo: string; agencia?: string | null; numeroConta?: string | null; titular?: string | null }) {
+  if (conta.tipo !== "BANCO") return;
+  if (!conta.agencia?.trim()) throw new FinanceiroError("VALIDACAO", "Informe a agência", "agencia");
+  if (!conta.numeroConta?.trim()) throw new FinanceiroError("VALIDACAO", "Informe o número da conta", "numeroConta");
+  if (!conta.titular?.trim()) throw new FinanceiroError("VALIDACAO", "Informe o titular", "titular");
+  if (/\d/.test(conta.titular)) throw new FinanceiroError("VALIDACAO", "O titular não pode conter números", "titular");
+}
+
 export async function criarConta(input: z.infer<typeof contaSchema> & { propriedadeId: number; usuarioId?: number | null }) {
   validarInstituicao(input);
+  validarDadosBancarios(input);
   try {
     return await prisma.$transaction(async (tx) => {
       const { usuarioId, ...dados } = input;

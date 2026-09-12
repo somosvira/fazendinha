@@ -70,6 +70,14 @@ describe("contas financeiras", () => {
     expect(conta).toMatchObject({ id: 3, saldoAtual: new Prisma.Decimal(25), temMovimentos: false });
   });
 
+  it("exige dados bancários mínimos e recusa número no titular", async () => {
+    const base = { nome: "Banco", tipo: "BANCO" as const, instituicao: "Sicoob", saldoAbertura: 0, dataSaldoAbertura: new Date(), incluirNoSaldoGeral: true, propriedadeId: 1 };
+    await expect(criarConta(base)).rejects.toMatchObject({ campo: "agencia" });
+    await expect(criarConta({ ...base, agencia: "1", numeroConta: "2", titular: "João 2" })).rejects.toMatchObject({ campo: "titular" });
+    await criarConta({ ...base, agencia: "1", numeroConta: "2", titular: "João Silva" });
+    expect(mocks.create).toHaveBeenCalled();
+  });
+
   it("calcula saldo atual e temMovimentos a partir do razão", async () => {
     mocks.contasFindMany.mockResolvedValue([
       { ...anterior, movimentos: [{ direcao: "ENTRADA", valor: new Prisma.Decimal(100) }, { direcao: "SAIDA", valor: new Prisma.Decimal(30) }] },

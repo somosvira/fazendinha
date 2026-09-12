@@ -13,7 +13,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
 
 const config: Config = {
   contas: [
-    { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
+    { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", agencia: "1", numeroConta: "2", titular: "Fazenda Rio Novo", ordem: 0, saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
     { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
   parceiros: [{ id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 }],
@@ -26,6 +26,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 
 beforeEach(() => {
   vi.clearAllMocks();
+  Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue(config);
   vi.mocked(atualizarConta).mockResolvedValue(config.contas[0]);
   vi.mocked(atualizarParceiro).mockResolvedValue(config.parceiros[0]);
@@ -38,6 +39,11 @@ async function montar(aba: "contas" | "parceiros" = "contas") {
   if (aba === "parceiros") fireEvent.click(screen.getByRole("button", { name: /Clientes e fornecedores/ }));
 }
 
+async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
+  fireEvent.click(within(painel).getByRole("combobox", { name: rotulo }));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+}
+
 describe("ConfiguracoesFinanceiras — contas", () => {
   it("exige instituição para banco, aceita caixa sem banco e não oferece tipo dinheiro", async () => {
     await montar();
@@ -48,7 +54,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     expect(within(painel).getByText("Informe a instituição financeira")).toBeTruthy();
     expect(criarConta).not.toHaveBeenCalled();
     expect(within(painel).queryByRole("option", { name: "Dinheiro" })).toBeNull();
-    fireEvent.change(within(painel).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    await escolherSelect(painel, "Tipo", "Caixa físico");
     fireEvent.change(within(painel).getByLabelText("Local"), { target: { value: "Escritório" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
     await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ tipo: "CAIXA", saldoAbertura: 0, local: "Escritório" })));
@@ -76,14 +82,43 @@ describe("ConfiguracoesFinanceiras — contas", () => {
       expect(within(painel).getByLabelText(rotulo)).toBeTruthy();
     }
     fireEvent.change(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Aplicação CDB" } });
-    fireEvent.change(within(painel).getByLabelText("Tipo"), { target: { value: "APLICACAO" } });
+    await escolherSelect(painel, "Tipo", "Aplicação financeira");
     fireEvent.change(within(painel).getByLabelText("Instituição"), { target: { value: "Sicredi" } });
     fireEvent.change(within(painel).getByLabelText("Saldo de abertura"), { target: { value: "500" } });
     fireEvent.change(within(painel).getByLabelText("Data do saldo de abertura"), { target: { value: "2026-03-15" } });
     fireEvent.click(within(painel).getByLabelText("Incluir no saldo geral"));
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
-    await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicredi", identificacao: null, saldoAbertura: 500, dataSaldoAbertura: "2026-03-15", incluirNoSaldoGeral: false, ordem: 0 })));
+    await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicredi", identificacao: null, saldoAbertura: 500, dataSaldoAbertura: "2026-03-15", incluirNoSaldoGeral: false, ordem: 1 })));
     await waitFor(() => expect(obterConfiguracoesFinanceiras).toHaveBeenCalledTimes(2));
+  });
+
+  it("usa moeda sem setas, selects estilizados e remove a ordem numérica do formulário", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
+    expect(saldo.type).toBe("text");
+    expect(saldo.inputMode).toBe("decimal");
+    expect(saldo.value).toBe("0,00");
+    expect(within(painel).getByText("R$")).toBeTruthy();
+    expect(within(painel).queryByLabelText("Ordem de exibição")).toBeNull();
+    expect(within(painel).getByRole("combobox", { name: "Tipo" }).getAttribute("data-slot")).toBe("select-trigger");
+    expect(within(painel).getByRole("combobox", { name: "Tipo bancário" }).getAttribute("data-slot")).toBe("select-trigger");
+    fireEvent.change(within(painel).getByLabelText("Titular"), { target: { value: "Fazenda 123 Rio Novo" } });
+    expect((within(painel).getByLabelText("Titular") as HTMLInputElement).value).toBe("Fazenda  Rio Novo");
+  });
+
+  it("reordena contas pelas setas da listagem", async () => {
+    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
+      ...config,
+      contas: [{ ...config.contas[0], ordem: 0 }, { ...config.contas[1], ativo: true, ordem: 1 }],
+    });
+    await montar();
+    fireEvent.click(primeiro("button", "Mover Gaveta para cima"));
+    await waitFor(() => {
+      expect(atualizarConta).toHaveBeenCalledWith(2, { ordem: 0 });
+      expect(atualizarConta).toHaveBeenCalledWith(1, { ordem: 1 });
+    });
   });
 
   it("editar carrega os valores atuais, trava abertura com movimentos e envia só o que mudou", async () => {

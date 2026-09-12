@@ -51,17 +51,44 @@ export function validarEmail(valor: string): string | null {
 
 export type ErrosCampo = Record<string, string>;
 
-export type FormularioConta = { nome: string; saldoAbertura: string; dataSaldoAbertura: string };
+export type FormularioConta = {
+  nome: string;
+  saldoAbertura: string;
+  dataSaldoAbertura: string;
+  tipo?: "BANCO" | "CAIXA" | "APLICACAO";
+  instituicao?: string;
+  agencia?: string;
+  numeroConta?: string;
+  titular?: string;
+};
 export type FormularioParceiro = { nome: string; documento: string; email: string };
 
 export function validarConta(form: FormularioConta, opcoes: { aberturaEditavel: boolean }): ErrosCampo {
   const erros: ErrosCampo = {};
   if (form.nome.trim().length < 2) erros.nome = "Informe um nome com pelo menos 2 caracteres";
   if (opcoes.aberturaEditavel) {
-    if (form.saldoAbertura.trim() === "" || Number.isNaN(Number(form.saldoAbertura))) erros.saldoAbertura = "Informe um valor numérico";
+    const saldo = Number(form.saldoAbertura.replace(",", "."));
+    if (form.saldoAbertura.trim() === "" || !Number.isFinite(saldo)) erros.saldoAbertura = "Informe um valor em reais";
+    else if (!/^-?\d+(?:[.,]\d{1,2})?$/.test(form.saldoAbertura.trim())) erros.saldoAbertura = "Use no máximo 2 casas decimais";
     if (!form.dataSaldoAbertura) erros.dataSaldoAbertura = "Informe a data do saldo de abertura";
   }
+  if (form.tipo && form.tipo !== "CAIXA" && !form.instituicao?.trim()) erros.instituicao = "Informe a instituição financeira";
+  if (form.tipo === "BANCO") {
+    if (!form.agencia?.trim()) erros.agencia = "Informe a agência";
+    if (!form.numeroConta?.trim()) erros.numeroConta = "Informe o número da conta";
+    if (!form.titular?.trim()) erros.titular = "Informe o titular";
+    else if (/\d/.test(form.titular)) erros.titular = "O titular não pode conter números";
+  }
   return erros;
+}
+
+export function valorMonetario(valor: string): number {
+  return Number(valor.replace(",", "."));
+}
+
+export function formatarValorMonetario(valor: string): string {
+  const numero = valorMonetario(valor);
+  return Number.isFinite(numero) ? numero.toFixed(2).replace(".", ",") : valor;
 }
 
 export function validarParceiro(form: FormularioParceiro): ErrosCampo {

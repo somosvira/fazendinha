@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatarDocumento, validarCnpj, validarConta, validarCpf, validarDocumento, validarEmail, validarParceiro } from "./validacao";
+import { formatarDocumento, formatarValorMonetario, validarCnpj, validarConta, validarCpf, validarDocumento, validarEmail, validarParceiro, valorMonetario } from "./validacao";
 
 describe("validação de cadastros financeiros", () => {
   it("valida CPF com dígitos verificadores", () => {
@@ -39,6 +39,18 @@ describe("validação de cadastros financeiros", () => {
     const erros = validarConta({ nome: "A", saldoAbertura: "x", dataSaldoAbertura: "" }, { aberturaEditavel: true });
     expect(Object.keys(erros).sort()).toEqual(["dataSaldoAbertura", "nome", "saldoAbertura"]);
     expect(validarConta({ nome: "Ok", saldoAbertura: "x", dataSaldoAbertura: "" }, { aberturaEditavel: false })).toEqual({});
+  });
+
+  it("valida os dados mínimos de banco e titular sem números", () => {
+    expect(validarConta({ nome: "Banco", tipo: "BANCO", instituicao: "Sicoob", agencia: "", numeroConta: "", titular: "João 2", saldoAbertura: "0,00", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true }))
+      .toEqual({ agencia: "Informe a agência", numeroConta: "Informe o número da conta", titular: "O titular não pode conter números" });
+    expect(validarConta({ nome: "Banco", tipo: "BANCO", instituicao: "Sicoob", agencia: "1", numeroConta: "2", titular: "João Silva", saldoAbertura: "0,00", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true })).toEqual({});
+  });
+
+  it("normaliza moeda brasileira com duas casas decimais", () => {
+    expect(valorMonetario("123,45")).toBe(123.45);
+    expect(formatarValorMonetario("123.4")).toBe("123,40");
+    expect(validarConta({ nome: "Caixa", saldoAbertura: "1,234", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true })).toMatchObject({ saldoAbertura: "Use no máximo 2 casas decimais" });
   });
 
   it("validarParceiro agrega erros por campo", () => {
