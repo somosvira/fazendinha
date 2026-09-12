@@ -1,5 +1,9 @@
 # QA #249 — roteiro para testar Financeiro pela interface
 
+Versão interativa: [abrir checklist HTML](249-checklist.html). Abra o arquivo no
+navegador para marcar etapas, registrar resultados e exportar o progresso.
+Não precisa de servidor para o checklist.
+
 Use junto da [matriz de efeitos](249-matriz-efeitos.md). Este documento é um roteiro
 para execução humana; as caixas começam vazias. Os testes automáticos já
 reproduziram três defeitos, mas nenhum fluxo abaixo foi marcado como aprovado
