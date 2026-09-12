@@ -49,8 +49,11 @@ describe("validação de cadastros financeiros", () => {
 
   it("normaliza moeda brasileira com duas casas decimais", () => {
     expect(valorMonetario("123,45")).toBe(123.45);
-    expect(formatarValorMonetario("123.4")).toBe("123,40");
-    expect(validarConta({ nome: "Caixa", saldoAbertura: "1,234", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true })).toMatchObject({ saldoAbertura: "Use no máximo 2 casas decimais" });
+    expect(valorMonetario("1.000,25")).toBe(1000.25);
+    expect(valorMonetario("1.000")).toBe(1000);
+    expect(formatarValorMonetario("1234.5")).toBe("1.234,50");
+    expect(validarConta({ nome: "Caixa", saldoAbertura: "1,23", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true })).toEqual({});
+    expect(validarConta({ nome: "Caixa", saldoAbertura: "1,2345", dataSaldoAbertura: "2026-09-12" }, { aberturaEditavel: true })).toMatchObject({ saldoAbertura: "Use um valor em reais com até 2 casas decimais" });
   });
 
   it("validarParceiro agrega erros por campo", () => {

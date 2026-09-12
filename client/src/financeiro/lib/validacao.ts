@@ -67,9 +67,9 @@ export function validarConta(form: FormularioConta, opcoes: { aberturaEditavel: 
   const erros: ErrosCampo = {};
   if (form.nome.trim().length < 2) erros.nome = "Informe um nome com pelo menos 2 caracteres";
   if (opcoes.aberturaEditavel) {
-    const saldo = Number(form.saldoAbertura.replace(",", "."));
+    const saldo = valorMonetario(form.saldoAbertura);
     if (form.saldoAbertura.trim() === "" || !Number.isFinite(saldo)) erros.saldoAbertura = "Informe um valor em reais";
-    else if (!/^-?\d+(?:[.,]\d{1,2})?$/.test(form.saldoAbertura.trim())) erros.saldoAbertura = "Use no máximo 2 casas decimais";
+    else if (!/^-?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?$/.test(form.saldoAbertura.trim()) && !/^-?\d+(?:\.\d{1,2})?$/.test(form.saldoAbertura.trim())) erros.saldoAbertura = "Use um valor em reais com até 2 casas decimais";
     if (!form.dataSaldoAbertura) erros.dataSaldoAbertura = "Informe a data do saldo de abertura";
   }
   if (form.tipo && form.tipo !== "CAIXA" && !form.instituicao?.trim()) erros.instituicao = "Informe a instituição financeira";
@@ -83,12 +83,15 @@ export function validarConta(form: FormularioConta, opcoes: { aberturaEditavel: 
 }
 
 export function valorMonetario(valor: string): number {
-  return Number(valor.replace(",", "."));
+  const limpo = valor.trim();
+  if (limpo.includes(",")) return Number(limpo.replace(/\./g, "").replace(",", "."));
+  if (/^-?\d{1,3}(?:\.\d{3})+$/.test(limpo)) return Number(limpo.replace(/\./g, ""));
+  return Number(limpo);
 }
 
 export function formatarValorMonetario(valor: string): string {
   const numero = valorMonetario(valor);
-  return Number.isFinite(numero) ? numero.toFixed(2).replace(".", ",") : valor;
+  return Number.isFinite(numero) ? numero.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) : valor;
 }
 
 export function validarParceiro(form: FormularioParceiro): ErrosCampo {
