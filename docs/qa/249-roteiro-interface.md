@@ -216,15 +216,20 @@ Execute um teste independente por linha, usando conta/produto com o mesmo códig
 - U08: [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____
 - U09: [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____
 
-### U10 — ajuste positivo e negativo (M09–M10)
+### U10 — ajustar a quantidade contada no Estoque (M09–M10)
 
-1. Estoque U10 inicia em 10. Em Nova operação escolha Ajuste de estoque, produto
-   U10, quantidade 10, unitário 10, descrição `QA249 U10 conferência positiva`.
-2. Confirme sem financeiro: estoque **20**, conta U10 **1.000**, nenhum compromisso.
-3. Em Estoque > Registrar movimento escolha **Ajuste (inventário)**, produto U10,
-   quantidade **-10**, data hoje e observação `QA249 U10 correção de contagem`.
-4. Salve: estoque deve voltar a **10**, conta continua 1.000. Não tente inserir
-   negativo no formulário financeiro atual, que exige quantidade positiva.
+1. Abra Estoque > **Ajustar quantidade**. Selecione **QA249 U10 Produto**, cujo
+   saldo inicial é 10 kg. Ajuste de estoque não deve aparecer em Nova operação.
+2. Informe **20** em Quantidade encontrada na contagem e a justificativa
+   `QA249 U10 contagem positiva`. Revise **diferença +10 kg** e estoque final 20.
+3. Confirme: estoque **20**, conta U10 **1.000**, nenhum compromisso ou pagamento.
+4. Abra novo ajuste do mesmo produto e informe **10** (não -10), com justificativa
+   `QA249 U10 recontagem`. Revise **diferença -10 kg** e confirme: estoque **10**.
+5. Verifique que informar novamente 10 mostra Nenhum ajuste necessário e bloqueia
+   confirmação. Informe **0**, justifique e revise a diferença -10: zerar é válido.
+   Confirme e confira estoque zero, conta 1.000 e histórico dos três ajustes.
+6. Se aparecer aviso de saldo alterado, use **Atualizar saldo**, confira novamente
+   a diferença e só então confirme. Não deve sobrescrever movimentos concorrentes.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — IDs: ____ Evidência: ____
 

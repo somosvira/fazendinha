@@ -36,7 +36,7 @@ antes de avaliar a implementação; suporte ausente não equivale a teste aprova
 | M07 | Serviço puro à vista | 0 → 0; nenhum movimento | 1.000 → 900 | Não cria | Passou para conta/estoque; serviço a prazo pendente |
 | M08 | Venda de produto estocável à vista | 10 → 0 | 1.000 → 1.100 | Não cria | Passou para conta/estoque; venda a prazo pendente |
 | M09 | Ajuste positivo justificado, sem financeiro | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
-| M10 | Ajuste negativo justificado de 10 kg | 10 → 0 | 1.000 → 1.000 | Não cria | Pendente; estoque aceita delta negativo, formulário/schema financeiro exigem quantidade positiva |
+| M10 | Ajuste negativo justificado de 10 kg | 10 → 0 | 1.000 → 1.000 | Não cria | Coberto pela contagem no Estoque: informar quantidade final, com delta negativo calculado no servidor; UI pendente |
 | M11 | Inventário inicial de 10 kg | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
 | M12 | Bonificação recebida de 10 kg | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
 | M13 | Devolução ao fornecedor, com restituição imediata de 100 | 10 → 0 | 1.000 → 1.100 | Não cria | Passou para conta/estoque; vínculo com compra original e devolução de compra ainda não paga pendentes |
@@ -134,3 +134,15 @@ informação não equivale a validação automatizada dela.
 6. Só marcar o critério de execução da matriz na #249 quando os cenários mínimos
    tiverem evidência ou lacuna formalmente tratada; a existência desta tabela
    satisfaz a documentação da matriz, não sua execução integral.
+
+## Evolução: ajuste por quantidade contada
+
+Ajuste foi retirado das opções de Nova operação. No Estoque, a pessoa informa a
+quantidade encontrada (inclusive zero) e revisa a diferença. O tipo interno
+AJUSTE_ESTOQUE continua nos registros, sem efeito financeiro. Rascunhos antigos
+desse tipo não são convertidos nem confirmados silenciosamente pela interface.
+
+Quatro testes adicionais em PostgreSQL passaram: contagem para reduzir/aumentar/
+zerar, rejeição de saldo desatualizado/sem diferença, rollback da auditoria e
+isolamento por propriedade. A suíte agora tem 30 casos: 25 passaram e as mesmas
+5 falhas anteriores continuam abertas. O quadro de 26 acima é a execução inicial.

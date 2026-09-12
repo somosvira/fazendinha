@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { movimentoSchema } from "./estoque.js";
+import { movimentoSchema, ajusteContagemSchema } from "./estoque.js";
 
 const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 const amanha = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
@@ -34,4 +34,11 @@ describe("movimentoSchema", () => {
   it("rejeita ajuste sem justificativa", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: 10 }).success).toBe(false);
   });
+});
+
+describe("ajusteContagemSchema", () => {
+  const base = { produtoId: 1, saldoEsperado: 10, quantidadeContada: 0, observacao: "Contagem física" };
+  it("aceita contagem zero", () => expect(ajusteContagemSchema.safeParse(base).success).toBe(true));
+  it.each([-1, 1.001, Infinity, NaN])("rejeita contagem inválida %s", quantidadeContada => expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada }).success).toBe(false));
+  it("exige justificativa real", () => expect(ajusteContagemSchema.safeParse({ ...base, observacao: "     " }).success).toBe(false));
 });

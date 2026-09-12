@@ -120,3 +120,16 @@ serviço, não toda a autorização HTTP entre propriedades.
 Próximo passo: registrar os três defeitos em issues vinculadas à #249, corrigir em
 mudanças específicas e repetir este comando. Depois, executar os cenários pendentes da matriz e o QA
 visual antes de encerrar a issue geral.
+
+## Atualização: ajuste de contagem no Estoque
+
+Nova operação não oferece mais ajuste de estoque. O endpoint
+`POST /rebanho/estoque/ajustes` recebe quantidadeContada, saldoEsperado e
+justificativa; calcula o delta na transação, recusa saldo alterado e conserva
+origem, item, autoria e auditoria. Zero é válido; nenhuma diferença não cria
+movimento. O tipo interno e as rotas legadas são preservados.
+
+Validação PostgreSQL atual: **30 casos, 25 passaram e 5 falharam**. Os quatro
+novos casos de contagem passaram. Os três defeitos previamente documentados
+continuam pendentes, incluindo o cálculo de saldo após reversão; esta mudança
+não corrige esses defeitos. O roteiro U10 e o checklist HTML foram atualizados.

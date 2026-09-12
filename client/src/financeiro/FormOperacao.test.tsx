@@ -26,6 +26,12 @@ function montar() {
 }
 
 describe("FormOperacao", () => {
+  it("não oferece ajuste de estoque como nova operação", () => {
+    montar();
+    expect(screen.queryByRole("option", { name: "Ajuste de estoque" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Compra para estoque" })).toBeTruthy();
+  });
+
   it("sugere pagamento sem aplicar automaticamente e permite escolher outra forma", () => {
     render(<FormOperacao config={{ ...config, parceiros: [{ ...config.parceiros[0], papeis: ["PRESTADOR_SERVICO"], formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] }] }} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });

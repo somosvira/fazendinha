@@ -248,4 +248,40 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     }
   });
 
+  it("contagem encontrada reduz, aumenta e zera o estoque sem dinheiro", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    await snapshot("antes da contagem");
+    for (const [saldoEsperado, quantidadeContada] of [[10, 8], [8, 12], [12, 0]]) {
+      const r = await stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado, quantidadeContada, observacao: "Contagem física conferida", usuarioId: userId });
+      expect(r.diferenca).toBe(quantidadeContada - saldoEsperado);
+      const state = await snapshot(`contagem ${quantidadeContada}`);
+      expect(state.saldoEstoque).toBe(quantidadeContada);
+      expect(state.saldoConta).toBe(1000);
+      const op = state.operacoes.find(o => o.id === r.operacaoId)!;
+      expect(op.tipo).toBe("AJUSTE_ESTOQUE");
+      expect(op.transacoes).toHaveLength(0); expect(op.compromissos).toHaveLength(0);
+      expect(op.movimentosEstoque[0]).toMatchObject({ itemOperacaoId: op.itens[0].id, propriedadeId: pid, criadoPorId: userId });
+    }
+    expect(await db.auditoriaFinanceira.count({ where: { usuarioId: userId, acao: "AJUSTE_CONTAGEM" } })).toBe(3);
+  });
+  it("contagem com saldo antigo ou sem diferença não grava efeitos", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    const before = await snapshot("antes");
+    await expect(stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado: 0, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId })).rejects.toThrow("estoque mudou");
+    await expect(stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado: 10, quantidadeContada: 10, observacao: "Contagem conferida", usuarioId: userId })).rejects.toThrow("Nenhum ajuste");
+    expect(await snapshot("recusadas")).toEqual(before);
+  });
+  it("falha de auditoria reverte ajuste de contagem inteiro", async () => {
+    const before = await snapshot("antes");
+    await failAudit(() => stock.ajustarContagem({ propriedadeId: pid, produtoId: productId, saldoEsperado: 0, quantidadeContada: 8, observacao: "Contagem conferida", usuarioId: userId }));
+    expect(await snapshot("rollback contagem")).toEqual(before);
+  });
+  it("contagem usa somente movimentos da propriedade escolhida", async () => {
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    const outra = await db.propriedade.create({ data: { nome: `Contagem outra ${serial}` } });
+    await stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, saldoEsperado: 0, quantidadeContada: 2, observacao: "Contagem outra propriedade", usuarioId: userId });
+    expect((await snapshot("principal preservada")).saldoEstoque).toBe(10);
+    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find(p => p.produtoId === productId)?.saldo).toBe(2);
+  });
+
 });

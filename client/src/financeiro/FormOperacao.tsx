@@ -183,7 +183,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && Math.abs(totalParcelas - total) < 0.01
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturo > 0 && parcelas.length > 0 && Math.abs(totalParcelas - saldoFuturo) < 0.01 : true;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
-  const podeConfirmar = descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+  const podeConfirmar = tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
@@ -225,6 +225,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   };
 
   return <div className="shell-wide pb-10">
+    {tipo === "AJUSTE_ESTOQUE" && <p role="alert" className="mb-4 rounded-lg bg-amber-50 p-4">Ajustes de contagem são feitos na tela de <a href="/pecuaria/estoque" className="underline">Estoque</a>. Este rascunho não será confirmado como operação financeira.</p>}
     <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
@@ -233,7 +234,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
+            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{tipo === "AJUSTE_ESTOQUE" && <option value="AJUSTE_ESTOQUE" disabled>Ajuste de estoque — use Estoque</option>}{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["AJUSTE_ESTOQUE", "TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
             <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select aria-label={parceiroLabel(tipo)} required className={SELECT} value={parceiroId} onChange={(e) => setParceiroId(e.target.value)}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select></label>}
             <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea aria-label="Descrição" required maxLength={240} className={`${CAMPO} min-h-20`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></label>
