@@ -5,51 +5,50 @@ para execução humana; as caixas começam vazias. Os testes automáticos já
 reproduziram três defeitos, mas nenhum fluxo abaixo foi marcado como aprovado
 visualmente só por esse motivo.
 
-## 1. Preparar e abrir o ambiente
+## 1. Usar o ambiente local habitual
 
-Na pasta do projeto aberta no VS Code, com Node 22.13+ ou Node 24 e PostgreSQL local:
+Usamos **um único banco: fazendinha_local**, configurado em `server/.env`,
+e as portas habituais: API **41873**, interface **41875**. O agente não inicia
+os servidores; você controla a execução no terminal do VS Code.
+
+Para abrir o app (a seed desta rodada já está aplicada):
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm --filter rionovo-server qa249:prepare
-pnpm --filter rionovo-server qa249:dev
+nvm use 22.21.1
+pnpm dev
 ```
 
-O primeiro comando de QA cria um banco novo, aplica migrations e executa a seed
-`server/prisma/seed-qa249.ts`. O segundo inicia API em **42973** e interface em
-**42975**, sem trocar o banco do dev habitual. Abra **http://localhost:42975**.
-Não use `pnpm dev` para esta rodada: ele usa a configuração habitual do projeto.
+Abra **http://localhost:41875**. Para parar, **Ctrl+C** no mesmo terminal.
+
+Para preparar a massa em outro checkout local, depois de instalar dependências
+e sincronizar o schema pelo fluxo normal do projeto:
+
+```sh
+pnpm --filter rionovo-server seed:qa249
+```
+
+A seed é **aditiva**: mantém dados locais existentes e acrescenta os cadastros
+com prefixo QA249. Reexecutá-la não apaga nem restaura testes manuais já feitos.
+Não existe mais `qa249:dev`, `qa249:prepare` ou criação de banco por rodada.
 
 - Acesso completo: **qa249@example.test** / **QA249-local-2026!**
 - Acesso de consulta: **qa249-consulta@example.test** / **QA249-local-2026!**
-- Selecione **QA249 Principal** no seletor de propriedade. Não teste no consolidado.
-- Essas senhas pertencem exclusivamente aos usuários fictícios do banco local.
-- O banco fica salvo quando você encerra o app. `Ctrl+C` encerra API/interface.
+- Selecione **QA249 Principal**, não o consolidado nem a Fazenda Demonstração.
+- Os dados anteriores do banco local continuam presentes. As contagens e saldos
+  deste roteiro se referem à massa QA249 e ao escopo indicado, não ao banco inteiro.
+- Se aparecerem dados de uma conexão antiga, faça logout e limpe os dados do site
+  `localhost:41875` antes do novo login.
 
-`qa249:prepare` novamente preserva a rodada, inclusive operações feitas por você.
-Para repetir tudo do zero, pare o app e execute:
+Manifesto de IDs/datas: `server/.qa249/local/manifesto.json`. Anexo fictício:
+`server/.qa249/local/comprovante-qa249.xml`. Essa pasta é ignorada pelo Git.
+A seed só aceita conexão local para fazendinha_local e não reinicializa o banco.
+Para repetir um fluxo já executado, use novos cadastros identificados ou faça um
+reset local deliberado; não há reset automático. Cancelar não é forma segura de
+zerar a massa enquanto o defeito de saldo físico estiver aberto.
 
-```sh
-pnpm --filter rionovo-server qa249:prepare --nova-rodada
-pnpm --filter rionovo-server qa249:dev
-```
-
-Isso cria **outro** banco e mantém o anterior. Faça logout e limpe os dados do site
-`localhost:42975` no navegador (cache, localStorage e IndexedDB) antes do novo login,
-para não carregar sessão ou dados da rodada antiga. Não use cancelamento de
-operações como forma de zerar a massa: há um defeito conhecido nesse fluxo.
-
-Conexão, IDs, datas de referência e estoque inicial ficam em
-`server/.qa249/atual.json` e no `manifesto.json` da pasta da rodada indicada ali.
-O XML para anexar fica nessa mesma pasta: **comprovante-qa249.xml** (fictício,
-sem valor fiscal). A pasta `.qa249` é local e ignorada pelo Git.
-
-O runner só aceita PostgreSQL local e gera seu próprio nome de banco.
-`QA_DATABASE_ADMIN_URL` configura a conexão administrativa, se necessário.
-As URLs de banco dos subprocessos são explicitamente sobrescritas; o Prisma CLI
-pode carregar outras variáveis de `.env` ao aplicar migrations, mas não substitui
-essas URLs. O servidor de QA usa storage local e não recebe chaves de IA, WhatsApp
-ou envio de e-mail. Nenhum seed habitual, importação ou reset é executado.
+Os testes automáticos também usam fazendinha_local, mas suas tabelas ficam em um
+schema temporário removido ao final. O schema `public` do app e seus dados são
+preservados. Não é criado outro banco ou outro servidor PostgreSQL.
 
 ## 2. Quais entidades precisamos para uma operação
 
@@ -84,7 +83,7 @@ saldos físicos devem respeitar o escopo selecionado.
 - [ ] Estoque U06, U10 e U11: **10 kg cada**; demais produtos ativos: zero.
 - [ ] Operações: **3 inventários** com descrição `SEED QA249 ... estoque inicial`.
 - [ ] Compromissos e extratos: nenhum pagamento/recebimento inicial.
-- [ ] Configurações: 6 parceiros, 3 categorias, 1 centro de custo.
+- [ ] Configurações: 6 parceiros, 3 categorias, 1 centro de custo com prefixo QA249.
 
 A seed contém 21 contas ao todo e 18 produtos (17 ativos e 1 inativo). U05 e U18
 não têm produto próprio. Os três inventários valem R$ 100 cada: podem aparecer
@@ -313,7 +312,7 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
    parceiro inativo. Reative o parceiro ao terminar, para não afetar outros fluxos.
 7. Descarte o rascunho U17. Confirme conta 1.000 e estoque zero; não deve existir
    operação confirmada desse fluxo. Se um bloqueio falhar, registre e não use
-   esse estado como início das demais tentativas — comece outra rodada.
+   esse estado como início das demais tentativas — prepare um novo conjunto de cadastros para esse fluxo.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — Evidência: ____
 
@@ -366,7 +365,7 @@ Copie este bloco para cada fluxo e mantenha junto das capturas:
 ```text
 Fluxo / linha da matriz:
 Data, navegador, largura da tela:
-Commit e banco/rodada (nome do manifesto):
+Commit e manifesto da massa local:
 Usuário e propriedade:
 OP / compromisso / produto / conta:
 Antes: conta __; estoque __; pendente __
@@ -384,14 +383,14 @@ Não encerrar a #249 somente porque a seed foi criada ou o app abriu. A conclus�
 exige a matriz executada, lacunas tratadas, defeitos vinculados e evidências dos
 fluxos aplicáveis. As falhas conhecidas devem permanecer visíveis no registro.
 
-## Validação da preparação (12/09/2026)
+## Validação da preparação
 
-- Migrations aplicadas em banco local novo; seed executada com validação das
-  contas, saldos físicos e ausência de pagamentos/compromissos pelo Prisma real.
-- Autenticação dos dois usuários validada; repetição da preparação preservou
-  a rodada existente.
-- API e Vite iniciados nas portas dedicadas. Smoke HTTP pelo proxy da interface
-  validou login, configurações da Principal (20 contas, 6 parceiros, 17 produtos
-  ativos, R$ 18.200), compromissos vazios e entrega da página de Nova operação.
-- TypeScript da seed e suíte dedicada aprovado. Isso valida a preparação;
-  os checklists manuais acima continuam sem execução visual.
+A massa foi aplicada e verificada em fazendinha_local, preservando as 7 operações
+anteriores e acrescentando 3 inventários QA249 (10 operações ao todo). O schema
+foi sincronizado sem reset. Os saldos QA e o login dos dois usuários foram
+verificados pelos serviços reais. Os dois bancos extras foram removidos após
+backup em `server/.qa249/backups/`.
+
+A preparação anterior usou portas/banco separados; isso foi removido. Os servidores
+permanecem parados para você iniciar com `pnpm dev`. O checklist visual continua
+pendente de execução humana.

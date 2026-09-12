@@ -13,9 +13,9 @@ pendente e lacunas de suporte. Todo QA pela interface continua pendente.
 ## QA manual e massa de teste
 
 O [roteiro pela interface](249-roteiro-interface.md) descreve 18 fluxos, as
-entidades necessárias, os saldos esperados e como preparar uma rodada persistente
-com `qa249:prepare` e abrir o ambiente isolado com `qa249:dev`. Essa seed é
-separada dos bancos descartáveis usados na suíte automatizada abaixo.
+entidades necessárias, os saldos esperados e como adicionar a massa ao banco local
+com `seed:qa249` e abrir o app com `pnpm dev`, nas portas habituais. A suíte
+automatizada usa tabelas separadas dentro do mesmo banco local.
 
 ## Executar
 
@@ -26,21 +26,15 @@ pnpm --filter rionovo-server test:financeiro:integration
 pnpm --filter rionovo-server exec tsc -p tsconfig.financeiro.json
 ```
 
-Requer PostgreSQL local e usuário com permissão de criar bancos. O padrão usa o
-usuário do sistema em `127.0.0.1:5432/postgres`. Para outra configuração local,
-defina `QA_DATABASE_ADMIN_URL`. Hosts remotos e query parameters são recusados.
-O runner não usa `DATABASE_URL`/`DIRECT_URL` da aplicação nem carrega `.env`;
-substitui ambas as URLs por um banco novo com nome aleatório `fazendinha_qa249_*`.
+Requer PostgreSQL local e `server/.env` apontando para **fazendinha_local**.
+O runner cria um schema temporário `qa249_test_*` dentro desse banco, aplica
+migrations nesse schema e injeta um cliente Prisma real configurado para ele.
+Não cria outro banco. Ao terminar remove somente esse schema; `public` e os dados
+de desenvolvimento são preservados. Não execute esse runner contra produção.
 
-Cada execução aplica migrations, executa fixtures determinísticas isoladas por
-cenário e remove seu próprio banco no `finally`, inclusive quando há falhas.
-Interrupção abrupta do processo pode impedir o `finally`. Nunca se deve apontar
-este runner para um banco da aplicação. Não usa seeds de negócio ou produção.
-
-O diretório temporário informado no terminal contém `resultados.json` (Vitest) e
-`estados.json` (antes/depois, incluindo registros completos e auditoria). Preserve
-esses arquivos ao anexar evidências a uma issue; diretórios temporários podem ser
-limpos pelo sistema. Nenhum dado ou credencial de produção entra nas fixtures.
+As evidências `resultados.json` e `estados.json` ficam no diretório temporário
+informado pelo comando. Interrupção abrupta pode impedir a limpeza do schema.
+A seed manual é independente e aditiva; usa as tabelas habituais de `public`.
 
 A configuração dedicada inclui `server/tests/financeiro`, fora do glob da suíte
 comum. Falhas reais continuam vermelhas: não há `it.fails`, skip ou atualização de
@@ -110,8 +104,8 @@ depois: operação, itens, compromisso, transação, movimentos físicos/finance
 rascunho, documento e auditoria. O trigger é removido em `finally`.
 
 O caso de rascunho também confirma uma nova tentativa bem-sucedida. Estes testes
-usam o Prisma e os serviços reais; nenhuma implementação de `$transaction` é
-simulada. Sequências de IDs podem avançar em rollback do PostgreSQL; isso não é
+usam o Prisma e os serviços reais; o módulo de conexão é substituído por um
+Prisma real no schema temporário, sem simular `$transaction` ou consultas. Sequências de IDs podem avançar em rollback do PostgreSQL; isso não é
 tratado como registro parcial.
 
 ## Limites desta entrega

@@ -1,15 +1,24 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
 
-// Executar apenas através do runner que cria e remove um banco descartável.
-const database = process.env.FINANCE_QA_DATABASE;
+// O runner usa tabelas em um schema temporário dentro do único banco local.
+const database = "fazendinha_local";
+const qaSchema = process.env.FINANCE_QA_SCHEMA;
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid/invalid");
-if (!database || !/^fazendinha_qa249_[a-f0-9]{16}$/.test(database) || url.pathname !== `/${database}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
+if (!qaSchema || !/^qa249_test_[a-f0-9]{16}$/.test(qaSchema) || url.searchParams.get("schema") !== qaSchema || url.pathname !== `/${database}` || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) {
   throw new Error("Use pnpm --filter rionovo-server test:financeiro:integration");
 }
+// Injeção de um Prisma REAL com namespace de teste; não simula métodos/queries.
+vi.mock("../../src/db.js", async () => {
+  const { PrismaClient } = await import("@prisma/client");
+  const { PrismaPg } = await import("@prisma/adapter-pg");
+  const connection = new URL(process.env.DATABASE_URL!);
+  connection.searchParams.delete("schema");
+  return { prisma: new PrismaClient({ adapter: new PrismaPg({ connectionString: connection.href, options: `-c search_path=${process.env.FINANCE_QA_SCHEMA}` }, { schema: process.env.FINANCE_QA_SCHEMA }) }) };
+});
 let db: PrismaClient;
 let ops: typeof import("../../src/services/financeiro/operacoes.js");
 let drafts: typeof import("../../src/services/financeiro/rascunhos.js");

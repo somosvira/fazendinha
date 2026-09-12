@@ -1,13 +1,15 @@
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 
-// Guard antes de importar db.ts: jamais lê o banco habitual da aplicação.
-const database = process.env.QA249_UI_DATABASE;
+// Seed aditiva no banco local habitual. Nunca apaga ou reseta dados existentes.
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid/invalid");
-if (!database || !/^fazendinha_qa249_ui_[a-f0-9]{16}$/.test(database) || url.pathname !== `/${database}` || url.search || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) || !process.env.QA249_UI_DIR) {
-  throw new Error("Use pnpm --filter rionovo-server qa249:prepare");
+const database = decodeURIComponent(url.pathname.slice(1));
+if (database !== "fazendinha_local" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) || process.env.NODE_ENV === "production") {
+  throw new Error("A seed QA249 exige DATABASE_URL local apontando para fazendinha_local");
 }
+const directory = resolve(".qa249", "local");
+mkdirSync(directory, { recursive: true });
 const { prisma } = await import("../src/db.js");
 const { hashSenha } = await import("../src/services/auth/hash.js");
 const { aplicarPreset } = await import("../src/services/auth/papeis.js");
@@ -33,13 +35,13 @@ const scenarios = [
 try {
   const dbName = await prisma.$queryRaw<{ nome: string }[]>`SELECT current_database()::text AS nome`;
   assert.equal(dbName[0].nome, database);
-  const manifestPath = resolve(process.env.QA249_UI_DIR, "manifesto.json");
-  if (await prisma.propriedade.count()) {
-    if (!existsSync(manifestPath) || !(await prisma.propriedade.findUnique({ where: { nome: "QA249 Principal" } }))) throw new Error("Banco não vazio sem manifesto válido; não será alterado");
+  const manifestPath = resolve(directory, "manifesto.json");
+  if (await prisma.propriedade.findUnique({ where: { nome: "QA249 Principal" } })) {
+    if (!existsSync(manifestPath)) throw new Error("Massa QA249 já existe sem manifesto local; não será duplicada ou resetada");
     console.log("Seed já aplicada. Cadastros, saldos e testes manuais preservados.");
   } else {
     const manifest = await prisma.$transaction(async tx => {
-      const principal = await tx.propriedade.create({ data: { nome: "QA249 Principal", apelido: "QA Principal", principal: true, ordem: 1 } });
+      const principal = await tx.propriedade.create({ data: { nome: "QA249 Principal", apelido: "QA Principal", principal: (await tx.propriedade.count()) === 0, ordem: 1 } });
       const secundaria = await tx.propriedade.create({ data: { nome: "QA249 Secundária", apelido: "QA Secundária", ordem: 2 } });
       const usuarios = [];
       for (const [email, papel, dono] of [["qa249@example.test", "proprietario", true], ["qa249-consulta@example.test", "consulta", false]] as const) {
@@ -87,13 +89,13 @@ try {
       assert.equal(Number(contas.find(c => c.id === caso.conta.id)?.saldoAtual), 1000);
       if (caso.produto) assert.equal(saldos.find(p => p.produtoId === caso.produto!.id)?.saldo, caso.produto.estoqueInicial);
     }
-    assert.equal(await prisma.operacao.count(), 3);
-    assert.equal(await prisma.compromissoFinanceiro.count(), 0);
-    assert.equal(await prisma.transacaoFinanceira.count(), 0);
-    assert.equal(await prisma.rascunhoOperacao.count(), 0);
+    assert.equal(await prisma.operacao.count({ where: { propriedadeId: manifest.propriedades[0].id } }), 3);
+    assert.equal(await prisma.compromissoFinanceiro.count({ where: { operacao: { propriedadeId: manifest.propriedades[0].id } } }), 0);
+    assert.equal(await prisma.transacaoFinanceira.count({ where: { propriedadeId: manifest.propriedades[0].id } }), 0);
+    assert.equal(await prisma.rascunhoOperacao.count({ where: { propriedadeId: manifest.propriedades[0].id } }), 0);
     for (const u of manifest.usuarios) assert.ok(await autenticar(u.email, senha));
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    writeFileSync(resolve(process.env.QA249_UI_DIR, "comprovante-qa249.xml"), '<?xml version="1.0" encoding="UTF-8"?>\n<comprovanteQA><aviso>DOCUMENTO FICTICIO SEM VALOR FISCAL</aviso><numero>QA249-001</numero><valor>100.00</valor></comprovanteQA>\n');
+    writeFileSync(resolve(directory, "comprovante-qa249.xml"), '<?xml version="1.0" encoding="UTF-8"?>\n<comprovanteQA><aviso>DOCUMENTO FICTICIO SEM VALOR FISCAL</aviso><numero>QA249-001</numero><valor>100.00</valor></comprovanteQA>\n');
     console.log("Seed verificada: 2 propriedades, 2 acessos, 21 contas, 6 parceiros, 18 produtos, 3 categorias, 1 centro; 3 inventários e nenhum compromisso/pagamento.");
   }
   console.log(`Login: qa249@example.test / ${senha}\nConsulta: qa249-consulta@example.test / ${senha}`);
