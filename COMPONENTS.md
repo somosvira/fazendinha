@@ -387,6 +387,13 @@ Todos em `client/src/components/charts.tsx` — **SVG inline próprio, sem depen
 
 ## 12. Drawers, modais e dialogs
 
+### Cadastros financeiros e confirmações
+
+- `financeiro/PainelCadastro.tsx` reutiliza `Sheet`, com cabeçalho, conteúdo rolável e rodapé fixo durante rolagem. Painel e overlay usam camada 1100, acima do Assistente (1000), para não encobrir salvar.
+- `components/ui/sheet.tsx` aceita `overlayClassName` para manter overlay e conteúdo na mesma camada quando necessário.
+- `components/ConfirmDialog.tsx` aceita `processando`: desabilita confirmar/cancelar e bloqueia fechamento enquanto uma ação está pendente. Usa camada 1200 para ficar acima dos painéis.
+- `financeiro/PainelCadastro.tsx:CampoFormulario` aceita `obrigatorio` para sinal visual; o controle mantém `required` quando aplicável e recebe rótulo acessível/erro por campo. `CamposCadastro` compartilha os grupos de campos textuais de conta/endereço.
+
 ### `.rb-drawer`
 
 - **Path CSS:** `rebanho.css`

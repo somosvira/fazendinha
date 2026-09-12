@@ -16,9 +16,9 @@ const p2002 = (target: string[]) => new Prisma.PrismaClientKnownRequestError("du
 describe("parceiros", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.findUnique.mockResolvedValue({ id: 5, nome: "Zé", ativo: true, _count: { operacoes: 2, compromissos: 1, transacoes: 1 } });
-    mocks.update.mockResolvedValue({ id: 5, nome: "Zé", ativo: false });
-    mocks.create.mockResolvedValue({ id: 6, nome: "Maria", ativo: true });
+    mocks.findUnique.mockResolvedValue({ id: 5, nome: "Zé", tipo: "FORNECEDOR", ativo: true, _count: { operacoes: 2, compromissos: 1, transacoes: 1 } });
+    mocks.update.mockResolvedValue({ id: 5, nome: "Zé", tipo: "FORNECEDOR", ativo: false });
+    mocks.create.mockResolvedValue({ id: 6, nome: "Maria", tipo: "CLIENTE", ativo: true });
   });
 
   it("traduz documento duplicado em CONFLITO apontando o campo", async () => {
@@ -33,7 +33,7 @@ describe("parceiros", () => {
 
   it("desativar audita antes e depois e envia só ativo", async () => {
     const parceiro = await atualizarParceiro(5, { ativo: false }, 9);
-    expect(mocks.update).toHaveBeenCalledWith({ where: { id: 5 }, data: { ativo: false } });
+    expect(mocks.update).toHaveBeenCalledWith({ where: { id: 5 }, data: { ativo: false }, include: { papeis: true } });
     expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entidade: "Parceiro", acao: "ATUALIZADO", usuarioId: 9 }) }));
     expect(parceiro).toMatchObject({ id: 5, ativo: false, referencias: 4 });
   });
@@ -44,8 +44,8 @@ describe("parceiros", () => {
   });
 
   it("agrega referencias a partir das contagens", async () => {
-    mocks.findMany.mockResolvedValue([{ id: 1, nome: "A", _count: { operacoes: 2, compromissos: 1, transacoes: 3 } }]);
+    mocks.findMany.mockResolvedValue([{ id: 1, nome: "A", tipo: "AMBOS", _count: { operacoes: 2, compromissos: 1, transacoes: 3 } }]);
     const [p] = await listarParceiros(true);
-    expect(p).toEqual({ id: 1, nome: "A", referencias: 6 });
+    expect(p).toEqual({ id: 1, nome: "A", tipo: "AMBOS", papeis: ["CLIENTE", "FORNECEDOR"], referencias: 6 });
   });
 });

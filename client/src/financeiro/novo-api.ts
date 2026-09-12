@@ -1,14 +1,26 @@
 import { comPropriedade } from "../propriedadeScope";
 
-export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO";
+export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
+export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
+export type TipoBancario = "CORRENTE" | "POUPANCA" | "PAGAMENTO";
+export type DadosConta = {
+  tipoBancario?: TipoBancario | null; agencia?: string | null; numeroConta?: string | null; digito?: string | null;
+  titular?: string | null; local?: string | null; responsavel?: string | null; observacoes?: string | null; ordem?: number;
+};
+export type DadosParceiro = {
+  papeis?: PapelParceiro[]; nomeFantasia?: string | null; pessoaContato?: string | null; telefoneWhatsapp?: boolean;
+  cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
+  bairro?: string | null; cidade?: string | null; uf?: string | null; referencia?: string | null; observacoes?: string | null;
+  formaPagamentoPreferida?: string | null; condicaoPagamentoPreferida?: "A_VISTA" | "A_PRAZO" | null; prazosPagamento?: number[];
+};
 export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
 export type ContaBase = { id: number; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean; ativo: boolean };
-export type Conta = ContaBase & { saldoAtual: string; temMovimentos: boolean };
+export type Conta = ContaBase & DadosConta & { saldoAtual: string; temMovimentos: boolean };
 export type ParceiroBase = { id: number; nome: string; documento: string | null; tipo: TipoParceiro; telefone: string | null; email: string | null; ativo: boolean };
-export type Parceiro = ParceiroBase & { referencias: number };
+export type Parceiro = ParceiroBase & DadosParceiro & { referencias: number };
 export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string | null; identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean };
-export type ContaPatch = Partial<ContaInput> & { ativo?: boolean };
-export type ParceiroInput = { nome: string; documento?: string | null; tipo: TipoParceiro; telefone?: string | null; email?: string | null };
+export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
+export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: number; nome: string };
 export type GrupoCategoria = { id: number; nome: string; categorias: Categoria[] };
@@ -82,7 +94,7 @@ export async function anexarDocumentoOperacao(operacaoId: number, input: { arqui
 }
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
 export const liquidarCompromisso = (id: number, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
-export const criarConta = (input: ContaInput) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
+export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
 export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });

@@ -33,6 +33,15 @@ function falha(c: Context, erro: unknown) {
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
 }
 
+function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
+  return zValidator("json", schema, (resultado, c) => {
+    if (!resultado.success) {
+      const erro = resultado.error.issues[0];
+      return c.json({ error: erro.message, code: "VALIDACAO", campo: String(erro.path[0] ?? "") }, 422);
+    }
+  });
+}
+
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
@@ -51,14 +60,14 @@ export const financeiroRouter = new Hono()
     return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim));
   })
   .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
-  .post("/financeiro/contas", zValidator("json", contaSchema), async (c) => {
+  .post("/financeiro/contas", validarCadastro(contaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(await contas.criarConta({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/contas/:id", zValidator("json", patchContaSchema), async (c) => {
+  .patch("/financeiro/contas/:id", validarCadastro(patchContaSchema), async (c) => {
     try { return c.json(await contas.atualizarConta(Number(c.req.param("id")), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
@@ -70,11 +79,11 @@ export const financeiroRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/parceiros", async (c) => c.json(await parceiros.listarParceiros(c.req.query("inativos") === "true")))
-  .post("/financeiro/parceiros", zValidator("json", parceiroSchema), async (c) => {
+  .post("/financeiro/parceiros", validarCadastro(parceiroSchema), async (c) => {
     try { return c.json(await parceiros.criarParceiro({ ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/parceiros/:id", zValidator("json", patchParceiroSchema), async (c) => {
+  .patch("/financeiro/parceiros/:id", validarCadastro(patchParceiroSchema), async (c) => {
     try { return c.json(await parceiros.atualizarParceiro(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })

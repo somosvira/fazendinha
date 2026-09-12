@@ -77,7 +77,7 @@ describe("schemas de conta e parceiro (cadastros)", () => {
   });
 
   it("conta: instituição e identificação vazias viram null", () => {
-    const r = contaSchema.parse({ nome: "Banco", tipo: "BANCO", dataSaldoAbertura: "2026-01-01", instituicao: "  ", identificacao: "" });
+    const r = contaSchema.parse({ nome: "Banco", tipo: "BANCO", saldoAbertura: 0, dataSaldoAbertura: "2026-01-01", instituicao: "  ", identificacao: "" });
     expect(r.instituicao).toBeNull(); expect(r.identificacao).toBeNull();
   });
 

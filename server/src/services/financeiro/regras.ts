@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { papelCompativel, papeisDoParceiro } from "./papeis.js";
 
 export type DbFinanceiro = Prisma.TransactionClient | PrismaClient;
 
@@ -53,9 +54,12 @@ export async function exigirContaAtiva(db: DbFinanceiro, contaId: number, propri
   return conta;
 }
 
-export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: number) {
-  const parceiro = await db.parceiro.findFirst({ where: { id: parceiroId, ativo: true } });
+export async function exigirParceiroAtivo(db: DbFinanceiro, parceiroId: number, tipoOperacao?: string) {
+  const parceiro = await db.parceiro.findFirst({ where: { id: parceiroId, ativo: true }, include: { papeis: true } });
   if (!parceiro) throw new FinanceiroError("NAO_ENCONTRADO", "Parceiro não encontrado ou inativo", "parceiroId");
+  if (tipoOperacao && !papelCompativel(papeisDoParceiro(parceiro), tipoOperacao)) {
+    throw new FinanceiroError("VALIDACAO", "Selecione um parceiro com papel compatível com esta operação", "parceiroId");
+  }
   return parceiro;
 }
 

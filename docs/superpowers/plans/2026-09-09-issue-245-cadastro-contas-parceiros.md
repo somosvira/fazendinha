@@ -4,6 +4,37 @@ Issue: https://github.com/somosvira/fazendinha/issues/245
 Branch sugerida: `feat/245-cadastro-contas-parceiros` (a partir de `main`).
 Commits em PT-BR no formato `feat(financeiro): ...` / `test(financeiro): ...`.
 
+## Ampliação aprovada em 11/09/2026 — mesmo PR #259
+
+Esta seção substitui as exclusões de campos/schema do plano original abaixo.
+
+- Contas: banco, caixa físico e aplicação básica. `DINHEIRO` deixa de ser tipo de conta e migra para `CAIXA`, conservando ID, saldo e movimentos; continua sendo forma de pagamento.
+- Banco: tipo bancário (corrente/poupança/pagamento), agência, número, dígito e titular. Caixa: local e responsável. Ambos: finalidade/observação e ordem de exibição. Identificação livre anterior preservada.
+- Nome, tipo, saldo (zero válido) e data de abertura obrigatórios; instituição obrigatória em banco/aplicação. Novos detalhes opcionais para compatibilidade com cadastros antigos e contas de pagamento. Abertura bloqueada após movimentos.
+- Parceiro: um ou mais papéis, incluindo prestador de serviço; `AMBOS` vira cliente + fornecedor. Nome fantasia, contato, WhatsApp, endereço e observações opcionais.
+- Preferências de forma e condição/prazos de pagamento são opcionais. A operação mostra sugestão, pede confirmação para aplicá-la e permanece livre para edição. Nunca aplicar ao trocar parceiro, recalcular sobre parcelas editadas ou validar a operação contra a preferência.
+- Venda exige cliente; compras/devolução exigem fornecedor; serviço aceita prestador ou fornecedor. Validação também no backend e na confirmação de rascunhos. Liquidação/estorno históricos não perdem o parceiro por mudança de papel/inativação.
+- Sem relação direta parceiro-produto: o histórico já se relaciona por operação/item.
+- Corrigir acesso ao extrato de contas inativas/fora dos três cards, teclado das ações de tabela e requisições duplicadas de ativação/desativação. Painel acima do Assistente para não cobrir salvar.
+
+### Aceitação e teste manual
+
+1. Criar banco com instituição e detalhes estruturados; reabrir e conferir todos os valores. Sem instituição, salvar deve apontar o campo.
+2. Criar caixa com saldo zero, local e responsável sem exigir instituição; não deve existir opção de conta “Dinheiro”. Criar aplicação somente com cadastro básico.
+3. Alterar saldo/data sem movimentos; após uma operação, tentar novamente na UI e API e verificar bloqueio. Renomear não muda saldo.
+4. Desativar/reativar sem duplicar requests; consultar extrato da conta inativa e de uma quarta conta. Inativas não aparecem em novas operações/transferências.
+5. Criar parceiro fornecedor + prestador, preencher contato/endereço/preferências, reabrir e editar. Selecionar zero papéis deve falhar; CPF/CNPJ/e-mail/CEP/UF/prazos inválidos devem apontar campo.
+6. Escolher prestador em serviço; conferir que não aparece para compra nem venda sem esses papéis. Retomar rascunho com parceiro inativo/incompatível e verificar aviso/bloqueio.
+7. Escolher parceiro com sugestão 30/60 e boleto: nada muda automaticamente. Cancelar “Usar sugestão” preserva tudo; confirmar divide valores sem perder centavos. Alterar depois para Pix/à vista deve ser permitido.
+8. Liquidar/estornar registros antigos após desativação do parceiro; histórico e vínculos preservados.
+9. Usar Enter/Espaço nos botões de linha sem abrir a edição por propagação. Conferir painel e ações a 1180px e 720px, sem sobreposição do Assistente.
+
+### Banco e execução local
+
+Aplicar `20260911180000_cadastros_financeiros` após a baseline; não resetar bancos com dados. `pnpm prisma:generate` e `pnpm dev` usam o banco configurado em `server/.env`: confirmar `DATABASE_URL` e `DIRECT_URL` locais antes. O boot também faz backfill idempotente para o fluxo local de `db push`. Para ambientes existentes sem histórico de migrations, seguir a verificação/baseline descrita em `DEPLOY.md`, nunca marcar migration como aplicada sem conferir o schema/SQL.
+
+---
+
 ## 0. Contexto que o executor precisa saber antes de tocar em código
 
 - Os modelos reais são **`ContaFinanceira`** e **`Parceiro`** (`server/prisma/schema.prisma`, ~L150 e ~L344). Enums: `TipoContaFinanceira` (BANCO, CAIXA, APLICACAO, DINHEIRO) e `TipoParceiro` (CLIENTE, FORNECEDOR, AMBOS, FUNCIONARIO, PROPRIETARIO, OUTRO). **Nenhuma mudança de schema/migration é necessária.** Não inventar campos.

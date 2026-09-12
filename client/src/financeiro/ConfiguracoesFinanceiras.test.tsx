@@ -14,7 +14,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
 const config: Config = {
   contas: [
     { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Sicoob", identificacao: "Ag. 1 · C/C 2", saldoAbertura: "1000", dataSaldoAbertura: "2026-09-01", saldoAtual: "1200", incluirNoSaldoGeral: true, ativo: true, temMovimentos: true },
-    { id: 2, nome: "Gaveta", tipo: "DINHEIRO", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
+    { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
   parceiros: [{ id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 }],
   gruposCategorias: [], centrosCusto: [], produtos: [],
@@ -39,6 +39,34 @@ async function montar(aba: "contas" | "parceiros" = "contas") {
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
+  it("exige instituição para banco, aceita caixa sem banco e não oferece tipo dinheiro", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Caixa de teste" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
+    expect(within(painel).getByText("Informe a instituição financeira")).toBeTruthy();
+    expect(criarConta).not.toHaveBeenCalled();
+    expect(within(painel).queryByRole("option", { name: "Dinheiro" })).toBeNull();
+    fireEvent.change(within(painel).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    fireEvent.change(within(painel).getByLabelText("Local"), { target: { value: "Escritório" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
+    await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ tipo: "CAIXA", saldoAbertura: 0, local: "Escritório" })));
+  });
+
+  it("ignora eventos de teclado dos botões filhos e bloqueia reativação duplicada", async () => {
+    let concluir!: (conta: Config["contas"][number]) => void;
+    vi.mocked(atualizarConta).mockImplementation(() => new Promise((resolve) => { concluir = resolve; }));
+    await montar();
+    const botao = primeiro("button", "Reativar Gaveta");
+    fireEvent.keyDown(botao, { key: "Enter" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(botao);
+    fireEvent.click(botao);
+    expect(atualizarConta).toHaveBeenCalledTimes(1);
+    concluir(config.contas[1]);
+    await waitFor(() => expect(obterConfiguracoesFinanceiras).toHaveBeenCalledTimes(2));
+  });
   it("nova conta abre painel com todos os campos e envia data e saldo geral do formulário", async () => {
     vi.mocked(criarConta).mockResolvedValue(config.contas[0]);
     await montar();
@@ -54,7 +82,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     fireEvent.change(within(painel).getByLabelText("Data do saldo de abertura"), { target: { value: "2026-03-15" } });
     fireEvent.click(within(painel).getByLabelText("Incluir no saldo geral"));
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
-    await waitFor(() => expect(criarConta).toHaveBeenCalledWith({ nome: "Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicredi", identificacao: null, saldoAbertura: 500, dataSaldoAbertura: "2026-03-15", incluirNoSaldoGeral: false }));
+    await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicredi", identificacao: null, saldoAbertura: 500, dataSaldoAbertura: "2026-03-15", incluirNoSaldoGeral: false, ordem: 0 })));
     await waitFor(() => expect(obterConfiguracoesFinanceiras).toHaveBeenCalledTimes(2));
   });
 
@@ -103,13 +131,24 @@ describe("ConfiguracoesFinanceiras — contas", () => {
 });
 
 describe("ConfiguracoesFinanceiras — parceiros", () => {
+  it("edita múltiplos papéis e preferências sem reenviar dados que não mudaram", async () => {
+    await montar("parceiros");
+    fireEvent.click(primeiro("button", "Editar Cooperativa"));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.click(within(painel).getByRole("checkbox", { name: "Prestador de serviço" }));
+    fireEvent.change(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
+    fireEvent.change(within(painel).getByLabelText("Prazos em dias"), { target: { value: "30/60" } });
+    fireEvent.change(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
+    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(7, { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
+  });
   it("edição carrega nome, documento formatado, papel, telefone e e-mail", async () => {
     await montar("parceiros");
     fireEvent.click((await screen.findAllByText("Cooperativa"))[0].closest("tr")!);
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByLabelText("Nome / razão social") as HTMLInputElement).value).toBe("Cooperativa");
     expect((within(painel).getByLabelText("CPF/CNPJ") as HTMLInputElement).value).toBe("11.222.333/0001-81");
-    expect((within(painel).getByLabelText("Papel") as HTMLSelectElement).value).toBe("FORNECEDOR");
+    expect((within(painel).getByRole("checkbox", { name: "Fornecedor" }) as HTMLInputElement).checked).toBe(true);
     expect((within(painel).getByLabelText("Telefone") as HTMLInputElement).value).toBe("3499990000");
     expect((within(painel).getByLabelText("E-mail") as HTMLInputElement).value).toBe("coop@x.com");
   });
@@ -158,7 +197,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     fireEvent.change(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
     expect(await within(painel).findByText("Já existe um parceiro com este CPF/CNPJ")).toBeTruthy();
-    expect(criarParceiro).toHaveBeenCalledWith({ nome: "Cooperativa 2", documento: "11222333000181", tipo: "FORNECEDOR", telefone: null, email: null });
+    expect(criarParceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Cooperativa 2", documento: "11222333000181", papeis: ["FORNECEDOR"], telefone: null, email: null }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });

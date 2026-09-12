@@ -3,6 +3,7 @@ import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
@@ -19,7 +20,6 @@ const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VEN
 const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
 const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
-const FORMAS_PAGAMENTO = { PIX: "Pix", TRANSFERENCIA_BANCARIA: "Transferência bancária", BOLETO: "Boleto", DINHEIRO: "Dinheiro", CARTAO: "Cartão", CHEQUE: "Cheque", DEBITO_AUTOMATICO: "Débito automático", OUTRO: "Outro" };
 const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO: "Contrato", RECIBO: "Recibo", COMPROVANTE: "Comprovante", JUSTIFICATIVA: "Justificativa", OUTRO: "Outro" };
 const CAMPO = "mt-1.5 w-full rounded-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal text-ink outline-none transition focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15";
 const SELECT = `${CAMPO} cursor-pointer`;
@@ -29,7 +29,7 @@ let proximoId = 1;
 const novoItem = (): ItemForm => ({ id: proximoId++, produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
 const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", vencimento: emDias(30 * (indice + 1)) });
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
-const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
+const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "SERVICO" ? "Prestador de serviço" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
 
 export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
   const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
@@ -53,6 +53,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [documentosSalvos, setDocumentosSalvos] = useState<DocumentoFinanceiro[]>(rascunho?.documentos ?? []);
   const [salvando, setSalvando] = useState(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
+  const [confirmarSugestao, setConfirmarSugestao] = useState(false);
   const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(rascunho ? "SALVO" : "ALTERADO");
   const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
@@ -69,12 +70,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const totalParcelas = parcelas.reduce((soma, parcela) => soma + Number(parcela.valor || 0), 0);
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const categorias = config.gruposCategorias.flatMap((grupo) => grupo.categorias.map((categoria) => ({ ...categoria, grupo: grupo.nome })));
-  const parceiros = useMemo(() => config.parceiros.filter((parceiro) => {
-    if (!parceiro.ativo) return false;
-    if (tipo === "VENDA") return ["CLIENTE", "AMBOS", "OUTRO"].includes(parceiro.tipo);
-    if (exigeParceiro) return ["FORNECEDOR", "AMBOS", "OUTRO"].includes(parceiro.tipo);
-    return true;
-  }), [config.parceiros, exigeParceiro, tipo]);
+  const parceiros = useMemo(() => config.parceiros.filter((parceiro) => parceiroCompativel(parceiro, tipo)), [config.parceiros, tipo]);
+  const parceiroSelecionado = parceiros.find((parceiro) => String(parceiro.id) === parceiroId);
+  const parceiroInvalido = exigeParceiro && !!parceiroId && !parceiroSelecionado;
+  const sugestaoParcelas = parcelasSugeridas(total, data, parceiroSelecionado?.prazosPagamento ?? []);
+  const aplicarSugestao = () => {
+    if (!parceiroSelecionado) return;
+    if (parceiroSelecionado.formaPagamentoPreferida) setFormaPagamento(parceiroSelecionado.formaPagamentoPreferida);
+    if (parceiroSelecionado.condicaoPagamentoPreferida === "A_VISTA") setCondicao("A_VISTA");
+    if (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && sugestaoParcelas.length) {
+      setCondicao("A_PRAZO");
+      setParcelas(sugestaoParcelas.map((parcela) => ({ ...parcela, id: proximoId++ })));
+    }
+    setConfirmarSugestao(false);
+  };
 
   const estadoFormulario = useMemo<EstadoFormulario>(() => ({
     tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroCustoId,
@@ -135,7 +144,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   };
   const alterarTipo = (novoTipo: string) => {
     setTipo(novoTipo);
-    setParceiroId("");
+    if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
+      setParceiroId("");
+      setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
+    }
     if (!TIPOS_FINANCEIROS.has(novoTipo)) setCondicao("SEM_EFEITO_FINANCEIRO");
     else if (condicao === "SEM_EFEITO_FINANCEIRO") setCondicao("A_VISTA");
   };
@@ -171,7 +183,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && Math.abs(totalParcelas - total) < 0.01
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturo > 0 && parcelas.length > 0 && Math.abs(totalParcelas - saldoFuturo) < 0.01 : true;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
-  const podeConfirmar = descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroId) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+  const podeConfirmar = descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
@@ -229,11 +241,18 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         </section>
         {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input aria-label="Valor total da operação" required min="0.01" step="0.01" type="number" className={CAMPO} value={valorOperacao} onChange={(e) => setValorOperacao(e.target.value)} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} /></label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">Categoria<select aria-label="Categoria" className={SELECT} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.grupo} · {categoria.nome}</option>)}</select></label><label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" className={SELECT} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Sem centro de custo</option>{config.centrosCusto.map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select></label></div></section>
+        {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
+        {permiteFinanceiro && parceiroSelecionado && (parceiroSelecionado.formaPagamentoPreferida || parceiroSelecionado.condicaoPagamentoPreferida) && <div className="rounded-lg border border-border p-4 text-sm">
+          <p>Preferência de {parceiroSelecionado.nome}: {[parceiroSelecionado.formaPagamentoPreferida && FORMAS_PAGAMENTO[parceiroSelecionado.formaPagamentoPreferida], parceiroSelecionado.condicaoPagamentoPreferida === "A_VISTA" ? "à vista" : parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" ? `a prazo (${parceiroSelecionado.prazosPagamento?.join(" / ")} dias)` : null].filter(Boolean).join(" · ")}.</p>
+          <p className="my-2 text-xs text-ink-3">É apenas uma sugestão. Você pode escolher outras condições livremente.{parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length && " Informe o valor e a data para calcular as parcelas."}</p>
+          <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
+        </div>}
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={total} parcelas={parcelas} setParcelas={setParcelas} parcelasValidas={parcelasValidas} saldoFuturo={saldoFuturo} />
         <Documentos anexos={anexos} setAnexos={setAnexos} documentosSalvos={documentosSalvos} atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
       </div>
       <aside className="flex flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:sticky xl:top-0 xl:max-h-screen xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">Gerar {itens.length} movimento{itens.length === 1 ? "" : "s"} físico{itens.length === 1 ? "" : "s"} de estoque.</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5"><p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || !podeConfirmar} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : "Confirmar operação"}</Button></div></aside>
     </form>
+    <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
       open={confirmarLimpeza}
       title="Limpar rascunho?"

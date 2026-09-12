@@ -15,7 +15,7 @@ export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, ro
   rodape: ReactNode;
 }) {
   return <Sheet open={aberto} onOpenChange={(v) => { if (!v) onFechar(); }}>
-    <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg">
+    <SheetContent side="right" overlayClassName="z-[1100]" className="z-[1100] flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg">
       <SheetHeader className="border-b border-border p-5 text-left">
         <div className="eyebrow">{eyebrow}</div>
         <SheetTitle className="mt-1 font-serif text-2xl font-normal">{titulo}</SheetTitle>
@@ -32,17 +32,18 @@ export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, ro
  * à mensagem sem o chamador ter que repetir a fiação. */
 export const classeInput = "mt-1.5 block w-full rounded-lg border border-border bg-white p-2.5 font-normal disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-red-700";
 
-export function CampoFormulario({ id, rotulo, erro, ajuda, children }: {
+export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio = false }: {
   id: string;
   rotulo: string;
   erro?: string;
   ajuda?: string;
-  children: (props: { id: string; "aria-invalid": boolean; "aria-describedby": string | undefined }) => ReactNode;
+  obrigatorio?: boolean;
+  children: (props: { id: string; "aria-label": string; "aria-invalid": boolean; "aria-describedby": string | undefined }) => ReactNode;
 }) {
   const descricao = erro ? `${id}-erro` : ajuda ? `${id}-ajuda` : undefined;
   return <div className="text-sm font-medium">
-    <label htmlFor={id}>{rotulo}</label>
-    {children({ id, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
+    <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>
+    {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
     {erro
       ? <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>
       : ajuda ? <p id={`${id}-ajuda`} className="mt-1 text-xs font-normal text-ink-3">{ajuda}</p> : null}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { obterConfiguracoesFinanceiras, obterExtratoConta } from "./novo-api";
 
@@ -36,6 +36,13 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(await screen.findByRole("heading", { name: "Nova transferência" })).toBeTruthy();
     expect(screen.getAllByRole("option", { name: /Banco principal/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("option", { name: /Caixa auxiliar/ }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+    expect(within(screen.getByRole("dialog")).queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+  });
+  it("permite consultar o histórico de uma conta inativa", async () => {
+    render(<ContasFinanceiras onNav={vi.fn()} />);
+    const seletor = await screen.findByLabelText("Conta para consultar extrato");
+    fireEvent.change(seletor, { target: { value: "3" } });
+    await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(3));
+    expect(screen.getByRole("heading", { name: "Conta inativa" })).toBeTruthy();
   });
 });

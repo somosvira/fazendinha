@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Building2, Pencil, Plus, Power, PowerOff, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
-import { FormParceiro, TIPO_PARCEIRO } from "./FormParceiro";
+import { FormParceiro } from "./FormParceiro";
+import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
 
 type Aba = "contas" | "parceiros";
@@ -34,7 +35,7 @@ const colunasContas = (editar: (c: Conta) => void, alternar: (c: Conta) => void)
 const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro) => void): ColunaTabela<Parceiro>[] => [
   { chave: "nome", titulo: "Nome", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
   { chave: "documento", titulo: "Documento", larguraMinima: 150, celula: (p) => <span className="whitespace-nowrap">{formatarDocumento(p.documento) || "—"}</span> },
-  { chave: "papel", titulo: "Papel", larguraMinima: 140, celula: (p) => <span className="break-words">{TIPO_PARCEIRO[p.tipo] ?? p.tipo}</span> },
+  { chave: "papel", titulo: "Papéis", larguraMinima: 140, celula: (p) => <span className="break-words">{papeisDoParceiro(p).map((papel) => PAPEIS_PARCEIRO[papel]).join(" · ")}</span> },
   { chave: "contato", titulo: "Contato", larguraMinima: 160, celula: (p) => <span className="break-words text-ink-3">{[p.telefone, p.email].filter(Boolean).join(" · ") || "—"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo ? "green" : "neutral"}>{p.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
@@ -54,28 +55,39 @@ export function ConfiguracoesFinanceiras() {
   const [aba, setAba] = useState<Aba>("contas");
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
+  const [processando, setProcessando] = useState(false);
+  const emCurso = useRef(false);
+  const executar = async (acao: () => Promise<unknown>) => {
+    if (emCurso.current) return;
+    emCurso.current = true; setProcessando(true); setErro(null);
+    try { await acao(); await carregar(); }
+    catch (e) { setConfirmando(null); setErro(e instanceof Error ? e.message : String(e)); }
+    finally { emCurso.current = false; setProcessando(false); }
+  };
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
 
   if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
-  const editar = (item: { id: number }) => setPainel({ modo: "editar", id: item.id });
+  const editar = (item: { id: number }) => { if (!emCurso.current) setPainel({ modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
+    if (emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "conta", item: c }); return; }
-    try { await atualizarConta(c.id, { ativo: true }); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    await executar(() => atualizarConta(c.id, { ativo: true }));
   };
   const alternarParceiro = async (p: Parceiro) => {
+    if (emCurso.current) return;
     if (p.ativo) { setConfirmando({ tipo: "parceiro", item: p }); return; }
-    try { await atualizarParceiro(p.id, { ativo: true }); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    await executar(() => atualizarParceiro(p.id, { ativo: true }));
   };
   const confirmarDesativacao = async () => {
     if (!confirmando) return;
-    try {
+    await executar(async () => {
       if (confirmando.tipo === "conta") await atualizarConta(confirmando.item.id, { ativo: false });
       else await atualizarParceiro(confirmando.item.id, { ativo: false });
-      setConfirmando(null); await carregar();
-    } catch (e) { setConfirmando(null); setErro(e instanceof Error ? e.message : String(e)); }
+      setConfirmando(null);
+    });
   };
   const aoSalvar = async () => { setPainel(null); await carregar(); };
 
@@ -88,9 +100,9 @@ export function ConfiguracoesFinanceiras() {
     <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={<Button onClick={() => setPainel({ modo: "novo" })}><Plus size={16} /> {aba === "contas" ? "Nova conta" : "Novo parceiro"}</Button>} />
     <ErrorBox erro={erro} />
     <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users]] as const).map(([k, label, Icon]) => <button key={k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${aba === k ? "border-mast text-ink" : "border-transparent text-ink-3"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
-    <Panel className="mt-5 overflow-hidden">{aba === "contas"
+    <fieldset disabled={processando} aria-busy={processando} className="min-w-0"><Panel className="mt-5 overflow-hidden">{aba === "contas"
       ? <TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(editar, alternarConta)} chaveDe={(c) => c.id} onAbrir={editar} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
-      : <TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros(editar, alternarParceiro)} chaveDe={(p) => p.id} onAbrir={editar} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} />}</Panel>
+      : <TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros(editar, alternarParceiro)} chaveDe={(p) => p.id} onAbrir={editar} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} />}</Panel></fieldset>
 
     {painel && aba === "contas" && <FormConta key={chavePainel} aberto conta={contaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel && aba === "parceiros" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
@@ -102,6 +114,7 @@ export function ConfiguracoesFinanceiras() {
       confirmLabel="Desativar"
       cancelLabel={confirmando?.tipo === "conta" ? "Manter ativa" : "Manter ativo"}
       tone="danger"
+      processando={processando}
       onConfirm={() => { void confirmarDesativacao(); }}
       onCancel={() => setConfirmando(null)}
     />

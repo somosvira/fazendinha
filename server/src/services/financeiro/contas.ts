@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { z } from "zod";
 import { auditar, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
-import type { patchContaSchema } from "./schemas.js";
+import type { contaSchema, patchContaSchema } from "./schemas.js";
 
 const CONFLITOS = { nome: "Já existe uma conta com este nome nesta propriedade" };
 
@@ -24,7 +24,7 @@ export async function listarContas(propriedadeId?: number | null, incluirInativa
         select: { direcao: true, valor: true },
       },
     },
-    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+    orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { nome: "asc" }],
   });
   return contas.map(({ movimentos, ...conta }) => comResumo(conta, movimentos));
 }
@@ -38,11 +38,14 @@ export async function resumoSaldos(propriedadeId?: number | null) {
   };
 }
 
-export async function criarConta(input: {
-  nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao?: string | null;
-  identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: Date; incluirNoSaldoGeral: boolean;
-  propriedadeId: number; usuarioId?: number | null;
-}) {
+function validarInstituicao(conta: { tipo: string; instituicao?: string | null }) {
+  if (["BANCO", "APLICACAO"].includes(conta.tipo) && !conta.instituicao?.trim()) {
+    throw new FinanceiroError("VALIDACAO", "Informe a instituição financeira", "instituicao");
+  }
+}
+
+export async function criarConta(input: z.infer<typeof contaSchema> & { propriedadeId: number; usuarioId?: number | null }) {
+  validarInstituicao(input);
   try {
     return await prisma.$transaction(async (tx) => {
       const { usuarioId, ...dados } = input;
@@ -63,6 +66,8 @@ export async function atualizarConta(
     return await prisma.$transaction(async (tx) => {
       const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
+      // Um cadastro antigo incompleto ainda pode ser desativado ou renomeado.
+      if (input.tipo !== undefined || input.instituicao !== undefined) validarInstituicao({ ...anterior, ...input });
       /* Saldo/data de abertura só mudam enquanto a conta não tem movimentos —
        * depois disso o saldo atual derivado do razão perderia a referência. */
       const mexeSaldo = input.saldoAbertura !== undefined && !new Prisma.Decimal(input.saldoAbertura).equals(anterior.saldoAbertura);
