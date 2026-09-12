@@ -3,6 +3,13 @@
 Base analisada: `0e9bc74` (main, incluindo #259). Execução local em 12/09/2026,
 Node 22.21.1, Prisma 6.19.3 e Vitest 2.1.9. Nenhuma regra de negócio foi alterada.
 
+## Matriz de efeitos esperados
+
+A [matriz Financeiro × Estoque](249-matriz-efeitos.md) documenta os efeitos
+esperados, o estado da validação e a correspondência com os 26 testes. Inclui
+os cenários mínimos da #249 e identifica separadamente falhas, execução
+pendente e lacunas de suporte. Todo QA pela interface continua pendente.
+
 ## Executar
 
 Na raiz da worktree, após `pnpm install --frozen-lockfile`:
@@ -110,5 +117,5 @@ UUID/offline ainda não integrados. Os casos de escopo aqui verificam a conta no
 serviço, não toda a autorização HTTP entre propriedades.
 
 Próximo passo: registrar os três defeitos em issues vinculadas à #249, corrigir em
-mudanças específicas e repetir este comando. Depois, completar a matriz e o QA
+mudanças específicas e repetir este comando. Depois, executar os cenários pendentes da matriz e o QA
 visual antes de encerrar a issue geral.
