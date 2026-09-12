@@ -30,7 +30,8 @@
     "seed:all": "tsx --env-file=.env prisma/seed-all.ts",
     "bateria:gabarito": "tsx --env-file=.env scripts/bateria-ia.gabarito.ts",
     "bateria:run": "tsx scripts/bateria-ia.run.ts",
-    "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts"
+    "whatsapp:user": "tsx --env-file=.env src/scripts/allowlist.ts",
+    "test:financeiro:integration": "node scripts/qa-financeiro.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed-all.ts"
