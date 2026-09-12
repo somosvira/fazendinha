@@ -85,6 +85,7 @@ describe("schemas de conta e parceiro (cadastros)", () => {
     expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "123.456.789-09" }).documento).toBe("12345678909");
     expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "12.345.678/0001-95" }).documento).toBe("12345678000195");
     expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "" }).documento).toBeNull();
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "111.111.111-11" }).documento).toBe("11111111111");
     expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", documento: "1234567890" }).success).toBe(false);
   });
 

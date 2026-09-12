@@ -4,34 +4,11 @@
 
 export const somenteDigitos = (valor: string) => valor.replace(/\D/g, "");
 
-const repetido = (d: string) => /^(\d)\1+$/.test(d);
-
-function digitoVerificador(base: string, pesos: number[]) {
-  const soma = base.split("").reduce((acc, ch, i) => acc + Number(ch) * pesos[i], 0);
-  const resto = soma % 11;
-  return resto < 2 ? 0 : 11 - resto;
-}
-
-export function validarCpf(digitos: string): boolean {
-  if (digitos.length !== 11 || repetido(digitos)) return false;
-  const d1 = digitoVerificador(digitos.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
-  const d2 = digitoVerificador(digitos.slice(0, 10), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return d1 === Number(digitos[9]) && d2 === Number(digitos[10]);
-}
-
-export function validarCnpj(digitos: string): boolean {
-  if (digitos.length !== 14 || repetido(digitos)) return false;
-  const d1 = digitoVerificador(digitos.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  const d2 = digitoVerificador(digitos.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return d1 === Number(digitos[12]) && d2 === Number(digitos[13]);
-}
-
 /** Mensagem de erro ou null. Vazio é válido (documento é opcional). */
 export function validarDocumento(valor: string): string | null {
   const d = somenteDigitos(valor);
   if (!d) return null;
-  if (d.length === 11) return validarCpf(d) ? null : "CPF inválido";
-  if (d.length === 14) return validarCnpj(d) ? null : "CNPJ inválido";
+  if (d.length === 11 || d.length === 14) return null;
   return "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos)";
 }
 

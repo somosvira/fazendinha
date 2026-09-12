@@ -30,7 +30,7 @@ Rota: `/financeiro/configuracoes` → Contas financeiras.
 
 ## 2. Outros tipos de conta
 
-- [ ] Criar `QA Caixa` como Caixa físico, com saldo zero, local e responsável. **Esperado:** salva sem exigir instituição; saldo zero é válido.
+- [ ] Criar `QA Caixa` como Caixa físico, com saldo zero, local e responsável. **Esperado:** o campo Local sugere `Ex.: Cofre do escritório`; salva sem exigir instituição e saldo zero é válido.
 - [ ] Criar `QA Aplicação` como Aplicação financeira, com instituição. **Esperado:** cadastro salvo com os dados básicos.
 - [ ] Conferir a lista de tipos de conta. **Esperado:** não existe a opção Dinheiro; existe Caixa físico.
 - [ ] Conferir as formas de pagamento de uma operação. **Esperado:** Dinheiro continua disponível como forma de pagamento.
@@ -89,7 +89,9 @@ Rota: `/financeiro/configuracoes` → Clientes e fornecedores.
 
 - [ ] Tentar salvar sem nome. **Esperado:** bloqueio com indicação do campo.
 - [ ] Remover todos os papéis e tentar salvar. **Esperado:** exige pelo menos um papel.
-- [ ] Informar CPF/CNPJ inválido. **Esperado:** formulário bloqueia o envio.
+- [ ] Deixar CPF/CNPJ vazio. **Esperado:** cadastro permitido, pois o documento é opcional.
+- [ ] Informar CPF/CNPJ com 11 ou 14 dígitos, mesmo sem dígito verificador válido. **Esperado:** cadastro permitido; o sistema não consulta nem certifica a situação cadastral.
+- [ ] Informar CPF/CNPJ incompleto, com quantidade diferente de 11 ou 14 dígitos. **Esperado:** formulário pede o tamanho esperado antes do envio.
 - [ ] Usar um documento já cadastrado. **Esperado:** duplicidade bloqueada.
 - [ ] Informar e-mail inválido. **Esperado:** erro de validação.
 - [ ] Informar CEP ou UF inválidos. **Esperado:** erro de validação.

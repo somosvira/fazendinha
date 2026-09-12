@@ -7,7 +7,7 @@ import { formatarValorMonetario, validarConta, valorMonetario, type ErrosCampo }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const TIPO_CONTA: Record<TipoConta, string> = { BANCO: "Conta bancária", CAIXA: "Caixa físico", APLICACAO: "Aplicação financeira" };
-const CAMPOS_CAIXA = [["local", "Local", 120], ["responsavel", "Responsável", 120]] as const;
+const CAMPOS_CAIXA = [["local", "Local", 120, "Ex.: Cofre do escritório"], ["responsavel", "Responsável", 120, "Ex.: Maria Oliveira"]] as const;
 
 /* `conta === null` é criação. No PATCH só vão os campos que mudaram; saldo e
  * data de abertura nunca vão quando a conta já tem movimentos (o servidor

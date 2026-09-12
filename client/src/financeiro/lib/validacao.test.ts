@@ -1,25 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { formatarDocumento, formatarValorMonetario, validarCnpj, validarConta, validarCpf, validarDocumento, validarEmail, validarParceiro, valorMonetario } from "./validacao";
+import { formatarDocumento, formatarValorMonetario, validarConta, validarDocumento, validarEmail, validarParceiro, valorMonetario } from "./validacao";
 
 describe("validação de cadastros financeiros", () => {
-  it("valida CPF com dígitos verificadores", () => {
-    expect(validarCpf("52998224725")).toBe(true);
-    expect(validarCpf("52998224726")).toBe(false);
-    expect(validarCpf("11111111111")).toBe(false);
-  });
-
-  it("valida CNPJ com dígitos verificadores", () => {
-    expect(validarCnpj("11222333000181")).toBe(true);
-    expect(validarCnpj("11222333000182")).toBe(false);
-    expect(validarCnpj("00000000000000")).toBe(false);
-  });
-
-  it("validarDocumento aceita vazio e mascarado, rejeita tamanho errado", () => {
+  it("validarDocumento é opcional, aceita o tamanho esperado sem validar dígito e rejeita tamanho errado", () => {
     expect(validarDocumento("")).toBeNull();
     expect(validarDocumento("529.982.247-25")).toBeNull();
     expect(validarDocumento("11.222.333/0001-81")).toBeNull();
+    expect(validarDocumento("111.111.111-11")).toBeNull();
+    expect(validarDocumento("00.000.000/0000-00")).toBeNull();
     expect(validarDocumento("123")).toMatch(/11 dígitos/);
-    expect(validarDocumento("52998224726")).toBe("CPF inválido");
+    expect(validarDocumento("52998224726")).toBeNull();
   });
 
   it("formata CPF e CNPJ para exibição e devolve o resto intacto", () => {
