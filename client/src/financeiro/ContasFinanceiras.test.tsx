@@ -8,6 +8,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(),
   obterExtratoConta: vi.fn(),
+  obterExtratoGeral: vi.fn().mockResolvedValue([]),
   transferir: vi.fn(),
 }));
 
@@ -62,4 +63,18 @@ it("abre uma conta diretamente e não substitui uma conta inexistente", async ()
   render(<ContasFinanceiras onNav={vi.fn()} />);
   expect(await screen.findByText("Esta conta não está disponível na fazenda selecionada.")).toBeTruthy();
   expect(obterExtratoConta).not.toHaveBeenCalled();
+});
+
+it("localiza o movimento do endereço depois de carregar o extrato", async () => {
+  const scroll = vi.fn();
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+  window.history.replaceState(null, "", "/financeiro/contas/1#movimento-42");
+  vi.mocked(obterExtratoConta).mockResolvedValue([{ id: 42, direcao: "ENTRADA", valor: "10", transacao: { id: 4, tipo: "RECEBIMENTO", status: "CONFIRMADA", data: "2026-09-13", descricao: "Movimento alvo", formaPagamento: null, parceiro: null, operacao: null } }]);
+  try {
+    render(<ContasFinanceiras onNav={vi.fn()} />);
+    await waitFor(() => expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "center" }));
+    expect(document.activeElement?.getAttribute("data-ancora")).toBe("movimento-42");
+  } finally { rects.mockRestore(); HTMLElement.prototype.scrollIntoView = originalScroll; }
 });

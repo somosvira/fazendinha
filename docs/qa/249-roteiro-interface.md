@@ -403,3 +403,11 @@ backup em `server/.qa249/backups/`.
 A preparação anterior usou portas/banco separados; isso foi removido. Os servidores
 permanecem parados para você iniciar com `pnpm dev`. O checklist visual continua
 pendente de execução humana.
+
+## Extrato geral e localização de movimentação
+
+- [ ] Em Contas e extratos, clique **Ver extrato geral** no card de saldo: a página deve rolar para a tabela abaixo das contas, sem trocar de rota.
+- [ ] Confira movimentos de contas diferentes da fazenda selecionada, do mais recente ao mais antigo, inclusive contas inativas com histórico.
+- [ ] Combine data inicial/final, conta e instituição; datas-limite são inclusivas. Teste também “Sem instituição” e um intervalo sem resultados.
+- [ ] Clique em uma movimentação: deve abrir `/financeiro/contas/:id#movimento-:id`, carregar o extrato da conta, rolar e destacar exatamente o registro escolhido.
+- [ ] Recarregue esse endereço e repita em celular: o movimento deve continuar localizável. Volte para a lista e troque a fazenda; o extrato geral deve respeitar o novo escopo.

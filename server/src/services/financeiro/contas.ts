@@ -109,3 +109,11 @@ export async function listarExtrato(contaId: number, propriedadeId: number | nul
     orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
   });
 }
+
+export async function listarExtratoGeral(propriedadeId: number | null) {
+  return prisma.movimentoConta.findMany({
+    where: { conta: propriedadeId != null ? { propriedadeId } : {} },
+    include: { conta: { select: { id: true, nome: true, instituicao: true } }, transacao: { include: { parceiro: true, operacao: true } } },
+    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+  });
+}

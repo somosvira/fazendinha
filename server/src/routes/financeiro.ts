@@ -71,6 +71,10 @@ export const financeiroRouter = new Hono()
     try { return c.json(await contas.atualizarConta(Number(c.req.param("id")), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
+  .get("/financeiro/extrato-geral", async (c) => {
+    try { return c.json(await contas.listarExtratoGeral(await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
   .get("/financeiro/contas/:id/extrato", async (c) => {
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;

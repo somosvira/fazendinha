@@ -99,3 +99,6 @@ export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/fi
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
+
+export type MovimentoGeral = MovimentoConta & { contaId: number; conta: { id: number; nome: string; instituicao: string | null } };
+export const obterExtratoGeral = () => req<MovimentoGeral[]>("/financeiro/extrato-geral");
