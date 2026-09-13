@@ -514,13 +514,13 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
-    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"] as Tab[]).includes(tab)
-    ? <FinanceiroContent tab={tab} onNav={setTab} />
+    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
+    ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : (
       <>
         {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {/* Configurações mantém somente setup global, categorias e acessos. */}
-        {(tab === "config" || tab === "plano" || tab === "acessos") && (
+        {(tab === "config" || tab === "acessos") && (
           <ConfiguracoesHub
             tab={tab}
             onNav={setTab}

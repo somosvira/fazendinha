@@ -129,6 +129,7 @@ model CentroCusto {
   id             Int        @id @default(autoincrement())
   nome           String     @unique
   ehInvestimento Boolean    @default(false)
+  ativo          Boolean    @default(true)
   ordem          Int        @default(0)
   operacoes      Operacao[]
   produtos       Produto[]
@@ -139,6 +140,7 @@ model CentroCusto {
 model GrupoCategoria {
   id         Int         @id @default(autoincrement())
   nome       String      @unique
+  ativo      Boolean     @default(true)
   ordem      Int         @default(0)
   categorias Categoria[]
 }
@@ -156,6 +158,8 @@ model Categoria {
   grupoCategoria   GrupoCategoria          @relation(fields: [grupoCategoriaId], references: [id])
   grupoCategoriaId Int
   classificacao    ClassificacaoCategoria?
+  ativo            Boolean                  @default(true)
+  ordem            Int                      @default(0)
   operacoes        Operacao[]
   produtos         Produto[]
 

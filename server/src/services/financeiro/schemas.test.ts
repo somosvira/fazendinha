@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contaSchema, operacaoSchema, parceiroSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, grupoCategoriaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchGrupoCategoriaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const base = {
   data: "2026-09-02",
@@ -93,5 +93,25 @@ describe("schemas de conta e parceiro (cadastros)", () => {
     expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", email: "" }).email).toBeNull();
     expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", email: "x" }).success).toBe(false);
     expect(patchParceiroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+});
+
+describe("schemas de categorias e centros de custo", () => {
+  it("normaliza os defaults na criação", () => {
+    expect(grupoCategoriaSchema.parse({ nome: " Operacional " })).toEqual({ nome: "Operacional", ordem: 0 });
+    expect(categoriaCadastroSchema.parse({ nome: " Insumos ", grupoCategoriaId: 2 })).toEqual({ nome: "Insumos", grupoCategoriaId: 2, classificacao: null, ordem: 0 });
+    expect(centroCustoSchema.parse({ nome: " Leite " })).toEqual({ nome: "Leite", ehInvestimento: false, ordem: 0 });
+  });
+
+  it("patches não reaplicam defaults ausentes e aceitam desativação", () => {
+    expect(patchGrupoCategoriaSchema.parse({ ativo: false })).toEqual({ ativo: false });
+    expect(patchCategoriaCadastroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+    expect(patchCentroCustoSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+
+  it("rejeita nomes curtos, grupo inválido e ordem negativa", () => {
+    expect(grupoCategoriaSchema.safeParse({ nome: "A" }).success).toBe(false);
+    expect(categoriaCadastroSchema.safeParse({ nome: "Insumos", grupoCategoriaId: 0 }).success).toBe(false);
+    expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
   });
 });

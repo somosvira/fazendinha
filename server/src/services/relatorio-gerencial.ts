@@ -21,6 +21,7 @@ import {
   type SaldoContasAgregado,
 } from "./relatorio-gerencial.calc.js";
 import type { RegimeRelatorio, RelatorioGerencialQuery } from "./relatorio-gerencial.schemas.js";
+import { tituloCompromisso } from "./financeiro/titulos.js";
 
 export interface RelatorioGerencialDTO {
   meta: {
@@ -142,7 +143,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       estornado: false,
       dataLiquidacao: null,
       dataVencimento: iso(compromisso.dataVencimento)!,
-      descricao: compromisso.operacao.descricao,
+      descricao: tituloCompromisso(compromisso),
       numeroDocumento: documentos.find((documento) => documento.numero)?.numero ?? null,
       ...linhaBase(compromisso.operacao),
       contaBancariaId: null,

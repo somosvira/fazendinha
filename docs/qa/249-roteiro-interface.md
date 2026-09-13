@@ -441,3 +441,12 @@ pendente de execução humana.
 - [ ] Clique em uma movimentação: deve abrir `/financeiro/contas/:id#movimento-:id`, carregar o extrato da conta, rolar e destacar exatamente o registro escolhido.
 - [ ] Recarregue esse endereço e repita em celular: o movimento deve continuar localizável. Volte para a lista e troque a fazenda; o extrato geral deve respeitar o novo escopo.
 - [ ] Em Configurações financeiras > Contas, confira nome sem subtítulo, instituição em coluna própria e Abertura exibindo somente a data. O valor de abertura deve aparecer apenas ao abrir os detalhes/edição da conta.
+
+## Cadastros gerenciais e identificação das parcelas
+
+- [ ] Em **Financeiro > Configurações financeiras > Categorias**, crie um grupo e uma categoria vinculada a ele; recarregue e confirme a persistência.
+- [ ] Edite e desative a categoria. Ela permanece visível como inativa na configuração e deixa de aparecer em novas operações.
+- [ ] Tente desativar um grupo com categoria ativa. O sistema deve bloquear a ação e orientar a desativação das categorias primeiro.
+- [ ] Em **Centros de custo**, crie um centro operacional e outro de investimento; edite e desative um deles, preservando referências históricas.
+- [ ] Crie uma operação de R$ 100 em duas parcelas de R$ 50. Compromissos, detalhe da operação, modal de liquidação e relatório devem identificar os títulos como **(1/2) descrição** e **(2/2) descrição**.
+- [ ] Entre com um usuário sem a permissão `lancar`: os cadastros devem estar disponíveis apenas para consulta, sem ações de criação ou alteração.

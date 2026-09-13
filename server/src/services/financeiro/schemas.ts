@@ -78,6 +78,30 @@ export const patchContaSchema = z.object({
   ativo: z.boolean().optional(),
 });
 
+export const grupoCategoriaSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+
+export const patchGrupoCategoriaSchema = grupoCategoriaSchema.partial().extend({ ativo: z.boolean().optional() });
+
+export const categoriaCadastroSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  grupoCategoriaId: z.number().int().positive(),
+  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+
+export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
+
+export const centroCustoSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  ehInvestimento: z.boolean().default(false),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+
+export const patchCentroCustoSchema = centroCustoSchema.partial().extend({ ativo: z.boolean().optional() });
+
 export const parceiroSchema = z.object({
   ...camposParceiro,
   nome: z.string().trim().min(2).max(120),

@@ -94,6 +94,15 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     }
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
 
+    if (input.categoriaId) {
+      const categoria = await tx.categoria.findFirst({ where: { id: input.categoriaId, ativo: true, grupoCategoria: { ativo: true } } });
+      if (!categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
+    }
+    if (input.centroCustoId) {
+      const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
+      if (!centro) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
+    }
+
     if (input.financeiro.condicao === "PARCIAL") {
       const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
       if (!dinheiro(futuro.plus(input.financeiro.valorPago)).equals(valorTotal)) {

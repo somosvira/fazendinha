@@ -4,12 +4,13 @@ import { prisma } from "../../db.js";
 // (Categoria contábil / Centro de custo) no formulário de Produto e de Movimento.
 
 export async function listarCategorias() {
-  return prisma.categoria.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } });
+  return prisma.categoria.findMany({ where: { ativo: true, grupoCategoria: { ativo: true } }, orderBy: [{ ordem: "asc" }, { nome: "asc" }], select: { id: true, nome: true } });
 }
 
 export async function listarCentrosCusto() {
   return prisma.centroCusto.findMany({
-    orderBy: { ordem: "asc" },
+    where: { ativo: true },
+    orderBy: [{ ordem: "asc" }, { nome: "asc" }],
     select: { id: true, nome: true, ehInvestimento: true },
   });
 }

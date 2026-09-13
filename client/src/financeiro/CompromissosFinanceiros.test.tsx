@@ -71,6 +71,8 @@ describe("CompromissosFinanceiros — criação", () => {
       valorLiquidado: "0",
       saldoPendente: "100",
       dataVencimento: "2026-09-30",
+      numeroParcela: 1,
+      totalParcelas: 2,
       vencido: false,
       parceiro: null,
       operacao: { id: 5, tipo: "SERVICO", descricao: "Serviço veterinário" },
@@ -84,6 +86,7 @@ describe("CompromissosFinanceiros — criação", () => {
     });
     render(<CompromissosFinanceiros onNav={vi.fn()} />);
 
+    expect(await screen.findByText("(1/2) Serviço veterinário")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();

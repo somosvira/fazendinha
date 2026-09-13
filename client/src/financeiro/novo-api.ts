@@ -22,12 +22,12 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: number; nome: string };
-export type GrupoCategoria = { id: number; nome: string; categorias: Categoria[] };
-export type CentroCusto = { id: number; nome: string; ehInvestimento: boolean };
+export type Categoria = { id: number; nome: string; grupoCategoriaId: number; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number } };
+export type GrupoCategoria = { id: number; nome: string; ativo: boolean; ordem: number; categorias: Categoria[] };
+export type CentroCusto = { id: number; nome: string; ehInvestimento: boolean; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
 export type Produto = { id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; gruposCategorias: GrupoCategoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
-export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; vencido: boolean; parceiro: ParceiroBase | null; operacao: { id: number; tipo: string; descricao: string | null } };
+export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; numeroParcela: number; totalParcelas: number; vencido: boolean; parceiro: ParceiroBase | null; operacao: { id: number; tipo: string; descricao: string | null } };
 export type ItemOperacao = { id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
 export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
 export type TransacaoOperacao = { id: number; tipo: string; status: string; data?: string; valorTotal: string; formaPagamento?: string | null; movimentos?: { id: number; contaId: number; direcao: "ENTRADA" | "SAIDA"; valor: string }[] };
@@ -98,6 +98,15 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export type GrupoCategoriaInput = { nome: string; ordem?: number };
+export type CategoriaInput = { nome: string; grupoCategoriaId: number; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number };
+export type CentroCustoInput = { nome: string; ehInvestimento?: boolean; ordem?: number };
+export const criarGrupoCategoria = (input: GrupoCategoriaInput) => req<GrupoCategoria>("/financeiro/grupos-categorias", { method: "POST", body: JSON.stringify(input) });
+export const atualizarGrupoCategoria = (id: number, input: Partial<GrupoCategoriaInput> & { ativo?: boolean }) => req<GrupoCategoria>(`/financeiro/grupos-categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
+export const atualizarCategoria = (id: number, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarCentroCusto = (input: CentroCustoInput) => req<CentroCusto>("/financeiro/centros-custo", { method: "POST", body: JSON.stringify(input) });
+export const atualizarCentroCusto = (id: number, input: Partial<CentroCustoInput> & { ativo?: boolean }) => req<CentroCusto>(`/financeiro/centros-custo/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
 
 export type MovimentoGeral = MovimentoConta & { contaId: number; conta: { id: number; nome: string; instituicao: string | null } };
