@@ -26,9 +26,10 @@ function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, pode
 }
 
 const colunasContas = (contas: Conta[], editar: (c: Conta) => void, alternar: (c: Conta) => void, mover: (c: Conta, direcao: -1 | 1) => void): ColunaTabela<Conta>[] => [
-  { chave: "conta", titulo: "Conta", larguraMinima: 230, principal: true, celula: (c) => <><strong className="break-words">{c.nome}</strong><div className="mt-1 break-words text-xs text-ink-3">{c.instituicao || c.identificacao || "Sem identificação adicional"}</div></> },
+  { chave: "conta", titulo: "Conta", larguraMinima: 210, principal: true, celula: (c) => <strong className="break-words">{c.nome}</strong> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (c) => <span className="whitespace-nowrap">{TIPO_CONTA[c.tipo] ?? c.tipo}</span> },
-  { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 130, celula: (c) => <><span className="whitespace-nowrap">{brl(c.saldoAbertura)}</span><div className="whitespace-nowrap text-xs text-ink-3">{dataBR(c.dataSaldoAbertura)}</div></> },
+  { chave: "instituicao", titulo: "Instituição", larguraMinima: 150, celula: (c) => <span className="break-words">{c.instituicao || "—"}</span> },
+  { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 120, celula: (c) => <span className="whitespace-nowrap">{dataBR(c.dataSaldoAbertura)}</span> },
   { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 130, celula: (c) => <strong className="whitespace-nowrap font-semibold">{brl(c.saldoAtual)}</strong> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 180, acoes: true, celula: (c) => {

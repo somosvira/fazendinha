@@ -45,6 +45,19 @@ async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
+  it("mostra instituição em coluna e deixa o valor de abertura apenas nos detalhes", async () => {
+    await montar();
+    const tabela = screen.getByRole("table", { name: "Contas financeiras" });
+    const linha = within(tabela).getByText("Banco principal").closest("tr")!;
+    expect(within(tabela).getByRole("columnheader", { name: "Instituição" })).toBeTruthy();
+    expect(within(linha).getByText("Sicoob")).toBeTruthy();
+    expect(within(linha).getByText("01/09/2026")).toBeTruthy();
+    expect(within(linha).queryByText("R$ 1.000,00")).toBeNull();
+    fireEvent.click(linha);
+    const painel = await screen.findByRole("dialog");
+    expect((within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement).value).toBe("1.000,00");
+  });
+
   it("exige instituição para banco, aceita caixa sem banco e não oferece tipo dinheiro", async () => {
     await montar();
     fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));

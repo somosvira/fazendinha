@@ -414,3 +414,4 @@ pendente de execução humana.
 - [ ] Combine data inicial/final, conta e instituição; datas-limite são inclusivas. Teste também “Sem instituição” e um intervalo sem resultados.
 - [ ] Clique em uma movimentação: deve abrir `/financeiro/contas/:id#movimento-:id`, carregar o extrato da conta, rolar e destacar exatamente o registro escolhido.
 - [ ] Recarregue esse endereço e repita em celular: o movimento deve continuar localizável. Volte para a lista e troque a fazenda; o extrato geral deve respeitar o novo escopo.
+- [ ] Em Configurações financeiras > Contas, confira nome sem subtítulo, instituição em coluna própria e Abertura exibindo somente a data. O valor de abertura deve aparecer apenas ao abrir os detalhes/edição da conta.
