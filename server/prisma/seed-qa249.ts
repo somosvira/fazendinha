@@ -61,34 +61,49 @@ try {
         const p = await tx.parceiro.create({ data: { nome, ativo, tipo: nome === "QA249 Cliente" ? "CLIENTE" : nome === "QA249 Papel incompatível" ? "OUTRO" : "FORNECEDOR", papeis: { create: papeis.map(papel => ({ papel })) }, ...(nome === "QA249 Fornecedor" ? { formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] } : {}) } });
         parceiros.push({ id: p.id, nome, papeis, ativo });
       }
+      // Conjunto pequeno e realista que cobre todos os formatos de conta sem
+      // criar uma conta artificial por cenário. Os testes comparam deltas no
+      // saldo registrado antes/depois, então podem reutilizar essas contas.
+      const bancoOperacional = await tx.contaFinanceira.create({ data: { nome: "QA249 Banco Operacional", tipo: "BANCO", instituicao: "Sicoob", tipoBancario: "CORRENTE", agencia: "0001", numeroConta: "24901", digito: "9", titular: "Fazenda QA249", propriedadeId: principal.id, saldoAbertura: 10000, dataSaldoAbertura: date(-1), ordem: 0 } });
+      const poupancaReserva = await tx.contaFinanceira.create({ data: { nome: "QA249 Poupança Reserva", tipo: "BANCO", instituicao: "Sicredi", tipoBancario: "POUPANCA", agencia: "0712", numeroConta: "24902", digito: "4", titular: "Fazenda QA249", propriedadeId: principal.id, saldoAbertura: 3000, dataSaldoAbertura: date(-1), ordem: 1 } });
+      const contaPagamento = await tx.contaFinanceira.create({ data: { nome: "QA249 Conta Pagamento", tipo: "BANCO", instituicao: "Mercado Pago", tipoBancario: "PAGAMENTO", agencia: "0001", numeroConta: "24903", digito: "1", titular: "Fazenda QA249", propriedadeId: principal.id, saldoAbertura: 1000, dataSaldoAbertura: date(-1), ordem: 2 } });
+      const caixa = await tx.contaFinanceira.create({ data: { nome: "QA249 Caixa Escritório", tipo: "CAIXA", local: "Escritório", responsavel: "Operador QA", propriedadeId: principal.id, saldoAbertura: 1200, dataSaldoAbertura: date(-1), ordem: 3 } });
+      const aplicacao = await tx.contaFinanceira.create({ data: { nome: "QA249 Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicoob", identificacao: "CDB QA 2026", propriedadeId: principal.id, saldoAbertura: 3000, dataSaldoAbertura: date(-1), ordem: 4 } });
+      const foraSaldo = await tx.contaFinanceira.create({ data: { nome: "QA249 Conta fora do saldo geral", tipo: "BANCO", instituicao: "Banco Cooperativo", tipoBancario: "CORRENTE", agencia: "0002", numeroConta: "24904", digito: "7", titular: "Fazenda QA249", propriedadeId: principal.id, saldoAbertura: 500, dataSaldoAbertura: date(-1), incluirNoSaldoGeral: false, ordem: 5 } });
+      const inativa = await tx.contaFinanceira.create({ data: { nome: "QA249 Conta inativa", tipo: "BANCO", instituicao: "Banco legado", tipoBancario: "CORRENTE", agencia: "0003", numeroConta: "24905", digito: "2", titular: "Fazenda QA249", ativo: false, propriedadeId: principal.id, saldoAbertura: 250, dataSaldoAbertura: date(-1), ordem: 6 } });
+      const secundariaBanco = await tx.contaFinanceira.create({ data: { nome: "QA249 Secundária Banco", tipo: "BANCO", instituicao: "Sicredi", tipoBancario: "CORRENTE", agencia: "0712", numeroConta: "24906", digito: "8", titular: "Fazenda QA249 Secundária", propriedadeId: secundaria.id, saldoAbertura: 500, dataSaldoAbertura: date(-1) } });
+      const contasPrincipais = [bancoOperacional, poupancaReserva, contaPagamento, caixa, aplicacao, foraSaldo, inativa];
+      const contaPorFluxo: Record<string, typeof bancoOperacional> = {
+        U01: bancoOperacional, U02: poupancaReserva, U03: contaPagamento, U04: caixa,
+        U05: bancoOperacional, U06: contaPagamento, U07: bancoOperacional,
+        U08: bancoOperacional, U09: bancoOperacional, U10: bancoOperacional,
+        U11: contaPagamento, U12: bancoOperacional, U13: poupancaReserva,
+        U14: contaPagamento, U15: aplicacao, U16: poupancaReserva,
+        U17: bancoOperacional, U18: bancoOperacional,
+      };
       const casos: { codigo: string; fluxo: string; conta: { id: number; nome: string; saldoInicial: number }; produto: { id: number; nome: string; estoqueInicial: number } | null; inventarioId: number | null }[] = [];
       for (const [codigo, fluxo, estoqueInicial] of scenarios) {
-        const conta = await tx.contaFinanceira.create({ data: { nome: `QA249 ${codigo} Banco`, tipo: "BANCO", instituicao: "Banco fictício QA", tipoBancario: "CORRENTE", propriedadeId: principal.id, saldoAbertura: 1000, dataSaldoAbertura: date(-1), ordem: casos.length } });
+        const conta = contaPorFluxo[codigo];
         const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "kg", tipo: "INSUMO", setor: "GERAL", estocavel: true, custoUnitario: 10, categoriaId: categorias[0].id, centroCustoId: centro.id } });
         let inventarioId: number | null = null;
         if (produto && estoqueInicial) {
           const op = await confirmarRascunhoOperacao(tx, { tipo: "INVENTARIO_INICIAL", data: date(), descricao: `SEED QA249 ${codigo} estoque inicial`, propriedadeId: principal.id, usuarioId: usuarios[0].id, categoriaId: categorias[0].id, centroCustoId: centro.id, itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: estoqueInicial, unidade: "kg", valorUnitario: 10, estocavel: true }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } });
           inventarioId = op.id;
         }
-        casos.push({ codigo, fluxo, conta: { id: conta.id, nome: conta.nome, saldoInicial: 1000 }, produto: produto ? { id: produto.id, nome: produto.nome, estoqueInicial: estoqueInicial ?? 0 } : null, inventarioId });
+        casos.push({ codigo, fluxo, conta: { id: conta.id, nome: conta.nome, saldoInicial: Number(conta.saldoAbertura) }, produto: produto ? { id: produto.id, nome: produto.nome, estoqueInicial: estoqueInicial ?? 0 } : null, inventarioId });
       }
-      const caixa = await tx.contaFinanceira.create({ data: { nome: "QA249 U18 Caixa destino", tipo: "CAIXA", local: "Escritório QA", responsavel: "Operador QA", propriedadeId: principal.id, saldoAbertura: 200, dataSaldoAbertura: date(-1) } });
-      const inativa = await tx.contaFinanceira.create({ data: { nome: "QA249 Conta inativa", tipo: "BANCO", instituicao: "Banco fictício QA", ativo: false, propriedadeId: principal.id, saldoAbertura: 0, dataSaldoAbertura: date(-1) } });
-      const outra = await tx.contaFinanceira.create({ data: { nome: "QA249 Secundária Banco", tipo: "BANCO", instituicao: "Banco fictício QA", propriedadeId: secundaria.id, saldoAbertura: 500, dataSaldoAbertura: date(-1) } });
       const extra = await tx.produto.create({ data: { nome: "QA249 U16 Produto adicional", unidade: "un", custoUnitario: 10, estocavel: true } });
       const inativo = await tx.produto.create({ data: { nome: "QA249 Produto inativo", unidade: "kg", ativo: false, custoUnitario: 10 } });
       const fechado = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 15));
       await tx.periodoFinanceiro.create({ data: { propriedadeId: principal.id, ano: fechado.getUTCFullYear(), mes: fechado.getUTCMonth() + 1, status: "FECHADO", fechadoPorId: usuarios[0].id, fechadoEm: new Date() } });
-      return { database, criadoEm: new Date().toISOString(), dataOperacao: date().toISOString().slice(0, 10), vencimento30: date(30).toISOString().slice(0, 10), vencimento60: date(60).toISOString().slice(0, 10), dataPeriodoFechado: fechado.toISOString().slice(0, 10), propriedades: [principal, secundaria], usuarios, parceiros, categorias, centro, casos, contasExtras: [caixa, inativa, outra], produtosExtras: [extra, inativo], saldoPrincipalInicial: 18200, saldoSecundariaInicial: 500 };
+      return { database, criadoEm: new Date().toISOString(), dataOperacao: date().toISOString().slice(0, 10), vencimento30: date(30).toISOString().slice(0, 10), vencimento60: date(60).toISOString().slice(0, 10), dataPeriodoFechado: fechado.toISOString().slice(0, 10), propriedades: [principal, secundaria], usuarios, parceiros, categorias, centro, casos, contas: [...contasPrincipais, secundariaBanco], produtosExtras: [extra, inativo], saldoPrincipalInicial: 18200, saldoSecundariaInicial: 500 };
     }, { timeout: 30000 });
     // Verificação da seed usa as consultas reais que alimentam a interface.
     const contas = await listarContas(manifest.propriedades[0].id, true);
-    assert.equal(contas.reduce((sum, c) => sum + Number(c.saldoAtual), 0), 18200);
+    assert.equal(contas.filter(c => c.ativo && c.incluirNoSaldoGeral).reduce((sum, c) => sum + Number(c.saldoAtual), 0), 18200);
     const saldos = await listarSaldos({ propriedadeId: manifest.propriedades[0].id });
-    for (const caso of manifest.casos) {
-      assert.equal(Number(contas.find(c => c.id === caso.conta.id)?.saldoAtual), 1000);
-      if (caso.produto) assert.equal(saldos.find(p => p.produtoId === caso.produto!.id)?.saldo, caso.produto.estoqueInicial);
-    }
+    for (const conta of manifest.contas.filter(c => c.propriedadeId === manifest.propriedades[0].id)) assert.equal(Number(contas.find(c => c.id === conta.id)?.saldoAtual), Number(conta.saldoAbertura));
+    for (const caso of manifest.casos) if (caso.produto) assert.equal(saldos.find(p => p.produtoId === caso.produto!.id)?.saldo, caso.produto.estoqueInicial);
     assert.equal(await prisma.operacao.count({ where: { propriedadeId: manifest.propriedades[0].id } }), 3);
     assert.equal(await prisma.compromissoFinanceiro.count({ where: { operacao: { propriedadeId: manifest.propriedades[0].id } } }), 0);
     assert.equal(await prisma.transacaoFinanceira.count({ where: { propriedadeId: manifest.propriedades[0].id } }), 0);
@@ -96,7 +111,7 @@ try {
     for (const u of manifest.usuarios) assert.ok(await autenticar(u.email, senha));
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     writeFileSync(resolve(directory, "comprovante-qa249.xml"), '<?xml version="1.0" encoding="UTF-8"?>\n<comprovanteQA><aviso>DOCUMENTO FICTICIO SEM VALOR FISCAL</aviso><numero>QA249-001</numero><valor>100.00</valor></comprovanteQA>\n');
-    console.log("Seed verificada: 2 propriedades, 2 acessos, 21 contas, 6 parceiros, 18 produtos, 3 categorias, 1 centro; 3 inventários e nenhum compromisso/pagamento.");
+    console.log("Seed verificada: 2 propriedades, 2 acessos, 8 contas realistas, 6 parceiros, 18 produtos, 3 categorias, 1 centro; 3 inventários e nenhum compromisso/pagamento.");
   }
   console.log(`Login: qa249@example.test / ${senha}\nConsulta: qa249-consulta@example.test / ${senha}`);
 } finally { await prisma.$disconnect(); }

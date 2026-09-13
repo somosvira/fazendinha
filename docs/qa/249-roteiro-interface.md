@@ -38,8 +38,9 @@ Não existe mais `qa249:dev`, `qa249:prepare` ou criação de banco por rodada.
 - Acesso completo: **qa249@example.test** / **QA249-local-2026!**
 - Acesso de consulta: **qa249-consulta@example.test** / **QA249-local-2026!**
 - Selecione **QA249 Principal**, não o consolidado nem a Fazenda Demonstração.
-- Os dados anteriores do banco local continuam presentes. As contagens e saldos
-  deste roteiro se referem à massa QA249 e ao escopo indicado, não ao banco inteiro.
+- Depois do reset desta rodada, o banco local contém somente a massa QA249. Se a
+  seed for aplicada de forma aditiva depois, as contagens deste roteiro continuam
+  restritas aos cadastros com prefixo QA249.
 - Se aparecerem dados de uma conexão antiga, faça logout e limpe os dados do site
   `localhost:41875` antes do novo login.
 
@@ -60,7 +61,7 @@ preservados. Não é criado outro banco ou outro servidor PostgreSQL.
 |---|---|---|
 | Propriedade | Define a origem dos efeitos e o escopo dos saldos | QA249 Principal e QA249 Secundária |
 | Usuário e permissões | Login, autorização para lançar e autoria/auditoria | Proprietário ativo e usuário de consulta, com hash de senha |
-| Conta financeira | Receber/pagar no ato ou liquidar depois | Um banco de R$ 1.000 para cada U01–U18; caixa destino R$ 200; conta inativa R$ 0; banco secundário R$ 500 |
+| Conta financeira | Receber/pagar no ato ou liquidar depois | Corrente operacional, poupança, conta de pagamento, caixa físico, aplicação, conta fora do saldo geral, conta inativa e banco da propriedade secundária |
 | Parceiro e papéis | Fornecedor na compra/devolução, cliente na venda, prestador no serviço | Fornecedor, Cliente, Prestador, Múltiplos papéis, Fornecedor inativo e Papel incompatível |
 | Grupo de categoria e categoria | Classificar operação e conferir relatórios; opcionais no domínio atual | QA249 Operacional; QA249 Insumos, QA249 Serviços e QA249 Vendas |
 | Centro de custo | Classificação gerencial; opcional no domínio atual | QA249 Produção |
@@ -82,15 +83,18 @@ saldos físicos devem respeitar o escopo selecionado.
 ## 3. Conferir a massa antes de começar
 
 - [ ] Login completo funciona e permite abrir Financeiro e Pecuária/Estoque.
-- [ ] Principal: 18 bancos de R$ 1.000, caixa de R$ 200 e conta inativa zerada.
-- [ ] Selecione **QA249 Principal** no seletor de fazenda: saldo geral inicial **R$ 18.200**, antes dos testes. **QA249 Secundária**: **R$ 500**. **Consolidado** inclui também as contas locais preexistentes; “Banco principal” não é uma conta da massa QA249 e não deve ser comparado com esses R$ 18.200.
+- [ ] Principal: cinco contas ativas incluídas no saldo geral — Banco Operacional **R$ 10.000**, Poupança Reserva **R$ 3.000**, Conta Pagamento **R$ 1.000**, Caixa Escritório **R$ 1.200** e Aplicação CDB **R$ 3.000**.
+- [ ] Principal também possui Conta fora do saldo geral **R$ 500** e Conta inativa **R$ 250**; nenhuma das duas entra nos **R$ 18.200**.
+- [ ] Selecione **QA249 Principal**: saldo geral inicial **R$ 18.200**. **QA249 Secundária**: **R$ 500**. No banco recém-resetado, **Consolidado** começa em **R$ 18.700**, pois soma somente as contas ativas incluídas das duas propriedades.
 - [ ] Estoque U06, U10 e U11: **10 kg cada**; demais produtos ativos: zero.
 - [ ] Operações: **3 inventários** com descrição `SEED QA249 ... estoque inicial`.
 - [ ] Compromissos e extratos: nenhum pagamento/recebimento inicial.
 - [ ] Configurações: 6 parceiros, 3 categorias, 1 centro de custo com prefixo QA249.
 
-A seed contém 21 contas ao todo e 18 produtos (17 ativos e 1 inativo). U05 e U18
-não têm produto próprio. Os três inventários valem R$ 100 cada: podem aparecer
+A seed contém 8 contas ao todo e 18 produtos (17 ativos e 1 inativo). U05 e U18
+não têm produto próprio. As contas cobrem os tipos Banco, Caixa e Aplicação; os
+bancos cobrem Corrente, Poupança e Pagamento, além dos estados fora do saldo geral,
+inativo e pertencente a outra propriedade. Os três inventários valem R$ 100 cada: podem aparecer
 como **R$ 300 de volume de operações**, mas não são R$ 300 de entrada de dinheiro.
 
 ## 4. Telas e procedimento comum
@@ -109,7 +113,9 @@ como **R$ 300 de volume de operações**, mas não são R$ 300 de entrada de din
 
 Para cada teste Uxx:
 
-1. Confirme Principal e registre saldo do **QA249 Uxx Banco** e do **QA249 Uxx Produto**.
+1. Confirme Principal e registre o saldo atual da **conta indicada no fluxo** e do
+   **QA249 Uxx Produto**. Alguns fluxos reutilizam a mesma conta, então o valor
+   anterior depende dos testes já executados.
 2. Abra Nova operação. Descrição: `QA249 Uxx — <nome do fluxo>`; data: hoje.
 3. Se houver produto: selecione o do fluxo, quantidade **10**, base **Valor unitário**,
    valor **10**. Confira unidade **kg** e total **R$ 100**. Não aceite cegamente um
@@ -118,7 +124,7 @@ Para cada teste Uxx:
 5. Selecione parceiro conforme fluxo. Para operações físicas sem financeiro, deixe
    parceiro vazio se o formulário não o solicitar. No serviço use **QA249 Serviços**;
    na venda, **QA249 Vendas**.
-6. Configure a condição. Quando houver conta, use a do próprio Uxx e forma **Pix**.
+6. Configure a condição. Quando houver conta, use a indicada no fluxo e forma **Pix**.
    Para prazo use vencimento hoje + 30 dias, também registrado no manifesto.
 7. Leia a revisão de efeitos antes de **Confirmar operação**; anote o número OP gerado.
 8. Visite detalhe, compromissos, extrato e estoque; confira valores. Recarregue as
@@ -126,21 +132,22 @@ Para cada teste Uxx:
 9. Registre resultado e capturas. Termine ou descarte explicitamente o rascunho
    antes do próximo fluxo: existe apenas um por usuário/propriedade.
 
-Usar contas/produtos distintos permite executar os fluxos fora de ordem. Somente
-as etapas internas de cada fluxo são sequenciais. Não use o saldo geral acumulado
-como gabarito dos próximos testes; compare sempre a conta/produto do próprio Uxx.
+Os produtos continuam isolados por fluxo, mas as contas representam o uso real e
+são compartilhadas. Os fluxos podem ser executados fora de ordem quando o saldo da
+conta for anotado antes: valide sempre a diferença esperada, não um valor absoluto.
+Somente as etapas internas de cada fluxo são sequenciais.
 
 ## 5. Fluxos principais
 
 ### U01 — rascunho, documento e compra à vista (M01, R01–R02)
 
 1. Prepare compra para estoque com **QA249 Fornecedor**, produto U01 e condição
-   **Liquidação integral na operação**. Conta U01; total 100.
+   **Liquidação integral na operação**. Conta **QA249 Banco Operacional**; total 100.
 2. Anexe o XML fornecido. Selecione tipo Justificativa e número `QA249-001`.
 3. Aguarde a indicação de rascunho salvo. Navegue para outra tela e reabra Nova
    operação; depois recarregue a página. Campos e anexo devem permanecer.
-4. Antes de confirmar: conta 1.000, estoque 0, nenhum compromisso/operação confirmada.
-5. Confirme uma vez. Esperado: conta **900**, estoque **10**, nenhum compromisso;
+4. Antes de confirmar: anote o saldo da conta; estoque 0 e nenhuma operação U01 confirmada.
+5. Confirme uma vez. Esperado: conta **saldo anterior − R$ 100**, estoque **10**, nenhum compromisso;
    uma operação, um movimento físico e um pagamento.
 6. No detalhe baixe o documento: nome/conteúdo corretos. Nova operação deve estar
    vazia, sem reutilizar os itens/anexos já confirmados.
@@ -151,12 +158,14 @@ como gabarito dos próximos testes; compare sempre a conta/produto do próprio U
 
 1. Compra para estoque, Fornecedor, produto U02. Condição **Liquidação integral a prazo**,
    uma parcela de 100, vencimento +30 dias. Não informe pagamento imediato.
-2. Confirme: conta **1.000**, estoque **10**, A pagar **100**, status pendente.
+2. Use **QA249 Poupança Reserva** e anote seu saldo. Confirme: conta **sem alteração**,
+   estoque **10**, A pagar **100**, status pendente.
 3. Em Compromissos > A pagar, localize a descrição U02 e abra Registrar pagamento.
-   Conta U02, valor **40**; confirme. Conta **960**, pendente **60**, estoque **10**.
+   Use a Poupança Reserva, valor **40**; confirme. Conta **saldo anterior − R$ 40**,
+   pendente **60**, estoque **10**.
 4. Tente informar **61** na liquidação seguinte: confirmação deve ser bloqueada,
    sem alterar os saldos. Cancele o modal.
-5. Liquide **60**. Conta **900**, pendente **0**, compromisso em Liquidados; estoque
+5. Liquide **60**. Conta **mais R$ 60 abaixo**, pendente **0**, compromisso em Liquidados; estoque
    continua **10**, com uma entrada física no total e dois pagamentos no extrato.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
@@ -164,17 +173,19 @@ como gabarito dos próximos testes; compare sempre a conta/produto do próprio U
 ### U03 — pagamento parcial no ato (M03)
 
 1. Compra para estoque, Fornecedor, produto U03. Condição **Liquidação parcial com
-   saldo a prazo**, conta U03, valor liquidado **40**, uma parcela de **60** em +30 dias.
-2. Confirme: conta **960**, estoque **10**, compromisso de **60**, não de 100.
-3. Liquide os 60 em Compromissos usando conta U03: conta **900**, pendente zero;
+   saldo a prazo**, conta **QA249 Conta Pagamento**, valor liquidado **40**, uma parcela de **60** em +30 dias.
+2. Anote o saldo da conta. Confirme: conta **saldo anterior − R$ 40**, estoque **10**,
+   compromisso de **60**, não de 100.
+3. Liquide os 60 em Compromissos usando a mesma conta: saldo **mais R$ 60 abaixo**, pendente zero;
    estoque continua 10. Esta última etapa amplia a cobertura automática existente.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
 
 ### U04 — compra para consumo direto (M06)
 
-1. Tipo Compra para consumo direto; Fornecedor; produto U04; à vista, conta U04.
-2. Confirme: conta **900**, estoque **0**, nenhum compromisso ou movimento físico.
+1. Tipo Compra para consumo direto; Fornecedor; produto U04; à vista, conta
+   **QA249 Caixa Escritório**. Anote o saldo antes.
+2. Confirme: conta **saldo anterior − R$ 100**, estoque **0**, nenhum compromisso ou movimento físico.
    Vincular produto na descrição não deve transformar consumo direto em entrada.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
@@ -182,8 +193,9 @@ como gabarito dos próximos testes; compare sempre a conta/produto do próprio U
 ### U05 — serviço puro (M07)
 
 1. Tipo Serviço; parceiro **QA249 Prestador**; categoria Serviços; descrição de
-   manutenção; valor total **100**, à vista, conta U05.
-2. Produto/quantidade não devem ser obrigatórios. Confirme: conta **900**, nenhum
+   manutenção; valor total **100**, à vista, conta **QA249 Banco Operacional**.
+2. Anote o saldo. Produto/quantidade não devem ser obrigatórios. Confirme: conta
+   **saldo anterior − R$ 100**, nenhum
    compromisso, nenhum movimento físico; nenhum produto teve saldo alterado.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
@@ -191,21 +203,21 @@ como gabarito dos próximos testes; compare sempre a conta/produto do próprio U
 ### U06 — venda estocável (M08)
 
 1. Estoque U06 inicia em 10. Venda; **QA249 Cliente**; produto U06; 10 × 10;
-   categoria Vendas; à vista, conta U06.
-2. Confirme: estoque **0**, conta **1.100**, nenhum compromisso. Confira saída
+   categoria Vendas; à vista, conta **QA249 Conta Pagamento**.
+2. Anote o saldo. Confirme: estoque **0**, conta **saldo anterior + R$ 100**, nenhum compromisso. Confira saída
    física e recebimento; inventário inicial permanece no histórico de operações.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
 
 ### U07–U09 — inventário, bonificação e produção (M11, M12, M15)
 
-Execute um teste independente por linha, usando conta/produto com o mesmo código:
+Execute um teste independente por linha. Nenhum deles solicita conta financeira:
 
 | Fluxo | Tipo | Estoque antes → depois | Conta | Compromisso |
 |---|---|---|---|---|
-| U07 | Inventário inicial | 0 → 10 | 1.000, sem alteração | Nenhum |
-| U08 | Bonificação | 0 → 10 | 1.000, sem alteração | Nenhum |
-| U09 | Produção | 0 → 10 | 1.000, sem alteração | Nenhum |
+| U07 | Inventário inicial | 0 → 10 | Todas sem alteração | Nenhum |
+| U08 | Bonificação | 0 → 10 | Todas sem alteração | Nenhum |
+| U09 | Produção | 0 → 10 | Todas sem alteração | Nenhum |
 
 1. Preencha produto, quantidade 10, unitário 10 e justificativa na descrição.
 2. Revise **Sem movimentação financeira**; não deve exigir conta/prazo.
@@ -222,12 +234,12 @@ Execute um teste independente por linha, usando conta/produto com o mesmo códig
    saldo inicial é 10 kg. Ajuste de estoque não deve aparecer em Nova operação.
 2. Informe **20** em Quantidade encontrada na contagem e a justificativa
    `QA249 U10 contagem positiva`. Revise **diferença +10 kg** e estoque final 20.
-3. Confirme: estoque **20**, conta U10 **1.000**, nenhum compromisso ou pagamento.
+3. Confirme: estoque **20**, todas as contas sem alteração, nenhum compromisso ou pagamento.
 4. Abra novo ajuste do mesmo produto e informe **10** (não -10), com justificativa
    `QA249 U10 recontagem`. Revise **diferença -10 kg** e confirme: estoque **10**.
 5. Verifique que informar novamente 10 mostra Nenhum ajuste necessário e bloqueia
    confirmação. Informe **0**, justifique e revise a diferença -10: zerar é válido.
-   Confirme e confira estoque zero, conta 1.000 e histórico dos três ajustes.
+   Confirme e confira estoque zero, contas sem alteração e histórico dos três ajustes.
 6. Se aparecer aviso de saldo alterado, use **Atualizar saldo**, confira novamente
    a diferença e só então confirme. Não deve sobrescrever movimentos concorrentes.
 
@@ -236,8 +248,9 @@ Execute um teste independente por linha, usando conta/produto com o mesmo códig
 ### U11 — devolução ao fornecedor (M13)
 
 1. Estoque U11 inicia em 10. Tipo Devolução; **QA249 Fornecedor**; produto U11;
-   10 × 10; liquidação integral na operação, conta U11.
-2. Confirme: estoque **0**, conta **1.100** (restituição recebida), sem compromisso.
+   10 × 10; liquidação integral na operação, conta **QA249 Conta Pagamento**.
+2. Anote o saldo. Confirme: estoque **0**, conta **saldo anterior + R$ 100**
+   (restituição recebida), sem compromisso.
 3. A massa usa inventário para disponibilizar o produto. Este cenário NÃO valida
    abatimento de compra não paga nem vínculo obrigatório à compra original.
 
@@ -249,11 +262,11 @@ Execute um teste independente por linha, usando conta/produto com o mesmo códig
 
 Crie uma compra de 100 com Fornecedor/produto do próprio fluxo:
 
-| Fluxo | Condição inicial | Conta após criar | Pendente após criar | Depois de cancelar, esperado |
+| Fluxo | Conta | Condição inicial | Efeito ao criar | Depois de cancelar, esperado |
 |---|---|---:|---:|---|
-| U12 | À vista | 900 | 0 | Conta 1.000; estoque 0 |
-| U13 | A prazo, uma parcela 100 | 1.000 | 100 | Conta 1.000; estoque 0; compromisso cancelado |
-| U14 | Parcial, 40 agora e 60 a prazo | 960 | 60 | Conta 1.000; estoque 0; compromisso cancelado |
+| U12 | Banco Operacional | À vista | Saldo −100; pendente 0 | Saldo volta ao anterior; estoque 0 |
+| U13 | Poupança Reserva | A prazo, uma parcela 100 | Saldo inalterado; pendente 100 | Saldo anterior; estoque 0; compromisso cancelado |
+| U14 | Conta Pagamento | Parcial, 40 agora e 60 a prazo | Saldo −40; pendente 60 | Saldo volta ao anterior; estoque 0; compromisso cancelado |
 
 1. Após criar, confirme estoque 10 em cada fluxo e os saldos da tabela.
 2. No detalhe, clique **Cancelar operação**. Sem motivo, o botão de confirmar deve
@@ -264,8 +277,8 @@ Crie uma compra de 100 com Fornecedor/produto do próprio fluxo:
 5. Reabra o detalhe: não deve permitir aplicar o cancelamento outra vez.
 
 **Falha conhecida na base:** o estoque retorna **-10**, não zero. Se acontecer,
-marque Falhou e registre evidência; não mude o gabarito para -10. Conta/produto do
-próximo fluxo são independentes, então é possível continuar os outros testes.
+marque Falhou e registre evidência; não mude o gabarito para -10. O produto do
+próximo fluxo é independente, então é possível continuar os outros testes.
 
 - U12: [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____
 - U13: [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____
@@ -274,9 +287,10 @@ próximo fluxo são independentes, então é possível continuar os outros teste
 ### U15 — cancelar após liquidação posterior (R06)
 
 1. Compra a prazo U15 de 100, uma parcela. Confirme e depois liquide integralmente
-   com a conta U15: conta 900, estoque 10, compromisso liquidado.
+   com **QA249 Aplicação CDB**: saldo da conta **− R$ 100**, estoque 10,
+   compromisso liquidado.
 2. Cancele **a operação inteira** no detalhe, com motivo.
-3. Esperado: conta **1.000**, estoque **0**, compromisso cancelado; histórico de
+3. Esperado: conta volta ao **saldo anterior**, estoque **0**, compromisso cancelado; histórico de
    compra e pagamento/reversão preservado. Anote especialmente o histórico visível.
 4. O estorno isolado de liquidação não tem botão implementado nessa interface:
    esta ação não substitui R08. A preservação do vínculo Liquidacao precisa também
@@ -293,16 +307,19 @@ próximo fluxo são independentes, então é possível continuar os outros teste
 2. No segundo item alterne Base do valor para **Valor total do item** e informe
    **30**; total da operação deve continuar 55.
 3. A prazo: duas parcelas, **25** em +30 dias e **30** em +60 dias.
-4. Confirme: conta U16 **1.000**, estoques **2,5 kg** e **3 un**, dois compromissos
+4. Anote o saldo de **QA249 Poupança Reserva**. Confirme: saldo sem alteração,
+   estoques **2,5 kg** e **3 un**, dois compromissos
    com valores/vencimentos corretos e duas entradas físicas vinculadas aos itens.
-5. Liquide somente a parcela 25 na conta U16: saldo **975**, pendente total **30**;
+5. Liquide somente a parcela 25 na Poupança Reserva: saldo **anterior − R$ 25**,
+   pendente total **30**;
    estoques não mudam. Fracionamento e múltiplos itens ampliam a suíte inicial.
 
 - [ ] Passou / [ ] Falhou / [ ] Bloqueado — OP: ____ Evidência: ____
 
 ### U17 — validações, preferências e cadastros
 
-Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
+Use somente U17; anote o saldo de **QA249 Banco Operacional** antes de cada
+tentativa bloqueada e confirme estoque 0:
 
 1. Na compra, verifique que Cliente/Papel incompatível não são opções válidas de
    fornecedor e que Fornecedor inativo e Produto inativo não podem ser usados.
@@ -319,7 +336,7 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
 6. Aguarde salvar o rascunho. Em outra aba, desative **QA249 Fornecedor** nas
    Configurações. Recarregue Nova operação e tente confirmar: deve bloquear por
    parceiro inativo. Reative o parceiro ao terminar, para não afetar outros fluxos.
-7. Descarte o rascunho U17. Confirme conta 1.000 e estoque zero; não deve existir
+7. Descarte o rascunho U17. Confirme saldo da conta inalterado e estoque zero; não deve existir
    operação confirmada desse fluxo. Se um bloqueio falhar, registre e não use
    esse estado como início das demais tentativas — prepare um novo conjunto de cadastros para esse fluxo.
 
@@ -327,9 +344,10 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
 
 ### U18 — transferência entre contas (regressão financeira)
 
-1. Em Contas/extratos clique **Transferir**; origem U18 Banco (1.000), destino
-   **QA249 U18 Caixa destino** (200), valor **100**.
-2. Confira revisão e registre: origem **900**, destino **300**, soma **1.200**.
+1. Em Contas/extratos clique **Transferir**; origem **QA249 Banco Operacional**,
+   destino **QA249 Caixa Escritório**, valor **100**. Anote ambos os saldos.
+2. Confira revisão e registre: origem **saldo anterior − R$ 100**, destino
+   **saldo anterior + R$ 100** e soma das duas contas sem alteração.
    Nenhum compromisso/estoque; duas pontas no extrato.
 3. Isso é transferência **financeira**. Não valida transferência de estoque M16.
 
@@ -340,7 +358,8 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
 - [ ] Troque para Secundária: banco **500**, sem operações/compromissos e sem saldos
   físicos da Principal. Catálogos de produto/parceiro podem continuar aparecendo.
 - [ ] Retorne à Principal. Em Contas/extratos abra “Ver conta” em diferentes linhas da tabela e confira os dados e o extrato:
-  todos os bancos de cenário devem estar acessíveis na tabela.
+  corrente, poupança, pagamento, caixa e aplicação devem estar acessíveis na tabela;
+  a conta fora do saldo geral aparece sem compor o card e a inativa permanece consultável em Configurações.
 - [ ] Faça logout e entre com o usuário de consulta: não deve conseguir lançar
   operações nem administrar acessos. Volte ao login completo para continuar.
 - [ ] Gere relatório gerencial no período atual; compare realizado com pagamentos
@@ -394,13 +413,13 @@ fluxos aplicáveis. As falhas conhecidas devem permanecer visíveis no registro.
 
 ## Validação da preparação
 
-A massa foi aplicada e verificada em fazendinha_local, preservando as 7 operações
-anteriores e acrescentando 3 inventários QA249 (10 operações ao todo). O schema
-foi sincronizado sem reset. Os saldos QA e o login dos dois usuários foram
-verificados pelos serviços reais. Os dois bancos extras foram removidos após
-backup em `server/.qa249/backups/`.
+O único banco local `fazendinha_local` foi salvo em backup, resetado e preenchido
+somente com a massa QA249. A seed verificou pelos serviços reais as 8 contas, os
+saldos de abertura, os estoques e o login dos dois usuários. O estado inicial tem
+3 inventários, nenhum compromisso, nenhum pagamento e nenhum rascunho.
 
-A preparação anterior usou portas/banco separados; isso foi removido. Os servidores
+A Principal inicia com R$ 18.200 nas cinco contas ativas incluídas no saldo geral;
+a Secundária inicia com R$ 500 e o Consolidado com R$ 18.700. Os servidores
 permanecem parados para você iniciar com `pnpm dev`. O checklist visual continua
 pendente de execução humana.
 

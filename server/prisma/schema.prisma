@@ -18,7 +18,6 @@ enum TipoContaFinanceira {
   BANCO
   CAIXA
   APLICACAO
-  DINHEIRO
 }
 
 enum TipoParceiro {

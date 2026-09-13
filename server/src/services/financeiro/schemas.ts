@@ -25,7 +25,7 @@ const documentoSchema = z.preprocess(
 
 const emailSchema = z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), z.string().trim().email("E-mail inválido").nullable().optional());
 
-const tipoContaSchema = z.enum(["BANCO", "CAIXA", "APLICACAO", "DINHEIRO"]).transform((tipo) => tipo === "DINHEIRO" ? "CAIXA" as const : tipo);
+const tipoContaSchema = z.enum(["BANCO", "CAIXA", "APLICACAO"]);
 const tipoParceiroSchema = z.enum(["CLIENTE", "FORNECEDOR", "AMBOS", "FUNCIONARIO", "PROPRIETARIO", "OUTRO"]);
 
 export const formaPagamentoSchema = z.enum([

@@ -5,8 +5,8 @@ import { exigirParceiroAtivo } from "./regras.js";
 
 describe("cadastros financeiros ampliados", () => {
   const conta = { nome: "Caixa", tipo: "CAIXA", saldoAbertura: 0, dataSaldoAbertura: "2026-09-11" };
-  it("aceita saldo zero e converte o tipo legado sem mudar o pagamento", () => {
-    expect(contaSchema.parse({ ...conta, tipo: "DINHEIRO" }).tipo).toBe("CAIXA");
+  it("aceita saldo zero, recusa o tipo legado e mantém dinheiro como forma de pagamento", () => {
+    expect(contaSchema.safeParse({ ...conta, tipo: "DINHEIRO" }).success).toBe(false);
     expect(contaSchema.parse(conta).saldoAbertura).toBe(0);
     expect(parceiroSchema.parse({ nome: "Maria", papeis: ["CLIENTE"], formaPagamentoPreferida: "DINHEIRO" }).formaPagamentoPreferida).toBe("DINHEIRO");
   });
