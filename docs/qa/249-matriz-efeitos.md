@@ -3,8 +3,10 @@
 Referência: [issue #249](https://github.com/somosvira/fazendinha/issues/249),
 [contrato funcional](../financeiro-rebuild-contrato.md) e
 [relatório da execução](249-integridade-financeiro.md).
-Base executada: `0e9bc74`, em 12/09/2026. Esta matriz documenta o resultado esperado
-antes de avaliar a implementação; suporte ausente não equivale a teste aprovado.
+Base da execução inicial: `0e9bc74`, em 12/09/2026. Matriz atualizada para o
+fluxo de contagem de `e07fdf1` e a remoção do aviso em `43fbfc5`. Os resultados
+abaixo são das execuções já registradas; esta atualização documental não executa
+a suíte novamente. Suporte ausente não equivale a teste aprovado.
 
 ## Convenções e massa de referência
 
@@ -35,8 +37,8 @@ antes de avaliar a implementação; suporte ausente não equivale a teste aprova
 | M06 | Compra para consumo direto à vista | 0 → 0; nenhum movimento | 1.000 → 900 | Não cria | Passou para conta/estoque; prazo não executado |
 | M07 | Serviço puro à vista | 0 → 0; nenhum movimento | 1.000 → 900 | Não cria | Passou para conta/estoque; serviço a prazo pendente |
 | M08 | Venda de produto estocável à vista | 10 → 0 | 1.000 → 1.100 | Não cria | Passou para conta/estoque; venda a prazo pendente |
-| M09 | Ajuste positivo justificado, sem financeiro | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
-| M10 | Ajuste negativo justificado de 10 kg | 10 → 0 | 1.000 → 1.000 | Não cria | Coberto pela contagem no Estoque: informar quantidade final, com delta negativo calculado no servidor; UI pendente |
+| M09 | Estoque > Ajustar quantidade: saldo 8, contagem 12, com justificativa | 8 → 12; delta +4 calculado no servidor | 1.000 → 1.000 | Não cria | Passou no teste encadeado de contagem; ajuste interno positivo também coberto |
+| M10 | Estoque > Ajustar quantidade: saldo 10, contagem 8, com justificativa | 10 → 8; delta -2 calculado no servidor | 1.000 → 1.000 | Não cria | Passou no teste encadeado de contagem |
 | M11 | Inventário inicial de 10 kg | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
 | M12 | Bonificação recebida de 10 kg | 0 → 10 | 1.000 → 1.000 | Não cria | Passou |
 | M13 | Devolução ao fornecedor, com restituição imediata de 100 | 10 → 0 | 1.000 → 1.100 | Não cria | Passou para conta/estoque; vínculo com compra original e devolução de compra ainda não paga pendentes |
@@ -44,6 +46,7 @@ antes de avaliar a implementação; suporte ausente não equivale a teste aprova
 | M15 | Produção: entrada de 10 kg acabados, sem financeiro | 0 → 10 | 1.000 → 1.000 | Não cria | Passou apenas para entrada simples; consumo de insumos/custeio não validado |
 | M16 | Transferência física de 10 kg de A para B | A: 10 → 0; B: 0 → 10; total permanece 10 | Sem alteração | Não cria | Lacuna de suporte; falta fluxo de duas pontas vinculadas. Definir se origem/destino são locais ou propriedades |
 | M17 | Compra a prazo ainda não recebida fisicamente | 0 → 0 até recebimento; entrada única depois | Sem alteração até liquidação | Pagar 100, se compra confirmada | Pendente; contrato separa recebimento/pagamento, mas fluxo atual de compra estocável gera entrada na confirmação |
+| M18 | Estoque > Ajustar quantidade: saldo 12, contagem zero, com justificativa | 12 → 0; delta -12 | 1.000 → 1.000 | Não cria | Passou no teste encadeado de contagem; zero é uma contagem válida |
 
 Nas linhas M14 e M16, os efeitos condicionais são requisitos a detalhar, não regras
 já implementadas ou aprovadas. Não inventar restituição automática para uma compra
@@ -71,6 +74,30 @@ do contrato além da massa recebida no ato usada na suíte atual.
 | R15 | Confirmar o mesmo rascunho simultaneamente | Uma única entrada | Um único pagamento | Uma única operação; sem duplicação de compromisso/documento | Pendente |
 | R16 | Saída acima do estoque disponível | Sem alteração se política proibir negativo | Sem alteração se saída bloqueada | Rejeita atomicamente conforme regra do produto | Pendente: definir/verificar política, não presumir bloqueio universal |
 
+## Proteções do ajuste por contagem
+
+O fluxo parte de **Estoque > Ajustar quantidade**, com produto ativo e estocável,
+quantidade final encontrada (não uma entrada/saída digitada) e justificativa de
+pelo menos cinco caracteres. A quantidade admite zero e até duas casas decimais.
+O servidor calcula `diferença = quantidade contada − saldo atual` na propriedade
+selecionada. Conta, extrato financeiro e compromissos permanecem inalterados.
+
+| ID | Ação / estado anterior | Efeito esperado | Cobertura / limite |
+|---|---|---|---|
+| A01 | Saldo 10; informar contagem 10 | Não confirmar nem criar operação, movimento ou auditoria de ajuste | Passou no serviço e no teste de componente |
+| A02 | Tela consultou saldo 0, mas saldo atual é 10; enviar contagem 8 | Recusar sem gravação; preservar contagem/motivo na tela e exigir revisão após atualizar saldo | Passou no serviço; preservação e atualização cobertas no componente |
+| A03 | Auditoria falha durante a confirmação | Desfazer operação, item, movimento e auditoria na mesma transação; saldo anterior intacto | Passou com falha real induzida no PostgreSQL |
+| A04 | A tem 10; contar 2 em B, cujo saldo é zero | A permanece 10; B passa a 2; nenhum efeito financeiro | Passou no serviço; autorização HTTP não coberta |
+| A05 | Clicar novamente enquanto salva | Uma requisição pelo formulário; botão bloqueado durante envio | Passou no componente; não comprova idempotência da API nem concorrência entre sessões |
+| A06 | Abrir Nova operação | Ajuste de estoque não aparece entre os tipos selecionáveis | Coberto por teste do formulário; QA manual pendente |
+| A07 | Abrir rascunho antigo do tipo AJUSTE_ESTOQUE | Tipo legado preservado, confirmação bloqueada enquanto mantiver esse tipo; sem o parágrafo de aviso removido | Inspeção do código; cenário manual pendente |
+| A08 | Duas contagens simultâneas sobre o mesmo saldo | Evitar aplicação de diferença baseada em saldo vencido; conflito exige atualizar e revisar | Transação Serializable e tratamento de conflito implementados; teste concorrente específico pendente |
+
+O tipo `AJUSTE_ESTOQUE` permanece na persistência para rastreabilidade. A retirada
+da opção no formulário não significa remoção do tipo nem bloqueio geral das APIs
+legadas. O roteiro manual correspondente é o **U10** em
+[roteiro de interface](249-roteiro-interface.md).
+
 ## Registros que sustentam cada efeito
 
 | Efeito | Persistência e verificação exigidas |
@@ -81,6 +108,7 @@ do contrato além da massa recebida no ato usada na suíte atual.
 | Prazo | CompromissoFinanceiro por parcela; valor original, vencimento, número e total de parcelas coerentes; nenhum movimento de conta antes do pagamento |
 | Liquidação | Liquidacao vinculando compromisso/transação; saldo pendente derivado apenas de liquidações efetivas; nenhum novo movimento de estoque |
 | Reversão | Evento inverso vinculado ao original e auditoria; histórico preservado; cálculo deve neutralizar o original exatamente uma vez |
+| Contagem de estoque | Operação interna AJUSTE_ESTOQUE, item e movimento vinculados; propriedade e autor corretos; auditoria AJUSTE_CONTAGEM com motivo, saldo anterior, quantidade contada, diferença e movimentoId; sem transação financeira ou compromisso |
 | Documento | Vínculo do rascunho promovido à operação na mesma transação; falha preserva estado anterior |
 | Transferência física | Duas pontas vinculadas à mesma transferência; soma das quantidades zero; sem conta/compromisso financeiro |
 | Falha | Comparar estado completo de todas as entidades antes/depois; nenhuma gravação parcial; avanço de sequence do PostgreSQL não conta como registro parcial |
@@ -90,7 +118,7 @@ combinações: M01 verifica diretamente vínculos, propriedade, quantidade, cust
 valor e unidade nominal; conversão de unidade, precisão fracionária, múltiplos
 produtos/parcelas e rastreabilidade de item na reversão continuam pendentes.
 
-## Rastreabilidade com os 26 testes existentes
+## Rastreabilidade com os 30 testes de integração
 
 Arquivo: [invariantes.test.ts](../../server/tests/financeiro/invariantes.test.ts).
 Os nomes abaixo são os títulos usados pela suíte; uma linha da matriz pode ser
@@ -114,16 +142,21 @@ uma etapa do mesmo teste, não um teste adicional.
 | R12 | liquidação acima do restante não deixa pagamento parcial persistido | 1 |
 | R13 | liquidações concorrentes não podem pagar mais que o compromisso | 1 |
 | R14 | rejeita inativa / outra propriedade / período fechado / parceiro inativo sem efeitos parciais | 4 |
-| Total | 21 passaram; 5 falharam, conforme relatório da execução | 26 |
+| M09, M10, M18 | contagem encontrada reduz, aumenta e zera o estoque sem dinheiro | 1 |
+| A01, A02 | contagem com saldo antigo ou sem diferença não grava efeitos | 1 |
+| A03 | falha de auditoria reverte ajuste de contagem inteiro | 1 |
+| A04 | contagem usa somente movimentos da propriedade escolhida | 1 |
+| Total | 25 passaram; 5 falharam, conforme relatório da execução | 30 |
 
 R03–R05, R08 e R13 correspondem às cinco falhas. As outras linhas pendentes não
-entram no denominador de 26. A suíte salva em estados.json os estados das etapas,
+entram no denominador de 30. Testes de componente e de schema são coberturas
+separadas e não entram nesse total. A suíte salva em estados.json os estados das etapas,
 mas nem toda propriedade capturada tem uma asserção específica; registro de uma
 informação não equivale a validação automatizada dela.
 
 ## Uso na continuação do QA
 
-1. Usar IDs M/R nas issues de defeito e evidências de futuras execuções.
+1. Usar IDs M/R/A nas issues de defeito e evidências de futuras execuções.
 2. Para cada execução, registrar commit, data, estado anterior, resultado obtido,
    esperado, teste/tela usado e link da evidência; manter separado backend/UI.
 3. Corrigir R03–R05, R08 e R13 e repetir a suíte; detalhar as regras em aberto de
@@ -134,15 +167,3 @@ informação não equivale a validação automatizada dela.
 6. Só marcar o critério de execução da matriz na #249 quando os cenários mínimos
    tiverem evidência ou lacuna formalmente tratada; a existência desta tabela
    satisfaz a documentação da matriz, não sua execução integral.
-
-## Evolução: ajuste por quantidade contada
-
-Ajuste foi retirado das opções de Nova operação. No Estoque, a pessoa informa a
-quantidade encontrada (inclusive zero) e revisa a diferença. O tipo interno
-AJUSTE_ESTOQUE continua nos registros, sem efeito financeiro. Rascunhos antigos
-desse tipo não são convertidos nem confirmados silenciosamente pela interface.
-
-Quatro testes adicionais em PostgreSQL passaram: contagem para reduzir/aumentar/
-zerar, rejeição de saldo desatualizado/sem diferença, rollback da auditoria e
-isolamento por propriedade. A suíte agora tem 30 casos: 25 passaram e as mesmas
-5 falhas anteriores continuam abertas. O quadro de 26 acima é a execução inicial.
