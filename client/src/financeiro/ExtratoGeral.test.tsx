@@ -6,10 +6,10 @@ import { obterExtratoGeral, type Conta, type MovimentoGeral } from "./novo-api";
 vi.mock("./novo-api", () => ({ obterExtratoGeral: vi.fn() }));
 afterEach(cleanup);
 const contas = [{ id: 1, nome: "Banco A", instituicao: "Instituição A", ativo: true }, { id: 2, nome: "Caixa B", instituicao: null, ativo: false }] as Conta[];
-const movimentos = [
-  { id: 11, contaId: 1, conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
-  { id: 12, contaId: 2, conta: contas[1], direcao: "SAIDA", valor: "10", transacao: { data: "2026-09-12", descricao: "Compra B", status: "CONFIRMADA" } },
-] as MovimentoGeral[];
+const movimentos: MovimentoGeral[] = [
+  { id: 11, contaId: 1, conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { id: 21, tipo: "RECEBIMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
+  { id: 12, contaId: 2, conta: contas[1], direcao: "SAIDA", valor: "10", transacao: { id: 22, tipo: "PAGAMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-12", descricao: "Compra B", status: "CONFIRMADA" } },
+];
 it("combina filtros inclusivos de data, conta e instituição e abre o movimento exato", async () => {
   vi.mocked(obterExtratoGeral).mockResolvedValue(movimentos);
   const abrir = vi.fn(); render(<ExtratoGeral contas={contas} onAbrir={abrir} />);
