@@ -80,6 +80,11 @@ Parceiros, produtos, categorias e centros são catálogos compartilhados no mode
 atual; não espere que desapareçam ao trocar propriedade. Já contas, operações e
 saldos físicos devem respeitar o escopo selecionado.
 
+O cadastro dessas categorias e do centro de custo ainda não possui uma tela
+administrativa real: a seed os insere diretamente no banco e a conferência manual
+ocorre nos seletores de Nova operação. A aba Categorias atual usa dados de
+demonstração e não serve como evidência para esta massa.
+
 ## 3. Conferir a massa antes de começar
 
 - [ ] Login completo funciona e permite abrir Financeiro e Pecuária/Estoque.
@@ -89,7 +94,9 @@ saldos físicos devem respeitar o escopo selecionado.
 - [ ] Estoque U06, U10 e U11: **10 kg cada**; demais produtos ativos: zero.
 - [ ] Operações: **3 inventários** com descrição `SEED QA249 ... estoque inicial`.
 - [ ] Compromissos e extratos: nenhum pagamento/recebimento inicial.
-- [ ] Configurações: 6 parceiros, 3 categorias, 1 centro de custo com prefixo QA249.
+- [ ] Em Nova operação, o seletor Categoria mostra o grupo **QA249 Operacional**
+  com **QA249 Insumos**, **QA249 Serviços** e **QA249 Vendas**; o seletor Centro
+  de custo mostra **QA249 Produção**.
 
 A seed contém 8 contas ao todo e 18 produtos (17 ativos e 1 inativo). U05 e U18
 não têm produto próprio. As contas cobrem os tipos Banco, Caixa e Aplicação; os
