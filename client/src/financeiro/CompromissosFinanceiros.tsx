@@ -15,6 +15,11 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
   const total = lista.reduce((s, c) => s + Number(c.saldoPendente), 0);
   const pagar = async () => { if (!pagando) return; try { await liquidarCompromisso(pagando.id, { contaId: Number(contaId), valor: Number(valor), data: hoje(), formaPagamento: "PIX" }); setPagando(null); setContaId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
   const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", `/financeiro/operacoes/nova?compromisso=${tipo}`); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); };
+  const verRascunhoAtual = () => {
+    setNovoCompromissoPendente(null);
+    onNav("lancar");
+    window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0);
+  };
   const prepararNovoCompromisso = async (tipo: "PAGAR" | "RECEBER") => {
     setPreparando(true); setErro(null);
     try {
@@ -46,6 +51,17 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     </Panel>
 
     {pagando && <Modal titulo={`Registrar ${pagando.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={() => setPagando(null)}><div className="p-5"><div className="rounded-lg bg-[#f7f5ed] p-4"><strong className="break-words">{pagando.operacao.descricao}</strong><div className="mt-1 break-words text-sm text-ink-3">{pagando.parceiro?.nome ?? "Sem parceiro"} · pendente {brl(pagando.saldoPendente)}</div></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta<select className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" value={contaId} onChange={(e) => setContaId(e.target.value)}><option value="">Selecione</option>{config?.contas.filter((x) => x.ativo).map((x) => <option key={x.id} value={x.id}>{x.nome} · {brl(x.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Valor<input type="number" min="0.01" max={Number(pagando.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} /></label></div><div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Ao confirmar, o saldo da conta será alterado e o compromisso ficará parcial ou liquidado. O registro poderá ser revertido posteriormente com histórico.</div><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setPagando(null)}>Cancelar</Button><Button disabled={!contaId || Number(valor) <= 0 || Number(valor) > Number(pagando.saldoPendente)} onClick={pagar}>Confirmar liquidação</Button></div></div></Modal>}
-    <ConfirmDialog open={novoCompromissoPendente != null} title="Substituir rascunho em andamento?" message="Já existe uma operação em andamento. Ao continuar, os dados preenchidos e documentos anexados a esse rascunho serão excluídos para iniciar uma nova operação. Esta ação não poderá ser desfeita." confirmLabel="Descartar e continuar" cancelLabel="Manter rascunho" tone="danger" onCancel={() => setNovoCompromissoPendente(null)} onConfirm={() => { void descartarECriarCompromisso(); }} />
+    <ConfirmDialog
+      open={novoCompromissoPendente != null}
+      title={novoCompromissoPendente === "RECEBER" ? "Criar um novo valor a receber?" : "Criar um novo valor a pagar?"}
+      message={<><p>Você já tem um rascunho de operação em andamento.</p><p className="mt-2">Para iniciar este novo lançamento, o rascunho atual será descartado. Os dados preenchidos e documentos anexados serão excluídos permanentemente.</p></>}
+      confirmLabel="Criar mesmo assim"
+      cancelLabel="Ver rascunho atual"
+      tone="danger"
+      processando={preparando}
+      onCancel={verRascunhoAtual}
+      onDismiss={() => setNovoCompromissoPendente(null)}
+      onConfirm={() => { void descartarECriarCompromisso(); }}
+    />
   </PaginaFinanceira>;
 }

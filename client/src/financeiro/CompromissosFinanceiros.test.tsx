@@ -25,11 +25,12 @@ describe("CompromissosFinanceiros — criação", () => {
     render(<CompromissosFinanceiros onNav={onNav} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar a pagar" }));
-    expect(await screen.findByRole("heading", { name: "Substituir rascunho em andamento?" })).toBeTruthy();
-    expect(screen.getByText(/dados preenchidos e documentos anexados/)).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Criar um novo valor a pagar?" })).toBeTruthy();
+    expect(screen.getByText(/Você já tem um rascunho de operação em andamento/)).toBeTruthy();
+    expect(screen.getByText(/dados preenchidos e documentos anexados serão excluídos permanentemente/)).toBeTruthy();
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descartar e continuar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar mesmo assim" }));
     await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalledOnce());
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
   });
@@ -41,7 +42,21 @@ describe("CompromissosFinanceiros — criação", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar a receber" }));
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
-    expect(screen.queryByRole("heading", { name: "Substituir rascunho em andamento?" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Criar um novo valor/ })).toBeNull();
+    expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
+  });
+
+  it("abre o rascunho atual sem descartar seus dados", async () => {
+    vi.mocked(obterRascunhoOperacao).mockResolvedValue({ id: 8, versao: 1, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: {} });
+    const onNav = vi.fn();
+    render(<CompromissosFinanceiros onNav={onNav} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Criar a receber" }));
+    expect(await screen.findByRole("heading", { name: "Criar um novo valor a receber?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver rascunho atual" }));
+
+    await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
+    await waitFor(() => expect(window.location.pathname + window.location.search).toBe("/financeiro/operacoes/nova"));
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
   });
 

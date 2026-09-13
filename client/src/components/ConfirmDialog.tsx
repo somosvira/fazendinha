@@ -24,6 +24,7 @@ export function ConfirmDialog({
   processando = false,
   onConfirm,
   onCancel,
+  onDismiss,
 }: {
   open: boolean;
   title: string;
@@ -34,6 +35,7 @@ export function ConfirmDialog({
   processando?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onDismiss?: () => void;
 }) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -41,7 +43,7 @@ export function ConfirmDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!o && !processando) onCancel();
+        if (!o && !processando) (onDismiss ?? onCancel)();
       }}
     >
       <DialogContent
