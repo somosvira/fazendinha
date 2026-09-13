@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { buildRotaWorklistRebanho, parseContaFinanceiraId, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
@@ -376,7 +376,8 @@ export function App() {
     const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
       ? window.location.pathname + window.location.search
       : null;
-    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
+    const detalheContaUrl = tab === "caixinha" && parseContaFinanceiraId(window.location.pathname) != null ? window.location.pathname : null;
+    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? detalheContaUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);

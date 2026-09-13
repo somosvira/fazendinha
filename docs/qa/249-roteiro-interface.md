@@ -101,7 +101,7 @@ como **R$ 300 de volume de operações**, mas não são R$ 300 de entrada de din
 | Nova operação | `/financeiro/operacoes/nova` |
 | Operações e detalhe | `/financeiro/operacoes` — abra a descrição do teste |
 | Compromissos | `/financeiro/compromissos` — A pagar, A receber, Liquidados |
-| Contas/extratos | `/financeiro/contas` — use o seletor da conta para consultar saldo e extrato |
+| Contas/extratos | `/financeiro/contas` — use “Ver conta” na tabela para abrir dados e extrato |
 | Contas/parceiros | `/financeiro/configuracoes` |
 | Categorias | `/financeiro/configuracoes/categorias` |
 | Estoque | `/pecuaria/estoque` — filtre o produto do fluxo |
@@ -339,8 +339,8 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
 
 - [ ] Troque para Secundária: banco **500**, sem operações/compromissos e sem saldos
   físicos da Principal. Catálogos de produto/parceiro podem continuar aparecendo.
-- [ ] Retorne à Principal. Em Contas/extratos alterne a conta pelo seletor e confira saldo e extrato correspondentes:
-  todos os bancos de cenário devem estar acessíveis no seletor.
+- [ ] Retorne à Principal. Em Contas/extratos abra “Ver conta” em diferentes linhas da tabela e confira os dados e o extrato:
+  todos os bancos de cenário devem estar acessíveis na tabela.
 - [ ] Faça logout e entre com o usuário de consulta: não deve conseguir lançar
   operações nem administrar acessos. Volte ao login completo para continuar.
 - [ ] Gere relatório gerencial no período atual; compare realizado com pagamentos

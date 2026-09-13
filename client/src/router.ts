@@ -102,6 +102,11 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+export function parseContaFinanceiraId(pathname: string): number | null {
+  const match = /^\/financeiro\/contas\/([1-9]\d*)\/?$/i.exec(pathname);
+  return match ? Number(match[1]) : null;
+}
+
 export function parseOperacaoFinanceiraId(pathname: string): number | null {
   const match = /^\/financeiro\/operacoes\/(\d+)\/?$/i.exec(pathname);
   return match ? Number(match[1]) : null;
@@ -163,6 +168,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
   if (path === "/" || path === "") return DEFAULT_TAB;
+  if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";
 

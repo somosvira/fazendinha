@@ -12,6 +12,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
 }));
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/financeiro/contas");
   vi.clearAllMocks();
   vi.mocked(obterExtratoConta).mockResolvedValue([]);
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
@@ -31,7 +32,8 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
 
     expect((await screen.findAllByText("Banco principal")).length).toBeGreaterThan(0);
-    expect(screen.queryByText("Conta inativa")).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Ver conta Conta inativa" })[0]).toBeTruthy();
+    expect(obterExtratoConta).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
     expect(await screen.findByRole("heading", { name: "Nova transferência" })).toBeTruthy();
     expect(screen.getAllByRole("option", { name: /Banco principal/ }).length).toBeGreaterThan(0);
@@ -40,9 +42,24 @@ describe("ContasFinanceiras — cadastros ativos", () => {
   });
   it("permite consultar o histórico de uma conta inativa", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
-    const seletor = await screen.findByLabelText("Conta para consultar extrato");
-    fireEvent.change(seletor, { target: { value: "3" } });
+    fireEvent.click((await screen.findAllByRole("link", { name: "Ver conta Conta inativa" }))[0]);
+    expect(window.location.pathname).toBe("/financeiro/contas/3");
     await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(3));
-    expect(screen.getByRole("heading", { name: "Conta inativa" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { name: "Conta inativa" })).toBeTruthy();
   });
+});
+
+it("abre uma conta diretamente e não substitui uma conta inexistente", async () => {
+  window.history.replaceState(null, "", "/financeiro/contas/2");
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(2));
+  fireEvent.click(screen.getByRole("button", { name: /Voltar para contas/ }));
+  expect(window.location.pathname).toBe("/financeiro/contas");
+  expect(screen.getAllByRole("link", { name: "Ver conta Banco principal" })[0]).toBeTruthy();
+  cleanup();
+  vi.mocked(obterExtratoConta).mockClear();
+  window.history.replaceState(null, "", "/financeiro/contas/999");
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  expect(await screen.findByText("Esta conta não está disponível na fazenda selecionada.")).toBeTruthy();
+  expect(obterExtratoConta).not.toHaveBeenCalled();
 });

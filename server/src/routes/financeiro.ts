@@ -75,7 +75,7 @@ export const financeiroRouter = new Hono()
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;
       const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : undefined;
-      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoEscrita(c), inicio, fim));
+      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoLeitura(c), inicio, fim));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/parceiros", async (c) => c.json(await parceiros.listarParceiros(c.req.query("inativos") === "true")))

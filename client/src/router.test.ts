@@ -3,6 +3,7 @@ import {
   buildRotaWorklistRebanho,
   isNovaOperacaoFinanceira,
   parseOperacaoFinanceiraId,
+  parseContaFinanceiraId,
   parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
@@ -78,4 +79,11 @@ describe("roteamento da pecuária", () => {
     expect(parseRotaWorklistRebanho("/gastos", "?status=vencidas")).toBeNull();
     expect(pathToTab("/gastos")).toBe("gastos");
   });
+});
+
+it("reconhece URLs de contas e rejeita IDs inválidos", () => {
+  expect(pathToTab("/financeiro/contas/21")).toBe("caixinha");
+  expect(parseContaFinanceiraId("/financeiro/contas/21/")).toBe(21);
+  expect(parseContaFinanceiraId("/financeiro/contas/0")).toBeNull();
+  expect(parseContaFinanceiraId("/financeiro/contas/abc")).toBeNull();
 });
