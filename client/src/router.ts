@@ -12,6 +12,7 @@
  */
 
 import type { Tab } from "./components/Shell";
+import { ASSISTENTE_ATIVO } from "./featureFlags";
 
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
 // a declarar sua URL e permite validar subrotas sem listas paralelas.
@@ -168,6 +169,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
   if (path === "/" || path === "") return DEFAULT_TAB;
+  if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";

@@ -84,6 +84,7 @@ import { pontoRouter } from "./routes/ponto/index.js";
 import { pontoDashboardRouter } from "./routes/ponto/dashboard.js";
 import { buscaRouter } from "./routes/busca.js";
 import { whatsappRouter } from "./routes/whatsapp.js";
+import { ASSISTENTE_ATIVO, rotaDoAssistente } from "./featureFlags.js";
 
 export const app = new Hono();
 
@@ -114,6 +115,14 @@ app.use(
     origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : "*",
   })
 );
+// Suspensão temporária e reversível do assistente. As rotas continuam montadas
+// abaixo, mas nenhum canal aceita chamadas enquanto a chave estiver desligada.
+app.use("/api/*", async (c, next) => {
+  if (!ASSISTENTE_ATIVO && rotaDoAssistente(new URL(c.req.url).pathname)) {
+    return c.json({ error: "Assistente temporariamente indisponível", code: "FEATURE_DISABLED" }, 503);
+  }
+  await next();
+});
 // Isentos de sessão (montados ANTES do gate): health, whatsapp (valida por HMAC
 // próprio) e as rotas públicas de auth (login/convite/reset).
 app.route("/api", healthRouter);

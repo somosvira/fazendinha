@@ -87,3 +87,7 @@ it("reconhece URLs de contas e rejeita IDs inválidos", () => {
   expect(parseContaFinanceiraId("/financeiro/contas/0")).toBeNull();
   expect(parseContaFinanceiraId("/financeiro/contas/abc")).toBeNull();
 });
+
+it("redireciona a rota do assistente enquanto a feature está inativa", () => {
+  expect(pathToTab("/ia")).toBe("dashboard");
+});

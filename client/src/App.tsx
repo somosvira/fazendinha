@@ -20,6 +20,7 @@ import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
+import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
 import { RecuperarSenha } from "./components/RecuperarSenha";
@@ -517,7 +518,7 @@ export function App() {
     ? <FinanceiroContent tab={tab} onNav={setTab} />
     : (
       <>
-        {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
+        {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {/* Configurações mantém somente setup global, categorias e acessos. */}
         {(tab === "config" || tab === "plano" || tab === "acessos") && (
           <ConfiguracoesHub
@@ -586,7 +587,7 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
     </>
   );
