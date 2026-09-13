@@ -225,7 +225,6 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   };
 
   return <div className="shell-wide pb-10">
-    {tipo === "AJUSTE_ESTOQUE" && <p role="alert" className="mb-4 rounded-lg bg-amber-50 p-4">Ajustes de contagem são feitos na tela de <a href="/pecuaria/estoque" className="underline">Estoque</a>. Este rascunho não será confirmado como operação financeira.</p>}
     <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
