@@ -83,7 +83,7 @@ saldos físicos devem respeitar o escopo selecionado.
 
 - [ ] Login completo funciona e permite abrir Financeiro e Pecuária/Estoque.
 - [ ] Principal: 18 bancos de R$ 1.000, caixa de R$ 200 e conta inativa zerada.
-- [ ] Saldo geral inicial da Principal: **R$ 18.200**. Secundária: **R$ 500**.
+- [ ] Selecione **QA249 Principal** no seletor de fazenda: saldo geral inicial **R$ 18.200**, antes dos testes. **QA249 Secundária**: **R$ 500**. **Consolidado** inclui também as contas locais preexistentes; “Banco principal” não é uma conta da massa QA249 e não deve ser comparado com esses R$ 18.200.
 - [ ] Estoque U06, U10 e U11: **10 kg cada**; demais produtos ativos: zero.
 - [ ] Operações: **3 inventários** com descrição `SEED QA249 ... estoque inicial`.
 - [ ] Compromissos e extratos: nenhum pagamento/recebimento inicial.
@@ -101,7 +101,7 @@ como **R$ 300 de volume de operações**, mas não são R$ 300 de entrada de din
 | Nova operação | `/financeiro/operacoes/nova` |
 | Operações e detalhe | `/financeiro/operacoes` — abra a descrição do teste |
 | Compromissos | `/financeiro/compromissos` — A pagar, A receber, Liquidados |
-| Contas/extratos | `/financeiro/contas` — use o seletor do extrato, não só os três cards |
+| Contas/extratos | `/financeiro/contas` — use o seletor da conta para consultar saldo e extrato |
 | Contas/parceiros | `/financeiro/configuracoes` |
 | Categorias | `/financeiro/configuracoes/categorias` |
 | Estoque | `/pecuaria/estoque` — filtre o produto do fluxo |
@@ -339,7 +339,7 @@ Use somente U17; antes de cada tentativa bloqueada, conta 1.000 e estoque 0:
 
 - [ ] Troque para Secundária: banco **500**, sem operações/compromissos e sem saldos
   físicos da Principal. Catálogos de produto/parceiro podem continuar aparecendo.
-- [ ] Retorne à Principal. Em Contas/extratos selecione bancos além dos três cards:
+- [ ] Retorne à Principal. Em Contas/extratos alterne a conta pelo seletor e confira saldo e extrato correspondentes:
   todos os bancos de cenário devem estar acessíveis no seletor.
 - [ ] Faça logout e entre com o usuário de consulta: não deve conseguir lançar
   operações nem administrar acessos. Volte ao login completo para continuar.

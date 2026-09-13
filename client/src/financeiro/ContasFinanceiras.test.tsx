@@ -27,7 +27,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ContasFinanceiras — cadastros ativos", () => {
-  it("não mostra conta inativa nos cards nem na transferência", async () => {
+  it("não oferece conta inativa na transferência", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
 
     expect((await screen.findAllByText("Banco principal")).length).toBeGreaterThan(0);
