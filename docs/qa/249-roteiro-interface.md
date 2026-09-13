@@ -406,6 +406,9 @@ pendente de execução humana.
 
 ## Extrato geral e localização de movimentação
 
+- [ ] No card de saldo, confira **Ver extrato geral** alinhado verticalmente com o valor; ao clicar, a página deve rolar para o extrato geral.
+- [ ] Antes da tabela de contas, confira o título **Contas**. A tabela deve separar **Conta** e **Tipo**, centralizar cabeçalhos/valores e não repetir “Banco”, “Caixa” ou “Aplicação” abaixo do nome.
+- [ ] Combine os filtros da lista por busca, tipo, instituição e situação; confira também uma combinação sem resultados.
 - [ ] Em Contas e extratos, clique **Ver extrato geral** no card de saldo: a página deve rolar para a tabela abaixo das contas, sem trocar de rota.
 - [ ] Confira movimentos de contas diferentes da fazenda selecionada, do mais recente ao mais antigo, inclusive contas inativas com histórico.
 - [ ] Combine data inicial/final, conta e instituição; datas-limite são inclusivas. Teste também “Sem instituição” e um intervalo sem resultados.

@@ -116,7 +116,7 @@ export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
-  alinhamento?: "esquerda" | "direita";
+  alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
   /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
   larguraMinima?: number;
@@ -129,7 +129,7 @@ export type ColunaTabela<T> = {
   acoes?: boolean;
 };
 
-const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
+const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
 export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe }: {
   colunas: ColunaTabela<T>[];

@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(obterExtratoConta).mockResolvedValue([]);
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
     contas: [
-      { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
+      { id: 1, nome: "Banco principal", tipo: "BANCO", instituicao: "Banco A", identificacao: "001", saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
       { id: 2, nome: "Caixa auxiliar", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "50", dataSaldoAbertura: "2026-09-01", saldoAtual: "50", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
       { id: 3, nome: "Conta inativa", tipo: "APLICACAO", instituicao: null, identificacao: null, saldoAbertura: "20", dataSaldoAbertura: "2026-09-01", saldoAtual: "20", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
     ],
@@ -47,6 +47,23 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(window.location.pathname).toBe("/financeiro/contas/3");
     await waitFor(() => expect(obterExtratoConta).toHaveBeenLastCalledWith(3));
     expect(screen.getAllByRole("heading", { name: "Conta inativa" })).toBeTruthy();
+  });
+
+  it("filtra a tabela de contas por busca, tipo, instituição e situação", async () => {
+    render(<ContasFinanceiras onNav={vi.fn()} />);
+    const secao = (await screen.findByRole("heading", { name: "Contas" })).closest("section")!;
+    const tabela = () => within(secao).queryByRole("table", { name: "Contas financeiras" });
+    fireEvent.change(within(secao).getByLabelText("Buscar conta"), { target: { value: "001" } });
+    expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
+    expect(within(tabela()!).queryByText("Caixa auxiliar")).toBeNull();
+    fireEvent.change(within(secao).getByLabelText("Buscar conta"), { target: { value: "" } });
+    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    expect(within(tabela()!).getByText("Caixa auxiliar")).toBeTruthy();
+    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
+    fireEvent.change(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
+    expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
+    fireEvent.change(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
+    expect(within(secao).getByText("Nenhuma conta encontrada para os filtros selecionados.")).toBeTruthy();
   });
 });
 
