@@ -198,8 +198,8 @@ const RAIL_HIDE =
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
  *  quando a aba atual é uma das sub-abas dobradas nele (ex.: "Gastos" fica ativo
  *  em `caixinha`; "Configurações" em `cadastros`/`plano`/`acessos`). */
-function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured }: {
-  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[]; featured?: boolean;
+function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
+  id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
   return (
@@ -215,7 +215,6 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen, featured
         "hover:bg-[rgba(232,220,196,0.06)]",
         RAIL_ICON_BTN,
         nested && "py-[7px] pl-4 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
-        featured && "border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.08)] min-[901px]:max-[1100px]:border-0 min-[901px]:max-[1100px]:bg-transparent [.side-collapsed_&]:border-0 [.side-collapsed_&]:bg-transparent",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
         isOn && RAIL_ACTIVE,
@@ -462,7 +461,6 @@ export function AppSidebar({
                   onNav={nav}
                   nested
                   chevron={t.id !== "dashboard" && t.id !== "lancar"}
-                  featured={t.id === "lancar"}
                   activeWhen={t.id === "cadastros" ? ["plano"] : undefined}
                 />
               ))}
