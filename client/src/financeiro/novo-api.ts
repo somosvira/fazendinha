@@ -35,6 +35,9 @@ export type RascunhoOperacao = { id: number; dados: { formulario?: Record<string
 export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
+export type ConfiguracaoRelatorioFinanceiro = { nome: string; dataInicio: string; dataFim: string; tipos: string[]; status: string[]; centroCustoIds: number[] };
+export type RascunhoRelatorioFinanceiro = { id: number; configuracao: ConfiguracaoRelatorioFinanceiro; versao: number; updatedAt: string };
+export type RelatorioFinanceiro = { id: number; nome: string; status: "PROCESSANDO" | "CONCLUIDO" | "FALHOU"; parametros: ConfiguracaoRelatorioFinanceiro; autor: string; autorNome: string; geradoEm: string; concluidoEm: string | null; erro: string | null };
 
 /** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
 export class ApiError extends Error {
@@ -65,6 +68,16 @@ export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financ
 export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) });
 export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" });
 export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
+export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
+export const obterRascunhoRelatorioFinanceiro = () => req<RascunhoRelatorioFinanceiro | null>("/financeiro/relatorios/rascunho");
+export const salvarRascunhoRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFinanceiro, versao?: number) => req<RascunhoRelatorioFinanceiro>("/financeiro/relatorios/rascunho", { method: "PUT", body: JSON.stringify({ configuracao, versao }) });
+export const descartarRascunhoRelatorioFinanceiro = () => req<void>("/financeiro/relatorios/rascunho", { method: "DELETE" });
+export const gerarRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFinanceiro) => req<{ id: number }>("/financeiro/relatorios", { method: "POST", body: JSON.stringify(configuracao) });
+export async function baixarRelatorioFinanceiro(id: number) {
+  const resposta = await fetch(`/api/financeiro/relatorios/${id}/download`, { headers: comPropriedade() });
+  if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status); }
+  return resposta.blob();
+}
 export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData(); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
   if (input.numero) form.set("numero", input.numero);
