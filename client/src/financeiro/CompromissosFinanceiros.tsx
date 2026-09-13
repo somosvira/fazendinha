@@ -57,7 +57,9 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
       message={<><p>Você já tem um rascunho de operação em andamento.</p><p className="mt-2">Para iniciar este novo lançamento, o rascunho atual será descartado. Os dados preenchidos e documentos anexados serão excluídos permanentemente.</p></>}
       confirmLabel="Criar mesmo assim"
       cancelLabel="Ver rascunho atual"
+      cancelTone="safe"
       tone="danger"
+      dangerFilled
       processando={preparando}
       onCancel={verRascunhoAtual}
       onDismiss={() => setNovoCompromissoPendente(null)}

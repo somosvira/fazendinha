@@ -28,6 +28,8 @@ describe("CompromissosFinanceiros — criação", () => {
     expect(await screen.findByRole("heading", { name: "Criar um novo valor a pagar?" })).toBeTruthy();
     expect(screen.getByText(/Você já tem um rascunho de operação em andamento/)).toBeTruthy();
     expect(screen.getByText(/dados preenchidos e documentos anexados serão excluídos permanentemente/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ver rascunho atual" }).className).toContain("bg-green-50");
+    expect(screen.getByRole("button", { name: "Criar mesmo assim" }).className).toContain("bg-destructive");
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Criar mesmo assim" }));

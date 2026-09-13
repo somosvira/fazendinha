@@ -20,7 +20,9 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
+  cancelTone = "neutral",
   tone = "neutral",
+  dangerFilled = false,
   processando = false,
   onConfirm,
   onCancel,
@@ -31,7 +33,9 @@ export function ConfirmDialog({
   message: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  cancelTone?: "neutral" | "safe";
   tone?: ConfirmTone;
+  dangerFilled?: boolean;
   processando?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -65,7 +69,7 @@ export function ConfirmDialog({
         <DialogFooter className="border-t border-[color:var(--rule-soft)] px-[22px] pb-[18px] pt-3.5">
           <Button
             variant="outline"
-            className="h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
+            className={`h-auto px-3 py-1.5 text-xs tracking-[0.04em] ${cancelTone === "safe" ? "border-green-700 bg-green-50 text-green-800 hover:bg-green-100 hover:text-green-900" : ""}`}
             onClick={onCancel}
             disabled={processando}
           >
@@ -73,10 +77,10 @@ export function ConfirmDialog({
           </Button>
           <Button
             ref={confirmRef}
-            variant={tone === "danger" ? "outline" : "default"}
+            variant={tone === "danger" ? (dangerFilled ? "destructive" : "outline") : "default"}
             className={
               tone === "danger"
-                ? "h-auto px-3 py-1.5 text-xs tracking-[0.04em] hover:border-destructive hover:text-destructive"
+                ? `h-auto px-3 py-1.5 text-xs tracking-[0.04em] ${dangerFilled ? "" : "hover:border-destructive hover:text-destructive"}`
                 : "h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
             }
             onClick={onConfirm}
