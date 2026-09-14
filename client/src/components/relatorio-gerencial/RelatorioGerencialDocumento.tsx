@@ -42,7 +42,7 @@ function TabelaCompromissos({ titulo, bloco }: { titulo: string; bloco: BlocoCom
         <table className="rg-tabela">
           <thead><tr><th>Descrição</th><th>Fornecedor/cliente</th><th>Categoria</th><th>Vencimento</th><th className="num">Valor</th><th>Situação</th></tr></thead>
           <tbody>
-            {bloco.itens.map((i) => <tr key={i.id}><td>{i.descricao ?? "—"}</td><td>{i.fornecedor ?? "—"}</td><td>{i.categoria}</td><td className="rg-data">{dataBR(i.dataVencimento)}</td><td className="num">{money(i.valor)}</td><td>{i.vencido ? `Vencido há ${i.diasAtraso} d` : "A vencer"}</td></tr>)}
+            {bloco.itens.map((i, indice) => <tr key={`${i.id}-${indice}`}><td>{i.descricao ?? "—"}</td><td>{i.fornecedor ?? "—"}</td><td>{i.categoria}</td><td className="rg-data">{dataBR(i.dataVencimento)}</td><td className="num">{money(i.valor)}</td><td>{i.vencido ? `Vencido há ${i.diasAtraso} d` : "A vencer"}</td></tr>)}
           </tbody>
           <tfoot><tr><td colSpan={4}>Total</td><td className="num">{money(bloco.total)}</td><td /></tr></tfoot>
         </table>
@@ -141,14 +141,11 @@ function renderSecao(id: SecaoId, dto: RelatorioGerencialDTO): ReactNode {
       return (
         <Secao id={id} regime="Realizado">
           <div className="rg-bloco">
-            <h3>Por grupo e categoria</h3>
-            {c.grupos.length === 0 ? <Vazio /> : (
+            <h3>Por categoria</h3>
+            {c.itens.length === 0 ? <Vazio /> : (
               <table className="rg-tabela">
-                <thead><tr><th>Grupo / categoria</th><th className="num">Total</th><th className="num">% das saídas</th></tr></thead>
-                <tbody>{c.grupos.flatMap((g) => [
-                  <tr key={g.grupo} className="rg-grupo"><td>{g.grupo}</td><td className="num">{money(g.total)}</td><td className="num">{g.pct.toLocaleString("pt-BR")}%</td></tr>,
-                  ...g.categorias.map((k) => <tr key={`${g.grupo}/${k.categoria}`}><td className="rg-recuo">{k.categoria}</td><td className="num">{money(k.total)}</td><td className="num">{k.pct.toLocaleString("pt-BR")}%</td></tr>),
-                ])}</tbody>
+                <thead><tr><th>Categoria</th><th className="num">Total</th><th className="num">% das saídas</th></tr></thead>
+                <tbody>{c.itens.map((k) => <tr key={k.categoria}><td>{k.categoria}</td><td className="num">{money(k.total)}</td><td className="num">{k.pct.toLocaleString("pt-BR")}%</td></tr>)}</tbody>
               </table>
             )}
           </div>

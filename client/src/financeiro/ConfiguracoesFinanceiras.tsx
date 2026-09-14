@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Building2, FolderTree, Pencil, Plus, Power, PowerOff, Tags, Target, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarGrupoCategoria, atualizarParceiro, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type GrupoCategoria, type Parceiro } from "./novo-api";
+import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
-import { FormCategoria, FormCentroCusto, FormGrupoCategoria } from "./FormCadastrosGerenciais";
+import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
 
 type Aba = "contas" | "parceiros" | "categorias" | "centros";
-type EntidadePainel = "conta" | "parceiro" | "grupo" | "categoria" | "centro";
+type EntidadePainel = "conta" | "parceiro" | "categoria" | "centro";
 type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: number } | null;
 type Confirmacao =
   | { tipo: "conta"; item: Conta }
   | { tipo: "parceiro"; item: Parceiro }
-  | { tipo: "grupo"; item: GrupoCategoria }
   | { tipo: "categoria"; item: Categoria }
   | { tipo: "centro"; item: CentroCusto }
   | null;
@@ -56,25 +55,16 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
 ];
 
-const colunasGrupos = (editar: (g: GrupoCategoria) => void, alternar: (g: GrupoCategoria) => void): ColunaTabela<GrupoCategoria>[] => [
-  { chave: "grupo", titulo: "Grupo", principal: true, larguraMinima: 220, celula: (g) => <strong>{g.nome}</strong> },
-  { chave: "categorias", titulo: "Categorias", alinhamento: "centro", larguraMinima: 120, celula: (g) => g.categorias.length },
-  { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (g) => <Pill tone={g.ativo ? "green" : "neutral"}>{g.ativo ? "Ativo" : "Inativo"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (g) => <AcoesLinha nome={g.nome} ativo={g.ativo} onEditar={() => editar(g)} onAlternar={() => alternar(g)} /> },
-];
-
-const colunasCategorias = (grupos: GrupoCategoria[], editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
+const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "grupo", titulo: "Grupo", larguraMinima: 180, celula: (c) => grupos.find((g) => g.id === c.grupoCategoriaId)?.nome ?? "—" },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
-  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) },
+  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
 ];
 
 const colunasCentros = (editar: (c: CentroCusto) => void, alternar: (c: CentroCusto) => void): ColunaTabela<CentroCusto>[] => [
   { chave: "centro", titulo: "Centro de custo", principal: true, larguraMinima: 230, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "natureza", titulo: "Natureza", alinhamento: "centro", larguraMinima: 140, celula: (c) => c.ehInvestimento ? "Investimento" : "Operacional" },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.safras ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
@@ -82,9 +72,6 @@ const colunasCentros = (editar: (c: CentroCusto) => void, alternar: (c: CentroCu
 
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
   if (confirmacao.tipo === "conta") return "A conta deixa de aparecer em novas operações e transferências. O extrato e todos os movimentos continuam disponíveis. Você pode reativar quando quiser.";
-  if (confirmacao.tipo === "grupo") return confirmacao.item.categorias.some((c) => c.ativo)
-    ? "Desative primeiro todas as categorias ativas deste grupo."
-    : "O grupo deixa de aparecer na criação de categorias e em novas operações. O histórico permanece intacto.";
   if (confirmacao.tipo === "categoria") return "A categoria deixa de aparecer em novas operações e produtos. Os registros históricos continuam vinculados.";
   if (confirmacao.tipo === "centro") return "O centro de custo deixa de aparecer em novas operações, produtos e safras. Os registros históricos continuam vinculados.";
   const { nome, referencias } = confirmacao.item;
@@ -126,11 +113,6 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     if (p.ativo) { setConfirmando({ tipo: "parceiro", item: p }); return; }
     await executar(() => atualizarParceiro(p.id, { ativo: true }));
   };
-  const alternarGrupo = async (g: GrupoCategoria) => {
-    if (emCurso.current) return;
-    if (g.ativo) { setConfirmando({ tipo: "grupo", item: g }); return; }
-    await executar(() => atualizarGrupoCategoria(g.id, { ativo: true }));
-  };
   const alternarCategoria = async (c: Categoria) => {
     if (emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "categoria", item: c }); return; }
@@ -155,7 +137,6 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     await executar(async () => {
       if (confirmando.tipo === "conta") await atualizarConta(confirmando.item.id, { ativo: false });
       else if (confirmando.tipo === "parceiro") await atualizarParceiro(confirmando.item.id, { ativo: false });
-      else if (confirmando.tipo === "grupo") await atualizarGrupoCategoria(confirmando.item.id, { ativo: false });
       else if (confirmando.tipo === "categoria") await atualizarCategoria(confirmando.item.id, { ativo: false });
       else await atualizarCentroCusto(confirmando.item.id, { ativo: false });
       setConfirmando(null);
@@ -165,15 +146,14 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
 
   const contaSelecionada = painel?.entidade === "conta" && painel.modo === "editar" ? config.contas.find((c) => c.id === painel.id) ?? null : null;
   const parceiroSelecionado = painel?.entidade === "parceiro" && painel.modo === "editar" ? config.parceiros.find((p) => p.id === painel.id) ?? null : null;
-  const grupoSelecionado = painel?.entidade === "grupo" && painel.modo === "editar" ? config.gruposCategorias.find((g) => g.id === painel.id) ?? null : null;
-  const categoriaSelecionada = painel?.entidade === "categoria" && painel.modo === "editar" ? config.gruposCategorias.flatMap((g) => g.categorias).find((c) => c.id === painel.id) ?? null : null;
+  const categoriaSelecionada = painel?.entidade === "categoria" && painel.modo === "editar" ? config.categorias.find((c) => c.id === painel.id) ?? null : null;
   const centroSelecionado = painel?.entidade === "centro" && painel.modo === "editar" ? config.centrosCusto.find((c) => c.id === painel.id) ?? null : null;
   /* key força remount do formulário a cada abertura, zerando o estado local */
   const chavePainel = painel ? `${painel.entidade}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
 
-  const categorias = config.gruposCategorias.flatMap((grupo) => grupo.categorias);
+  const categorias = config.categorias;
   const acao = aba === "categorias"
-    ? <div className="flex flex-wrap gap-2"><Button secondary onClick={() => abrirNovo("grupo")}><FolderTree size={16} /> Novo grupo</Button><Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button></div>
+    ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira>
@@ -184,14 +164,13 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     <fieldset disabled={processando || !podeEditar} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(config.contas, (c) => editar("conta", c), alternarConta, moverConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "categorias" && <div className="grid gap-5"><Panel className="mt-5 overflow-hidden"><div className="border-b border-border p-5"><h2 className="font-serif text-2xl">Grupos</h2><p className="mt-1 text-xs text-ink-3">Organizam as categorias apresentadas nas operações.</p></div><TabelaFinanceira rotulo="Grupos de categorias" itens={config.gruposCategorias} colunas={colunasGrupos((g) => editar("grupo", g), alternarGrupo)} chaveDe={(g) => g.id} onAbrir={(g) => editar("grupo", g)} classeLinha={(g) => !g.ativo ? "opacity-55" : ""} /></Panel><Panel className="overflow-hidden"><div className="border-b border-border p-5"><h2 className="font-serif text-2xl">Categorias</h2><p className="mt-1 text-xs text-ink-3">Classificam operações e produtos nos relatórios.</p></div><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias(config.gruposCategorias, (c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel></div>}
+      {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><div className="border-b border-border p-5"><h2 className="font-serif text-2xl">Categorias</h2><p className="mt-1 text-xs text-ink-3">Identificam cada item comprado ou vendido.</p></div><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
     </fieldset>
 
     {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "grupo" && <FormGrupoCategoria key={chavePainel} grupo={grupoSelecionado} ordemInicial={config.gruposCategorias.reduce((maior, grupo) => Math.max(maior, grupo.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} grupos={config.gruposCategorias} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "centro" && <FormCentroCusto key={chavePainel} centro={centroSelecionado} ordemInicial={config.centrosCusto.reduce((maior, centro) => Math.max(maior, centro.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 
     <ConfirmDialog

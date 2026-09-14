@@ -16,7 +16,7 @@ const config: ConfiguracoesFinanceiras = {
     { id: 2, nome: "Cliente Regional", documento: null, tipo: "CLIENTE", telefone: null, email: null, ativo: true, referencias: 0 },
     { id: 3, nome: "Fornecedor desativado", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: false, referencias: 4 },
   ],
-  gruposCategorias: [],
+  categorias: [],
   centrosCusto: [],
   produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true, custoUnitario: "5" }],
 };
@@ -169,4 +169,23 @@ describe("FormOperacao", () => {
     expect(screen.getByLabelText("Anexar documentos")).toBeTruthy();
     expect(screen.getByText("PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.")).toBeTruthy();
   });
+});
+
+it("herda a categoria por produto, pede centro para mistura e preserva escolha manual", () => {
+  render(<FormOperacao config={{ ...config,
+    categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO", ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO", ativo: true, ordem: 0 }],
+    centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
+    produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoId: 2 }],
+  }} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  expect((screen.getByLabelText("Categoria do item 1") as HTMLSelectElement).value).toBe("1");
+  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("1");
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  expect((screen.getByLabelText("Categoria do item 2") as HTMLSelectElement).value).toBe("2");
+  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("");
+  expect(screen.getByText(/Os produtos sugerem áreas diferentes/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "2" } });
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "1" } });
+  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("2");
 });

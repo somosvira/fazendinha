@@ -972,7 +972,7 @@ export function useAgenda(dias?: number) {
 // ── Referências financeiras (Fatia 10): categorias + centros de custo ───────
 export interface RefDTO { id: number; nome: string }
 export const listarCategorias = () => req<RefDTO[]>(`/rebanho/categorias`);
-export const listarCentrosCusto = () => req<(RefDTO & { ehInvestimento: boolean })[]>(`/rebanho/centros-custo`);
+export const listarCentrosCusto = () => req<RefDTO[]>(`/rebanho/centros-custo`);
 
 // ── Cadastros (Fatia 8): Produtos + Fornecedores ───────────────────────────
 export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";

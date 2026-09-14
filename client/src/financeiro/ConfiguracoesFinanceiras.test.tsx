@@ -2,14 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
-import { ApiError, atualizarConta, atualizarParceiro, criarCategoria, criarCentroCusto, criarConta, criarGrupoCategoria, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { ApiError, atualizarConta, atualizarParceiro, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
 vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(),
   criarConta: vi.fn(), atualizarConta: vi.fn(), criarParceiro: vi.fn(), atualizarParceiro: vi.fn(),
-  criarGrupoCategoria: vi.fn(), atualizarGrupoCategoria: vi.fn(), criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
+  criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
   criarCentroCusto: vi.fn(), atualizarCentroCusto: vi.fn(),
 }));
 
@@ -19,8 +19,8 @@ const config: Config = {
     { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
   parceiros: [{ id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 }],
-  gruposCategorias: [{ id: 10, nome: "Operacional", ativo: true, ordem: 0, categorias: [{ id: 11, nome: "Insumos", grupoCategoriaId: 10, classificacao: "CUSTEIO", ativo: true, ordem: 0, _count: { operacoes: 2, produtos: 1 } }] }],
-  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ehInvestimento: false, ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }], produtos: [],
+  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, _count: { operacoes: 2, produtos: 1 } }],
+  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }], produtos: [],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -256,35 +256,24 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
 });
 
 describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
-  it("cria grupo e categoria dentro da configuração financeira", async () => {
+  it("cria categoria sem exigir grupo dentro da configuração financeira", async () => {
     await montar("categorias");
-    expect(screen.getByRole("table", { name: "Grupos de categorias" })).toBeTruthy();
-    expect(screen.getByRole("table", { name: "Categorias financeiras" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Novo grupo" }));
-    let painel = await screen.findByRole("dialog");
-    fireEvent.change(within(painel).getByLabelText("Nome do grupo"), { target: { value: "Comercial" } });
-    fireEvent.click(within(painel).getByRole("button", { name: "Criar grupo" }));
-    await waitFor(() => expect(criarGrupoCategoria).toHaveBeenCalledWith({ nome: "Comercial", ordem: 1 }));
-
     fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
-    painel = await screen.findByRole("dialog");
+    const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
-    fireEvent.change(within(painel).getByLabelText("Grupo"), { target: { value: "10" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoCategoriaId: 10, classificacao: "CUSTEIO", ordem: 1 }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
   });
 
-  it("cria um centro de custo operacional ou de investimento", async () => {
+  it("cria um centro de custo sem natureza financeira", async () => {
     await montar("centros");
     expect(screen.getByRole("table", { name: "Centros de custo" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Novo centro de custo" }));
     const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome do centro de custo"), { target: { value: "Implantação de pomar" } });
-    fireEvent.click(within(painel).getByRole("checkbox", { name: "Centro de investimento" }));
     fireEvent.click(within(painel).getByRole("button", { name: "Criar centro" }));
-    await waitFor(() => expect(criarCentroCusto).toHaveBeenCalledWith({ nome: "Implantação de pomar", ehInvestimento: true, ordem: 1 }));
+    await waitFor(() => expect(criarCentroCusto).toHaveBeenCalledWith({ nome: "Implantação de pomar", ordem: 1 }));
   });
 
   it("oculta ações de criação para acesso somente consulta", async () => {

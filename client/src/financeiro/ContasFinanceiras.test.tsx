@@ -22,7 +22,7 @@ beforeEach(() => {
       { id: 2, nome: "Caixa auxiliar", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "50", dataSaldoAbertura: "2026-09-01", saldoAtual: "50", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
       { id: 3, nome: "Conta inativa", tipo: "APLICACAO", instituicao: null, identificacao: null, saldoAbertura: "20", dataSaldoAbertura: "2026-09-01", saldoAtual: "20", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
     ],
-    parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [],
+    parceiros: [], categorias: [], centrosCusto: [], produtos: [],
   });
 });
 

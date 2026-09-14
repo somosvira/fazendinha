@@ -6,7 +6,7 @@ import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanc
 
 vi.mock("./novo-api", () => ({
   listarCompromissos: vi.fn().mockResolvedValue([]),
-  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [] }),
+  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
   liquidarCompromisso: vi.fn(),
@@ -82,7 +82,7 @@ describe("CompromissosFinanceiros — criação", () => {
         { id: 1, nome: "Conta ativa", tipo: "BANCO", instituicao: null, identificacao: null, saldoAbertura: "100", dataSaldoAbertura: "2026-09-01", saldoAtual: "100", incluirNoSaldoGeral: true, ativo: true, temMovimentos: false },
         { id: 2, nome: "Conta inativa", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: true, ativo: false, temMovimentos: false },
       ],
-      parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [],
+      parceiros: [], categorias: [], centrosCusto: [], produtos: [],
     });
     render(<CompromissosFinanceiros onNav={vi.fn()} />);
 

@@ -7,12 +7,12 @@ import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/p
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
-type ItemForm = { id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
+type ItemForm = { categoriaId: string; classificacao: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
 type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
 type EstadoFormulario = {
   tipo: string; condicao: Condicao; descricao: string; valorOperacao: string; itens: ItemForm[];
-  parceiroId: string; categoriaId: string; centroCustoId: string; contaId: string;
+  classificacao?: string; centroEscolhidoManualmente?: boolean; parceiroId: string; categoriaId: string; centroCustoId: string; contaId: string;
   formaPagamento: string; data: string; valorAgora: string; parcelas: ParcelaForm[];
 };
 
@@ -26,7 +26,7 @@ const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
 
 let proximoId = 1;
-const novoItem = (): ItemForm => ({ id: proximoId++, produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
+const novoItem = (): ItemForm => ({ id: proximoId++, categoriaId: "", classificacao: "", produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
 const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", vencimento: emDias(30 * (indice + 1)) });
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "SERVICO" ? "Prestador de serviço" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
@@ -40,8 +40,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
   const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da OP-${String(operacaoBase.id).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
   const [valorOperacao, setValorOperacao] = useState(inicial?.valorOperacao ?? operacaoBase?.valorTotal ?? "");
-  const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens ?? (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
+  const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens ?? (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, categoriaId: String(item.categoriaId ?? ""), classificacao: item.classificacao ?? "", produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
   const [parceiroId, setParceiroId] = useState(inicial?.parceiroId ?? (operacaoBase?.parceiro?.id ? String(operacaoBase.parceiro.id) : ""));
+  const [classificacao, setClassificacao] = useState(inicial?.classificacao ?? operacaoBase?.classificacao ?? "");
+  const [centroEscolhidoManualmente, setCentroEscolhidoManualmente] = useState(inicial?.centroEscolhidoManualmente ?? (!!inicial?.centroCustoId || !!operacaoBase?.centroCustoId));
   const [categoriaId, setCategoriaId] = useState(inicial?.categoriaId ?? (operacaoBase?.categoriaId ? String(operacaoBase.categoriaId) : ""));
   const [centroCustoId, setCentroCustoId] = useState(inicial?.centroCustoId ?? (operacaoBase?.centroCustoId ? String(operacaoBase.centroCustoId) : ""));
   const [contaId, setContaId] = useState(inicial?.contaId ?? (transacaoBase?.movimentos?.[0]?.contaId ? String(transacaoBase.movimentos[0].contaId) : ""));
@@ -69,7 +71,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const realizadoAgora = condicao === "A_VISTA" ? total : Number(valorAgora || 0);
   const totalParcelas = parcelas.reduce((soma, parcela) => soma + Number(parcela.valor || 0), 0);
   const saldoFuturo = Math.max(0, total - realizadoAgora);
-  const categorias = config.gruposCategorias.filter((grupo) => grupo.ativo).flatMap((grupo) => grupo.categorias.filter((categoria) => categoria.ativo).map((categoria) => ({ ...categoria, grupo: grupo.nome })));
+  const categorias = config.categorias.filter((categoria) => categoria.ativo);
   const parceiros = useMemo(() => config.parceiros.filter((parceiro) => parceiroCompativel(parceiro, tipo)), [config.parceiros, tipo]);
   const parceiroSelecionado = parceiros.find((parceiro) => String(parceiro.id) === parceiroId);
   const parceiroInvalido = exigeParceiro && !!parceiroId && !parceiroSelecionado;
@@ -86,9 +88,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   };
 
   const estadoFormulario = useMemo<EstadoFormulario>(() => ({
-    tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroCustoId,
+    tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, classificacao, centroEscolhidoManualmente, centroCustoId,
     contaId, formaPagamento, data, valorAgora, parcelas,
-  }), [tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroCustoId, contaId, formaPagamento, data, valorAgora, parcelas]);
+  }), [tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, classificacao, centroEscolhidoManualmente, centroCustoId, contaId, formaPagamento, data, valorAgora, parcelas]);
   const operacaoRascunho = useMemo(() => {
     const financeiro = condicao === "A_VISTA" ? { condicao, contaId: Number(contaId), formaPagamento }
       : condicao === "A_PRAZO" ? { condicao, parcelas: parcelas.map((parcela) => ({ valor: Number(parcela.valor), dataVencimento: parcela.vencimento })) }
@@ -96,15 +98,15 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           : { condicao: "SEM_EFEITO_FINANCEIRO" };
     return {
       tipo, data, descricao: descricao.trim(), valorTotal: comItens ? undefined : total,
-      parceiroId: parceiroId ? Number(parceiroId) : undefined, categoriaId: categoriaId ? Number(categoriaId) : undefined,
+      parceiroId: parceiroId ? Number(parceiroId) : undefined, categoriaId: !comItens && categoriaId ? Number(categoriaId) : undefined, classificacao: !comItens ? classificacao || null : undefined,
       centroCustoId: centroCustoId ? Number(centroCustoId) : undefined, corrigeOperacaoId: operacaoBase?.id,
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
         const quantidade = Number(item.quantidade); const valorItem = Number(item.valorTotal);
-        return { produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade, unidade: item.unidade || produto?.unidade || "un", valorUnitario: item.modoValor === "TOTAL" ? (quantidade ? valorItem / quantidade : 0) : Number(item.valorUnitario), estocavel: movimentaEstoque && !!produto?.estocavel };
+        return { categoriaId: item.categoriaId ? Number(item.categoriaId) : null, classificacao: item.classificacao || null, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade, unidade: item.unidade || produto?.unidade || "un", valorUnitario: item.modoValor === "TOTAL" ? (quantidade ? valorItem / quantidade : 0) : Number(item.valorUnitario), estocavel: movimentaEstoque && !!produto?.estocavel };
       }) : [], financeiro,
     };
-  }, [categoriaId, centroCustoId, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, realizadoAgora, tipo, total]);
+  }, [classificacao, categoriaId, centroCustoId, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, realizadoAgora, tipo, total]);
   const dadosRascunho = useMemo(() => ({ formulario: estadoFormulario, operacao: operacaoRascunho }), [estadoFormulario, operacaoRascunho]);
   const temConteudoRascunho = useMemo(() => !!(
     documentosSalvos.length || descricao.trim() || valorOperacao || parceiroId || categoriaId || centroCustoId || contaId || valorAgora
@@ -138,9 +140,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, [dadosRascunho, operacaoBase]);
 
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const centrosSugeridos = [...new Set(itens.flatMap((item) => {
+    const centro = config.produtos.find((p) => p.id === Number(item.produtoId))?.centroCustoId;
+    return centro && config.centrosCusto.some((c) => c.id === centro && c.ativo) ? [String(centro)] : [];
+  }))];
+  const sugestaoCentro = centrosSugeridos.length === 1 ? centrosSugeridos[0] : "";
+  useEffect(() => { if (!centroEscolhidoManualmente && comItens) setCentroCustoId(sugestaoCentro); }, [sugestaoCentro, centroEscolhidoManualmente, comItens]);
   const alterarProduto = (id: number, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === Number(produtoId));
-    atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: produto.unidade, valorUnitario: produto.custoUnitario ?? "" } : { produtoId });
+    const categoria = categorias.find((c) => c.id === produto?.categoriaId);
+    atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: produto.unidade, valorUnitario: produto.custoUnitario ?? "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "" } : { produtoId, categoriaId: "", classificacao: "" });
   };
   const alterarTipo = (novoTipo: string) => {
     setTipo(novoTipo);
@@ -179,11 +188,15 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     evento.target.value = "";
   };
 
+  const resumoCategorias = comItens ? Object.entries(itens.reduce<Record<string, number>>((acc, item) => {
+    const nome = categorias.find((c) => c.id === Number(item.categoriaId))?.nome ?? "Sem categoria";
+    acc[nome] = (acc[nome] ?? 0) + Math.round(totalItem(item) * 100); return acc;
+  }, {})) : [[categorias.find((c) => c.id === Number(categoriaId))?.nome ?? "Sem categoria", Math.round(total * 100)]] as [string, number][];
   const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId));
   const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && Math.abs(totalParcelas - total) < 0.01
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturo > 0 && parcelas.length > 0 && Math.abs(totalParcelas - saldoFuturo) < 0.01 : true;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
-  const podeConfirmar = tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+  const podeConfirmar = (!comItens || centrosSugeridos.length <= 1 || !!centroCustoId) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
@@ -240,7 +253,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           </div>
         </section>
         {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input aria-label="Valor total da operação" required min="0.01" step="0.01" type="number" className={CAMPO} value={valorOperacao} onChange={(e) => setValorOperacao(e.target.value)} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} /></label></section>}
-        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium">Categoria<select aria-label="Categoria" className={SELECT} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.grupo} · {categoria.nome}</option>)}</select></label><label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" className={SELECT} value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select></label></div></section>
+        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" className={SELECT} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" className={SELECT} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select></label></div></section>
+        {comItens && centrosSugeridos.length > 1 && !centroCustoId && <p className="text-sm text-amber-800">Os produtos sugerem áreas diferentes. Escolha o centro de custo desta operação.</p>}
         {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
         {permiteFinanceiro && parceiroSelecionado && (parceiroSelecionado.formaPagamentoPreferida || parceiroSelecionado.condicaoPagamentoPreferida) && <div className="rounded-lg border border-border p-4 text-sm">
           <p>Preferência de {parceiroSelecionado.nome}: {[parceiroSelecionado.formaPagamentoPreferida && FORMAS_PAGAMENTO[parceiroSelecionado.formaPagamentoPreferida], parceiroSelecionado.condicaoPagamentoPreferida === "A_VISTA" ? "à vista" : parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" ? `a prazo (${parceiroSelecionado.prazosPagamento?.join(" / ")} dias)` : null].filter(Boolean).join(" · ")}.</p>
@@ -250,7 +264,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={total} parcelas={parcelas} setParcelas={setParcelas} parcelasValidas={parcelasValidas} saldoFuturo={saldoFuturo} />
         <Documentos anexos={anexos} setAnexos={setAnexos} documentosSalvos={documentosSalvos} atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
       </div>
-      <aside className="flex flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:sticky xl:top-0 xl:max-h-screen xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">Gerar {itens.length} movimento{itens.length === 1 ? "" : "s"} físico{itens.length === 1 ? "" : "s"} de estoque.</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5"><p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || !podeConfirmar} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : "Confirmar operação"}</Button></div></aside>
+      <aside className="flex flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:sticky xl:top-0 xl:max-h-screen xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 space-y-2 text-xs"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">Gerar {itens.length} movimento{itens.length === 1 ? "" : "s"} físico{itens.length === 1 ? "" : "s"} de estoque.</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5"><p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || !podeConfirmar} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : "Confirmar operação"}</Button></div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
@@ -277,6 +291,10 @@ function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarIte
         <div className="grid gap-4 md:grid-cols-[minmax(200px,0.8fr)_minmax(0,2fr)]">
           <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<select aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onChange={(e) => alterarProduto(item.id, e.target.value)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</select></label>
           <label className="text-sm font-medium">Descrição do item *<input aria-label={`Descrição do item ${indice + 1}`} required className={CAMPO} value={item.descricao} onChange={(e) => atualizarItem(item.id, { descricao: e.target.value })} /></label>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="text-sm font-medium">Categoria<select aria-label={`Categoria do item ${indice + 1}`} className={SELECT} value={item.categoriaId ?? ""} onChange={(e) => { const categoria = config.categorias.find((c) => c.id === Number(e.target.value)); atualizarItem(item.id, { categoriaId: e.target.value, classificacao: categoria?.classificacao ?? "" }); }}><option value="">Sem categoria</option>{config.categorias.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>
+          <label className="text-sm font-medium">Classificação<select aria-label={`Classificação do item ${indice + 1}`} className={SELECT} value={item.classificacao ?? ""} onChange={(e) => atualizarItem(item.id, { classificacao: e.target.value })}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
           <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>
