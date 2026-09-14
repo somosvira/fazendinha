@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-const mocks = vi.hoisted(() => ({ listar: vi.fn(), ajustar: vi.fn() }));
-vi.mock("../api", () => ({ listarSaldos: mocks.listar, ajustarContagem: mocks.ajustar }));
+const mocks = vi.hoisted(() => ({ listar: vi.fn(), ajustar: vi.fn(), propriedades: vi.fn() }));
+vi.mock("../api", () => ({ listarSaldos: mocks.listar, ajustarContagem: mocks.ajustar, listarPropriedades: mocks.propriedades }));
 vi.mock("./ProdutoForm", () => ({ ProdutoForm: () => null }));
 import { MovimentoForm } from "./MovimentoForm";
 afterEach(cleanup);
-beforeEach(() => { vi.clearAllMocks(); mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 12 }]); });
+beforeEach(() => { vi.clearAllMocks(); mocks.propriedades.mockResolvedValue([{ id: 1 }]); mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 12 }]); });
 async function preencher(contada = "10") {
   render(<MovimentoForm onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByRole("option", { name: "Ração (kg)" });
@@ -45,4 +45,13 @@ describe("ajustar quantidade pelo estoque", () => {
     expect((screen.getByLabelText("Quantidade encontrada na contagem") as HTMLInputElement).value).toBe("10");
     expect((screen.getByLabelText("Justificativa") as HTMLTextAreaElement).value).toBe("Contagem conferida");
   });
+});
+
+it("bloqueia a contagem consolidada antes de consultar o saldo agregado", async () => {
+  mocks.propriedades.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+  render(<MovimentoForm onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  expect((await screen.findByRole("alert")).textContent).toContain("Selecione uma fazenda");
+  expect(mocks.listar).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "Confirmar ajuste" })).toBeNull();
+  expect(mocks.ajustar).not.toHaveBeenCalled();
 });

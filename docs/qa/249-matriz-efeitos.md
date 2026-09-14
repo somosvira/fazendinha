@@ -211,9 +211,19 @@ alteração trata classificação e relatórios.
   ficaram desativados no ambiente local habitual.
 - Testes do formulário, configurações, exportação e relatório passaram. Os testes
   de análise/filtros e responsividade passaram após atualizar os mocks da API.
-- PostgreSQL real: 27/32 testes passaram, incluindo os dois novos cenários de
-  classificação. Permanecem as cinco falhas conhecidas: cancelamento físico nas
+- PostgreSQL real: 29/34 testes passaram, incluindo classificação, pagamentos
+  avulsos e isolamento da contagem por fazenda. Permanecem as cinco falhas conhecidas: cancelamento físico nas
   três condições de pagamento, vínculo histórico da liquidação estornada e
   liquidações concorrentes acima do valor do compromisso.
 - Seed reaplicada somente em `fazendinha_local`; saldo Principal 18.200,
   Secundária 500, zero pagamentos e compromissos. Checklist manual não executado.
+
+### Correções da revisão
+
+- Pagamento avulso de R$ 100 aparece em **Pagamentos / Sem categoria / Sem centro
+  de custo**, com link para o movimento da conta. Seu estorno reduz R$ 100 na data
+  da reversão; recebimentos e transferências não entram nessa despesa.
+- Com mais de uma fazenda, **Ajustar quantidade** no Consolidado exige selecionar
+  uma fazenda. A contagem altera somente o estoque da fazenda selecionada.
+- No relatório, um pagamento e seu estorno contam como dois eventos distintos:
+  uma despesa e um estorno em **Operações por tipo**. A despesa líquida continua zero.

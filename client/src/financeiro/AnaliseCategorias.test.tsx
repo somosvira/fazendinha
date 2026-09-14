@@ -18,3 +18,10 @@ it("consulta o recorte escolhido e mantém categorias inativas disponíveis para
   fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
   await waitFor(() => expect(obterAnaliseCategorias).toHaveBeenLastCalledWith({ base: "pagamentos", categoriaId: "1", centroCustoId: "2", inicio: "2026-09-01", fim: "2026-09-30" }));
 });
+
+it("abre pagamentos avulsos no movimento da conta", async () => {
+  vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ contas: [], parceiros: [], produtos: [], categorias: [], centrosCusto: [] });
+  vi.mocked(obterAnaliseCategorias).mockResolvedValue({ base: "pagamentos", total: "100", categorias: [{ categoria: "Sem categoria", valor: "100" }], linhas: [{ operacaoId: null, contaId: 3, movimentoId: 9, descricao: "Frete avulso", data: "2026-09-01", categoria: "Sem categoria", centroCusto: "Sem centro de custo", classificacao: null, valor: "100" }] });
+  render(<AnaliseCategorias />);
+  expect(await screen.findByRole("link", { name: "Frete avulso" })).toHaveProperty("href", expect.stringContaining("/financeiro/contas/3#movimento-9"));
+});

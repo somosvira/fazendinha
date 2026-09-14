@@ -26,7 +26,7 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
     include: { ...incluirClassificacao, centroCusto: true, transacoes: { orderBy: { id: "asc" } }, compromissos: { include: { liquidacoes: true } } },
     orderBy: [{ data: "desc" }, { id: "desc" }],
   });
-  const linhas: { operacaoId: number; descricao: string | null; data: string; categoriaId: number | null; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[] = [];
+  const linhas: { operacaoId: number | null; contaId?: number; movimentoId?: number; descricao: string | null; data: string; categoriaId: number | null; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[] = [];
   for (const op of operacoes) {
     const incluir = (partes: ReturnType<typeof ratearCategorias>, data: Date) => {
       for (const p of partes) {
@@ -43,6 +43,24 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
       const rateios = ratearCompromissos(op);
       for (const c of op.compromissos) if (c.dataVencimento >= periodo.gte && c.dataVencimento <= periodo.lte) incluir(rateios.get(c.id) ?? [], c.dataVencimento);
     }
+  }
+  // Pagamentos sem operação pertencem a "Sem categoria" e "Sem centro".
+  // O livro mantém o original e a reversão, cada um na sua data de caixa.
+  if (filtro.base === "pagamentos" && !filtro.categoriaId && !filtro.centroCustoId) {
+    const avulsos = await prisma.movimentoConta.findMany({
+      where: { transacao: {
+        operacaoId: null, data: periodo,
+        ...(propriedadeId !== null ? { propriedadeId } : {}),
+        OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
+      } },
+      include: { transacao: true },
+    });
+    for (const m of avulsos) linhas.push({
+      operacaoId: null, contaId: m.contaId, movimentoId: m.id,
+      descricao: m.transacao.descricao, data: m.transacao.data.toISOString().slice(0, 10),
+      categoriaId: null, categoria: "Sem categoria", centroCusto: "Sem centro de custo", classificacao: null,
+      valor: (m.direcao === "SAIDA" ? m.valor : m.valor.negated()).toFixed(2),
+    });
   }
   const categorias = new Map<string, { categoria: string; valor: Prisma.Decimal }>();
   for (const l of linhas) {

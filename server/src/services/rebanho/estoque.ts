@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
-import { propriedadePrincipalId } from "../propriedade.js";
+import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -160,7 +160,8 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
 }
 
 export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema> & { usuarioId?: number }) {
-  const propriedadeId = input.propriedadeId ?? await propriedadePrincipalId();
+  const propriedadeId = input.propriedadeId ?? await escopoPadraoLeitura();
+  if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
     return await prisma.$transaction(async tx => {
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true, estocavel: true } });

@@ -23,7 +23,8 @@ export const estoqueRouter = new Hono()
   .post("/rebanho/estoque/ajustes", zValidator("json", svc.ajusteContagemSchema), async c => {
     try {
       const input = c.req.valid("json");
-      const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
+      const propriedadeId = input.propriedadeId ?? await resolverEscopoLeitura(c);
+      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
       return c.json(await svc.ajustarContagem({ ...input, propriedadeId, usuarioId: getUsuario(c)?.id }), 201);
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })

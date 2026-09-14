@@ -323,6 +323,10 @@ describe("categorias por item e relatórios", () => {
     expect((await analisarCategorias({ ...filtro, base: "pagamentos" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pagamentos", inicio: "2026-10-01" }, pid)).total).toBe("-400.00");
     expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("800.00");
+    const relatorioEstornado = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "ambos" }, pid);
+    expect(relatorioEstornado.resumo.saidas).toBe(0);
+    expect(relatorioEstornado.operacoes.find((o) => o.tipo === "estorno")).toMatchObject({ quantidade: 1, valor: 500 });
+    expect(relatorioEstornado.operacoes.find((o) => o.tipo === "custeio")).toMatchObject({ quantidade: 1, valor: 400 });
     await ops.estornarOperacao(op.id, "Cancelar teste misto", userId);
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("0.00");
@@ -334,5 +338,38 @@ describe("categorias por item e relatórios", () => {
     expect(op).toMatchObject({ categoriaNome: categoria.nome, classificacao: "INVESTIMENTO" });
     const avulso = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_CONSUMO_DIRETO"), itens: [{ descricao: "Material sem cadastro", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: false }] });
     expect(avulso.itens[0]).toMatchObject({ categoriaId: null, categoriaNome: null });
+  });
+});
+
+
+describe("correções da revisão", () => {
+  it("inclui pagamentos avulsos e suas reversões sem misturar receitas, datas ou fazendas", async () => {
+    const { analisarCategorias } = await import("../../src/services/financeiro/analise-categorias.js");
+    const filtro = { inicio: "2026-09-01", fim: "2026-11-30", base: "pagamentos" as const };
+    const pagamento = await ops.criarTransacaoAvulsa({ tipo: "PAGAMENTO", propriedadeId: pid, contaId: accountId, data, valor: 100, descricao: "Frete avulso" });
+    await ops.criarTransacaoAvulsa({ tipo: "RECEBIMENTO", propriedadeId: pid, contaId: accountId, data, valor: 75, descricao: "Recebimento avulso" });
+    expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "100.00", linhas: [{ operacaoId: null, contaId: accountId, movimentoId: pagamento.movimentos[0].id, categoria: "Sem categoria", valor: "100.00" }] });
+    expect((await analisarCategorias({ ...filtro, categoriaId: 0, centroCustoId: 0 }, pid)).total).toBe("100.00");
+    expect((await analisarCategorias({ ...filtro, categoriaId: 999999 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: 999999 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, base: "compras" }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias(filtro, pid + 99999)).total).toBe("0.00");
+    const estorno = await ops.estornarTransacao(pagamento.id, "Reverter frete avulso", userId);
+    await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
+    expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, fim: "2026-09-30" }, pid)).total).toBe("100.00");
+    expect((await analisarCategorias({ ...filtro, inicio: "2026-10-01" }, pid)).total).toBe("-100.00");
+  });
+
+  it("rejeita ajuste sem fazenda no consolidado e preserva os estoques", async () => {
+    const outra = await db.propriedade.create({ data: { nome: `Segunda fazenda da revisão ${serial}` } });
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    await ops.criarOperacao({ ...input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"), propriedadeId: outra.id, itens: [{ produtoId: productId, descricao: "Produto", quantidade: 20, unidade: "kg", valorUnitario: 10, estocavel: true }], valorTotal: 200 });
+    await expect(stock.ajustarContagem({ produtoId: productId, quantidadeContada: 25, saldoEsperado: 30, observacao: "Contagem consolidada" })).rejects.toThrow("Selecione uma fazenda");
+    expect((await stock.listarSaldos({ propriedadeId: pid })).find((p) => p.produtoId === productId)?.saldo).toBe(10);
+    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find((p) => p.produtoId === productId)?.saldo).toBe(20);
+    await stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, quantidadeContada: 25, saldoEsperado: 20, observacao: "Contagem na segunda fazenda" });
+    expect((await stock.listarSaldos({ propriedadeId: pid })).find((p) => p.produtoId === productId)?.saldo).toBe(10);
+    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find((p) => p.produtoId === productId)?.saldo).toBe(25);
   });
 });

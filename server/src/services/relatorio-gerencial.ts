@@ -161,6 +161,14 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   });
   const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } })));
   const linhas = [...linhasAnaliticas, ...linhasPrevistasAnaliticas];
+  // A auditoria classifica a reversão como evento próprio; não usa o sinal
+  // negativo criado exclusivamente para calcular despesas líquidas.
+  const idsEstorno = new Set(movimentos.filter((m) => m.transacao.tipo === "REVERSAO").map((m) => m.id));
+  const linhasPorTipo = [...linhasAnaliticas.map((linha) => {
+    return idsEstorno.has(linha.id)
+      ? { ...linha, estornado: true, valor: Math.abs(linha.valor) }
+      : linha;
+  }), ...linhasPrevistasAnaliticas];
 
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -198,7 +206,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     resultado: realizado?.resultado ?? null,
     compromissos: previsto,
     categorias: realizado?.categorias ?? null,
-    operacoes: agregarOperacoesPorTipo(linhas),
+    operacoes: agregarOperacoesPorTipo(linhasPorTipo),
     rastreabilidade: agregarRastreabilidade([...linhasRealizadas.map((l, i) => ({ ...l, estornado: movimentos[i].transacao.status === "REVERTIDA" || movimentos[i].transacao.tipo === "REVERSAO" })), ...linhasPrevistas], fechamentos, inicio, fim),
   };
 }

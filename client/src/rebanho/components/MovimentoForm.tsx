@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ajustarContagem, listarSaldos, type SaldoDTO } from "../api";
+import { ajustarContagem, listarSaldos, listarPropriedades, type SaldoDTO } from "../api";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
@@ -9,6 +9,7 @@ import { RebField } from "@/components/rb/RebField";
 const quantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
+  const [precisaFazenda, setPrecisaFazenda] = useState(false);
   const [saldos, setSaldos] = useState<SaldoDTO[]>([]);
   const [produtoId, setProdutoId] = useState("");
   const [contada, setContada] = useState("");
@@ -26,6 +27,11 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     setCarregando(true); setErro(null);
     try {
       const escopo = getPropriedadeAtiva();
+      if (escopo == null && (await listarPropriedades()).length > 1) {
+        if (alive.current) { setPrecisaFazenda(true); setSaldos([]); }
+        return;
+      }
+      if (alive.current) setPrecisaFazenda(false);
       const lista = await listarSaldos();
       if (getPropriedadeAtiva() !== escopo) throw new Error("A propriedade mudou. Atualize o saldo antes de continuar.");
       escopoConsultado.current = escopo;
@@ -50,6 +56,9 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     } catch (e) { if (alive.current) setErro(e instanceof Error ? e.message : String(e)); }
     finally { enviando.current = false; if (alive.current) setSalvando(false); }
   }
+  if (precisaFazenda) return <RebModal title="Ajustar quantidade" onClose={onFechar} actions={<RebButton onClick={onFechar}>Fechar</RebButton>}>
+    <p role="alert">Selecione uma fazenda no menu lateral para ajustar o estoque. O Consolidado reúne saldos de fazendas diferentes.</p>
+  </RebModal>;
   if (resultado) return <RebModal title="Quantidade ajustada" onClose={onSalvo} actions={<RebButton variant="pri" onClick={onSalvo}>Fechar</RebButton>}>
     <p><strong>{produto?.nome}</strong>: estoque atualizado para <strong>{quantidade(resultado.quantidadeContada)} {produto?.unidade}</strong>.</p>
     <p>Ajuste registrado: {resultado.diferenca > 0 ? "+" : ""}{quantidade(resultado.diferenca)} {produto?.unidade}.</p>
