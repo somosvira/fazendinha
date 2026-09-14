@@ -6,6 +6,7 @@
  * Toda a aritmética fica em `relatorio-gerencial.calc.ts`.
  */
 import type { Prisma } from "@prisma/client";
+import { ratearCompromissos, ratearTransacao, incluirClassificacao } from "./financeiro/classificacao.js";
 import { prisma } from "../db.js";
 import {
   agregarOperacoesPorTipo,
@@ -67,9 +68,10 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       include: {
         transacao: {
           include: {
+            reversaoDe: { select: { tipo: true } },
             parceiro: true,
             documentos: true,
-            operacao: { include: { parceiro: true, categoria: { include: { grupoCategoria: true } }, centroCusto: true, documentos: true } },
+            operacao: { include: { parceiro: true, ...incluirClassificacao, centroCusto: true, documentos: true } },
           },
         },
       },
@@ -79,9 +81,9 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       where: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: { gte: de, lte: ate }, operacao: escopo },
       include: {
         parceiro: true,
-        liquidacoes: true,
+        liquidacoes: { include: { transacao: true } },
         documentos: true,
-        operacao: { include: { parceiro: true, categoria: { include: { grupoCategoria: true } }, centroCusto: true, documentos: true } },
+        operacao: { include: { parceiro: true, ...incluirClassificacao, centroCusto: true, documentos: true } },
       },
       orderBy: { id: "asc" },
     }) : Promise.resolve([]),
@@ -91,7 +93,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     querRealizado
       ? prisma.movimentoConta.groupBy({
           by: ["contaId", "direcao"],
-          where: { transacao: { ...escopo, status: "CONFIRMADA", data: { lt: de } } },
+          where: { transacao: { ...escopo, data: { lt: de } } },
           _sum: { valor: true },
         })
       : Promise.resolve([]),
@@ -102,15 +104,9 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   ]);
 
   const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => ({
-    categoria: {
-      nome: operacao?.categoria?.nome ?? "Sem categoria",
-      classificacao: operacao?.categoria?.classificacao ?? null,
-      grupo: operacao?.categoria?.grupoCategoria.nome ?? "Sem grupo",
-    },
-    centroCusto: {
-      nome: operacao?.centroCusto?.nome ?? "(Sem centro de custo)",
-      ehInvestimento: operacao?.centroCusto?.ehInvestimento ?? false,
-    },
+    categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
+    centroCusto: { nome: operacao?.centroCusto?.nome ?? "(Sem centro de custo)" },
+
   });
 
   const linhasRealizadas: LinhaLancamento[] = movimentos.map((movimento) => {
@@ -121,7 +117,8 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       natureza: movimento.direcao === "ENTRADA" ? "CREDITO" : "DEBITO",
       valor: toNum(movimento.valor),
       situacao: "LIQUIDADO",
-      estornado: transacao.status === "REVERTIDA",
+      estornado: false,
+      transferencia: transacao.tipo === "TRANSFERENCIA" || transacao.reversaoDe?.tipo === "TRANSFERENCIA",
       dataLiquidacao: iso(transacao.data),
       dataVencimento: iso(transacao.data)!,
       descricao: transacao.descricao ?? transacao.operacao?.descricao ?? null,
@@ -134,7 +131,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   });
   const linhasPrevistas: LinhaLancamento[] = compromissos.map((compromisso) => {
     const documentos = [...compromisso.documentos, ...compromisso.operacao.documentos];
-    const liquidado = compromisso.liquidacoes.reduce((total, item) => total + toNum(item.valor), 0);
+    const liquidado = compromisso.liquidacoes.filter((l) => l.transacao.status === "CONFIRMADA").reduce((total, item) => total + toNum(item.valor), 0);
     return {
       id: -compromisso.id,
       natureza: compromisso.tipo === "RECEBER" ? "CREDITO" : "DEBITO",
@@ -151,7 +148,20 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       temNotaFiscal: documentos.some((documento) => documento.tipo === "NOTA_FISCAL"),
     };
   });
-  const linhas = [...linhasRealizadas, ...linhasPrevistas];
+  // O extrato mantém entradas/saídas reais; a análise devolve o estorno à
+  // categoria original como valor negativo, sem transformá-lo em receita.
+  const linhasAnaliticas = linhasRealizadas.flatMap((linha, index) => {
+    const movimento = movimentos[index];
+    const reversao = movimento.transacao.tipo === "REVERSAO";
+    return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, linha.valor * (reversao ? -1 : 1)).map((parte) => ({
+      ...linha, valor: parte.valor.toNumber(),
+      natureza: reversao ? (linha.natureza === "CREDITO" ? "DEBITO" as const : "CREDITO" as const) : linha.natureza,
+      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+    }));
+  });
+  const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } })));
+  const linhas = [...linhasAnaliticas, ...linhasPrevistasAnaliticas];
+
 
   const hoje = new Date().toISOString().slice(0, 10);
   const realizado = querRealizado ? agregarRealizado(linhas, inicio, fim) : null;
@@ -159,7 +169,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     ? agregarSaldoContas(
         contas.map((c) => ({ id: c.id, nome: c.nome, banco: c.instituicao, saldoInicial: toNum(c.saldoAbertura) })),
         anteriores.map((a) => ({ contaBancariaId: a.contaId, natureza: a.direcao === "ENTRADA" ? "CREDITO" as const : "DEBITO" as const, total: toNum(a._sum.valor ?? 0) })),
-        linhas,
+        linhasRealizadas,
         inicio,
         fim,
       )
@@ -189,6 +199,6 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     compromissos: previsto,
     categorias: realizado?.categorias ?? null,
     operacoes: agregarOperacoesPorTipo(linhas),
-    rastreabilidade: agregarRastreabilidade(linhas, fechamentos, inicio, fim),
+    rastreabilidade: agregarRastreabilidade([...linhasRealizadas.map((l, i) => ({ ...l, estornado: movimentos[i].transacao.status === "REVERTIDA" || movimentos[i].transacao.tipo === "REVERSAO" })), ...linhasPrevistas], fechamentos, inicio, fim),
   };
 }

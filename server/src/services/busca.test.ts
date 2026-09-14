@@ -77,11 +77,11 @@ describe("mapearLote", () => {
 
 describe("mapearCategoria", () => {
   it("sublabel = nome do grupo", () => {
-    expect(mapearCategoria({ id: 8, nome: "Ração", grupoCategoria: { nome: "Custeio" } })).toEqual({
+    expect(mapearCategoria({ id: 8, nome: "Ração" })).toEqual({
       tipo: "categoria",
       entidadeId: "8",
       label: "Ração",
-      sublabel: "Custeio",
+      sublabel: "Categoria financeira",
       tab: "plano",
       grupo: "Categorias",
     });

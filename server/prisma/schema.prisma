@@ -124,25 +124,15 @@ enum StatusPeriodoFinanceiro {
   FECHADO
 }
 
-// Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
+// Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
-  id             Int        @id @default(autoincrement())
-  nome           String     @unique
-  ehInvestimento Boolean    @default(false)
-  ativo          Boolean    @default(true)
-  ordem          Int        @default(0)
-  operacoes      Operacao[]
-  produtos       Produto[]
-  safras         Safra[]
-}
-
-// Plano de contas gerencial: Grupo -> Categoria.
-model GrupoCategoria {
-  id         Int         @id @default(autoincrement())
-  nome       String      @unique
-  ativo      Boolean     @default(true)
-  ordem      Int         @default(0)
-  categorias Categoria[]
+  id        Int        @id @default(autoincrement())
+  nome      String     @unique
+  ativo     Boolean    @default(true)
+  ordem     Int        @default(0)
+  operacoes Operacao[]
+  produtos  Produto[]
+  safras    Safra[]
 }
 
 // Override gerencial da classificação de uma categoria (custeio × investimento).
@@ -153,17 +143,16 @@ enum ClassificacaoCategoria {
 }
 
 model Categoria {
-  id               Int                     @id @default(autoincrement())
-  nome             String
-  grupoCategoria   GrupoCategoria          @relation(fields: [grupoCategoriaId], references: [id])
-  grupoCategoriaId Int
-  classificacao    ClassificacaoCategoria?
-  ativo            Boolean                  @default(true)
-  ordem            Int                      @default(0)
-  operacoes        Operacao[]
-  produtos         Produto[]
+  id            Int                     @id @default(autoincrement())
+  nome          String
+  classificacao ClassificacaoCategoria?
+  ativo         Boolean                 @default(true)
+  ordem         Int                     @default(0)
+  operacoes     Operacao[]
+  produtos      Produto[]
+  itens         ItemOperacao[]
 
-  @@unique([grupoCategoriaId, nome])
+  @@unique([nome])
 }
 
 model ContaFinanceira {
@@ -430,6 +419,8 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
+  categoriaNome       String?
+  classificacao       ClassificacaoCategoria?
   id                  Int                     @id @default(autoincrement())
   tipo                TipoOperacaoFinanceira
   status              StatusOperacao          @default(RASCUNHO)
@@ -487,19 +478,23 @@ model RascunhoOperacao {
 }
 
 model ItemOperacao {
-  id                Int                @id @default(autoincrement())
-  operacao          Operacao           @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
+  categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
+  categoriaId       Int?
+  categoriaNome     String?
+  classificacao     ClassificacaoCategoria?
+  id                Int                     @id @default(autoincrement())
+  operacao          Operacao                @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
   operacaoId        Int
-  produto           Produto?           @relation(fields: [produtoId], references: [id])
+  produto           Produto?                @relation(fields: [produtoId], references: [id])
   produtoId         Int?
   descricao         String
-  quantidade        Decimal            @db.Decimal(12, 3)
+  quantidade        Decimal                 @db.Decimal(12, 3)
   unidade           String
-  valorUnitario     Decimal            @db.Decimal(14, 4)
-  valorTotal        Decimal            @db.Decimal(14, 2)
-  estocavel         Boolean            @default(false)
+  valorUnitario     Decimal                 @db.Decimal(14, 4)
+  valorTotal        Decimal                 @db.Decimal(14, 2)
+  estocavel         Boolean                 @default(false)
   movimentosEstoque MovimentoEstoque[]
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime                @default(now())
 
   @@index([operacaoId])
   @@index([produtoId])

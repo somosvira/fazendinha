@@ -1,3 +1,4 @@
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
 import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
 
@@ -12,14 +13,13 @@ import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
 //   - "Plantio Café - investimento"   → investimento (formação)
 //   - "Atividade Plantio"             → custeio (mão de obra/insumos genéricos)
 const CENTROS_CAFE = ["Plantio Café", "Plantio Café - investimento", "Atividade Plantio"] as const;
-const ehInvestimento = (centro: string) => /investimento/i.test(centro);
+
 
 const toNum = (x: any) => (x != null ? Number(x) : 0);
 
 // Toggle Custeio / Investimento / Tudo (spec §6.4) — seleciona qual total vira
 // o "headline" (`custoTotal`) da resposta. NÃO muda como o split em si é
-// calculado (heurística por nome do centro de custo, ver nota do módulo
-// acima) — apenas expõe/soma os totais que já existiam. custoSaca/custoHa
+// calculado (classificação registrada nos itens) — apenas expõe/soma os totais que já existiam. custoSaca/custoHa
 // continuam SEMPRE sobre custeio (§2/§5.1), independente da classe pedida.
 export type ClasseCusto = "custeio" | "investimento" | "tudo";
 
@@ -40,25 +40,23 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
   //     LIQUIDADO, estornado=false, DEBITO, dataLiquidacao recente).
   const lancs = await prisma.transacaoFinanceira.findMany({
     where: {
-      status: "CONFIRMADA",
-      tipo: "PAGAMENTO",
+      OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
       data: { gte: desde },
       operacao: { centroCustoId: { in: centroCafeIds } },
     },
     select: {
-      valorTotal: true,
-      operacao: { select: { categoria: { select: { nome: true } }, centroCusto: { select: { nome: true } } } },
+      id: true, valorTotal: true,
+      operacao: { include: incluirClassificacao },
     },
   });
 
-  // 2) Split custeio (centro SEM "investimento") vs investimento (formação).
-  const custeio = lancs.filter((l) => !ehInvestimento(l.operacao?.centroCusto?.nome ?? ""));
-  const investimento = lancs.filter((l) => ehInvestimento(l.operacao?.centroCusto?.nome ?? ""));
-  const custeioTotal = Math.round(custeio.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
-  const investimentoTotal = Math.round(investimento.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
-
-  // 3) Breakdown do custeio por categoria (motor puro reusado do rebanho).
-  const quebra = quebrarPorCategoria(custeio.map((l) => ({ categoria: l.operacao?.categoria?.nome ?? "Sem categoria", valor: toNum(l.valorTotal) })));
+  // Classificação gravada em cada item; o nome do centro não define investimento.
+  const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal));
+  const custeio = partes.filter((p) => p.classificacao !== "INVESTIMENTO");
+  const investimento = partes.filter((p) => p.classificacao === "INVESTIMENTO");
+  const custeioTotal = Math.round(custeio.reduce((s, p) => s + p.valor.toNumber(), 0) * 100) / 100;
+  const investimentoTotal = Math.round(investimento.reduce((s, p) => s + p.valor.toNumber(), 0) * 100) / 100;
+  const quebra = quebrarPorCategoria(custeio.map((p) => ({ categoria: p.categoriaNome, valor: p.valor.toNumber() })));
 
   // 4) Sacas colhidas no período — produção real das passadas de colheita.
   const passadas = await prisma.passadaColheita.findMany({

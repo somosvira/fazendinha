@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
+import { ratearTransacao, incluirClassificacao } from "./classificacao.js";
 import { resumoSaldos } from "./contas.js";
 
 export async function obterDashboard(propriedadeId: number | null, inicio: Date, fim: Date) {
@@ -8,7 +9,7 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
     resumoSaldos(propriedadeId),
     prisma.movimentoConta.findMany({
       where: { transacao: { ...escopoTransacao, data: { gte: inicio, lte: fim } } },
-      include: { transacao: { include: { operacao: { include: { categoria: true, centroCusto: true } } } }, conta: true },
+      include: { transacao: { include: { reversaoDe: { select: { tipo: true } }, operacao: { include: { ...incluirClassificacao, centroCusto: true } } } }, conta: true },
     }),
     prisma.compromissoFinanceiro.findMany({
       where: { ...(propriedadeId ? { operacao: { propriedadeId } } : {}), status: { in: ["PENDENTE", "PARCIAL"] } },
@@ -17,7 +18,7 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
   ]);
   // Transferências apenas redistribuem disponibilidade entre contas próprias e
   // não podem inflar os indicadores de recebimentos e pagamentos realizados.
-  const realizados = movimentos.filter((m) => m.transacao.tipo !== "TRANSFERENCIA");
+  const realizados = movimentos.filter((m) => m.transacao.tipo !== "TRANSFERENCIA" && m.transacao.reversaoDe?.tipo !== "TRANSFERENCIA");
   const entradas = realizados.filter((m) => m.direcao === "ENTRADA").reduce((s, m) => s.plus(m.valor), new Prisma.Decimal(0));
   const saidas = realizados.filter((m) => m.direcao === "SAIDA").reduce((s, m) => s.plus(m.valor), new Prisma.Decimal(0));
   const pendente = (tipo: "PAGAR" | "RECEBER") => compromissos.filter((c) => c.tipo === tipo).reduce((total, c) => {
@@ -25,10 +26,11 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
     return total.plus(c.valorOriginal.minus(pago));
   }, new Prisma.Decimal(0));
   const porCategoria = new Map<string, Prisma.Decimal>();
-  for (const movimento of movimentos.filter((m) => m.transacao.tipo !== "TRANSFERENCIA" && m.transacao.operacao?.tipo !== "VENDA")) {
-    const nome = movimento.transacao.operacao?.categoria?.nome ?? "Sem categoria";
-    const valor = movimento.direcao === "SAIDA" ? movimento.valor : movimento.valor.negated();
-    porCategoria.set(nome, (porCategoria.get(nome) ?? new Prisma.Decimal(0)).plus(valor));
+  for (const movimento of movimentos.filter((m) => m.transacao.tipo !== "TRANSFERENCIA" && m.transacao.reversaoDe?.tipo !== "TRANSFERENCIA" && m.transacao.operacao?.tipo !== "VENDA")) {
+    const sinal = movimento.direcao === "SAIDA" ? 1 : -1;
+    for (const parte of ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, movimento.valor)) {
+      porCategoria.set(parte.categoriaNome, (porCategoria.get(parte.categoriaNome) ?? new Prisma.Decimal(0)).plus(parte.valor.abs().mul(sinal)));
+    }
   }
   return {
     periodo: { inicio, fim }, saldoGeral: saldos.saldoGeral, contas: saldos.contas,

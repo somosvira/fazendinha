@@ -285,3 +285,54 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   });
 
 });
+
+describe("categorias por item e relatórios", () => {
+  it("compra mista conserva snapshot, rateia parcelas e filtra por data, fazenda e centro", async () => {
+    const { analisarCategorias } = await import("../../src/services/financeiro/analise-categorias.js");
+    const { obterDashboard } = await import("../../src/services/financeiro/dashboard.js");
+    const { gerarRelatorioGerencial } = await import("../../src/services/relatorio-gerencial.js");
+    const silagem = await db.categoria.create({ data: { nome: `Silagem ${serial}`, classificacao: "CUSTEIO" } });
+    const vacina = await db.categoria.create({ data: { nome: `Vacinas ${serial}`, classificacao: "INVESTIMENTO" } });
+    const centro = await db.centroCusto.create({ data: { nome: `Pecuária ${serial}` } });
+    await db.produto.update({ where: { id: productId }, data: { categoriaId: silagem.id, centroCustoId: centro.id } });
+    const outro = await db.produto.create({ data: { nome: `Vacina ${serial}`, unidade: "un", categoriaId: vacina.id } });
+    const op = await ops.criarOperacao({ ...input(), valorTotal: 1000, centroCustoId: centro.id,
+      itens: [{ produtoId: productId, descricao: "Silagem", quantidade: 1, unidade: "kg", valorUnitario: 800, estocavel: true }, { produtoId: outro.id, descricao: "Vacina", quantidade: 1, unidade: "un", valorUnitario: 200, estocavel: true }],
+      financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: new Date("2026-10-01") }, { valor: 500, dataVencimento: new Date("2026-11-01") }] },
+    });
+    expect(op.itens.map((i) => i.categoriaId)).toEqual([silagem.id, vacina.id]);
+    await db.produto.update({ where: { id: productId }, data: { categoriaId: vacina.id } });
+    await db.categoria.update({ where: { id: silagem.id }, data: { nome: `Renomeada ${serial}`, classificacao: "INVESTIMENTO", ativo: false } });
+    const filtro = { inicio: "2026-09-01", fim: "2026-11-30", base: "compras" as const, categoriaId: silagem.id };
+    expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "800.00", categorias: [{ categoria: silagem.nome, valor: "800.00" }] });
+    expect((await analisarCategorias({ ...filtro, centroCustoId: centro.id }, pid)).total).toBe("800.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias(filtro, pid + 9999)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, inicio: "2026-10-01" }, pid)).total).toBe("0.00");
+    const pagamento = await pay(op.compromissos[0].id, 500);
+    expect((await analisarCategorias({ ...filtro, base: "pagamentos" }, pid)).total).toBe("400.00");
+    expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("400.00");
+    expect((await analisarCategorias({ ...filtro, base: "pendente", fim: "2026-10-31" }, pid)).total).toBe("0.00");
+    const dashboard = await obterDashboard(pid, new Date(filtro.inicio), new Date(filtro.fim));
+    expect(dashboard.despesasPorCategoria.map((c) => [c.categoria, Number(c.valor)])).toContainEqual([silagem.nome, 400]);
+    const relatorio = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "ambos" }, pid);
+    expect(relatorio.categorias?.itens).toEqual(expect.arrayContaining([expect.objectContaining({ categoria: silagem.nome, total: 400 })]));
+    const estorno = await ops.estornarTransacao(pagamento.id, "Estorno de teste", userId);
+    // Posiciona o estorno em outro mês para verificar a competência de caixa.
+    await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
+    expect((await analisarCategorias({ ...filtro, base: "pagamentos" }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, base: "pagamentos", inicio: "2026-10-01" }, pid)).total).toBe("-400.00");
+    expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("800.00");
+    await ops.estornarOperacao(op.id, "Cancelar teste misto", userId);
+    expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("0.00");
+  });
+
+  it("serviço sem itens registra categoria e classificação e aceita item avulso sem categoria", async () => {
+    const categoria = await db.categoria.create({ data: { nome: `Serviços ${serial}`, classificacao: "CUSTEIO" } });
+    const op = await ops.criarOperacao({ ...input("A_VISTA", "SERVICO"), parceiroId: undefined, categoriaId: categoria.id, classificacao: "INVESTIMENTO" });
+    expect(op).toMatchObject({ categoriaNome: categoria.nome, classificacao: "INVESTIMENTO" });
+    const avulso = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_CONSUMO_DIRETO"), itens: [{ descricao: "Material sem cadastro", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: false }] });
+    expect(avulso.itens[0]).toMatchObject({ categoriaId: null, categoriaNome: null });
+  });
+});

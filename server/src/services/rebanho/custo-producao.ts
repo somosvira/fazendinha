@@ -1,3 +1,4 @@
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
 import { calcularCustoVacaDia } from "./estoque.js";
 
@@ -39,15 +40,14 @@ export async function agregarCustoProducao(meses = 12, propriedadeId: number | n
   // estornado=false, dataLiquidacao recente) + DEBITO + CCusto "Atividade Leiteira".
   const lancs = await prisma.transacaoFinanceira.findMany({
     where: {
-      status: "CONFIRMADA",
-      tipo: "PAGAMENTO",
+      OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
       data: { gte: desde },
       operacao: { centroCusto: { nome: "Atividade Leiteira" } },
       ...(propriedadeId != null ? { propriedadeId } : {}),
     },
-    select: { valorTotal: true, operacao: { select: { categoria: { select: { nome: true } } } } },
+    select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
   });
-  const quebra = quebrarPorCategoria(lancs.map((l) => ({ categoria: l.operacao?.categoria?.nome ?? "Sem categoria", valor: toNum(l.valorTotal) })));
+  const quebra = quebrarPorCategoria(lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal).filter((p) => p.classificacao !== "INVESTIMENTO").map((p) => ({ categoria: p.categoriaNome, valor: p.valor.toNumber() }))));
 
   // Custo vaca/dia (real): reusa o motor do Estoque (consumo de insumo ÷ vacas×dias).
   const cvd = await calcularCustoVacaDia(30, propriedadeId); // { custoVacaDia, vacasEmLactacao, totalConsumo }

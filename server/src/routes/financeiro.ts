@@ -7,8 +7,9 @@ import * as parceiros from "../services/financeiro/parceiros.js";
 import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
+import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, grupoCategoriaSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchGrupoCategoriaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
@@ -50,17 +51,9 @@ export const financeiroRouter = new Hono()
     const [contasFinanceiras, parceirosLista, gerenciais, produtos] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
-      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true } }),
+      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true, categoriaId: true, centroCustoId: true } }),
     ]);
     return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos });
-  })
-  .post("/financeiro/grupos-categorias", exigePermissao("lancar"), validarCadastro(grupoCategoriaSchema), async (c) => {
-    try { return c.json(await cadastros.criarGrupoCategoria(c.req.valid("json"), usuarioId(c)), 201); }
-    catch (e) { return falha(c, e); }
-  })
-  .patch("/financeiro/grupos-categorias/:id", exigePermissao("lancar"), validarCadastro(patchGrupoCategoriaSchema), async (c) => {
-    try { return c.json(await cadastros.atualizarGrupoCategoria(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
-    catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
     try { return c.json(await cadastros.criarCategoria(c.req.valid("json"), usuarioId(c)), 201); }
@@ -76,6 +69,12 @@ export const financeiroRouter = new Hono()
   })
   .patch("/financeiro/centros-custo/:id", exigePermissao("lancar"), validarCadastro(patchCentroCustoSchema), async (c) => {
     try { return c.json(await cadastros.atualizarCentroCusto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/analise-categorias", zValidator("query", analiseCategoriasSchema, (resultado, c) => {
+    if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422);
+  }), async (c) => {
+    try { return c.json(await analisarCategorias(c.req.valid("query"), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/dashboard", async (c) => {
