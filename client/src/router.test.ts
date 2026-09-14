@@ -3,6 +3,7 @@ import {
   buildRotaWorklistRebanho,
   isNovaOperacaoFinanceira,
   parseOperacaoFinanceiraId,
+  parseContaFinanceiraId,
   parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
@@ -80,4 +81,16 @@ describe("roteamento da pecuária", () => {
     expect(parseRotaWorklistRebanho("/gastos", "?status=vencidas")).toBeNull();
     expect(pathToTab("/gastos")).toBe("gastos");
   });
+});
+
+it("reconhece URLs de contas e rejeita IDs inválidos", () => {
+  const id = "00000000-0000-4000-8000-000000000021";
+  expect(pathToTab(`/financeiro/contas/${id}`)).toBe("caixinha");
+  expect(parseContaFinanceiraId(`/financeiro/contas/${id}/`)).toBe(id);
+  expect(parseContaFinanceiraId("/financeiro/contas/0")).toBeNull();
+  expect(parseContaFinanceiraId("/financeiro/contas/abc")).toBeNull();
+});
+
+it("redireciona a rota do assistente enquanto a feature está inativa", () => {
+  expect(pathToTab("/ia")).toBe("dashboard");
 });

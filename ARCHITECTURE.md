@@ -382,6 +382,11 @@ O modelo financeiro legado (`Lancamento`, `FechamentoMensal`, `ContaBancaria`, `
 
 ### Núcleo financeiro (o que cada model significa)
 
+- Cadastros (PR #259): `ContaFinanceira` oferece `BANCO | CAIXA | APLICACAO`, com detalhes bancários, local/responsável, observação e ordem. `DINHEIRO` permanece apenas como compatibilidade no enum persistido e é normalizado para `CAIXA`; não é opção de cadastro. Saldo/data de abertura são protegidos após movimentos.
+- `ParceiroPapel` tem chave composta `(parceiroId, papel)` e é a fonte dos múltiplos papéis do parceiro. `Parceiro.tipo` permanece como projeção legada, e leituras de cadastros ainda sem papéis usam fallback. `AMBOS` equivale a cliente + fornecedor. O CRUD legado de fornecedores preserva papéis não comerciais.
+- Contato/endereço e preferências ficam no parceiro. A sugestão de pagamento é aplicada somente por confirmação explícita na UI; não é regra do lançamento. `exigirParceiroAtivo` valida papéis em novas operações/rascunhos, não na liquidação ou estorno histórico.
+- `garantirCadastrosFinanceiros` repete os backfills de tipos/papéis de forma idempotente via script manual `backfill:cadastros-financeiros` para bancos criados por `db push`, sem sobrescrever papéis já cadastrados. Não roda no boot nem em requests, mantendo o mesmo fluxo para Node/Worker. Não usar instâncias antigas escrevendo `tipo` durante a transição de versão.
+
 - `Operacao` — **o fato de negócio** (`tipo: TipoOperacaoFinanceira` = `COMPRA_ESTOQUE | COMPRA_CONSUMO_DIRETO | SERVICO | VENDA | APORTE | RETIRADA | TRANSFERENCIA_FINANCEIRA | AJUSTE_ESTOQUE | TRANSFERENCIA_ESTOQUE | INVENTARIO_INICIAL | BONIFICACAO | DEVOLUCAO | PRODUCAO`; `status RASCUNHO | CONFIRMADA | CANCELADA`; `data @db.Date`; `valorTotal`; `propriedadeId` **obrigatório**; `parceiroId?`, `categoriaId?`, `centroCustoId?`; `corrigeOperacaoId?` liga uma correção à operação cancelada; `criadoPorId?`). Filhos: `ItemOperacao[]`.
 - `CompromissoFinanceiro` — **valor ainda pendente** (`tipo PAGAR | RECEBER`, `valorOriginal`, `dataVencimento`, `numeroParcela/totalParcelas`, `status PENDENTE | PARCIAL | LIQUIDADO | CANCELADO`). **Não altera saldo.** `Liquidacao` liga compromisso ↔ transação com o valor liquidado.
 - `TransacaoFinanceira` — **dinheiro realizado** (`tipo PAGAMENTO | RECEBIMENTO | TRANSFERENCIA | APORTE | RETIRADA | AJUSTE | REVERSAO`, `valorTotal`, `formaPagamento`, `status CONFIRMADA | REVERTIDA`). Cada transação tem `MovimentoConta[]` (`direcao ENTRADA | SAIDA`, `contaId`, `valor`) — **única fonte de alteração de saldo** de uma `ContaFinanceira` (`BANCO | CAIXA | APLICACAO | DINHEIRO`, `saldoAbertura`, `incluirNoSaldoGeral`, `ativo`).
@@ -652,7 +657,6 @@ Detalhe operacional em `DEPLOY.md`.
 | `STORAGE_DRIVER` | não (default `local`) | `local` \| `r2` |
 | `LOCAL_STORAGE_DIR` / `LOCAL_DOWNLOAD_SECRET` | não | Storage local + assinatura de download |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NOTAS` | se `r2` | Cloudflare R2 (`superRefine`) |
-| `OCR_ENABLED` | não (default `false`) | Tesseract (dormente) |
 | `DASHBOARD_MESES_QUEIMA` | não (default 6) | Média de queima mensal |
 
 `env.ts` valida via Zod e **falha rápido** (`process.exit(1)`) se inválido. **Sempre importar de `env.ts`**, nunca `process.env`. Client: `VITE_HOJE_ISO` fixa a data "hoje" em builds de demo.

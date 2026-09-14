@@ -21,6 +21,8 @@ const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromis
   listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(), obterRascunhoOperacao: vi.fn(),
 }));
 vi.mock("./novo-api", () => ({
+  obterExtratoGeral: vi.fn().mockResolvedValue([]),
+  obterAnaliseCategorias: vi.fn().mockResolvedValue({ base: "compras", total: "0", categorias: [], linhas: [] }),
   obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta,
   liquidarCompromisso: vi.fn(), transferir: vi.fn(), criarConta: vi.fn(), criarParceiro: vi.fn(),
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
@@ -162,7 +164,7 @@ describe("telas financeiras — envelope e carregamento", () => {
     obterConfiguracoesFinanceiras.mockResolvedValue({
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       parceiros: [{ id: 1, nome: "Cooperativa Agropecuária dos Produtores de Leite do Alto Paranaíba Ltda.", documento: "12.345.678/0001-99", tipo: "FORNECEDOR", telefone: null, email: null, ativo: true }],
-      gruposCategorias: [], centrosCusto: [], produtos: [],
+      categorias: [], centrosCusto: [], produtos: [],
     });
     listarCompromissos.mockResolvedValue([{
       id: 1, tipo: "PAGAR", status: "PENDENTE", valorOriginal: "184500.9", valorLiquidado: "0", saldoPendente: "184500.9",

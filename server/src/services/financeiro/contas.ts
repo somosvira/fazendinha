@@ -1,24 +1,33 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { auditar, FinanceiroError } from "./regras.js";
+import type { z } from "zod";
+import { auditar, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
+import type { contaSchema, patchContaSchema } from "./schemas.js";
+
+const CONFLITOS = { nome: "Já existe uma conta com este nome nesta propriedade" };
+
+type MovimentoSaldo = { direcao: "ENTRADA" | "SAIDA"; valor: Prisma.Decimal };
+
+function comResumo<T extends { saldoAbertura: Prisma.Decimal }>(conta: T, movimentos: MovimentoSaldo[]) {
+  const saldoAtual = movimentos.reduce(
+    (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
+    new Prisma.Decimal(conta.saldoAbertura),
+  );
+  return { ...conta, saldoAtual, temMovimentos: movimentos.length > 0 };
+}
 
 export async function listarContas(propriedadeId?: number | null, incluirInativas = false) {
   const contas = await prisma.contaFinanceira.findMany({
     where: { ...(propriedadeId ? { propriedadeId } : {}), ...(!incluirInativas ? { ativo: true } : {}) },
     include: {
       movimentos: {
-        select: { direcao: true, valor: true },
+        select: { direcao: true, valor: true, transacao: { select: { data: true, descricao: true, tipo: true } } },
+        orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
       },
     },
-    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+    orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { nome: "asc" }],
   });
-  return contas.map(({ movimentos, ...conta }) => {
-    const saldo = movimentos.reduce(
-      (total, movimento) => total.plus(movimento.direcao === "ENTRADA" ? movimento.valor : movimento.valor.negated()),
-      new Prisma.Decimal(conta.saldoAbertura),
-    );
-    return { ...conta, saldoAtual: saldo };
-  });
+  return contas.map(({ movimentos, ...conta }) => ({ ...comResumo(conta, movimentos), ultimaOperacao: movimentos[0]?.transacao ?? null }));
 }
 
 export async function resumoSaldos(propriedadeId?: number | null) {
@@ -30,37 +39,66 @@ export async function resumoSaldos(propriedadeId?: number | null) {
   };
 }
 
-export async function criarConta(input: {
-  id?: string;
-  nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao?: string | null;
-  identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: Date; incluirNoSaldoGeral: boolean;
-  propriedadeId: number; usuarioId?: number | null;
-}) {
-  return prisma.$transaction(async (tx) => {
-    const { usuarioId, ...dados } = input;
-    const conta = await tx.contaFinanceira.create({ data: dados });
-    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
-    return conta;
-  });
+function validarInstituicao(conta: { tipo: string; instituicao?: string | null }) {
+  if (["BANCO", "APLICACAO"].includes(conta.tipo) && !conta.instituicao?.trim()) {
+    throw new FinanceiroError("VALIDACAO", "Informe a instituição financeira", "instituicao");
+  }
+}
+
+function validarDadosBancarios(conta: { tipo: string; agencia?: string | null; numeroConta?: string | null; titular?: string | null }) {
+  if (conta.tipo !== "BANCO") return;
+  if (!conta.agencia?.trim()) throw new FinanceiroError("VALIDACAO", "Informe a agência", "agencia");
+  if (!conta.numeroConta?.trim()) throw new FinanceiroError("VALIDACAO", "Informe o número da conta", "numeroConta");
+  if (!conta.titular?.trim()) throw new FinanceiroError("VALIDACAO", "Informe o titular", "titular");
+  if (/\d/.test(conta.titular)) throw new FinanceiroError("VALIDACAO", "O titular não pode conter números", "titular");
+}
+
+export async function criarConta(input: z.infer<typeof contaSchema> & { propriedadeId: number; usuarioId?: number | null }) {
+  validarInstituicao(input);
+  validarDadosBancarios(input);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { usuarioId, ...dados } = input;
+      const conta = await tx.contaFinanceira.create({ data: dados });
+      await auditar(tx, { entidade: "ContaFinanceira", entidadeId: conta.id, acao: "CRIADA", usuarioId, depois: conta });
+      return comResumo(conta, []);
+    });
+  } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
 export async function atualizarConta(
   id: string,
   propriedadeId: number,
-  input: Partial<{ nome: string; instituicao: string | null; identificacao: string | null; incluirNoSaldoGeral: boolean; ativo: boolean }>,
+  input: z.infer<typeof patchContaSchema>,
   usuarioId?: number | null,
 ) {
-  return prisma.$transaction(async (tx) => {
-    const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
-    if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
-    const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
-    await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
-    return conta;
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const anterior = await tx.contaFinanceira.findFirst({ where: { id, propriedadeId } });
+      if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
+      // Um cadastro antigo incompleto ainda pode ser desativado ou renomeado.
+      if (input.tipo !== undefined || input.instituicao !== undefined) validarInstituicao({ ...anterior, ...input });
+      /* Saldo/data de abertura só mudam enquanto a conta não tem movimentos —
+       * depois disso o saldo atual derivado do razão perderia a referência. */
+      const mexeSaldo = input.saldoAbertura !== undefined && !new Prisma.Decimal(input.saldoAbertura).equals(anterior.saldoAbertura);
+      const mexeData = input.dataSaldoAbertura !== undefined && input.dataSaldoAbertura.getTime() !== anterior.dataSaldoAbertura.getTime();
+      if (mexeSaldo || mexeData) {
+        const movimentos = await tx.movimentoConta.count({ where: { contaId: id } });
+        if (movimentos > 0) throw new FinanceiroError("VALIDACAO", "Saldo e data de abertura não podem ser alterados em conta que já possui movimentos", mexeSaldo ? "saldoAbertura" : "dataSaldoAbertura");
+      }
+      const conta = await tx.contaFinanceira.update({ where: { id }, data: input });
+      await auditar(tx, { entidade: "ContaFinanceira", entidadeId: id, acao: "ATUALIZADA", usuarioId, antes: anterior, depois: conta });
+      const movimentos = await tx.movimentoConta.findMany({
+        where: { contaId: id },
+        select: { direcao: true, valor: true },
+      });
+      return comResumo(conta, movimentos);
+    });
+  } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
-export async function listarExtrato(contaId: string, propriedadeId: number, inicio?: Date, fim?: Date) {
-  const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, propriedadeId } });
+export async function listarExtrato(contaId: string, propriedadeId: number | null, inicio?: Date, fim?: Date) {
+  const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, ...(propriedadeId != null ? { propriedadeId } : {}) } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
   return prisma.movimentoConta.findMany({
     where: {
@@ -68,6 +106,14 @@ export async function listarExtrato(contaId: string, propriedadeId: number, inic
       transacao: { ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     },
     include: { transacao: { include: { parceiro: true, operacao: true } } },
-    orderBy: [{ transacao: { data: "desc" } }, { transacao: { registradoEm: "desc" } }, { ordem: "asc" }],
+    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+  });
+}
+
+export async function listarExtratoGeral(propriedadeId: number | null) {
+  return prisma.movimentoConta.findMany({
+    where: { conta: propriedadeId != null ? { propriedadeId } : {} },
+    include: { conta: { select: { id: true, nome: true, instituicao: true } }, transacao: { include: { parceiro: true, operacao: true } } },
+    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
   });
 }

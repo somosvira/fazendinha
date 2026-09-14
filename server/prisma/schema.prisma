@@ -4,7 +4,8 @@
 // MovimentoConta) e o efeito físico (MovimentoEstoque).
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -17,7 +18,6 @@ enum TipoContaFinanceira {
   BANCO
   CAIXA
   APLICACAO
-  DINHEIRO
 }
 
 enum TipoParceiro {
@@ -27,6 +27,21 @@ enum TipoParceiro {
   FUNCIONARIO
   PROPRIETARIO
   OUTRO
+}
+
+enum PapelParceiro {
+  CLIENTE
+  FORNECEDOR
+  PRESTADOR_SERVICO
+  FUNCIONARIO
+  PROPRIETARIO
+  OUTRO
+}
+
+enum TipoBancario {
+  CORRENTE
+  POUPANCA
+  PAGAMENTO
 }
 
 enum TipoOperacaoFinanceira {
@@ -109,23 +124,15 @@ enum StatusPeriodoFinanceiro {
   FECHADO
 }
 
-// Centro de custo: Atividade Leiteira, Plantio Café, e variantes de Investimento.
+// Área responsável pelo gasto: Pecuária, Agronomia, Equipe, Gestão.
 model CentroCusto {
-  id             String     @id @default(uuid()) @db.Uuid
-  nome           String     @unique
-  ehInvestimento Boolean    @default(false)
-  ordem          Int        @default(0)
-  operacoes      Operacao[]
-  produtos       Produto[]
-  safras         Safra[]
-}
-
-// Plano de contas gerencial: Grupo -> Categoria.
-model GrupoCategoria {
-  id         String      @id @default(uuid()) @db.Uuid
-  nome       String      @unique
-  ordem      Int         @default(0)
-  categorias Categoria[]
+  id        String     @id @default(uuid()) @db.Uuid
+  nome      String     @unique
+  ativo     Boolean    @default(true)
+  ordem     Int        @default(0)
+  operacoes Operacao[]
+  produtos  Produto[]
+  safras    Safra[]
 }
 
 // Override gerencial da classificação de uma categoria (custeio × investimento).
@@ -136,15 +143,16 @@ enum ClassificacaoCategoria {
 }
 
 model Categoria {
-  id               String                  @id @default(uuid()) @db.Uuid
-  nome             String
-  grupoCategoria   GrupoCategoria          @relation(fields: [grupoCategoriaId], references: [id])
-  grupoCategoriaId String                  @db.Uuid
-  classificacao    ClassificacaoCategoria?
-  operacoes        Operacao[]
-  produtos         Produto[]
+  id            String                  @id @default(uuid()) @db.Uuid
+  nome          String
+  classificacao ClassificacaoCategoria?
+  ativo         Boolean                 @default(true)
+  ordem         Int                     @default(0)
+  operacoes     Operacao[]
+  produtos      Produto[]
+  itens         ItemOperacao[]
 
-  @@unique([grupoCategoriaId, nome])
+  @@unique([nome])
 }
 
 model ContaFinanceira {
@@ -153,6 +161,15 @@ model ContaFinanceira {
   tipo                TipoContaFinanceira
   instituicao         String?
   identificacao       String?
+  tipoBancario        TipoBancario?
+  agencia             String?
+  numeroConta         String?
+  digito              String?
+  titular             String?
+  local               String?
+  responsavel         String?
+  observacoes         String?
+  ordem               Int                 @default(0)
   saldoAbertura       Decimal             @default(0) @db.Decimal(14, 2)
   dataSaldoAbertura   DateTime            @db.Date
   incluirNoSaldoGeral Boolean             @default(true)
@@ -342,22 +359,46 @@ model ProdutoPrincipioAtivo {
 }
 
 model Parceiro {
-  id           String                  @id @default(uuid()) @db.Uuid
-  nome         String
-  documento    String?
-  tipo         TipoParceiro            @default(FORNECEDOR)
-  telefone     String?
-  email        String?
-  ativo        Boolean                 @default(true)
-  operacoes    Operacao[]
-  compromissos CompromissoFinanceiro[]
-  transacoes   TransacaoFinanceira[]
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
+  id                         String                  @id @default(uuid()) @db.Uuid
+  nome                       String
+  documento                  String?
+  tipo                       TipoParceiro            @default(FORNECEDOR)
+  telefone                   String?
+  email                      String?
+  nomeFantasia               String?
+  pessoaContato              String?
+  telefoneWhatsapp           Boolean                 @default(false)
+  cep                        String?
+  logradouro                 String?
+  numero                     String?
+  complemento                String?
+  bairro                     String?
+  cidade                     String?
+  uf                         String?
+  referencia                 String?
+  observacoes                String?
+  formaPagamentoPreferida    FormaPagamento?
+  condicaoPagamentoPreferida String?
+  prazosPagamento            Int[]                   @default([])
+  papeis                     ParceiroPapel[]
+  ativo                      Boolean                 @default(true)
+  operacoes                  Operacao[]
+  compromissos               CompromissoFinanceiro[]
+  transacoes                 TransacaoFinanceira[]
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
 
   @@unique([documento])
   @@index([nome])
   @@index([tipo, ativo])
+}
+
+model ParceiroPapel {
+  parceiroId String        @db.Uuid
+  papel      PapelParceiro
+  parceiro   Parceiro      @relation(fields: [parceiroId], references: [id], onDelete: Cascade)
+
+  @@id([parceiroId, papel])
 }
 
 model PeriodoFinanceiro {
@@ -378,6 +419,8 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
+  categoriaNome       String?
+  classificacao       ClassificacaoCategoria?
   id                  String                  @id @default(uuid()) @db.Uuid
   numero              Int                     @unique @default(autoincrement())
   tipo                TipoOperacaoFinanceira
@@ -437,20 +480,24 @@ model RascunhoOperacao {
 }
 
 model ItemOperacao {
-  id                String             @id @default(uuid()) @db.Uuid
-  operacao          Operacao           @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
-  operacaoId        String             @db.Uuid
-  produto           Produto?           @relation(fields: [produtoId], references: [id])
+  categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
+  categoriaId       String?                 @db.Uuid
+  categoriaNome     String?
+  classificacao     ClassificacaoCategoria?
+  id                String                  @id @default(uuid()) @db.Uuid
+  operacao          Operacao                @relation(fields: [operacaoId], references: [id], onDelete: Cascade)
+  operacaoId        String                  @db.Uuid
+  produto           Produto?                @relation(fields: [produtoId], references: [id])
   produtoId         Int?
-  ordem             Int                @default(0)
+  ordem             Int                     @default(0)
   descricao         String
-  quantidade        Decimal            @db.Decimal(12, 3)
+  quantidade        Decimal                 @db.Decimal(12, 3)
   unidade           String
-  valorUnitario     Decimal            @db.Decimal(14, 4)
-  valorTotal        Decimal            @db.Decimal(14, 2)
-  estocavel         Boolean            @default(false)
+  valorUnitario     Decimal                 @db.Decimal(14, 4)
+  valorTotal        Decimal                 @db.Decimal(14, 2)
+  estocavel         Boolean                 @default(false)
   movimentosEstoque MovimentoEstoque[]
-  createdAt         DateTime           @default(now())
+  createdAt         DateTime                @default(now())
 
   @@unique([operacaoId, ordem])
   @@index([operacaoId])

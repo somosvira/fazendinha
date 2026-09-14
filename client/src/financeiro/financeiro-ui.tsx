@@ -54,9 +54,9 @@ export function PageHeader({ titulo, descricao, acao }: { titulo: string; descri
   </header>;
 }
 
-export function Button({ children, onClick, type = "button", disabled, danger, secondary, className = "" }: { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string }) {
+export function Button({ children, onClick, type = "button", disabled, danger, secondary, className = "", form }: { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string }) {
   const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-  return <button type={type} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+  return <button type={type} form={form} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
 }
 
 export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -116,7 +116,7 @@ export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
-  alinhamento?: "esquerda" | "direita";
+  alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
   /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
   larguraMinima?: number;
@@ -124,21 +124,26 @@ export type ColunaTabela<T> = {
   principal?: boolean;
   /** já representada no título do cartão — não repetir como par rótulo/valor */
   ocultarNoCartao?: boolean;
+  /** célula com botões próprios: no cartão é renderizada FORA do botão que abre
+   *  a linha (evita <button> dentro de <button>) */
+  acoes?: boolean;
 };
 
-const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
+const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe }: {
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
   onAbrir?: (item: T) => void;
   classeLinha?: (item: T) => string;
+  ancoraDe?: (item: T) => string;
   rotulo: string;
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
-  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && coluna.titulo);
+  const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
+  const acoes = colunas.filter((coluna) => coluna.acoes);
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
@@ -150,10 +155,10 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         </thead>
         <tbody className="divide-y divide-border">
           {itens.map((item) => <tr
-            key={chaveDe(item)}
+            key={chaveDe(item)} data-ancora={ancoraDe?.(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
-            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(item); } } } : {})}
+            {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
           >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
         </tbody>
@@ -172,10 +177,11 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             </div>)}
           </dl>
         </>;
-        return <li key={chaveDe(item)} className={classeLinha?.(item) ?? ""}>
+        return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
             ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
             : <div className="p-4">{corpo}</div>}
+          {acoes.length > 0 && <div className="flex justify-end gap-2 px-4 pb-4">{acoes.map((coluna) => <div key={coluna.chave}>{coluna.celula(item)}</div>)}</div>}
         </li>;
       })}
     </ul>

@@ -4,7 +4,7 @@
  * agregados de cada seção. Regras do domínio (regime de caixa):
  *   - realizado  = LIQUIDADO, não estornado, dataLiquidacao dentro do período;
  *   - previsto   = ABERTO, não estornado (compromissos), por dataVencimento;
- *   - transferências ("(Sem centro de custo)") movem saldo de conta mas não
+ *   - transferências identificadas pela transação movem saldo de conta mas não
  *     entram em entradas/saídas/resultado — mesma regra do Dashboard;
  *   - estornos e LIQUIDADO_PARCIAL nunca entram em totais; aparecem só em
  *     "operações por tipo" para auditoria.
@@ -20,6 +20,7 @@ export const CENTRO_TRANSFERENCIA = "(Sem centro de custo)";
 
 export interface LinhaLancamento {
   id: string;
+  transferencia?: boolean;
   natureza: Natureza;
   valor: number;
   situacao: Situacao;
@@ -28,8 +29,8 @@ export interface LinhaLancamento {
   dataVencimento: string;
   descricao: string | null;
   numeroDocumento: string | null;
-  categoria: { nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; grupo: string };
-  centroCusto: { nome: string; ehInvestimento: boolean };
+  categoria: { nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null };
+  centroCusto: { nome: string };
   contaBancariaId: string | null;
   fornecedor: string | null;
   temNotaFiscal: boolean;
@@ -49,11 +50,9 @@ export function classificarLinha(l: LinhaLancamento): TipoOperacao {
   if (l.estornado) return "estorno";
   if (l.situacao === "LIQUIDADO_PARCIAL") return "parcial";
   if (l.situacao === "ABERTO") return "compromisso";
-  if (l.centroCusto.nome === CENTRO_TRANSFERENCIA) return "transferencia";
+  if (l.transferencia) return "transferencia";
   if (l.natureza === "CREDITO") return "receita";
-  const investimento = l.centroCusto.ehInvestimento
-    || /investimento/i.test(l.centroCusto.nome)
-    || l.categoria.classificacao === "INVESTIMENTO";
+  const investimento = l.categoria.classificacao === "INVESTIMENTO";
   return investimento ? "investimento" : "custeio";
 }
 
@@ -78,14 +77,13 @@ export interface MesFluxo extends TotaisFluxo { mes: string }
 export interface ResultadoAtividade { atividade: Atividade; receita: number; custeio: number; investimento: number; resultado: number }
 export interface ResultadoPeriodo { receita: number; custeio: number; investimento: number; resultado: number; porAtividade: ResultadoAtividade[] }
 export interface CategoriaTotal { categoria: string; total: number; pct: number }
-export interface GrupoTotal { grupo: string; total: number; pct: number; categorias: CategoriaTotal[] }
 export interface CentroTotal { centro: string; total: number; pct: number }
 export interface RealizadoAgregado {
   totais: TotaisFluxo;
   nLancamentos: number;
   meses: MesFluxo[];
   resultado: ResultadoPeriodo;
-  categorias: { grupos: GrupoTotal[]; centros: CentroTotal[] };
+  categorias: { itens: CategoriaTotal[]; centros: CentroTotal[] };
 }
 
 const ATIVIDADES: Atividade[] = ["leite", "cafe", "outros"];
@@ -106,7 +104,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
   const porAtividade = new Map<Atividade, { receita: number; custeio: number; investimento: number }>(
     ATIVIDADES.map((a) => [a, { receita: 0, custeio: 0, investimento: 0 }]),
   );
-  const grupos = new Map<string, { total: number; categorias: Map<string, number> }>();
+  const categorias = new Map<string, number>();
   const centros = new Map<string, number>();
 
   for (const l of validas) {
@@ -124,17 +122,14 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     if (bucket) bucket.saidas += v;
     if (tipo === "investimento") { investimento += v; atv.investimento += v; }
     else { custeio += v; atv.custeio += v; }
-    const g = grupos.get(l.categoria.grupo) ?? { total: 0, categorias: new Map<string, number>() };
-    g.total += v;
-    g.categorias.set(l.categoria.nome, (g.categorias.get(l.categoria.nome) ?? 0) + v);
-    grupos.set(l.categoria.grupo, g);
+    categorias.set(l.categoria.nome, (categorias.get(l.categoria.nome) ?? 0) + v);
     centros.set(l.centroCusto.nome, (centros.get(l.centroCusto.nome) ?? 0) + v);
   }
 
   const desc = <T extends { total: number }>(a: T, b: T) => b.total - a.total;
   return {
     totais: { entradas: reais(entradas), saidas: reais(saidas), resultado: reais(entradas - saidas) },
-    nLancamentos: validas.length,
+    nLancamentos: new Set(validas.map((l) => l.id)).size,
     meses: [...porMes.entries()].map(([mes, b]) => ({ mes, entradas: reais(b.entradas), saidas: reais(b.saidas), resultado: reais(b.entradas - b.saidas) })),
     resultado: {
       receita: reais(receita),
@@ -147,12 +142,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
       }),
     },
     categorias: {
-      grupos: [...grupos.entries()].map(([grupo, g]) => ({
-        grupo,
-        total: reais(g.total),
-        pct: pct(g.total, saidas),
-        categorias: [...g.categorias.entries()].map(([categoria, total]) => ({ categoria, total: reais(total), pct: pct(total, saidas) })).sort(desc),
-      })).sort(desc),
+      itens: [...categorias.entries()].map(([categoria, total]) => ({ categoria, total: reais(total), pct: pct(total, saidas) })).sort(desc),
       centros: [...centros.entries()].map(([centro, total]) => ({ centro, total: reais(total), pct: pct(total, saidas) })).sort(desc),
     },
   };
@@ -187,7 +177,7 @@ export function agregarPrevisto(linhas: LinhaLancamento[], hoje: string): Previs
     let vencido = 0;
     let aVencer = 0;
     for (const i of itens) (i.vencido ? (vencido += cents(i.valor)) : (aVencer += cents(i.valor)));
-    return { total: reais(vencido + aVencer), vencido: reais(vencido), aVencer: reais(aVencer), quantidade: itens.length, itens: itens.slice(0, LIMITE_ITENS_COMPROMISSO) };
+    return { total: reais(vencido + aVencer), vencido: reais(vencido), aVencer: reais(aVencer), quantidade: new Set(itens.map((i) => i.id)).size, itens: itens.slice(0, LIMITE_ITENS_COMPROMISSO) };
   };
   return { hoje, aPagar: bloco("DEBITO"), aReceber: bloco("CREDITO") };
 }
@@ -235,15 +225,15 @@ const ORDEM_TIPOS: TipoOperacao[] = ["receita", "custeio", "investimento", "tran
 const ENTRA_NO_TOTAL = new Set<TipoOperacao>(["receita", "custeio", "investimento"]);
 
 export function agregarOperacoesPorTipo(linhas: LinhaLancamento[]): OperacaoPorTipo[] {
-  const acc = new Map<TipoOperacao, { quantidade: number; valor: number }>(ORDEM_TIPOS.map((t) => [t, { quantidade: 0, valor: 0 }]));
+  const acc = new Map<TipoOperacao, { ids: Set<string>; valor: number }>(ORDEM_TIPOS.map((t) => [t, { ids: new Set(), valor: 0 }]));
   for (const l of linhas) {
     const a = acc.get(classificarLinha(l))!;
-    a.quantidade += 1;
+    a.ids.add(l.id);
     a.valor += cents(l.valor);
   }
   return ORDEM_TIPOS.map((tipo) => {
     const a = acc.get(tipo)!;
-    return { tipo, quantidade: a.quantidade, valor: reais(a.valor), entraNoTotal: ENTRA_NO_TOTAL.has(tipo) };
+    return { tipo, quantidade: a.ids.size, valor: reais(a.valor), entraNoTotal: ENTRA_NO_TOTAL.has(tipo) };
   });
 }
 

@@ -18,14 +18,13 @@
 // não duplica.
 
 import { readFileSync } from "node:fs";
-import { PrismaClient, SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
+import { SexoAnimal, CategoriaAnimal, StatusAnimal, StatusReprodutivo } from "@prisma/client";
+import { prisma } from "../src/db.js";
 import { importarIatfLegado, type DadosIatfLegado } from "../src/services/rebanho/import-iatf.js";
 import { importarGeneticaLegado, type DadosGeneticaLegado } from "../src/services/rebanho/import-genetica.js";
 import { importarAcasalamentoLegado, type DadosAcasalamentoLegado } from "../src/services/rebanho/import-acasalamento.js";
 import { importarFivLegado, type DadosFivLegado } from "../src/services/rebanho/import-fiv.js";
 import { semearResultadosGinecologicos, type ResultadoGinecologicoSeed } from "../src/services/rebanho/exame-ginecologico.js";
-
-const prisma = new PrismaClient();
 
 // ---- Contrato do JSON ------------------------------------------------------
 interface ResumoJson {

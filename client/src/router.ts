@@ -12,6 +12,7 @@
  */
 
 import type { Tab } from "./components/Shell";
+import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { entityIdSchema, type EntityId } from "@fazendinha/shared";
 
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
@@ -103,6 +104,12 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+export function parseContaFinanceiraId(pathname: string): EntityId | null {
+  const match = /^\/financeiro\/contas\/([^/]+)\/?$/i.exec(pathname);
+  const parsed = entityIdSchema.safeParse(match?.[1]);
+  return parsed.success ? parsed.data : null;
+}
+
 export function parseOperacaoFinanceiraId(pathname: string): EntityId | null {
   const match = /^\/financeiro\/operacoes\/([^/]+)\/?$/i.exec(pathname);
   const parsed = entityIdSchema.safeParse(match?.[1]);
@@ -165,6 +172,8 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
 
   if (path === "/" || path === "") return DEFAULT_TAB;
+  if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
+  if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";
 

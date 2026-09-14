@@ -6,7 +6,7 @@ import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 
 vi.mock("./novo-api", () => ({
   listarOperacoes: vi.fn().mockResolvedValue([]),
-  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], gruposCategorias: [], centrosCusto: [], produtos: [] }),
+  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
 }));

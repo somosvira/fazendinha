@@ -80,13 +80,12 @@ export function mapearLote(row: {
 export function mapearCategoria(row: {
   id: string;
   nome: string;
-  grupoCategoria: { nome: string };
 }): ResultadoBusca {
   return {
     tipo: "categoria",
     entidadeId: String(row.id),
     label: row.nome,
-    sublabel: row.grupoCategoria.nome,
+    sublabel: "Categoria financeira",
     tab: "plano",
     grupo: "Categorias",
   };
@@ -159,7 +158,6 @@ export async function buscarEntidades(q: string): Promise<ResultadoBusca[]> {
     }),
     prisma.categoria.findMany({
       where: { nome: { contains: termo, mode: "insensitive" } },
-      include: { grupoCategoria: { select: { nome: true } } },
       orderBy: { nome: "asc" },
       take: TAKE,
     }),

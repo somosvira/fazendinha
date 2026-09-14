@@ -1,30 +1,46 @@
 import { comPropriedade } from "../propriedadeScope";
-import {
-  contaSchema,
-  liquidacaoSchema,
-  operacaoSchema,
-  parceiroSchema,
-  rascunhoOperacaoSchema,
-  transferenciaSchema,
-  type EntityId,
-} from "@fazendinha/shared";
+import type { EntityId } from "@fazendinha/shared";
 
-export type Conta = { id: EntityId; nome: string; tipo: "BANCO" | "CAIXA" | "APLICACAO" | "DINHEIRO"; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; saldoAtual: string; incluirNoSaldoGeral: boolean; ativo: boolean };
-export type Parceiro = { id: EntityId; nome: string; documento: string | null; tipo: string; telefone: string | null; email: string | null; ativo: boolean };
-export type Categoria = { id: EntityId; nome: string };
-export type GrupoCategoria = { id: EntityId; nome: string; categorias: Categoria[] };
-export type CentroCusto = { id: EntityId; nome: string; ehInvestimento: boolean };
-export type Produto = { id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; gruposCategorias: GrupoCategoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
-export type Compromisso = { id: EntityId; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; numeroParcela: number; totalParcelas: number; vencido: boolean; parceiro: Parceiro | null; operacao: { id: EntityId; numero: number; tipo: string; descricao: string | null } };
-export type ItemOperacao = { id: EntityId; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
+export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
+export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
+export type TipoBancario = "CORRENTE" | "POUPANCA" | "PAGAMENTO";
+export type DadosConta = {
+  tipoBancario?: TipoBancario | null; agencia?: string | null; numeroConta?: string | null; digito?: string | null;
+  titular?: string | null; local?: string | null; responsavel?: string | null; observacoes?: string | null; ordem?: number;
+};
+export type DadosParceiro = {
+  papeis?: PapelParceiro[]; nomeFantasia?: string | null; pessoaContato?: string | null; telefoneWhatsapp?: boolean;
+  cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
+  bairro?: string | null; cidade?: string | null; uf?: string | null; referencia?: string | null; observacoes?: string | null;
+  formaPagamentoPreferida?: string | null; condicaoPagamentoPreferida?: "A_VISTA" | "A_PRAZO" | null; prazosPagamento?: number[];
+};
+export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
+export type ContaBase = { id: EntityId; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean; ativo: boolean };
+export type Conta = ContaBase & DadosConta & { saldoAtual: string; temMovimentos: boolean; ultimaOperacao?: { data: string; descricao: string | null; tipo: string } | null };
+export type ParceiroBase = { id: EntityId; nome: string; documento: string | null; tipo: TipoParceiro; telefone: string | null; email: string | null; ativo: boolean };
+export type Parceiro = ParceiroBase & DadosParceiro & { referencias: number };
+export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string | null; identificacao?: string | null; saldoAbertura: number; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean };
+export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
+export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
+export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
+export type Categoria = { id: EntityId; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type CentroCusto = { id: EntityId; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
+export type Produto = { categoriaId?: EntityId | null; centroCustoId?: EntityId | null; id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
+export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
+export type Compromisso = { id: EntityId; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; numeroParcela: number; totalParcelas: number; vencido: boolean; parceiro: ParceiroBase | null; operacao: { id: EntityId; numero: number; tipo: string; descricao: string | null } };
+export type ItemOperacao = { categoriaId?: EntityId | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: EntityId; ordem: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
 export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
 export type TransacaoOperacao = { id: EntityId; tipo: string; status: string; data?: string; valorTotal: string; formaPagamento?: string | null; movimentos?: { id: EntityId; contaId: EntityId; direcao: "ENTRADA" | "SAIDA"; valor: string }[] };
 export type DocumentoFinanceiro = { id: EntityId; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: EntityId; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
-export type Operacao = { id: EntityId; numero: number; registradoEm: string; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: Parceiro | null; parceiroId?: EntityId | null; categoriaId?: EntityId | null; centroCustoId?: EntityId | null; corrigeOperacaoId?: EntityId | null; corrigeOperacao?: { id: EntityId; numero?: number; descricao: string | null } | null; correcoes?: { id: EntityId; numero?: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
-export type MovimentoConta = { id: EntityId; contaId?: EntityId; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: EntityId; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: Parceiro | null; operacao: { id: EntityId; numero: number; descricao: string | null; tipo: string } | null } };
+export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: EntityId; numero: number; registradoEm: string; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: EntityId | null; categoriaId?: EntityId | null; centroCustoId?: EntityId | null; corrigeOperacaoId?: EntityId | null; corrigeOperacao?: { id: EntityId; numero?: number; descricao: string | null } | null; correcoes?: { id: EntityId; numero?: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
+export type MovimentoConta = { id: EntityId; contaId?: EntityId; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: EntityId; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: EntityId; numero: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
+
+/** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public code?: string, public campo?: string) { super(message); this.name = "ApiError"; }
+}
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const resposta = await fetch(`/api${path}`, {
@@ -32,7 +48,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     headers: comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }),
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as T;
 }
 
@@ -45,9 +61,9 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
 export const obterOperacao = (id: EntityId) => req<Operacao>(`/financeiro/operacoes/${id}`);
 export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
 export const obterExtratoConta = (id: EntityId) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
-export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(operacaoSchema.parse(input)) });
+export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
 export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho");
-export const salvarRascunhoOperacao = (dados: unknown, versao: number | undefined, id: EntityId) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify(rascunhoOperacaoSchema.parse({ id, dados, versao })) });
+export const salvarRascunhoOperacao = (dados: unknown, versao: number | undefined, id: EntityId) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ id, dados, versao }) });
 export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" });
 export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
 export async function anexarDocumentoRascunho(input: { id: EntityId; arquivo: File; tipo: string; numero?: string }) {
@@ -55,7 +71,7 @@ export async function anexarDocumentoRascunho(input: { id: EntityId; arquivo: Fi
   if (input.numero) form.set("numero", input.numero);
   const resposta = await fetch("/api/financeiro/operacoes/rascunho/documentos", { method: "POST", body: form, headers: comPropriedade() });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as DocumentoFinanceiro;
 }
 export async function removerDocumentoRascunho(id: EntityId) {
@@ -65,8 +81,8 @@ export async function removerDocumentoRascunho(id: EntityId) {
 export const atualizarDocumentoRascunho = (id: EntityId, input: { tipo?: string; numero?: string | null }) => req<DocumentoFinanceiro>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { id: EntityId; arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData();
-  form.set("id", input.id);
   form.set("arquivo", input.arquivo);
+  form.set("id", input.id);
   form.set("nome", input.arquivo.name);
   form.set("tipo", input.tipo);
   if (input.numero) form.set("numero", input.numero);
@@ -74,13 +90,29 @@ export async function anexarDocumentoOperacao(operacaoId: EntityId, input: { id:
     method: "POST", body: form, headers: comPropriedade(),
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
   return corpo as DocumentoFinanceiro;
 }
 export const estornarOperacao = (id: EntityId, input: { motivo: string; transacoes: { originalId: EntityId; id: EntityId; movimentos: { originalId: EntityId; id: EntityId }[] }[] }) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify(input) });
-export const liquidarCompromisso = (id: EntityId, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(liquidacaoSchema.parse(input)) });
-export const criarConta = (input: unknown) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(contaSchema.parse(input)) });
-export const atualizarConta = (id: EntityId, input: unknown) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const criarParceiro = (input: unknown) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(parceiroSchema.parse(input)) });
-export const atualizarParceiro = (id: EntityId, input: unknown) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(transferenciaSchema.parse(input)) });
+export const liquidarCompromisso = (id: EntityId, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
+export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
+export const atualizarConta = (id: EntityId, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
+export const atualizarParceiro = (id: EntityId, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number };
+export type CentroCustoInput = { nome: string; ordem?: number };
+export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
+export const atualizarCategoria = (id: EntityId, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarCentroCusto = (input: CentroCustoInput) => req<CentroCusto>("/financeiro/centros-custo", { method: "POST", body: JSON.stringify(input) });
+export const atualizarCentroCusto = (id: EntityId, input: Partial<CentroCustoInput> & { ativo?: boolean }) => req<CentroCusto>(`/financeiro/centros-custo/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
+
+export type MovimentoGeral = MovimentoConta & { contaId: EntityId; conta: { id: EntityId; nome: string; instituicao: string | null } };
+export const obterExtratoGeral = () => req<MovimentoGeral[]>("/financeiro/extrato-geral");
+
+export type AnaliseCategorias = {
+  base: string; total: string;
+  categorias: { categoria: string; valor: string }[];
+  linhas: { operacaoId: EntityId | null; contaId?: EntityId; movimentoId?: EntityId; descricao: string | null; data: string; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[];
+};
+export const obterAnaliseCategorias = (filtros: Record<string, string>) => req<AnaliseCategorias>(`/financeiro/analise-categorias?${new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== ""))}`);

@@ -2,11 +2,12 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import * as svc from "../../services/rebanho/estoque.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
+import { getUsuario } from "../../middleware/permissao.js";
 
-type Status = 404 | 409 | 500;
+type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string } } {
   if (e instanceof svc.EstoqueError) {
-    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409 } as const;
+    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
     return { status: map[e.code], body: { error: e.message } };
   }
   console.error("[estoque]", e);
@@ -18,6 +19,14 @@ export const estoqueRouter = new Hono()
   .get("/rebanho/estoque/movimentos", async (c) => {
     const produtoId = c.req.query("produtoId");
     return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo"), propriedadeId: await resolverEscopoLeitura(c) }));
+  })
+  .post("/rebanho/estoque/ajustes", zValidator("json", svc.ajusteContagemSchema), async c => {
+    try {
+      const input = c.req.valid("json");
+      const propriedadeId = input.propriedadeId ?? await resolverEscopoLeitura(c);
+      if (propriedadeId == null) throw new svc.EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
+      return c.json(await svc.ajustarContagem({ ...input, propriedadeId, usuarioId: getUsuario(c)?.id }), 201);
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
   .post("/rebanho/estoque/movimentos", zValidator("json", svc.movimentoSchema), async (c) => {
     try {

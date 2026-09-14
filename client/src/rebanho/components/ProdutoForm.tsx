@@ -77,13 +77,13 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         </select>
       </RebField>
       <RebField label="Custo unitário (R$)"><input type="number" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} /></RebField>
-      <RebField label="Categoria contábil">
+      <RebField label="Categoria padrão">
         <select className="rb-field-select" value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
           <option value="">—</option>
           {categorias.map((cat) => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
         </select>
       </RebField>
-      <RebField label="Centro de custo">
+      <RebField label="Centro de custo sugerido">
         <select className="rb-field-select" value={f.centroCustoId} onChange={(e) => set("centroCustoId", e.target.value)}>
           <option value="">—</option>
           {centros.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}

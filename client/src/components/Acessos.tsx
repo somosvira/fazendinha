@@ -1,6 +1,7 @@
 /* Rio Novo — Acessos (controle de permissões, admin).
  * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
- * mudança via PATCH. Convites devolvem um link copiável; a recuperação pública
+ * mudança via PATCH. O convite devolve um link copiável, mostrado no próprio
+ * modal e na ficha de quem está pendente; a recuperação pública
  * de senha envia o link pelo canal configurado no backend.
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
@@ -50,19 +51,50 @@ const DONO_TAG =
 const ADMIN_TAG =
   "ml-2 inline-block border border-[color:var(--neg)] px-[5px] py-px align-middle text-[9px] uppercase tracking-[0.14em] text-[color:var(--neg)]";
 
+/* Campo somente-leitura com o link de acesso e botão de copiar. O token cru só
+ * existe em memória: o backend guarda apenas o hash, então o mesmo link não
+ * pode ser recuperado depois. */
+function LinkAcesso({ link }: { link: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  const copiar = () => {
+    void navigator.clipboard?.writeText(link);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 1800);
+  };
+
+  return (
+    <div className="flex gap-2 max-[560px]:flex-col">
+      <input
+        readOnly
+        value={link}
+        aria-label="Link de acesso"
+        className="field-input min-w-0 flex-1 text-[13px]"
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <button className="btn-secondary whitespace-nowrap" onClick={copiar}>
+        {copiado ? "Copiado" : "Copiar"}
+      </button>
+    </div>
+  );
+}
+
 function InviteModal({
   onClose,
   onInvite,
   existingEmails,
 }: {
   onClose: () => void;
-  onInvite: (v: { nome: string; email: string; papel: string }) => void;
+  onInvite: (v: { nome: string; email: string; papel: string }) => Promise<{ nome: string; link: string }>;
   existingEmails: string[];
 }) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState("gestor");
   const [touched, setTouched] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [criado, setCriado] = useState<{ nome: string; link: string } | null>(null);
 
   const emailNorm = email.trim().toLowerCase();
   const emailJaExiste = !!emailNorm && existingEmails.includes(emailNorm);
@@ -75,6 +107,55 @@ function InviteModal({
         : null
     : null;
   const podeEnviar = !!nome.trim() && !!emailNorm && !emailInvalido && !emailJaExiste;
+
+  const submeter = async () => {
+    setTouched(true);
+    if (!podeEnviar || enviando) return;
+    setEnviando(true);
+    setErro(null);
+    try {
+      setCriado(await onInvite({ nome: nome.trim(), email: emailNorm, papel }));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível criar o convite.");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  // Depois de criar, o mesmo modal passa a mostrar só o link — ele aparece uma
+  // única vez e some ao fechar, então nada de formulário competindo por atenção.
+  if (criado) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="invite-ttl">
+          <div className="modal-head">
+            <span className="ttl" id="invite-ttl">Convite criado</span>
+            <button className="close" onClick={onClose} aria-label="Fechar">
+              ×
+            </button>
+          </div>
+          <div className="modal-body">
+            <p className="m-0 mb-5 text-[15px] leading-[1.6] text-ink-3">
+              Envie este link para <strong className="text-[color:var(--ink)]">{criado.nome}</strong>. Ele vale por 7 dias,
+              serve uma vez só e é a única forma de a pessoa criar a senha.
+            </p>
+            <div className="field">
+              <label className="field-label">Link de acesso</label>
+              <LinkAcesso link={criado.link} />
+            </div>
+            <div className="caption" style={{ fontStyle: "italic" }}>
+              Guarde agora: por segurança o link não pode ser consultado depois. Se perder, gere um novo pela ficha da pessoa.
+            </div>
+          </div>
+          <div className="modal-foot">
+            <button className="btn-primary" onClick={onClose}>
+              Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -138,17 +219,14 @@ function InviteModal({
           <div className="caption" style={{ fontStyle: "italic" }}>
             Você vai receber um link para enviar à pessoa. Você pode ajustar exatamente o que ela vê depois de convidar.
           </div>
+          {erro && <span className="field-error">{erro}</span>}
         </div>
         <div className="modal-foot">
           <button className="btn-ghost" onClick={onClose}>
             Cancelar
           </button>
-          <button
-            className="btn-primary"
-            disabled={!podeEnviar}
-            onClick={() => { setTouched(true); if (podeEnviar) onInvite({ nome: nome.trim(), email: emailNorm, papel }); }}
-          >
-            Criar convite →
+          <button className="btn-primary" disabled={!podeEnviar || enviando} onClick={submeter}>
+            {enviando ? "Criando…" : "Criar convite →"}
           </button>
         </div>
       </div>
@@ -158,11 +236,15 @@ function InviteModal({
 
 function PermissionEditor({
   user,
+  linkConvite,
   onChange,
   onResendInvite,
   onRevoke,
 }: {
   user: UsuarioSessao;
+  /** Link gerado nesta sessão. O backend só guarda o hash, então um convite
+   *  emitido antes não tem link recuperável — resta gerar outro. */
+  linkConvite?: string | null;
   onChange: (u: UsuarioSessao) => void;
   onResendInvite: (u: UsuarioSessao) => void;
   onRevoke: (u: UsuarioSessao) => void;
@@ -213,6 +295,41 @@ function PermissionEditor({
         <StatusBadge status={user.status} />
       </div>
 
+      {user.status === "PENDENTE" && (
+        <div className="border-b border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
+          <div className="mb-3 text-[12px] uppercase tracking-[0.16em] text-[color:var(--warn)]">
+            Convite pendente
+          </div>
+          {linkConvite ? (
+            <>
+              <div className="mb-2 text-[13px] text-ink-3">Link de acesso</div>
+              <LinkAcesso link={linkConvite} />
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="caption" style={{ fontStyle: "italic" }}>
+                  Válido por 7 dias e utilizável uma única vez.
+                </span>
+                <button
+                  className="cursor-pointer border-0 bg-transparent p-0 text-[12px] text-ink-3 underline underline-offset-2 hover:text-[color:var(--ink)]"
+                  onClick={() => onResendInvite(user)}
+                >
+                  Gerar novo link
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <p className="m-0 max-w-[56ch] text-[14px] leading-[1.55] text-ink-3">
+                {user.nome.split(" ")[0]} ainda não criou a senha. O link aparece uma única vez, no momento em que é
+                gerado, e não fica guardado. Gere um novo para reenviar — o anterior deixa de valer.
+              </p>
+              <button className="btn-secondary" onClick={() => onResendInvite(user)}>
+                Gerar link de acesso
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {user.dono ? (
         <div className="px-[26px] py-[30px]">
           <span className="font-serif font-medium" style={{ fontSize: 17 }}>
@@ -229,7 +346,7 @@ function PermissionEditor({
               <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Áreas que pode acessar</span>
               <span className="text-[12px] text-ink-3 tabular-nums">{user.areas.length} de {AREAS.length}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1 min-[1500px]:grid-cols-3">
               {AREAS.map((area) => {
                 const on = user.areas.includes(area.id);
                 return (
@@ -278,7 +395,7 @@ function PermissionEditor({
                 {user.abas.length} de {ABAS.length}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1 min-[1500px]:grid-cols-3">
               {ABAS.map((aba) => {
                 const on = user.abas.includes(aba.id);
                 return (
@@ -300,7 +417,7 @@ function PermissionEditor({
             <div className="mb-[14px] flex items-baseline justify-between">
               <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Permissões sensíveis</span>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1">
+            <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1 min-[1500px]:grid-cols-3">
               {FLAGS.map((flag) => {
                 const on = user.flags.includes(flag.id);
                 const isAdmin = flag.id === "gerenciarAcessos";
@@ -323,11 +440,6 @@ function PermissionEditor({
           </div>
 
           <div className="flex items-center justify-end gap-2.5 px-[26px] py-5">
-            {user.status === "PENDENTE" && (
-              <button className="btn-ghost" onClick={() => onResendInvite(user)}>
-                Gerar novo link
-              </button>
-            )}
             <button className="btn-ghost danger" onClick={() => onRevoke(user)}>
               Revogar acesso
             </button>
@@ -344,7 +456,9 @@ export function Acessos() {
   const [selId, setSelId] = useState<number | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [revoking, setRevoking] = useState<UsuarioSessao | null>(null);
-  const [conviteLink, setConviteLink] = useState<string | null>(null);
+  // Links emitidos nesta sessão, por usuário. O backend guarda só o hash do
+  // token, então nada aqui pode ser reconstruído depois de recarregar a página.
+  const [linksConvite, setLinksConvite] = useState<Record<number, string>>({});
 
   useEffect(() => {
     listarUsuarios()
@@ -371,24 +485,21 @@ export function Acessos() {
     }
   };
 
+  // O modal fica aberto e assume a exibição do link; por isso devolvemos, em vez
+  // de guardar num painel fixo da página.
   const invite = async ({ nome, email, papel }: { nome: string; email: string; papel: string }) => {
-    try {
-      const { usuario, conviteLink: link } = await criarUsuario(nome, email, papel);
-      setUsers((us) => [...us, usuario]);
-      setSelId(usuario.id);
-      setShowInvite(false);
-      setConviteLink(link);
-      toast.success("Convite criado", "Copie o link e envie para a pessoa.");
-    } catch (e) {
-      toast.error("Não foi possível convidar", e instanceof Error ? e.message : "");
-    }
+    const { usuario, conviteLink: link } = await criarUsuario(nome, email, papel);
+    setUsers((us) => [...us, usuario]);
+    setSelId(usuario.id);
+    setLinksConvite((atual) => ({ ...atual, [usuario.id]: link }));
+    return { nome: usuario.nome, link };
   };
 
   const resendInvite = async (u: UsuarioSessao) => {
     try {
       const link = await gerarConvite(u.id);
-      setConviteLink(link);
-      toast.info("Novo link gerado", "Copie e reenvie para a pessoa.");
+      setLinksConvite((atual) => ({ ...atual, [u.id]: link }));
+      toast.info("Novo link gerado", "O link anterior deixou de valer.");
     } catch (e) {
       toast.error("Falha ao gerar link", e instanceof Error ? e.message : "");
     }
@@ -440,68 +551,56 @@ export function Acessos() {
         </div>
       </div>
 
-      {conviteLink && (
-        <div className="mb-7 border border-[color:var(--rule)] bg-[color:var(--bg-card-2)] p-4">
-          <div className="mb-2 text-[12px] uppercase tracking-[0.14em] text-ink-3">Link de acesso</div>
-          <div className="flex gap-2">
-            <input
-              readOnly
-              value={conviteLink}
-              className="field-input flex-1 text-[13px]"
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                void navigator.clipboard?.writeText(conviteLink);
-                toast.info("Link copiado", "");
-              }}
-            >
-              Copiar
-            </button>
-          </div>
-          <div className="caption mt-2" style={{ fontStyle: "italic" }}>
-            Envie por WhatsApp ou como preferir. Válido por 7 dias.
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-[380px_1fr] items-start gap-8 pb-[60px] max-[1100px]:grid-cols-1">
+      <div className="flex flex-col gap-8 pb-[60px]">
+        {/* Faixa horizontal: a equipe inteira numa linha só, com rolagem
+            lateral quando não couber. A ficha de quem está selecionado ocupa
+            a largura toda logo abaixo. */}
         <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)]">
-          <div className="border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[18px] py-[14px] text-[11px] uppercase tracking-[0.16em] text-ink-3">Equipe & convidados</div>
-          {users.length === 0 && (
+          <div className="flex items-baseline justify-between border-b border-[color:var(--rule)] bg-[color:var(--bg-card-2)] px-[18px] py-[14px]">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-ink-3">Equipe &amp; convidados</span>
+            <span className="text-[11px] text-ink-3 tabular-nums">{users.length}</span>
+          </div>
+          {users.length === 0 ? (
             <div className="px-[18px] py-[22px] text-[13px] text-ink-3">Ninguém por aqui ainda. Convide a primeira pessoa.</div>
+          ) : (
+            <div className="flex overflow-x-auto" role="tablist" aria-label="Equipe e convidados">
+              {users.map((u) => (
+                <button
+                  key={u.id}
+                  role="tab"
+                  aria-selected={selId === u.id}
+                  className={
+                    "flex w-[252px] flex-none cursor-pointer flex-col gap-2.5 border-0 border-r border-b-[3px] border-r-[color:var(--rule-soft)] bg-transparent px-[18px] py-4 text-left transition-[background] duration-[80ms] last:border-r-0 hover:bg-[color:var(--bg-card-2)] " +
+                    (selId === u.id ? "border-b-[color:var(--ink)] bg-[color:var(--bg-card-2)]" : "border-b-transparent")
+                  }
+                  onClick={() => setSelId(u.id)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-serif text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
+                        {u.dono && <span className={DONO_TAG}>dono</span>}
+                      </div>
+                      <div className="mt-0.5 truncate text-[12px] text-ink-3">
+                        {u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome} · {u.abas.length} abas
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <StatusBadge status={u.status} />
+                    <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{fmtUltimoAcesso(u.ultimoAcesso)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
-          {users.map((u) => (
-            <button
-              key={u.id}
-              className={
-                "grid w-full cursor-pointer grid-cols-[42px_1fr_auto] items-center gap-[14px] border-0 border-b border-l-[3px] border-b-[color:var(--rule-soft)] bg-transparent px-[18px] py-[14px] pl-[15px] text-left transition-[background] duration-[80ms] last:border-b-0 hover:bg-[color:var(--bg-card-2)] " +
-                (selId === u.id ? "border-l-[color:var(--ink)] bg-[color:var(--bg-card-2)]" : "border-l-transparent")
-              }
-              onClick={() => setSelId(u.id)}
-            >
-              <div className="grid h-[42px] w-[42px] place-items-center rounded-full bg-mast font-serif text-[18px] text-mast-ink">{inicialDe(u.nome)}</div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 font-sans text-[15px] font-medium text-[color:var(--ink)]">
-                  {u.nome}
-                  {u.dono && <span className={DONO_TAG}>dono</span>}
-                </div>
-                <div className="mt-0.5 text-[12px] text-ink-3">
-                  {u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome} · {u.abas.length} abas
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-[5px]">
-                <StatusBadge status={u.status} />
-                <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{fmtUltimoAcesso(u.ultimoAcesso)}</span>
-              </div>
-            </button>
-          ))}
         </div>
 
         {sel ? (
           <PermissionEditor
             user={sel}
+            linkConvite={linksConvite[sel.id] ?? null}
             onChange={updateUser}
             onResendInvite={resendInvite}
             onRevoke={confirmRevoke}

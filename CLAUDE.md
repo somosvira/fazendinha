@@ -16,18 +16,19 @@ Sistema de gestão da **Fazenda Rio Novo** (produto: **Fazendinha / Terrano**). 
 - **equipe / ponto** — funcionários, registro de ponto, folha, rateio de custo de mão de obra por setor.
 - **Contas e acessos** — usuários reais com papéis, áreas (`financeiro`/`pecuaria`/`agricultura`/`equipe`) e flags de permissão (ver seção Auth).
 - **WhatsApp bot** — assistente conversacional (OpenAI) via Meta Cloud API; consulta pelo motor estruturado (`services/consulta/`), sem SQL gerado pelo LLM.
-- **Documentos financeiros** — upload de comprovantes/notas anexados a operações e rascunhos (`DocumentoFinanceiro`), storage local ou R2. OCR (`lib/ocr.ts`) existe mas **não está ligado a nenhuma rota** hoje.
+- **Documentos financeiros** — upload de comprovantes/notas anexados a operações e rascunhos (`DocumentoFinanceiro`), storage local ou R2. Sem OCR/extração de dados.
 
 Docs de referência profunda vivem em `.md` na raiz (`ARCHITECTURE.md`, `DOMAIN.md`, `PRODUCT.md`, `METRICS.md`, `DEPLOY.md`, `ROADMAP.md`, `AI_RULES.md`, `DESIGN.md`, `COMPONENTS.md`) e em `docs/` (design specs em `docs/design/`, planos/specs em `docs/superpowers/`, handoffs e auditorias datadas). Em caso de conflito, **este arquivo e o schema prevalecem**. Consultar quando precisar de detalhe além deste arquivo — **não criar novos `.md`** salvo pedido.
 
 ## Stack
 
-- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`, `packages/*`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 20. Contratos compartilhados vivem em `packages/shared`.
-- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. `tesseract.js` + `sharp` + `pdf-parse` instalados para OCR (dormente).
+- Monorepo **pnpm workspaces** (`pnpm-workspace.yaml`: `client`, `server`; `packageManager: pnpm@10.7.1`, lockfile único na raiz). Node 22 (`wrangler` exige `>=22`).
+- Backend: **Hono** sobre Node.js (`@hono/node-server`), **Prisma 6**, **Zod**, validador HTTP via **`@hono/zod-validator`**. IA via **`openai`** (bot + insights). Storage de anexos via **`@aws-sdk/client-s3`** (Cloudflare R2) ou disco local. Sem OCR — `tesseract.js`/`sharp`/`pdf-parse` foram removidos por não estarem em uso (2026-09-10).
 - Frontend: **React 18 + Vite 6 + TypeScript** + **Tailwind CSS v4** (plugin `@tailwindcss/vite`, tokens em `styles/theme.css`) + primitivas **shadcn-style** em `components/ui/` (Radix: dialog, dropdown-menu, popover, select, label, slot; `cmdk`; `class-variance-authority`; `clsx`/`tailwind-merge`; ícones `lucide-react`). Alias `@` → `client/src`. Gráficos financeiros são **SVG inline próprios** em `client/src/components/charts.tsx`. `html2pdf.js` é usado nos exports do rebanho. **Não há `recharts` nem `react-router`.**
 - Testes: **Vitest** nos dois workspaces (`*.test.ts(x)` ao lado do código — ~155 arquivos no server, ~60 no client). Server cobre cálculos financeiros/zootécnicos em `services/**`; client cobre `lib/`, `router`, `components/ui` e alguns fluxos do financeiro.
 - Banco: **Neon** (Postgres serverless). Runtime usa endpoint **pooled**; `schema.prisma` declara `directUrl = env("DIRECT_URL")`.
-- CI: `.github/workflows/staging.yml` — build + testes do server em push/PR na `main`. Deploy é pelas integrações Git dos provedores: **Cloudflare Pages** (client, `_worker.js` faz proxy de `/api/*` → API) e **Render** (server, `render.yaml`).
+- CI: `.github/workflows/staging.yml` — build + testes do server em push/PR na `main`. Deploy em produção hoje: **Cloudflare Pages** (client, `_worker.js` faz proxy de `/api/*` → API) e **Render** (server, `render.yaml`). Existe também um **Cloudflare Worker único** (front+back, sem Render) preparado mas ainda não deployado de verdade — ver DEPLOY.md §6.
+- `db.ts` escolhe o driver do Prisma por runtime (`@prisma/adapter-pg` fora de um Worker, `@prisma/adapter-neon` dentro — `lib/runtime.ts`), então o mesmo código já fala com Postgres local (`docker-compose.yml` na raiz, `pnpm db:local:up`) sem precisar de conta Neon em dev.
 
 ## Comandos
 
@@ -43,6 +44,10 @@ pnpm prisma:generate    # regera Prisma Client (delega ao server)
 pnpm prisma:migrate     # prisma migrate dev (requer DIRECT_URL — ver abaixo)
 pnpm prisma:studio      # abre Prisma Studio
 pnpm gen:nav-doc        # regera docs/NAVEGACAO.md a partir de services/bot/navegacao.ts
+pnpm db:local:up        # Postgres local via docker-compose (porta 54332), sem depender do Neon em dev
+pnpm cf:build            # build só do client (assets do Cloudflare Worker)
+pnpm cf:dev              # build + wrangler dev (Worker de teste local — ver DEPLOY.md §6)
+pnpm cf:deploy           # build + wrangler deploy (produção — ver DEPLOY.md §6)
 ```
 
 Scripts no workspace `server/`:
@@ -55,6 +60,9 @@ pnpm --filter rionovo-server run seed:usuarios           # usuários de exemplo 
 pnpm --filter rionovo-server run import:rebanho          # importa rebanho_real.json
 pnpm --filter rionovo-server run whatsapp:user           # gerencia allowlist de números do bot
 pnpm --filter rionovo-server run bateria:gabarito        # bateria de perguntas da IA (gabarito) / bateria:run
+pnpm --filter rionovo-server run backfill:propriedade                 # scripts de bootstrap idempotentes — não
+pnpm --filter rionovo-server run bootstrap:dono                       # rodam mais sozinhos no boot (Node ou
+pnpm --filter rionovo-server run bootstrap:resultados-ginecologicos   # Worker); rodar manual pós-deploy
 ```
 
 Testes (Vitest, na raiz de cada workspace):
@@ -79,7 +87,6 @@ Não há target `test` na raiz — rodar por workspace via `--filter`. Os testes
 - `OPENAI_API_KEY` (+ `OPENAI_MODEL`, default `gpt-4o`) — cérebro do bot e das IAs dos módulos. Sem a chave: bot desligado (503) e IA em modo demonstração (regras locais).
 - `WHATSAPP_*` (`VERIFY_TOKEN`, `ACCESS_TOKEN`, `PHONE_NUMBER_ID`, `APP_SECRET`) — canal Meta Cloud API; todos necessários p/ o webhook.
 - `STORAGE_DRIVER` (`local`|`r2`) — anexos de documentos financeiros. `r2` exige `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET_NOTAS` (validado por `superRefine`). `local` guarda em `LOCAL_STORAGE_DIR` (`.uploads/`); `LOCAL_DOWNLOAD_SECRET` assina links locais.
-- `OCR_ENABLED` — Tesseract; deixe `false` (evita baixar ~70MB de dados de português).
 - `DASHBOARD_MESES_QUEIMA` — meses na média da "queima mensal" (default 6).
 - (removida) `DATABASE_URL_READONLY`/`consulta_sql` não existem mais — o bot consulta via motor estruturado, sem SQL gerado pelo LLM.
 
@@ -91,9 +98,7 @@ Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/
 
 - A `DATABASE_URL` é a **pooled** (`-pooler` no host). Funciona para runtime e para `prisma migrate deploy`.
 - `prisma migrate dev` precisa de shadow database e falha via pooler — por isso o schema já tem `directUrl = env("DIRECT_URL")`. Para criar migration nova basta ter `DIRECT_URL` em `server/.env`.
-
-- `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). O histórico experimental foi consolidado em uma baseline única em `server/prisma/migrations/`; bancos locais anteriores à baseline ou ao corte UUID devem ser resetados e semeados novamente.
-
+- `pnpm dev:server` roda `prisma db push` automaticamente no boot (sincroniza o schema local sem migration). Em prod o Render roda `start:prod` (só `node dist/index.js`); o schema é sincronizado por deploy controlado (ver `DEPLOY.md` e seção 9 de [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md)). O histórico experimental foi consolidado em uma baseline única em `server/prisma/migrations/`; bancos locais anteriores à baseline devem ser resetados e semeados novamente.
 
 ## Arquitetura
 
@@ -101,14 +106,15 @@ Client: `VITE_HOJE_ISO=YYYY-MM-DD` no build fixa a data "hoje" (`client/src/lib/
 
 Hono modular com ~80 roteadores por domínio, montados em `index.ts`:
 
-- `index.ts` — bootstrap. Aplica `logger()` global, `cors()` em `/api/*`, monta as rotas **isentas** (`health`, `whatsapp`, `authPublicoRouter` = login/convite/reset) **antes** de `authMiddleware`, depois os gates de área por prefixo (`exigeArea("pecuaria")` em `/api/rebanho/*` e `/api/corte/*`, `agricultura` em `/api/plantio/*` e `/api/cultivo/*`, `equipe` em `/api/ponto/*`, `financeiro` em `/api/financeiro*` e `/api/categorias*`), e só então os routers protegidos. **Ordem importa.** No boot também dispara `garantirFundacaoPropriedade()` (backfill multi-propriedade), `garantirResultadosGinecologicosSemente()` e `garantirDonoBootstrap()`.
+- `app.ts` — o app Hono em si: `logger()` global, `cors()` em `/api/*`, monta as rotas **isentas** (`health`, `whatsapp`, `authPublicoRouter` = login/convite/reset) **antes** de `authMiddleware`, depois os gates de área por prefixo (`exigeArea("pecuaria")` em `/api/rebanho/*` e `/api/corte/*`, `agricultura` em `/api/plantio/*` e `/api/cultivo/*`, `equipe` em `/api/ponto/*`, `financeiro` em `/api/financeiro*` e `/api/categorias*`), e só então os routers protegidos. **Ordem importa.** Runtime-agnóstico de propósito — não sabe se vai rodar em Node ou num Cloudflare Worker.
+- `index.ts` — entrypoint Node (`@hono/node-server`, dev local e Render). `worker.ts` — entrypoint Cloudflare Worker (`export { app as default }`, `main` do `wrangler.jsonc` na raiz — ver DEPLOY.md §6). Nenhum dos dois dispara bootstrap sozinho: `garantirFundacaoPropriedade()`, `garantirDonoBootstrap()` e `garantirResultadosGinecologicosSemente()` viraram scripts manuais em `server/src/scripts/` (`backfill:propriedade`, `bootstrap:dono`, `bootstrap:resultados-ginecologicos`) — não existe "boot" de processo dentro de um Worker pra disparar isso sozinho, então o mesmo tratamento vale pros dois runtimes.
 - `env.ts` — valida `process.env` com Zod; falha rápido (`process.exit(1)`) se inválido.
 - `db.ts` — singleton `PrismaClient` à prova de HMR.
 - `middleware/auth.ts` — resolve `Authorization: Bearer <token>` → `Sessao` → `Usuario` e injeta `c.set("usuario", ...)`. Aceita `SHARED_ACCESS_TOKEN` como dono sintético (ponte). Sem token no env e sem usuários no banco, libera (dev).
 - `middleware/permissao.ts` — `getUsuario(c)`, `exigeArea(area)`, `exigePermissao(flag)`. Papéis/presets/flags em `services/auth/papeis.ts` (`PAPEIS`, `AREAS_IDS`, `FLAGS_IDS`).
 - `routes/` — cada arquivo exporta um `Hono()` chained. Raiz: `auth.ts`, `usuarios.ts`, `propriedade.ts`, `financeiro.ts`, `categorias.ts`, `busca.ts`, `bot.ts`, `whatsapp.ts`, `health.ts`. Módulos operacionais em subpastas (`routes/rebanho/` ~50 arquivos, `routes/corte/`, `routes/plantio/`, `routes/cultivo/`, `routes/ponto/`). As rotas são **finas**: validam com `zValidator` e delegam a `services/`.
 - `services/` — **onde vive a regra de negócio e o que é testado.** Mesma organização por domínio. `services/financeiro/` = `operacoes.ts`, `contas.ts`, `parceiros.ts`, `rascunhos.ts`, `documentos.ts`, `dashboard.ts`, `schemas.ts` e `regras.ts` (`FinanceiroError` com códigos `NAO_ENCONTRADO|VALIDACAO|PERIODO_FECHADO|SALDO_INSUFICIENTE|JA_REVERTIDO|CONFLITO`, `dinheiro()`, `exigirPeriodoAberto`, `exigirContaAtiva`). `services/auth/` = sessão, hash, tokens de convite/reset, papéis, usuários. `services/consulta/` = motor estruturado de consultas da IA (registro por domínio). `services/bot/` = agente OpenAI, tools, navegação (deep-links). Sufixos `.calc.ts`, `.recompute.ts`, `.agg.ts`, `.mappers.ts`, `.schemas.ts` isolam cálculo puro de I/O Prisma. Ao criar rota nova, siga: rota → service → (calc puro + mappers + schemas).
-- `lib/` — `storage.ts` (local vs R2, usado por `documentos.ts`), `ocr.ts` (dormente).
+- `lib/` — `storage.ts` (local vs R2, usado por `documentos.ts`).
 - `scripts/allowlist.ts` — CLI da allowlist do WhatsApp.
 
 Padrão de validação de payload:
@@ -159,18 +165,9 @@ Blocos dos módulos operacionais (todos com resumos pré-computados por `*.recom
 
 Decimal usa `@db.Decimal(14, 2)` (quantidades `(12, 3)`, unitário `(14, 4)`) — sempre via `Prisma.Decimal` (`dinheiro()` em `regras.ts`), nunca `number` JS direto em cálculos financeiros.
 
-### Identidade offline-first
-
-- Entidades financeiras sincronizáveis usam `String @id @default(uuid()) @db.Uuid`. O cliente deve gerar o UUID antes de persistir na fila e o servidor deve aceitar o mesmo `id` no Zod e no `create` do Prisma. Reusar `entityIdSchema`, `EntityId`, `newEntityId()` e os schemas de criação de `@fazendinha/shared`; não criar validadores, geradores ou contratos paralelos no cliente e no servidor.
-- `id` é identidade técnica opaca: não converter com `Number`, não incrementar, não exibir como número de negócio e não usar para ordenar dados. URLs e FKs transportam o UUID como `string`.
-- Ordem de negócio é explícita (`ordem`, `numeroParcela`, `registradoEm`, `data`). Identificação humana também é separada; operações exibem `Operacao.numero` como `OP-0042`, nunca um trecho do UUID.
-- Uma criação financeira composta offline deve atribuir IDs a todas as entidades financeiras no mesmo payload (operação, itens, parcelas, transações e movimentos de conta). Esses IDs precisam permanecer estáveis entre autosaves e retries; não regenerar UUID ao serializar o mesmo rascunho. IDs próprios do estoque permanecem numéricos até a migração desse domínio.
-- IDs numéricos ainda existentes pertencem a áreas não migradas. Ao migrar outro domínio, faça o grafo inteiro em PR próprio: PKs, FKs, schema Prisma/migration, Zod, serviços, rotas, tipos do cliente, seeds, testes, ordenação e apresentação.
-- A baseline experimental não converte os inteiros antigos. `20260910160000_finance_offline_structure` separa ordem e identificação humana; `20260910161000_finance_uuid` troca as identidades técnicas financeiras. Em ambiente de desenvolvimento com dados anteriores, resetar e semear novamente em vez de tentar preservar identidades incompatíveis.
-
 ### Multi-propriedade (escopo de sítio) — IMPLEMENTADO
 
-Feature transversal: fatos ganham `propriedadeId` (nullable nos módulos antigos, **obrigatório** no financeiro novo) e as leituras filtram por sítio; fazenda de 1 sítio não percebe a camada. **Design + estado final + decisões em [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md) (seções 8 e 9)** — ler antes de escopar um fato novo. Padrão: coluna + `@@index` + inverse em `Propriedade` → migration aditiva → **backfill no boot** (`garantirFundacaoPropriedade` em `server/src/services/propriedade.ts`) → rota resolve `resolverEscopoLeitura/Escrita(c)` → front usa `comPropriedade()`. Cadastros de referência (Produto, Raca, CentroCusto, Categoria, Parceiro, etc.) são **compartilhados** de propósito.
+Feature transversal: fatos ganham `propriedadeId` (nullable nos módulos antigos, **obrigatório** no financeiro novo) e as leituras filtram por sítio; fazenda de 1 sítio não percebe a camada. **Design + estado final + decisões em [docs/design/multi-propriedade.md](docs/design/multi-propriedade.md) (seções 8 e 9)** — ler antes de escopar um fato novo. Padrão: coluna + `@@index` + inverse em `Propriedade` → migration aditiva → **backfill manual** (`garantirFundacaoPropriedade` em `server/src/services/propriedade.ts`, rodado via `pnpm --filter rionovo-server run backfill:propriedade` — não dispara mais sozinho no boot) → rota resolve `resolverEscopoLeitura/Escrita(c)` → front usa `comPropriedade()`. Cadastros de referência (Produto, Raca, CentroCusto, Categoria, Parceiro, etc.) são **compartilhados** de propósito.
 
 ### Auth e permissões
 

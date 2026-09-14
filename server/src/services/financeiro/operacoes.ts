@@ -1,6 +1,6 @@
 import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { auditar, dinheiro, exigirContaAtiva, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
+import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import type { z } from "zod";
 import type { estornoOperacaoSchema, estornoTransacaoSchema, liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 import { newEntityId } from "@fazendinha/shared";
@@ -64,6 +64,7 @@ async function criarTransacaoComMovimento(
 
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
       const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId } });
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
@@ -83,23 +84,35 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       }
     }
 
-    const itens = input.itens.map((item, indice) => ({
+    const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
+      const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
+      if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
+      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
+    };
+    const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       id: item.id ?? newEntityId(),
-      produtoId: item.produtoId,
       ordem: item.ordem ?? indice,
+      produtoId: item.produtoId,
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
       valorUnitario: new Prisma.Decimal(item.valorUnitario),
       valorTotal: dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario)),
       estocavel: item.estocavel,
-    }));
+      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
+    })));
+    const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
     const totalItens = dinheiro(itens.reduce((soma, item) => soma.plus(item.valorTotal), new Prisma.Decimal(0)));
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
     }
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
+
+    if (input.centroCustoId) {
+      const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
+      if (!centro) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
+    }
 
     if (input.financeiro.condicao === "PARCIAL") {
       const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
@@ -118,15 +131,15 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         tipo: input.tipo,
         status: "CONFIRMADA",
         data: input.data,
+        registradoEm: input.registradoEm,
         descricao: input.descricao,
         valorTotal,
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
-        categoriaId: input.categoriaId,
+        ...classificacaoOperacao,
         centroCustoId: input.centroCustoId,
         corrigeOperacaoId: input.corrigeOperacaoId,
         criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
-        registradoEm: input.registradoEm,
         itens: { create: itens },
       },
       include: { itens: true },
@@ -161,8 +174,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     if (input.financeiro.condicao === "A_VISTA" || input.financeiro.condicao === "PARCIAL") {
       const valor = input.financeiro.condicao === "A_VISTA" ? valorTotal : dinheiro(input.financeiro.valorPago);
       await criarTransacaoComMovimento(tx, {
-        id: input.financeiro.transacaoId, movimentoId: input.financeiro.movimentoId,
-        registradoEm: input.registradoEm,
+        id: input.financeiro.transacaoId, movimentoId: input.financeiro.movimentoId, registradoEm: input.registradoEm,
         tipo: tipoTransacao(input.tipo), data: input.data, valor, descricao: input.descricao, operacaoId: operacao.id,
         parceiroId: input.parceiroId, propriedadeId: input.propriedadeId, contaId: input.financeiro.contaId,
         formaPagamento: input.financeiro.formaPagamento, usuarioId: input.usuarioId,
@@ -199,8 +211,7 @@ export async function liquidarCompromisso(compromissoId: string, input: Liquidac
     if (valor.greaterThan(restante)) throw new FinanceiroError("VALIDACAO", `A liquidação excede o saldo restante de R$ ${restante.toFixed(2)}`);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
-      id: input.transacaoId, movimentoId: input.movimentoId,
-      registradoEm: input.registradoEm,
+      id: input.transacaoId, movimentoId: input.movimentoId, registradoEm: input.registradoEm,
       tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação da OP-${String(compromisso.operacao.numero).padStart(4, "0")} · parcela ${compromisso.numeroParcela}/${compromisso.totalParcelas}`,
       operacaoId: compromisso.operacaoId, parceiroId: compromisso.parceiroId ?? undefined,
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
@@ -246,6 +257,7 @@ export async function transferir(input: TransferenciaInput) {
 
 export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
   return prisma.$transaction(async (tx) => {
+    if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId);
     const transacao = await criarTransacaoComMovimento(tx, input);
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: transacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: transacao });
     return transacao;

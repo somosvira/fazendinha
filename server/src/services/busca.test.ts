@@ -77,11 +77,11 @@ describe("mapearLote", () => {
 
 describe("mapearCategoria", () => {
   it("sublabel = nome do grupo", () => {
-    expect(mapearCategoria({ id: "00000000-0000-4000-8000-000000000008", nome: "Ração", grupoCategoria: { nome: "Custeio" } })).toEqual({
+    expect(mapearCategoria({ id: "8", nome: "Ração" })).toEqual({
       tipo: "categoria",
-      entidadeId: "00000000-0000-4000-8000-000000000008",
+      entidadeId: "8",
       label: "Ração",
-      sublabel: "Custeio",
+      sublabel: "Categoria financeira",
       tab: "plano",
       grupo: "Categorias",
     });
@@ -90,9 +90,9 @@ describe("mapearCategoria", () => {
 
 describe("mapearFornecedor", () => {
   it("sublabel = tipo da pessoa", () => {
-    expect(mapearFornecedor({ id: "00000000-0000-4000-8000-000000000002", nome: "Agropecuária Central", tipo: "FORNECEDOR" })).toEqual({
+    expect(mapearFornecedor({ id: "2", nome: "Agropecuária Central", tipo: "FORNECEDOR" })).toEqual({
       tipo: "fornecedor",
-      entidadeId: "00000000-0000-4000-8000-000000000002",
+      entidadeId: "2",
       label: "Agropecuária Central",
       sublabel: "FORNECEDOR",
       tab: "cadastros",

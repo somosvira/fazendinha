@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operacaoSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const PARCEIRO_ID = "00000000-0000-4000-8000-000000000001";
 const PRODUTO_ID = 2;
@@ -65,5 +65,54 @@ describe("rascunho de operação", () => {
   it("valida a versão otimista quando informada", () => {
     expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 0 }).success).toBe(false);
     expect(rascunhoOperacaoSchema.safeParse({ dados: {}, versao: 2 }).success).toBe(true);
+  });
+});
+
+describe("schemas de conta e parceiro (cadastros)", () => {
+  it("patch de conta não reaplica defaults quando a chave está ausente", () => {
+    const r = patchContaSchema.parse({ nome: "Caixa" });
+    expect(r).toEqual({ nome: "Caixa" });
+    expect("saldoAbertura" in r).toBe(false); expect("incluirNoSaldoGeral" in r).toBe(false);
+  });
+
+  it("patch de conta aceita tipo, saldo e data de abertura", () => {
+    const r = patchContaSchema.parse({ tipo: "APLICACAO", saldoAbertura: "10.5", dataSaldoAbertura: "2026-01-02" });
+    expect(r.tipo).toBe("APLICACAO"); expect(r.saldoAbertura).toBe(10.5); expect(r.dataSaldoAbertura).toBeInstanceOf(Date);
+  });
+
+  it("conta: instituição e identificação vazias viram null", () => {
+    const r = contaSchema.parse({ nome: "Banco", tipo: "BANCO", saldoAbertura: 0, dataSaldoAbertura: "2026-01-01", instituicao: "  ", identificacao: "" });
+    expect(r.instituicao).toBeNull(); expect(r.identificacao).toBeNull();
+  });
+
+  it("parceiro: normaliza documento para dígitos e valida tamanho", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "123.456.789-09" }).documento).toBe("12345678909");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "12.345.678/0001-95" }).documento).toBe("12345678000195");
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "" }).documento).toBeNull();
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", documento: "111.111.111-11" }).documento).toBe("11111111111");
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", documento: "1234567890" }).success).toBe(false);
+  });
+
+  it("parceiro: e-mail vazio vira null e inválido é rejeitado", () => {
+    expect(parceiroSchema.parse({ nome: "Zé", tipo: "CLIENTE", email: "" }).email).toBeNull();
+    expect(parceiroSchema.safeParse({ nome: "Zé", tipo: "CLIENTE", email: "x" }).success).toBe(false);
+    expect(patchParceiroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+});
+
+describe("schemas de categorias e centros de custo", () => {
+  it("normaliza os defaults na criação", () => {
+    expect(categoriaCadastroSchema.parse({ nome: " Insumos " })).toEqual({ nome: "Insumos", classificacao: null, ordem: 0 });
+    expect(centroCustoSchema.parse({ nome: " Leite " })).toEqual({ nome: "Leite", ordem: 0 });
+  });
+
+  it("patches não reaplicam defaults ausentes e aceitam desativação", () => {
+    expect(patchCategoriaCadastroSchema.parse({ ativo: false })).toEqual({ ativo: false });
+    expect(patchCentroCustoSchema.parse({ ativo: false })).toEqual({ ativo: false });
+  });
+
+  it("rejeita nomes curtos, ordem negativa", () => {
+    expect(categoriaCadastroSchema.safeParse({ nome: "A" }).success).toBe(false);
+    expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
   });
 });

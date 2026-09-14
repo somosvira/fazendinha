@@ -104,9 +104,13 @@ export const NAV_CATALOG: RotaNav[] = [
     filtros: [],
     exemplos: ["[Abrir os relatórios financeiros](/financeiro/relatorios)"],
   },
-  // NOTA: /financeiro/configuracoes/categorias (PlanoContas) ainda renderiza DADO MOCK
-  // (data/rionovo.ts) — fica FORA do catálogo pra o bot não mandar o usuário pra número
-  // falso. Recolocar quando for plugado no backend real.
+  {
+    path: "/financeiro/configuracoes",
+    titulo: "Configurações financeiras",
+    quando: "Quando o usuário precisa consultar ou manter contas, parceiros, categorias e centros de custo.",
+    filtros: [],
+    exemplos: ["[Abrir as configurações financeiras](/financeiro/configuracoes)"],
+  },
   {
     path: "/pecuaria/animal",
     titulo: "Rebanho — lista de animais",

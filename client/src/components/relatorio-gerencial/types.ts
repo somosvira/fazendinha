@@ -9,7 +9,6 @@ export interface MesFluxo extends TotaisFluxo { mes: string }
 export interface ResultadoAtividade { atividade: Atividade; receita: number; custeio: number; investimento: number; resultado: number }
 export interface ResultadoPeriodo { receita: number; custeio: number; investimento: number; resultado: number; porAtividade: ResultadoAtividade[] }
 export interface CategoriaTotal { categoria: string; total: number; pct: number }
-export interface GrupoTotal { grupo: string; total: number; pct: number; categorias: CategoriaTotal[] }
 export interface CentroTotal { centro: string; total: number; pct: number }
 export interface ItemCompromisso { id: number; descricao: string | null; fornecedor: string | null; categoria: string; valor: number; dataVencimento: string; diasAtraso: number; vencido: boolean }
 export interface BlocoCompromisso { total: number; vencido: number; aVencer: number; quantidade: number; itens: ItemCompromisso[] }
@@ -37,7 +36,7 @@ export interface RelatorioGerencialDTO {
   entradasSaidas: { meses: MesFluxo[]; total: TotaisFluxo } | null;
   resultado: ResultadoPeriodo | null;
   compromissos: { hoje: string; aPagar: BlocoCompromisso; aReceber: BlocoCompromisso } | null;
-  categorias: { grupos: GrupoTotal[]; centros: CentroTotal[] } | null;
+  categorias: { itens: CategoriaTotal[]; centros: CentroTotal[] } | null;
   operacoes: OperacaoPorTipo[];
   rastreabilidade: {
     totalLancamentos: number;

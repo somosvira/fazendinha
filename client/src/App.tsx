@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { buildRotaWorklistRebanho, parseContaFinanceiraId, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
@@ -20,6 +20,7 @@ import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
+import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
 import { RecuperarSenha } from "./components/RecuperarSenha";
@@ -338,7 +339,12 @@ export function App() {
   }, [authRoute]);
 
   useEffect(() => {
-    if (authRoute || (token && usuario)) return;
+    if (token && usuario) return;
+    // A rota vem da barra de endereço, não de `authRoute`: o memo é do render
+    // anterior e este efeito escreve na mesma URL que lê. Sem reler aqui, uma
+    // segunda execução (StrictMode, remontagem) montaria o destino a partir do
+    // `/signin?returnTo=…` que ela mesma gravou e descartaria o returnTo.
+    if (interpretarRotaAuth(window.location.pathname, window.location.search)) return;
     const destino = urlSigninPara(window.location.pathname, window.location.search);
     if (window.location.pathname + window.location.search === destino) return;
     window.history.replaceState(null, "", destino);
@@ -371,7 +377,8 @@ export function App() {
     const detalheOperacaoUrl = tab === "lancar" && (parseOperacaoFinanceiraId(window.location.pathname) != null || isNovaOperacaoFinanceira(window.location.pathname))
       ? window.location.pathname + window.location.search
       : null;
-    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? tabToPath(tab);
+    const detalheContaUrl = tab === "caixinha" && parseContaFinanceiraId(window.location.pathname) != null ? window.location.pathname : null;
+    const alvo = worklistUrl ?? filtrosUrl ?? detalheOperacaoUrl ?? detalheContaUrl ?? tabToPath(tab);
     if (window.location.pathname + window.location.search !== alvo) {
       if (firstSync.current) window.history.replaceState(null, "", alvo);
       else window.history.pushState(null, "", alvo);
@@ -507,13 +514,13 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
-    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"] as Tab[]).includes(tab)
-    ? <FinanceiroContent tab={tab} onNav={setTab} />
+    : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
+    ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : (
       <>
-        {tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
+        {ASSISTENTE_ATIVO && tab === "ia" && (canSee("ia") ? <IA /> : <GatedTab user={effectiveUser} abaLabel="IA" />)}
         {/* Configurações mantém somente setup global, categorias e acessos. */}
-        {(tab === "config" || tab === "plano" || tab === "acessos") && (
+        {(tab === "config" || tab === "acessos") && (
           <ConfiguracoesHub
             tab={tab}
             onNav={setTab}
@@ -580,7 +587,7 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
+      {ASSISTENTE_ATIVO && !ABAS_CHAT.has(tab) && <ChatWidget onNavegar={navegarDeepLink} />}
     </div>
     </>
   );

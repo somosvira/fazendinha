@@ -8,9 +8,8 @@
 //      Os Grupos criados aqui são reaproveitados por nome (upsert) — as FKs do Estoque seguem válidas.
 // Os animais demo deste seed NÃO precisam ser removidos: o import:rebanho os substitui.
 
-import { PrismaClient, SexoAnimal, CategoriaAnimal } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { SexoAnimal, CategoriaAnimal } from "@prisma/client";
+import { prisma } from "../src/db.js";
 
 async function main() {
   const grupos = ["Alta Produção", "Média Produção", "Bezerreiro"];

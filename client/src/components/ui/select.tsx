@@ -21,7 +21,7 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     data-slot="select-trigger"
     className={cn(
-      "flex cursor-pointer items-center justify-between gap-2 border border-border bg-card px-2.5 py-[7px] font-sans text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--ink-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--leite)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex cursor-pointer items-center justify-between gap-2 border border-border bg-card px-2.5 py-[7px] font-sans text-[13px] font-medium text-foreground transition-colors hover:border-[color:var(--ink-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--leite)] data-[state=open]:border-mast data-[state=open]:ring-2 data-[state=open]:ring-[color:var(--leite)]/35 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className,
     )}
     {...props}
@@ -115,14 +115,14 @@ const SelectItem = React.forwardRef<
     ref={ref}
     data-slot="select-item"
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center py-1.5 pl-2 pr-8 font-sans text-[13px] tabular-nums outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center px-3 py-2 pr-9 font-sans text-[13px] tabular-nums outline-none transition-colors focus:bg-[color:var(--leite-soft)] focus:text-ink data-[state=checked]:bg-mast data-[state=checked]:font-semibold data-[state=checked]:text-mast-ink data-[state=checked]:focus:bg-mast data-[state=checked]:focus:text-mast-ink data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
   >
-    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-3.5 w-3.5" />
+        <Check className="h-4 w-4 stroke-[2.5]" />
       </SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

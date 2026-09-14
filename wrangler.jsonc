@@ -1,0 +1,51 @@
+/**
+ * Configuração do Cloudflare Worker que serve o front (estático) e o back
+ * (API Hono) num único deploy. Referência completa:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fazendinha",
+
+  // Entrypoint do server Hono (server/src/worker.ts). O bundler do Wrangler
+  // resolve os imports do workspace `server/` normalmente.
+  "main": "./server/src/worker.ts",
+
+  // >= 2025-04-01 liga por padrão o `nodejs_compat_populate_process_env`:
+  // process.env passa a existir dentro do Worker (inclusive pra secrets), o
+  // que deixa server/src/env.ts funcionar sem reescrever pra ler `c.env`.
+  "compatibility_date": "2026-09-10",
+
+  // Necessário pro driver do Neon (@neondatabase/serverless usa Buffer/etc.)
+  // e pro runtime do Prisma Client.
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Build do client (`pnpm --filter rionovo-client run build`) servido como
+  // assets estáticos. Cloudflare tenta servir um arquivo estático primeiro;
+  // se não achar, cai no fallback abaixo — então `run_worker_first` garante
+  // que `/api/*` SEMPRE invoca o Worker (o Hono), mesmo que por acaso exista
+  // um arquivo com esse nome nos assets. Tudo que não é `/api/*` e não bate
+  // com um arquivo real vira `index.html` (SPA), sem precisar de `_redirects`.
+  "assets": {
+    "directory": "./client/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // Sem isso o Wrangler trata este arquivo como fonte da verdade e apaga, a
+  // cada deploy, as variáveis de texto criadas no dashboard (Settings >
+  // Variables and Secrets). Secrets nunca são apagados por um deploy, mas
+  // vars "Text" sim — com quantas envs este projeto tem (ver server/.env.example),
+  // perder isso a cada deploy quebraria a produção silenciosamente.
+  "keep_vars": true,
+
+  "observability": {
+    "enabled": true
+  }
+
+  // As envs (DATABASE_URL, JWT_SECRET, OPENAI_API_KEY, etc.) não ficam aqui —
+  // em produção vêm do dashboard da Cloudflare (Settings > Variables and
+  // Secrets, tipo "Secret" pras sensíveis) ou de `wrangler secret put`. Em dev
+  // local, `wrangler dev` lê um `.dev.vars` na raiz (não versionado) se existir.
+}

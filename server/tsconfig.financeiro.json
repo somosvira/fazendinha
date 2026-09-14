@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": [
+    "tests/financeiro/**/*.ts",
+    "vitest.financeiro.config.ts",
+    "prisma/seed-qa249.ts"
+  ]
+}

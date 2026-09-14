@@ -1,191 +1,95 @@
-import { useEffect, useState } from "react";
-import { registrarMovimento, listarProdutos, listarFornecedores, listarGrupos, type ProdutoDTO, type FornecedorDTO, type GrupoDTO, type MovimentoResult, type MovimentoInput } from "../api";
-import { HOJE } from "../HOJE";
+import { useEffect, useRef, useState } from "react";
+import { ajustarContagem, listarSaldos, listarPropriedades, type SaldoDTO } from "../api";
+import { getPropriedadeAtiva } from "../../propriedadeScope";
 import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
-import { fmtMoneyExact } from "@/components/charts";
-import { newEntityId } from "@fazendinha/shared";
 
-const TIPOS: { id: MovimentoInput["tipo"]; label: string }[] = [
-  { id: "ENTRADA", label: "Entrada (compra)" },
-  { id: "SAIDA", label: "Saída (consumo)" },
-  { id: "AJUSTE", label: "Ajuste (inventário)" },
-];
-
-const money = fmtMoneyExact;
+const quantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
-  const [fornecedores, setFornecedores] = useState<FornecedorDTO[]>([]);
-  const [grupos, setGrupos] = useState<GrupoDTO[]>([]);
-  const [f, setF] = useState({ tipo: "ENTRADA" as MovimentoInput["tipo"], produtoId: "", data: HOJE, quantidade: "", fornecedorId: "", grupoId: "", observacao: "", gerarLancamento: true });
+  const [precisaFazenda, setPrecisaFazenda] = useState(false);
+  const [saldos, setSaldos] = useState<SaldoDTO[]>([]);
+  const [produtoId, setProdutoId] = useState("");
+  const [contada, setContada] = useState("");
+  const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  const [resultado, setResultado] = useState<MovimentoResult | null>(null);
   const [novoProduto, setNovoProduto] = useState(false);
-  const [idsMovimento] = useState(() => ({ operacaoId: newEntityId(), itemOperacaoId: newEntityId() }));
-  const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
+  const [resultado, setResultado] = useState<{ quantidadeContada: number; diferenca: number } | null>(null);
+  const enviando = useRef(false);
+  const alive = useRef(true);
+  const escopoConsultado = useRef<number | null>(getPropriedadeAtiva());
 
-  async function carregarProdutos(selecionarId?: number) {
-    const ps = await listarProdutos({ ativo: true });
-    const estocaveis = ps.filter((p) => p.estocavel);
-    setProdutos(estocaveis);
-    if (selecionarId) setF((s) => ({ ...s, produtoId: String(selecionarId) }));
-  }
-
-  useEffect(() => {
-    carregarProdutos().catch(() => {});
-    listarFornecedores().then(setFornecedores).catch(() => {});
-    listarGrupos().then(setGrupos).catch(() => {});
-  }, []);
-
-  const produtoSel = produtos.find((p) => String(p.id) === f.produtoId) || null;
-  const semContabil = produtoSel && f.tipo === "ENTRADA" && (produtoSel.categoriaId == null || produtoSel.centroCustoId == null);
-
-  async function salvar() {
-    if (!f.produtoId) { setErro("Selecione um produto."); return; }
-    if (!f.quantidade || Number(f.quantidade) === 0) { setErro("Informe a quantidade."); return; }
-    setSalvando(true); setErro(null);
+  async function carregar(selecionarId?: number) {
+    setCarregando(true); setErro(null);
     try {
-      const ehEntrada = f.tipo === "ENTRADA";
-      const payload: MovimentoInput = {
-        ...idsMovimento,
-        produtoId: Number(f.produtoId),
-        tipo: f.tipo,
-        data: f.data,
-        quantidade: Number(f.quantidade),
-        fornecedorId: ehEntrada && f.fornecedorId ? f.fornecedorId : undefined,
-        categoriaId: produtoSel?.categoriaId ?? undefined,
-        centroCustoId: produtoSel?.centroCustoId ?? undefined,
-        grupoId: f.tipo === "SAIDA" && f.grupoId ? Number(f.grupoId) : undefined,
-        observacao: f.observacao || undefined,
-        gerarLancamento: ehEntrada ? f.gerarLancamento : undefined,
-      };
-      const r = await registrarMovimento(payload);
-      setResultado(r);
-    } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
+      const escopo = getPropriedadeAtiva();
+      if (escopo == null && (await listarPropriedades()).length > 1) {
+        if (alive.current) { setPrecisaFazenda(true); setSaldos([]); }
+        return;
+      }
+      if (alive.current) setPrecisaFazenda(false);
+      const lista = await listarSaldos();
+      if (getPropriedadeAtiva() !== escopo) throw new Error("A propriedade mudou. Atualize o saldo antes de continuar.");
+      escopoConsultado.current = escopo;
+      if (!alive.current) return;
+      setSaldos(lista);
+      if (selecionarId) { setProdutoId(String(selecionarId)); setContada(""); }
+    } catch (e) { if (alive.current) setErro(e instanceof Error ? e.message : String(e)); }
+    finally { if (alive.current) setCarregando(false); }
   }
-
-  // Após salvar, mostra um recibo claro do que aconteceu.
-  if (resultado) {
-    const tipoLabel = TIPOS.find((t) => t.id === f.tipo)?.label.split(" ")[0] ?? f.tipo;
-    const qtdNum = Number(f.quantidade);
-    const valorTotal = produtoSel?.custoUnitario != null ? Number(produtoSel.custoUnitario) * Math.abs(qtdNum) : null;
-    return (
-      <RebModal
-        title=""
-        showClose={false}
-        onClose={onSalvo}
-        className="max-w-[440px]"
-        actions={
-          <div className="flex w-full justify-center">
-            <RebButton variant="pri" onClick={onSalvo} style={{ minWidth: 140 }}>Fechar</RebButton>
-          </div>
-        }
-      >
-        <div className="mt-1 flex justify-center animate-[rb-check-pop_0.3s_cubic-bezier(0.34,1.56,0.64,1)] [&>svg]:h-16 [&>svg]:w-16 [&>svg]:text-lucro [&_circle]:[stroke-dasharray:132] [&_circle]:[stroke-dashoffset:0] [&_circle]:animate-[rb-check-circle_0.4s_ease-out_backwards] [&_path]:[stroke-dasharray:30] [&_path]:[stroke-dashoffset:0] [&_path]:animate-[rb-check-path_0.25s_ease-out_0.25s_backwards]">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="24" cy="24" r="21" />
-            <path d="M15 24l7 7 12-14" />
-          </svg>
-        </div>
-        <h3 style={{ textAlign: "center", margin: "14px 0 6px" }}>Movimento registrado</h3>
-        <p style={{ textAlign: "center", color: "var(--ink-2)", fontSize: 14, margin: "0 0 18px" }}>
-          <b style={{ color: "var(--ink)" }}>{tipoLabel}</b> de <b style={{ color: "var(--ink)" }}>{Math.abs(qtdNum).toLocaleString("pt-BR")} {produtoSel?.unidade}</b> de <b style={{ color: "var(--ink)" }}>{produtoSel?.nome}</b>
-          {valorTotal != null && f.tipo === "ENTRADA" && <> · {money(valorTotal)}</>}
-        </p>
-        <div className="flex items-start gap-3 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3.5 text-sm [&_b]:font-semibold [&_b]:text-foreground">
-          {resultado.lancamentoCriado ? (
-            <>
-              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color-mix(in_srgb,var(--lucro)_14%,transparent)] text-lucro">✓</span>
-              <div>
-                <b>Lançamento financeiro gerado</b>
-                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>O custo foi registrado no fluxo de caixa.</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-sm font-bold bg-[color:var(--rule-soft)] text-ink-3">—</span>
-              <div>
-                <b>Sem lançamento financeiro</b>
-                <div style={{ color: "var(--ink-3)", fontSize: 12.5 }}>{resultado.motivo ?? "não aplicável pra esse tipo de movimento"}</div>
-              </div>
-            </>
-          )}
-        </div>
-      </RebModal>
-    );
+  useEffect(() => { alive.current = true; void carregar(); return () => { alive.current = false; }; }, []);
+  const produto = saldos.find(p => String(p.produtoId) === produtoId);
+  const valor = contada.trim() === "" ? NaN : Number(contada);
+  const diferenca = produto ? Math.round((valor - produto.saldo) * 100) / 100 : NaN;
+  const valido = !!produto && Number.isFinite(valor) && valor >= 0 && valor <= 9_999_999_999.99 && Math.abs(valor * 100 - Math.round(valor * 100)) < 0.00001 && diferenca !== 0 && motivo.trim().length >= 5;
+  async function salvar() {
+    if (!valido || !produto || enviando.current || carregando) return;
+    if (getPropriedadeAtiva() !== escopoConsultado.current) { setErro("A propriedade mudou. Atualize o saldo antes de confirmar."); return; }
+    enviando.current = true; setSalvando(true); setErro(null);
+    try {
+      const r = await ajustarContagem({ produtoId: produto.produtoId, quantidadeContada: valor, saldoEsperado: produto.saldo, observacao: motivo.trim() });
+      if (alive.current) setResultado(r);
+    } catch (e) { if (alive.current) setErro(e instanceof Error ? e.message : String(e)); }
+    finally { enviando.current = false; if (alive.current) setSalvando(false); }
   }
-
-  return (
-    <>
-      <RebModal
-        title="Registrar movimento"
-        onClose={onFechar}
-        actions={
-          <>
-            <RebButton onClick={onFechar}>Cancelar</RebButton>
-            <RebButton variant="pri" disabled={salvando} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
-          </>
-        }
-      >
-        <RebField label="Tipo"><select className="rb-field-select" value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></RebField>
-
-        <RebField>
-          <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            Produto*
-            <button type="button" onClick={() => setNovoProduto(true)} style={{ background: "transparent", border: 0, color: "var(--cafe)", fontSize: 12.5, fontFamily: "var(--sans)", fontStyle: "normal", cursor: "pointer", padding: 0 }}>+ novo produto</button>
-          </span>
-          <select className="rb-field-select" value={f.produtoId} onChange={(e) => set("produtoId", e.target.value)}>
-            <option value="">Selecione…</option>
-            {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
-          </select>
-        </RebField>
-
-        {produtoSel && (
-          <div style={{ marginTop: -6, marginBottom: 14, fontSize: 12.5, color: "var(--ink-3)", fontFamily: "var(--sans)" }}>
-            {produtoSel.custoUnitario != null
-              ? <>Custo cadastrado: <b style={{ color: "var(--ink-2)" }}>{money(Number(produtoSel.custoUnitario))}</b> / {produtoSel.unidade}</>
-              : <span style={{ color: "var(--neg)" }}>Sem custo cadastrado — edite o produto pra definir.</span>}
-            {semContabil && <span style={{ display: "block", color: "var(--neg)", marginTop: 4 }}>Falta categoria ou centro de custo no produto — o lançamento financeiro pode não ser gerado.</span>}
-          </div>
-        )}
-
-        <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
-        <RebField label={<>Quantidade*{f.tipo === "AJUSTE" && <small style={{ color: "var(--ink-3)", fontStyle: "normal", marginLeft: 4 }}>— negativo subtrai</small>}</>}><input type="number" step="0.01" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></RebField>
-        {f.tipo === "ENTRADA" && (
-          <RebField label="Fornecedor">
-            <select className="rb-field-select" value={f.fornecedorId} onChange={(e) => set("fornecedorId", e.target.value)}>
-              <option value="">—</option>
-              {fornecedores.map((fr) => <option key={fr.id} value={fr.id}>{fr.nome}</option>)}
-            </select>
-          </RebField>
-        )}
-        {f.tipo === "SAIDA" && (
-          <RebField label="Lote">
-            <select className="rb-field-select" value={f.grupoId} onChange={(e) => set("grupoId", e.target.value)}>
-              <option value="">—</option>
-              {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-            </select>
-          </RebField>
-        )}
-        {f.tipo === "ENTRADA" && (
-          <RebField style={{ flexDirection: "row", alignItems: "center", gap: 8, fontStyle: "normal" }}>
-            <input type="checkbox" checked={f.gerarLancamento} onChange={(e) => set("gerarLancamento", e.target.checked)} style={{ width: "auto" }} />Gerar lançamento financeiro
-          </RebField>
-        )}
-        <RebField label="Observação"><input value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></RebField>
-        {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
-      </RebModal>
-      {novoProduto && (
-        <ProdutoForm
-          stacked
-          onFechar={() => setNovoProduto(false)}
-          onSalvo={(criado) => { setNovoProduto(false); carregarProdutos(criado?.id).catch(() => {}); }}
-        />
-      )}
-    </>
-  );
+  if (precisaFazenda) return <RebModal title="Ajustar quantidade" onClose={onFechar} actions={<RebButton onClick={onFechar}>Fechar</RebButton>}>
+    <p role="alert">Selecione uma fazenda no menu lateral para ajustar o estoque. O Consolidado reúne saldos de fazendas diferentes.</p>
+  </RebModal>;
+  if (resultado) return <RebModal title="Quantidade ajustada" onClose={onSalvo} actions={<RebButton variant="pri" onClick={onSalvo}>Fechar</RebButton>}>
+    <p><strong>{produto?.nome}</strong>: estoque atualizado para <strong>{quantidade(resultado.quantidadeContada)} {produto?.unidade}</strong>.</p>
+    <p>Ajuste registrado: {resultado.diferenca > 0 ? "+" : ""}{quantidade(resultado.diferenca)} {produto?.unidade}.</p>
+    <p>Sem pagamento ou compromisso financeiro. A justificativa e o histórico foram preservados.</p>
+  </RebModal>;
+  return <>
+    <RebModal title="Ajustar quantidade" onClose={() => { if (!enviando.current) onFechar(); }} actions={<>
+      <RebButton disabled={salvando} onClick={onFechar}>Cancelar</RebButton>
+      <RebButton variant="pri" disabled={!valido || carregando || salvando} onClick={salvar}>{salvando ? "Salvando…" : "Confirmar ajuste"}</RebButton>
+    </>}>
+      <p className="mb-4 text-sm text-ink-3">Informe a quantidade encontrada na contagem. O ajuste corrige somente o estoque, sem gerar pagamento ou compromisso.</p>
+      <RebField label="Produto">
+        <select aria-label="Produto" disabled={carregando || salvando} value={produtoId} onChange={e => { setProdutoId(e.target.value); setContada(""); }}>
+          <option value="">{carregando ? "Carregando estoque…" : "Selecione…"}</option>
+          {saldos.map(p => <option key={p.produtoId} value={p.produtoId}>{p.nome} ({p.unidade})</option>)}
+        </select>
+      </RebField>
+      <RebButton disabled={salvando} onClick={() => setNovoProduto(true)}>Novo produto</RebButton>
+      {produto && <p className="my-4">Quantidade no sistema: <strong>{quantidade(produto.saldo)} {produto.unidade}</strong></p>}
+      <RebField label="Quantidade encontrada na contagem">
+        <input aria-label="Quantidade encontrada na contagem" type="number" min="0" max="9999999999.99" step="0.01" disabled={salvando} value={contada} onChange={e => setContada(e.target.value)} />
+      </RebField>
+      <RebField label="Justificativa">
+        <textarea aria-label="Justificativa" minLength={5} maxLength={200} disabled={salvando} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Explique o motivo da correção de contagem" />
+      </RebField>
+      {produto && Number.isFinite(diferenca) && valor >= 0 && <div className="my-4 rounded-lg bg-stone-100 p-4" aria-live="polite">
+        <strong>{diferenca === 0 ? "Nenhum ajuste necessário" : `Diferença: ${diferenca > 0 ? "+" : ""}${quantidade(diferenca)} ${produto.unidade}`}</strong>
+        <p>Estoque após confirmar: {quantidade(valor)} {produto.unidade}.</p>
+      </div>}
+      {erro && <div role="alert" className="mt-3 text-sm text-prejuizo"><p>{erro}</p><RebButton disabled={carregando || salvando} onClick={() => { void carregar(); }}>Atualizar saldo</RebButton></div>}
+    </RebModal>
+    {novoProduto && <ProdutoForm stacked onFechar={() => setNovoProduto(false)} onSalvo={p => { setNovoProduto(false); void carregar(p?.id); }} />}
+  </>;
 }

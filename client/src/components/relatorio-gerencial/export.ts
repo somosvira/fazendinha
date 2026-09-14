@@ -70,7 +70,7 @@ function tabelasDaSecao(id: SecaoId, dto: RelatorioGerencialDTO): string[][] | n
     }
     case "categorias":
       return dto.categorias ? [
-        [linha("Grupo", "Categoria", "Total", "% das saídas"), ...dto.categorias.grupos.flatMap((g) => [linha(g.grupo, "", g.total, g.pct), ...g.categorias.map((c) => linha("", c.categoria, c.total, c.pct))])],
+        [linha("Categoria", "Total", "% das saídas"), ...dto.categorias.itens.map((c) => linha(c.categoria, c.total, c.pct))],
         [linha("Centro de custo", "Total", "% das saídas"), ...dto.categorias.centros.map((c) => linha(c.centro, c.total, c.pct))],
       ] : null;
     case "operacoes":
