@@ -12,10 +12,10 @@ vi.mock("../../db.js", () => {
     auditoriaFinanceira: { create: mocks.auditoria },
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
-  return { prisma: { contaFinanceira: { findMany: mocks.contasFindMany }, $transaction: mocks.transaction } };
+  return { prisma: { contaFinanceira: { findMany: mocks.contasFindMany, findFirst: mocks.findFirst }, movimentoConta: { findMany: mocks.movimentosFindMany }, $transaction: mocks.transaction } };
 });
 
-import { atualizarConta, criarConta, listarContas } from "./contas.js";
+import { atualizarConta, criarConta, listarContas, listarExtrato, listarExtratoGeral } from "./contas.js";
 import { FinanceiroError } from "./regras.js";
 
 const anterior = { id: 1, propriedadeId: 1, nome: "Caixa", saldoAbertura: new Prisma.Decimal(50), dataSaldoAbertura: new Date("2026-01-01T00:00:00Z"), ativo: true };
@@ -28,6 +28,23 @@ describe("contas financeiras", () => {
     mocks.update.mockImplementation(async ({ data }) => ({ ...anterior, ...data }));
     mocks.create.mockResolvedValue({ ...anterior, id: 3, saldoAbertura: new Prisma.Decimal(25) });
     mocks.movimentosFindMany.mockResolvedValue([]);
+  });
+
+  it("consulta extrato no consolidado e recusa conta fora da propriedade selecionada", async () => {
+    await listarExtrato(1, null);
+    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: 1 } });
+    mocks.movimentosFindMany.mockClear();
+    mocks.findFirst.mockResolvedValue(null);
+    await expect(listarExtrato(1, 2)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    expect(mocks.findFirst).toHaveBeenLastCalledWith({ where: { id: 1, propriedadeId: 2 } });
+    expect(mocks.movimentosFindMany).not.toHaveBeenCalled();
+  });
+
+  it("extrato geral filtra pela propriedade da conta e ordena por data e movimento", async () => {
+    await listarExtratoGeral(2);
+    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: { propriedadeId: 2 } }, orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }] }));
+    await listarExtratoGeral(null);
+    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: {} } }));
   });
 
   it("PATCH só de ativo não toca em nenhum outro campo", async () => {

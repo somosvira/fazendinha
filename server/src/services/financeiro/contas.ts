@@ -21,12 +21,13 @@ export async function listarContas(propriedadeId?: number | null, incluirInativa
     where: { ...(propriedadeId ? { propriedadeId } : {}), ...(!incluirInativas ? { ativo: true } : {}) },
     include: {
       movimentos: {
-        select: { direcao: true, valor: true },
+        select: { direcao: true, valor: true, transacao: { select: { data: true, descricao: true, tipo: true } } },
+        orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
       },
     },
     orderBy: [{ ativo: "desc" }, { ordem: "asc" }, { nome: "asc" }],
   });
-  return contas.map(({ movimentos, ...conta }) => comResumo(conta, movimentos));
+  return contas.map(({ movimentos, ...conta }) => ({ ...comResumo(conta, movimentos), ultimaOperacao: movimentos[0]?.transacao ?? null }));
 }
 
 export async function resumoSaldos(propriedadeId?: number | null) {
@@ -96,8 +97,8 @@ export async function atualizarConta(
   } catch (e) { traduzirConflitoUnico(e, CONFLITOS); }
 }
 
-export async function listarExtrato(contaId: number, propriedadeId: number, inicio?: Date, fim?: Date) {
-  const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, propriedadeId } });
+export async function listarExtrato(contaId: number, propriedadeId: number | null, inicio?: Date, fim?: Date) {
+  const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, ...(propriedadeId != null ? { propriedadeId } : {}) } });
   if (!conta) throw new FinanceiroError("NAO_ENCONTRADO", "Conta financeira não encontrada");
   return prisma.movimentoConta.findMany({
     where: {
@@ -105,6 +106,14 @@ export async function listarExtrato(contaId: number, propriedadeId: number, inic
       transacao: { ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     },
     include: { transacao: { include: { parceiro: true, operacao: true } } },
+    orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
+  });
+}
+
+export async function listarExtratoGeral(propriedadeId: number | null) {
+  return prisma.movimentoConta.findMany({
+    where: { conta: propriedadeId != null ? { propriedadeId } : {} },
+    include: { conta: { select: { id: true, nome: true, instituicao: true } }, transacao: { include: { parceiro: true, operacao: true } } },
     orderBy: [{ transacao: { data: "desc" } }, { id: "desc" }],
   });
 }

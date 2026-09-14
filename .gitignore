@@ -20,3 +20,6 @@ __pycache__/
 .uploads/
 bateria-gabarito.json
 bateria-respostas.json
+
+# Ambiente persistente de QA manual #249 (conexao, uploads e manifesto locais).
+server/.qa249/

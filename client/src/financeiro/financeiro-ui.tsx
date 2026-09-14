@@ -116,7 +116,7 @@ export type ColunaTabela<T> = {
   chave: string;
   titulo: string;
   /** governa <th>, <td> e o valor no cartão — não repetir alinhamento na célula */
-  alinhamento?: "esquerda" | "direita";
+  alinhamento?: "esquerda" | "centro" | "direita";
   celula: (item: T) => React.ReactNode;
   /** largura mínima da coluna (px) — a soma vira o min-width da tabela */
   larguraMinima?: number;
@@ -129,14 +129,15 @@ export type ColunaTabela<T> = {
   acoes?: boolean;
 };
 
-const alinhaCelula = (alinhamento?: "esquerda" | "direita") => (alinhamento === "direita" ? "text-right" : "text-left");
+const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe }: {
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
   onAbrir?: (item: T) => void;
   classeLinha?: (item: T) => string;
+  ancoraDe?: (item: T) => string;
   rotulo: string;
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
@@ -154,7 +155,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
         </thead>
         <tbody className="divide-y divide-border">
           {itens.map((item) => <tr
-            key={chaveDe(item)}
+            key={chaveDe(item)} data-ancora={ancoraDe?.(item)}
             /* linha acionável pelo teclado sem sobrescrever o role="row" — trocar
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
@@ -176,7 +177,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
             </div>)}
           </dl>
         </>;
-        return <li key={chaveDe(item)} className={classeLinha?.(item) ?? ""}>
+        return <li key={chaveDe(item)} data-ancora={ancoraDe?.(item)} className={classeLinha?.(item) ?? ""}>
           {onAbrir
             ? <button type="button" onClick={() => onAbrir(item)} className="w-full p-4 text-left hover:bg-[#faf9f4]">{corpo}</button>
             : <div className="p-4">{corpo}</div>}

@@ -2,13 +2,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
-import { ApiError, atualizarConta, atualizarParceiro, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { ApiError, atualizarConta, atualizarParceiro, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
 vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(),
   criarConta: vi.fn(), atualizarConta: vi.fn(), criarParceiro: vi.fn(), atualizarParceiro: vi.fn(),
+  criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
+  criarCentroCusto: vi.fn(), atualizarCentroCusto: vi.fn(),
 }));
 
 const config: Config = {
@@ -17,7 +19,8 @@ const config: Config = {
     { id: 2, nome: "Gaveta", tipo: "CAIXA", instituicao: null, identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-09-01", saldoAtual: "0", incluirNoSaldoGeral: false, ativo: false, temMovimentos: false },
   ],
   parceiros: [{ id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 }],
-  gruposCategorias: [], centrosCusto: [], produtos: [],
+  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, _count: { operacoes: 2, produtos: 1 } }],
+  centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }], produtos: [],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -33,10 +36,12 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-async function montar(aba: "contas" | "parceiros" = "contas") {
+async function montar(aba: "contas" | "parceiros" | "categorias" | "centros" = "contas") {
   render(<ConfiguracoesFinanceiras />);
   await screen.findAllByText("Banco principal");
   if (aba === "parceiros") fireEvent.click(screen.getByRole("button", { name: /Clientes e fornecedores/ }));
+  if (aba === "categorias") fireEvent.click(screen.getByRole("button", { name: /^Categorias$/ }));
+  if (aba === "centros") fireEvent.click(screen.getByRole("button", { name: /Centros de custo/ }));
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
@@ -45,6 +50,19 @@ async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
+  it("mostra instituição em coluna e deixa o valor de abertura apenas nos detalhes", async () => {
+    await montar();
+    const tabela = screen.getByRole("table", { name: "Contas financeiras" });
+    const linha = within(tabela).getByText("Banco principal").closest("tr")!;
+    expect(within(tabela).getByRole("columnheader", { name: "Instituição" })).toBeTruthy();
+    expect(within(linha).getByText("Sicoob")).toBeTruthy();
+    expect(within(linha).getByText("01/09/2026")).toBeTruthy();
+    expect(within(linha).queryByText("R$ 1.000,00")).toBeNull();
+    fireEvent.click(linha);
+    const painel = await screen.findByRole("dialog");
+    expect((within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement).value).toBe("1.000,00");
+  });
+
   it("exige instituição para banco, aceita caixa sem banco e não oferece tipo dinheiro", async () => {
     await montar();
     fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
@@ -234,5 +252,34 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     expect(await within(painel).findByText("Já existe um parceiro com este CPF/CNPJ")).toBeTruthy();
     expect(criarParceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Cooperativa 2", documento: "11222333000181", papeis: ["FORNECEDOR"], telefone: null, email: null }));
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+});
+
+describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
+  it("cria categoria sem exigir grupo dentro da configuração financeira", async () => {
+    await montar("categorias");
+    fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
+    fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+  });
+
+  it("cria um centro de custo sem natureza financeira", async () => {
+    await montar("centros");
+    expect(screen.getByRole("table", { name: "Centros de custo" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Novo centro de custo" }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Nome do centro de custo"), { target: { value: "Implantação de pomar" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar centro" }));
+    await waitFor(() => expect(criarCentroCusto).toHaveBeenCalledWith({ nome: "Implantação de pomar", ordem: 1 }));
+  });
+
+  it("oculta ações de criação para acesso somente consulta", async () => {
+    render(<ConfiguracoesFinanceiras podeEditar={false} />);
+    await screen.findAllByText("Banco principal");
+    expect(screen.getByText("Você tem acesso de consulta a estes cadastros.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Nova conta" })).toBeNull();
   });
 });

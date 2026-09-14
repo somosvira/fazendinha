@@ -47,7 +47,7 @@ async function seedCafe() {
   const ccCafe = await prisma.centroCusto.upsert({
     where: { nome: "Plantio Café" },
     update: {},
-    create: { nome: "Plantio Café", ehInvestimento: false, ordem: 2 },
+    create: { nome: "Plantio Café", ordem: 2 },
   });
 
   // Variedade — café adensado Rio Novo é Catuaí Vermelho (clássico Sul de Minas,

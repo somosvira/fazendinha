@@ -157,7 +157,7 @@ export function EstoqueTab() {
           <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
           <div className="flex flex-col items-stretch gap-1.5">
             <RebButton variant="pri" onClick={() => setCadastrandoProduto(true)}>+ Cadastrar produto</RebButton>
-            <RebButton variant="pri" onClick={() => setForm(true)}>+ Registrar movimento</RebButton>
+            <RebButton variant="pri" onClick={() => setForm(true)}>Ajustar quantidade</RebButton>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown
 import type { Tab } from "../components/Shell";
 import { listarCompromissos, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
+import { tituloCompromisso } from "./lib/compromissos";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [mes, setMes] = useState(mesAtual());
@@ -19,7 +20,10 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
 
   if (!dados && !erro) return <PaginaCarregando label="Carregando financeiro" />;
   const maior = Math.max(...(dados?.despesasPorCategoria.map((x) => Number(x.valor)) ?? [1]), 1);
-  const proximos = compromissos.filter((c) => ["PENDENTE", "PARCIAL"].includes(c.status)).slice(0, 5);
+  const proximos = compromissos
+    .filter((c) => ["PENDENTE", "PARCIAL"].includes(c.status))
+    .slice(0, 5)
+    .map((c) => ({ ...c, operacao: { ...c.operacao, descricao: tituloCompromisso(c) } }));
 
   return <PaginaFinanceira>
     <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); }}><Plus size={16} /> Nova operação</Button></div>} />

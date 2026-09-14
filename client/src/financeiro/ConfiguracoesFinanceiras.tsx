@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
+import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
+import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
 
-type Aba = "contas" | "parceiros";
-type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
-type Confirmacao = { tipo: "conta"; item: Conta } | { tipo: "parceiro"; item: Parceiro } | null;
+type Aba = "contas" | "parceiros" | "categorias" | "centros";
+type EntidadePainel = "conta" | "parceiro" | "categoria" | "centro";
+type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadePainel; modo: "editar"; id: number } | null;
+type Confirmacao =
+  | { tipo: "conta"; item: Conta }
+  | { tipo: "parceiro"; item: Parceiro }
+  | { tipo: "categoria"; item: Categoria }
+  | { tipo: "centro"; item: CentroCusto }
+  | null;
 
 /* Coluna de ações: editar e desativar/reativar. Os botões param a propagação
  * para não disparar o `onAbrir` da linha (que também abre a edição). */
@@ -26,9 +33,10 @@ function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, pode
 }
 
 const colunasContas = (contas: Conta[], editar: (c: Conta) => void, alternar: (c: Conta) => void, mover: (c: Conta, direcao: -1 | 1) => void): ColunaTabela<Conta>[] => [
-  { chave: "conta", titulo: "Conta", larguraMinima: 230, principal: true, celula: (c) => <><strong className="break-words">{c.nome}</strong><div className="mt-1 break-words text-xs text-ink-3">{c.instituicao || c.identificacao || "Sem identificação adicional"}</div></> },
+  { chave: "conta", titulo: "Conta", larguraMinima: 210, principal: true, celula: (c) => <strong className="break-words">{c.nome}</strong> },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (c) => <span className="whitespace-nowrap">{TIPO_CONTA[c.tipo] ?? c.tipo}</span> },
-  { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 130, celula: (c) => <><span className="whitespace-nowrap">{brl(c.saldoAbertura)}</span><div className="whitespace-nowrap text-xs text-ink-3">{dataBR(c.dataSaldoAbertura)}</div></> },
+  { chave: "instituicao", titulo: "Instituição", larguraMinima: 150, celula: (c) => <span className="break-words">{c.instituicao || "—"}</span> },
+  { chave: "abertura", titulo: "Abertura", alinhamento: "direita", larguraMinima: 120, celula: (c) => <span className="whitespace-nowrap">{dataBR(c.dataSaldoAbertura)}</span> },
   { chave: "saldo", titulo: "Saldo atual", alinhamento: "direita", larguraMinima: 130, celula: (c) => <strong className="whitespace-nowrap font-semibold">{brl(c.saldoAtual)}</strong> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 180, acoes: true, celula: (c) => {
@@ -47,18 +55,35 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
 ];
 
+const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
+  { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
+  { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
+  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
+  { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
+];
+
+const colunasCentros = (editar: (c: CentroCusto) => void, alternar: (c: CentroCusto) => void): ColunaTabela<CentroCusto>[] => [
+  { chave: "centro", titulo: "Centro de custo", principal: true, larguraMinima: 230, celula: (c) => <strong>{c.nome}</strong> },
+  { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.safras ?? 0) },
+  { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativo" : "Inativo"}</Pill> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
+];
+
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>) {
   if (confirmacao.tipo === "conta") return "A conta deixa de aparecer em novas operações e transferências. O extrato e todos os movimentos continuam disponíveis. Você pode reativar quando quiser.";
+  if (confirmacao.tipo === "categoria") return "A categoria deixa de aparecer em novas operações e produtos. Os registros históricos continuam vinculados.";
+  if (confirmacao.tipo === "centro") return "O centro de custo deixa de aparecer em novas operações, produtos e safras. Os registros históricos continuam vinculados.";
   const { nome, referencias } = confirmacao.item;
   return referencias > 0
     ? `${nome} deixa de aparecer em novas operações. ${referencias === 1 ? "O registro já ligado" : `Os ${referencias} registros já ligados`} a este cadastro (operações, compromissos e transações) ${referencias === 1 ? "continua intacto" : "continuam intactos"}.`
     : `${nome} deixa de aparecer em novas operações. Nenhum registro está ligado a este cadastro.`;
 }
 
-export function ConfiguracoesFinanceiras() {
+export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = true }: { abaInicial?: Aba; podeEditar?: boolean }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<Aba>("contas");
+  const [aba, setAba] = useState<Aba>(abaInicial);
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [processando, setProcessando] = useState(false);
@@ -76,7 +101,8 @@ export function ConfiguracoesFinanceiras() {
   if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
-  const editar = (item: { id: number }) => { if (!emCurso.current) setPainel({ modo: "editar", id: item.id }); };
+  const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
+  const editar = (entidade: EntidadePainel, item: { id: number }) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
   const alternarConta = async (c: Conta) => {
     if (emCurso.current) return;
     if (c.ativo) { setConfirmando({ tipo: "conta", item: c }); return; }
@@ -86,6 +112,16 @@ export function ConfiguracoesFinanceiras() {
     if (emCurso.current) return;
     if (p.ativo) { setConfirmando({ tipo: "parceiro", item: p }); return; }
     await executar(() => atualizarParceiro(p.id, { ativo: true }));
+  };
+  const alternarCategoria = async (c: Categoria) => {
+    if (emCurso.current) return;
+    if (c.ativo) { setConfirmando({ tipo: "categoria", item: c }); return; }
+    await executar(() => atualizarCategoria(c.id, { ativo: true }));
+  };
+  const alternarCentro = async (c: CentroCusto) => {
+    if (emCurso.current) return;
+    if (c.ativo) { setConfirmando({ tipo: "centro", item: c }); return; }
+    await executar(() => atualizarCentroCusto(c.id, { ativo: true }));
   };
   const moverConta = async (conta: Conta, direcao: -1 | 1) => {
     const grupo = config.contas.filter((item) => item.ativo === conta.ativo);
@@ -100,34 +136,49 @@ export function ConfiguracoesFinanceiras() {
     if (!confirmando) return;
     await executar(async () => {
       if (confirmando.tipo === "conta") await atualizarConta(confirmando.item.id, { ativo: false });
-      else await atualizarParceiro(confirmando.item.id, { ativo: false });
+      else if (confirmando.tipo === "parceiro") await atualizarParceiro(confirmando.item.id, { ativo: false });
+      else if (confirmando.tipo === "categoria") await atualizarCategoria(confirmando.item.id, { ativo: false });
+      else await atualizarCentroCusto(confirmando.item.id, { ativo: false });
       setConfirmando(null);
     });
   };
   const aoSalvar = async () => { setPainel(null); await carregar(); };
 
-  const contaSelecionada = painel?.modo === "editar" ? config.contas.find((c) => c.id === painel.id) ?? null : null;
-  const parceiroSelecionado = painel?.modo === "editar" ? config.parceiros.find((p) => p.id === painel.id) ?? null : null;
+  const contaSelecionada = painel?.entidade === "conta" && painel.modo === "editar" ? config.contas.find((c) => c.id === painel.id) ?? null : null;
+  const parceiroSelecionado = painel?.entidade === "parceiro" && painel.modo === "editar" ? config.parceiros.find((p) => p.id === painel.id) ?? null : null;
+  const categoriaSelecionada = painel?.entidade === "categoria" && painel.modo === "editar" ? config.categorias.find((c) => c.id === painel.id) ?? null : null;
+  const centroSelecionado = painel?.entidade === "centro" && painel.modo === "editar" ? config.centrosCusto.find((c) => c.id === painel.id) ?? null : null;
   /* key força remount do formulário a cada abertura, zerando o estado local */
-  const chavePainel = painel ? `${aba}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
+  const chavePainel = painel ? `${painel.entidade}-${painel.modo === "editar" ? painel.id : "novo"}` : "fechado";
+
+  const categorias = config.categorias;
+  const acao = aba === "categorias"
+    ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
+    : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={<Button onClick={() => setPainel({ modo: "novo" })}><Plus size={16} /> {aba === "contas" ? "Nova conta" : "Novo parceiro"}</Button>} />
+    <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
-    <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users]] as const).map(([k, label, Icon]) => <button key={k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${aba === k ? "border-mast text-ink" : "border-transparent text-ink-3"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
-    <fieldset disabled={processando} aria-busy={processando} className="min-w-0"><Panel className="mt-5 overflow-hidden">{aba === "contas"
-      ? <TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(config.contas, editar, alternarConta, moverConta)} chaveDe={(c) => c.id} onAbrir={editar} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
-      : <TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros(editar, alternarParceiro)} chaveDe={(p) => p.id} onAbrir={editar} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} />}</Panel></fieldset>
+    {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
+    <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${aba === k ? "border-mast text-ink" : "border-transparent text-ink-3"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
+    <fieldset disabled={processando || !podeEditar} aria-busy={processando} className="min-w-0">
+      {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(config.contas, (c) => editar("conta", c), alternarConta, moverConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
+      {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
+      {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><div className="border-b border-border p-5"><h2 className="font-serif text-2xl">Categorias</h2><p className="mt-1 text-xs text-ink-3">Identificam cada item comprado ou vendido.</p></div><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
+      {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
+    </fieldset>
 
-    {painel && aba === "contas" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel && aba === "parceiros" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "conta" && <FormConta key={chavePainel} aberto conta={contaSelecionada} ordemInicial={config.contas.reduce((maior, conta) => Math.max(maior, conta.ordem ?? 0), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "parceiro" && <FormParceiro key={chavePainel} aberto parceiro={parceiroSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "categoria" && <FormCategoria key={chavePainel} categoria={categoriaSelecionada} ordemInicial={categorias.reduce((maior, categoria) => Math.max(maior, categoria.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "centro" && <FormCentroCusto key={chavePainel} centro={centroSelecionado} ordemInicial={config.centrosCusto.reduce((maior, centro) => Math.max(maior, centro.ordem), -1) + 1} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
 
     <ConfirmDialog
       open={confirmando !== null}
       title={confirmando ? `Desativar ${confirmando.item.nome}?` : ""}
       message={confirmando ? mensagemDesativar(confirmando) : ""}
       confirmLabel="Desativar"
-      cancelLabel={confirmando?.tipo === "conta" ? "Manter ativa" : "Manter ativo"}
+      cancelLabel={confirmando?.tipo === "conta" || confirmando?.tipo === "categoria" ? "Manter ativa" : "Manter ativo"}
       tone="danger"
       processando={processando}
       onConfirm={() => { void confirmarDesativacao(); }}

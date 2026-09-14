@@ -15,7 +15,7 @@ const vazio: RelatorioGerencialDTO = {
   entradasSaidas: { meses: [{ mes: "2026-03", entradas: 0, saidas: 0, resultado: 0 }], total: { entradas: 0, saidas: 0, resultado: 0 } },
   resultado: { receita: 0, custeio: 0, investimento: 0, resultado: 0, porAtividade: [] },
   compromissos: { hoje: "2026-09-08", aPagar: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] }, aReceber: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] } },
-  categorias: { grupos: [], centros: [] },
+  categorias: { itens: [], centros: [] },
   operacoes: dtoExemplo.operacoes.map((o) => ({ ...o, quantidade: 0, valor: 0 })),
   rastreabilidade: { totalLancamentos: 0, estornados: 0, comDocumento: 0, semDocumento: 0, comNotaFiscal: 0, semNotaFiscal: 0, semCentroCusto: 0, mesesFechados: [], mesesAbertos: ["2026-03"] },
 };

@@ -6,11 +6,11 @@ import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
 
-export function FinanceiroContent({ tab, onNav }: { tab: Tab; onNav: (tab: Tab) => void }) {
+export function FinanceiroContent({ tab, onNav, podeEditarCadastros = true }: { tab: Tab; onNav: (tab: Tab) => void; podeEditarCadastros?: boolean }) {
   if (tab === "dashboard") return <VisaoGeralFinanceira onNav={onNav} />;
   if (tab === "lancar") return <OperacoesFinanceiras />;
   if (tab === "gastos") return <CompromissosFinanceiros onNav={onNav} />;
   if (tab === "caixinha") return <ContasFinanceiras onNav={onNav} />;
-  if (tab === "cadastros") return <ConfiguracoesFinanceiras />;
+  if (tab === "cadastros" || tab === "plano") return <ConfiguracoesFinanceiras abaInicial={tab === "plano" ? "categorias" : "contas"} podeEditar={podeEditarCadastros} />;
   return <RelatoriosFinanceiros />;
 }

@@ -25,7 +25,7 @@ const documentoSchema = z.preprocess(
 
 const emailSchema = z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), z.string().trim().email("E-mail inválido").nullable().optional());
 
-const tipoContaSchema = z.enum(["BANCO", "CAIXA", "APLICACAO", "DINHEIRO"]).transform((tipo) => tipo === "DINHEIRO" ? "CAIXA" as const : tipo);
+const tipoContaSchema = z.enum(["BANCO", "CAIXA", "APLICACAO"]);
 const tipoParceiroSchema = z.enum(["CLIENTE", "FORNECEDOR", "AMBOS", "FUNCIONARIO", "PROPRIETARIO", "OUTRO"]);
 
 export const formaPagamentoSchema = z.enum([
@@ -78,6 +78,21 @@ export const patchContaSchema = z.object({
   ativo: z.boolean().optional(),
 });
 
+export const categoriaCadastroSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+
+export const patchCategoriaCadastroSchema = categoriaCadastroSchema.partial().extend({ ativo: z.boolean().optional() });
+
+export const centroCustoSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  ordem: z.number().int().min(0).max(9999).default(0),
+});
+
+export const patchCentroCustoSchema = centroCustoSchema.partial().extend({ ativo: z.boolean().optional() });
+
 export const parceiroSchema = z.object({
   ...camposParceiro,
   nome: z.string().trim().min(2).max(120),
@@ -102,6 +117,8 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 ]);
 
 export const itemOperacaoSchema = z.object({
+  categoriaId: z.number().int().positive().nullable().optional(),
+  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   produtoId: z.number().int().positive().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,
@@ -113,6 +130,7 @@ export const itemOperacaoSchema = z.object({
 const parcelaSchema = z.object({ valor: valorPositivo, dataVencimento: dataIso });
 
 export const operacaoSchema = z.object({
+  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
     "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",

@@ -51,10 +51,10 @@ const estoque: Tool = {
 
 export async function taxonomiaResumo() {
   const [grupos, centros] = await Promise.all([
-    prisma.grupoCategoria.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
+    prisma.categoria.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
     prisma.centroCusto.findMany({ select: { nome: true }, orderBy: { nome: "asc" } }),
   ]);
-  return `Grupos: ${grupos.map((g) => g.nome).join("; ")}. Centros de custo: ${centros.map((c) => c.nome).join("; ")}.`;
+  return `Categorias: ${grupos.map((g) => g.nome).join("; ")}. Centros de custo: ${centros.map((c) => c.nome).join("; ")}.`;
 }
 
 const TOOLS = [...toolsConsulta, saldoContas, estoque];

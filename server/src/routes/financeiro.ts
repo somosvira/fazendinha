@@ -7,11 +7,14 @@ import * as parceiros from "../services/financeiro/parceiros.js";
 import * as operacoes from "../services/financeiro/operacoes.js";
 import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
+import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
+import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
+import { exigePermissao } from "../middleware/permissao.js";
 
 function usuarioId(c: Context): number | null {
   const usuario = c.get("usuario") as { id?: number } | undefined;
@@ -45,13 +48,34 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gruposCategorias, centrosCusto, produtos] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtos] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
-      prisma.grupoCategoria.findMany({ include: { categorias: { orderBy: { nome: "asc" } } }, orderBy: { ordem: "asc" } }),
-      prisma.centroCusto.findMany({ orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
-      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true } }),
+      cadastros.listarCadastrosGerenciais(),
+      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true, categoriaId: true, centroCustoId: true } }),
     ]);
-    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, gruposCategorias, centrosCusto, produtos });
+    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos });
+  })
+  .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
+    try { return c.json(await cadastros.criarCategoria(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/categorias/:id", exigePermissao("lancar"), validarCadastro(patchCategoriaCadastroSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarCategoria(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .post("/financeiro/centros-custo", exigePermissao("lancar"), validarCadastro(centroCustoSchema), async (c) => {
+    try { return c.json(await cadastros.criarCentroCusto(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/centros-custo/:id", exigePermissao("lancar"), validarCadastro(patchCentroCustoSchema), async (c) => {
+    try { return c.json(await cadastros.atualizarCentroCusto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/analise-categorias", zValidator("query", analiseCategoriasSchema, (resultado, c) => {
+    if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422);
+  }), async (c) => {
+    try { return c.json(await analisarCategorias(c.req.valid("query"), await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
   })
   .get("/financeiro/dashboard", async (c) => {
     const agora = new Date();
@@ -60,30 +84,34 @@ export const financeiroRouter = new Hono()
     return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim));
   })
   .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
-  .post("/financeiro/contas", validarCadastro(contaSchema), async (c) => {
+  .post("/financeiro/contas", exigePermissao("lancar"), validarCadastro(contaSchema), async (c) => {
     try {
       const input = c.req.valid("json");
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(await contas.criarConta({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/contas/:id", validarCadastro(patchContaSchema), async (c) => {
+  .patch("/financeiro/contas/:id", exigePermissao("lancar"), validarCadastro(patchContaSchema), async (c) => {
     try { return c.json(await contas.atualizarConta(Number(c.req.param("id")), await resolverEscopoEscrita(c), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/financeiro/extrato-geral", async (c) => {
+    try { return c.json(await contas.listarExtratoGeral(await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/financeiro/contas/:id/extrato", async (c) => {
     try {
       const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : undefined;
       const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : undefined;
-      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoEscrita(c), inicio, fim));
+      return c.json(await contas.listarExtrato(Number(c.req.param("id")), await resolverEscopoLeitura(c), inicio, fim));
     } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/parceiros", async (c) => c.json(await parceiros.listarParceiros(c.req.query("inativos") === "true")))
-  .post("/financeiro/parceiros", validarCadastro(parceiroSchema), async (c) => {
+  .post("/financeiro/parceiros", exigePermissao("lancar"), validarCadastro(parceiroSchema), async (c) => {
     try { return c.json(await parceiros.criarParceiro({ ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/parceiros/:id", validarCadastro(patchParceiroSchema), async (c) => {
+  .patch("/financeiro/parceiros/:id", exigePermissao("lancar"), validarCadastro(patchParceiroSchema), async (c) => {
     try { return c.json(await parceiros.atualizarParceiro(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })
