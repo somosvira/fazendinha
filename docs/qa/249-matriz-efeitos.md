@@ -167,3 +167,53 @@ informação não equivale a validação automatizada dela.
 6. Só marcar o critério de execução da matriz na #249 quando os cenários mínimos
    tiverem evidência ou lacuna formalmente tratada; a existência desta tabela
    satisfaz a documentação da matriz, não sua execução integral.
+
+
+## Classificação por item e centros de custo
+
+Categoria identifica **o que foi comprado**; centro de custo identifica **a área
+responsável**. Grupos foram removidos. O centro não define investimento. Os padrões
+são Pecuária, Agronomia, Equipe e Gestão; podem ser editados/desativados.
+
+| Cenário | Categoria Silagem | Categoria Vacinas | Conta | A pagar |
+|---|---:|---:|---:|---:|
+| Compra mista 800 + 200 a prazo | Comprado 800 | Comprado 200 | Sem alteração | 1.000 |
+| Pagar 500 | Pago 400; pendente 400 | Pago 100; pendente 100 | −500 | 500 |
+| Quitar os outros 500 | Pago acumulado 800 | Pago acumulado 200 | −1.000 acumulado | 0 |
+| Estornar pagamento de 500 | −400 na data do estorno | −100 na data do estorno | +500 | Reabre 500 |
+| Cancelar toda a compra | Comprado 0; pagamentos líquidos 0 | Comprado 0; pagamentos líquidos 0 | Retorna ao saldo anterior | 0 |
+| Renomear categoria ou alterar produto | Mantém nome/classificação/800 históricos | Mantém 200 | Sem alteração | Sem alteração |
+
+- Categoria e classificação são gravadas no item ao confirmar. Sem itens, ficam
+  na operação (serviço). Descrição livre pode ficar em **Sem categoria**.
+- Relatórios de compras usam a data da operação confirmada; pagamentos usam a
+  data de cada pagamento/estorno; pendências usam o vencimento do compromisso.
+- Pagamentos e parcelas são rateados sobre o saldo dos itens, fechando os centavos.
+  A reversão desfaz exatamente o rateio original, mesmo em outro mês.
+- Data, categoria (incluindo inativa/sem categoria), centro e fazenda filtram a análise.
+  Consolidado soma propriedades; não significa que Principal inclui a Secundária.
+- Produtos com o mesmo centro sugerem esse centro. Centros diferentes exigem
+  escolha no formulário; escolha manual é preservada, inclusive no rascunho salvo.
+- Transferências são reconhecidas pela transação. Uma despesa sem centro continua
+  sendo despesa. Investimento deriva da classificação gravada no item/serviço.
+- Fixture de centavos: itens 0,02 + 0,01, três pagamentos de 0,01, total por
+  categoria 0,02 + 0,01, sem saldo residual.
+
+Execução manual: seção **Classificação por item** no [checklist](249-checklist.html).
+A massa local é recriada sem converter registros antigos, conforme decisão de
+produto. As falhas físicas/concorrentes anteriores permanecem na matriz; esta
+alteração trata classificação e relatórios.
+
+### Verificação desta alteração
+
+- Build de servidor e cliente concluído.
+- Suíte do servidor: 1.295 testes passaram; 2 de integração de autenticação
+  ficaram desativados no ambiente local habitual.
+- Testes do formulário, configurações, exportação e relatório passaram. Os testes
+  de análise/filtros e responsividade passaram após atualizar os mocks da API.
+- PostgreSQL real: 27/32 testes passaram, incluindo os dois novos cenários de
+  classificação. Permanecem as cinco falhas conhecidas: cancelamento físico nas
+  três condições de pagamento, vínculo histórico da liquidação estornada e
+  liquidações concorrentes acima do valor do compromisso.
+- Seed reaplicada somente em `fazendinha_local`; saldo Principal 18.200,
+  Secundária 500, zero pagamentos e compromissos. Checklist manual não executado.

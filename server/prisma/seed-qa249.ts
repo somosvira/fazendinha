@@ -48,10 +48,21 @@ try {
         const u = await tx.usuario.create({ data: { nome: `QA249 ${papel}`, email, papel, dono, status: "ATIVO", senhaHash: hashSenha(senha), ...aplicarPreset(papel) } });
         usuarios.push({ id: u.id, email, papel });
       }
-      const grupo = await tx.grupoCategoria.create({ data: { nome: "QA249 Operacional" } });
       const categorias = [];
-      for (const nome of ["QA249 Insumos", "QA249 Serviços", "QA249 Vendas"]) categorias.push(await tx.categoria.create({ data: { nome, grupoCategoriaId: grupo.id, classificacao: "CUSTEIO" } }));
-      const centro = await tx.centroCusto.create({ data: { nome: "QA249 Produção", ordem: 1 } });
+      for (const nome of ["QA249 Insumos", "QA249 Serviços", "QA249 Vendas", "QA249 Silagem", "QA249 Vacinas"]) categorias.push(await tx.categoria.create({ data: { nome, classificacao: "CUSTEIO" } }));
+      const investimento = await tx.categoria.create({ data: { nome: "QA249 Equipamentos", classificacao: "INVESTIMENTO" } });
+      categorias.push(investimento);
+      categorias.push(await tx.categoria.create({ data: { nome: "QA249 Categoria inativa", ativo: false } }));
+      const centros = [];
+      for (const [ordem, nome] of ["Pecuária", "Agronomia", "Equipe", "Gestão"].entries()) centros.push(await tx.centroCusto.create({ data: { nome, ordem } }));
+      const centro = centros[0];
+      const produtosClassificacao = [];
+      for (const [nome, categoriaId, centroCustoId, custoUnitario, unidade] of [
+        ["QA249 Silagem de milho", categorias[3].id, centro.id, 800, "kg"],
+        ["QA249 Vacina contra brucelose", categorias[4].id, centro.id, 200, "un"],
+        ["QA249 Adubo", categorias[0].id, centros[1].id, 100, "kg"],
+        ["QA249 Equipamento", investimento.id, centro.id, 1000, "un"],
+      ] as const) produtosClassificacao.push(await tx.produto.create({ data: { nome, categoriaId, centroCustoId, custoUnitario, unidade, estocavel: true } }));
       const parceiros = [];
       for (const [nome, papeis, ativo] of [
         ["QA249 Fornecedor", ["FORNECEDOR"], true], ["QA249 Cliente", ["CLIENTE"], true],
@@ -96,7 +107,7 @@ try {
       const inativo = await tx.produto.create({ data: { nome: "QA249 Produto inativo", unidade: "kg", ativo: false, custoUnitario: 10 } });
       const fechado = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 15));
       await tx.periodoFinanceiro.create({ data: { propriedadeId: principal.id, ano: fechado.getUTCFullYear(), mes: fechado.getUTCMonth() + 1, status: "FECHADO", fechadoPorId: usuarios[0].id, fechadoEm: new Date() } });
-      return { database, criadoEm: new Date().toISOString(), dataOperacao: date().toISOString().slice(0, 10), vencimento30: date(30).toISOString().slice(0, 10), vencimento60: date(60).toISOString().slice(0, 10), dataPeriodoFechado: fechado.toISOString().slice(0, 10), propriedades: [principal, secundaria], usuarios, parceiros, categorias, centro, casos, contas: [...contasPrincipais, secundariaBanco], produtosExtras: [extra, inativo], saldoPrincipalInicial: 18200, saldoSecundariaInicial: 500 };
+      return { database, criadoEm: new Date().toISOString(), dataOperacao: date().toISOString().slice(0, 10), vencimento30: date(30).toISOString().slice(0, 10), vencimento60: date(60).toISOString().slice(0, 10), dataPeriodoFechado: fechado.toISOString().slice(0, 10), propriedades: [principal, secundaria], usuarios, parceiros, categorias, centro, centros, produtosClassificacao, casos, contas: [...contasPrincipais, secundariaBanco], produtosExtras: [extra, inativo], saldoPrincipalInicial: 18200, saldoSecundariaInicial: 500 };
     }, { timeout: 30000 });
     // Verificação da seed usa as consultas reais que alimentam a interface.
     const contas = await listarContas(manifest.propriedades[0].id, true);
@@ -111,7 +122,7 @@ try {
     for (const u of manifest.usuarios) assert.ok(await autenticar(u.email, senha));
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     writeFileSync(resolve(directory, "comprovante-qa249.xml"), '<?xml version="1.0" encoding="UTF-8"?>\n<comprovanteQA><aviso>DOCUMENTO FICTICIO SEM VALOR FISCAL</aviso><numero>QA249-001</numero><valor>100.00</valor></comprovanteQA>\n');
-    console.log("Seed verificada: 2 propriedades, 2 acessos, 8 contas realistas, 6 parceiros, 18 produtos, 3 categorias, 1 centro; 3 inventários e nenhum compromisso/pagamento.");
+    console.log("Seed verificada: 2 propriedades, 2 acessos, 8 contas realistas, 6 parceiros, 22 produtos, 7 categorias (1 inativa), 4 centros padrão; 3 inventários e nenhum compromisso/pagamento.");
   }
   console.log(`Login: qa249@example.test / ${senha}\nConsulta: qa249-consulta@example.test / ${senha}`);
 } finally { await prisma.$disconnect(); }

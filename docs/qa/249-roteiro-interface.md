@@ -32,7 +32,7 @@ pnpm --filter rionovo-server seed:qa249
 ```
 
 A seed é **aditiva**: mantém dados locais existentes e acrescenta os cadastros
-com prefixo QA249. Reexecutá-la não apaga nem restaura testes manuais já feitos.
+da massa QA249, mais os quatro centros padrão. Reexecutá-la não apaga nem restaura testes manuais já feitos.
 Não existe mais `qa249:dev`, `qa249:prepare` ou criação de banco por rodada.
 
 - Acesso completo: **qa249@example.test** / **QA249-local-2026!**
@@ -63,8 +63,8 @@ preservados. Não é criado outro banco ou outro servidor PostgreSQL.
 | Usuário e permissões | Login, autorização para lançar e autoria/auditoria | Proprietário ativo e usuário de consulta, com hash de senha |
 | Conta financeira | Receber/pagar no ato ou liquidar depois | Corrente operacional, poupança, conta de pagamento, caixa físico, aplicação, conta fora do saldo geral, conta inativa e banco da propriedade secundária |
 | Parceiro e papéis | Fornecedor na compra/devolução, cliente na venda, prestador no serviço | Fornecedor, Cliente, Prestador, Múltiplos papéis, Fornecedor inativo e Papel incompatível |
-| Grupo de categoria e categoria | Classificar operação e conferir relatórios; opcionais no domínio atual | QA249 Operacional; QA249 Insumos, QA249 Serviços e QA249 Vendas |
-| Centro de custo | Classificação gerencial; opcional no domínio atual | QA249 Produção |
+| Categoria | Classificar operação e conferir relatórios; opcionais no domínio atual | QA249 Insumos, Serviços, Vendas, Silagem, Vacinas, Equipamentos e Categoria inativa |
+| Centro de custo | Classificação gerencial; opcional no domínio atual | Pecuária |
 | Produto | Item físico exige produto ativo; fornece unidade e custo sugerido | Produto por fluxo em kg a R$ 10; adicional de U16 em un; produto inativo |
 | Estoque inicial | Vender/devolver/ajustar exige uma posição física conhecida | 10 kg nos produtos U06, U10 e U11, originados por operações de inventário |
 | Período financeiro | Validar datas permitidas e rejeitar lançamentos em mês fechado | Mês anterior fechado na Principal; mês atual sem fechamento (aberto por regra do domínio) |
@@ -80,10 +80,10 @@ Parceiros, produtos, categorias e centros são catálogos compartilhados no mode
 atual; não espere que desapareçam ao trocar propriedade. Já contas, operações e
 saldos físicos devem respeitar o escopo selecionado.
 
-O cadastro dessas categorias e do centro de custo ainda não possui uma tela
-administrativa real: a seed os insere diretamente no banco e a conferência manual
-ocorre nos seletores de Nova operação. A aba Categorias atual usa dados de
-demonstração e não serve como evidência para esta massa.
+Categorias e centros podem ser criados, editados e desativados diretamente em
+**Financeiro > Configurações financeiras**. Não existem grupos. O produto sugere
+a categoria do item e o centro da operação; a confirmação grava nome e classificação
+históricos. Categorias e centros continuam sendo catálogos compartilhados.
 
 ## 3. Conferir a massa antes de começar
 
@@ -94,11 +94,14 @@ demonstração e não serve como evidência para esta massa.
 - [ ] Estoque U06, U10 e U11: **10 kg cada**; demais produtos ativos: zero.
 - [ ] Operações: **3 inventários** com descrição `SEED QA249 ... estoque inicial`.
 - [ ] Compromissos e extratos: nenhum pagamento/recebimento inicial.
-- [ ] Em Nova operação, o seletor Categoria mostra o grupo **QA249 Operacional**
-  com **QA249 Insumos**, **QA249 Serviços** e **QA249 Vendas**; o seletor Centro
-  de custo mostra **QA249 Produção**.
+- [ ] Configurações mostra 7 categorias QA249: Insumos, Serviços, Vendas, Silagem,
+  Vacinas, Equipamentos (Investimento) e Categoria inativa. São 6 ativas e 1 inativa.
+- [ ] Centros padrão: **Pecuária, Agronomia, Equipe e Gestão**, sem campo investimento.
+- [ ] Produtos adicionais: Silagem de milho (800, Silagem/Pecuária), Vacina contra
+  brucelose (200, Vacinas/Pecuária), Adubo (100, Insumos/Agronomia) e Equipamento
+  (1.000, Equipamentos/Pecuária), todos com estoque inicial zero.
 
-A seed contém 8 contas ao todo e 18 produtos (17 ativos e 1 inativo). U05 e U18
+A seed contém 8 contas ao todo e 22 produtos (21 ativos e 1 inativo). U05 e U18
 não têm produto próprio. As contas cobrem os tipos Banco, Caixa e Aplicação; os
 bancos cobrem Corrente, Poupança e Pagamento, além dos estados fora do saldo geral,
 inativo e pertencente a outra propriedade. Os três inventários valem R$ 100 cada: podem aparecer
@@ -127,7 +130,7 @@ Para cada teste Uxx:
 3. Se houver produto: selecione o do fluxo, quantidade **10**, base **Valor unitário**,
    valor **10**. Confira unidade **kg** e total **R$ 100**. Não aceite cegamente um
    valor sugerido pelo cadastro.
-4. Categoria **QA249 Insumos** e centro **QA249 Produção**, salvo indicação diferente.
+4. Categoria **QA249 Insumos** e centro **Pecuária**, salvo indicação diferente.
 5. Selecione parceiro conforme fluxo. Para operações físicas sem financeiro, deixe
    parceiro vazio se o formulário não o solicitar. No serviço use **QA249 Serviços**;
    na venda, **QA249 Vendas**.
@@ -420,7 +423,7 @@ fluxos aplicáveis. As falhas conhecidas devem permanecer visíveis no registro.
 
 ## Validação da preparação
 
-O único banco local `fazendinha_local` foi salvo em backup, resetado e preenchido
+O único banco local `fazendinha_local` foi resetado e preenchido
 somente com a massa QA249. A seed verificou pelos serviços reais as 8 contas, os
 saldos de abertura, os estoques e o login dos dois usuários. O estado inicial tem
 3 inventários, nenhum compromisso, nenhum pagamento e nenhum rascunho.
@@ -444,9 +447,25 @@ pendente de execução humana.
 
 ## Cadastros gerenciais e identificação das parcelas
 
-- [ ] Em **Financeiro > Configurações financeiras > Categorias**, crie um grupo e uma categoria vinculada a ele; recarregue e confirme a persistência.
+- [ ] Em **Financeiro > Configurações financeiras > Categorias**, crie uma categoria sem grupo; recarregue e confirme a persistência.
 - [ ] Edite e desative a categoria. Ela permanece visível como inativa na configuração e deixa de aparecer em novas operações.
-- [ ] Tente desativar um grupo com categoria ativa. O sistema deve bloquear a ação e orientar a desativação das categorias primeiro.
-- [ ] Em **Centros de custo**, crie um centro operacional e outro de investimento; edite e desative um deles, preservando referências históricas.
+- [ ] Confira que grupos não aparecem na configuração nem no formulário.
+- [ ] Em **Centros de custo**, confira os quatro padrões e crie um centro personalizado, sem classificar investimento; edite e desative um deles, preservando referências históricas.
 - [ ] Crie uma operação de R$ 100 em duas parcelas de R$ 50. Compromissos, detalhe da operação, modal de liquidação e relatório devem identificar os títulos como **(1/2) descrição** e **(2/2) descrição**.
 - [ ] Entre com um usuário sem a permissão `lancar`: os cadastros devem estar disponíveis apenas para consulta, sem ações de criação ou alteração.
+
+## Classificação por item — nova rodada
+
+- [ ] Confira a massa limpa: 8 contas, 22 produtos (21 ativos e 1 inativo), 7 categorias (6 ativas e 1 inativa), 4 centros. Principal R$ 18.200; Secundária R$ 500; Consolidado R$ 18.700. Não há pagamentos nem compromissos iniciais.
+- [ ] Em Produtos, abra **QA249 Silagem de milho**: categoria **QA249 Silagem**, centro **Pecuária**, preço 800. Abra **QA249 Vacina contra brucelose**: categoria **QA249 Vacinas**, centro Pecuária, preço 200. Ambos começam sem estoque.
+- [ ] Na Principal, crie compra para estoque **QA CLASS Compra mista**: Silagem 1 × 800 e Vacina 1 × 200. As categorias devem ser preenchidas por item, o centro deve sugerir Pecuária e a revisão deve mostrar **Silagem 800 + Vacinas 200 = 1.000**. Escolha Fornecedor e pagamento a prazo, duas parcelas de 500, uma hoje e outra em 30 dias. Confirme e anote o número da operação.
+- [ ] No detalhe, confira categoria e classificação de cada item e parcelas (1/2) e (2/2). Em Relatórios → Despesas por categoria, selecione Compras e serviços, período de hoje e categoria QA249 Silagem: **800**. Vacinas: **200**. Com todos os filtros, o total desta compra é 1.000. Considere os deltas caso outros fluxos já tenham sido executados.
+- [ ] Pague a primeira parcela de 500 no Banco Operacional. Em Pagamentos: **Silagem 400 / Vacinas 100**. Em A pagar, amplie o fim até o vencimento da segunda parcela: **Silagem 400 / Vacinas 100**. Se o fim não incluir esse vencimento, o saldo dessa parcela não aparece. O saldo bancário diminui somente 500.
+- [ ] Filtre o centro Pecuária: a compra aparece. Filtre Agronomia ou troque para a Secundária: essa compra não aparece. No consolidado ela aparece uma única vez. Volte para a Principal.
+- [ ] Edite o produto Silagem para outra categoria. Em Configurações, renomeie QA249 Silagem para **QA249 Silagem renomeada** e altere a classificação padrão para investimento. A compra confirmada deve continuar mostrando **QA249 Silagem / Custeio / 800**; o pagamento continua 400. O filtro pela categoria renomeada encontra esse histórico pelo vínculo. Restaure os cadastros ao terminar.
+- [ ] Antes de pagar a segunda parcela, cancele a compra mista com motivo. Compras e serviços e A pagar devem deixar de somar essa operação; Pagamentos, incluindo a data do cancelamento, deve somar zero. O extrato deve preservar pagamento e estorno. A categoria do estorno deve desfazer os mesmos 400/100. Registre separadamente qualquer divergência física de estoque já conhecida.
+- [ ] Abra um rascunho com Silagem e **QA249 Adubo** (centro Agronomia). Os centros divergem: o formulário deve pedir a escolha. Escolha Gestão e troque o Adubo por Vacina; **Gestão deve permanecer**. Aguarde salvar, recarregue e confira. Descarte esse rascunho.
+- [ ] Crie um serviço de 100 sem itens, categoria QA249 Serviços e centro Equipe. Confira categoria no detalhe e nos relatórios. Em outra compra para consumo direto, use descrição livre, sem produto e sem categoria; o valor deve aparecer em **Sem categoria**.
+- [ ] Use QA249 Equipamento em novo rascunho: deve herdar **Investimento**. Altere a classificação apenas no item e confira que o cadastro original não foi alterado. Descarte o rascunho. Desative uma categoria e confira que ela permanece nos filtros históricos, mas não é oferecida para novos itens.
+- [ ] Centavos: crie compra para consumo direto de dois itens avulsos, Silagem **0,02** e Vacinas **0,01**, a prazo em três parcelas de 0,01. Pague as três. O total pago deve ser 0,03, Silagem 0,02 e Vacinas 0,01; não deve sobrar pendência. Compare o delta por categoria antes/depois.
+- [ ] Gere relatório gerencial incluindo os vencimentos. Confira as mesmas categorias, sem grupos; valores de parcelas distribuídos sem duplicar o total e investimento separado pela classificação do item. Exporte o CSV e confira os valores.
