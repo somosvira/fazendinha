@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import pg from "pg";
 import type { PrismaClient } from "@prisma/client";
+import { newEntityId } from "@fazendinha/shared";
 
 // O runner usa tabelas em um schema temporário dentro do único banco local.
 const database = "fazendinha_local";
@@ -72,6 +73,28 @@ async function snapshot(label: string) {
   return state;
 }
 async function pay(id: number, valor: number) { return ops.liquidarCompromisso(id, { data, valor, contaId: accountId, usuarioId: userId }); }
+
+// O estorno exige as identidades que o cliente geraria (offline-first): a
+// função nunca inventa um UUID de reversão sozinha. Aqui simulamos o mesmo
+// contrato que FormOperacao.tsx/OperacaoFinanceiraDetalhe.tsx cumprem.
+function identidadesEstornoOperacao(op: { transacoes: { id: string; status: string; tipo: string; movimentos: { id: string }[] }[] }) {
+  return op.transacoes
+    .filter((transacao) => transacao.status === "CONFIRMADA" && transacao.tipo !== "REVERSAO")
+    .map((transacao) => ({
+      originalId: transacao.id,
+      id: newEntityId(),
+      movimentos: transacao.movimentos.map((movimento) => ({ originalId: movimento.id, id: newEntityId() })),
+    }));
+}
+function estornarOperacao(op: Parameters<typeof identidadesEstornoOperacao>[0] & { id: string }, motivo: string) {
+  return ops.estornarOperacao(op.id, motivo, identidadesEstornoOperacao(op), userId);
+}
+function estornarTransacao(transacao: { id: string; movimentos: { id: string }[] }, motivo: string) {
+  return ops.estornarTransacao(transacao.id, {
+    motivo, transacaoId: newEntityId(),
+    movimentos: transacao.movimentos.map((movimento) => ({ originalId: movimento.id, id: newEntityId() })),
+  }, userId);
+}
 
 // Falha REAL do PostgreSQL, depois de operação, itens, estoque e dinheiro terem
 // sido inseridos. Não substitui Prisma, serviços ou $transaction por mocks.
@@ -162,7 +185,7 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   });
   it.each(["A_VISTA", "A_PRAZO", "PARCIAL"])("cancelamento %s neutraliza estoque e dinheiro sem apagar histórico", async condicao => {
     await snapshot("antes"); const op = await ops.criarOperacao(input(condicao)); await snapshot("confirmada");
-    await ops.estornarOperacao(op.id, "Cancelamento QA", userId);
+    await estornarOperacao(op, "Cancelamento QA");
     const state = await snapshot("cancelada");
     expect.soft(state.saldoConta).toBe(1000); expect.soft(state.saldoEstoque).toBe(0);
     expect(state.operacoes[0].status).toBe("CANCELADA");
@@ -171,15 +194,15 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     expect(state.operacoes[0].compromissos.every(c => c.status === "CANCELADO")).toBe(true);
   });
   it("estorno repetido é recusado sem gerar novos efeitos", async () => {
-    const op = await ops.criarOperacao(input("A_VISTA")); await ops.estornarOperacao(op.id, "Primeiro estorno", userId);
+    const op = await ops.criarOperacao(input("A_VISTA")); await estornarOperacao(op, "Primeiro estorno");
     const before = await snapshot("primeiro estorno");
-    await expect(ops.estornarOperacao(op.id, "Segundo estorno", userId)).rejects.toThrow("já foi cancelada");
+    await expect(estornarOperacao(op, "Segundo estorno")).rejects.toThrow("já foi cancelada");
     expect(await snapshot("repetição recusada")).toEqual(before);
   });
   it("estorno de liquidação reabre compromisso e preserva vínculo histórico", async () => {
     const op = await ops.criarOperacao(input()); const tx = await pay(op.compromissos[0].id, 100);
     const before = await snapshot("liquidada");
-    await ops.estornarTransacao(tx.id, "Estorno QA", userId);
+    await estornarTransacao(tx, "Estorno QA");
     const after = await snapshot("liquidação estornada");
     expect(after.saldoConta).toBe(1000); expect(after.saldoEstoque).toBe(10);
     expect(after.operacoes[0].compromissos[0].status).toBe("PENDENTE");
@@ -207,7 +230,7 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   it("falha durante cancelamento conserva todos os efeitos originais", async () => {
     const op = await ops.criarOperacao(input("A_VISTA"));
     const before = await snapshot("confirmada");
-    await failAudit(() => ops.estornarOperacao(op.id, "Cancelamento com falha", userId));
+    await failAudit(() => estornarOperacao(op, "Cancelamento com falha"));
     expect(await snapshot("falha no cancelamento")).toEqual(before);
   });
 
@@ -306,7 +329,7 @@ describe("categorias por item e relatórios", () => {
     const filtro = { inicio: "2026-09-01", fim: "2026-11-30", base: "compras" as const, categoriaId: silagem.id };
     expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "800.00", categorias: [{ categoria: silagem.nome, valor: "800.00" }] });
     expect((await analisarCategorias({ ...filtro, centroCustoId: centro.id }, pid)).total).toBe("800.00");
-    expect((await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: "0" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias(filtro, pid + 9999)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, inicio: "2026-10-01" }, pid)).total).toBe("0.00");
     const pagamento = await pay(op.compromissos[0].id, 500);
@@ -317,7 +340,7 @@ describe("categorias por item e relatórios", () => {
     expect(dashboard.despesasPorCategoria.map((c) => [c.categoria, Number(c.valor)])).toContainEqual([silagem.nome, 400]);
     const relatorio = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "ambos" }, pid);
     expect(relatorio.categorias?.itens).toEqual(expect.arrayContaining([expect.objectContaining({ categoria: silagem.nome, total: 400 })]));
-    const estorno = await ops.estornarTransacao(pagamento.id, "Estorno de teste", userId);
+    const estorno = await estornarTransacao(pagamento, "Estorno de teste");
     // Posiciona o estorno em outro mês para verificar a competência de caixa.
     await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
     expect((await analisarCategorias({ ...filtro, base: "pagamentos" }, pid)).total).toBe("0.00");
@@ -327,7 +350,7 @@ describe("categorias por item e relatórios", () => {
     expect(relatorioEstornado.resumo.saidas).toBe(0);
     expect(relatorioEstornado.operacoes.find((o) => o.tipo === "estorno")).toMatchObject({ quantidade: 1, valor: 500 });
     expect(relatorioEstornado.operacoes.find((o) => o.tipo === "custeio")).toMatchObject({ quantidade: 1, valor: 400 });
-    await ops.estornarOperacao(op.id, "Cancelar teste misto", userId);
+    await estornarOperacao(op, "Cancelar teste misto");
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("0.00");
   });
@@ -349,12 +372,12 @@ describe("correções da revisão", () => {
     const pagamento = await ops.criarTransacaoAvulsa({ tipo: "PAGAMENTO", propriedadeId: pid, contaId: accountId, data, valor: 100, descricao: "Frete avulso" });
     await ops.criarTransacaoAvulsa({ tipo: "RECEBIMENTO", propriedadeId: pid, contaId: accountId, data, valor: 75, descricao: "Recebimento avulso" });
     expect(await analisarCategorias(filtro, pid)).toMatchObject({ total: "100.00", linhas: [{ operacaoId: null, contaId: accountId, movimentoId: pagamento.movimentos[0].id, categoria: "Sem categoria", valor: "100.00" }] });
-    expect((await analisarCategorias({ ...filtro, categoriaId: 0, centroCustoId: 0 }, pid)).total).toBe("100.00");
-    expect((await analisarCategorias({ ...filtro, categoriaId: 999999 }, pid)).total).toBe("0.00");
-    expect((await analisarCategorias({ ...filtro, centroCustoId: 999999 }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, categoriaId: "0", centroCustoId: "0" }, pid)).total).toBe("100.00");
+    expect((await analisarCategorias({ ...filtro, categoriaId: "00000000-0000-4000-8000-000000000999" }, pid)).total).toBe("0.00");
+    expect((await analisarCategorias({ ...filtro, centroCustoId: "00000000-0000-4000-8000-000000000999" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "compras" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias(filtro, pid + 99999)).total).toBe("0.00");
-    const estorno = await ops.estornarTransacao(pagamento.id, "Reverter frete avulso", userId);
+    const estorno = await estornarTransacao(pagamento, "Reverter frete avulso");
     await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, fim: "2026-09-30" }, pid)).total).toBe("100.00");
