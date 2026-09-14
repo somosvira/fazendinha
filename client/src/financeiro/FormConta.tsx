@@ -1,4 +1,5 @@
 import { FormEvent, useRef, useState } from "react";
+import { newEntityId } from "@fazendinha/shared";
 import { ApiError, atualizarConta, criarConta, type Conta, type ContaPatch, type TipoConta, type TipoBancario } from "./novo-api";
 import { CamposCadastro } from "./CamposCadastro";
 import { Button, ErrorBox, hoje } from "./financeiro-ui";
@@ -25,6 +26,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
+  const [novoId] = useState(() => newEntityId());
   const [tipoBancario, setTipoBancario] = useState<TipoBancario | "">(conta?.tipoBancario ?? "");
   const [extras, setExtras] = useState({ agencia: conta?.agencia ?? "", numeroConta: conta?.numeroConta ?? "", digito: conta?.digito ?? "", titular: conta?.titular ?? "", local: conta?.local ?? "", responsavel: conta?.responsavel ?? "", observacoes: conta?.observacoes ?? "" });
 
@@ -39,7 +41,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
     const adicionais = { ...Object.fromEntries(Object.entries(extras).map(([k, v]) => [k, texto(v)])), tipoBancario: tipoBancario || null };
     try {
       if (!conta) {
-        await criarConta({ ...adicionais, nome: nome.trim(), tipo, instituicao: texto(instituicao), identificacao: texto(identificacao), saldoAbertura: valorMonetario(saldoAbertura), dataSaldoAbertura, incluirNoSaldoGeral, ordem: ordemInicial });
+        await criarConta({ id: novoId, ...adicionais, nome: nome.trim(), tipo, instituicao: texto(instituicao), identificacao: texto(identificacao), saldoAbertura: valorMonetario(saldoAbertura), dataSaldoAbertura, incluirNoSaldoGeral, ordem: ordemInicial });
       } else {
         const patch: ContaPatch = {};
         Object.assign(patch, Object.fromEntries(Object.entries(adicionais).filter(([k, v]) => v !== (conta[k as keyof Conta] ?? null))));

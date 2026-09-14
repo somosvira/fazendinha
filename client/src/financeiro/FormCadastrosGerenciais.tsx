@@ -1,4 +1,5 @@
 import { FormEvent, useRef, useState } from "react";
+import { newEntityId } from "@fazendinha/shared";
 import {
   ApiError,
   atualizarCategoria,
@@ -25,6 +26,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
+  const [novoId] = useState(() => newEntityId());
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     const novosErros: Erros = {};
@@ -33,7 +35,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     emCurso.current = true; setSalvando(true); setErroGeral("");
     const dados = { nome: nome.trim(), classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial };
     try {
-      if (!categoria) await criarCategoria(dados);
+      if (!categoria) await criarCategoria({ id: novoId, ...dados });
       else await atualizarCategoria(categoria.id, dados);
       await onSalvo();
     } catch (erro) { erroDaApi(erro, setErros, setErroGeral); }
@@ -56,6 +58,7 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
+  const [novoId] = useState(() => newEntityId());
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     if (nome.trim().length < 2) { setErros({ nome: "Informe um nome com pelo menos 2 caracteres" }); return; }
@@ -63,7 +66,7 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
     emCurso.current = true; setSalvando(true); setErros({}); setErroGeral("");
     const dados = { nome: nome.trim(), ordem: centro?.ordem ?? ordemInicial };
     try {
-      if (!centro) await criarCentroCusto(dados);
+      if (!centro) await criarCentroCusto({ id: novoId, ...dados });
       else await atualizarCentroCusto(centro.id, dados);
       await onSalvo();
     } catch (erro) { erroDaApi(erro, setErros, setErroGeral); }

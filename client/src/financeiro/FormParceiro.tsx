@@ -1,4 +1,5 @@
 import { FormEvent, useRef, useState } from "react";
+import { newEntityId } from "@fazendinha/shared";
 import { ApiError, atualizarParceiro, criarParceiro, type Parceiro, type ParceiroPatch, type PapelParceiro } from "./novo-api";
 import { CamposCadastro } from "./CamposCadastro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro, FORMAS_PAGAMENTO } from "./lib/parceiros";
@@ -19,6 +20,7 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
+  const [novoId] = useState(() => newEntityId());
   const [extras, setExtras] = useState({ nomeFantasia: parceiro?.nomeFantasia ?? "", pessoaContato: parceiro?.pessoaContato ?? "", cep: parceiro?.cep ?? "", logradouro: parceiro?.logradouro ?? "", numero: parceiro?.numero ?? "", complemento: parceiro?.complemento ?? "", bairro: parceiro?.bairro ?? "", cidade: parceiro?.cidade ?? "", uf: parceiro?.uf ?? "", referencia: parceiro?.referencia ?? "", observacoes: parceiro?.observacoes ?? "" });
   const [telefoneWhatsapp, setTelefoneWhatsapp] = useState(parceiro?.telefoneWhatsapp ?? false);
   const [formaPreferida, setFormaPreferida] = useState(parceiro?.formaPagamentoPreferida ?? "");
@@ -41,7 +43,7 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
     const dados = { ...Object.fromEntries(Object.entries(extras).map(([k, v]) => [k, texto(v)])), cep: somenteDigitos(extras.cep) || null, uf: texto(extras.uf)?.toUpperCase() ?? null, nome: nome.trim(), documento: doc, papeis, telefone: texto(telefone), email: texto(email), telefoneWhatsapp, formaPagamentoPreferida: formaPreferida || null, condicaoPagamentoPreferida: condicaoPreferida || null, prazosPagamento: dias };
     try {
       if (!parceiro) {
-        await criarParceiro(dados);
+        await criarParceiro({ id: novoId, ...dados });
       } else {
         const anterior = { ...parceiro, papeis: papeisDoParceiro(parceiro), telefoneWhatsapp: parceiro.telefoneWhatsapp ?? false, prazosPagamento: parceiro.prazosPagamento ?? [] };
         const patch: ParceiroPatch = Object.fromEntries(Object.entries(dados).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(anterior[k as keyof typeof anterior] ?? null)));

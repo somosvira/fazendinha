@@ -263,7 +263,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ id: expect.stringMatching(/^[0-9a-f-]{36}$/i), nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {
@@ -273,7 +273,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome do centro de custo"), { target: { value: "Implantação de pomar" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar centro" }));
-    await waitFor(() => expect(criarCentroCusto).toHaveBeenCalledWith({ nome: "Implantação de pomar", ordem: 1 }));
+    await waitFor(() => expect(criarCentroCusto).toHaveBeenCalledWith({ id: expect.stringMatching(/^[0-9a-f-]{36}$/i), nome: "Implantação de pomar", ordem: 1 }));
   });
 
   it("oculta ações de criação para acesso somente consulta", async () => {
