@@ -1,25 +1,21 @@
-import { useEffect, useState } from "react";
-import { obterExtratoGeral, type Conta, type MovimentoGeral } from "./novo-api";
+import { useState } from "react";
+import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
+import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal";
 
-export function ExtratoGeral({ contas, onAbrir }: { contas: Conta[]; onAbrir: (movimento: MovimentoGeral) => void }) {
-  const [movimentos, setMovimentos] = useState<MovimentoGeral[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+export function ExtratoGeral({ contas, movimentos, carregando, erro, onAbrir }: {
+  contas: Conta[];
+  movimentos: MovimentoGeral[];
+  carregando: boolean;
+  erro: string | null;
+  onAbrir: (movimento: MovimentoGeral) => void;
+}) {
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [conta, setConta] = useState("");
   const [instituicao, setInstituicao] = useState("");
-  useEffect(() => {
-    let vigente = true;
-    setCarregando(true); setErro(null);
-    obterExtratoGeral().then(dados => { if (vigente) setMovimentos(dados); })
-      .catch(e => { if (vigente) setErro(e.message); })
-      .finally(() => { if (vigente) setCarregando(false); });
-    return () => { vigente = false; };
-  }, [contas]);
   const intervaloInvalido = !!inicio && !!fim && inicio > fim;
   const filtrados = movimentos.filter(m => {
     const data = m.transacao.data.slice(0, 10);
@@ -42,6 +38,7 @@ export function ExtratoGeral({ contas, onAbrir }: { contas: Conta[]; onAbrir: (m
         { chave: "descricao", titulo: "Movimentação", alinhamento: "centro", principal: true, larguraMinima: 220, celula: m => <><strong>{m.transacao.descricao || m.transacao.tipo.replaceAll("_", " ")}</strong>{m.transacao.status === "REVERTIDA" && <div className="mt-1 text-xs text-ink-3">Revertida</div>}</> },
         { chave: "conta", titulo: "Conta", alinhamento: "centro", larguraMinima: 160, celula: m => m.conta.nome },
         { chave: "instituicao", titulo: "Instituição", alinhamento: "centro", larguraMinima: 140, celula: m => m.conta.instituicao || "—" },
+        { chave: "operacao", titulo: "Operação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: m => m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} /> : <span className="text-xs text-ink-3">Transação avulsa</span> },
         { chave: "entrada", titulo: "Entrada", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap text-green-800">{m.direcao === "ENTRADA" ? brl(m.valor) : "—"}</span> },
         { chave: "saida", titulo: "Saída", alinhamento: "centro", larguraMinima: 130, celula: m => <span className="whitespace-nowrap">{m.direcao === "SAIDA" ? brl(m.valor) : "—"}</span> },
       ]} /> : <Empty>Nenhuma movimentação encontrada para os filtros selecionados.</Empty>}

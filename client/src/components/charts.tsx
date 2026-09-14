@@ -1,5 +1,7 @@
 /* Rio Novo — SVG charts e formatadores (sem chart lib externa) */
 
+import { useId } from "react";
+
 export const fmt = (
   n: number,
   opts: { showSign?: boolean; decimals?: number; unit?: string } = {},
@@ -512,4 +514,33 @@ export function Donut({
       )}
     </svg>
   );
+}
+
+/** Fluxo em reais; os valores exatos de cada barra ficam no tooltip nativo. */
+export function EntradaSaidaChart({ data }: { data: { data: string; entradas: number; saidas: number }[] }) {
+  const tituloId = useId();
+  const W = 960, H = 280, padL = 130, padR = 20, padT = 20, padB = 40;
+  const maximo = Math.max(...data.flatMap(d => [d.entradas, d.saidas]), 1);
+  const ordem = 10 ** Math.floor(Math.log10(maximo));
+  const teto = Math.ceil(maximo / ordem) * ordem;
+  const altura = H - padT - padB;
+  const faixa = (W - padL - padR) / Math.max(data.length, 1);
+  const largura = faixa * 0.3;
+  const y = (valor: number) => H - padB - valor / teto * altura;
+  return <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-labelledby={tituloId}>
+    <title id={tituloId}>Entradas e saídas por dia, em reais</title>
+    {Array.from({ length: 5 }, (_, indice) => {
+      const valor = teto * indice / 4;
+      return <g key={indice}><line x1={padL} x2={W - padR} y1={y(valor)} y2={y(valor)} className="grid-line" /><text x={padL - 12} y={y(valor) + 4} textAnchor="end" className="chart-tick-text" style={{ fontSize: 14 }}>{fmtMoneyExact(valor)}</text></g>;
+    })}
+    {data.map((dia, indice) => {
+      const x = padL + indice * faixa + faixa * 0.15;
+      const dataBR = dia.data.split("-").reverse().join("/");
+      return <g key={dia.data}>
+        <rect x={x} y={y(dia.entradas)} width={largura} height={dia.entradas / teto * altura} rx={2} fill="var(--pos)"><title>{dataBR} — Entradas: {fmtMoneyExact(dia.entradas)}</title></rect>
+        <rect x={x + largura + faixa * 0.1} y={y(dia.saidas)} width={largura} height={dia.saidas / teto * altura} rx={2} fill="var(--neg)"><title>{dataBR} — Saídas: {fmtMoneyExact(dia.saidas)}</title></rect>
+        <text x={padL + (indice + 0.5) * faixa} y={H - padB + 22} textAnchor="middle" className="chart-tick-text" style={{ fontSize: 14 }}>{Number(dia.data.slice(8, 10))}</text>
+      </g>;
+    })}
+  </svg>;
 }
