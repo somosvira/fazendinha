@@ -21,11 +21,14 @@ import type { RascunhoOperacao } from "./novo-api";
 export type EstadoRascunhoAtivo = {
   /** Rascunho salvo no servidor para o usuário no sítio ativo; `null` quando não há. */
   rascunho: RascunhoOperacao | null;
+  /** Alguma resposta já disse se há rascunho neste contexto. Até lá, `rascunho`
+   *  nulo quer dizer "ainda não sei", e não "não há rascunho". */
+  conhecido: boolean;
   /** O formulário de nova operação está aberto, editando o rascunho. */
   editando: boolean;
 };
 
-let estado: EstadoRascunhoAtivo = { rascunho: null, editando: false };
+let estado: EstadoRascunhoAtivo = { rascunho: null, conhecido: false, editando: false };
 let geracao = 0;
 const ouvintes = new Set<() => void>();
 const contextoAtual = () => `${getToken() ?? ""}|${getPropriedadeAtiva() ?? ""}`;
@@ -45,7 +48,7 @@ export function prepararPublicacaoRascunho(tipo: "leitura" | "escrita") {
     const nadaMaisNovo = tipo === "escrita" || geracao === saida;
     if (mesmoContexto && nadaMaisNovo) {
       geracao += 1;
-      atualizar({ rascunho });
+      atualizar({ rascunho, conhecido: true });
     }
     return rascunho;
   };
@@ -57,7 +60,7 @@ export function prepararPublicacaoRascunho(tipo: "leitura" | "escrita") {
  *  rodam antes dos do App: a tela de operações dispara a sua leitura antes deste
  *  limpar, e perdê-la faria o formulário montar vazio sobre um rascunho salvo. */
 export function limparRascunhoAtivo() {
-  if (estado.rascunho) atualizar({ rascunho: null });
+  if (estado.rascunho || estado.conhecido) atualizar({ rascunho: null, conhecido: false });
 }
 
 /** Marca o formulário de nova operação como aberto; devolve a função que desmarca. */

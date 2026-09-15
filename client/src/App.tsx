@@ -285,8 +285,9 @@ export function App() {
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
   };
 
-  // Atalho "Trabalho ativo" da sidebar: reabre o formulário da operação em
-  // rascunho. A sub-rota é publicada antes da troca de aba (ver router.ts).
+  // Atalho "Trabalho ativo" da sidebar: abre o formulário de operação, que
+  // continua o rascunho se houver ou começa um novo. A sub-rota é publicada
+  // antes da troca de aba (ver router.ts).
   const abrirRascunhoAtivo = () => {
     setDeepLinkFiltros(null);
     setRotaWorklist(null);
@@ -484,8 +485,9 @@ export function App() {
   }, [usuario, tab]);
 
   // Rascunho de operação do usuário no sítio ativo, oferecido como "Trabalho
-  // ativo" no topo da sidebar. Só quem vê a aba Operações consulta o rascunho.
-  // O rascunho é por sítio: trocar de sítio esquece o anterior e busca o novo.
+  // ativo" no topo da sidebar (sem rascunho, o atalho vira "+ Nova operação").
+  // Só quem vê a aba Operações consulta o rascunho. O rascunho é por sítio:
+  // trocar de sítio esquece o anterior e busca o novo.
   const rascunhoAtivo = useRascunhoAtivo();
   const podeVerRascunho = visibleTabs.some((t) => t.id === "lancar");
   const usuarioId = usuario?.id ?? null;
@@ -505,8 +507,8 @@ export function App() {
     return () => document.removeEventListener("visibilitychange", aoVoltar);
   }, [token, usuarioId, podeVerRascunho, propAtiva]);
   const resumoRascunhoAtivo = useMemo(
-    () => (podeVerRascunho && rascunhoAtivo.rascunho ? resumoRascunho(rascunhoAtivo.rascunho) : null),
-    [podeVerRascunho, rascunhoAtivo.rascunho],
+    () => (rascunhoAtivo.rascunho ? resumoRascunho(rascunhoAtivo.rascunho) : null),
+    [rascunhoAtivo.rascunho],
   );
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
@@ -605,7 +607,9 @@ export function App() {
         onToggleColapsar={toggleSidebar}
         onAcessos={() => setTab("acessos")}
         onSair={onSair}
-        trabalhoAtivo={resumoRascunhoAtivo
+        // O atalho só aparece depois de se saber se há rascunho, para o "+" não
+        // piscar antes de o rascunho existente carregar.
+        trabalhoAtivo={podeVerRascunho && rascunhoAtivo.conhecido
           ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
           : null}
       />
