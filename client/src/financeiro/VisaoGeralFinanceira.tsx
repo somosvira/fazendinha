@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
-import { listarCompromissos, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro } from "./novo-api";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { abrirRotaNovaOperacao } from "../router";
+import { descartarRascunhoOperacao, listarCompromissos, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type DashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
-import { navegarPara } from "../router";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [mes, setMes] = useState(mesAtual());
@@ -15,6 +16,27 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [erro, setErro] = useState<string | null>(null);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mesCalendario, setMesCalendario] = useState(mesAtual());
+  const [substituirRascunho, setSubstituirRascunho] = useState(false);
+  const [preparando, setPreparando] = useState(false);
+
+  // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
+  // depois de confirmação, e "Ver rascunho atual" é a saída segura.
+  const abrirFormulario = () => { abrirRotaNovaOperacao(); onNav("lancar"); };
+  const iniciarNovaOperacao = async () => {
+    setPreparando(true); setErro(null);
+    try {
+      if (await obterRascunhoOperacao()) setSubstituirRascunho(true);
+      else abrirFormulario();
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
+  };
+  const descartarEIniciar = async () => {
+    setPreparando(true); setErro(null);
+    try { await descartarRascunhoOperacao(); setSubstituirRascunho(false); abrirFormulario(); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
+  };
+  const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
   useEffect(() => {
     let vigente = true;
@@ -33,7 +55,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const proximos = pendentes.slice(0, 5);
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={valor => { if (valor) setMes(valor); }} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => navegarPara("/financeiro/operacoes/nova"), 0); }}><Plus size={16} /> Nova operação</Button></div>} />
+    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={valor => { if (valor) setMes(valor); }} /><Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button></div>} />
     <ErrorBox erro={erro} />
     {dados && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -62,5 +84,19 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
 
 
     </>}
+    <ConfirmDialog
+      open={substituirRascunho}
+      title="Criar uma nova operação?"
+      message={<><p>Você já tem um rascunho de operação em andamento.</p><p className="mt-2">Para iniciar uma nova operação, o rascunho atual será descartado. Os dados preenchidos e documentos anexados serão excluídos permanentemente.</p></>}
+      confirmLabel="Criar mesmo assim"
+      cancelLabel="Ver rascunho atual"
+      cancelTone="safe"
+      tone="danger"
+      dangerFilled
+      processando={preparando}
+      onCancel={verRascunhoAtual}
+      onDismiss={() => setSubstituirRascunho(false)}
+      onConfirm={() => { void descartarEIniciar(); }}
+    />
   </PaginaFinanceira>;
 }

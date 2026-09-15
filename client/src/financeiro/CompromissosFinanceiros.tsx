@@ -4,10 +4,10 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { descartarRascunhoOperacao, liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, hoje, mesAtual, Metric, Modal, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill } from "./financeiro-ui";
 import type { Tab } from "../components/Shell";
+import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
-import { navegarPara } from "../router";
 
 export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }) {
   const [itens, setItens] = useState<Compromisso[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [pagando, setPagando] = useState<Compromisso | null>(null); const [contaId, setContaId] = useState(""); const [valor, setValor] = useState(""); const [erro, setErro] = useState<string | null>(null); const [aba, setAba] = useState<"PAGAR" | "RECEBER" | "LIQUIDADOS">("PAGAR"); const [soVencidos, setSoVencidos] = useState(false);
@@ -23,11 +23,11 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
   const itensNaVisao = visao === "calendario" ? lista.filter(c => c.dataVencimento.startsWith(mes)) : lista;
   const total = itensNaVisao.reduce((s, c) => s + Number(c.saldoPendente), 0);
   const pagar = async () => { if (!pagando) return; try { await liquidarCompromisso(pagando.id, { contaId: Number(contaId), valor: Number(valor), data: hoje(), formaPagamento: "PIX" }); setPagando(null); setContaId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
-  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { onNav("lancar"); window.setTimeout(() => navegarPara(`/financeiro/operacoes/nova?compromisso=${tipo}`), 0); };
+  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { abrirRotaNovaOperacao(tipo); onNav("lancar"); };
   const verRascunhoAtual = () => {
     setNovoCompromissoPendente(null);
+    abrirRotaNovaOperacao();
     onNav("lancar");
-    window.setTimeout(() => navegarPara("/financeiro/operacoes/nova"), 0);
   };
   const prepararNovoCompromisso = async (tipo: "PAGAR" | "RECEBER") => {
     setPreparando(true); setErro(null);

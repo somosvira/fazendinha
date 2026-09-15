@@ -1,4 +1,5 @@
 import { comPropriedade } from "../propriedadeScope";
+import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -61,10 +62,24 @@ export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
-export const obterRascunhoOperacao = () => req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho");
-export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) });
-export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" });
-export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
+// As quatro chamadas abaixo publicam o resultado em `rascunhoAtivo`, que alimenta
+// o atalho "Trabalho ativo" da sidebar e a própria tela de operações.
+export const obterRascunhoOperacao = () => {
+  const publicar = prepararPublicacaoRascunho("leitura");
+  return req<RascunhoOperacao | null>("/financeiro/operacoes/rascunho").then(publicar);
+};
+export const salvarRascunhoOperacao = (dados: unknown, versao?: number) => {
+  const publicar = prepararPublicacaoRascunho("escrita");
+  return req<RascunhoOperacao>("/financeiro/operacoes/rascunho", { method: "PUT", body: JSON.stringify({ dados, versao }) }).then(publicar);
+};
+export const descartarRascunhoOperacao = () => {
+  const publicar = prepararPublicacaoRascunho("escrita");
+  return req<void>("/financeiro/operacoes/rascunho", { method: "DELETE" }).then(() => { publicar(null); });
+};
+export const confirmarRascunhoOperacao = (versao?: number) => {
+  const publicar = prepararPublicacaoRascunho("escrita");
+  return req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) }).then((operacao) => { publicar(null); return operacao; });
+};
 export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData(); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
   if (input.numero) form.set("numero", input.numero);
