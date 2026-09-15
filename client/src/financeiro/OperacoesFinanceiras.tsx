@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarRange, ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
-import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId } from "../router";
+import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
 import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao } from "./novo-api";
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
@@ -76,7 +76,7 @@ export function OperacoesFinanceiras() {
   const filtradas = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id}`.toLowerCase().includes(busca.toLowerCase())), [itens, busca, status, tipo, efeito]);
   const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
-  const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); setDetalheId(null); setOperacaoBase(base); setForm(true); };
+  const abrirFormulario = (base: Operacao | null = null) => { window.history.pushState(null, "", URL_NOVA_OPERACAO); setDetalheId(null); setOperacaoBase(base); setForm(true); };
   const abrirNovaOperacao = async () => {
     setIniciandoNova(true); setErro(null);
     try {

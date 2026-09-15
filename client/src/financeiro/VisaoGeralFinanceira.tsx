@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
-import { listarCompromissos, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro } from "./novo-api";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { abrirRotaNovaOperacao } from "../router";
+import { descartarRascunhoOperacao, listarCompromissos, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type DashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 
@@ -10,6 +12,27 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [substituirRascunho, setSubstituirRascunho] = useState(false);
+  const [preparando, setPreparando] = useState(false);
+
+  // Mesmo cuidado de Compromissos: um rascunho em andamento só é descartado
+  // depois de confirmação, e "Ver rascunho atual" é a saída segura.
+  const abrirFormulario = () => { abrirRotaNovaOperacao(); onNav("lancar"); };
+  const iniciarNovaOperacao = async () => {
+    setPreparando(true); setErro(null);
+    try {
+      if (await obterRascunhoOperacao()) setSubstituirRascunho(true);
+      else abrirFormulario();
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
+  };
+  const descartarEIniciar = async () => {
+    setPreparando(true); setErro(null);
+    try { await descartarRascunhoOperacao(); setSubstituirRascunho(false); abrirFormulario(); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setPreparando(false); }
+  };
+  const verRascunhoAtual = () => { setSubstituirRascunho(false); abrirFormulario(); };
 
   useEffect(() => {
     const { inicio, fim } = limitesMes(mes); setErro(null);
@@ -26,7 +49,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
     .map((c) => ({ ...c, operacao: { ...c.operacao, descricao: tituloCompromisso(c) } }));
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); }}><Plus size={16} /> Nova operação</Button></div>} />
+    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button></div>} />
     <ErrorBox erro={erro} />
     {dados && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -53,5 +76,19 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
         {proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className="grid items-center gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><div className="break-words font-semibold">{c.operacao.descricao || c.operacao.tipo}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong></div>)}</div> : <Empty>Não há compromissos pendentes.</Empty>}
       </Panel>
     </>}
+    <ConfirmDialog
+      open={substituirRascunho}
+      title="Criar uma nova operação?"
+      message={<><p>Você já tem um rascunho de operação em andamento.</p><p className="mt-2">Para iniciar uma nova operação, o rascunho atual será descartado. Os dados preenchidos e documentos anexados serão excluídos permanentemente.</p></>}
+      confirmLabel="Criar mesmo assim"
+      cancelLabel="Ver rascunho atual"
+      cancelTone="safe"
+      tone="danger"
+      dangerFilled
+      processando={preparando}
+      onCancel={verRascunhoAtual}
+      onDismiss={() => setSubstituirRascunho(false)}
+      onConfirm={() => { void descartarEIniciar(); }}
+    />
   </PaginaFinanceira>;
 }

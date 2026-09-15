@@ -54,9 +54,11 @@ describe("AppSidebar — trabalho ativo", () => {
 });
 
 describe("TrabalhoAtivo", () => {
-  it("indica quando o formulário do rascunho está na tela", () => {
+  it("anuncia no nome quando o formulário do rascunho está na tela", () => {
     render(<TrabalhoAtivo resumo={resumo} ativo onAbrir={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Continuar rascunho/ }).getAttribute("aria-current")).toBe("page");
+    const botao = screen.getByRole("button", { name: "Rascunho em edição: Ração para o gado" });
+    // A página atual continua sendo o item "Operações"; o cartão não compete com ele.
+    expect(botao.getAttribute("aria-current")).toBeNull();
   });
 
   it("some com os textos no trilho recolhido e deixa só o ícone", () => {

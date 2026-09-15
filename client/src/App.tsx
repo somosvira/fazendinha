@@ -43,6 +43,9 @@ import { TerranoIntro } from "./components/TerranoIntro";
 const INTRO_MODE: "always" | "session" | "once" = "session";
 const INTRO_SEEN_KEY = "terrano:intro:seen";
 
+// Intervalo mínimo entre recargas do rascunho ao voltar para a aba do navegador.
+const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
+
 // Abas que já SÃO uma tela de chat com a IA. Nelas escondemos o botão flutuante
 // do Assistente (ChatWidget) — teria um botão de chat sobre o composer de chat,
 // além de colidir com o "Enviar/Perguntar" no canto inferior direito.
@@ -489,14 +492,22 @@ export function App() {
   useEffect(() => {
     limparRascunhoAtivo();
     if (!token || usuarioId == null || !podeVerRascunho) return;
+    let ultimaCarga = 0;
     // Falha aqui só esconde o atalho; a tela de operações mostra seus próprios erros.
-    const recarregar = () => { void obterRascunhoOperacao().catch(() => undefined); };
+    const recarregar = () => { ultimaCarga = Date.now(); void obterRascunhoOperacao().catch(() => undefined); };
     recarregar();
-    // Ao voltar de outra aba do navegador: o rascunho pode ter mudado por lá.
-    const aoVoltar = () => { if (document.visibilityState === "visible") recarregar(); };
+    // Ao voltar de outra aba do navegador o rascunho pode ter mudado por lá. O
+    // intervalo mínimo evita uma rajada de GETs a quem alterna abas o dia todo.
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && Date.now() - ultimaCarga >= INTERVALO_MIN_RECARGA_RASCUNHO) recarregar();
+    };
     document.addEventListener("visibilitychange", aoVoltar);
     return () => document.removeEventListener("visibilitychange", aoVoltar);
   }, [token, usuarioId, podeVerRascunho, propAtiva]);
+  const resumoRascunhoAtivo = useMemo(
+    () => (podeVerRascunho && rascunhoAtivo.rascunho ? resumoRascunho(rascunhoAtivo.rascunho) : null),
+    [podeVerRascunho, rascunhoAtivo.rascunho],
+  );
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
@@ -594,8 +605,8 @@ export function App() {
         onToggleColapsar={toggleSidebar}
         onAcessos={() => setTab("acessos")}
         onSair={onSair}
-        trabalhoAtivo={podeVerRascunho && rascunhoAtivo.rascunho
-          ? { resumo: resumoRascunho(rascunhoAtivo.rascunho), ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
+        trabalhoAtivo={resumoRascunhoAtivo
+          ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>

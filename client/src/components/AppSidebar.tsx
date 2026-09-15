@@ -271,7 +271,10 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
 /** Atalho para o trabalho em andamento — hoje, o rascunho de operação
  *  financeira. Fica no topo da navegação, acima do Financeiro, enquanto o
  *  rascunho existir; `ativo` quando o formulário dele está na tela. No trilho
- *  recolhido vira só o ícone, com o ponto brass marcando que há algo pendente. */
+ *  recolhido vira só o ícone, com o ponto brass marcando que há algo pendente.
+ *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
+ *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
+ *  páginas atuais. */
 export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascunho; ativo: boolean; onAbrir: () => void }) {
   // "Salvo há N min" envelhece com a tela parada: re-renderiza a cada minuto.
   // O relógio é lido na renderização, para acompanhar também cada novo autosave.
@@ -281,7 +284,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
     return () => window.clearInterval(intervalo);
   }, []);
   const salvo = quandoSalvo(resumo.atualizadoEm, Date.now());
-  const rotulo = `Continuar rascunho: ${resumo.titulo}`;
+  const rotulo = `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`;
   return (
     <div role="group" aria-label="Trabalho ativo" className="mb-3 flex flex-col gap-1.5 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
       <div className={cn("px-2.5 font-sans text-[11px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.72)]", RAIL_BLOCK)}>Trabalho ativo</div>
@@ -289,7 +292,6 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
         type="button"
         onClick={onAbrir}
         aria-label={rotulo}
-        aria-current={ativo ? "page" : undefined}
         title={[rotulo, resumo.detalhe, salvo].filter(Boolean).join("\n")}
         className={cn(
           "relative flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-2.5 text-left font-sans text-[var(--mast-ink)]",
