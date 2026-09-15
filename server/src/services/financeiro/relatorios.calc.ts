@@ -110,8 +110,9 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
     }
   }
 
+  // Só confirmadas: a cancelada e a operação que a corrige somariam em dobro.
   const porTipo = new Map<string, { operacoes: Set<number>; total: Prisma.Decimal }>();
-  for (const linha of linhas) {
+  for (const linha of linhas.filter((l) => l.status === "CONFIRMADA")) {
     const atual = porTipo.get(linha.tipo) ?? { operacoes: new Set<number>(), total: zero() };
     atual.operacoes.add(linha.operacaoId); atual.total = atual.total.plus(linha.valor); porTipo.set(linha.tipo, atual);
   }

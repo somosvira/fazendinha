@@ -67,7 +67,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
           {([
             ["Leitura", REGIMES_RELATORIO.find((r) => r.id === snapshot.configuracao.regime)?.rotulo ?? snapshot.configuracao.regime],
             ["Tipos de operação", snapshot.filtros.tipos.join(", ") || "Todos"],
-            ["Situação", snapshot.filtros.status.join(", ") || "Todas"],
+            ["Situação (operações e itens)", snapshot.filtros.status.join(", ") || "Todas"],
             ["Centros de custo", snapshot.filtros.centrosCusto.join(", ") || "Todos"],
             ["Categorias", snapshot.filtros.categorias.join(", ") || "Todas"],
             ["Classificação", snapshot.filtros.classificacoes.join(", ") || "Todas"],

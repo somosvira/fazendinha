@@ -64,6 +64,15 @@ describe("PDF do relatório financeiro", () => {
     expect(texto).toContain("(Saldo das contas \\(sem filtros\\))");
   });
 
+  it("filtros longos continuam acima do rodapé, quebrando página se preciso", () => {
+    const base = snapshot();
+    const categorias = Array.from({ length: 200 }, (_, i) => `Categoria de insumos com nome bem comprido número ${i + 1}`);
+    const texto = validarEstrutura(gerarPdfRelatorio({ ...base, filtros: { ...base.filtros, categorias } }));
+    const alturas = [...texto.matchAll(/Tf ([\d.]+) (-?[\d.]+) Td/g)].map((m) => Number(m[2]));
+    expect(Math.min(...alturas)).toBeGreaterThanOrEqual(40);
+    expect(texto).toContain("n\\372mero 200)");
+  });
+
   it("quebra páginas quando há muitos itens e numera o rodapé", () => {
     const texto = validarEstrutura(gerarPdfRelatorio(snapshot(400)));
     const paginas = Number(/\/Count (\d+)/.exec(texto)![1]);

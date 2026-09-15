@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
 import { getHoje } from "../lib/hoje";
+import { getPropriedadeAtiva } from "../propriedadeScope";
+import { usePropriedades } from "../rebanho/api";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, alternar, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, periodoMes, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
@@ -36,57 +38,75 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const [estado, setEstado] = useState<Estado>(rascunho ? "SALVO" : "ALTERADO");
   const [temRascunho, setTemRascunho] = useState(!!rascunho);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroRascunho, setErroRascunho] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
+  const { data: propriedades } = usePropriedades();
+  const configRef = useRef(config);
+  configRef.current = config;
   const versaoRef = useRef(rascunho?.versao);
-  const emCursoRef = useRef<Promise<unknown> | null>(null);
-  const encerradoRef = useRef(false);
+  // Um salvamento por vez, sempre com a configuração mais recente: dois
+  // salvamentos sobre a mesma versão gerariam conflito falso.
+  const filaRef = useRef<Promise<void>>(Promise.resolve());
+  const timerRef = useRef<number | null>(null);
+  const pendenteRef = useRef(false);
+  // Enquanto gera ou descarta, nada grava: o servidor consome ou apaga o rascunho.
+  const pausadoRef = useRef(false);
   const iniciouRef = useRef(false);
 
-  const persistir = async (dados: ConfiguracaoRelatorioFinanceiro) => {
-    if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
-    // Depois de gerar, o servidor consome o rascunho; não recriá-lo.
-    if (encerradoRef.current) return;
+  const executarSalvamento = async () => {
+    if (pausadoRef.current || !pendenteRef.current) return;
+    pendenteRef.current = false;
     setEstado("SALVANDO");
-    const requisicao = salvarRascunhoRelatorioFinanceiro(dados, versaoRef.current);
-    emCursoRef.current = requisicao;
-    try { const salvo = await requisicao; versaoRef.current = salvo.versao; setTemRascunho(true); setEstado("SALVO"); }
-    catch (falha) { setEstado("ERRO"); setErro(mensagem(falha)); }
-    finally { if (emCursoRef.current === requisicao) emCursoRef.current = null; }
+    try {
+      const salvo = await salvarRascunhoRelatorioFinanceiro(configRef.current, versaoRef.current);
+      versaoRef.current = salvo.versao;
+      setTemRascunho(true); setErroRascunho(null); setEstado(pendenteRef.current ? "ALTERADO" : "SALVO");
+    } catch (falha) { pendenteRef.current = true; setEstado("ERRO"); setErroRascunho(mensagem(falha)); }
   };
+  const enfileirar = () => { filaRef.current = filaRef.current.then(executarSalvamento); return filaRef.current; };
+  const cancelarTimer = () => { if (timerRef.current != null) { window.clearTimeout(timerRef.current); timerRef.current = null; } };
 
   useEffect(() => {
     if (!iniciouRef.current) { iniciouRef.current = true; return; }
-    setEstado("ALTERADO");
-    const timer = window.setTimeout(() => { void persistir(config); }, 700);
-    return () => window.clearTimeout(timer);
-    // `config` é todo o estado editável; persistir lê só refs além dele.
+    pendenteRef.current = true; setEstado("ALTERADO");
+    cancelarTimer();
+    timerRef.current = window.setTimeout(() => { timerRef.current = null; void enfileirar(); }, 700);
+    return cancelarTimer;
+    // `config` é todo o estado editável; o resto são refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
   const alterar = <K extends keyof ConfiguracaoRelatorioFinanceiro>(campo: K, valor: ConfiguracaoRelatorioFinanceiro[K]) => setConfig((atual) => ({ ...atual, [campo]: valor }));
+  const sair = async () => {
+    cancelarTimer();
+    if (pendenteRef.current) void enfileirar();
+    await filaRef.current;
+    onVoltar();
+  };
   const limpar = async () => {
-    setErro(null);
+    setErro(null); cancelarTimer(); pausadoRef.current = true;
     try {
-      if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
+      await filaRef.current;
       await descartarRascunhoRelatorioFinanceiro();
-      versaoRef.current = undefined; iniciouRef.current = false;
-      setTemRascunho(false); setEstado("ALTERADO"); setConfig(configuracaoPadrao());
+      versaoRef.current = undefined; pendenteRef.current = false; iniciouRef.current = false;
+      setTemRascunho(false); setErroRascunho(null); setEstado("ALTERADO"); setConfig(configuracaoPadrao());
     } catch (falha) { setErro(mensagem(falha)); }
+    finally { pausadoRef.current = false; }
   };
   const gerar = async () => {
     if (!podeGerar(config) || gerando) return;
-    setErro(null); setGerando(true); encerradoRef.current = true;
+    setErro(null); setGerando(true); cancelarTimer(); pausadoRef.current = true;
     try {
-      if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
-      const relatorio = await gerarRelatorioFinanceiro(config);
+      await filaRef.current;
+      const relatorio = await gerarRelatorioFinanceiro(configRef.current);
       let aviso: string | null = null;
       try { await salvarPdfRelatorioFinanceiro(relatorio); }
       catch { aviso = `O relatório “${relatorio.nome}” foi gerado, mas o download não começou. Use “Baixar PDF” no histórico.`; }
       onGerado(relatorio, aviso);
     } catch (falha) {
       // A falha não consome o rascunho: volta a salvar o que está na tela.
-      encerradoRef.current = false; setGerando(false); setErro(mensagem(falha));
-      void persistir(config);
+      pausadoRef.current = false; setGerando(false); setErro(mensagem(falha));
+      if (pendenteRef.current) void enfileirar();
     }
   };
 
@@ -102,6 +122,10 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const categorias = useMemo<Opcao[]>(() => [[0, SEM_CATEGORIA], ...cadastros.categorias.map((c): Opcao => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
   const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, tipos: TIPO_OPERACAO });
   const bloqueio = !config.nome.trim() ? "Informe um nome para o relatório." : problemaPeriodo;
+  // Fazenda de um sítio não vê a camada; na visão consolidada o servidor emite para a principal.
+  const ativas = propriedades.filter((p) => p.ativo);
+  const idAtivo = getPropriedadeAtiva();
+  const destino = ativas.length > 1 ? (idAtivo != null ? ativas.find((p) => p.id === idAtivo)?.nome : `${ativas.find((p) => p.principal)?.nome ?? "Propriedade principal"} (principal)`) : null;
 
   return <div className="shell-wide pb-10">
     <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3">
@@ -109,13 +133,14 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       <div className="flex flex-wrap items-center gap-3">
         {temRascunho && <span aria-live="polite" className={`text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span>}
         {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}
-        <Button secondary onClick={onVoltar}><ArrowLeft size={15} /> Relatórios</Button>
+        <Button secondary disabled={gerando} onClick={() => void sair()}><ArrowLeft size={15} /> Relatórios</Button>
       </div>
     </div>
 
     <div className="grid overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7">
         <ErrorBox erro={erro} />
+        <ErrorBox erro={erroRascunho} />
         <section>
           <h3 className={TITULO_SECAO}>Identificação</h3>
           <label className="block text-sm font-medium">Nome do relatório *<input aria-label="Nome do relatório" maxLength={120} className={CAMPO} value={config.nome} onChange={(e) => alterar("nome", e.target.value)} /></label>
@@ -140,7 +165,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
         </fieldset>
 
         <Multisselecao titulo="Tipos de operação" ajuda="Nenhum marcado inclui todos" opcoes={tipos} selecionados={config.tipos} onAlternar={(id) => alterar("tipos", alternar(config.tipos, String(id)))} onLimpar={() => alterar("tipos", [])} />
-        <Multisselecao titulo="Situação da operação" ajuda="Nenhuma marcada inclui todas" opcoes={STATUS_RELATORIO} selecionados={config.status} onAlternar={(id) => alterar("status", alternar(config.status, String(id)))} onLimpar={() => alterar("status", [])} />
+        <Multisselecao titulo="Situação da operação" ajuda="Vale para operações e itens; o caixa inclui todo movimento" opcoes={STATUS_RELATORIO} selecionados={config.status} onAlternar={(id) => alterar("status", alternar(config.status, String(id)))} onLimpar={() => alterar("status", [])} />
         <Multisselecao titulo="Centro de custo" ajuda="Nenhum marcado inclui todos" opcoes={centros} selecionados={config.centroCustoIds} onAlternar={(id) => alterar("centroCustoIds", alternar(config.centroCustoIds, Number(id)))} onLimpar={() => alterar("centroCustoIds", [])} />
         <Multisselecao titulo="Categoria dos itens" ajuda="Nenhuma marcada inclui todas" opcoes={categorias} selecionados={config.categoriaIds} onAlternar={(id) => alterar("categoriaIds", alternar(config.categoriaIds, Number(id)))} onLimpar={() => alterar("categoriaIds", [])} />
         <Multisselecao titulo="Classificação" ajuda="Nenhuma marcada inclui todas" opcoes={CLASSIFICACOES_RELATORIO} selecionados={config.classificacoes} onAlternar={(id) => alterar("classificacoes", alternar(config.classificacoes, id as (typeof config.classificacoes)[number]))} onLimpar={() => alterar("classificacoes", [])} />
@@ -150,7 +175,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       <aside aria-label="Resumo do relatório" className="flex flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:sticky xl:top-0 xl:max-h-screen xl:overflow-y-auto xl:border-l xl:border-t-0">
         <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Resumo do relatório</div>
         <div className="mt-3 break-words font-serif text-2xl">{config.nome.trim() || "Sem nome"}</div>
-        <dl className="mt-5 space-y-3 border-y border-white/10 py-4 text-xs">{resumo.map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-white">{valor}</dd></div>)}</dl>
+        <dl className="mt-5 space-y-3 border-y border-white/10 py-4 text-xs">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-white">{valor}</dd></div>)}</dl>
         <div className="mt-4 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">O documento terá</div>
         <div className="mt-2 space-y-2 text-sm leading-5">{secoesDoRelatorio(config).map((secao) => <ReviewLine key={secao}>{secao}</ReviewLine>)}</div>
         <div className="mt-auto border-t border-white/10 pt-5">

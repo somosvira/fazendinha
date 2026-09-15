@@ -73,6 +73,16 @@ describe("relatório gerencial com filtro de composição", () => {
     expect(semCentro.categorias?.itens).toEqual([{ categoria: "Sem categoria", total: 200, pct: 100 }]);
   });
 
+  it("situação da operação não recorta o caixa: avulso e pagamento de operação cancelada seguem no realizado", async () => {
+    mocks.movimentos.mockResolvedValue([
+      movimento(100, { id: 10, tipo: "PAGAMENTO", status: "REVERTIDA", operacao: { ...compraMista, status: "CANCELADA" } }, "1300"),
+      movimento(101, { id: 11, tipo: "PAGAMENTO", descricao: "Frete avulso", operacao: null }, "200"),
+    ]);
+    const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, status: ["CONFIRMADA"] });
+    expect(dto.resumo.saidas).toBe(1500);
+    expect(dto.resumo.saidas).toBe(dto.saldoContas!.total.saidas);
+  });
+
   it("filtro por classificação separa investimento", async () => {
     const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, classificacoes: ["INVESTIMENTO"] });
     expect(dto.resultado).toMatchObject({ custeio: 0, investimento: 500 });

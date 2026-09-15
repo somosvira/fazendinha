@@ -54,6 +54,7 @@ const CONFLITO_RASCUNHO = "O rascunho foi alterado em outra sessão. Recarregue 
 export async function salvarRascunho(propriedadeId: number, usuarioId: number, configuracao: RascunhoConfiguracaoRelatorio, versao?: number) {
   const atual = await obterRascunho(propriedadeId, usuarioId);
   if (!atual) {
+    if (versao !== undefined) throw new FinanceiroError("CONFLITO", CONFLITO_RASCUNHO);
     try {
       return await prisma.rascunhoRelatorioFinanceiro.create({ data: { propriedadeId, criadoPorId: usuarioId, configuracao: json(configuracao) } });
     } catch (e) {

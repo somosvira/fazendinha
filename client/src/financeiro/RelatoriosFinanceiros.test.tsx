@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { RelatoriosFinanceiros } from "./RelatoriosFinanceiros";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 
+vi.mock("../rebanho/api", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
 vi.mock("./novo-api", () => ({
   listarRelatoriosFinanceiros: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), obterRascunhoRelatorioFinanceiro: vi.fn(),
   descartarRascunhoRelatorioFinanceiro: vi.fn(), salvarPdfRelatorioFinanceiro: vi.fn(), obterRelatorioFinanceiro: vi.fn(),

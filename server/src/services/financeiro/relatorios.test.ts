@@ -90,6 +90,12 @@ describe("rascunho da configuração", () => {
     expect(mocks.rascunho.create).toHaveBeenCalledWith({ data: { propriedadeId: 7, criadoPorId: 2, configuracao: { nome: "Rascunho" } } });
   });
 
+  it("versão enviada para rascunho já descartado é conflito, não recriação", async () => {
+    mocks.rascunho.findUnique.mockResolvedValue(null);
+    await expect(salvarRascunho(7, 2, { nome: "x" }, 4)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.rascunho.create).not.toHaveBeenCalled();
+  });
+
   it("não sobrescreve versão mais nova", async () => {
     mocks.rascunho.findUnique.mockResolvedValue({ id: 1, versao: 4 });
     await expect(salvarRascunho(7, 2, { nome: "x" }, 3)).rejects.toMatchObject({ code: "CONFLITO" });

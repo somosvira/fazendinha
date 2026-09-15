@@ -84,12 +84,14 @@ describe("composição por item", () => {
     expect(linha).toMatchObject({ item: null, categoria: "Manutenção", centroCusto: "Sem centro de custo", classificacao: "CUSTEIO", valor: "250.00" });
   });
 
-  it("vendas e canceladas aparecem nas linhas, mas não somam despesa", () => {
+  it("vendas e canceladas aparecem nas linhas, mas não somam despesa nem volume por tipo", () => {
     const venda = operacao({ id: 9, tipo: "VENDA", valorTotal: "900.00", categoriaNome: "Leite" });
     const cancelada = operacao({ id: 10, status: "CANCELADA", valorTotal: "100.00" });
-    const c = comporItens([mista, venda, cancelada], semFiltro);
-    expect(c.totalLinhas).toBe(4);
-    expect(c.despesas.total).toBe("1300.00");
+    const correcao = operacao({ id: 11, valorTotal: "100.00" });
+    const c = comporItens([mista, venda, cancelada, correcao], semFiltro);
+    expect(c.totalLinhas).toBe(5);
+    expect(c.linhas.some((l) => l.status === "CANCELADA")).toBe(true);
+    expect(c.despesas.total).toBe("1400.00");
     expect(c.porTipo.map((t) => [t.tipo, t.operacoes, t.total])).toEqual([["COMPRA_CONSUMO_DIRETO", 2, "1400.00"], ["VENDA", 1, "900.00"]]);
   });
 

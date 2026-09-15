@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 
+vi.mock("../rebanho/api", () => ({ usePropriedades: () => ({ data: [], loading: false, recarregar: vi.fn() }) }));
 vi.mock("./novo-api", () => ({
   descartarRascunhoRelatorioFinanceiro: vi.fn(), gerarRelatorioFinanceiro: vi.fn(),
   salvarPdfRelatorioFinanceiro: vi.fn(), salvarRascunhoRelatorioFinanceiro: vi.fn(),
@@ -59,6 +60,47 @@ describe("novo relatório financeiro", () => {
     fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Pecuária — agosto revisado" } });
     await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto revisado" }), 3), { timeout: 2000 });
     expect(await screen.findByText("Rascunho salvo")).toBeTruthy();
+  });
+
+  it("edições durante um salvamento lento viram um único salvamento seguinte, com a versão nova", async () => {
+    let concluir!: (valor: RascunhoRelatorioFinanceiro) => void;
+    vi.mocked(salvarRascunhoRelatorioFinanceiro)
+      .mockImplementationOnce(() => new Promise((resolver) => { concluir = resolver; }))
+      .mockResolvedValue({ ...rascunho, versao: 5 });
+    renderizar();
+    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "A" } });
+    await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "AB" } });
+    await new Promise((r) => setTimeout(r, 800));
+    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "ABC" } });
+    await new Promise((r) => setTimeout(r, 800));
+    expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(1);
+    concluir({ ...rascunho, versao: 4 });
+    await waitFor(() => expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(2));
+    expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenLastCalledWith(expect.objectContaining({ nome: "ABC" }), 4);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledTimes(2);
+  }, 8000);
+
+  it("voltar salva a edição pendente antes de sair", async () => {
+    vi.mocked(salvarRascunhoRelatorioFinanceiro).mockResolvedValue({ ...rascunho, versao: 4 });
+    const onVoltar = vi.fn();
+    render(<NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={onVoltar} onGerado={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Editado agora" } });
+    fireEvent.click(screen.getByRole("button", { name: "Relatórios" }));
+    await waitFor(() => expect(onVoltar).toHaveBeenCalled());
+    expect(salvarRascunhoRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Editado agora" }), 3);
+    expect(vi.mocked(salvarRascunhoRelatorioFinanceiro).mock.invocationCallOrder[0]).toBeLessThan(onVoltar.mock.invocationCallOrder[0]);
+  });
+
+  it("limpar logo após editar não deixa o salvamento pendente recriar o rascunho", async () => {
+    vi.mocked(descartarRascunhoRelatorioFinanceiro).mockResolvedValue(undefined);
+    renderizar();
+    fireEvent.change(screen.getByLabelText("Nome do relatório"), { target: { value: "Quase" } });
+    fireEvent.click(screen.getByRole("button", { name: "Limpar rascunho" }));
+    await waitFor(() => expect(descartarRascunhoRelatorioFinanceiro).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 900));
+    expect(salvarRascunhoRelatorioFinanceiro).not.toHaveBeenCalled();
   });
 
   it("limpa o rascunho explicitamente", async () => {

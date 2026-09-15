@@ -67,10 +67,15 @@ describe("rotas de relatórios financeiros", () => {
     expect(mocks.gerar).not.toHaveBeenCalled();
   });
 
-  it("rascunho exige usuário real", async () => {
-    const res = await app({ ...contador, id: 0, dono: true }).request("/financeiro/relatorios/rascunho");
-    expect(res.status).toBe(422);
+  it("dono sintético vê a central sem rascunho e não consegue gravar um", async () => {
+    const sintetico = { ...contador, id: 0, dono: true };
+    const leitura = await app(sintetico).request("/financeiro/relatorios/rascunho");
+    expect(leitura.status).toBe(200);
+    expect(await leitura.json()).toBeNull();
     expect(mocks.obterRascunho).not.toHaveBeenCalled();
+    const gravacao = await app(sintetico).request("/financeiro/relatorios/rascunho", { method: "PUT", body: JSON.stringify({ configuracao: { nome: "x" } }), headers: { "Content-Type": "application/json" } });
+    expect(gravacao.status).toBe(422);
+    expect(mocks.salvarRascunho).not.toHaveBeenCalled();
   });
 
   it("download devolve PDF com nome codificado e respeita o escopo", async () => {

@@ -56,9 +56,12 @@ const dataUtc = (s: string) => new Date(`${s}T00:00:00Z`);
 const toNum = (d: Prisma.Decimal | number) => (typeof d === "number" ? d : d.toNumber());
 
 /** `filtro` recorta receitas, despesas, compromissos, tipos e rastreabilidade.
- * O saldo das contas é sempre integral: saldo filtrado não corresponde a extrato. */
+ * O saldo das contas é sempre integral: saldo filtrado não corresponde a extrato.
+ * A situação da operação não recorta o caixa: pagamento de operação cancelada
+ * depois (e seu estorno) e pagamento avulso movimentaram a conta de verdade. */
 export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, propriedadeId: number | null, filtro?: FiltroRelatorio | null): Promise<RelatorioGerencialDTO> {
   const { inicio, fim, regime } = query;
+  const filtroCaixa = filtro ? { ...filtro, status: [] } : filtro;
   const escopo = propriedadeId != null ? { propriedadeId } : {};
   const de = dataUtc(inicio);
   const ate = dataUtc(fim);
@@ -155,16 +158,16 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   // categoria original como valor negativo, sem transformá-lo em receita.
   const linhasAnaliticas = linhasRealizadas.flatMap((linha, index) => {
     const movimento = movimentos[index];
-    if (!operacaoPassa(filtro, movimento.transacao.operacao)) return [];
+    if (!operacaoPassa(filtroCaixa, movimento.transacao.operacao)) return [];
     const reversao = movimento.transacao.tipo === "REVERSAO";
-    return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, linha.valor * (reversao ? -1 : 1)).filter((parte) => partePassa(filtro, parte)).map((parte) => ({
+    return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, linha.valor * (reversao ? -1 : 1)).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({
       ...linha, valor: parte.valor.toNumber(),
       natureza: reversao ? (linha.natureza === "CREDITO" ? "DEBITO" as const : "CREDITO" as const) : linha.natureza,
       categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
     }));
   });
-  const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => operacaoPassa(filtro, compromissos[index].operacao)
-    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtro, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } }))
+  const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => operacaoPassa(filtroCaixa, compromissos[index].operacao)
+    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } }))
     : []);
   const linhas = [...linhasAnaliticas, ...linhasPrevistasAnaliticas];
   // A auditoria classifica a reversão como evento próprio; não usa o sinal
@@ -179,7 +182,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
 
   // Com filtro, a auditoria conta só os lançamentos que sobraram no recorte.
   const idsNoRecorte = new Set(linhas.map((l) => l.id));
-  const noRecorte = (id: number) => filtroVazio(filtro) || idsNoRecorte.has(id);
+  const noRecorte = (id: number) => filtroVazio(filtroCaixa) || idsNoRecorte.has(id);
 
   const hoje = new Date().toISOString().slice(0, 10);
   const realizado = querRealizado ? agregarRealizado(linhas, inicio, fim) : null;

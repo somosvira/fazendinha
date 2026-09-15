@@ -50,7 +50,11 @@ export const relatoriosFinanceirosRouter = new Hono()
     try { return c.json(await relatorios.listarRelatorios(await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/relatorios/rascunho", aba, exportar, async (c) => {
-    try { return c.json(await relatorios.obterRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c))); } catch (e) { return falha(c, e); }
+    try {
+      // O dono sintético da ponte de acesso não guarda rascunho, mas vê a central.
+      const { id } = autor(c);
+      return c.json(id ? await relatorios.obterRascunho(await resolverEscopoEscrita(c), id) : null);
+    } catch (e) { return falha(c, e); }
   })
   .put("/financeiro/relatorios/rascunho", aba, exportar, validar("json", z.object({ configuracao: rascunhoRelatorioFinanceiroSchema, versao: z.number().int().positive().optional() })), async (c) => {
     try {

@@ -146,10 +146,13 @@ export class DocumentoPdf {
     const larguraRotulo = Math.min(220, Math.max(...itens.map(([rotulo]) => larguraTexto(rotulo, tamanho, true))) + 12);
     for (const [rotulo, valor] of itens) {
       const linhas = quebrar(valor, AREA - larguraRotulo, tamanho);
-      this.garantir(tamanho * 1.5 * linhas.length);
+      this.garantir(tamanho * 1.5 * Math.min(linhas.length, 3));
       this.y -= tamanho * 1.5;
       this.escrever(caber(rotulo, larguraRotulo - 6, tamanho, true), MARGEM, this.y, tamanho, true);
-      linhas.forEach((linha, i) => { if (i) this.y -= tamanho * 1.35; this.escrever(linha, MARGEM + larguraRotulo, this.y, tamanho); });
+      linhas.forEach((linha, i) => {
+        if (i) { this.garantir(tamanho * 1.35); this.y -= tamanho * 1.35; }
+        this.escrever(linha, MARGEM + larguraRotulo, this.y, tamanho);
+      });
     }
   }
 
@@ -244,7 +247,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
   doc.secao("Filtros aplicados");
   doc.pares([
     ["Tipos de operação", lista(filtros.tipos)],
-    ["Situação", lista(filtros.status)],
+    ["Situação (operações e itens)", lista(filtros.status)],
     ["Centros de custo", lista(filtros.centrosCusto)],
     ["Categorias", lista(filtros.categorias)],
     ["Classificação", lista(filtros.classificacoes)],
@@ -290,7 +293,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     doc.pares([["Receitas", dinheiro(g.resultado.receita)], ["Custeio", dinheiro(g.resultado.custeio)], ["Investimento", dinheiro(g.resultado.investimento)], ["Resultado", dinheiro(g.resultado.resultado)]]);
   }
 
-  doc.secao("Operações por tipo");
+  doc.secao("Operações confirmadas por tipo");
   doc.tabela(
     [{ titulo: "Tipo", largura: 300 }, { titulo: "Operações", largura: 80, alinhamento: "direita" }, { titulo: "Total", largura: 120, alinhamento: "direita" }],
     c.porTipo.map((item) => [item.rotulo, String(item.operacoes), dinheiro(item.total)]),
