@@ -117,6 +117,27 @@ export function isNovaOperacaoFinanceira(pathname: string): boolean {
   return /^\/financeiro\/operacoes\/nova\/?$/i.test(pathname);
 }
 
+export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";
+const ESTADO_NOVA_OPERACAO = { novaOperacao: true } as const;
+
+/** Leva ao formulário de nova operação a partir de qualquer tela. Chame ANTES de
+ *  trocar para a aba `lancar`: com a URL já publicada, o efeito de App.tsx que
+ *  sincroniza aba -> URL preserva a sub-rota e OperacoesFinanceiras monta com o
+ *  formulário aberto. O popstate sintético avisa a tela de operações quando ela
+ *  já está montada (lista, detalhe ou correção), porque pushState não dispara o
+ *  evento. A marca no estado distingue essa entrada da correção de operação,
+ *  que usa a mesma URL. */
+export function abrirRotaNovaOperacao(compromisso?: "PAGAR" | "RECEBER") {
+  const alvo = compromisso ? `${URL_NOVA_OPERACAO}?compromisso=${compromisso}` : URL_NOVA_OPERACAO;
+  if (window.location.pathname + window.location.search !== alvo) window.history.pushState(ESTADO_NOVA_OPERACAO, "", alvo);
+  window.dispatchEvent(new PopStateEvent("popstate", { state: ESTADO_NOVA_OPERACAO }));
+}
+
+/** A entrada do histórico foi criada por `abrirRotaNovaOperacao`. */
+export function entradaDeNovaOperacao(estado: unknown): boolean {
+  return !!estado && typeof estado === "object" && (estado as { novaOperacao?: unknown }).novaOperacao === true;
+}
+
 export const REBANHO_WORKLISTS = {
   "secagem-atrasada": "reproducao",
   "vazia-pos-pev": "reproducao",

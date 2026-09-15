@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { descartarRascunhoOperacao, liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, hoje, Metric, Modal, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import type { Tab } from "../components/Shell";
+import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
 
 export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }) {
@@ -18,11 +19,11 @@ export function CompromissosFinanceiros({ onNav }: { onNav: (tab: Tab) => void }
     .map((c) => ({ ...c, operacao: { ...c.operacao, descricao: tituloCompromisso(c) } }));
   const total = lista.reduce((s, c) => s + Number(c.saldoPendente), 0);
   const pagar = async () => { if (!pagando) return; try { await liquidarCompromisso(pagando.id, { contaId: Number(contaId), valor: Number(valor), data: hoje(), formaPagamento: "PIX" }); setPagando(null); setContaId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
-  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", `/financeiro/operacoes/nova?compromisso=${tipo}`); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); };
+  const criarCompromisso = (tipo: "PAGAR" | "RECEBER") => { abrirRotaNovaOperacao(tipo); onNav("lancar"); };
   const verRascunhoAtual = () => {
     setNovoCompromissoPendente(null);
+    abrirRotaNovaOperacao();
     onNav("lancar");
-    window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0);
   };
   const prepararNovoCompromisso = async (tipo: "PAGAR" | "RECEBER") => {
     setPreparando(true); setErro(null);

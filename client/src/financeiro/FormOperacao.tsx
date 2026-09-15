@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
+import { marcarEdicaoRascunho } from "./rascunhoAtivo";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
@@ -138,6 +139,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosRascunho, operacaoBase]);
+  // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
+  useEffect(() => (operacaoBase ? undefined : marcarEdicaoRascunho()), [operacaoBase]);
 
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
   const centrosSugeridos = [...new Set(itens.flatMap((item) => {

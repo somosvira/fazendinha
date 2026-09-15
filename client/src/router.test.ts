@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRotaWorklistRebanho,
+  entradaDeNovaOperacao,
   isNovaOperacaoFinanceira,
+  URL_NOVA_OPERACAO,
   parseOperacaoFinanceiraId,
   parseContaFinanceiraId,
   parseRotaWorklistRebanho,
@@ -14,6 +16,12 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/financeiro/operacoes/42")).toBe("lancar");
     expect(parseOperacaoFinanceiraId("/financeiro/operacoes/42")).toBe(42);
     expect(parseOperacaoFinanceiraId("/financeiro/operacoes")).toBeNull();
+  });
+  it("marca as entradas de histórico criadas pelo atalho de nova operação", () => {
+    expect(isNovaOperacaoFinanceira(URL_NOVA_OPERACAO)).toBe(true);
+    expect(entradaDeNovaOperacao({ novaOperacao: true })).toBe(true);
+    expect(entradaDeNovaOperacao(null)).toBe(false);
+    expect(entradaDeNovaOperacao({ novaOperacao: "sim" })).toBe(false);
   });
   it("reconhece a página independente de nova operação", () => {
     expect(pathToTab("/financeiro/operacoes/nova")).toBe("lancar");
