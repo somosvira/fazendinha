@@ -5,9 +5,9 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-D
 export const REGIMES_RELATORIO = ["realizado", "previsto", "ambos"] as const;
 export type RegimeRelatorio = (typeof REGIMES_RELATORIO)[number];
 
-const LIMITE_MESES = 24;
+export const LIMITE_MESES = 24;
 
-function mesesEntreDatas(inicio: string, fim: string): number {
+export function mesesEntreDatas(inicio: string, fim: string): number {
   const [ai, mi] = inicio.split("-").map(Number);
   const [af, mf] = fim.split("-").map(Number);
   return (af - ai) * 12 + (mf - mi) + 1;

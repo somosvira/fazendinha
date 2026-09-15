@@ -15,17 +15,10 @@ import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import { exigePermissao } from "../middleware/permissao.js";
-import * as relatorios from "../services/financeiro/relatorios.js";
-import { configuracaoRelatorioFinanceiroSchema } from "../services/financeiro/relatorios.schemas.js";
 
 function usuarioId(c: Context): number | null {
   const usuario = c.get("usuario") as { id?: number } | undefined;
   return usuario?.id && usuario.id > 0 ? usuario.id : null;
-}
-
-function usuarioNome(c: Context): string {
-  const usuario = c.get("usuario") as { nome?: string } | undefined;
-  return usuario?.nome ?? "Proprietário";
 }
 
 function exigirUsuarioId(c: Context): number {
@@ -89,22 +82,6 @@ export const financeiroRouter = new Hono()
     const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
     const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 0, 23, 59, 59));
     return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim));
-  })
-  .get("/financeiro/relatorios", async (c) => c.json(await relatorios.listarRelatorios(await resolverEscopoEscrita(c))))
-  .get("/financeiro/relatorios/rascunho", async (c) => {
-    try { return c.json(await relatorios.obterRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c))); } catch (e) { return falha(c, e); }
-  })
-  .put("/financeiro/relatorios/rascunho", zValidator("json", z.object({ configuracao: configuracaoRelatorioFinanceiroSchema, versao: z.number().int().positive().optional() })), async (c) => {
-    try { const b = c.req.valid("json"); return c.json(await relatorios.salvarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), b.configuracao, b.versao)); } catch (e) { return falha(c, e); }
-  })
-  .delete("/financeiro/relatorios/rascunho", async (c) => {
-    try { await relatorios.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); } catch (e) { return falha(c, e); }
-  })
-  .post("/financeiro/relatorios", zValidator("json", configuracaoRelatorioFinanceiroSchema), async (c) => {
-    try { return c.json(await relatorios.gerarRelatorio(await resolverEscopoEscrita(c), { id: usuarioId(c), nome: usuarioNome(c) }, c.req.valid("json")), 201); } catch (e) { return falha(c, e); }
-  })
-  .get("/financeiro/relatorios/:id/download", async (c) => {
-    try { const r = await relatorios.baixarRelatorio(Number(c.req.param("id")), await resolverEscopoEscrita(c)); c.header("Content-Type", "application/pdf"); c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(r.nome)}`); return c.body(new Uint8Array(r.buffer)); } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
   .post("/financeiro/contas", exigePermissao("lancar"), validarCadastro(contaSchema), async (c) => {

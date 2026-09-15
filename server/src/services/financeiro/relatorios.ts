@@ -1,52 +1,130 @@
+/* Relatórios financeiros persistidos — I/O Prisma e storage.
+ *
+ * Gerar = validar cadastros → registrar PROCESSANDO → montar o snapshot
+ * (relatório gerencial filtrado + composição por item) → gravar o PDF →
+ * CONCLUIDO. Falha deixa o registro como FALHOU e preserva o rascunho.
+ */
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
+import { gerarRelatorioGerencial } from "../relatorio-gerencial.js";
 import { FinanceiroError } from "./regras.js";
-import type { ConfiguracaoRelatorioFinanceiro } from "./relatorios.schemas.js";
+import { comporItens, descreverFiltros, type SnapshotRelatorio } from "./relatorios.calc.js";
+import { gerarPdfRelatorio } from "./relatorios.pdf.js";
+import { TIPOS_RELATORIO, type ConfiguracaoRelatorioFinanceiro, type RascunhoConfiguracaoRelatorio } from "./relatorios.schemas.js";
 
-const json = (v: unknown) => v as Prisma.InputJsonValue;
-/** PDF textual deliberadamente simples, mas válido e independente de browser.
- * O snapshot JSON é a fonte auditável; o PDF é a cópia humana armazenada. */
-function pdf(linhas: string[]) {
-  const texto = linhas.map((linha) => linha.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[()\\]/g, "").slice(0, 120));
-  const comandos = texto.map((linha) => `(${linha}) Tj`).join("\nT*\n");
-  const corpo = ["BT", "/F1 10 Tf", "50 790 Td", "14 TL", comandos, "ET"].join("\n");
-  const objetos = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    `<< /Length ${Buffer.byteLength(corpo)} >>\nstream\n${corpo}\nendstream`,
-  ];
-  let resultado = "%PDF-1.4\n";
-  const offsets = [0];
-  objetos.forEach((objeto, i) => { offsets.push(Buffer.byteLength(resultado)); resultado += `${i + 1} 0 obj\n${objeto}\nendobj\n`; });
-  const xref = Buffer.byteLength(resultado);
-  resultado += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n `).join("\n")}\ntrailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return Buffer.from(resultado);
+const json = (valor: unknown) => valor as Prisma.InputJsonValue;
+const inicioDoDia = (dia: string) => new Date(`${dia}T00:00:00.000Z`);
+const fimDoDia = (dia: string) => new Date(`${dia}T23:59:59.999Z`);
+
+const camposLista = {
+  id: true, nome: true, status: true, parametros: true, propriedadeId: true, autorNome: true,
+  geradoEm: true, concluidoEm: true, erro: true, propriedade: { select: { nome: true } },
+} satisfies Prisma.RelatorioFinanceiroSelect;
+type RelatorioLista = Prisma.RelatorioFinanceiroGetPayload<{ select: typeof camposLista }>;
+
+// O autor exibido é o nome registrado na emissão, não o nome atual do usuário.
+const mapear = ({ propriedade, autorNome, ...relatorio }: RelatorioLista) => ({ ...relatorio, autor: autorNome, propriedade: propriedade.nome });
+
+export async function listarRelatorios(propriedadeId: number | null) {
+  const relatorios = await prisma.relatorioFinanceiro.findMany({
+    where: propriedadeId != null ? { propriedadeId } : {},
+    orderBy: [{ geradoEm: "desc" }, { id: "desc" }],
+    select: camposLista,
+  });
+  return relatorios.map(mapear);
 }
 
-export async function listarRelatorios(propriedadeId: number) {
-  return prisma.relatorioFinanceiro.findMany({ where: { propriedadeId }, orderBy: { geradoEm: "desc" }, include: { autor: { select: { nome: true } } } })
-    .then((rows) => rows.map((r) => ({ ...r, autor: r.autor?.nome ?? r.autorNome })));
+export async function obterRelatorio(id: number, propriedadeId: number | null) {
+  const relatorio = await prisma.relatorioFinanceiro.findFirst({
+    where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
+    select: { ...camposLista, snapshot: true },
+  });
+  if (!relatorio) throw new FinanceiroError("NAO_ENCONTRADO", "Relatório não encontrado");
+  const { snapshot, ...resto } = relatorio;
+  return { ...mapear(resto), snapshot: snapshot as unknown as SnapshotRelatorio | null };
 }
-export const obterRascunho = (propriedadeId: number, usuarioId: number) => prisma.rascunhoRelatorioFinanceiro.findUnique({ where: { propriedadeId_criadoPorId: { propriedadeId, criadoPorId: usuarioId } } });
-export async function salvarRascunho(propriedadeId: number, usuarioId: number, configuracao: ConfiguracaoRelatorioFinanceiro, versao?: number) {
+
+export const obterRascunho = (propriedadeId: number, usuarioId: number) =>
+  prisma.rascunhoRelatorioFinanceiro.findUnique({ where: { propriedadeId_criadoPorId: { propriedadeId, criadoPorId: usuarioId } } });
+
+const CONFLITO_RASCUNHO = "O rascunho foi alterado em outra sessão. Recarregue a página antes de continuar.";
+
+/** Concorrência otimista: só grava sobre a versão que o cliente leu. */
+export async function salvarRascunho(propriedadeId: number, usuarioId: number, configuracao: RascunhoConfiguracaoRelatorio, versao?: number) {
   const atual = await obterRascunho(propriedadeId, usuarioId);
-  if (atual && versao !== atual.versao) throw new FinanceiroError("CONFLITO", "O rascunho foi alterado em outra sessão. Recarregue a página antes de continuar.");
-  return atual ? prisma.rascunhoRelatorioFinanceiro.update({ where: { id: atual.id }, data: { configuracao: json(configuracao), versao: { increment: 1 } } }) : prisma.rascunhoRelatorioFinanceiro.create({ data: { propriedadeId, criadoPorId: usuarioId, configuracao: json(configuracao) } });
+  if (!atual) {
+    try {
+      return await prisma.rascunhoRelatorioFinanceiro.create({ data: { propriedadeId, criadoPorId: usuarioId, configuracao: json(configuracao) } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") throw new FinanceiroError("CONFLITO", CONFLITO_RASCUNHO);
+      throw e;
+    }
+  }
+  if (versao !== atual.versao) throw new FinanceiroError("CONFLITO", CONFLITO_RASCUNHO);
+  const { count } = await prisma.rascunhoRelatorioFinanceiro.updateMany({ where: { id: atual.id, versao }, data: { configuracao: json(configuracao), versao: { increment: 1 } } });
+  if (count === 0) throw new FinanceiroError("CONFLITO", CONFLITO_RASCUNHO);
+  return prisma.rascunhoRelatorioFinanceiro.findUniqueOrThrow({ where: { id: atual.id } });
 }
-export const descartarRascunho = (propriedadeId: number, usuarioId: number) => prisma.rascunhoRelatorioFinanceiro.deleteMany({ where: { propriedadeId, criadoPorId: usuarioId } });
+
+export const descartarRascunho = (propriedadeId: number, usuarioId: number) =>
+  prisma.rascunhoRelatorioFinanceiro.deleteMany({ where: { propriedadeId, criadoPorId: usuarioId } });
+
+/** Cadastros inativos continuam válidos: o relatório pode olhar para o passado. */
+async function carregarCadastros(configuracao: ConfiguracaoRelatorioFinanceiro) {
+  const categoriaIds = configuracao.categoriaIds.filter((id) => id > 0);
+  const centroCustoIds = configuracao.centroCustoIds.filter((id) => id > 0);
+  const [categorias, centrosCusto] = await Promise.all([
+    categoriaIds.length ? prisma.categoria.findMany({ where: { id: { in: categoriaIds } }, select: { id: true, nome: true } }) : [],
+    centroCustoIds.length ? prisma.centroCusto.findMany({ where: { id: { in: centroCustoIds } }, select: { id: true, nome: true } }) : [],
+  ]);
+  if (categorias.length !== categoriaIds.length) throw new FinanceiroError("VALIDACAO", "Uma das categorias selecionadas não existe mais", "categoriaIds");
+  if (centrosCusto.length !== centroCustoIds.length) throw new FinanceiroError("VALIDACAO", "Um dos centros de custo selecionados não existe mais", "centroCustoIds");
+  return { categorias, centrosCusto };
+}
+
 export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro) {
-  const criado = await prisma.relatorioFinanceiro.create({ data: { nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome } });
+  const filtros = descreverFiltros(configuracao, await carregarCadastros(configuracao));
+  const criado = await prisma.relatorioFinanceiro.create({
+    data: { nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome },
+  });
   try {
-    const operacoes = await prisma.operacao.findMany({ where: { propriedadeId, data: { gte: new Date(`${configuracao.dataInicio}T00:00:00Z`), lte: new Date(`${configuracao.dataFim}T23:59:59Z`) }, ...(configuracao.tipos.length ? { tipo: { in: configuracao.tipos } } : {}), ...(configuracao.status.length ? { status: { in: configuracao.status } } : {}), ...(configuracao.centroCustoIds.length ? { centroCustoId: { in: configuracao.centroCustoIds } } : {}) }, include: { centroCusto: true }, orderBy: { data: "asc" } });
-    const snapshot = { configuracao, operacoes: operacoes.map((o) => ({ data: o.data.toISOString().slice(0, 10), tipo: o.tipo, status: o.status, valor: o.valorTotal.toString(), descricao: o.descricao, centroCusto: o.centroCusto?.nome ?? null })) };
+    const [gerencial, operacoes] = await Promise.all([
+      gerarRelatorioGerencial({ inicio: configuracao.dataInicio, fim: configuracao.dataFim, regime: configuracao.regime }, propriedadeId, configuracao),
+      prisma.operacao.findMany({
+        where: {
+          propriedadeId,
+          data: { gte: inicioDoDia(configuracao.dataInicio), lte: fimDoDia(configuracao.dataFim) },
+          tipo: { in: configuracao.tipos.length ? configuracao.tipos : [...TIPOS_RELATORIO] },
+          ...(configuracao.status.length ? { status: { in: configuracao.status } } : {}),
+        },
+        include: { itens: { orderBy: { id: "asc" } }, centroCusto: { select: { nome: true } }, parceiro: { select: { nome: true } } },
+        orderBy: [{ data: "asc" }, { id: "asc" }],
+      }),
+    ]);
+    const snapshot: SnapshotRelatorio = {
+      versao: 1, nome: configuracao.nome, geradoEm: criado.geradoEm.toISOString(), autor: usuario.nome,
+      propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, configuracao),
+    };
     const storageKey = `relatorios-financeiros/${propriedadeId}/${criado.id}.pdf`;
-    await (await getStorage()).putObject({ key: storageKey, body: pdf([configuracao.nome, `${configuracao.dataInicio} a ${configuracao.dataFim}`, ...snapshot.operacoes.map((o) => `${o.data} ${o.tipo} R$ ${o.valor}`)]), contentType: "application/pdf" });
-    await prisma.relatorioFinanceiro.update({ where: { id: criado.id }, data: { status: "CONCLUIDO", storageKey, snapshot: json(snapshot), concluidoEm: new Date() } });
+    await (await getStorage()).putObject({ key: storageKey, body: gerarPdfRelatorio(snapshot), contentType: "application/pdf" });
+    const concluido = await prisma.relatorioFinanceiro.update({
+      where: { id: criado.id },
+      data: { status: "CONCLUIDO", storageKey, snapshot: json(snapshot), concluidoEm: new Date() },
+      select: camposLista,
+    });
     if (usuario.id) await descartarRascunho(propriedadeId, usuario.id);
-    return { id: criado.id };
-  } catch (e) { await prisma.relatorioFinanceiro.update({ where: { id: criado.id }, data: { status: "FALHOU", erro: e instanceof Error ? e.message : "Falha na geração" } }); throw e; }
+    return mapear(concluido);
+  } catch (e) {
+    console.error("[relatorios-financeiros]", e);
+    await prisma.relatorioFinanceiro.update({ where: { id: criado.id }, data: { status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." } });
+    throw e;
+  }
 }
-export async function baixarRelatorio(id: number, propriedadeId: number) { const r = await prisma.relatorioFinanceiro.findFirst({ where: { id, propriedadeId, status: "CONCLUIDO" } }); if (!r?.storageKey) throw new FinanceiroError("NAO_ENCONTRADO", "Relatório não encontrado"); return { nome: `${r.nome}.pdf`, buffer: await (await getStorage()).getObjectBuffer({ key: r.storageKey }) }; }
+
+export async function baixarRelatorio(id: number, propriedadeId: number | null) {
+  const relatorio = await prisma.relatorioFinanceiro.findFirst({ where: { id, status: "CONCLUIDO", ...(propriedadeId != null ? { propriedadeId } : {}) } });
+  if (!relatorio?.storageKey) throw new FinanceiroError("NAO_ENCONTRADO", "Relatório não encontrado");
+  const nome = `${relatorio.nome.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").trim() || "relatorio"}.pdf`;
+  return { nome, buffer: await (await getStorage()).getObjectBuffer({ key: relatorio.storageKey }) };
+}
