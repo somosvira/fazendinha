@@ -44,6 +44,7 @@ describe("CompromissosFinanceiros — criação", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Criar a receber" }));
     await waitFor(() => expect(onNav).toHaveBeenCalledWith("lancar"));
+    expect(window.location.pathname + window.location.search).toBe("/financeiro/operacoes/nova?compromisso=RECEBER");
     expect(screen.queryByRole("heading", { name: /Criar um novo valor/ })).toBeNull();
     expect(descartarRascunhoOperacao).not.toHaveBeenCalled();
   });

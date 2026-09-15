@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
+import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
+import { abrirRotaNovaOperacao } from "../router";
 
 vi.mock("./novo-api", () => ({
   listarOperacoes: vi.fn().mockResolvedValue([]),
@@ -12,16 +14,25 @@ vi.mock("./novo-api", () => ({
 }));
 
 vi.mock("./FormOperacao", () => ({
-  FormOperacao: ({ rascunho }: { rascunho: unknown }) => <div>{rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>,
+  FormOperacao: ({ rascunho, operacaoBase }: { rascunho: { versao: number } | null; operacaoBase: unknown }) => (
+    <div data-versao={rascunho?.versao}>{operacaoBase ? "Formulário de correção" : rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>
+  ),
+}));
+
+vi.mock("./OperacaoFinanceiraDetalhe", () => ({
+  OperacaoFinanceiraDetalhe: ({ onCorrigir }: { onCorrigir: (operacao: unknown) => void }) => (
+    <button type="button" onClick={() => onCorrigir({ id: 12, transacoes: [], compromissos: [], itens: [] })}>Corrigir</button>
+  ),
 }));
 
 const rascunho = { id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
 
 beforeEach(() => {
-  cleanup(); vi.clearAllMocks();
+  cleanup(); vi.clearAllMocks(); limparRascunhoAtivo();
   window.history.replaceState(null, "", "/financeiro/operacoes");
-  vi.mocked(obterRascunhoOperacao).mockResolvedValue(rascunho);
-  vi.mocked(descartarRascunhoOperacao).mockResolvedValue(undefined);
+  // A API real publica o rascunho na store compartilhada; os dublês fazem o mesmo.
+  vi.mocked(obterRascunhoOperacao).mockImplementation(async () => prepararPublicacaoRascunho("leitura")(rascunho));
+  vi.mocked(descartarRascunhoOperacao).mockImplementation(async () => { prepararPublicacaoRascunho("escrita")(null); });
 });
 
 describe("OperacoesFinanceiras — rascunho", () => {
@@ -37,5 +48,44 @@ describe("OperacoesFinanceiras — rascunho", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Nova operação" }));
     await waitFor(() => expect(descartarRascunhoOperacao).toHaveBeenCalledOnce());
     expect(await screen.findByText("Formulário novo")).toBeTruthy();
+  });
+
+  it("o atalho da sidebar abre o rascunho mais recente com a lista já montada", async () => {
+    render(<OperacoesFinanceiras />);
+    await screen.findByRole("button", { name: "Continuar operação" });
+    // Um autosave posterior à carga da lista (ex.: o formulário aberto antes do "voltar").
+    act(() => { prepararPublicacaoRascunho("escrita")({ ...rascunho, versao: 5 }); });
+
+    act(() => { abrirRotaNovaOperacao(); });
+
+    const formulario = await screen.findByText("Formulário com rascunho");
+    expect(formulario.getAttribute("data-versao")).toBe("5");
+    expect(window.location.pathname).toBe("/financeiro/operacoes/nova");
+  });
+
+  // Regressão: os efeitos dos filhos rodam antes dos do App. Ao recarregar em
+  // /financeiro/operacoes/nova, a leitura da tela sai antes do limpar do App e
+  // não pode ser perdida, senão o formulário monta vazio sobre o rascunho salvo.
+  it("abre o formulário com o rascunho mesmo se a store for limpa com a leitura a caminho", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes/nova");
+    vi.mocked(obterRascunhoOperacao).mockImplementation(async () => {
+      const publicar = prepararPublicacaoRascunho("leitura");
+      await Promise.resolve();
+      return publicar(rascunho);
+    });
+    render(<OperacoesFinanceiras />);
+    limparRascunhoAtivo();
+    expect(await screen.findByText("Formulário com rascunho")).toBeTruthy();
+  });
+
+  it("o atalho da sidebar troca uma correção em curso pelo rascunho", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes/12");
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("button", { name: "Corrigir" }));
+    expect(await screen.findByText("Formulário de correção")).toBeTruthy();
+
+    act(() => { abrirRotaNovaOperacao(); });
+
+    expect(await screen.findByText("Formulário com rascunho")).toBeTruthy();
   });
 });

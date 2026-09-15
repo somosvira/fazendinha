@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarRange, ChevronRight, FilePenLine, Plus, Search } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
-import { isNovaOperacaoFinanceira, parseOperacaoFinanceiraId } from "../router";
-import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao, type RascunhoOperacao } from "./novo-api";
+import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId } from "../router";
+import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceiras, obterRascunhoOperacao, type ConfiguracoesFinanceiras, type Operacao } from "./novo-api";
+import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
@@ -56,13 +57,22 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 ];
 
 export function OperacoesFinanceiras() {
-  const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [rascunho, setRascunho] = useState<RascunhoOperacao | null>(null); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
+  const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
   const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(inicioMes); const [fim, setFim] = useState(hojeLocal);
   const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
-  const carregar = useCallback(async () => { setLoading(true); setErro(null); try { const [ops, cfg, draft] = await Promise.all([listarOperacoes({ inicio, fim }), obterConfiguracoesFinanceiras(), obterRascunhoOperacao()]); setItens(ops); setConfig(cfg); setRascunho(draft); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setLoading(false); } }, [inicio, fim]);
+  // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
+  // obterRascunhoOperacao a atualiza, e cada autosave também.
+  const carregar = useCallback(async () => { setLoading(true); setErro(null); try { const [ops, cfg] = await Promise.all([listarOperacoes({ inicio, fim }), obterConfiguracoesFinanceiras(), obterRascunhoOperacao()]); setItens(ops); setConfig(cfg); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setLoading(false); } }, [inicio, fim]);
   useEffect(() => { void carregar(); }, [carregar]);
-  useEffect(() => { const onPop = () => { setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname)); }; window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop); }, []);
+  useEffect(() => {
+    const onPop = (evento: PopStateEvent) => {
+      setDetalheId(parseOperacaoFinanceiraId(window.location.pathname)); setForm(isNovaOperacaoFinanceira(window.location.pathname));
+      // Atalhos para o rascunho (sidebar, Compromissos) substituem uma correção em curso.
+      if (entradaDeNovaOperacao(evento.state)) setOperacaoBase(null);
+    };
+    window.addEventListener("popstate", onPop); return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const filtradas = useMemo(() => itens.filter((operacao) => (status === "TODOS" || operacao.status === status) && (tipo === "TODOS" || operacao.tipo === tipo) && possuiEfeito(operacao, efeito) && `${operacao.descricao} ${operacao.parceiro?.nome} ${operacao.id}`.toLowerCase().includes(busca.toLowerCase())), [itens, busca, status, tipo, efeito]);
   const abrirDetalhe = (id: number) => { window.history.pushState(null, "", `/financeiro/operacoes/${id}`); setDetalheId(id); setForm(false); };
   const voltar = () => { window.history.pushState(null, "", "/financeiro/operacoes"); setDetalheId(null); };
@@ -71,7 +81,7 @@ export function OperacoesFinanceiras() {
     setIniciandoNova(true); setErro(null);
     try {
       if (rascunho) await descartarRascunhoOperacao();
-      setRascunho(null); abrirFormulario();
+      abrirFormulario();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
     finally { setIniciandoNova(false); }
   };
@@ -81,7 +91,9 @@ export function OperacoesFinanceiras() {
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} />;
   if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
   const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
-  if (form && config) return <FormOperacao config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  // A chave separa correção de rascunho: trocar de um para o outro remonta o
+  // formulário, senão o autosave gravaria os dados da correção no rascunho.
+  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
   return <PaginaFinanceira>
     <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={<div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div>} />

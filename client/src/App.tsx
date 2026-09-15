@@ -6,11 +6,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
-import { buildRotaWorklistRebanho, parseContaFinanceiraId, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
+import { abrirRotaNovaOperacao, buildRotaWorklistRebanho, parseContaFinanceiraId, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, parseRotaWorklistRebanho, tabToPath, pathToTab, DEFAULT_TAB, type RotaWorklistRebanho } from "./router";
 import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { FinanceiroContent } from "./financeiro/FinanceiroContent";
+import { obterRascunhoOperacao } from "./financeiro/novo-api";
+import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
+import { resumoRascunho } from "./financeiro/lib/rascunho";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -279,6 +282,16 @@ export function App() {
     if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
   };
 
+  // Atalho "Trabalho ativo" da sidebar: reabre o formulário da operação em
+  // rascunho. A sub-rota é publicada antes da troca de aba (ver router.ts).
+  const abrirRascunhoAtivo = () => {
+    setDeepLinkFiltros(null);
+    setRotaWorklist(null);
+    setWorklistSnapshot(null);
+    abrirRotaNovaOperacao();
+    setTab("lancar");
+  };
+
   const abrirWorklist = (worklist: WorklistRebanho) => {
     const alvo = buildRotaWorklistRebanho(worklist.chave, worklist.tab);
     if (!alvo) return;
@@ -467,6 +480,24 @@ export function App() {
     setTab(pathToTab(paginaInicialAutorizada(usuario)) ?? DEFAULT_TAB);
   }, [usuario, tab]);
 
+  // Rascunho de operação do usuário no sítio ativo, oferecido como "Trabalho
+  // ativo" no topo da sidebar. Só quem vê a aba Operações consulta o rascunho.
+  // O rascunho é por sítio: trocar de sítio esquece o anterior e busca o novo.
+  const rascunhoAtivo = useRascunhoAtivo();
+  const podeVerRascunho = visibleTabs.some((t) => t.id === "lancar");
+  const usuarioId = usuario?.id ?? null;
+  useEffect(() => {
+    limparRascunhoAtivo();
+    if (!token || usuarioId == null || !podeVerRascunho) return;
+    // Falha aqui só esconde o atalho; a tela de operações mostra seus próprios erros.
+    const recarregar = () => { void obterRascunhoOperacao().catch(() => undefined); };
+    recarregar();
+    // Ao voltar de outra aba do navegador: o rascunho pode ter mudado por lá.
+    const aoVoltar = () => { if (document.visibilityState === "visible") recarregar(); };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, [token, usuarioId, podeVerRascunho, propAtiva]);
+
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
   if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
@@ -563,6 +594,9 @@ export function App() {
         onToggleColapsar={toggleSidebar}
         onAcessos={() => setTab("acessos")}
         onSair={onSair}
+        trabalhoAtivo={podeVerRascunho && rascunhoAtivo.rascunho
+          ? { resumo: resumoRascunho(rascunhoAtivo.rascunho), ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
+          : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} style={{ display: "contents" }}>
