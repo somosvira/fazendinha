@@ -11,6 +11,7 @@
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
 import { useEffect, useState } from "react";
+import { FilePenLine, Plus } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -19,6 +20,7 @@ import { TerranoSymbol } from "./TerranoLogo";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
+import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
@@ -266,6 +268,59 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
   );
 }
 
+/** Atalho para o trabalho em andamento, no topo da navegação, acima do
+ *  Financeiro. Com rascunho de operação (`resumo`), mostra o lápis e a descrição
+ *  e reabre o rascunho; sem rascunho, mostra um "+" que começa uma operação
+ *  nova. `ativo` quando o formulário está na tela. É um item fino: ícone,
+ *  descrição e, logo abaixo, o tipo da operação em corpo menor; valor e "salvo
+ *  há" ficam no tooltip. A altura mínima é a mesma com e sem rascunho, para o
+ *  item não pular quando o "+" vira rascunho. No trilho recolhido vira só o
+ *  ícone; o ponto brass marca que há rascunho pendente.
+ *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
+ *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
+ *  páginas atuais. */
+export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void }) {
+  // O "salvo há N min" do tooltip envelhece com a tela parada: re-renderiza a
+  // cada minuto. O relógio é lido na renderização, para acompanhar cada autosave.
+  const [, setTique] = useState(0);
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setTique((tique) => tique + 1), 60_000);
+    return () => window.clearInterval(intervalo);
+  }, []);
+  const salvo = resumo ? quandoSalvo(resumo.atualizadoEm, Date.now()) : null;
+  const rotulo = resumo
+    ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
+    : ativo ? "Nova operação em edição" : "Nova operação";
+  return (
+    <div role="group" aria-label="Trabalho ativo" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
+      <button
+        type="button"
+        onClick={onAbrir}
+        aria-label={rotulo}
+        title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
+        className={cn(
+          "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
+          "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
+          RAIL_ICON_BTN,
+          // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
+          // duas linhas finas, em vez do respiro do modo ícone.
+          "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
+          ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
+        )}
+      >
+        <span className="relative flex-none leading-none">
+          {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
+          {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
+        </span>
+        <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
+          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : "Nova operação"}</span>
+          {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 const GROUP_ICON: Record<SidebarGroupId, JSX.Element> = {
   financeiro: <><path d="M12 2v20"/><path d="M17 6.5A4 4 0 0 0 13 4h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></>,
   pecuaria: <><path d="M7.5 8C5 8 3.5 6.5 3 4c2.8.2 4.7 1.2 6 3M16.5 8c2.5 0 4-1.5 4.5-4-2.8.2-4.7 1.2-6 3"/><path d="M7 9.5C7 6.5 9 5 12 5s5 1.5 5 4.5V15c0 3-2 5-5 5s-5-2-5-5z"/><circle cx="9.5" cy="12" r=".65" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12" r=".65" fill="currentColor" stroke="none"/><path d="M9.5 16c1.5-1 3.5-1 5 0"/></>,
@@ -331,7 +386,7 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
-  user, colapsada, onToggleColapsar, onAcessos, onSair,
+  user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -344,6 +399,8 @@ export function AppSidebar({
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
   user: User; colapsada: boolean; onToggleColapsar: () => void;
   onAcessos: () => void; onSair?: () => void;
+  // Atalho acima do Financeiro (ver TrabalhoAtivo); `resumo` nulo = sem rascunho.
+  trabalhoAtivo?: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -423,12 +480,12 @@ export function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cabeçalho da sidebar: marca e controle do trilho; o contexto da fazenda
-  // fica em um bloco próprio depois do divisor.
+  // Cabeçalho da sidebar: marca, controles do trilho e, logo abaixo da marca,
+  // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
@@ -438,15 +495,22 @@ export function AppSidebar({
             </button>
           </div>
         </div>
-      </div>
-      <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
+          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        </div>
       </div>
     </div>
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+      {trabalhoAtivo && (
+        <TrabalhoAtivo
+          resumo={trabalhoAtivo.resumo}
+          ativo={trabalhoAtivo.ativo}
+          onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }}
+        />
+      )}
       {itensFinanceiros.length > 0 && (
         <div className="flex flex-col gap-px">
           <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
