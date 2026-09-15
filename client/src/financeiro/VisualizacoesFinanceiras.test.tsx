@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
@@ -48,16 +48,23 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 const total = (titulo: string) => screen.getByText(titulo).parentElement!.textContent!.replace(/\s/g, " ");
 
 describe("visualizações financeiras integradas", () => {
-  it("consolida as contas exibidas, respeita filtros e oferece meses vazios", async () => {
+  it("mantém o gráfico alinhado aos filtros do extrato geral, não aos da listagem", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(total("Entradas no mês")).toContain("R$ 160,00"));
     expect(total("Saídas no mês")).toContain("R$ 65,00");
     expect(obterExtratoGeral).toHaveBeenCalledOnce();
     fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    expect(total("Entradas no mês")).toContain("R$ 160,00");
+    expect(total("Saídas no mês")).toContain("R$ 65,00");
+    const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
+    fireEvent.change(within(secaoExtrato).getByLabelText("Instituição"), { target: { value: "__sem__" } });
     expect(total("Entradas no mês")).toContain("R$ 0,00");
     expect(total("Saídas no mês")).toContain("R$ 25,00");
+    fireEvent.change(within(secaoExtrato).getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
+    expect(screen.getByText("Sem movimentações neste mês para o escopo selecionado.")).toBeTruthy();
+    fireEvent.change(within(secaoExtrato).getByLabelText("Data inicial"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Próximo mês do gráfico" }));
-    expect(screen.getByText("Sem movimentações neste mês para as contas exibidas.")).toBeTruthy();
+    expect(screen.getByText("Sem movimentações neste mês para o escopo selecionado.")).toBeTruthy();
     expect(screen.queryByRole("img", { name: /Entradas e saídas por dia/ })).toBeNull();
   });
 
@@ -85,6 +92,11 @@ describe("visualizações financeiras integradas", () => {
     expect(screen.queryByText("Compromisso 6")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
     expect(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })).toHaveLength(6);
+    expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Próximo mês" }));
+    expect(screen.getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+    expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
     fireEvent.click(screen.getByRole("button", { name: "Ver 6 compromissos" }));
     const dia = screen.getByRole("dialog", { name: "Compromissos de 14/09/2026" });
     expect(dia.querySelectorAll("li button")).toHaveLength(6);

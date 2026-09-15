@@ -40,7 +40,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar }: 
     <div role="region" aria-label="Dias do calendário" tabIndex={0} className="overflow-x-auto">
       <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: 700 }}>
         <caption className="sr-only">Calendário de compromissos — {nomeMes(mes)}</caption>
-        <thead><tr>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <th key={dia} scope="col" className="border border-border bg-[#faf9f4] px-3 py-2 text-xs font-semibold text-ink-3">{dia}</th>)}</tr></thead>
+        <thead><tr>{["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(dia => <th key={dia} scope="col" className="border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-ink-3">{dia}</th>)}</tr></thead>
         <tbody>{Array.from({ length: dias.length / 7 }, (_, semana) => <tr key={semana}>{dias.slice(semana * 7, semana * 7 + 7).map(({ data, dia }) => <td key={data} data-dia={data} className={`border border-border p-2 align-top ${data.startsWith(mes) ? "bg-white" : "bg-stone-50 text-ink-3"}`}>
           <div className="min-h-[130px]">
             <time dateTime={data} aria-label={dataBR(data)} aria-current={data === hoje() ? "date" : undefined} className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${data === hoje() ? "bg-mast text-white" : ""}`}>{dia}</time>

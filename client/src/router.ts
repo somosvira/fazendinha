@@ -103,6 +103,12 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
 
 export const DEFAULT_TAB: Tab = "dashboard";
 
+/** Atualiza a URL e notifica o roteador leve da aplicação. */
+export function navegarPara(pathname: string): void {
+  window.history.pushState(null, "", pathname);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
 export function parseContaFinanceiraId(pathname: string): number | null {
   const match = /^\/financeiro\/contas\/([1-9]\d*)\/?$/i.exec(pathname);
   return match ? Number(match[1]) : null;

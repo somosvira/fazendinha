@@ -6,6 +6,7 @@ import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, Mon
 import { tituloCompromisso } from "./lib/compromissos";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
+import { navegarPara } from "../router";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [mes, setMes] = useState(mesAtual());
@@ -13,6 +14,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
+  const [mesCalendario, setMesCalendario] = useState(mesAtual());
 
   useEffect(() => {
     let vigente = true;
@@ -31,7 +33,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const proximos = pendentes.slice(0, 5);
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={valor => { if (valor) setMes(valor); }} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); }}><Plus size={16} /> Nova operação</Button></div>} />
+    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={valor => { if (valor) setMes(valor); }} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => navegarPara("/financeiro/operacoes/nova"), 0); }}><Plus size={16} /> Nova operação</Button></div>} />
     <ErrorBox erro={erro} />
     {dados && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -44,7 +46,7 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
 
       <Panel className="mt-6 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Próximos compromissos</h2><p className="mt-1 text-xs text-ink-3">Agenda financeira — não compõe o saldo atual</p></div><div className="flex flex-wrap items-center gap-4"><ControleVisaoCompromissos visao={visao} onChange={setVisao} /><button onClick={() => onNav("gastos")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div></div>
-        {visao === "calendario" ? <CalendarioCompromissos itens={pendentes} mes={mes} onChangeMes={setMes} /> : proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className="grid items-center gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><div className="break-words font-semibold">{tituloCompromisso(c)}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong></div>)}</div> : <Empty>Não há compromissos pendentes.</Empty>}
+        {visao === "calendario" ? <CalendarioCompromissos itens={pendentes} mes={mesCalendario} onChangeMes={setMesCalendario} /> : proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className="grid items-center gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><div className="break-words font-semibold">{tituloCompromisso(c)}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong></div>)}</div> : <Empty>Não há compromissos pendentes.</Empty>}
       </Panel>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_.95fr]">

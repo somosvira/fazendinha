@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeftRight, Settings2 } from "lucide-react";
-import { ExtratoGeral } from "./ExtratoGeral";
-import { parseContaFinanceiraId } from "../router";
+import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, filtrarMovimentosExtratoGeral, type FiltrosExtratoGeral } from "./ExtratoGeral";
+import { navegarPara, parseContaFinanceiraId } from "../router";
 import type { Tab } from "../components/Shell";
 import { obterConfiguracoesFinanceiras, obterExtratoConta, obterExtratoGeral, transferir, type ConfiguracoesFinanceiras, type Conta, type MovimentoConta, type MovimentoGeral } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
@@ -22,10 +22,11 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [contaId, setContaId] = useState(() => parseContaFinanceiraId(window.location.pathname)); const selecionada = config?.contas.find(c => c.id === contaId) ?? null; const [carregandoExtrato, setCarregandoExtrato] = useState(false); const [erroExtrato, setErroExtrato] = useState<string | null>(null); const [extrato, setExtrato] = useState<MovimentoConta[]>([]); const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
   const [buscaConta, setBuscaConta] = useState(""); const [tipoConta, setTipoConta] = useState(""); const [instituicaoConta, setInstituicaoConta] = useState(""); const [statusConta, setStatusConta] = useState("");
   const [movimentosGerais, setMovimentosGerais] = useState<MovimentoGeral[]>([]);
+  const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>({ ...FILTROS_EXTRATO_GERAL_INICIAIS });
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg);  }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { const atualizar = () => setContaId(parseContaFinanceiraId(window.location.pathname)); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
-  const navegar = (id: number | null, movimentoId?: number) => { window.history.pushState(null, "", id == null ? "/financeiro/contas" : `/financeiro/contas/${id}${movimentoId ? `#movimento-${movimentoId}` : ""}`); window.dispatchEvent(new PopStateEvent("popstate")); };
+  const navegar = (id: number | null, movimentoId?: number) => navegarPara(id == null ? "/financeiro/contas" : `/financeiro/contas/${id}${movimentoId ? `#movimento-${movimentoId}` : ""}`);
 
   useEffect(() => {
     let vigente = true;
@@ -55,7 +56,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
       && (!instituicaoConta || (instituicaoConta === "__sem__" ? !c.instituicao : c.instituicao === instituicaoConta))
       && (!statusConta || (statusConta === "ATIVA" ? c.ativo : !c.ativo));
   });
-  const idsContasFiltradas = new Set(contasFiltradas.map(c => c.id));
+  const movimentosFiltradosExtratoGeral = filtrarMovimentosExtratoGeral(movimentosGerais, filtrosExtratoGeral);
   const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
 
   return <PaginaFinanceira>
@@ -73,8 +74,8 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
         { chave: "ultima", titulo: "Última movimentação", alinhamento: "centro", larguraMinima: 220, celula: c => c.ultimaOperacao ? <><div>{c.ultimaOperacao.descricao || c.ultimaOperacao.tipo.replaceAll("_", " ")}</div><div className="mt-1 text-xs text-ink-3">{dataBR(c.ultimaOperacao.data)}</div></> : "Sem movimentações" },
         { chave: "acao", titulo: "Ação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: c => <a href={`/financeiro/contas/${c.id}`} className="inline-flex rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-stone-50" aria-label={`Ver conta ${c.nome}`} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegar(c.id); } }}>Ver conta →</a> },
       ]} /> : <Empty>Nenhuma conta encontrada para os filtros selecionados.</Empty>}</Panel></section>
-      <FluxoContasFinanceiras key="consolidado" movimentos={movimentosGerais.filter(m => idsContasFiltradas.has(m.contaId))} consolidado carregando={carregandoExtrato} erro={erroExtrato} escopo={`${contasFiltradas.length} contas da listagem`} />
-      <ExtratoGeral contas={config.contas} movimentos={movimentosGerais} carregando={carregandoExtrato} erro={erroExtrato} onAbrir={(m) => navegar(m.contaId, m.id)} />
+      <FluxoContasFinanceiras key="consolidado" movimentos={movimentosFiltradosExtratoGeral} consolidado carregando={carregandoExtrato} erro={erroExtrato} escopo="Mesmo escopo dos filtros do extrato geral abaixo" />
+      <ExtratoGeral contas={config.contas} movimentos={movimentosGerais} filtros={filtrosExtratoGeral} onChangeFiltros={setFiltrosExtratoGeral} carregando={carregandoExtrato} erro={erroExtrato} onAbrir={(m) => navegar(m.contaId, m.id)} />
     </>}
     {contaId != null && !selecionada && <Empty>Esta conta não está disponível na fazenda selecionada.</Empty>}
     {selecionada && <FluxoContasFinanceiras key={selecionada.id} movimentos={extrato} carregando={carregandoExtrato} erro={erroExtrato} escopo={selecionada.nome} />}

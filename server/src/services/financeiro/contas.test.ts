@@ -47,6 +47,16 @@ describe("contas financeiras", () => {
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: {} } }));
   });
 
+  it("inclui o tipo da transação revertida nos extratos individual e geral", async () => {
+    const transacao = { include: { parceiro: true, operacao: true, reversaoDe: { select: { tipo: true } } } };
+    await listarExtrato(1, null);
+    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ include: { transacao } }));
+    await listarExtratoGeral(null);
+    expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      include: { conta: { select: { id: true, nome: true, instituicao: true } }, transacao },
+    }));
+  });
+
   it("PATCH só de ativo não toca em nenhum outro campo", async () => {
     const conta = await atualizarConta(1, 1, { ativo: false });
     expect(mocks.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { ativo: false } });

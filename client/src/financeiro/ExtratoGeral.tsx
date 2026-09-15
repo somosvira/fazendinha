@@ -1,36 +1,48 @@
-import { useState } from "react";
 import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal";
 
-export function ExtratoGeral({ contas, movimentos, carregando, erro, onAbrir }: {
-  contas: Conta[];
-  movimentos: MovimentoGeral[];
-  carregando: boolean;
-  erro: string | null;
-  onAbrir: (movimento: MovimentoGeral) => void;
-}) {
-  const [inicio, setInicio] = useState("");
-  const [fim, setFim] = useState("");
-  const [conta, setConta] = useState("");
-  const [instituicao, setInstituicao] = useState("");
-  const intervaloInvalido = !!inicio && !!fim && inicio > fim;
-  const filtrados = movimentos.filter(m => {
+export type FiltrosExtratoGeral = {
+  inicio: string;
+  fim: string;
+  conta: string;
+  instituicao: string;
+};
+
+export const FILTROS_EXTRATO_GERAL_INICIAIS: FiltrosExtratoGeral = { inicio: "", fim: "", conta: "", instituicao: "" };
+
+export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filtros: FiltrosExtratoGeral): MovimentoGeral[] {
+  const { inicio, fim, conta, instituicao } = filtros;
+  return movimentos.filter(m => {
     const data = m.transacao.data.slice(0, 10);
     return (!inicio || data >= inicio) && (!fim || data <= fim) && (!conta || String(m.contaId) === conta)
       && (!instituicao || (instituicao === "__sem__" ? !m.conta.instituicao : m.conta.instituicao === instituicao));
   });
+}
+
+export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, carregando, erro, onAbrir }: {
+  contas: Conta[];
+  movimentos: MovimentoGeral[];
+  filtros: FiltrosExtratoGeral;
+  onChangeFiltros: (filtros: FiltrosExtratoGeral) => void;
+  carregando: boolean;
+  erro: string | null;
+  onAbrir: (movimento: MovimentoGeral) => void;
+}) {
+  const { inicio, fim, conta, instituicao } = filtros;
+  const intervaloInvalido = !!inicio && !!fim && inicio > fim;
+  const filtrados = filtrarMovimentosExtratoGeral(movimentos, filtros);
   return <section id="extrato-geral" className="mt-8 scroll-mt-6" aria-labelledby="titulo-extrato-geral">
     <h2 id="titulo-extrato-geral" className="font-serif text-2xl">Extrato geral</h2>
     <p className="mt-2 text-sm text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
     <Panel className="mt-4 overflow-hidden">
       <div className="grid gap-4 border-b border-border p-5 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="text-sm font-medium">Data inicial<input type="date" value={inicio} onChange={e => setInicio(e.target.value)} className={CAMPO} /></label>
-        <label className="text-sm font-medium">Data final<input type="date" value={fim} onChange={e => setFim(e.target.value)} className={CAMPO} /></label>
-        <label className="text-sm font-medium">Conta<select value={conta} onChange={e => setConta(e.target.value)} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
-        <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => setInstituicao(e.target.value)} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
+        <label className="text-sm font-medium">Data inicial<input type="date" value={inicio} onChange={e => onChangeFiltros({ ...filtros, inicio: e.target.value })} className={CAMPO} /></label>
+        <label className="text-sm font-medium">Data final<input type="date" value={fim} onChange={e => onChangeFiltros({ ...filtros, fim: e.target.value })} className={CAMPO} /></label>
+        <label className="text-sm font-medium">Conta<select value={conta} onChange={e => onChangeFiltros({ ...filtros, conta: e.target.value })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
+        <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => onChangeFiltros({ ...filtros, instituicao: e.target.value })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
       </div>
       <ErrorBox erro={erro} />
       {intervaloInvalido ? <p role="alert" className="p-5">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <p role="status" className="p-5">Carregando extrato geral…</p> : erro ? <p className="p-5">Não foi possível carregar as movimentações.</p> : filtrados.length ? <TabelaFinanceira rotulo="Extrato geral" itens={filtrados} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
