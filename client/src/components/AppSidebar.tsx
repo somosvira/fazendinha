@@ -472,12 +472,12 @@ export function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cabeçalho da sidebar: marca e controle do trilho; o contexto da fazenda
-  // fica em um bloco próprio depois do divisor.
+  // Cabeçalho da sidebar: marca, controles do trilho e, logo abaixo da marca,
+  // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
@@ -487,15 +487,15 @@ export function AppSidebar({
             </button>
           </div>
         </div>
-      </div>
-      <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
+          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        </div>
       </div>
     </div>
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
       {trabalhoAtivo && (
         <TrabalhoAtivo
           resumo={trabalhoAtivo.resumo}
