@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 const usuario: User = { id: "1", nome: "Ana", email: "ana@exemplo.com", inicial: "A", papel: "personalizado", status: "ativo", ultimoAcesso: "", abas: ["dashboard", "lancar"], areas: ["financeiro"], flags: [] };
-const resumo = { titulo: "Ração para o gado", detalhe: "R$ 1.250,00 · Compra para estoque", atualizadoEm: new Date(Date.now() - 5 * 60_000).toISOString() };
+const resumo = { titulo: "Ração para o gado", tipo: "Compra para estoque", detalhe: "R$ 1.250,00 · Compra para estoque", atualizadoEm: new Date(Date.now() - 5 * 60_000).toISOString() };
 
 function renderSidebar(props: Partial<ComponentProps<typeof AppSidebar>> = {}) {
   const base: ComponentProps<typeof AppSidebar> = {
@@ -38,8 +38,9 @@ describe("AppSidebar — trabalho ativo", () => {
     const bloco = screen.getByRole("group", { name: "Trabalho ativo" });
     const financeiro = screen.getByRole("button", { name: /Financeiro$/ });
     expect(bloco.compareDocumentPosition(financeiro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Item fino: na tela, só a descrição; valor e tipo ficam no tooltip.
+    // Item fino: descrição e, abaixo, o tipo; o valor fica no tooltip.
     expect(screen.getByText("Ração para o gado")).toBeTruthy();
+    expect(screen.getByText("Compra para estoque")).toBeTruthy();
     expect(screen.queryByText("R$ 1.250,00 · Compra para estoque")).toBeNull();
     expect(screen.queryByText("Trabalho ativo")).toBeNull();
     const atalho = screen.getByRole("button", { name: "Continuar rascunho: Ração para o gado" });
@@ -70,10 +71,22 @@ describe("TrabalhoAtivo", () => {
     render(<TrabalhoAtivo resumo={null} ativo={false} onAbrir={onAbrir} />);
     const botao = screen.getByRole("button", { name: "Nova operação" });
     expect(screen.getByText("Nova operação")).toBeTruthy();
+    // Sem rascunho não há tipo: uma linha só, na mesma altura mínima do item com rascunho.
+    expect(botao.textContent).toBe("Nova operação");
+    expect(botao.className).toContain("min-h-[38px]");
     expect(botao.querySelector(".lucide-plus")).toBeTruthy();
     expect(botao.querySelector(".lucide-file-pen-line")).toBeNull();
     fireEvent.click(botao);
     expect(onAbrir).toHaveBeenCalledOnce();
+  });
+
+  it("mostra o tipo da operação abaixo da descrição", () => {
+    render(<TrabalhoAtivo resumo={resumo} ativo={false} onAbrir={vi.fn()} />);
+    const descricao = screen.getByText("Ração para o gado");
+    const tipo = screen.getByText("Compra para estoque");
+    expect(descricao.compareDocumentPosition(tipo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(descricao.className).toContain("block");
+    expect(tipo.className).toContain("block");
   });
 
   it("com rascunho mostra o lápis no lugar do +", () => {
@@ -87,7 +100,10 @@ describe("TrabalhoAtivo", () => {
     render(<TrabalhoAtivo resumo={resumo} ativo={false} onAbrir={vi.fn()} />);
     const botao = screen.getByRole("button", { name: /Continuar rascunho/ });
     expect(botao.getAttribute("aria-current")).toBeNull();
-    expect(screen.getByText("Ração para o gado").className).toContain("[.side-collapsed_&]:hidden");
+    // Descrição e tipo ficam no mesmo bloco, escondido inteiro no trilho recolhido.
+    const bloco = screen.getByText("Ração para o gado").parentElement!;
+    expect(bloco.className).toContain("[.side-collapsed_&]:hidden");
+    expect(bloco.contains(screen.getByText("Compra para estoque"))).toBe(true);
   });
 
   it("atualiza o tempo desde o último salvamento", () => {

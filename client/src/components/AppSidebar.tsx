@@ -271,9 +271,11 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
 /** Atalho para o trabalho em andamento, no topo da navegação, acima do
  *  Financeiro. Com rascunho de operação (`resumo`), mostra o lápis e a descrição
  *  e reabre o rascunho; sem rascunho, mostra um "+" que começa uma operação
- *  nova. `ativo` quando o formulário está na tela. É um item fino, só com ícone
- *  e descrição: valor, tipo e "salvo há" do rascunho ficam no tooltip. No trilho
- *  recolhido vira só o ícone; o ponto brass marca que há rascunho pendente.
+ *  nova. `ativo` quando o formulário está na tela. É um item fino: ícone,
+ *  descrição e, logo abaixo, o tipo da operação em corpo menor; valor e "salvo
+ *  há" ficam no tooltip. A altura mínima é a mesma com e sem rascunho, para o
+ *  item não pular quando o "+" vira rascunho. No trilho recolhido vira só o
+ *  ícone; o ponto brass marca que há rascunho pendente.
  *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
  *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
  *  páginas atuais. */
@@ -297,9 +299,12 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
         aria-label={rotulo}
         title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
         className={cn(
-          "flex w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[7px] text-left font-sans text-[13px] text-[var(--mast-ink)]",
+          "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
           "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
           RAIL_ICON_BTN,
+          // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
+          // duas linhas finas, em vez do respiro do modo ícone.
+          "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
           ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
         )}
       >
@@ -307,7 +312,10 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
           {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
           {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
         </span>
-        <span className={cn("min-w-0 flex-1 truncate font-medium", RAIL_BLOCK)}>{resumo ? resumo.titulo : "Nova operação"}</span>
+        <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
+          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : "Nova operação"}</span>
+          {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
+        </span>
       </button>
     </div>
   );

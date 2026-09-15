@@ -5,6 +5,8 @@ import { brl, TIPO_OPERACAO } from "../financeiro-ui";
 export type ResumoRascunho = {
   /** Descrição da operação; sem ela, o primeiro item; sem itens, "Nova operação". */
   titulo: string;
+  /** Nome do tipo da operação, ex.: "Compra para estoque"; `null` se desconhecido. */
+  tipo: string | null;
   /** Valor e tipo prontos para exibição, ex.: "R$ 1.250,00 · Venda". O valor vem
    *  primeiro porque a sidebar é estreita e o fim da linha é truncado. */
   detalhe: string;
@@ -37,11 +39,12 @@ export function resumoRascunho(rascunho: RascunhoOperacao): ResumoRascunho {
   const primeiroItem = Array.isArray(operacao?.itens)
     ? operacao.itens.map((item) => texto(registro(item)?.descricao)).find(Boolean)
     : undefined;
-  const tipo = texto(operacao?.tipo) || texto(formulario?.tipo);
+  const tipo = TIPO_OPERACAO[texto(operacao?.tipo) || texto(formulario?.tipo)] ?? null;
   const valor = valorDoRascunho(operacao, formulario);
   return {
     titulo: texto(operacao?.descricao) || texto(formulario?.descricao) || primeiroItem || "Nova operação",
-    detalhe: [valor > 0 ? brl(valor) : null, TIPO_OPERACAO[tipo]].filter(Boolean).join(" · "),
+    tipo,
+    detalhe: [valor > 0 ? brl(valor) : null, tipo].filter(Boolean).join(" · "),
     atualizadoEm: rascunho.updatedAt,
   };
 }
