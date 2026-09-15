@@ -1,6 +1,21 @@
-/* Rio Novo — SVG charts e formatadores (sem chart lib externa) */
+/* Gráficos compartilhados do Terrano, renderizados com Recharts. */
 
-import { useId } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useState } from "react";
+import { ChartContainer, ChartLegend, ChartTooltip, type ChartConfig } from "./ui/chart";
 
 export const fmt = (
   n: number,
@@ -47,31 +62,56 @@ export const fmtMoneyExact = (val: number): string => {
   })}`;
 };
 
-/** Reais BRUTOS, compacto: exato < R$ 10 mil, "mil" ≥ 10 mil, "mi" ≥ 1 mi.
- *  Formatador canônico do Dashboard e do Relatório — passe sempre o valor em
- *  reais (não em milhares) para a MESMA cifra aparecer igual nas duas telas. */
+/** Reais BRUTOS, compacto: exato < R$ 10 mil, "mil" ≥ 10 mil, "mi" ≥ 1 mi. */
 export function fmtBRL(n: number, opts: { compact?: boolean; decimals?: number } = {}): string {
   const { compact = true, decimals } = opts;
   if (n === 0) return "R$ 0";
   const abs = Math.abs(n);
   const sign = n < 0 ? "−" : "";
   if (compact && abs >= 1_000_000) {
-    return `${sign}R$ ${(abs / 1_000_000).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} mi`;
+    return `${sign}R$ ${(abs / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} mi`;
   }
   if (compact && abs >= 10_000) {
-    return `${sign}R$ ${(abs / 1_000).toLocaleString("pt-BR", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })} mil`;
+    return `${sign}R$ ${(abs / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mil`;
   }
   return `${sign}R$ ${abs.toLocaleString("pt-BR", {
     minimumFractionDigits: decimals ?? 0,
     maximumFractionDigits: decimals ?? 0,
   })}`;
 }
+
+export type ChartType = "line" | "bar";
+
+export function ChartTypeControl({ value, onChange, label = "Tipo do gráfico" }: {
+  value: ChartType;
+  onChange: (value: ChartType) => void;
+  label?: string;
+}) {
+  return <div role="group" aria-label={label} className="inline-flex overflow-hidden rounded-lg border border-border bg-white p-0.5">
+    {([['line', 'Linhas'], ['bar', 'Barras']] as const).map(([tipo, texto]) => <button
+      key={tipo}
+      type="button"
+      aria-pressed={value === tipo}
+      onClick={() => onChange(tipo)}
+      className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${value === tipo ? "bg-mast text-white" : "text-ink-2 hover:bg-surface-2"}`}
+    >{texto}</button>)}
+  </div>;
+}
+
+const tooltipMoney = (value: number | string | readonly (number | string)[] | undefined, name: string | number | undefined): [string, string] => [fmtMoneyExact(Number(value ?? 0)), String(name ?? "Valor")];
+const chartMargin = { top: 18, right: 18, bottom: 8, left: 18 };
+const axisProps = { tick: { fill: "var(--ink-2)", fontSize: 12 }, tickLine: false, axisLine: false } as const;
+const fluxoConfig = {
+  receitas: { label: "Receitas", color: "var(--pos)" },
+  despesas: { label: "Despesas", color: "var(--neg)" },
+} satisfies ChartConfig;
+const waterfallConfig = {
+  receita: { label: "Receita", color: "var(--pos)" },
+  custeio: { label: "Custeio", color: "var(--cafe)" },
+  saldo: { label: "Saldo", color: "var(--ink)" },
+  investimento: { label: "Investimento", color: "var(--outros)" },
+  fluxo: { label: "Fluxo", color: "var(--neg)" },
+} satisfies ChartConfig;
 
 type FluxoMensal = {
   mes: string;
@@ -82,119 +122,28 @@ type FluxoMensal = {
   investimento: number;
 };
 
-export function MonthlyFlowChart({ data }: { data: FluxoMensal[] }) {
-  const W = 760,
-    H = 320;
-  const padL = 56,
-    padR = 24,
-    padT = 24,
-    padB = 48;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-
-  const receitas = data.map((d) => d.receitaLeite + d.receitaCafe + d.receitaOutros);
-  const custeios = data.map((d) => d.custeio);
-  const invests = data.map((d) => d.investimento);
-  const fluxos = data.map((_, i) => receitas[i] - custeios[i] - invests[i]);
-
-  const maxPos = Math.max(...receitas, ...custeios, ...invests, 500);
-  const minNeg = Math.min(...fluxos, -200);
-  const yMax = Math.ceil(maxPos / 200) * 200;
-  const yMin = Math.floor(minNeg / 200) * 200;
-  const yRange = yMax - yMin;
-
-  const yScale = (v: number) => padT + innerH - ((v - yMin) / yRange) * innerH;
-  const xBand = innerW / data.length;
-  const groupW = xBand * 0.7;
-  const barW = groupW / 3 - 4;
-
-  const tickStep = 500;
-  const ticks: number[] = [];
-  for (let v = Math.ceil(yMin / tickStep) * tickStep; v <= yMax; v += tickStep) ticks.push(v);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 360 }}>
-      {ticks.map((v) => (
-        <g key={v}>
-          <line
-            x1={padL}
-            x2={W - padR}
-            y1={yScale(v)}
-            y2={yScale(v)}
-            className={v === 0 ? "chart-axis" : "grid-line"}
-          />
-          <text x={padL - 10} y={yScale(v) + 4} textAnchor="end" className="chart-tick-text">
-            {v === 0 ? "0" : fmt(v / 1000, { decimals: 1 }) + " mi"}
-          </text>
-        </g>
-      ))}
-      <line x1={padL} x2={W - padR} y1={yScale(0)} y2={yScale(0)} className="chart-axis" />
-      {data.map((d, i) => {
-        const xStart = padL + i * xBand + (xBand - groupW) / 2;
-        const r = receitas[i];
-        const c = custeios[i];
-        const inv = invests[i];
-        return (
-          <g key={i}>
-            <rect x={xStart} y={yScale(r)} width={barW} height={yScale(0) - yScale(r)} fill="var(--leite)" />
-            <rect
-              x={xStart + barW + 6}
-              y={yScale(0)}
-              width={barW}
-              height={yScale(0) - yScale(-c)}
-              fill="var(--cafe)"
-              opacity="0.85"
-            />
-            <rect
-              x={xStart + (barW + 6) * 2}
-              y={yScale(0)}
-              width={barW}
-              height={yScale(0) - yScale(-inv)}
-              fill="none"
-              stroke="var(--outros)"
-              strokeWidth="1.5"
-              strokeDasharray="3 3"
-            />
-            <rect
-              x={xStart + (barW + 6) * 2}
-              y={yScale(0)}
-              width={barW}
-              height={yScale(0) - yScale(-inv)}
-              fill="var(--outros)"
-              opacity="0.18"
-            />
-            <text x={xStart + groupW / 2} y={H - padB + 22} textAnchor="middle" className="chart-tick-text">
-              {d.mes}
-            </text>
-          </g>
-        );
-      })}
-      <polyline
-        fill="none"
-        stroke="var(--ink)"
-        strokeWidth="1.5"
-        points={data
-          .map((_, i) => {
-            const x = padL + i * xBand + xBand / 2;
-            const y = yScale(fluxos[i]);
-            return `${x},${y}`;
-          })
-          .join(" ")}
-      />
-      {data.map((_, i) => {
-        const x = padL + i * xBand + xBand / 2;
-        const y = yScale(fluxos[i]);
-        return (
-          <g key={`pt-${i}`}>
-            <circle cx={x} cy={y} r="4" fill="var(--bg)" stroke="var(--ink)" strokeWidth="1.5" />
-            <text x={x} y={y - 10} textAnchor="middle" className="chart-value-text">
-              {fmt(fluxos[i])}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
+export function MonthlyFlowChart({ data, tipo = "line" }: { data: FluxoMensal[]; tipo?: ChartType }) {
+  const pontos = data.map((item) => ({
+    mes: item.mes,
+    receitas: item.receitaLeite + item.receitaCafe + item.receitaOutros,
+    despesas: item.custeio + item.investimento,
+  }));
+  return <ChartContainer config={fluxoConfig} className="h-[320px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Receitas e despesas mensais">
+    <ComposedChart data={pontos} margin={chartMargin} accessibilityLayer>
+      <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+      <XAxis dataKey="mes" {...axisProps} />
+      <YAxis width={82} tickFormatter={(value) => fmtBRL(Number(value))} {...axisProps} />
+      <ChartTooltip formatter={tooltipMoney} />
+      <ChartLegend />
+      {tipo === "line" ? <>
+        <Line type="monotone" dataKey="receitas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        <Line type="monotone" dataKey="despesas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+      </> : <>
+        <Bar dataKey="receitas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="despesas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+      </>}
+    </ComposedChart>
+  </ChartContainer>;
 }
 
 type WaterfallStep = {
@@ -205,197 +154,53 @@ type WaterfallStep = {
 };
 
 export function WaterfallChart({ data }: { data: WaterfallStep[] }) {
-  const W = 760,
-    H = 340;
-  const padL = 24,
-    padR = 24,
-    padT = 32,
-    padB = 56;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-
-  const yMax = 1300;
-  const yMin = -4400;
-  const yRange = yMax - yMin;
-  const yScale = (v: number) => padT + innerH - ((v - yMin) / yRange) * innerH;
-
-  const N = data.length;
-  const xBand = innerW / N;
-  const barW = xBand * 0.45;
-
-  let running = 0;
-  const ticks = [-4000, -3000, -2000, -1000, 0, 1000];
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 380 }}>
-      {ticks.map((v) => (
-        <g key={v}>
-          <line
-            x1={padL}
-            x2={W - padR}
-            y1={yScale(v)}
-            y2={yScale(v)}
-            className={v === 0 ? "chart-axis" : "grid-line"}
-          />
-          <text x={W - padR} y={yScale(v) - 4} textAnchor="end" className="chart-tick-text">
-            {v === 0 ? "0" : (v > 0 ? "+" : "−") + Math.abs(v / 1000).toFixed(1) + " mi"}
-          </text>
-        </g>
-      ))}
-      {data.map((step, i) => {
-        const x = padL + i * xBand + (xBand - barW) / 2;
-        let yTop = 0,
-          yBot = 0,
-          fill = "var(--ink)",
-          dashed = false;
-        const prev = running;
-
-        if (step.type === "receita") {
-          running += step.value;
-          yTop = yScale(running);
-          yBot = yScale(0);
-          fill = "var(--leite)";
-        } else if (step.type === "custeio") {
-          running += step.value;
-          yTop = yScale(prev);
-          yBot = yScale(running);
-          fill = "var(--cafe)";
-        } else if (step.type === "saldo") {
-          yTop = yScale(Math.max(0, running));
-          yBot = yScale(Math.min(0, running));
-          fill = "var(--ink)";
-        } else if (step.type === "investimento") {
-          running += step.value;
-          yTop = yScale(prev);
-          yBot = yScale(running);
-          fill = "var(--outros)";
-          dashed = true;
-        } else if (step.type === "fluxo") {
-          yTop = yScale(Math.max(0, running));
-          yBot = yScale(Math.min(0, running));
-          fill = "var(--neg)";
-        }
-
-        const isSubtotal = step.type === "saldo" || step.type === "fluxo";
-
-        return (
-          <g key={step.key}>
-            {dashed ? (
-              <>
-                <rect
-                  x={x}
-                  y={Math.min(yTop, yBot)}
-                  width={barW}
-                  height={Math.abs(yBot - yTop)}
-                  fill="var(--outros)"
-                  opacity="0.2"
-                />
-                <rect
-                  x={x}
-                  y={Math.min(yTop, yBot)}
-                  width={barW}
-                  height={Math.abs(yBot - yTop)}
-                  fill="none"
-                  stroke="var(--outros)"
-                  strokeWidth="1.5"
-                  strokeDasharray="4 3"
-                />
-              </>
-            ) : (
-              <rect
-                x={x}
-                y={Math.min(yTop, yBot)}
-                width={barW}
-                height={Math.abs(yBot - yTop)}
-                fill={fill}
-              />
-            )}
-            {i < N - 1 && step.type !== "saldo" && step.type !== "fluxo" && (
-              <line
-                x1={x + barW}
-                x2={padL + (i + 1) * xBand + (xBand - barW) / 2}
-                y1={yScale(running)}
-                y2={yScale(running)}
-                stroke="var(--ink-mute)"
-                strokeWidth="1"
-                strokeDasharray="2 3"
-              />
-            )}
-            <text
-              x={x + barW / 2}
-              y={H - padB + 22}
-              textAnchor="middle"
-              className="chart-tick-text"
-              style={{ fontSize: 12, fill: "var(--ink-2)" }}
-            >
-              {step.label}
-            </text>
-            <text
-              x={x + barW / 2}
-              y={Math.min(yTop, yBot) - 8}
-              textAnchor="middle"
-              className="chart-value-text"
-              style={{
-                fontSize: 14,
-                fill: isSubtotal ? "var(--ink)" : "var(--ink-2)",
-                fontWeight: isSubtotal ? 500 : 400,
-              }}
-            >
-              {step.value === 0
-                ? "0"
-                : (step.value > 0 ? "+" : "−") +
-                  "R$ " +
-                  (Math.abs(step.value) / 1000).toFixed(2) +
-                  " mi"}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
+  let acumulado = 0;
+  const pontos = data.map((item) => {
+    const anterior = acumulado;
+    if (!["saldo", "fluxo"].includes(item.type)) acumulado += item.value;
+    const total = ["saldo", "fluxo"].includes(item.type) ? acumulado : undefined;
+    return {
+      ...item,
+      faixa: total == null ? [Math.min(anterior, acumulado), Math.max(anterior, acumulado)] : [Math.min(0, total), Math.max(0, total)],
+    };
+  });
+  return <ChartContainer config={waterfallConfig} className="h-[340px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Composição do fluxo financeiro">
+    <BarChart data={pontos} margin={{ ...chartMargin, bottom: 24 }} accessibilityLayer>
+      <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+      <XAxis dataKey="label" interval={0} angle={-15} textAnchor="end" {...axisProps} />
+      <YAxis width={82} tickFormatter={(value) => fmtBRL(Number(value))} {...axisProps} />
+      <ReferenceLine y={0} stroke="var(--ink-mute)" />
+      <ChartTooltip formatter={(_value, _name, item) => [fmtMoneyExact(Number(item.payload.value)), item.payload.label]} />
+      <Bar dataKey="faixa" name="Valor" isAnimationActive={false}>{pontos.map((item) => <Cell key={item.key} fill={`var(--color-${item.type})`} />)}</Bar>
+    </BarChart>
+  </ChartContainer>;
 }
 
 export function MiniBarChart({
   data,
   color = "var(--ink)",
+  tipo: tipoInicial = "bar",
 }: {
   data: { x: string; y: number }[];
   color?: string;
+  tipo?: ChartType;
 }) {
-  const W = 360,
-    H = 120;
-  const padL = 28,
-    padR = 8,
-    padT = 16,
-    padB = 28;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-
-  const max = Math.max(...data.map((d) => d.y), 0) * 1.1 || 1;
-  const yScale = (v: number) => padT + innerH - (Math.max(0, v) / max) * innerH;
-  const xBand = innerW / data.length;
-  const barW = xBand * 0.55;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxWidth: 400 }}>
-      <line x1={padL} x2={W - padR} y1={yScale(0)} y2={yScale(0)} className="chart-axis" />
-      {data.map((d, i) => {
-        const x = padL + i * xBand + (xBand - barW) / 2;
-        const h = Math.max(0, yScale(0) - yScale(d.y));
-        return (
-          <g key={i}>
-            <rect x={x} y={yScale(d.y)} width={barW} height={h} fill={color} />
-            <text x={x + barW / 2} y={yScale(d.y) - 6} textAnchor="middle" className="chart-value-text">
-              {d.y}
-            </text>
-            <text x={x + barW / 2} y={H - padB + 18} textAnchor="middle" className="chart-tick-text">
-              {d.x}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
+  const [tipo, setTipo] = useState<ChartType>(tipoInicial);
+  const Chart = tipo === "line" ? LineChart : BarChart;
+  const config = { valor: { label: "Valor", color } } satisfies ChartConfig;
+  return <div className="w-full max-w-[400px]">
+    <div className="mb-1 flex justify-end"><ChartTypeControl value={tipo} onChange={setTipo} label="Tipo do gráfico da série" /></div>
+    <ChartContainer config={config} className="h-[120px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Série de valores">
+      <Chart data={data} margin={{ top: 18, right: 8, bottom: 0, left: 8 }} accessibilityLayer>
+        <XAxis dataKey="x" interval="preserveStartEnd" {...axisProps} />
+        <YAxis hide domain={[0, "auto"]} />
+        <ChartTooltip formatter={(value) => [fmt(Number(value ?? 0)), "Valor"]} />
+        {tipo === "line"
+          ? <Line type="monotone" dataKey="y" stroke="var(--color-valor)" strokeWidth={2.25} dot={{ r: 2.5 }} isAnimationActive={false} />
+          : <Bar dataKey="y" fill="var(--color-valor)" radius={[3, 3, 0, 0]} isAnimationActive={false} />}
+      </Chart>
+    </ChartContainer>
+  </div>;
 }
 
 export function MonthlyTrendChart({
@@ -403,62 +208,30 @@ export function MonthlyTrendChart({
   prior,
   labels,
   color = "var(--cafe)",
+  tipo = "line",
 }: {
   current: number[];
   prior: number[];
   labels: string[];
   color?: string;
+  tipo?: ChartType;
 }) {
-  const W = 720,
-    H = 220;
-  const padL = 40,
-    padR = 16,
-    padT = 16,
-    padB = 32;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const max = Math.max(...current, ...prior, 0) * 1.1 || 1;
-  const yScale = (v: number) => padT + innerH - (Math.max(0, v) / max) * innerH;
-  const xBand = innerW / labels.length;
-  const barW = xBand * 0.5;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 240 }}>
-      <line x1={padL} x2={W - padR} y1={yScale(0)} y2={yScale(0)} className="chart-axis" />
-      {labels.map((lbl, i) => {
-        const x = padL + i * xBand + (xBand - barW) / 2;
-        const cur = current[i] ?? 0;
-        const h = Math.max(0, yScale(0) - yScale(cur));
-        return (
-          <g key={i}>
-            <rect
-              x={x}
-              y={yScale(cur)}
-              width={barW}
-              height={h}
-              fill={color}
-            />
-            <text x={x + barW / 2} y={H - padB + 16} textAnchor="middle" className="chart-tick-text">
-              {lbl}
-            </text>
-          </g>
-        );
-      })}
-      <polyline
-        fill="none"
-        stroke="var(--ink-mute)"
-        strokeWidth="1.2"
-        strokeDasharray="4 4"
-        points={prior
-          .map((v, i) => {
-            const x = padL + i * xBand + xBand / 2;
-            const y = yScale(v);
-            return `${x},${y}`;
-          })
-          .join(" ")}
-      />
-    </svg>
-  );
+  const data = labels.map((label, indice) => ({ label, atual: current[indice] ?? 0, anterior: prior[indice] ?? 0 }));
+  const config = {
+    atual: { label: "Período atual", color },
+    anterior: { label: "Período anterior", color: "var(--ink-mute)" },
+  } satisfies ChartConfig;
+  return <ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Comparação da tendência mensal">
+    <ComposedChart data={data} margin={chartMargin} accessibilityLayer>
+      <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+      <XAxis dataKey="label" {...axisProps} />
+      <YAxis {...axisProps} />
+      <ChartTooltip />
+      <ChartLegend />
+      {tipo === "bar" ? <Bar dataKey="atual" name="Período atual" fill="var(--color-atual)" radius={[3, 3, 0, 0]} isAnimationActive={false} /> : <Line type="monotone" dataKey="atual" name="Período atual" stroke="var(--color-atual)" strokeWidth={2.5} isAnimationActive={false} />}
+      <Line type="monotone" dataKey="anterior" name="Período anterior" stroke="var(--color-anterior)" strokeDasharray="4 4" isAnimationActive={false} />
+    </ComposedChart>
+  </ChartContainer>;
 }
 
 export function Donut({
@@ -470,77 +243,62 @@ export function Donut({
   size?: number;
   label?: string;
 }) {
-  const r = size / 2 - 14;
-  const cx = size / 2,
-    cy = size / 2;
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  let acc = 0;
-  const stroke = 18;
-  const C = 2 * Math.PI * r;
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--rule-soft)" strokeWidth={stroke} />
-      {segments.map((seg, i) => {
-        const pct = seg.value / total;
-        const dash = pct * C;
-        const offset = -acc * C;
-        acc += pct;
-        return (
-          <circle
-            key={i}
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke={seg.color}
-            strokeWidth={stroke}
-            strokeDasharray={`${dash} ${C - dash}`}
-            strokeDashoffset={offset}
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        );
-      })}
-      {label && (
-        <text
-          x={cx}
-          y={cy}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          style={{ fontFamily: "var(--serif)", fontSize: 18, fill: "var(--ink)" }}
-        >
-          {label}
-        </text>
-      )}
-    </svg>
-  );
+  const data = segments.filter((segment) => segment.value > 0);
+  const segmentos = data.length ? data : [{ value: 1, color: "var(--rule-soft)" }];
+  const config: ChartConfig = Object.fromEntries(segmentos.map((segment, indice) => [`segmento-${indice}`, { color: segment.color }]));
+  return <div style={{ width: size, height: size, position: "relative" }}>
+    <ChartContainer config={config} className="h-full w-full aspect-auto" role="img" aria-label={label ? `${label} no total` : "Distribuição proporcional"}>
+      <PieChart accessibilityLayer>
+        <Pie data={segmentos} dataKey="value" innerRadius="68%" outerRadius="88%" paddingAngle={data.length > 1 ? 1 : 0} stroke="none" isAnimationActive={false}>
+          {segmentos.map((_segment, indice) => <Cell key={indice} fill={`var(--color-segmento-${indice})`} />)}
+        </Pie>
+        <ChartTooltip formatter={(value) => [fmt(Number(value ?? 0)), "Quantidade"]} />
+      </PieChart>
+    </ChartContainer>
+    {label && <span className="pointer-events-none absolute inset-0 grid place-items-center font-serif text-lg text-ink">{label}</span>}
+  </div>;
 }
 
-/** Fluxo em reais; os valores exatos de cada barra ficam no tooltip nativo. */
-export function EntradaSaidaChart({ data }: { data: { data: string; entradas: number; saidas: number }[] }) {
-  const tituloId = useId();
-  const W = 960, H = 280, padL = 110, padR = 20, padT = 20, padB = 40;
-  const maximo = Math.max(...data.flatMap(d => [d.entradas, d.saidas]), 1);
-  const ordem = 10 ** Math.floor(Math.log10(maximo));
-  const teto = Math.ceil(maximo / ordem) * ordem;
-  const altura = H - padT - padB;
-  const faixa = (W - padL - padR) / Math.max(data.length, 1);
-  const largura = faixa * 0.3;
-  const y = (valor: number) => H - padB - valor / teto * altura;
-  return <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-labelledby={tituloId}>
-    <title id={tituloId}>Entradas e saídas por dia, em reais</title>
-    {Array.from({ length: 5 }, (_, indice) => {
-      const valor = teto * indice / 4;
-      return <g key={indice}><line x1={padL} x2={W - padR} y1={y(valor)} y2={y(valor)} className="grid-line" /><text x={padL - 12} y={y(valor) + 4} textAnchor="end" className="chart-tick-text" style={{ fontSize: 14 }}>{fmtBRL(valor)}</text></g>;
-    })}
-    {data.map((dia, indice) => {
-      const x = padL + indice * faixa + faixa * 0.15;
-      const dataBR = dia.data.split("-").reverse().join("/");
-      return <g key={dia.data}>
-        <rect x={x} y={y(dia.entradas)} width={largura} height={dia.entradas / teto * altura} rx={2} fill="var(--pos)"><title>{`${dataBR} — Entradas: ${fmtMoneyExact(dia.entradas)}`}</title></rect>
-        <rect x={x + largura + faixa * 0.1} y={y(dia.saidas)} width={largura} height={dia.saidas / teto * altura} rx={2} fill="var(--neg)"><title>{`${dataBR} — Saídas: ${fmtMoneyExact(dia.saidas)}`}</title></rect>
-        <text x={padL + (indice + 0.5) * faixa} y={H - padB + 22} textAnchor="middle" className="chart-tick-text" style={{ fontSize: 14 }}>{Number(dia.data.slice(8, 10))}</text>
-      </g>;
-    })}
-  </svg>;
+export type EntradaSaidaPoint = { data: string; rotulo?: string; entradas: number; saidas: number };
+
+/** Receitas e despesas em reais, com valores exatos no tooltip. */
+export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaPoint[]; tipo?: ChartType }) {
+  const formatarRotulo = (ponto: EntradaSaidaPoint) => ponto.rotulo ?? (data.length > 31
+    ? new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${ponto.data.slice(0, 7)}-01T00:00:00Z`)).replace(" de ", "/")
+    : String(Number(ponto.data.slice(8, 10))));
+  const pontos = data.map((ponto) => ({ ...ponto, rotuloEixo: formatarRotulo(ponto) }));
+  return <>
+    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais">
+      <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
+        <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+        <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
+        <YAxis width={88} tickFormatter={(value) => fmtBRL(Number(value))} {...axisProps} />
+        <ChartTooltip labelFormatter={(_label, payload) => payload?.[0]?.payload?.rotulo ?? payload?.[0]?.payload?.data ?? ""} formatter={tooltipMoney} />
+        <ChartLegend />
+        {tipo === "line" ? <>
+          <Line type="monotone" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="monotone" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+        </> : <>
+          <Bar dataKey="entradas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="saidas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+        </>}
+      </ComposedChart>
+    </ChartContainer>
+    <ul className="sr-only" aria-label="Valores do gráfico">{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — Receitas: {fmtMoneyExact(ponto.entradas)}; Despesas: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
+  </>;
+}
+
+export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: string; valor: number }[]; tipo?: ChartType }) {
+  const config = { despesas: { label: "Despesas", color: "var(--neg)" } } satisfies ChartConfig;
+  return <ChartContainer config={config} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Despesas realizadas por categoria">
+    <ComposedChart data={data} margin={{ top: 18, right: 14, bottom: 38, left: 18 }} accessibilityLayer>
+      <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+      <XAxis dataKey="categoria" interval={0} angle={-20} textAnchor="end" height={62} {...axisProps} />
+      <YAxis width={82} tickFormatter={(value) => fmtBRL(Number(value))} {...axisProps} />
+      <ChartTooltip formatter={(value) => [fmtMoneyExact(Number(value ?? 0)), "Despesas"]} />
+      {tipo === "line"
+        ? <Line type="monotone" dataKey="valor" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+        : <Bar dataKey="valor" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />}
+    </ComposedChart>
+  </ChartContainer>;
 }

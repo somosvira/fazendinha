@@ -8,6 +8,8 @@ import type {
   ProducaoFinanceiraDTO, EficienciaDTO, ProjecoesDTO, GenealogiaDTO,
 } from "../../api";
 import { fmtBRL as fmtBRLCanon, fmtMoneyExact } from "@/components/charts";
+import { RadialBar, RadialBarChart } from "recharts";
+import { ChartContainer } from "@/components/ui/chart";
 
 // Reusa os formatadores canônicos de charts.tsx (negativos com − U+2212):
 // fmtBRL sem centavos (não-compacto) e fmtMoneyExact para os valores com 2 casas.
@@ -156,22 +158,16 @@ export function ProducaoFinanceira({ pf }: { pf: ProducaoFinanceiraDTO }) {
 export function EficienciaGauge({ e }: { e: EficienciaDTO }) {
   if (e.meta == null || e.atual == null || e.percentual == null) return null;
   const pct = Math.min(100, e.percentual);
-  // arc semicircle de 180°
-  const r = 52; const cx = 60; const cy = 60;
-  const angDeg = (pct / 100) * 180 - 180; // -180 → 0
-  const angRad = (angDeg * Math.PI) / 180;
-  const x = cx + r * Math.cos(angRad);
-  const y = cy + r * Math.sin(angRad);
-  const largeArc = pct > 50 ? 1 : 0;
   const tom = pct >= 90 ? "var(--lucro)" : pct >= 60 ? "var(--atencao)" : "var(--prejuizo)";
   return (
     <div className="mt-[22px]">
       <h4 className="font-serif italic font-medium text-[15px] text-[color:var(--ink)] mb-2.5">Eficiência</h4>
       <div className="flex flex-col items-center gap-0 mb-3">
-        <svg width="120" height="70" viewBox="0 0 120 70" aria-hidden>
-          <path d={`M 8 60 A ${r} ${r} 0 0 1 112 60`} fill="none" stroke="var(--rule-soft)" strokeWidth="6" />
-          <path d={`M 8 60 A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(2)} ${y.toFixed(2)}`} fill="none" stroke={tom} strokeWidth="6" strokeLinecap="round" />
-        </svg>
+        <ChartContainer config={{ value: { label: "Eficiência", color: tom } }} className="h-[70px] w-[120px] aspect-auto" aria-hidden>
+          <RadialBarChart cx={60} cy={60} innerRadius={49} outerRadius={56} startAngle={180} endAngle={0} data={[{ value: pct }]}>
+            <RadialBar dataKey="value" fill="var(--color-value)" background={{ fill: "var(--rule-soft)" }} cornerRadius={5} isAnimationActive={false} />
+          </RadialBarChart>
+        </ChartContainer>
         <div className="font-serif font-medium text-[22px] -mt-2.5" style={{ color: tom }}>{e.percentual}%</div>
       </div>
       <div className="flex justify-between text-sm py-[5px] border-b border-dashed border-[color:var(--rule-soft)] last:border-b-0"><span>Atual</span><b className="font-semibold">{e.atual} L/dia</b></div>

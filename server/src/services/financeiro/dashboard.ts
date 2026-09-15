@@ -3,6 +3,37 @@ import { prisma } from "../../db.js";
 import { ratearTransacao, incluirClassificacao } from "./classificacao.js";
 import { resumoSaldos } from "./contas.js";
 
+export function serieFluxo(movimentos: { direcao: string; valor: Prisma.Decimal; transacao: { data: Date } }[], inicio: Date, fim: Date) {
+  const inicioMes = inicio.toISOString().slice(0, 7);
+  const fimMes = fim.toISOString().slice(0, 7);
+  const mensal = inicioMes !== fimMes;
+  const pontos = new Map<string, { data: string; entradas: Prisma.Decimal; saidas: Prisma.Decimal }>();
+  if (mensal) {
+    let cursor = new Date(`${inicioMes}-01T00:00:00Z`);
+    while (cursor.toISOString().slice(0, 7) <= fimMes) {
+      const mes = cursor.toISOString().slice(0, 7);
+      pontos.set(mes, { data: `${mes}-01`, entradas: new Prisma.Decimal(0), saidas: new Prisma.Decimal(0) });
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+  } else {
+    let cursor = new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), inicio.getUTCDate()));
+    const ultimo = new Date(Date.UTC(fim.getUTCFullYear(), fim.getUTCMonth(), fim.getUTCDate()));
+    while (cursor <= ultimo) {
+      const dia = cursor.toISOString().slice(0, 10);
+      pontos.set(dia, { data: dia, entradas: new Prisma.Decimal(0), saidas: new Prisma.Decimal(0) });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  }
+  for (const movimento of movimentos) {
+    const chave = movimento.transacao.data.toISOString().slice(0, mensal ? 7 : 10);
+    const ponto = pontos.get(chave);
+    if (!ponto) continue;
+    const campo = movimento.direcao === "ENTRADA" ? "entradas" : "saidas";
+    ponto[campo] = ponto[campo].plus(movimento.valor);
+  }
+  return [...pontos.values()];
+}
+
 export async function obterDashboard(propriedadeId: number | null, inicio: Date, fim: Date) {
   const escopoTransacao = propriedadeId ? { propriedadeId } : {};
   const [saldos, movimentos, compromissos] = await Promise.all([
@@ -35,6 +66,7 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
   return {
     periodo: { inicio, fim }, saldoGeral: saldos.saldoGeral, contas: saldos.contas,
     realizado: { entradas, saidas, resultado: entradas.minus(saidas) },
+    fluxo: serieFluxo(realizados, inicio, fim),
     compromissos: { aPagar: pendente("PAGAR"), aReceber: pendente("RECEBER") },
     despesasPorCategoria: [...porCategoria.entries()].filter(([, valor]) => valor.isPositive()).map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor.comparedTo(a.valor)),
   };

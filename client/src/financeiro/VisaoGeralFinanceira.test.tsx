@@ -7,9 +7,10 @@ import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 vi.mock("./novo-api", () => ({
   obterDashboardFinanceiro: vi.fn().mockResolvedValue({
     periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "0", contas: [],
-    realizado: { entradas: "0", saidas: "0", resultado: "0" }, compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [],
+    realizado: { entradas: "0", saidas: "0", resultado: "0" }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [],
   }),
   listarCompromissos: vi.fn().mockResolvedValue([]),
+  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
 }));

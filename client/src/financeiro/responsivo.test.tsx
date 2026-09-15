@@ -158,6 +158,7 @@ describe("telas financeiras — envelope e carregamento", () => {
       periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "1628514.34",
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],
       realizado: { entradas: "412870.22", saidas: "298345.68", resultado: "114524.54" },
+      fluxo: [{ data: "2026-09-02", entradas: "412870.22", saidas: "298345.68" }],
       compromissos: { aPagar: "204500.9", aReceber: "278140.55" },
       despesasPorCategoria: [{ categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
     });

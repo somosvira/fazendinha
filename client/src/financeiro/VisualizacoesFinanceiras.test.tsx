@@ -4,12 +4,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
 import { VisaoGeralFinanceira } from "./VisaoGeralFinanceira";
-import { listarCompromissos, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterExtratoConta, obterExtratoGeral, type Compromisso, type Conta, type MovimentoGeral } from "./novo-api";
+import { liquidarCompromisso, listarCompromissos, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterExtratoConta, obterExtratoGeral, type Compromisso, type Conta, type MovimentoGeral } from "./novo-api";
 
 vi.mock("./novo-api", async importOriginal => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
   obterConfiguracoesFinanceiras: vi.fn(), obterExtratoConta: vi.fn(), obterExtratoGeral: vi.fn(),
-  obterDashboardFinanceiro: vi.fn(), listarCompromissos: vi.fn(),
+  obterDashboardFinanceiro: vi.fn(), listarCompromissos: vi.fn(), liquidarCompromisso: vi.fn(),
 }));
 
 const contas: Conta[] = [
@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ contas, parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
   vi.mocked(obterExtratoGeral).mockResolvedValue(movimentos);
   vi.mocked(obterExtratoConta).mockImplementation(async id => movimentos.filter(m => m.contaId === id));
+  vi.mocked(liquidarCompromisso).mockResolvedValue({});
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 const total = (titulo: string) => screen.getByText(titulo).parentElement!.textContent!.replace(/\s/g, " ");
@@ -50,21 +51,28 @@ const total = (titulo: string) => screen.getByText(titulo).parentElement!.textCo
 describe("visualizações financeiras integradas", () => {
   it("mantém o gráfico alinhado aos filtros do extrato geral, não aos da listagem", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
-    await waitFor(() => expect(total("Entradas no mês")).toContain("R$ 160,00"));
-    expect(total("Saídas no mês")).toContain("R$ 65,00");
+    await waitFor(() => expect(total("Receitas no período")).toContain("R$ 160,00"));
+    expect(total("Despesas no período")).toContain("R$ 65,00");
+    expect(screen.getByRole("button", { name: "Linhas" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Barras" }));
+    expect(screen.getByRole("button", { name: "Barras" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "3" } });
+    expect((screen.getByLabelText("Mês inicial do gráfico") as HTMLInputElement).value).toBe("2026-07");
+    expect((screen.getByLabelText("Mês final do gráfico") as HTMLInputElement).value).toBe("2026-09");
+    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "1" } });
     expect(obterExtratoGeral).toHaveBeenCalledOnce();
     fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
-    expect(total("Entradas no mês")).toContain("R$ 160,00");
-    expect(total("Saídas no mês")).toContain("R$ 65,00");
+    expect(total("Receitas no período")).toContain("R$ 160,00");
+    expect(total("Despesas no período")).toContain("R$ 65,00");
     const secaoExtrato = screen.getByRole("heading", { name: "Extrato geral" }).closest("section")!;
     fireEvent.change(within(secaoExtrato).getByLabelText("Instituição"), { target: { value: "__sem__" } });
-    expect(total("Entradas no mês")).toContain("R$ 0,00");
-    expect(total("Saídas no mês")).toContain("R$ 25,00");
+    expect(total("Receitas no período")).toContain("R$ 0,00");
+    expect(total("Despesas no período")).toContain("R$ 25,00");
     fireEvent.change(within(secaoExtrato).getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
-    expect(screen.getByText("Sem movimentações neste mês para o escopo selecionado.")).toBeTruthy();
+    expect(screen.getByText("Sem movimentações no período selecionado para este escopo.")).toBeTruthy();
     fireEvent.change(within(secaoExtrato).getByLabelText("Data inicial"), { target: { value: "" } });
-    fireEvent.click(screen.getByRole("button", { name: "Próximo mês do gráfico" }));
-    expect(screen.getByText("Sem movimentações neste mês para o escopo selecionado.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Próximo período do gráfico" }));
+    expect(screen.getByText("Sem movimentações no período selecionado para este escopo.")).toBeTruthy();
     expect(screen.queryByRole("img", { name: /Entradas e saídas por dia/ })).toBeNull();
   });
 
@@ -72,8 +80,8 @@ describe("visualizações financeiras integradas", () => {
     window.history.replaceState(null, "", `/financeiro/contas/${id}`);
     const onNav = vi.fn();
     render(<ContasFinanceiras onNav={onNav} />);
-    await waitFor(() => expect(total("Entradas no mês")).toContain(id === 1 ? "R$ 210,00" : "R$ 50,00"));
-    expect(total("Saídas no mês")).toContain(id === 1 ? "R$ 90,00" : "R$ 75,00");
+    await waitFor(() => expect(total("Receitas no período")).toContain(id === 1 ? "R$ 210,00" : "R$ 50,00"));
+    expect(total("Despesas no período")).toContain(id === 1 ? "R$ 90,00" : "R$ 75,00");
     expect(screen.queryByRole("button", { name: "Gerenciar contas" })).toBeNull();
     expect(obterExtratoGeral).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole("link", { name: "OP-0123" })[0]);
@@ -85,11 +93,15 @@ describe("visualizações financeiras integradas", () => {
       ...Array.from({ length: 6 }, (_, indice) => compromisso(indice + 1)),
       compromisso(7, { status: "LIQUIDADO" }), compromisso(8, { status: "CANCELADO" }),
     ]);
-    vi.mocked(obterDashboardFinanceiro).mockResolvedValue({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, compromissos: { aPagar: "600", aReceber: "0" }, despesasPorCategoria: [] });
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValue({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, fluxo: [{ data: "2026-09-14", entradas: "120", saidas: "25" }], compromissos: { aPagar: "600", aReceber: "0" }, despesasPorCategoria: [] });
     const onNav = vi.fn();
     render(<VisaoGeralFinanceira onNav={onNav} />);
     await screen.findByText("Compromisso 1");
+    expect(within(screen.getByRole("group", { name: "Tipo do gráfico de receitas e despesas" })).getByRole("button", { name: "Linhas" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText("Compromisso 6")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Registrar pagamento" })[0]);
+    expect(screen.getByRole("dialog", { name: "Registrar pagamento" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
     expect(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })).toHaveLength(6);
     expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
@@ -97,12 +109,48 @@ describe("visualizações financeiras integradas", () => {
     expect(screen.getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
     expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Registrar pagamento" }));
+    expect(screen.getByRole("dialog", { name: "Registrar pagamento" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.click(screen.getByRole("button", { name: "Ver 6 compromissos" }));
     const dia = screen.getByRole("dialog", { name: "Compromissos de 14/09/2026" });
     expect(dia.querySelectorAll("li button")).toHaveLength(6);
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.click(screen.getByRole("button", { name: "Ver todos" }));
     expect(onNav).toHaveBeenCalledWith("gastos");
+    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "12" } });
+    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2025-10-01", expect.stringContaining("2026-09-30")));
+  });
+
+  it("mantém a visão geral somente para consulta sem a permissão de lançar", async () => {
+    vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1)]);
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValue({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, fluxo: [], compromissos: { aPagar: "100", aReceber: "0" }, despesasPorCategoria: [] });
+    render(<VisaoGeralFinanceira onNav={vi.fn()} podeLancar={false} />);
+
+    await screen.findByText("Compromisso 1");
+    expect(screen.queryByRole("button", { name: "Nova operação" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Registrar pagamento" })).toBeNull();
+    expect(obterConfiguracoesFinanceiras).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
+    fireEvent.click(screen.getByRole("button", { name: /Compromisso 1, a pagar/ }));
+    expect(screen.getByRole("dialog", { name: "Detalhes do compromisso" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Registrar pagamento" })).toBeNull();
+  });
+
+  it("recarrega dashboard e compromissos após liquidar pela visão geral", async () => {
+    vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1)]);
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValue({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, fluxo: [], compromissos: { aPagar: "100", aReceber: "0" }, despesasPorCategoria: [] });
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
+
+    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledWith(1, expect.objectContaining({ contaId: 1, valor: 100 })));
+    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenCalledTimes(2));
+    expect(listarCompromissos).toHaveBeenCalledTimes(2);
   });
 
   it("aplica as abas e o filtro de vencidos ao calendário e mantém a liquidação disponível", async () => {
@@ -125,5 +173,16 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Liquidados" }));
     expect(screen.getByRole("button", { name: /Compromisso 4, a pagar/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Compromisso 5/ })).toBeNull();
+  });
+
+  it("mantém compromissos somente para consulta sem a permissão de lançar", async () => {
+    vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1)]);
+    render(<CompromissosFinanceiros onNav={vi.fn()} podeLancar={false} />);
+
+    await screen.findByText("Compromisso 1");
+    expect(screen.queryByRole("button", { name: "Criar a receber" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar a pagar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Registrar pagamento" })).toBeNull();
+    expect(obterConfiguracoesFinanceiras).not.toHaveBeenCalled();
   });
 });

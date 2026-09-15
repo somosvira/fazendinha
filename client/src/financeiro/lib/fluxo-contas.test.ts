@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MovimentoConta } from "../novo-api";
-import { fluxoDiario } from "./fluxo-contas";
+import { fluxoDiario, fluxoPeriodo } from "./fluxo-contas";
 
 function movimento(valor: string, direcao: "ENTRADA" | "SAIDA", data: string, transacao: Partial<MovimentoConta["transacao"]> = {}): MovimentoConta {
   return { id: 1, direcao, valor, transacao: { id: 1, tipo: "RECEBIMENTO", data, descricao: null, formaPagamento: null, parceiro: null, operacao: null, status: "CONFIRMADA", ...transacao } };
@@ -46,5 +46,17 @@ describe("fluxo diário das contas", () => {
     ];
     expect(fluxoDiario(movimentos, "2026-08", true)[30]).toMatchObject({ entradas: 50, saidas: 0 });
     expect(fluxoDiario(movimentos, "2026-09", true)[1]).toMatchObject({ entradas: 0, saidas: 50 });
+  });
+
+  it("consolida por mês quando o filtro cobre vários meses ou anos", () => {
+    const dados = fluxoPeriodo([
+      movimento("100.10", "ENTRADA", "2025-12-10"),
+      movimento("20", "SAIDA", "2026-01-10"),
+      movimento("999", "ENTRADA", "2026-03-01"),
+    ], "2025-12", "2026-02", true);
+    expect(dados).toHaveLength(3);
+    expect(dados[0]).toMatchObject({ data: "2025-12-01", entradas: 100.1, saidas: 0 });
+    expect(dados[1]).toMatchObject({ data: "2026-01-01", entradas: 0, saidas: 20 });
+    expect(dados[2]).toMatchObject({ data: "2026-02-01", entradas: 0, saidas: 0 });
   });
 });

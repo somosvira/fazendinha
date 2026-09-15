@@ -89,7 +89,7 @@ describe("InsightsPanel — migração Tailwind", () => {
     const html = renderToString(h(EficienciaGauge, { e: { meta: 30, atual: 27, percentual: 90 } }));
     expect(html).toContain("Eficiência");
     expect(html).toContain(">90<"); // "90%" com marcador SSR entre {e.percentual} e "%"
-    expect(html).toContain("<svg");
+    expect(html).toContain("recharts-wrapper");
   });
 
   it("Projecoes mostra datas e valores estimados", () => {
