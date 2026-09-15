@@ -9,6 +9,7 @@ describe("resumoRascunho", () => {
   it("usa a descrição, o tipo e o valor da operação", () => {
     expect(resumoRascunho(rascunho({ operacao: { tipo: "SERVICO", descricao: "Conserto do trator", valorTotal: 1250, itens: [] } }))).toEqual({
       titulo: "Conserto do trator",
+      tipo: "Serviço",
       detalhe: `${brl(1250)} · Serviço`,
       atualizadoEm: "2026-09-14T12:00:00Z",
     });
@@ -28,6 +29,7 @@ describe("resumoRascunho", () => {
       { descricao: "Ração 40 kg", quantidade: 1, valorUnitario: 0 },
     ] } }));
     expect(resumo.titulo).toBe("Ração 40 kg");
+    expect(resumo.tipo).toBe("Compra para estoque");
     expect(resumo.detalhe).toBe("Compra para estoque");
   });
 
@@ -38,8 +40,9 @@ describe("resumoRascunho", () => {
   });
 
   it("tolera rascunho vazio ou malformado", () => {
-    expect(resumoRascunho(rascunho({}))).toMatchObject({ titulo: "Nova operação", detalhe: "" });
-    expect(resumoRascunho(rascunho({ operacao: { itens: "x", valorTotal: "abc", tipo: 3 } }))).toMatchObject({ titulo: "Nova operação", detalhe: "" });
+    expect(resumoRascunho(rascunho({}))).toMatchObject({ titulo: "Nova operação", tipo: null, detalhe: "" });
+    expect(resumoRascunho(rascunho({ operacao: { itens: "x", valorTotal: "abc", tipo: 3 } }))).toMatchObject({ titulo: "Nova operação", tipo: null, detalhe: "" });
+    expect(resumoRascunho(rascunho({ operacao: { tipo: "INEXISTENTE" } })).tipo).toBeNull();
   });
 });
 

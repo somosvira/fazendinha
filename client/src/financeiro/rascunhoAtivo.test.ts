@@ -54,6 +54,14 @@ describe("rascunhoAtivo", () => {
     expect(estadoRascunhoAtivo().rascunho?.versao).toBe(1);
   });
 
+  it("só dá o rascunho como conhecido depois de uma resposta, e limpar volta a desconhecido", () => {
+    expect(estadoRascunhoAtivo().conhecido).toBe(false);
+    prepararPublicacaoRascunho("leitura")(null);
+    expect(estadoRascunhoAtivo()).toMatchObject({ rascunho: null, conhecido: true });
+    limparRascunhoAtivo();
+    expect(estadoRascunhoAtivo().conhecido).toBe(false);
+  });
+
   it("marca e desmarca a edição do rascunho", () => {
     const desmarcar = marcarEdicaoRascunho();
     expect(estadoRascunhoAtivo().editando).toBe(true);

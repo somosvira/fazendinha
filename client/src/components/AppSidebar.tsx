@@ -11,7 +11,7 @@
  * shadcn `Sheet` (Radix Dialog) — overlay, foco-trap e Escape de graça. */
 
 import { useEffect, useState } from "react";
-import { FilePenLine } from "lucide-react";
+import { FilePenLine, Plus } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -268,48 +268,54 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
   );
 }
 
-/** Atalho para o trabalho em andamento — hoje, o rascunho de operação
- *  financeira. Fica no topo da navegação, acima do Financeiro, enquanto o
- *  rascunho existir; `ativo` quando o formulário dele está na tela. No trilho
- *  recolhido vira só o ícone, com o ponto brass marcando que há algo pendente.
+/** Atalho para o trabalho em andamento, no topo da navegação, acima do
+ *  Financeiro. Com rascunho de operação (`resumo`), mostra o lápis e a descrição
+ *  e reabre o rascunho; sem rascunho, mostra um "+" que começa uma operação
+ *  nova. `ativo` quando o formulário está na tela. É um item fino: ícone,
+ *  descrição e, logo abaixo, o tipo da operação em corpo menor; valor e "salvo
+ *  há" ficam no tooltip. A altura mínima é a mesma com e sem rascunho, para o
+ *  item não pular quando o "+" vira rascunho. No trilho recolhido vira só o
+ *  ícone; o ponto brass marca que há rascunho pendente.
  *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
  *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
  *  páginas atuais. */
-export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascunho; ativo: boolean; onAbrir: () => void }) {
-  // "Salvo há N min" envelhece com a tela parada: re-renderiza a cada minuto.
-  // O relógio é lido na renderização, para acompanhar também cada novo autosave.
+export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void }) {
+  // O "salvo há N min" do tooltip envelhece com a tela parada: re-renderiza a
+  // cada minuto. O relógio é lido na renderização, para acompanhar cada autosave.
   const [, setTique] = useState(0);
   useEffect(() => {
     const intervalo = window.setInterval(() => setTique((tique) => tique + 1), 60_000);
     return () => window.clearInterval(intervalo);
   }, []);
-  const salvo = quandoSalvo(resumo.atualizadoEm, Date.now());
-  const rotulo = `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`;
+  const salvo = resumo ? quandoSalvo(resumo.atualizadoEm, Date.now()) : null;
+  const rotulo = resumo
+    ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
+    : ativo ? "Nova operação em edição" : "Nova operação";
   return (
-    <div role="group" aria-label="Trabalho ativo" className="mb-3 flex flex-col gap-1.5 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
-      <div className={cn("px-2.5 font-sans text-[11px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.72)]", RAIL_BLOCK)}>Trabalho ativo</div>
+    <div role="group" aria-label="Trabalho ativo" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
       <button
         type="button"
         onClick={onAbrir}
         aria-label={rotulo}
-        title={[rotulo, resumo.detalhe, salvo].filter(Boolean).join("\n")}
+        title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
         className={cn(
-          "relative flex w-full cursor-pointer items-start gap-3 rounded-[8px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-2.5 text-left font-sans text-[var(--mast-ink)]",
-          "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:flex-none",
+          "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
+          "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
           RAIL_ICON_BTN,
+          // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
+          // duas linhas finas, em vez do respiro do modo ícone.
+          "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
           ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
         )}
       >
-        <span className="relative mt-px flex-none">
-          <FilePenLine strokeWidth={1.7} aria-hidden />
-          <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />
+        <span className="relative flex-none leading-none">
+          {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
+          {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
         </span>
         <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
-          <span className="block truncate text-[13px] font-semibold leading-tight">{resumo.titulo}</span>
-          {resumo.detalhe && <span className="mt-1 block truncate text-[11.5px] text-[var(--side-mute)]">{resumo.detalhe}</span>}
-          <span className="mt-0.5 block truncate text-[11px] text-[var(--side-mute)]">{salvo}</span>
+          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : "Nova operação"}</span>
+          {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
         </span>
-        <span className={cn("flex-none self-center text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
       </button>
     </div>
   );
@@ -393,8 +399,8 @@ export function AppSidebar({
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
   user: User; colapsada: boolean; onToggleColapsar: () => void;
   onAcessos: () => void; onSair?: () => void;
-  // Rascunho em andamento, mostrado acima do Financeiro (ver TrabalhoAtivo).
-  trabalhoAtivo?: { resumo: ResumoRascunho; ativo: boolean; onAbrir: () => void } | null;
+  // Atalho acima do Financeiro (ver TrabalhoAtivo); `resumo` nulo = sem rascunho.
+  trabalhoAtivo?: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -474,12 +480,12 @@ export function AppSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cabeçalho da sidebar: marca e controle do trilho; o contexto da fazenda
-  // fica em um bloco próprio depois do divisor.
+  // Cabeçalho da sidebar: marca, controles do trilho e, logo abaixo da marca,
+  // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-4 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:px-0">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="dark" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-serif text-[21px] font-medium leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
@@ -489,15 +495,15 @@ export function AppSidebar({
             </button>
           </div>
         </div>
-      </div>
-      <div className="px-3.5 py-3 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
-        <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
+          <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} />
+        </div>
       </div>
     </div>
   );
 
   const navBody = (
-    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
       {trabalhoAtivo && (
         <TrabalhoAtivo
           resumo={trabalhoAtivo.resumo}

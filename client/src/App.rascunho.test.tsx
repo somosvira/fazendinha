@@ -12,6 +12,9 @@ const usuarioBase: UsuarioSessao = {
 };
 
 let chamadasRascunho: { propriedade: string | null }[] = [];
+// Descrição do rascunho da sede; `null` = sem rascunho. `segurarRascunho` atrasa o GET.
+let descricaoRascunho: string | null = "Compra de ração";
+let segurarRascunho: Promise<void> | null = null;
 
 const rascunhoCom = (descricao: string) => ({
   id: 8, versao: 1, updatedAt: new Date().toISOString(), documentos: [],
@@ -31,8 +34,12 @@ function servidor(usuario: UsuarioSessao) {
     if (pathname === "/api/financeiro/configuracoes") return json({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
     if (pathname === "/api/financeiro/operacoes/rascunho") {
       const propriedade = new Headers(init?.headers).get("X-Propriedade-Id");
-      if ((init?.method ?? "GET") === "GET") chamadasRascunho.push({ propriedade });
-      return json(rascunhoCom(propriedade === "2" ? "Vacinas do retiro" : "Compra de ração"));
+      const metodo = init?.method ?? "GET";
+      if (metodo !== "GET") return json(rascunhoCom(""));
+      chamadasRascunho.push({ propriedade });
+      if (segurarRascunho) await segurarRascunho;
+      if (propriedade === "2") return json(rascunhoCom("Vacinas do retiro"));
+      return json(descricaoRascunho == null ? null : rascunhoCom(descricaoRascunho));
     }
     return json([]);
   });
@@ -49,6 +56,8 @@ beforeEach(() => {
   sessionStorage.clear();
   history.replaceState(null, "", "/financeiro/compromissos");
   chamadasRascunho = [];
+  descricaoRascunho = "Compra de ração";
+  segurarRascunho = null;
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
   if (!("ResizeObserver" in globalThis)) vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 });
@@ -70,6 +79,31 @@ describe("App — trabalho ativo", () => {
     await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
     expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
     expect(await screen.findByRole("button", { name: "Rascunho em edição: Compra de ração" })).toBeTruthy();
+  });
+
+  it("sem rascunho, o atalho vira + Nova operação e abre um formulário novo", async () => {
+    descricaoRascunho = null;
+    entrarComo(usuarioBase);
+
+    const atalho = await screen.findByRole("button", { name: "Nova operação" });
+    expect(atalho.querySelector(".lucide-plus")).toBeTruthy();
+    fireEvent.click(atalho);
+
+    await waitFor(() => expect(location.pathname).toBe("/financeiro/operacoes/nova"));
+    expect(await screen.findByRole("heading", { name: "Nova operação" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /em edição/ })).toBeTruthy();
+  });
+
+  it("não mostra o + enquanto ainda não sabe se há rascunho", async () => {
+    let liberar!: () => void;
+    segurarRascunho = new Promise<void>((resolve) => { liberar = resolve; });
+    entrarComo(usuarioBase);
+
+    expect(await screen.findByRole("heading", { name: "Compromissos" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Trabalho ativo" })).toBeNull();
+
+    liberar();
+    expect(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" })).toBeTruthy();
   });
 
   it("não consulta o rascunho de quem não vê a aba Operações", async () => {
