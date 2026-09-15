@@ -39,6 +39,7 @@ function exigirUsuarioId(c: Context) {
 }
 
 const idParam = z.object({ id: z.coerce.number().int().positive("Relatório inválido") });
+const gerarRelatorioSchema = z.object({ configuracao: configuracaoRelatorioFinanceiroSchema, versaoRascunho: z.number().int().positive().optional() });
 
 /** Ver o histórico exige a aba de relatórios; montar, gerar e baixar PDF
  * exigem também a permissão de exportar. */
@@ -65,8 +66,11 @@ export const relatoriosFinanceirosRouter = new Hono()
   .delete("/financeiro/relatorios/rascunho", aba, exportar, async (c) => {
     try { await relatorios.descartarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c)); return c.body(null, 204); } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/relatorios", aba, exportar, validar("json", configuracaoRelatorioFinanceiroSchema), async (c) => {
-    try { return c.json(await relatorios.gerarRelatorio(await resolverEscopoEscrita(c), autor(c), c.req.valid("json")), 201); } catch (e) { return falha(c, e); }
+  .post("/financeiro/relatorios", aba, exportar, validar("json", gerarRelatorioSchema), async (c) => {
+    try {
+      const { configuracao, versaoRascunho } = c.req.valid("json");
+      return c.json(await relatorios.gerarRelatorio(await resolverEscopoEscrita(c), autor(c), configuracao, versaoRascunho), 201);
+    } catch (e) { return falha(c, e); }
   })
   .get("/financeiro/relatorios/:id", aba, validar("param", idParam), async (c) => {
     try { return c.json(await relatorios.obterRelatorio(c.req.valid("param").id, await resolverEscopoLeitura(c))); } catch (e) { return falha(c, e); }

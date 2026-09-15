@@ -54,7 +54,7 @@ describe("filtros do relatório", () => {
   it("descreve filtros com os nomes vigentes na emissão", () => {
     expect(descreverFiltros(filtro({ tipos: ["SERVICO"], status: ["CANCELADA"], centroCustoIds: [0, 2], categoriaIds: [3], classificacoes: ["INVESTIMENTO"] }), {
       categorias: [{ id: 3, nome: "Nutrição" }], centrosCusto: [{ id: 2, nome: "Agronomia" }],
-    })).toEqual({ tipos: ["Serviço"], status: ["Cancelada"], centrosCusto: ["Sem centro de custo", "Agronomia"], categorias: ["Nutrição"], classificacoes: ["Investimento"] });
+    })).toEqual({ tipos: ["Serviço"], status: ["Cancelada"], centrosCusto: ["Sem centro de custo", "Agronomia"], parceiros: [], categorias: ["Nutrição"], classificacoes: ["Investimento"] });
   });
 });
 

@@ -30,6 +30,7 @@ const colunasItens: ColunaTabela<LinhaIndexada>[] = [
   { chave: "item", titulo: "Operação / item", principal: true, larguraMinima: 240, celula: (l) => <div className="min-w-0"><div className="break-words font-semibold">{l.item ?? l.descricao ?? `OP-${l.operacaoId}`}</div><div className="mt-0.5 break-words text-xs text-ink-3">OP-{String(l.operacaoId).padStart(4, "0")}{l.item && l.descricao ? ` · ${l.descricao}` : ""}{l.parceiro ? ` · ${l.parceiro}` : ""}</div></div> },
   { chave: "data", titulo: "Data", larguraMinima: 100, celula: (l) => dataCurta(l.data) },
   { chave: "tipo", titulo: "Tipo", larguraMinima: 160, celula: (l) => <span>{TIPO_OPERACAO[l.tipo] ?? l.tipo}{l.status !== "CONFIRMADA" && <> <StatusPill status={l.status} /></>}</span> },
+  { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", larguraMinima: 110, celula: (l) => l.quantidade ? <span className="whitespace-nowrap">{l.quantidade}{l.unidade ? ` ${l.unidade}` : ""}</span> : "—" },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 150, celula: (l) => l.categoria },
   { chave: "centro", titulo: "Centro de custo", larguraMinima: 150, celula: (l) => l.centroCusto },
   { chave: "classificacao", titulo: "Classificação", larguraMinima: 120, celula: (l) => l.classificacao ? CLASSIFICACAO[l.classificacao] : "—" },
@@ -69,6 +70,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
             ["Tipos de operação", snapshot.filtros.tipos.join(", ") || "Todos"],
             ["Situação (operações e itens)", snapshot.filtros.status.join(", ") || "Todas"],
             ["Centros de custo", snapshot.filtros.centrosCusto.join(", ") || "Todos"],
+            ["Parceiros", snapshot.filtros.parceiros?.join(", ") || "Todos"],
             ["Categorias", snapshot.filtros.categorias.join(", ") || "Todas"],
             ["Classificação", snapshot.filtros.classificacoes.join(", ") || "Todas"],
           ] as const).map(([rotulo, valor]) => <div key={rotulo} className="min-w-0"><dt className="text-[11px] font-semibold uppercase tracking-[.1em] text-ink-3">{rotulo}</dt><dd className="mt-1 break-words">{valor}</dd></div>)}
@@ -103,7 +105,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
 
       <section className="mt-8" aria-label="Leitura de caixa e compromissos">
         <h2 className="font-serif text-2xl">Leitura de caixa e compromissos</h2>
-        <p className="mt-2 text-sm text-ink-3">Pagamentos rateados pelas categorias dos itens, compromissos em aberto e saldo das contas{snapshot.filtros.categorias.length + snapshot.filtros.centrosCusto.length + snapshot.filtros.tipos.length + snapshot.filtros.status.length + snapshot.filtros.classificacoes.length > 0 ? " (o saldo das contas nunca é filtrado)" : ""}.</p>
+        <p className="mt-2 text-sm text-ink-3">Pagamentos rateados pelas categorias dos itens, compromissos em aberto e saldo das contas{snapshot.filtros.categorias.length + snapshot.filtros.centrosCusto.length + (snapshot.filtros.parceiros?.length ?? 0) + snapshot.filtros.tipos.length + snapshot.filtros.status.length + snapshot.filtros.classificacoes.length > 0 ? " (o saldo das contas nunca é filtrado)" : ""}.</p>
         <div className="rg-previa mt-4 min-w-0 overflow-x-auto"><RelatorioGerencialDocumento dto={snapshot.gerencial} template={{ ...templatePadrao(), titulo: dados.nome }} /></div>
       </section>
     </>}

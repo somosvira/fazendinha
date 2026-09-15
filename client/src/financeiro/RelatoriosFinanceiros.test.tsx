@@ -12,7 +12,7 @@ vi.mock("./novo-api", () => ({
 }));
 
 const base = { status: "CONCLUIDO" as const, propriedadeId: 1, propriedade: "Fazenda Rio Novo", concluidoEm: null, erro: null };
-const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [1], categoriaIds: [3, 0], classificacoes: [] };
+const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [1], parceiroIds: [], categoriaIds: [3, 0], classificacoes: [] };
 const relatorios: RelatorioFinanceiro[] = [
   { ...base, id: 12, nome: "Pecuária — agosto", autor: "Rafael", geradoEm: "2026-09-14T12:00:00Z", parametros },
   { ...base, id: 11, nome: "Fechamento julho", autor: "Contadora", geradoEm: "2026-08-02T12:00:00Z", parametros: { ...parametros, centroCustoIds: [], categoriaIds: [] }, status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." },
@@ -72,6 +72,7 @@ describe("central de relatórios financeiros", () => {
     cleanup(); window.history.replaceState(null, "", "/financeiro/relatorios");
     render(<RelatoriosFinanceiros />);
     fireEvent.click(await screen.findByRole("button", { name: "Novo relatório" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Descartar e criar" }));
     await waitFor(() => expect(window.location.pathname).toBe("/financeiro/relatorios/novo"));
     expect(descartarRascunhoRelatorioFinanceiro).toHaveBeenCalled();
     expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toMatch(/^Relatório financeiro — /);

@@ -37,7 +37,7 @@ describe("configuração do relatório financeiro", () => {
 
   it("resume o que entra no documento com os nomes dos cadastros", () => {
     const config = { ...configuracaoPadrao(hoje), tipos: ["SERVICO"], centroCustoIds: [0, 2], categoriaIds: [3], classificacoes: ["INVESTIMENTO" as const] };
-    const resumo = Object.fromEntries(resumoConfiguracao(config, { categorias: [{ id: 3, nome: "Nutrição" }], centrosCusto: [{ id: 2, nome: "Agronomia" }], tipos: { SERVICO: "Serviço" } }));
+    const resumo = Object.fromEntries(resumoConfiguracao(config, { categorias: [{ id: 3, nome: "Nutrição" }], centrosCusto: [{ id: 2, nome: "Agronomia" }], parceiros: [], tipos: { SERVICO: "Serviço" } }));
     expect(resumo).toMatchObject({ Período: "01/08/2026 a 31/08/2026", Tipos: "Serviço", "Centros de custo": "Sem centro de custo, Agronomia", Categorias: "Nutrição", Classificação: "Investimento", Situação: "Confirmada" });
   });
 

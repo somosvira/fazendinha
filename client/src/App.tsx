@@ -11,9 +11,11 @@ import { AppSidebar } from "./components/AppSidebar";
 import { ConfiguracoesHub } from "./components/ConfiguracoesHub";
 import { IA } from "./components/IA";
 import { FinanceiroContent } from "./financeiro/FinanceiroContent";
-import { obterRascunhoOperacao } from "./financeiro/novo-api";
+import { obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
 import { limparRascunhoAtivo, useRascunhoAtivo } from "./financeiro/rascunhoAtivo";
 import { resumoRascunho } from "./financeiro/lib/rascunho";
+import { limparRascunhoRelatorioAtivo, useRascunhoRelatorioAtivo } from "./financeiro/rascunhoRelatorioAtivo";
+import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import { RebanhoContent, type RebSub } from "./rebanho/RebanhoContent";
 import type { WorklistRebanho } from "./rebanho/api";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
@@ -295,6 +297,15 @@ export function App() {
     abrirRotaNovaOperacao();
     setTab("lancar");
   };
+  const abrirRascunhoRelatorioAtivo = () => {
+    setDeepLinkFiltros(null);
+    setRotaWorklist(null);
+    setWorklistSnapshot(null);
+    const alvo = "/financeiro/relatorios/novo";
+    if (window.location.pathname + window.location.search !== alvo) window.history.pushState(null, "", alvo);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    setTab("relatorio");
+  };
 
   const abrirWorklist = (worklist: WorklistRebanho) => {
     const alvo = buildRotaWorklistRebanho(worklist.chave, worklist.tab);
@@ -486,7 +497,9 @@ export function App() {
   // Só quem vê a aba Operações consulta o rascunho. O rascunho é por sítio:
   // trocar de sítio esquece o anterior e busca o novo.
   const rascunhoAtivo = useRascunhoAtivo();
+  const rascunhoRelatorioAtivo = useRascunhoRelatorioAtivo();
   const podeVerRascunho = visibleTabs.some((t) => t.id === "lancar");
+  const podeVerRascunhoRelatorio = visibleTabs.some((t) => t.id === "relatorio") && (!!effectiveUser?.dono || !!effectiveUser?.flags.includes("exportar"));
   const usuarioId = usuario?.id ?? null;
   useEffect(() => {
     limparRascunhoAtivo();
@@ -503,9 +516,25 @@ export function App() {
     document.addEventListener("visibilitychange", aoVoltar);
     return () => document.removeEventListener("visibilitychange", aoVoltar);
   }, [token, usuarioId, podeVerRascunho, propAtiva]);
+  useEffect(() => {
+    limparRascunhoRelatorioAtivo();
+    if (!token || usuarioId == null || !podeVerRascunhoRelatorio) return;
+    let ultimaCarga = 0;
+    const recarregar = () => { ultimaCarga = Date.now(); void obterRascunhoRelatorioFinanceiro().catch(() => undefined); };
+    recarregar();
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible" && Date.now() - ultimaCarga >= INTERVALO_MIN_RECARGA_RASCUNHO) recarregar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, [token, usuarioId, podeVerRascunhoRelatorio, propAtiva]);
   const resumoRascunhoAtivo = useMemo(
     () => (rascunhoAtivo.rascunho ? resumoRascunho(rascunhoAtivo.rascunho) : null),
     [rascunhoAtivo.rascunho],
+  );
+  const resumoRascunhoRelatorioAtivo = useMemo(
+    () => (rascunhoRelatorioAtivo.rascunho ? resumoRascunhoRelatorio(rascunhoRelatorioAtivo.rascunho) : null),
+    [rascunhoRelatorioAtivo.rascunho],
   );
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
@@ -608,6 +637,9 @@ export function App() {
         // piscar antes de o rascunho existente carregar.
         trabalhoAtivo={podeVerRascunho && rascunhoAtivo.conhecido
           ? { resumo: resumoRascunhoAtivo, ativo: rascunhoAtivo.editando, onAbrir: abrirRascunhoAtivo }
+          : null}
+        trabalhoAtivoRelatorio={podeVerRascunhoRelatorio && rascunhoRelatorioAtivo.conhecido && resumoRascunhoRelatorioAtivo
+          ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo }
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>

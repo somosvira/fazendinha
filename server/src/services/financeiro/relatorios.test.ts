@@ -50,7 +50,7 @@ beforeEach(() => {
 
 describe("geração de relatório financeiro", () => {
   it("monta o snapshot filtrado por item, grava o PDF e consome o rascunho", async () => {
-    const r = await gerarRelatorio(7, { id: 2, nome: "Rafael" }, config);
+    const r = await gerarRelatorio(7, { id: 2, nome: "Rafael" }, config, 1);
 
     expect(mocks.relatorio.create).toHaveBeenCalledWith({ data: expect.objectContaining({ propriedadeId: 7, autorId: 2, autorNome: "Rafael", parametros: config }) });
     expect(mocks.gerencial).toHaveBeenCalledWith({ inicio: "2026-09-01", fim: "2026-09-30", regime: "ambos" }, 7, config);
@@ -63,7 +63,7 @@ describe("geração de relatório financeiro", () => {
     expect(data.snapshot.filtros).toMatchObject({ categorias: ["Nutrição"], centrosCusto: ["Pecuária"], status: ["Confirmada"] });
     expect(data.snapshot.composicao.linhas.map((l: { item: string; valor: string }) => [l.item, l.valor])).toEqual([["Ração", "800.00"]]);
     expect(data.snapshot.composicao.despesas.porCategoria).toEqual([expect.objectContaining({ nome: "Nutrição", total: "800.00" })]);
-    expect(mocks.rascunho.deleteMany).toHaveBeenCalledWith({ where: { propriedadeId: 7, criadoPorId: 2 } });
+    expect(mocks.rascunho.deleteMany).toHaveBeenCalledWith({ where: { propriedadeId: 7, criadoPorId: 2, versao: 1 } });
     expect(r).toMatchObject({ id: 5, autor: "Rafael", propriedade: "Fazenda Rio Novo" });
   });
 

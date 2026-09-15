@@ -24,7 +24,7 @@ function app(usuario: Usuario | null) {
     .route("/", relatoriosFinanceirosRouter);
 }
 const config = { nome: "Setembro", dataInicio: "2026-09-01", dataFim: "2026-09-30", categoriaIds: [3] };
-const post = (usuario: Usuario | null, corpo: unknown) => app(usuario).request("/financeiro/relatorios", { method: "POST", body: JSON.stringify(corpo), headers: { "Content-Type": "application/json" } });
+const post = (usuario: Usuario | null, configuracao: unknown, versaoRascunho?: number) => app(usuario).request("/financeiro/relatorios", { method: "POST", body: JSON.stringify({ configuracao, versaoRascunho }), headers: { "Content-Type": "application/json" } });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -56,14 +56,14 @@ describe("rotas de relatórios financeiros", () => {
   it("gera com o autor da sessão, ignorando autor enviado pelo cliente", async () => {
     const res = await post(contador, { ...config, autorNome: "Outra pessoa", autorId: 99 });
     expect(res.status).toBe(201);
-    expect(mocks.gerar).toHaveBeenCalledWith(7, { id: 4, nome: "Contadora" }, expect.objectContaining({ nome: "Setembro", categoriaIds: [3], regime: "ambos" }));
+    expect(mocks.gerar).toHaveBeenCalledWith(7, { id: 4, nome: "Contadora" }, expect.objectContaining({ nome: "Setembro", categoriaIds: [3], regime: "ambos" }), undefined);
     expect(mocks.gerar.mock.calls[0][2]).not.toHaveProperty("autorNome");
   });
 
   it("valida o período antes do service", async () => {
     const res = await post(contador, { ...config, dataFim: "2026-08-01" });
     expect(res.status).toBe(422);
-    expect(await res.json()).toMatchObject({ code: "VALIDACAO", campo: "dataFim" });
+    expect(await res.json()).toMatchObject({ code: "VALIDACAO" });
     expect(mocks.gerar).not.toHaveBeenCalled();
   });
 

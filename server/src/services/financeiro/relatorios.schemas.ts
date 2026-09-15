@@ -26,6 +26,7 @@ const campos = {
   tipos: unicos(z.enum(TIPOS_RELATORIO)),
   status: unicos(z.enum(STATUS_RELATORIO)),
   centroCustoIds: ids,
+  parceiroIds: ids,
   categoriaIds: ids,
   classificacoes: unicos(z.enum(CLASSIFICACOES_RELATORIO)),
 };

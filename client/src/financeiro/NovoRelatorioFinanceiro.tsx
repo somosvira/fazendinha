@@ -5,6 +5,7 @@ import { getPropriedadeAtiva } from "../propriedadeScope";
 import { usePropriedades } from "../rebanho/api";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, alternar, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, periodoMes, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
@@ -76,6 +77,15 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config]);
 
+  // Mantém a sidebar e o leitor de tela informados sobre qual trabalho está aberto.
+  useEffect(() => marcarEdicaoRascunhoRelatorio(), []);
+  useEffect(() => {
+    if (estado !== "ALTERADO" && estado !== "SALVANDO") return;
+    const avisar = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [estado]);
+
   const alterar = <K extends keyof ConfiguracaoRelatorioFinanceiro>(campo: K, valor: ConfiguracaoRelatorioFinanceiro[K]) => setConfig((atual) => ({ ...atual, [campo]: valor }));
   const sair = async () => {
     cancelarTimer();
@@ -95,10 +105,14 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   };
   const gerar = async () => {
     if (!podeGerar(config) || gerando) return;
-    setErro(null); setGerando(true); cancelarTimer(); pausadoRef.current = true;
+    setErro(null); setGerando(true); cancelarTimer();
     try {
+      // A versão enviada precisa representar a configuração efetivamente gerada.
+      // Salva antes de pausar o autosave e só então congela o formulário.
+      if (pendenteRef.current) await enfileirar();
       await filaRef.current;
-      const relatorio = await gerarRelatorioFinanceiro(configRef.current);
+      pausadoRef.current = true;
+      const relatorio = await gerarRelatorioFinanceiro(configRef.current, versaoRef.current);
       let aviso: string | null = null;
       try { await salvarPdfRelatorioFinanceiro(relatorio); }
       catch { aviso = `O relatório “${relatorio.nome}” foi gerado, mas o download não começou. Use “Baixar PDF” no histórico.`; }
@@ -120,7 +134,8 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const tipos = useMemo(() => TIPOS_RELATORIO.map((tipo) => [tipo, TIPO_OPERACAO[tipo] ?? tipo] as const), []);
   const centros = useMemo<Opcao[]>(() => [[0, SEM_CENTRO], ...cadastros.centrosCusto.map((c): Opcao => [c.id, `${c.nome}${c.ativo ? "" : " (inativo)"}`])], [cadastros.centrosCusto]);
   const categorias = useMemo<Opcao[]>(() => [[0, SEM_CATEGORIA], ...cadastros.categorias.map((c): Opcao => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
-  const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, tipos: TIPO_OPERACAO });
+  const parceiros = useMemo<Opcao[]>(() => [[0, "Sem parceiro"], ...cadastros.parceiros.map((p): Opcao => [p.id, `${p.nome}${p.ativo ? "" : " (inativo)"}`])], [cadastros.parceiros]);
+  const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, parceiros: cadastros.parceiros, tipos: TIPO_OPERACAO });
   const bloqueio = !config.nome.trim() ? "Informe um nome para o relatório." : problemaPeriodo;
   // Fazenda de um sítio não vê a camada; na visão consolidada o servidor emite para a principal.
   const ativas = propriedades.filter((p) => p.ativo);
@@ -167,6 +182,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
         <Multisselecao titulo="Tipos de operação" ajuda="Nenhum marcado inclui todos" opcoes={tipos} selecionados={config.tipos} onAlternar={(id) => alterar("tipos", alternar(config.tipos, String(id)))} onLimpar={() => alterar("tipos", [])} />
         <Multisselecao titulo="Situação da operação" ajuda="Vale para operações e itens; o caixa inclui todo movimento" opcoes={STATUS_RELATORIO} selecionados={config.status} onAlternar={(id) => alterar("status", alternar(config.status, String(id)))} onLimpar={() => alterar("status", [])} />
         <Multisselecao titulo="Centro de custo" ajuda="Nenhum marcado inclui todos" opcoes={centros} selecionados={config.centroCustoIds} onAlternar={(id) => alterar("centroCustoIds", alternar(config.centroCustoIds, Number(id)))} onLimpar={() => alterar("centroCustoIds", [])} />
+        <Multisselecao titulo="Parceiro" ajuda="Nenhum marcado inclui todos" opcoes={parceiros} selecionados={config.parceiroIds} onAlternar={(id) => alterar("parceiroIds", alternar(config.parceiroIds, Number(id)))} onLimpar={() => alterar("parceiroIds", [])} />
         <Multisselecao titulo="Categoria dos itens" ajuda="Nenhuma marcada inclui todas" opcoes={categorias} selecionados={config.categoriaIds} onAlternar={(id) => alterar("categoriaIds", alternar(config.categoriaIds, Number(id)))} onLimpar={() => alterar("categoriaIds", [])} />
         <Multisselecao titulo="Classificação" ajuda="Nenhuma marcada inclui todas" opcoes={CLASSIFICACOES_RELATORIO} selecionados={config.classificacoes} onAlternar={(id) => alterar("classificacoes", alternar(config.classificacoes, id as (typeof config.classificacoes)[number]))} onLimpar={() => alterar("classificacoes", [])} />
         <p className="text-xs leading-5 text-ink-3">Categoria e classificação valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro.</p>

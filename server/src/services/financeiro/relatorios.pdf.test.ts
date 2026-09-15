@@ -12,7 +12,7 @@ function operacoes(quantidade: number): OperacaoComposicao[] {
 function snapshot(quantidade = 3): SnapshotRelatorio {
   return {
     versao: 1, nome: "Fechamento de setembro", geradoEm: "2026-09-14T12:00:00.000Z", autor: "Rafael Toledo", propriedade: { id: 1, nome: "Fazenda Rio Novo" },
-    configuracao: { nome: "Fechamento de setembro", dataInicio: "2026-09-01", dataFim: "2026-09-30", regime: "ambos", tipos: [], status: [], centroCustoIds: [], categoriaIds: [2], classificacoes: [] },
+    configuracao: { nome: "Fechamento de setembro", dataInicio: "2026-09-01", dataFim: "2026-09-30", regime: "ambos", tipos: [], status: [], centroCustoIds: [], parceiroIds: [], categoriaIds: [2], classificacoes: [] },
     filtros: { tipos: [], status: [], centrosCusto: [], categorias: ["Manutenção"], classificacoes: [] },
     gerencial: {
       meta: { geradoEm: "2026-09-14T12:00:00.000Z", propriedade: { id: 1, nome: "Fazenda Rio Novo" }, periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, regime: "ambos", hoje: "2026-09-14" },

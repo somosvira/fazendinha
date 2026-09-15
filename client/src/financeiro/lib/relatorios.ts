@@ -38,6 +38,7 @@ export function configuracaoPadrao(hoje: Date = getHoje()): ConfiguracaoRelatori
   return {
     nome: `Relatório financeiro — ${mes.nome}`, dataInicio: mes.dataInicio, dataFim: mes.dataFim, regime: "ambos",
     tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [],
+    parceiroIds: [],
   };
 }
 
@@ -55,6 +56,7 @@ export function mesclarRascunho(parcial: Partial<ConfiguracaoRelatorioFinanceiro
     tipos: lista<string>(parcial.tipos, TIPOS_RELATORIO) ?? base.tipos,
     status: lista<string>(parcial.status, STATUS_RELATORIO.map(([id]) => id)) ?? base.status,
     centroCustoIds: lista<number>(parcial.centroCustoIds) ?? base.centroCustoIds,
+    parceiroIds: lista<number>(parcial.parceiroIds) ?? base.parceiroIds,
     categoriaIds: lista<number>(parcial.categoriaIds) ?? base.categoriaIds,
     classificacoes: lista<ClassificacaoRelatorio>(parcial.classificacoes, CLASSIFICACOES_RELATORIO.map(([id]) => id)) ?? base.classificacoes,
   };
@@ -81,21 +83,22 @@ type Cadastro = { id: number; nome: string };
 const nomes = (ids: number[], cadastros: Cadastro[], vazio: string) => ids.map((id) => id === 0 ? vazio : cadastros.find((c) => c.id === id)?.nome ?? `#${id}`);
 const ou = (itens: string[], todos: string) => itens.length ? itens.join(", ") : todos;
 
-export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cadastros: { categorias: Cadastro[]; centrosCusto: Cadastro[]; tipos: Record<string, string> }): [string, string][] {
+export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cadastros: { categorias: Cadastro[]; centrosCusto: Cadastro[]; parceiros: Cadastro[]; tipos: Record<string, string> }): [string, string][] {
   return [
     ["Período", `${dataCurta(config.dataInicio)} a ${dataCurta(config.dataFim)}`],
     ["Leitura", REGIMES_RELATORIO.find((r) => r.id === config.regime)?.rotulo ?? config.regime],
     ["Tipos", ou(config.tipos.map((tipo) => cadastros.tipos[tipo] ?? tipo), "Todos os tipos")],
     ["Situação", ou(config.status.map((status) => STATUS_RELATORIO.find(([id]) => id === status)?.[1] ?? status), "Confirmadas e canceladas")],
     ["Centros de custo", ou(nomes(config.centroCustoIds, cadastros.centrosCusto, SEM_CENTRO), "Todos os centros")],
+    ["Parceiros", ou(nomes(config.parceiroIds, cadastros.parceiros, "Sem parceiro"), "Todos os parceiros")],
     ["Categorias", ou(nomes(config.categoriaIds, cadastros.categorias, SEM_CATEGORIA), "Todas as categorias")],
     ["Classificação", ou(config.classificacoes.map((c) => CLASSIFICACOES_RELATORIO.find(([id]) => id === c)?.[1] ?? c), "Custeio, investimento e não classificadas")],
   ];
 }
 
 /** Blocos que o documento terá, conforme a leitura escolhida. */
-export function secoesDoRelatorio(config: Pick<ConfiguracaoRelatorioFinanceiro, "regime" | "centroCustoIds" | "categoriaIds" | "classificacoes" | "tipos" | "status">): string[] {
-  const filtrado = [config.tipos, config.status, config.centroCustoIds, config.categoriaIds, config.classificacoes].some((itens) => itens.length > 0);
+export function secoesDoRelatorio(config: Pick<ConfiguracaoRelatorioFinanceiro, "regime" | "centroCustoIds" | "parceiroIds" | "categoriaIds" | "classificacoes" | "tipos" | "status">): string[] {
+  const filtrado = [config.tipos, config.status, config.centroCustoIds, config.parceiroIds, config.categoriaIds, config.classificacoes].some((itens) => itens.length > 0);
   const realizado = config.regime !== "previsto";
   const previsto = config.regime !== "realizado";
   return [

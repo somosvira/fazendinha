@@ -10,7 +10,7 @@ import type { ConfiguracaoRelatorioFinanceiro } from "./relatorios.schemas.js";
 import type { RelatorioGerencialDTO } from "../relatorio-gerencial.js";
 
 type Classificacao = "CUSTEIO" | "INVESTIMENTO" | null;
-export type FiltroRelatorio = Pick<ConfiguracaoRelatorioFinanceiro, "tipos" | "status" | "centroCustoIds" | "categoriaIds" | "classificacoes">;
+export type FiltroRelatorio = Pick<ConfiguracaoRelatorioFinanceiro, "tipos" | "status" | "centroCustoIds" | "categoriaIds" | "classificacoes"> & { parceiroIds?: number[] };
 
 export const ROTULO_TIPO: Record<string, string> = {
   COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto",
@@ -25,18 +25,20 @@ export const SEM_CATEGORIA = "Sem categoria";
 export const SEM_CENTRO = "Sem centro de custo";
 
 export function filtroVazio(filtro?: FiltroRelatorio | null) {
-  return !filtro || (!filtro.tipos.length && !filtro.status.length && !filtro.centroCustoIds.length && !filtro.categoriaIds.length && !filtro.classificacoes.length);
+  return !filtro || (!filtro.tipos.length && !filtro.status.length && !filtro.centroCustoIds.length && !(filtro.parceiroIds?.length) && !filtro.categoriaIds.length && !filtro.classificacoes.length);
 }
 
 /** Lançamento sem operação (transferência, pagamento avulso) não tem tipo nem
  * situação: só entra com esses filtros livres e conta como "sem centro". */
-export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; centroCustoId: number | null } | null) {
+export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; centroCustoId: number | null; parceiroId?: number | null } | null) {
   if (!filtro) return true;
   const centroOk = (id: number | null) => !filtro.centroCustoIds.length || filtro.centroCustoIds.includes(id ?? 0);
-  if (!operacao) return !filtro.tipos.length && !filtro.status.length && centroOk(null);
+  const parceiroOk = (id: number | null | undefined) => !filtro.parceiroIds?.length || filtro.parceiroIds.includes(id ?? 0);
+  if (!operacao) return !filtro.tipos.length && !filtro.status.length && centroOk(null) && parceiroOk(null);
   return (!filtro.tipos.length || (filtro.tipos as readonly string[]).includes(operacao.tipo))
     && (!filtro.status.length || (filtro.status as readonly string[]).includes(operacao.status))
-    && centroOk(operacao.centroCustoId);
+    && centroOk(operacao.centroCustoId)
+    && parceiroOk(operacao.parceiroId);
 }
 
 export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { categoriaId?: number | null; classificacao?: Classificacao }) {
@@ -45,8 +47,8 @@ export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { 
     && (!filtro.classificacoes.length || filtro.classificacoes.includes(parte.classificacao ?? "SEM_CLASSIFICACAO"));
 }
 
-export interface CadastrosFiltro { categorias: { id: number; nome: string }[]; centrosCusto: { id: number; nome: string }[] }
-export interface FiltrosDescritos { tipos: string[]; status: string[]; centrosCusto: string[]; categorias: string[]; classificacoes: string[] }
+export interface CadastrosFiltro { categorias: { id: number; nome: string }[]; centrosCusto: { id: number; nome: string }[]; parceiros?: { id: number; nome: string }[] }
+export interface FiltrosDescritos { tipos: string[]; status: string[]; centrosCusto: string[]; parceiros?: string[]; categorias: string[]; classificacoes: string[] }
 
 /** Congela os nomes no instante da geração: renomear ou desativar um cadastro
  * depois não altera o que o relatório emitido declara ter filtrado. */
@@ -56,6 +58,7 @@ export function descreverFiltros(filtro: FiltroRelatorio, cadastros: CadastrosFi
     tipos: filtro.tipos.map((tipo) => ROTULO_TIPO[tipo] ?? tipo),
     status: filtro.status.map((status) => ROTULO_STATUS[status] ?? status),
     centrosCusto: nomes(filtro.centroCustoIds, cadastros.centrosCusto, SEM_CENTRO),
+    parceiros: nomes(filtro.parceiroIds ?? [], cadastros.parceiros ?? [], "Sem parceiro"),
     categorias: nomes(filtro.categoriaIds, cadastros.categorias, SEM_CATEGORIA),
     classificacoes: filtro.classificacoes.map((classificacao) => ROTULO_CLASSIFICACAO[classificacao]),
   };

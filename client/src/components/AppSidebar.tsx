@@ -22,6 +22,8 @@ import { temAcessoArea } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
 import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
+type ResumoTrabalhoAtivo = Pick<ResumoRascunho, "titulo" | "tipo" | "detalhe" | "atualizadoEm">;
+
 // ícones simples (single-path) por chave — reusa os do rebanho onde aplicável
 const ICON: Partial<Record<Tab, JSX.Element>> = {
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
@@ -279,7 +281,7 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
  *  O `aria-current` fica só com o item "Operações" (a página de fato): o cartão
  *  anuncia o estado no próprio nome, para o leitor de tela não ouvir duas
  *  páginas atuais. */
-export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void }) {
+export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação" }: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; vazio?: string }) {
   // O "salvo há N min" do tooltip envelhece com a tela parada: re-renderiza a
   // cada minuto. O relógio é lido na renderização, para acompanhar cada autosave.
   const [, setTique] = useState(0);
@@ -290,7 +292,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
   const salvo = resumo ? quandoSalvo(resumo.atualizadoEm, Date.now()) : null;
   const rotulo = resumo
     ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
-    : ativo ? "Nova operação em edição" : "Nova operação";
+    : ativo ? `${vazio} em edição` : vazio;
   return (
     <div role="group" aria-label="Trabalho ativo" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
       <button
@@ -313,7 +315,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir }: { resumo: ResumoRascun
           {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
         </span>
         <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
-          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : "Nova operação"}</span>
+          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : vazio}</span>
           {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
         </span>
       </button>
@@ -386,7 +388,7 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, podeVerFolha, areas,
   mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
-  user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo,
+  user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo, trabalhoAtivoRelatorio,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
@@ -399,8 +401,9 @@ export function AppSidebar({
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
   user: User; colapsada: boolean; onToggleColapsar: () => void;
   onAcessos: () => void; onSair?: () => void;
-  // Atalho acima do Financeiro (ver TrabalhoAtivo); `resumo` nulo = sem rascunho.
-  trabalhoAtivo?: { resumo: ResumoRascunho | null; ativo: boolean; onAbrir: () => void } | null;
+  // Atalhos acima do Financeiro; o item de operação permanece disponível para iniciar uma nova.
+  trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void } | null;
+  trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void } | null;
 }) {
   const areasEfetivas = areas ?? ["pecuaria", "agricultura", "equipe"];
   const areasVisiveis = AREAS_TRABALHO.filter(
@@ -509,6 +512,13 @@ export function AppSidebar({
           resumo={trabalhoAtivo.resumo}
           ativo={trabalhoAtivo.ativo}
           onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }}
+        />
+      )}
+      {trabalhoAtivoRelatorio && (
+        <TrabalhoAtivo
+          resumo={trabalhoAtivoRelatorio.resumo}
+          ativo={trabalhoAtivoRelatorio.ativo}
+          onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }}
         />
       )}
       {itensFinanceiros.length > 0 && (

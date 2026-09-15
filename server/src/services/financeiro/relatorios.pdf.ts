@@ -237,7 +237,7 @@ const REGIME: Record<string, string> = { ambos: "Realizado + compromissos em abe
 
 export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
   const { gerencial: g, composicao: c, filtros, configuracao } = snapshot;
-  const filtrado = [filtros.tipos, filtros.status, filtros.centrosCusto, filtros.categorias, filtros.classificacoes].some((itens) => itens.length > 0);
+  const filtrado = [filtros.tipos, filtros.status, filtros.centrosCusto, filtros.parceiros ?? [], filtros.categorias, filtros.classificacoes].some((itens) => itens.length > 0);
   const doc = new DocumentoPdf();
 
   doc.titulo(snapshot.nome);
@@ -249,6 +249,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     ["Tipos de operação", lista(filtros.tipos)],
     ["Situação (operações e itens)", lista(filtros.status)],
     ["Centros de custo", lista(filtros.centrosCusto)],
+    ["Parceiros", lista(filtros.parceiros ?? [])],
     ["Categorias", lista(filtros.categorias)],
     ["Classificação", lista(filtros.classificacoes)],
   ]);
@@ -325,11 +326,12 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     ? `Exibindo as primeiras ${c.linhas.length} de ${c.totalLinhas} linhas. Os totais acima consideram todas as linhas.`
     : `${c.totalLinhas} linha(s), uma por item de operação no recorte.`, 7.5, 0.45);
   doc.tabela(
-    [{ titulo: "Data", largura: 48 }, { titulo: "Tipo", largura: 84 }, { titulo: "Operação / item", largura: 132 }, { titulo: "Categoria", largura: 80 }, { titulo: "Centro de custo", largura: 66 }, { titulo: "Classif.", largura: 56 }, { titulo: "Valor", largura: 64, alinhamento: "direita" }],
+    [{ titulo: "Data", largura: 46 }, { titulo: "Tipo", largura: 74 }, { titulo: "Operação / item", largura: 113 }, { titulo: "Qtd.", largura: 42, alinhamento: "direita" }, { titulo: "Categoria", largura: 72 }, { titulo: "Centro", largura: 57 }, { titulo: "Classif.", largura: 52 }, { titulo: "Valor", largura: 54, alinhamento: "direita" }],
     c.linhas.map((linha) => [
       data(linha.data),
       `${ROTULO_TIPO[linha.tipo] ?? linha.tipo}${linha.status === "CONFIRMADA" ? "" : ` (${ROTULO_STATUS[linha.status] ?? linha.status})`}`,
       [`OP-${String(linha.operacaoId).padStart(4, "0")}`, linha.item ?? linha.descricao].filter(Boolean).join(" · "),
+      linha.quantidade ? `${linha.quantidade}${linha.unidade ? ` ${linha.unidade}` : ""}` : "—",
       linha.categoria, linha.centroCusto,
       linha.classificacao ? ROTULO_CLASSIFICACAO[linha.classificacao] : "—",
       dinheiro(linha.valor),

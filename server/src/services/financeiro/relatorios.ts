@@ -75,16 +75,19 @@ export const descartarRascunho = (propriedadeId: number, usuarioId: number) =>
 async function carregarCadastros(configuracao: ConfiguracaoRelatorioFinanceiro) {
   const categoriaIds = configuracao.categoriaIds.filter((id) => id > 0);
   const centroCustoIds = configuracao.centroCustoIds.filter((id) => id > 0);
-  const [categorias, centrosCusto] = await Promise.all([
+  const parceiroIds = configuracao.parceiroIds.filter((id) => id > 0);
+  const [categorias, centrosCusto, parceiros] = await Promise.all([
     categoriaIds.length ? prisma.categoria.findMany({ where: { id: { in: categoriaIds } }, select: { id: true, nome: true } }) : [],
     centroCustoIds.length ? prisma.centroCusto.findMany({ where: { id: { in: centroCustoIds } }, select: { id: true, nome: true } }) : [],
+    parceiroIds.length ? prisma.parceiro.findMany({ where: { id: { in: parceiroIds } }, select: { id: true, nome: true } }) : [],
   ]);
   if (categorias.length !== categoriaIds.length) throw new FinanceiroError("VALIDACAO", "Uma das categorias selecionadas não existe mais", "categoriaIds");
   if (centrosCusto.length !== centroCustoIds.length) throw new FinanceiroError("VALIDACAO", "Um dos centros de custo selecionados não existe mais", "centroCustoIds");
-  return { categorias, centrosCusto };
+  if (parceiros.length !== parceiroIds.length) throw new FinanceiroError("VALIDACAO", "Um dos parceiros selecionados não existe mais", "parceiroIds");
+  return { categorias, centrosCusto, parceiros };
 }
 
-export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro) {
+export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro, versaoRascunho?: number) {
   const filtros = descreverFiltros(configuracao, await carregarCadastros(configuracao));
   const criado = await prisma.relatorioFinanceiro.create({
     data: { nome: configuracao.nome, parametros: json(configuracao), propriedadeId, autorId: usuario.id, autorNome: usuario.nome },
@@ -114,7 +117,9 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
       data: { status: "CONCLUIDO", storageKey, snapshot: json(snapshot), concluidoEm: new Date() },
       select: camposLista,
     });
-    if (usuario.id) await descartarRascunho(propriedadeId, usuario.id);
+    // Só consome a versão que gerou este documento. Uma edição posterior em
+    // outra aba continua disponível para ser retomada.
+    if (usuario.id && versaoRascunho) await prisma.rascunhoRelatorioFinanceiro.deleteMany({ where: { propriedadeId, criadoPorId: usuario.id, versao: versaoRascunho } });
     return mapear(concluido);
   } catch (e) {
     console.error("[relatorios-financeiros]", e);

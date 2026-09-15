@@ -7,13 +7,13 @@ import { obterRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type RelatorioF
 vi.mock("./novo-api", () => ({ obterRelatorioFinanceiro: vi.fn(), salvarPdfRelatorioFinanceiro: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
-const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [1], categoriaIds: [4], classificacoes: [] };
+const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [1], parceiroIds: [], categoriaIds: [4], classificacoes: [] };
 const detalhe: Detalhe = {
   id: 12, nome: "Pecuária — agosto", status: "CONCLUIDO", parametros: configuracao, propriedadeId: 1, propriedade: "Fazenda Rio Novo",
   autor: "Rafael", geradoEm: "2026-09-14T12:00:00Z", concluidoEm: "2026-09-14T12:00:01Z", erro: null,
   snapshot: {
     versao: 1, nome: "Pecuária — agosto", geradoEm: "2026-09-14T12:00:00Z", autor: "Rafael", propriedade: { id: 1, nome: "Fazenda Rio Novo" }, configuracao,
-    filtros: { tipos: [], status: ["Confirmada"], centrosCusto: ["Pecuária"], categorias: ["Benfeitorias (nome da emissão)"], classificacoes: [] },
+    filtros: { tipos: [], status: ["Confirmada"], centrosCusto: ["Pecuária"], parceiros: [], categorias: ["Benfeitorias (nome da emissão)"], classificacoes: [] },
     gerencial: {
       meta: { geradoEm: "2026-09-14T12:00:00Z", propriedade: { id: 1, nome: "Fazenda Rio Novo" }, periodo: { inicio: "2026-08-01", fim: "2026-08-31" }, regime: "ambos", hoje: "2026-09-14" },
       resumo: { entradas: 0, saidas: 500, resultado: -500, saldoContasFinal: 1000, nLancamentos: 1, aPagar: 0, aReceber: 0 },

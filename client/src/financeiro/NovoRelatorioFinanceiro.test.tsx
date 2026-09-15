@@ -119,7 +119,7 @@ describe("novo relatório financeiro", () => {
     fireEvent.click(screen.getByLabelText("Nutrição"));
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     await waitFor(() => expect(onGerado).toHaveBeenCalledWith(relatorio, null));
-    expect(gerarRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto", categoriaIds: [3], status: ["CONFIRMADA"] }));
+    expect(gerarRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto", categoriaIds: [3], status: ["CONFIRMADA"] }), 4);
     expect(salvarPdfRelatorioFinanceiro).toHaveBeenCalledWith(relatorio);
   });
 

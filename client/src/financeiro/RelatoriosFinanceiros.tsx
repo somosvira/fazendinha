@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucide-react";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
@@ -37,6 +38,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [aviso, setAviso] = useState<string | null>(null);
   const [recente, setRecente] = useState<number | null>(null);
   const [iniciando, setIniciando] = useState(false);
+  const [confirmarNovo, setConfirmarNovo] = useState(false);
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -67,6 +69,10 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     }
     ir("/financeiro/relatorios/novo", { tipo: "novo" });
   };
+  const pedirNovo = () => {
+    if (rascunho) setConfirmarNovo(true);
+    else void abrirNovo(false);
+  };
   const aoGerar = (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => {
     setRascunho(null); setRecente(relatorio.id);
     setAviso(avisoDownload ?? `“${relatorio.nome}” foi gerado e o download do PDF começou.`);
@@ -93,7 +99,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   ];
   const acoes = podeExportar ? <div className="flex flex-wrap gap-2">
     {rascunho && <Button secondary onClick={() => void abrirNovo(true)}><FilePenLine size={16} /> Continuar rascunho</Button>}
-    <Button disabled={iniciando} onClick={() => void abrirNovo(false)}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
+    <Button disabled={iniciando} onClick={pedirNovo}><FilePlus2 size={16} /> {iniciando ? "Iniciando…" : "Novo relatório"}</Button>
   </div> : undefined;
 
   return <PaginaFinanceira>
@@ -109,5 +115,19 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
         ? <Empty>Nenhum relatório foi gerado ainda.{podeExportar ? " Use “Novo relatório” para montar o primeiro." : ""}</Empty>
         : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} itens={relatorios} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-[#f6f9f2]" : ""} />}
     </Panel>
+    <ConfirmDialog
+      open={confirmarNovo}
+      title="Criar um novo relatório?"
+      message="Você já tem um rascunho de relatório em andamento. Para começar outro, o rascunho atual será apagado."
+      confirmLabel="Descartar e criar"
+      cancelLabel="Continuar rascunho"
+      cancelTone="safe"
+      tone="danger"
+      dangerFilled
+      processando={iniciando}
+      onCancel={() => { setConfirmarNovo(false); void abrirNovo(true); }}
+      onDismiss={() => setConfirmarNovo(false)}
+      onConfirm={() => { setConfirmarNovo(false); void abrirNovo(false); }}
+    />
   </PaginaFinanceira>;
 }
