@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildRotaWorklistRebanho,
   isNovaOperacaoFinanceira,
+  isNovoRelatorioFinanceiro,
+  isSubrotaFinanceira,
   parseOperacaoFinanceiraId,
   parseContaFinanceiraId,
+  parseRelatorioFinanceiroId,
   parseRotaWorklistRebanho,
   pathToTab,
   tabToPath,
@@ -19,6 +22,22 @@ describe("roteamento da pecuária", () => {
     expect(pathToTab("/financeiro/operacoes/nova")).toBe("lancar");
     expect(isNovaOperacaoFinanceira("/financeiro/operacoes/nova")).toBe(true);
     expect(parseOperacaoFinanceiraId("/financeiro/operacoes/nova")).toBeNull();
+  });
+  it("mantém novo relatório e detalhe de relatório na aba de relatórios", () => {
+    expect(pathToTab("/financeiro/relatorios/novo")).toBe("relatorio");
+    expect(isNovoRelatorioFinanceiro("/financeiro/relatorios/novo/")).toBe(true);
+    expect(pathToTab("/financeiro/relatorios/12")).toBe("relatorio");
+    expect(parseRelatorioFinanceiroId("/financeiro/relatorios/12")).toBe(12);
+    expect(parseRelatorioFinanceiroId("/financeiro/relatorios/novo")).toBeNull();
+    expect(parseRelatorioFinanceiroId("/financeiro/relatorios/0")).toBeNull();
+  });
+  it("preserva subpáginas financeiras só na aba dona delas", () => {
+    expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios/novo")).toBe(true);
+    expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios/3")).toBe(true);
+    expect(isSubrotaFinanceira("lancar", "/financeiro/operacoes/nova")).toBe(true);
+    expect(isSubrotaFinanceira("caixinha", "/financeiro/contas/2")).toBe(true);
+    expect(isSubrotaFinanceira("dashboard", "/financeiro/relatorios/3")).toBe(false);
+    expect(isSubrotaFinanceira("relatorio", "/financeiro/relatorios")).toBe(false);
   });
   it("publica contas e extratos como uma área financeira própria", () => {
     expect(tabToPath("caixinha")).toBe("/financeiro/contas");

@@ -1,0 +1,164 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
+import { getHoje } from "../lib/hoje";
+import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
+import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, alternar, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, periodoMes, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
+
+const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
+const TITULO_SECAO = "mb-3 text-xs font-semibold uppercase tracking-[.12em] text-ink-3";
+const mensagem = (falha: unknown) => falha instanceof Error ? falha.message : String(falha);
+
+type Estado = "ALTERADO" | "SALVANDO" | "SALVO" | "ERRO";
+type Opcao = readonly [string | number, string];
+
+function Multisselecao({ titulo, ajuda, opcoes, selecionados, onAlternar, onLimpar }: { titulo: string; ajuda: string; opcoes: readonly Opcao[]; selecionados: readonly (string | number)[]; onAlternar: (id: string | number) => void; onLimpar: () => void }) {
+  return <fieldset>
+    <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <legend className={`${TITULO_SECAO} mb-0`}>{titulo}</legend>
+      {selecionados.length > 0 ? <button type="button" onClick={onLimpar} className="text-xs font-semibold text-green-800 hover:underline">Limpar ({selecionados.length})</button> : <span className="text-xs text-ink-3">{ajuda}</span>}
+    </div>
+    <div className="flex flex-wrap gap-2">
+      {opcoes.map(([id, nome]) => <label key={String(id)} className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm has-checked:border-mast has-checked:bg-[#eef1e9]">
+        <input type="checkbox" checked={selecionados.includes(id)} onChange={() => onAlternar(id)} />{nome}
+      </label>)}
+    </div>
+  </fieldset>;
+}
+
+export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerado }: {
+  cadastros: ConfiguracoesFinanceiras;
+  rascunho: RascunhoRelatorioFinanceiro | null;
+  onVoltar: () => void;
+  onGerado: (relatorio: RelatorioFinanceiro, avisoDownload: string | null) => void;
+}) {
+  const [config, setConfig] = useState(() => mesclarRascunho(rascunho?.configuracao));
+  const [estado, setEstado] = useState<Estado>(rascunho ? "SALVO" : "ALTERADO");
+  const [temRascunho, setTemRascunho] = useState(!!rascunho);
+  const [erro, setErro] = useState<string | null>(null);
+  const [gerando, setGerando] = useState(false);
+  const versaoRef = useRef(rascunho?.versao);
+  const emCursoRef = useRef<Promise<unknown> | null>(null);
+  const encerradoRef = useRef(false);
+  const iniciouRef = useRef(false);
+
+  const persistir = async (dados: ConfiguracaoRelatorioFinanceiro) => {
+    if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
+    // Depois de gerar, o servidor consome o rascunho; não recriá-lo.
+    if (encerradoRef.current) return;
+    setEstado("SALVANDO");
+    const requisicao = salvarRascunhoRelatorioFinanceiro(dados, versaoRef.current);
+    emCursoRef.current = requisicao;
+    try { const salvo = await requisicao; versaoRef.current = salvo.versao; setTemRascunho(true); setEstado("SALVO"); }
+    catch (falha) { setEstado("ERRO"); setErro(mensagem(falha)); }
+    finally { if (emCursoRef.current === requisicao) emCursoRef.current = null; }
+  };
+
+  useEffect(() => {
+    if (!iniciouRef.current) { iniciouRef.current = true; return; }
+    setEstado("ALTERADO");
+    const timer = window.setTimeout(() => { void persistir(config); }, 700);
+    return () => window.clearTimeout(timer);
+    // `config` é todo o estado editável; persistir lê só refs além dele.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config]);
+
+  const alterar = <K extends keyof ConfiguracaoRelatorioFinanceiro>(campo: K, valor: ConfiguracaoRelatorioFinanceiro[K]) => setConfig((atual) => ({ ...atual, [campo]: valor }));
+  const limpar = async () => {
+    setErro(null);
+    try {
+      if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
+      await descartarRascunhoRelatorioFinanceiro();
+      versaoRef.current = undefined; iniciouRef.current = false;
+      setTemRascunho(false); setEstado("ALTERADO"); setConfig(configuracaoPadrao());
+    } catch (falha) { setErro(mensagem(falha)); }
+  };
+  const gerar = async () => {
+    if (!podeGerar(config) || gerando) return;
+    setErro(null); setGerando(true); encerradoRef.current = true;
+    try {
+      if (emCursoRef.current) await emCursoRef.current.catch(() => undefined);
+      const relatorio = await gerarRelatorioFinanceiro(config);
+      let aviso: string | null = null;
+      try { await salvarPdfRelatorioFinanceiro(relatorio); }
+      catch { aviso = `O relatório “${relatorio.nome}” foi gerado, mas o download não começou. Use “Baixar PDF” no histórico.`; }
+      onGerado(relatorio, aviso);
+    } catch (falha) {
+      // A falha não consome o rascunho: volta a salvar o que está na tela.
+      encerradoRef.current = false; setGerando(false); setErro(mensagem(falha));
+      void persistir(config);
+    }
+  };
+
+  const hoje = getHoje();
+  const atalhos = [
+    { rotulo: "Mês passado", ...periodoMes(hoje, -1) },
+    { rotulo: "Mês atual", dataInicio: periodoMes(hoje).dataInicio, dataFim: isoLocal(hoje) },
+    { rotulo: "Ano atual", dataInicio: `${hoje.getFullYear()}-01-01`, dataFim: isoLocal(hoje) },
+  ];
+  const problemaPeriodo = erroPeriodo(config);
+  const tipos = useMemo(() => TIPOS_RELATORIO.map((tipo) => [tipo, TIPO_OPERACAO[tipo] ?? tipo] as const), []);
+  const centros = useMemo<Opcao[]>(() => [[0, SEM_CENTRO], ...cadastros.centrosCusto.map((c): Opcao => [c.id, `${c.nome}${c.ativo ? "" : " (inativo)"}`])], [cadastros.centrosCusto]);
+  const categorias = useMemo<Opcao[]>(() => [[0, SEM_CATEGORIA], ...cadastros.categorias.map((c): Opcao => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
+  const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, tipos: TIPO_OPERACAO });
+  const bloqueio = !config.nome.trim() ? "Informe um nome para o relatório." : problemaPeriodo;
+
+  return <div className="shell-wide pb-10">
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3">
+      <div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Relatórios financeiros</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">Novo relatório</h1></div>
+      <div className="flex flex-wrap items-center gap-3">
+        {temRascunho && <span aria-live="polite" className={`text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span>}
+        {temRascunho && <Button secondary disabled={gerando} onClick={() => void limpar()}><Trash2 size={15} /> Limpar rascunho</Button>}
+        <Button secondary onClick={onVoltar}><ArrowLeft size={15} /> Relatórios</Button>
+      </div>
+    </div>
+
+    <div className="grid overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="space-y-7 p-5 md:p-7">
+        <ErrorBox erro={erro} />
+        <section>
+          <h3 className={TITULO_SECAO}>Identificação</h3>
+          <label className="block text-sm font-medium">Nome do relatório *<input aria-label="Nome do relatório" maxLength={120} className={CAMPO} value={config.nome} onChange={(e) => alterar("nome", e.target.value)} /></label>
+        </section>
+
+        <section>
+          <h3 className={TITULO_SECAO}>Período</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium">Data inicial *<input aria-label="Data inicial" type="date" required max={config.dataFim || undefined} className={CAMPO} value={config.dataInicio} onChange={(e) => alterar("dataInicio", e.target.value)} /></label>
+            <label className="text-sm font-medium">Data final *<input aria-label="Data final" type="date" required min={config.dataInicio || undefined} className={CAMPO} value={config.dataFim} onChange={(e) => alterar("dataFim", e.target.value)} /></label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">{atalhos.map((atalho) => <button key={atalho.rotulo} type="button" onClick={() => setConfig((atual) => ({ ...atual, dataInicio: atalho.dataInicio, dataFim: atalho.dataFim }))} className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-2">{atalho.rotulo}</button>)}</div>
+          {problemaPeriodo && <p role="alert" className="mt-2 text-sm text-red-700">{problemaPeriodo}</p>}
+        </section>
+
+        <fieldset>
+          <legend className={TITULO_SECAO}>Leitura financeira</legend>
+          <div className="grid gap-2 md:grid-cols-3">{REGIMES_RELATORIO.map((regime) => <label key={regime.id} className="flex cursor-pointer gap-3 rounded-lg border border-border p-3 text-sm has-checked:border-mast has-checked:bg-[#eef1e9]">
+            <input type="radio" name="regime" checked={config.regime === regime.id} onChange={() => alterar("regime", regime.id)} className="mt-1" />
+            <span><strong className="block">{regime.rotulo}</strong><span className="mt-0.5 block text-xs text-ink-3">{regime.dica}</span></span>
+          </label>)}</div>
+        </fieldset>
+
+        <Multisselecao titulo="Tipos de operação" ajuda="Nenhum marcado inclui todos" opcoes={tipos} selecionados={config.tipos} onAlternar={(id) => alterar("tipos", alternar(config.tipos, String(id)))} onLimpar={() => alterar("tipos", [])} />
+        <Multisselecao titulo="Situação da operação" ajuda="Nenhuma marcada inclui todas" opcoes={STATUS_RELATORIO} selecionados={config.status} onAlternar={(id) => alterar("status", alternar(config.status, String(id)))} onLimpar={() => alterar("status", [])} />
+        <Multisselecao titulo="Centro de custo" ajuda="Nenhum marcado inclui todos" opcoes={centros} selecionados={config.centroCustoIds} onAlternar={(id) => alterar("centroCustoIds", alternar(config.centroCustoIds, Number(id)))} onLimpar={() => alterar("centroCustoIds", [])} />
+        <Multisselecao titulo="Categoria dos itens" ajuda="Nenhuma marcada inclui todas" opcoes={categorias} selecionados={config.categoriaIds} onAlternar={(id) => alterar("categoriaIds", alternar(config.categoriaIds, Number(id)))} onLimpar={() => alterar("categoriaIds", [])} />
+        <Multisselecao titulo="Classificação" ajuda="Nenhuma marcada inclui todas" opcoes={CLASSIFICACOES_RELATORIO} selecionados={config.classificacoes} onAlternar={(id) => alterar("classificacoes", alternar(config.classificacoes, id as (typeof config.classificacoes)[number]))} onLimpar={() => alterar("classificacoes", [])} />
+        <p className="text-xs leading-5 text-ink-3">Categoria e classificação valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro.</p>
+      </div>
+
+      <aside aria-label="Resumo do relatório" className="flex flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:sticky xl:top-0 xl:max-h-screen xl:overflow-y-auto xl:border-l xl:border-t-0">
+        <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Resumo do relatório</div>
+        <div className="mt-3 break-words font-serif text-2xl">{config.nome.trim() || "Sem nome"}</div>
+        <dl className="mt-5 space-y-3 border-y border-white/10 py-4 text-xs">{resumo.map(([rotulo, valor]) => <div key={rotulo}><dt className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-white">{valor}</dd></div>)}</dl>
+        <div className="mt-4 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">O documento terá</div>
+        <div className="mt-2 space-y-2 text-sm leading-5">{secoesDoRelatorio(config).map((secao) => <ReviewLine key={secao}>{secao}</ReviewLine>)}</div>
+        <div className="mt-auto border-t border-white/10 pt-5">
+          <p className="mb-3 mt-5 text-center text-[11px] leading-4 text-[#aeb9aa]">O PDF é baixado ao gerar e fica salvo no histórico da propriedade.</p>
+          <Button onClick={() => void gerar()} disabled={!!bloqueio || gerando} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]"><FileDown size={16} /> {gerando ? "Gerando…" : "Gerar relatório"}</Button>
+          {bloqueio && <p className="mt-2 text-center text-[11px] text-[#e3c66f]">{bloqueio}</p>}
+        </div>
+      </aside>
+    </div>
+  </div>;
+}

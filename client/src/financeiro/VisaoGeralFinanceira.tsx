@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, CircleDollarSign, Landmark, Package, Plus, ShieldCheck, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
-import { listarCompromissos, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
+import { AnaliseCategorias } from "./AnaliseCategorias";
+import { listarCompromissos, listarOperacoes, obterDashboardFinanceiro, type Compromisso, type DashboardFinanceiro, type Operacao } from "./novo-api";
+import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, MonthControl, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TIPO_OPERACAO } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 
 export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
   const [mes, setMes] = useState(mesAtual());
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
+  const [ops, setOps] = useState<Operacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     const { inicio, fim } = limitesMes(mes); setErro(null);
-    Promise.all([obterDashboardFinanceiro(inicio, fim), listarCompromissos()])
-      .then(([d, c]) => { setDados(d); setCompromissos(c); })
+    Promise.all([obterDashboardFinanceiro(inicio, fim), listarCompromissos(), listarOperacoes()])
+      .then(([d, c, o]) => { setDados(d); setCompromissos(c); setOps(o); })
       .catch((e) => setErro(e.message));
   }, [mes]);
 
@@ -24,6 +26,8 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
     .filter((c) => ["PENDENTE", "PARCIAL"].includes(c.status))
     .slice(0, 5)
     .map((c) => ({ ...c, operacao: { ...c.operacao, descricao: tituloCompromisso(c) } }));
+  // Indicadores da base (antes em Relatórios): todas as operações, sem recorte de mês.
+  const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
 
   return <PaginaFinanceira>
     <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap gap-2"><MonthControl mes={mes} onChange={setMes} /><Button onClick={() => { onNav("lancar"); window.setTimeout(() => { window.history.pushState(null, "", "/financeiro/operacoes/nova"); window.dispatchEvent(new PopStateEvent("popstate")); }, 0); }}><Plus size={16} /> Nova operação</Button></div>} />
@@ -52,6 +56,15 @@ export function VisaoGeralFinanceira({ onNav }: { onNav: (tab: Tab) => void }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Próximos compromissos</h2><p className="mt-1 text-xs text-ink-3">Agenda financeira — não compõe o saldo atual</p></div><button onClick={() => onNav("gastos")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div>
         {proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className="grid items-center gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><div className="break-words font-semibold">{c.operacao.descricao || c.operacao.tipo}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong></div>)}</div> : <Empty>Não há compromissos pendentes.</Empty>}
       </Panel>
+
+      <section className="mt-8" aria-labelledby="base-financeira-titulo">
+        <h2 id="base-financeira-titulo" className="font-serif text-2xl">Base financeira</h2>
+        <p className="mt-2 text-sm text-ink-3">Todas as operações registradas na propriedade, sem o recorte do mês.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3"><Metric label="Operações confirmadas" valor={String(confirmadas.length)} detalhe="Registros ativos" icon={ShieldCheck} /><Metric label="Volume econômico" valor={brl(total)} detalhe="Soma das operações confirmadas" icon={CircleDollarSign} /><Metric label="Com efeito de estoque" valor={String(ops.filter((o) => o.movimentosEstoque?.length).length)} detalhe="Operações rastreadas fisicamente" icon={Package} /></div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2"><Panel><div className="border-b border-border p-5"><h3 className="font-serif text-xl">Volume por tipo de operação</h3><p className="mt-1 text-xs text-ink-3">Base econômica confirmada</p></div><div className="divide-y divide-border">{porTipo.length ? porTipo.map(([tipo, valor]) => <div key={tipo} className="flex justify-between gap-4 p-4 text-sm"><span className="min-w-0 break-words">{TIPO_OPERACAO[tipo] ?? tipo}</span><strong className="shrink-0 whitespace-nowrap">{brl(valor)}</strong></div>) : <Empty>Nenhuma operação confirmada.</Empty>}</div></Panel><Panel><div className="border-b border-border p-5"><h3 className="font-serif text-xl">Rastreabilidade</h3><p className="mt-1 text-xs text-ink-3">Qualidade da base financeira</p></div><div className="space-y-4 p-5 text-sm"><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Compromissos registrados</span><strong className="shrink-0">{compromissos.length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações canceladas com histórico</span><strong className="shrink-0">{ops.filter((o) => o.status === "CANCELADA").length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações com parceiro identificado</span><strong className="shrink-0">{ops.filter((o) => o.parceiro).length}</strong></div><div className="rounded-lg bg-[#f4f2e9] p-4 text-xs leading-5 text-ink-3">Conciliação bancária ainda não é exibida porque não possui implementação real na API.</div></div></Panel></div>
+      </section>
+
+      <AnaliseCategorias />
     </>}
   </PaginaFinanceira>;
 }

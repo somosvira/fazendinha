@@ -1,4 +1,5 @@
 import { comPropriedade } from "../propriedadeScope";
+import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -35,9 +36,26 @@ export type RascunhoOperacao = { id: number; dados: { formulario?: Record<string
 export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: number; descricao: string | null; tipo: string } | null } };
 export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
-export type ConfiguracaoRelatorioFinanceiro = { nome: string; dataInicio: string; dataFim: string; tipos: string[]; status: string[]; centroCustoIds: number[] };
-export type RascunhoRelatorioFinanceiro = { id: number; configuracao: ConfiguracaoRelatorioFinanceiro; versao: number; updatedAt: string };
-export type RelatorioFinanceiro = { id: number; nome: string; status: "PROCESSANDO" | "CONCLUIDO" | "FALHOU"; parametros: ConfiguracaoRelatorioFinanceiro; autor: string; autorNome: string; geradoEm: string; concluidoEm: string | null; erro: string | null };
+export type RegimeRelatorioFinanceiro = "ambos" | "realizado" | "previsto";
+export type ClassificacaoRelatorio = "CUSTEIO" | "INVESTIMENTO" | "SEM_CLASSIFICACAO";
+/** Opções que definem o conteúdo do documento. Em centros e categorias, 0 = "sem". */
+export type ConfiguracaoRelatorioFinanceiro = { nome: string; dataInicio: string; dataFim: string; regime: RegimeRelatorioFinanceiro; tipos: string[]; status: string[]; centroCustoIds: number[]; categoriaIds: number[]; classificacoes: ClassificacaoRelatorio[] };
+export type RascunhoRelatorioFinanceiro = { id: number; configuracao: Partial<ConfiguracaoRelatorioFinanceiro>; versao: number; updatedAt: string };
+export type RelatorioFinanceiro = { id: number; nome: string; status: "PROCESSANDO" | "CONCLUIDO" | "FALHOU"; parametros: ConfiguracaoRelatorioFinanceiro; propriedadeId: number; propriedade: string; autor: string; geradoEm: string; concluidoEm: string | null; erro: string | null };
+export type LinhaComposicaoRelatorio = { operacaoId: number; data: string; tipo: string; status: string; descricao: string | null; item: string | null; quantidade: string | null; unidade: string | null; parceiro: string | null; categoriaId: number | null; categoria: string; centroCusto: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; valor: string };
+export type TotalGrupoRelatorio = { nome: string; total: string; pct: number };
+export type SnapshotRelatorioFinanceiro = {
+  versao: 1; nome: string; geradoEm: string; autor: string; propriedade: { id: number; nome: string } | null;
+  configuracao: ConfiguracaoRelatorioFinanceiro;
+  filtros: { tipos: string[]; status: string[]; centrosCusto: string[]; categorias: string[]; classificacoes: string[] };
+  gerencial: RelatorioGerencialDTO;
+  composicao: {
+    linhas: LinhaComposicaoRelatorio[]; totalLinhas: number; truncado: boolean;
+    porTipo: { tipo: string; rotulo: string; operacoes: number; total: string }[];
+    despesas: { total: string; custeio: string; investimento: string; semClassificacao: string; porCategoria: (TotalGrupoRelatorio & { custeio: string; investimento: string; semClassificacao: string })[]; porCentro: TotalGrupoRelatorio[] };
+  };
+};
+export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: SnapshotRelatorioFinanceiro | null };
 
 /** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
 export class ApiError extends Error {
@@ -70,13 +88,23 @@ export const descartarRascunhoOperacao = () => req<void>("/financeiro/operacoes/
 export const confirmarRascunhoOperacao = (versao?: number) => req<Operacao>("/financeiro/operacoes/rascunho/confirmacao", { method: "POST", body: JSON.stringify({ versao }) });
 export const listarRelatoriosFinanceiros = () => req<RelatorioFinanceiro[]>("/financeiro/relatorios");
 export const obterRascunhoRelatorioFinanceiro = () => req<RascunhoRelatorioFinanceiro | null>("/financeiro/relatorios/rascunho");
-export const salvarRascunhoRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFinanceiro, versao?: number) => req<RascunhoRelatorioFinanceiro>("/financeiro/relatorios/rascunho", { method: "PUT", body: JSON.stringify({ configuracao, versao }) });
+export const salvarRascunhoRelatorioFinanceiro = (configuracao: Partial<ConfiguracaoRelatorioFinanceiro>, versao?: number) => req<RascunhoRelatorioFinanceiro>("/financeiro/relatorios/rascunho", { method: "PUT", body: JSON.stringify({ configuracao, versao }) });
 export const descartarRascunhoRelatorioFinanceiro = () => req<void>("/financeiro/relatorios/rascunho", { method: "DELETE" });
-export const gerarRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFinanceiro) => req<{ id: number }>("/financeiro/relatorios", { method: "POST", body: JSON.stringify(configuracao) });
+export const gerarRelatorioFinanceiro = (configuracao: ConfiguracaoRelatorioFinanceiro) => req<RelatorioFinanceiro>("/financeiro/relatorios", { method: "POST", body: JSON.stringify(configuracao) });
+export const obterRelatorioFinanceiro = (id: number) => req<RelatorioFinanceiroDetalhe>(`/financeiro/relatorios/${id}`);
 export async function baixarRelatorioFinanceiro(id: number) {
   const resposta = await fetch(`/api/financeiro/relatorios/${id}/download`, { headers: comPropriedade() });
   if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status); }
   return resposta.blob();
+}
+/** Baixa o PDF guardado e entrega ao navegador como download. */
+export async function salvarPdfRelatorioFinanceiro(relatorio: Pick<RelatorioFinanceiro, "id" | "nome">) {
+  const url = URL.createObjectURL(await baixarRelatorioFinanceiro(relatorio.id));
+  const link = document.createElement("a");
+  link.href = url; link.download = `${relatorio.nome}.pdf`;
+  document.body.appendChild(link); link.click(); link.remove();
+  // Revogar no mesmo tick cancela o download em alguns navegadores.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
   const form = new FormData(); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
