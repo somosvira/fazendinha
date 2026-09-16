@@ -10,6 +10,9 @@ vi.mock("./novo-api", () => ({
     realizado: { entradas: "0", saidas: "0", resultado: "0" }, compromissos: { aPagar: "0", aReceber: "0" }, despesasPorCategoria: [],
   }),
   listarCompromissos: vi.fn().mockResolvedValue([]),
+  listarOperacoes: vi.fn().mockResolvedValue([]),
+  obterConfiguracoesFinanceiras: vi.fn().mockResolvedValue({ categorias: [], centrosCusto: [] }),
+  obterAnaliseCategorias: vi.fn().mockResolvedValue({ total: "0", categorias: [], linhas: [] }),
   obterRascunhoOperacao: vi.fn(),
   descartarRascunhoOperacao: vi.fn().mockResolvedValue(undefined),
 }));

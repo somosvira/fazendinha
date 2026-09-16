@@ -477,6 +477,45 @@ model RascunhoOperacao {
   @@index([criadoPorId, updatedAt])
 }
 
+enum StatusRelatorioFinanceiro {
+  PROCESSANDO
+  CONCLUIDO
+  FALHOU
+}
+
+model RascunhoRelatorioFinanceiro {
+  id            Int         @id @default(autoincrement())
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+  propriedadeId Int
+  criadoPor     Usuario     @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+  criadoPorId   Int
+  configuracao  Json
+  versao        Int         @default(1)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([propriedadeId, criadoPorId])
+}
+
+model RelatorioFinanceiro {
+  id            Int                       @id @default(autoincrement())
+  nome          String
+  status        StatusRelatorioFinanceiro @default(PROCESSANDO)
+  parametros    Json
+  snapshot      Json?
+  storageKey    String?                   @unique
+  erro          String?
+  propriedade   Propriedade               @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  autor         Usuario?                  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  autorId       Int?
+  autorNome     String
+  geradoEm      DateTime                  @default(now())
+  concluidoEm   DateTime?
+
+  @@index([propriedadeId, geradoEm])
+}
+
 model ItemOperacao {
   categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
   categoriaId       Int?
@@ -1226,6 +1265,8 @@ model Propriedade {
   contasFinanceiras      ContaFinanceira[]
   operacoesFinanceiras   Operacao[]
   rascunhosOperacoes     RascunhoOperacao[]
+  relatoriosFinanceiros  RelatorioFinanceiro[]
+  rascunhosRelatorios    RascunhoRelatorioFinanceiro[]
   transacoesFinanceiras  TransacaoFinanceira[]
   periodosFinanceiros    PeriodoFinanceiro[]
   lotesCorte             LoteCorte[]
@@ -3088,6 +3129,8 @@ model Usuario {
   tokens                   TokenAcesso[]
   operacoesCriadas         Operacao[]            @relation("OperacaoCriador")
   rascunhosOperacoes       RascunhoOperacao[]
+  relatoriosFinanceiros    RelatorioFinanceiro[]
+  rascunhosRelatorios      RascunhoRelatorioFinanceiro[]
   transacoesCriadas        TransacaoFinanceira[] @relation("TransacaoCriador")
   movimentosEstoqueCriados MovimentoEstoque[]    @relation("MovimentoEstoqueCriador")
   auditoriasFinanceiras    AuditoriaFinanceira[]

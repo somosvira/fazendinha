@@ -20,7 +20,7 @@ export const TIPO_OPERACAO: Record<string, string> = {
 const STATUS: Record<string, string> = {
   RASCUNHO: "Rascunho", CONFIRMADA: "Confirmada", CANCELADA: "Cancelada",
   PENDENTE: "Pendente", PARCIAL: "Parcial", LIQUIDADO: "Liquidado", CANCELADO: "Cancelado",
-  REVERTIDA: "Revertida",
+  REVERTIDA: "Revertida", PROCESSANDO: "Processando", CONCLUIDO: "Concluído", FALHOU: "Falhou",
 };
 
 /* Envelope de toda página financeira. O gutter e o ritmo vertical (inclusive a
@@ -69,7 +69,7 @@ export function Pill({ children, tone = "neutral" }: { children: React.ReactNode
 }
 
 export function StatusPill({ status }: { status: string }) {
-  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" ? "green" : status === "PENDENTE" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" ? "red" : "neutral";
+  const tone = status === "CONFIRMADA" || status === "LIQUIDADO" || status === "CONCLUIDO" ? "green" : status === "PENDENTE" || status === "PROCESSANDO" ? "amber" : status === "PARCIAL" ? "blue" : status.includes("CANCEL") || status === "REVERTIDA" || status === "FALHOU" ? "red" : "neutral";
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
