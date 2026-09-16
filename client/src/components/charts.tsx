@@ -261,14 +261,26 @@ export function Donut({
 
 export type EntradaSaidaPoint = { data: string; rotulo?: string; entradas: number; saidas: number };
 
+/** Linhas mostram a evolução do total; barras preservam o movimento de cada período. */
+export function serieEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType): EntradaSaidaPoint[] {
+  if (tipo === "bar") return data;
+  let entradas = 0;
+  let saidas = 0;
+  return data.map((ponto) => {
+    entradas += ponto.entradas;
+    saidas += ponto.saidas;
+    return { ...ponto, entradas, saidas };
+  });
+}
+
 /** Receitas e despesas em reais, com valores exatos no tooltip. */
 export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaPoint[]; tipo?: ChartType }) {
   const formatarRotulo = (ponto: EntradaSaidaPoint) => ponto.rotulo ?? (data.length > 31
     ? new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${ponto.data.slice(0, 7)}-01T00:00:00Z`)).replace(" de ", "/")
     : String(Number(ponto.data.slice(8, 10))));
-  const pontos = data.map((ponto) => ({ ...ponto, rotuloEixo: formatarRotulo(ponto) }));
+  const pontos = serieEntradaSaida(data, tipo).map((ponto) => ({ ...ponto, rotuloEixo: formatarRotulo(ponto) }));
   return <>
-    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais">
+    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
@@ -284,7 +296,7 @@ export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaP
         </>}
       </ComposedChart>
     </ChartContainer>
-    <ul className="sr-only" aria-label="Valores do gráfico">{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — Receitas: {fmtMoneyExact(ponto.entradas)}; Despesas: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
+    <ul className="sr-only" aria-label={tipo === "line" ? "Totais acumulados do gráfico" : "Valores do gráfico"}>{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — Receitas: {fmtMoneyExact(ponto.entradas)}; Despesas: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
   </>;
 }
 
