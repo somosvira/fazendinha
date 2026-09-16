@@ -288,8 +288,8 @@ export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaP
         <ChartTooltip labelFormatter={(_label, payload) => payload?.[0]?.payload?.rotulo ?? payload?.[0]?.payload?.data ?? ""} formatter={tooltipMoney} />
         <ChartLegend />
         {tipo === "line" ? <>
-          <Line type="monotone" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
-          <Line type="monotone" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="saidas" name="Despesas" stroke="var(--color-despesas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
         </> : <>
           <Bar dataKey="entradas" name="Receitas" fill="var(--color-receitas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
           <Bar dataKey="saidas" name="Despesas" fill="var(--color-despesas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
