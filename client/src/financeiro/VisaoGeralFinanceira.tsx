@@ -11,11 +11,11 @@ import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { CategoryValueChart, ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
-import { PeriodoGraficoControl } from "./PeriodoGraficoControl";
+import { PeriodoGraficoControl, periodoDoAnoAtual } from "./PeriodoGraficoControl";
 
 export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
-  const [inicioPeriodo, setInicioPeriodo] = useState(mesAtual());
-  const [fimPeriodo, setFimPeriodo] = useState(mesAtual());
+  const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoDoAnoAtual().inicio);
+  const [fimPeriodo, setFimPeriodo] = useState(() => periodoDoAnoAtual().fim);
   const [dados, setDados] = useState<DashboardFinanceiro | null>(null);
   const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);

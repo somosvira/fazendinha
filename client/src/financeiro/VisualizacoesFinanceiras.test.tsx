@@ -53,6 +53,9 @@ describe("visualizações financeiras integradas", () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 160,00"));
     expect(total("Despesas no período")).toContain("R$ 65,00");
+    expect((screen.getByLabelText("Intervalo do gráfico") as HTMLSelectElement).value).toBe("ano-atual");
+    expect((screen.getByLabelText("Mês inicial do gráfico") as HTMLInputElement).value).toBe("2026-01");
+    expect((screen.getByLabelText("Mês final do gráfico") as HTMLInputElement).value).toBe("2026-12");
     expect(screen.getByRole("button", { name: "Linhas" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Barras" }));
     expect(screen.getByRole("button", { name: "Barras" }).getAttribute("aria-pressed")).toBe("true");
@@ -119,8 +122,10 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     fireEvent.click(screen.getByRole("button", { name: "Ver todos" }));
     expect(onNav).toHaveBeenCalledWith("gastos");
-    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "12" } });
-    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2025-10-01", expect.stringContaining("2026-09-30")));
+    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "ano-anterior" } });
+    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2025-01-01", expect.stringContaining("2025-12-31")));
+    fireEvent.change(screen.getByLabelText("Intervalo do gráfico"), { target: { value: "ano-atual" } });
+    await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2026-01-01", expect.stringContaining("2026-12-31")));
   });
 
   it("mantém a visão geral somente para consulta sem a permissão de lançar", async () => {

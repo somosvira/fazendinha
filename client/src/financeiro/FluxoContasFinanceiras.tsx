@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import type { MovimentoConta } from "./novo-api";
-import { brl, dataBR, Empty, mesAtual, Panel, TabelaFinanceira } from "./financeiro-ui";
+import { brl, dataBR, Empty, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { nomeMes } from "./lib/calendario";
 import { fluxoPeriodo } from "./lib/fluxo-contas";
-import { PeriodoGraficoControl } from "./PeriodoGraficoControl";
+import { PeriodoGraficoControl, periodoDoAnoAtual } from "./PeriodoGraficoControl";
 
 export function FluxoContasFinanceiras({ movimentos, consolidado = false, carregando, erro, escopo }: {
   movimentos: MovimentoConta[];
@@ -13,8 +13,8 @@ export function FluxoContasFinanceiras({ movimentos, consolidado = false, carreg
   erro: string | null;
   escopo: string;
 }) {
-  const [inicio, setInicio] = useState(mesAtual());
-  const [fim, setFim] = useState(mesAtual());
+  const [inicio, setInicio] = useState(() => periodoDoAnoAtual().inicio);
+  const [fim, setFim] = useState(() => periodoDoAnoAtual().fim);
   const [tipoGrafico, setTipoGrafico] = useState<ChartType>("line");
   const dados = fluxoPeriodo(movimentos, inicio, fim, consolidado);
   const entradas = dados.reduce((soma, dia) => soma + Math.round(dia.entradas * 100), 0) / 100;
