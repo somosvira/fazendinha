@@ -51,9 +51,11 @@ const envSchema = z
     R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID ausente"),
     R2_SECRET_ACCESS_KEY: z.string().min(1, "R2_SECRET_ACCESS_KEY ausente"),
     R2_BUCKET_NOTAS: z.string().min(1, "R2_BUCKET_NOTAS ausente"),
-    // Prefixo lógico para separar produção, desenvolvimento e CI no mesmo bucket.
-    // Não entra no .env.example: cada ambiente escolhe seu próprio namespace.
-    STORAGE_NAMESPACE: z.string().trim().regex(/^[a-z0-9][a-z0-9/_-]*[a-z0-9]$|^[a-z0-9]$/, "STORAGE_NAMESPACE inválido").default("prod"),
+    // Prefixo lógico para separar os ambientes no mesmo bucket.
+    // Deve ser declarado explicitamente: não há namespace padrão.
+    STORAGE_NAMESPACE: z.enum(["dev", "staging", "prod", "test"], {
+      message: "STORAGE_NAMESPACE deve ser dev, staging, prod ou test",
+    }),
 
     // --- Contas / login (Fatia auth) ---
     // Se setado e a tabela Usuario estiver vazia, o boot cria o dono com este
