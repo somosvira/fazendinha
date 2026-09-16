@@ -4,6 +4,7 @@ import type { Tab } from "../components/Shell";
 import { AnaliseCategorias } from "./AnaliseCategorias";
 import { descartarRascunhoOperacao, listarCompromissos, listarOperacoes, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro, type Operacao } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TIPO_OPERACAO } from "./financeiro-ui";
+import { AJUDA_FINANCEIRO } from "./ajuda";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -77,7 +78,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoGraficoControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
+    <PageHeader titulo="Visão geral financeira" ajuda={AJUDA_FINANCEIRO.visaoGeral} descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoGraficoControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
     <ErrorBox erro={erro} />
     {dados && <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

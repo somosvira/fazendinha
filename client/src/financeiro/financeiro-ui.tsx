@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, Check, X } from "lucide-react";
 import { Loader } from "../components/Loading";
+import { AjudaDaTela } from "./AjudaDaTela";
+import type { AjudaTela } from "./ajuda";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
@@ -43,14 +45,14 @@ export function PaginaCarregando({ label }: { label: string }) {
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: string; descricao: string; label: string; erro: string | null }) {
+export function PaginaSemDados({ titulo, descricao, label, erro, ajuda }: { titulo: string; descricao: string; label: string; erro: string | null; ajuda?: AjudaTela }) {
   if (!erro) return <PaginaCarregando label={label} />;
-  return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
+  return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} ajuda={ajuda} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
+export function PageHeader({ titulo, descricao, acao, ajuda }: { titulo: string; descricao: string; acao?: React.ReactNode; ajuda?: AjudaTela }) {
   return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">Financeiro</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">Financeiro</div><div className="mt-2 flex items-center gap-2"><h1 className="h1 min-w-0 break-words hyphens-auto">{titulo}</h1>{ajuda && <AjudaDaTela titulo={titulo} ajuda={ajuda} />}</div><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 

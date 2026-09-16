@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { isNovoRelatorioFinanceiro, parseRelatorioFinanceiroId } from "../router";
 import { descartarRascunhoRelatorioFinanceiro, listarRelatoriosFinanceiros, obterConfiguracoesFinanceiras, obterRascunhoRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, Empty, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, StatusPill, TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { AJUDA_FINANCEIRO } from "./ajuda";
 import { dataCurta } from "./lib/relatorios";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { RelatorioFinanceiroDetalhe } from "./RelatorioFinanceiroDetalhe";
@@ -86,7 +87,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
     if (!cadastros) return <PaginaSemDados titulo="Novo relatório" descricao={DESCRICAO} label="Preparando relatório" erro={erro} />;
     return <NovoRelatorioFinanceiro cadastros={cadastros} rascunho={rascunho} onVoltar={voltar} onGerado={aoGerar} />;
   }
-  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
+  if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" ajuda={AJUDA_FINANCEIRO.relatorios} descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
 
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
   const colunas: ColunaTabela<RelatorioFinanceiro>[] = [
@@ -103,7 +104,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   </div> : undefined;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Relatórios financeiros" descricao={DESCRICAO} acao={acoes} />
+    <PageHeader titulo="Relatórios financeiros" ajuda={AJUDA_FINANCEIRO.relatorios} descricao={DESCRICAO} acao={acoes} />
     <ErrorBox erro={erro} />
     {aviso && <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">{aviso}</div>}
     <Panel className="mt-6">

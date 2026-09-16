@@ -5,6 +5,7 @@ import { navegarPara, parseContaFinanceiraId } from "../router";
 import type { Tab } from "../components/Shell";
 import { obterConfiguracoesFinanceiras, obterExtratoConta, obterExtratoGeral, transferir, type ConfiguracoesFinanceiras, type Conta, type MovimentoConta, type MovimentoGeral } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, hoje, Modal, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { AJUDA_FINANCEIRO } from "./ajuda";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
 import { FluxoContasFinanceiras } from "./FluxoContasFinanceiras";
 
@@ -46,7 +47,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
     const alvo = Array.from(document.querySelectorAll<HTMLElement>(`[data-ancora="${hash}"]`)).find(el => el.getClientRects().length > 0);
     if (alvo) { alvo.scrollIntoView({ behavior: "smooth", block: "center" }); alvo.tabIndex = -1; alvo.focus({ preventScroll: true }); }
   }, [extrato, carregandoExtrato]);
-  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Selecione uma conta para acompanhar seu saldo e consultar as movimentações." label="Carregando contas" erro={erro} />;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" ajuda={AJUDA_FINANCEIRO.contas} descricao="Selecione uma conta para acompanhar seu saldo e consultar as movimentações." label="Carregando contas" erro={erro} />;
   const saldoGeral = config.contas.filter((c) => c.ativo && c.incluirNoSaldoGeral).reduce((s, c) => s + Number(c.saldoAtual), 0);
   const instituicoes = Array.from(new Set(config.contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort();
   const contasFiltradas = config.contas.filter(c => {
@@ -61,7 +62,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
 
   return <PaginaFinanceira>
     {contaId != null && <Button secondary onClick={() => navegar(null)}>← Voltar para contas</Button>}
-    <PageHeader titulo={contaId == null ? "Contas e extratos" : selecionada?.nome ?? "Conta não encontrada"} descricao={contaId == null ? "Acompanhe os saldos e abra uma conta para consultar seus dados e extrato." : "Dados da conta e histórico de movimentações."} acao={<div className="flex flex-wrap gap-2">{contaId == null && <Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button>}<Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
+    <PageHeader ajuda={contaId == null ? AJUDA_FINANCEIRO.contas : undefined} titulo={contaId == null ? "Contas e extratos" : selecionada?.nome ?? "Conta não encontrada"} descricao={contaId == null ? "Acompanhe os saldos e abra uma conta para consultar seus dados e extrato." : "Dados da conta e histórico de movimentações."} acao={<div className="flex flex-wrap gap-2">{contaId == null && <Button secondary onClick={() => onNav("cadastros")}><Settings2 size={16} /> Gerenciar contas</Button>}<Button onClick={() => setTransferindo(true)}><ArrowLeftRight size={16} /> Transferir</Button></div>} />
     <ErrorBox erro={erro} />
     {contaId == null && <>
       <Panel className="mt-6 p-6"><div className="eyebrow">Saldo geral</div><div className="mt-3 flex flex-wrap items-center justify-between gap-5"><div><div className="font-serif text-4xl">{brl(saldoGeral)}</div><p className="mt-2 text-sm text-ink-3">{config.contas.filter(c => c.ativo && c.incluirNoSaldoGeral).length} contas ativas incluídas no saldo da fazenda selecionada.</p></div><Button secondary onClick={() => document.getElementById("extrato-geral")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Ver extrato geral</Button></div></Panel>

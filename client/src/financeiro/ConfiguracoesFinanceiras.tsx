@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Tags, Tar
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
 import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { AJUDA_FINANCEIRO } from "./ajuda";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
@@ -98,7 +99,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then(setConfig).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  if (!config) return <PaginaSemDados titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
+  if (!config) return <PaginaSemDados titulo="Configurações financeiras" ajuda={AJUDA_FINANCEIRO.configuracoes} descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." label="Carregando configurações financeiras" erro={erro} />;
 
   const trocarAba = (nova: Aba) => { setAba(nova); setPainel(null); setConfirmando(null); };
   const abrirNovo = (entidade: EntidadePainel) => { if (podeEditar && !emCurso.current) setPainel({ entidade, modo: "novo" }); };
@@ -157,7 +158,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Configurações financeiras" descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
+    <PageHeader titulo="Configurações financeiras" ajuda={AJUDA_FINANCEIRO.configuracoes} descricao="Cadastros que sustentam as operações. Desativar preserva todo o histórico e permite reativação." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-[#faf9f4] px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <div className="mt-6 flex gap-2 overflow-x-auto border-b border-border">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["categorias", "Categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <button key={k} onClick={() => trocarAba(k)} className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold ${aba === k ? "border-mast text-ink" : "border-transparent text-ink-3"}`}><Icon size={16} className="shrink-0" />{label}</button>)}</div>
