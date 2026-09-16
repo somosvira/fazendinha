@@ -7,6 +7,9 @@ import type { Tab } from "./Shell";
 import type { AnalisePreco } from "../data/anomalias";
 import { useToast } from "./Toast";
 import { cn } from "@/lib/utils";
+import { Bar, BarChart, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
+import { ChartTypeControl, type ChartType } from "./charts";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "./ui/chart";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -178,23 +181,14 @@ export function AnomaliasStrip({
 /* ===== Alerta de preço pago (dentro do drawer de lançamento) ===== */
 export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
   const a: AnalisePreco | null = R.analisePreco(marca);
+  const [tipoGrafico, setTipoGrafico] = useState<ChartType>("line");
   if (!a) return null;
 
   const precos = a.compras.map((c) => c.preco);
-  const W = 220,
-    H = 54,
-    padL = 4,
-    padR = 4,
-    padT = 8,
-    padB = 8;
-  const innerW = W - padL - padR,
-    innerH = H - padT - padB;
   const mn = Math.min(...precos, a.mediaMercado),
     mx = Math.max(...precos, a.mediaMercado);
-  const rng = mx - mn || 1;
-  const yS = (v: number) => padT + innerH - ((v - mn) / rng) * innerH;
-  const xS = (i: number) => padL + (i / (precos.length - 1)) * innerW;
-  const pts = precos.map((v, i) => `${xS(i)},${yS(v)}`).join(" ");
+  const dadosGrafico = precos.map((preco, indice) => ({ compra: indice + 1, preco }));
+  const Chart = tipoGrafico === "line" ? LineChart : BarChart;
   const fmtP = (v: number) => (a.unidade === "L" ? "R$ " + v.toFixed(2).replace(".", ",") : "R$ " + v.toLocaleString("pt-BR"));
 
   const warn = a.alerta;
@@ -239,13 +233,18 @@ export function PrecoAlerta({ R, marca }: { R: R; marca: string }) {
           </div>
         </div>
         <div className="flex flex-col gap-1 w-[220px] max-[1100px]:w-full">
-          <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-            <line x1={padL} x2={W - padR} y1={yS(a.mediaMercado)} y2={yS(a.mediaMercado)} stroke="var(--ink-2)" strokeWidth="1" strokeDasharray="3 2" />
-            <polyline points={pts} fill="none" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="2" />
-            {precos.map((v, i) => (
-              <circle key={i} cx={xS(i)} cy={yS(v)} r="2.5" fill="var(--bg-card)" stroke={a.alerta ? "var(--prejuizo)" : "var(--lucro)"} strokeWidth="1.5" />
-            ))}
-          </svg>
+          <div className="flex justify-end"><ChartTypeControl value={tipoGrafico} onChange={setTipoGrafico} label="Tipo do gráfico das últimas compras" /></div>
+          <ChartContainer config={{ preco: { label: "Preço", color: a.alerta ? "var(--prejuizo)" : "var(--lucro)" } } satisfies ChartConfig} className="h-[72px] w-full aspect-auto" role="img" aria-label="Preço das cinco últimas compras">
+            <Chart data={dadosGrafico} margin={{ top: 5, right: 5, bottom: 0, left: 5 }} accessibilityLayer>
+              <XAxis dataKey="compra" hide />
+              <YAxis hide domain={[mn, mx]} />
+              <ChartTooltip formatter={(valor) => [fmtP(Number(valor ?? 0)), "Preço"]} labelFormatter={(indice) => `Compra ${indice}`} />
+              <ReferenceLine y={a.mediaMercado} stroke="var(--ink-2)" strokeDasharray="3 2" />
+              {tipoGrafico === "line"
+                ? <Line type="monotone" dataKey="preco" stroke="var(--color-preco)" strokeWidth={2} dot={{ r: 2.5, fill: "var(--bg-card)" }} isAnimationActive={false} />
+                : <Bar dataKey="preco" fill="var(--color-preco)" radius={[2, 2, 0, 0]} isAnimationActive={false} />}
+            </Chart>
+          </ChartContainer>
           <span className="text-sm text-ink-2 text-center">5 últimas compras · linha = média mercado</span>
         </div>
       </div>

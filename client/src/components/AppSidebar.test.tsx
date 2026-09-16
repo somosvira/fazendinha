@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { AppSidebar, TrabalhoAtivo } from "./AppSidebar";
 import type { User } from "@/data/acessos";
@@ -35,14 +35,14 @@ describe("AppSidebar — trabalho ativo", () => {
     const onAbrir = vi.fn();
     const props = renderSidebar({ trabalhoAtivo: { resumo, ativo: false, onAbrir } });
 
-    const bloco = screen.getByRole("group", { name: "Trabalho ativo" });
+    const bloco = screen.getByRole("group", { name: "Trabalhos ativos" });
     const financeiro = screen.getByRole("button", { name: /Financeiro$/ });
     expect(bloco.compareDocumentPosition(financeiro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Item fino: descrição e, abaixo, o tipo; o valor fica no tooltip.
     expect(screen.getByText("Ração para o gado")).toBeTruthy();
     expect(screen.getByText("Compra para estoque")).toBeTruthy();
     expect(screen.queryByText("R$ 1.250,00 · Compra para estoque")).toBeNull();
-    expect(screen.queryByText("Trabalho ativo")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Trabalhos ativos" })).toBeTruthy();
     const atalho = screen.getByRole("button", { name: "Continuar rascunho: Ração para o gado" });
     expect(atalho.getAttribute("title")).toContain("R$ 1.250,00 · Compra para estoque");
 
@@ -54,7 +54,22 @@ describe("AppSidebar — trabalho ativo", () => {
 
   it("não reserva espaço quando não há rascunho", () => {
     renderSidebar({ trabalhoAtivo: null });
-    expect(screen.queryByRole("group", { name: "Trabalho ativo" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
+  });
+
+  it("agrupa operação e relatório sem divisor entre os cards", () => {
+    renderSidebar({
+      trabalhoAtivo: { resumo, ativo: false, onAbrir: vi.fn() },
+      trabalhoAtivoRelatorio: {
+        resumo: { ...resumo, titulo: "Relatório financeiro — setembro/2026", tipo: "Relatório financeiro" },
+        ativo: false,
+        onAbrir: vi.fn(),
+      },
+    });
+
+    const bloco = screen.getByRole("group", { name: "Trabalhos ativos" });
+    expect(within(bloco).getAllByRole("button")).toHaveLength(2);
+    expect(bloco.querySelectorAll(".border-b")).toHaveLength(0);
   });
 });
 

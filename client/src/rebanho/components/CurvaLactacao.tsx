@@ -2,7 +2,7 @@ import { MiniBarChart } from "@/components/charts";
 import type { CurvaCicloDTO } from "../api";
 
 // Curva de lactação do ciclo corrente: os controles leiteiros reais (DEL × litros/dia),
-// plotados com o MiniBarChart SVG inline do projeto (sem libs novas).
+// plotados com o MiniBarChart compartilhado, hoje renderizado por Recharts.
 export function CurvaLactacao({ curva }: { curva: CurvaCicloDTO }) {
   // Precisa de ao menos 2 pontos para desenhar uma curva com significado.
   if (curva.pontos.length < 2) return null;

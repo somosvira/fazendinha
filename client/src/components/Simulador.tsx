@@ -5,6 +5,9 @@
 
 import { useMemo, useState } from "react";
 import { CenariosReais } from "./CenariosReais";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { ChartTypeControl, type ChartType } from "./charts";
+import { ChartContainer, ChartLegend, ChartTooltip, type ChartConfig } from "./ui/chart";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type R = any;
@@ -152,7 +155,7 @@ function narrarCenario(sim: SimResult, params: Params, base: SimResult): string[
   return frases;
 }
 
-/* mini chart: custo vs preço */
+/* Gráfico de simulação: Recharts permite alternar a leitura entre tendência e comparação. */
 function SimLineChart({
   proj,
   accessorA,
@@ -172,49 +175,33 @@ function SimLineChart({
   labelB: string;
   fmtY: (v: number) => string;
 }) {
-  const W = 520,
-    H = 180,
-    padL = 44,
-    padR = 70,
-    padT = 16,
-    padB = 28;
-  const innerW = W - padL - padR,
-    innerH = H - padT - padB;
-  const all = [...proj.map(accessorA), ...proj.map(accessorB)];
-  const yMax = Math.max(...all) * 1.12;
-  const yMin = Math.min(0, ...all);
-  const yS = (v: number) => padT + innerH - ((v - yMin) / (yMax - yMin || 1)) * innerH;
-  const xS = (i: number) => padL + (i / (proj.length - 1)) * innerW;
-  const ptsA = proj.map((p, i) => `${xS(i)},${yS(accessorA(p))}`).join(" ");
-  const ptsB = proj.map((p, i) => `${xS(i)},${yS(accessorB(p))}`).join(" ");
-  const ticks = [yMin, (yMin + yMax) / 2, yMax];
+  const [tipo, setTipo] = useState<ChartType>("line");
+  const dados = proj.map((p) => ({ mes: p.mes.replace(/\/\d{2}/, ""), serieA: accessorA(p), serieB: accessorB(p) }));
+  const Chart = tipo === "line" ? LineChart : BarChart;
+  const config = {
+    serieA: { label: labelA, color: colorA },
+    serieB: { label: labelB, color: colorB },
+  } satisfies ChartConfig;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-      {ticks.map((v, i) => (
-        <g key={i}>
-          <line x1={padL} x2={W - padR} y1={yS(v)} y2={yS(v)} className={v === 0 ? "chart-axis" : "grid-line"} />
-          <text x={padL - 6} y={yS(v) + 3} textAnchor="end" className="chart-tick-text">
-            {fmtY(v)}
-          </text>
-        </g>
-      ))}
-      <polyline points={ptsB} fill="none" stroke={colorB} strokeWidth="2" />
-      <polyline points={ptsA} fill="none" stroke={colorA} strokeWidth="2" />
-      {proj.map(
-        (p, i) =>
-          (i % 3 === 0 || i === proj.length - 1) && (
-            <text key={i} x={xS(i)} y={H - 8} textAnchor="middle" className="chart-tick-text">
-              {p.mes.replace(/\/\d{2}/, "")}
-            </text>
-          ),
-      )}
-      <text x={xS(proj.length - 1) + 6} y={yS(accessorA(proj[proj.length - 1])) + 3} style={{ fontSize: 11, fill: colorA, fontFamily: "var(--sans)", fontWeight: 500 }}>
-        {labelA}
-      </text>
-      <text x={xS(proj.length - 1) + 6} y={yS(accessorB(proj[proj.length - 1])) + 3} style={{ fontSize: 11, fill: colorB, fontFamily: "var(--sans)", fontWeight: 500 }}>
-        {labelB}
-      </text>
-    </svg>
+    <div>
+      <div className="mb-1 flex justify-end"><ChartTypeControl value={tipo} onChange={setTipo} label={`Tipo do gráfico de ${labelA} e ${labelB}`} /></div>
+      <ChartContainer config={config} className="h-[180px] w-full aspect-auto" role="img" aria-label={`${labelA} e ${labelB} ao longo de 12 meses`}>
+        <Chart data={dados} margin={{ top: 8, right: 8, bottom: 0, left: 4 }} accessibilityLayer>
+          <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
+          <XAxis dataKey="mes" interval={2} tick={{ fill: "var(--ink-2)", fontSize: 11 }} tickLine={false} axisLine={false} />
+          <YAxis width={48} tickFormatter={(v) => fmtY(Number(v))} tick={{ fill: "var(--ink-2)", fontSize: 11 }} tickLine={false} axisLine={false} />
+          <ChartTooltip formatter={(v, nome) => [fmtY(Number(v ?? 0)), nome === "serieA" ? labelA : labelB]} />
+          <ChartLegend formatter={(nome) => nome === "serieA" ? labelA : labelB} />
+          {tipo === "line" ? <>
+            <Line type="monotone" dataKey="serieB" name={labelB} stroke="var(--color-serieB)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="serieA" name={labelA} stroke="var(--color-serieA)" strokeWidth={2} dot={false} isAnimationActive={false} />
+          </> : <>
+            <Bar dataKey="serieB" name={labelB} fill="var(--color-serieB)" radius={[2, 2, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="serieA" name={labelA} fill="var(--color-serieA)" radius={[2, 2, 0, 0]} isAnimationActive={false} />
+          </>}
+        </Chart>
+      </ChartContainer>
+    </div>
   );
 }
 

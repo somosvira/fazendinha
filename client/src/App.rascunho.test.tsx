@@ -100,7 +100,7 @@ describe("App — trabalho ativo", () => {
     entrarComo(usuarioBase);
 
     expect(await screen.findByRole("heading", { name: "Compromissos" })).toBeTruthy();
-    expect(screen.queryByRole("group", { name: "Trabalho ativo" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
 
     liberar();
     expect(await screen.findByRole("button", { name: "Continuar rascunho: Compra de ração" })).toBeTruthy();
@@ -111,7 +111,7 @@ describe("App — trabalho ativo", () => {
 
     expect(await screen.findByRole("heading", { name: "Compromissos" })).toBeTruthy();
     expect(chamadasRascunho).toHaveLength(0);
-    expect(screen.queryByRole("group", { name: "Trabalho ativo" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Trabalhos ativos" })).toBeNull();
   });
 
   it("busca o rascunho do novo sítio ao trocar de sítio", async () => {

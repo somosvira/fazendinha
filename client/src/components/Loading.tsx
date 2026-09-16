@@ -5,7 +5,7 @@
  *   - <BootSplash>        → splash de abertura do app (trator temático, tela cheia)
  *   - <Skeleton> + <DashboardSkeleton> → placeholders com shimmer para áreas de dados
  *
- * O trator é SVG inline desenhado à mão (mesma linguagem dos gráficos em charts.tsx)
+ * O trator é uma ilustração SVG inline; os gráficos de dados ficam a cargo do Recharts.
  * e usa só tokens da paleta (--leite / --cafe / --outros …) via classes em base.css.
  * Animações respeitam prefers-reduced-motion (zerado globalmente em base.css).
  */
