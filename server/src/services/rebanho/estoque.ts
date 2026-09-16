@@ -12,6 +12,8 @@ export class EstoqueError extends Error {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+// O original e seu movimento inverso se anulam no razão físico.
+export const statusSaldoEstoque: Prisma.EnumStatusMovimentoEstoqueFilter = { in: ["CONFIRMADO", "REVERTIDO"] };
 const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
 // Limites compatíveis com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma
@@ -52,7 +54,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
-    include: { movimentos: { where: { status: "CONFIRMADO", ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
+    include: { movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
   });
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
@@ -81,7 +83,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
   const where: any = {};
-  where.status = "CONFIRMADO";
+  where.status = statusSaldoEstoque;
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo;
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
@@ -166,7 +168,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
     return await prisma.$transaction(async tx => {
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true, estocavel: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo de estoque não encontrado");
-      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: "CONFIRMADO" }, select: { tipo: true, quantidade: true } });
+      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: statusSaldoEstoque }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(2);
       if (!saldo.equals(input.saldoEsperado)) throw new EstoqueError("CONFLITO", "O estoque mudou desde a consulta. Atualize o saldo e confira a diferença antes de confirmar.");
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);
@@ -205,7 +207,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
       tipo: mov.tipo === "ENTRADA" ? "SAIDA" : mov.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
       origem: "AJUSTE_INVENTARIO", data: new Date(),
       quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
-      custoUnitario: mov.custoUnitario, valorTotal: mov.valorTotal,
+      custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal.negated() : mov.valorTotal,
       propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id,
       observacao: `Estorno do movimento #${mov.id}`,
     } });
@@ -220,7 +222,7 @@ export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: num
   const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
   limite.setDate(limite.getDate() - periodoDias);
   const saidas = await prisma.movimentoEstoque.findMany({
-    where: { tipo: "SAIDA", status: "CONFIRMADO", data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
+    where: { tipo: "SAIDA", status: "CONFIRMADO", reversaoDeId: null, data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
     select: { valorTotal: true, data: true },
   });
   const arr = saidas.map((s) => ({ valorTotal: Number(s.valorTotal), data: iso(s.data) }));

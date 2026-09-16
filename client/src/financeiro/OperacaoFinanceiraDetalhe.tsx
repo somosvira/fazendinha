@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Download, FilePenLine, RotateCcw } from "lucide-react";
-import { estornarOperacao, obterOperacao, type Operacao } from "./novo-api";
+import { estornarOperacao, estornarTransacao, obterOperacao, type Operacao, type TransacaoOperacao } from "./novo-api";
 import { Loader } from "../components/Loading";
 import { brl, Button, dataBR, ErrorBox, Modal, PaginaFinanceira, Panel, StatusPill, TIPO_OPERACAO } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
@@ -10,6 +10,9 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   const [erro, setErro] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [estornando, setEstornando] = useState<TransacaoOperacao | null>(null);
+  const [motivoEstorno, setMotivoEstorno] = useState("");
+  const emCurso = useRef(false);
   const [salvando, setSalvando] = useState(false);
   const carregar = useCallback(async () => { try { setErro(null); setOperacao(await obterOperacao(operacaoId)); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } }, [operacaoId]);
   useEffect(() => { void carregar(); }, [carregar]);
@@ -19,15 +22,27 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   if (!operacao) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para operações</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando operação" full />}</div>;
 
   const transacoesOriginais = operacao.transacoes.filter((item) => item.tipo !== "REVERSAO");
-  const valorFinanceiro = transacoesOriginais.reduce((soma, item) => soma + Number(item.valorTotal), 0);
+  const transacoesAtivas = transacoesOriginais.filter(item => item.status === "CONFIRMADA");
+  const valorFinanceiro = transacoesAtivas.reduce((soma, item) => soma + Number(item.valorTotal), 0);
   const valorCompromissos = operacao.compromissos.reduce((soma, item) => soma + Number(item.saldoPendente), 0);
   const quantidadeEstoque = operacao.movimentosEstoque.filter((item) => !["REVERTIDO", "CANCELADO"].includes(item.status)).length;
 
   const confirmarCancelamento = async () => {
-    setSalvando(true); setErro(null);
+    if (emCurso.current || motivo.trim().length < 5) return;
+    emCurso.current = true; setSalvando(true); setErro(null);
     try { await estornarOperacao(operacao.id, motivo.trim()); setCancelando(false); setMotivo(""); await carregar(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
-    finally { setSalvando(false); }
+    finally { emCurso.current = false; setSalvando(false); }
+  };
+
+  const confirmarEstorno = async () => {
+    if (!estornando || motivoEstorno.trim().length < 5 || emCurso.current) return;
+    emCurso.current = true; setSalvando(true); setErro(null);
+    try {
+      await estornarTransacao(estornando.id, motivoEstorno.trim());
+      setEstornando(null); setMotivoEstorno(""); await carregar();
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { emCurso.current = false; setSalvando(false); }
   };
 
   return <PaginaFinanceira>
@@ -41,8 +56,11 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
         <section className="min-w-0 p-6"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Valor da operação</h2><div className="mt-3 break-words font-serif text-[clamp(24px,6vw,30px)]">{brl(operacao.valorTotal)}</div><p className="mt-3 text-xs leading-5 text-ink-3">Operações confirmadas são imutáveis. Correções preservam esta operação e geram um novo registro.</p></section>
       </div>
       {operacao.compromissos.length > 0 && <section className="border-t border-border p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Compromissos</h2><p className="mt-1 text-xs text-ink-3">Parcelas geradas por esta operação.</p></div><strong className="text-sm">{operacao.compromissos.length}</strong></div><div className="mt-4 divide-y divide-border rounded-lg border border-border">{operacao.compromissos.map((compromisso) => <div key={compromisso.id} className="grid items-center gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><strong className="break-words">{tituloCompromisso({ ...compromisso, operacao: { descricao: operacao.descricao, tipo: operacao.tipo } })}</strong><div className="mt-1 text-xs text-ink-3">Vence em {dataBR(compromisso.dataVencimento)}</div></div><StatusPill status={compromisso.status} /><strong className="whitespace-nowrap sm:text-right">{brl(compromisso.valorOriginal)}</strong></div>)}</div></section>}
+      {operacao.transacoes.length > 0 && <section className="border-t border-border p-6"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Histórico financeiro</h2><p className="mt-1 text-xs text-ink-3">Estorne um pagamento ou recebimento aqui para corrigir somente o dinheiro movimentado.</p><div className="mt-4 divide-y divide-border rounded-lg border border-border">{operacao.transacoes.map(transacao => <div key={transacao.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm"><div><strong>{transacao.tipo === "PAGAMENTO" ? "Pagamento" : transacao.tipo === "RECEBIMENTO" ? "Recebimento" : transacao.tipo === "REVERSAO" ? "Estorno" : transacao.tipo.replaceAll("_", " ")} #{transacao.id}</strong><div className="mt-1 text-xs text-ink-3">{dataBR(transacao.data ?? operacao.data)}{transacao.formaPagamento ? ` · ${transacao.formaPagamento.replaceAll("_", " ")}` : ""}</div></div><StatusPill status={transacao.status} /><strong>{brl(transacao.valorTotal)}</strong>{operacao.status === "CONFIRMADA" && transacao.status === "CONFIRMADA" && ["PAGAMENTO", "RECEBIMENTO"].includes(transacao.tipo) && <Button secondary disabled={salvando} onClick={() => { setErro(null); setMotivoEstorno(""); setEstornando(transacao); }}>Estornar {transacao.tipo === "PAGAMENTO" ? "pagamento" : "recebimento"} #{transacao.id}</Button>}</div>)}</div></section>}
       <section className="border-t border-border p-6"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Documentos</h2><p className="mt-1 text-xs text-ink-3">Arquivos vinculados à origem da operação.</p></div><strong className="text-sm">{operacao.documentos.length}</strong></div>{operacao.documentos.length ? <div className="mt-4 grid gap-2 md:grid-cols-2">{operacao.documentos.map((documento) => <a key={documento.id} href={`/api/financeiro/documentos/${documento.id}/download`} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm hover:bg-[#faf9f4]"><span className="min-w-0"><strong className="break-words">{documento.nome}</strong><span className="mt-0.5 block break-words text-xs text-ink-3">{documento.tipo.replaceAll("_", " ")}{documento.numero ? ` · ${documento.numero}` : ""}</span></span><Download size={16} className="shrink-0 text-ink-3" /></a>)}</div> : <p className="mt-4 text-sm text-ink-3">Nenhum documento anexado.</p>}</section>
     </Panel>
-    {cancelando && <Modal titulo="Cancelar operação" eyebrow="Revisão obrigatória" onClose={() => setCancelando(false)} width="max-w-2xl"><div className="p-6"><p className="text-sm leading-6 text-ink-3">A operação original será preservada e marcada como cancelada. O sistema executará os efeitos inversos em uma única transação.</p><div className="mt-5 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">{quantidadeEstoque > 0 && <p>• Reverter {quantidadeEstoque} movimento{quantidadeEstoque === 1 ? "" : "s"} de estoque.</p>}{transacoesOriginais.length > 0 && <p>• Estornar {transacoesOriginais.length} transação{transacoesOriginais.length === 1 ? "" : "ões"} financeira{transacoesOriginais.length === 1 ? "" : "s"}, totalizando {brl(valorFinanceiro)}.</p>}{operacao.compromissos.length > 0 && <p>• Cancelar {operacao.compromissos.length} compromisso{operacao.compromissos.length === 1 ? "" : "s"}, com saldo pendente de {brl(valorCompromissos)}.</p>}<p>• Preservar documentos, operação original e histórico de auditoria.</p></div><label className="mt-5 block text-sm font-medium">Motivo do cancelamento *<textarea aria-label="Motivo do cancelamento" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Explique por que esta operação precisa ser cancelada" className="mt-1.5 min-h-24 w-full rounded-lg border border-border bg-white p-3 font-normal" /></label><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setCancelando(false)}>Manter operação</Button><Button danger disabled={salvando || motivo.trim().length < 5} onClick={confirmarCancelamento}>{salvando ? "Cancelando…" : "Confirmar cancelamento"}</Button></div></div></Modal>}
+    {cancelando && <Modal titulo="Cancelar operação" eyebrow="Revisão obrigatória" onClose={() => { if (!emCurso.current) setCancelando(false); }} width="max-w-2xl"><div className="p-6"><ErrorBox erro={erro} /><p className="text-sm leading-6 text-ink-3">A operação original será preservada e marcada como cancelada. O sistema executará os efeitos inversos em uma única transação.</p><div className="mt-5 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">{quantidadeEstoque > 0 && <p>• Reverter {quantidadeEstoque} movimento{quantidadeEstoque === 1 ? "" : "s"} de estoque.</p>}{transacoesAtivas.length > 0 && <p>• Estornar {transacoesAtivas.length} transação{transacoesAtivas.length === 1 ? "" : "ões"} financeira{transacoesAtivas.length === 1 ? "" : "s"}, totalizando {brl(valorFinanceiro)}.</p>}{operacao.compromissos.length > 0 && <p>• Cancelar {operacao.compromissos.length} compromisso{operacao.compromissos.length === 1 ? "" : "s"}, com saldo pendente de {brl(valorCompromissos)}.</p>}<p>• Preservar documentos, operação original e histórico de auditoria.</p></div><label className="mt-5 block text-sm font-medium">Motivo do cancelamento *<textarea disabled={salvando} maxLength={300} aria-label="Motivo do cancelamento" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Explique por que esta operação precisa ser cancelada" className="mt-1.5 min-h-24 w-full rounded-lg border border-border bg-white p-3 font-normal" /></label><div className="mt-5 flex justify-end gap-2"><Button secondary disabled={salvando} onClick={() => setCancelando(false)}>Manter operação</Button><Button danger disabled={salvando || motivo.trim().length < 5} onClick={confirmarCancelamento}>{salvando ? "Cancelando…" : "Confirmar cancelamento"}</Button></div></div></Modal>}
+    {estornando && <Modal titulo="Estornar transação" eyebrow="Revisão financeira" onClose={() => { if (!emCurso.current) setEstornando(null); }}><div className="p-6"><ErrorBox erro={erro} /><p className="text-sm leading-6">O valor de {brl(estornando.valorTotal)} será revertido na conta. A operação, os itens e o estoque serão preservados. Se esta transação liquidou uma parcela, o saldo pendente será recalculado. O pagamento original e o estorno ficam no histórico.</p><p className="mt-3 text-xs text-ink-3">O estorno será registrado na data de hoje, que precisa estar em um período aberto.</p><label className="mt-5 block text-sm font-medium">Motivo do estorno<textarea disabled={salvando} maxLength={300} value={motivoEstorno} onChange={e => setMotivoEstorno(e.target.value)} className="mt-1.5 min-h-24 w-full rounded-lg border border-border p-3 font-normal" /></label><div className="mt-5 flex justify-end gap-2"><Button secondary disabled={salvando} onClick={() => setEstornando(null)}>Manter transação</Button><Button danger disabled={salvando || motivoEstorno.trim().length < 5} onClick={() => { void confirmarEstorno(); }}>{salvando ? "Estornando…" : "Confirmar estorno"}</Button></div></div></Modal>}
+
   </PaginaFinanceira>;
 }

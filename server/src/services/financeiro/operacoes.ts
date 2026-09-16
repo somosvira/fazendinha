@@ -184,19 +184,30 @@ export async function criarOperacao(input: OperacaoInput) {
   return prisma.$transaction((tx) => criarOperacaoTx(tx, input));
 }
 
+async function bloquearOperacao(tx: Prisma.TransactionClient, id: number) {
+  // Serializa liquidações e estornos sem bloquear as referências por chave estrangeira.
+  await tx.$queryRaw`SELECT "id" FROM "Operacao" WHERE "id" = ${id} FOR NO KEY UPDATE`;
+}
+
+async function compromissoParaLiquidar(tx: Prisma.TransactionClient, id: number, valor: Prisma.Decimal) {
+  const compromisso = await tx.compromissoFinanceiro.findUnique({
+    where: { id }, include: { operacao: true, liquidacoes: { include: { transacao: true } } },
+  });
+  if (!compromisso) throw new FinanceiroError("NAO_ENCONTRADO", "Compromisso não encontrado");
+  if (compromisso.operacao.status === "CANCELADA" || compromisso.status === "CANCELADO" || compromisso.status === "LIQUIDADO") {
+    throw new FinanceiroError("CONFLITO", "Este compromisso não aceita nova liquidação");
+  }
+  const liquidado = compromisso.liquidacoes.filter((item) => item.transacao.status === "CONFIRMADA")
+    .reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
+  const restante = compromisso.valorOriginal.minus(liquidado);
+  if (valor.greaterThan(restante)) throw new FinanceiroError("VALIDACAO", `A liquidação excede o saldo restante de R$ ${restante.toFixed(2)}`);
+  return { compromisso, restante };
+}
+
 export async function liquidarCompromisso(compromissoId: number, input: LiquidacaoInput) {
   return prisma.$transaction(async (tx) => {
-    const compromisso = await tx.compromissoFinanceiro.findUnique({
-      where: { id: compromissoId }, include: { operacao: true, liquidacoes: { include: { transacao: true } } },
-    });
-    if (!compromisso) throw new FinanceiroError("NAO_ENCONTRADO", "Compromisso não encontrado");
-    if (compromisso.status === "CANCELADO" || compromisso.status === "LIQUIDADO") throw new FinanceiroError("CONFLITO", "Este compromisso não aceita nova liquidação");
-    const liquidado = compromisso.liquidacoes
-      .filter((item) => item.transacao.status === "CONFIRMADA")
-      .reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-    const restante = compromisso.valorOriginal.minus(liquidado);
     const valor = exigirPositivo(input.valor);
-    if (valor.greaterThan(restante)) throw new FinanceiroError("VALIDACAO", `A liquidação excede o saldo restante de R$ ${restante.toFixed(2)}`);
+    const { compromisso } = await compromissoParaLiquidar(tx, compromissoId, valor);
     const tipo = compromisso.tipo === "PAGAR" ? "PAGAMENTO" : "RECEBIMENTO";
     const transacao = await criarTransacaoComMovimento(tx, {
       tipo, data: input.data, valor, descricao: input.descricao ?? `Liquidação do compromisso #${compromisso.id}`,
@@ -204,6 +215,10 @@ export async function liquidarCompromisso(compromissoId: number, input: Liquidac
       propriedadeId: compromisso.operacao.propriedadeId, contaId: input.contaId,
       formaPagamento: input.formaPagamento, usuarioId: input.usuarioId,
     });
+    await bloquearOperacao(tx, compromisso.operacaoId);
+    // Releitura após o bloqueio: uma liquidação concorrente pode ter consumido o saldo.
+    // A transação e seus movimentos ainda não estão confirmados; uma falha reverte tudo.
+    const { restante } = await compromissoParaLiquidar(tx, compromissoId, valor);
     await tx.liquidacao.create({ data: { compromissoId, transacaoId: transacao.id, valor } });
     const novoRestante = restante.minus(valor);
     await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: novoRestante.isZero() ? "LIQUIDADO" : "PARCIAL" } });
@@ -248,6 +263,10 @@ export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
 }
 
 async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, motivo: string, usuarioId?: number | null) {
+    const referencia = await tx.transacaoFinanceira.findUnique({ where: { id }, select: { operacaoId: true } });
+    if (!referencia) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
+    if (referencia.operacaoId != null) await bloquearOperacao(tx, referencia.operacaoId);
+    else await tx.$queryRaw`SELECT "id" FROM "TransacaoFinanceira" WHERE "id" = ${id} FOR NO KEY UPDATE`;
     const original = await tx.transacaoFinanceira.findUnique({ where: { id }, include: { movimentos: true, liquidacoes: true, revertidaPor: true } });
     if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
     if (original.status === "REVERTIDA" || original.revertidaPor) throw new FinanceiroError("JA_REVERTIDO", "A transação já foi estornada");
@@ -261,7 +280,6 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
       })) },
     }, include: { movimentos: true } });
     await tx.transacaoFinanceira.update({ where: { id }, data: { status: "REVERTIDA" } });
-    for (const liquidacao of original.liquidacoes) await tx.liquidacao.delete({ where: { id: liquidacao.id } });
     const compromissoIds = [...new Set(original.liquidacoes.map((item) => item.compromissoId))];
     for (const compromissoId of compromissoIds) {
       const compromisso = await tx.compromissoFinanceiro.findUniqueOrThrow({ where: { id: compromissoId }, include: { liquidacoes: { include: { transacao: true } } } });
@@ -278,6 +296,7 @@ export async function estornarTransacao(id: number, motivo: string, usuarioId?: 
 
 export async function estornarOperacao(id: number, motivo: string, usuarioId?: number | null) {
   return prisma.$transaction(async (tx) => {
+    await bloquearOperacao(tx, id);
     const operacao = await tx.operacao.findUnique({
       where: { id },
       include: { transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true } } },
@@ -295,7 +314,7 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
         tipo: movimento.tipo === "ENTRADA" ? "SAIDA" : movimento.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
         origem: "AJUSTE_INVENTARIO", data: new Date(),
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
-        custoUnitario: movimento.custoUnitario, valorTotal: movimento.valorTotal,
+        custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id,
         reversaoDeId: movimento.id, observacao: `Cancelamento da operação #${id}: ${motivo}`,
       } });
