@@ -123,6 +123,23 @@ export function isNovaOperacaoFinanceira(pathname: string): boolean {
   return /^\/financeiro\/operacoes\/nova\/?$/i.test(pathname);
 }
 
+export function isNovoRelatorioFinanceiro(pathname: string): boolean {
+  return /^\/financeiro\/relatorios\/novo\/?$/i.test(pathname);
+}
+
+export function parseRelatorioFinanceiroId(pathname: string): number | null {
+  const match = /^\/financeiro\/relatorios\/([1-9]\d*)\/?$/i.exec(pathname);
+  return match ? Number(match[1]) : null;
+}
+
+/** Subpáginas (detalhe, formulário) que a aba precisa manter na barra de endereço. */
+export function isSubrotaFinanceira(tab: Tab, pathname: string): boolean {
+  if (tab === "lancar") return parseOperacaoFinanceiraId(pathname) != null || isNovaOperacaoFinanceira(pathname);
+  if (tab === "caixinha") return parseContaFinanceiraId(pathname) != null;
+  if (tab === "relatorio") return parseRelatorioFinanceiroId(pathname) != null || isNovoRelatorioFinanceiro(pathname);
+  return false;
+}
+
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";
 const ESTADO_NOVA_OPERACAO = { novaOperacao: true } as const;
 
@@ -200,6 +217,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";
   if (isNovaOperacaoFinanceira(path)) return "lancar";
+  if (isNovoRelatorioFinanceiro(path) || parseRelatorioFinanceiroId(path) != null) return "relatorio";
 
   return DEFAULT_TAB_BY_PATH[path] ?? TAB_BY_PATH[path] ?? TAB_BY_PATH_LEGADO[path] ?? null;
 }

@@ -131,7 +131,9 @@ describe("visualizações financeiras integradas", () => {
     await screen.findByText("Compromisso 1");
     expect(screen.queryByRole("button", { name: "Nova operação" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Registrar pagamento" })).toBeNull();
-    expect(obterConfiguracoesFinanceiras).not.toHaveBeenCalled();
+    // A análise por categorias consulta as opções de filtro; a visão geral não
+    // deve fazer uma segunda consulta para preparar a liquidação sem permissão.
+    expect(obterConfiguracoesFinanceiras).toHaveBeenCalledOnce();
 
     fireEvent.click(screen.getByRole("button", { name: "Calendário" }));
     fireEvent.click(screen.getByRole("button", { name: /Compromisso 1, a pagar/ }));

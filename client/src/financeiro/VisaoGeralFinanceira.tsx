@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Landmark, Plus, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, CircleDollarSign, Landmark, Package, Plus, ShieldCheck, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import type { Tab } from "../components/Shell";
+import { AnaliseCategorias } from "./AnaliseCategorias";
+import { descartarRascunhoOperacao, listarCompromissos, listarOperacoes, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro, type Operacao } from "./novo-api";
+import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TIPO_OPERACAO } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { abrirRotaNovaOperacao } from "../router";
-import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
-import { brl, Button, dataBR, Empty, ErrorBox, limitesMes, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
@@ -19,7 +20,9 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [compromissos, setCompromissos] = useState<Compromisso[]>([]);
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
   const [liquidando, setLiquidando] = useState<Compromisso | null>(null);
+  const [ops, setOps] = useState<Operacao[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroBase, setErroBase] = useState<string | null>(null);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mesCalendario, setMesCalendario] = useState(mesAtual());
   const [tipoGraficoCategorias, setTipoGraficoCategorias] = useState<ChartType>("bar");
@@ -56,6 +59,8 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       .catch((e) => { if (vigente) setErro(e.message); });
     return () => { vigente = false; };
   }, [inicioPeriodo, fimPeriodo, podeLancar]);
+  // A base financeira não depende do mês: carrega uma vez e, se falhar, não derruba o painel.
+  useEffect(() => { listarOperacoes().then(setOps).catch((e) => setErroBase(e.message)); }, []);
 
   if (!dados && !erro) return <PaginaCarregando label="Carregando financeiro" />;
   const pendentes = compromissos
@@ -68,6 +73,8 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     const [dashboard, novosCompromissos, configuracoes] = await Promise.all([obterDashboardFinanceiro(inicio, fim), listarCompromissos(), podeLancar ? obterConfiguracoesFinanceiras() : Promise.resolve(null)]);
     setDados(dashboard); setCompromissos(novosCompromissos); setConfig(configuracoes);
   };
+  // Indicadores da base (antes em Relatórios): todas as operações, sem recorte de mês.
+  const confirmadas = ops.filter((o) => o.status === "CONFIRMADA"); const total = confirmadas.reduce((s, o) => s + Number(o.valorTotal), 0); const porTipo = Object.entries(confirmadas.reduce<Record<string, number>>((acc, o) => { acc[o.tipo] = (acc[o.tipo] ?? 0) + Number(o.valorTotal); return acc; }, {})).sort((a, b) => b[1] - a[1]);
 
   return <PaginaFinanceira>
     <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos futuros — sem misturar previsão com saldo." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoGraficoControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
@@ -104,7 +111,15 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
         </Panel>
       </div>
 
+      <section className="mt-8" aria-labelledby="base-financeira-titulo">
+        <h2 id="base-financeira-titulo" className="font-serif text-2xl">Base financeira</h2>
+        <p className="mt-2 text-sm text-ink-3">Todas as operações registradas na propriedade, sem o recorte do mês.</p>
+        <ErrorBox erro={erroBase} />
+        <div className="mt-4 grid gap-4 md:grid-cols-3"><Metric label="Operações confirmadas" valor={String(confirmadas.length)} detalhe="Registros ativos" icon={ShieldCheck} /><Metric label="Volume econômico" valor={brl(total)} detalhe="Soma das operações confirmadas" icon={CircleDollarSign} /><Metric label="Com efeito de estoque" valor={String(ops.filter((o) => o.movimentosEstoque?.length).length)} detalhe="Operações rastreadas fisicamente" icon={Package} /></div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2"><Panel><div className="border-b border-border p-5"><h3 className="font-serif text-xl">Volume por tipo de operação</h3><p className="mt-1 text-xs text-ink-3">Base econômica confirmada</p></div><div className="divide-y divide-border">{porTipo.length ? porTipo.map(([tipo, valor]) => <div key={tipo} className="flex justify-between gap-4 p-4 text-sm"><span className="min-w-0 break-words">{TIPO_OPERACAO[tipo] ?? tipo}</span><strong className="shrink-0 whitespace-nowrap">{brl(valor)}</strong></div>) : <Empty>Nenhuma operação confirmada.</Empty>}</div></Panel><Panel><div className="border-b border-border p-5"><h3 className="font-serif text-xl">Rastreabilidade</h3><p className="mt-1 text-xs text-ink-3">Qualidade da base financeira</p></div><div className="space-y-4 p-5 text-sm"><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Compromissos registrados</span><strong className="shrink-0">{compromissos.length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações canceladas com histórico</span><strong className="shrink-0">{ops.filter((o) => o.status === "CANCELADA").length}</strong></div><div className="flex justify-between gap-4"><span className="min-w-0 break-words">Operações com parceiro identificado</span><strong className="shrink-0">{ops.filter((o) => o.parceiro).length}</strong></div><div className="rounded-lg bg-[#f4f2e9] p-4 text-xs leading-5 text-ink-3">Conciliação bancária ainda não é exibida porque não possui implementação real na API.</div></div></Panel></div>
+      </section>
 
+      <AnaliseCategorias />
     </>}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
     <ConfirmDialog

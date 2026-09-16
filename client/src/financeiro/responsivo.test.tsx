@@ -16,9 +16,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
 
-const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao } = vi.hoisted(() => ({
+const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao, listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro } = vi.hoisted(() => ({
   obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
   listarOperacoes: vi.fn(), obterExtratoConta: vi.fn(), obterRascunhoOperacao: vi.fn(),
+  listarRelatoriosFinanceiros: vi.fn(), obterRascunhoRelatorioFinanceiro: vi.fn(),
 }));
 vi.mock("./novo-api", () => ({
   obterExtratoGeral: vi.fn().mockResolvedValue([]),
@@ -28,6 +29,7 @@ vi.mock("./novo-api", () => ({
   atualizarConta: vi.fn(), atualizarParceiro: vi.fn(), obterOperacao: vi.fn(), estornarOperacao: vi.fn(),
   criarOperacao: vi.fn(), anexarDocumentoOperacao: vi.fn(),
   obterRascunhoOperacao, descartarRascunhoOperacao: vi.fn(), salvarRascunhoOperacao: vi.fn(),
+  listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro: vi.fn(),
 }));
 
 // Nunca resolve: congela cada tela no estado de carregamento.
@@ -116,7 +118,7 @@ describe("telas financeiras — envelope e carregamento", () => {
   ];
 
   it.each(telas)("%s centraliza o carregamento na área de conteúdo", async (_nome, carregar) => {
-    for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta]) mock.mockImplementation(pendente);
+    for (const mock of [obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, listarRelatoriosFinanceiros]) mock.mockImplementation(pendente);
     obterRascunhoOperacao.mockResolvedValue(null);
     const { render: renderizar } = await carregar();
     const { container } = render(renderizar());
@@ -177,6 +179,8 @@ describe("telas financeiras — envelope e carregamento", () => {
     }]);
     obterExtratoConta.mockResolvedValue([]);
     obterRascunhoOperacao.mockResolvedValue(null);
+    listarRelatoriosFinanceiros.mockResolvedValue([]);
+    obterRascunhoRelatorioFinanceiro.mockResolvedValue(null);
 
     const { render: renderizar } = await carregar();
     const { container, findByRole } = render(renderizar());
