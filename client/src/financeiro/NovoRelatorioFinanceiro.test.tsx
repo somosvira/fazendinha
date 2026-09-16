@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
@@ -9,7 +9,12 @@ vi.mock("./novo-api", () => ({
   descartarRascunhoRelatorioFinanceiro: vi.fn(), gerarRelatorioFinanceiro: vi.fn(),
   salvarPdfRelatorioFinanceiro: vi.fn(), salvarRascunhoRelatorioFinanceiro: vi.fn(),
 }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  if (!window.HTMLElement.prototype.scrollIntoView) window.HTMLElement.prototype.scrollIntoView = () => {};
+});
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
@@ -26,17 +31,25 @@ function renderizar(inicial: RascunhoRelatorioFinanceiro | null = rascunho) {
   return { onGerado, resumo: () => within(screen.getByRole("complementary", { name: "Resumo do relatório" })) };
 }
 
+function selecionar(filtro: string, opcao: string) {
+  fireEvent.click(screen.getByRole("button", { name: filtro }));
+  fireEvent.click(screen.getByRole("option", { name: opcao }));
+  fireEvent.keyDown(document, { key: "Escape" });
+}
+
 describe("novo relatório financeiro", () => {
   it("continua o rascunho e resume as escolhas em tempo real", () => {
     const { resumo } = renderizar();
     expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Pecuária — agosto");
-    expect(screen.getByLabelText("Silagem antiga (inativa)")).toBeTruthy();
-    expect(screen.getByLabelText("Sem categoria")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Categoria dos itens" }));
+    expect(screen.getByRole("option", { name: "Silagem antiga (inativa)" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Sem categoria" })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(resumo().getByText("Todas as categorias")).toBeTruthy();
 
-    fireEvent.click(screen.getByLabelText("Nutrição"));
-    fireEvent.click(screen.getByLabelText("Sem centro de custo"));
-    fireEvent.click(screen.getByLabelText("Investimento"));
+    selecionar("Categoria dos itens", "Nutrição");
+    selecionar("Centro de custo", "Sem centro de custo");
+    selecionar("Classificação", "Investimento");
 
     expect(resumo().getByText("Nutrição")).toBeTruthy();
     expect(resumo().getByText("Sem centro de custo")).toBeTruthy();
@@ -44,14 +57,31 @@ describe("novo relatório financeiro", () => {
     expect(resumo().getByText("Saldo das contas (sempre sem filtros)")).toBeTruthy();
   });
 
-  it("limita as datas entre si e bloqueia período inválido", () => {
+  it("aplica períodos rápidos e abre a agenda para personalizar", () => {
+    const { resumo } = renderizar();
+    expect(screen.getByRole("button", { name: "Mês passado" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ano atual" }));
+    expect(screen.getByRole("button", { name: "Ano atual" }).getAttribute("aria-pressed")).toBe("true");
+    expect(resumo().getByText(/01\/01\/2026 a/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Personalizar período" }));
+    expect(screen.getByRole("button", { name: "Aplicar período" })).toBeTruthy();
+    expect(screen.queryByText("Presets")).toBeNull();
+  });
+
+  it("mantém a ação de gerar fora da área rolável do resumo", () => {
     renderizar();
-    fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-08-10" } });
-    expect(screen.getByLabelText("Data final").getAttribute("min")).toBe("2026-08-10");
-    expect(screen.getByLabelText("Data inicial").getAttribute("max")).toBe("2026-08-31");
-    fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-08-01" } });
-    expect(screen.getByRole("alert").textContent).toMatch("anterior à inicial");
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Gerar relatório" }).disabled).toBe(true);
+    const resumo = screen.getByRole("complementary", { name: "Resumo do relatório" });
+    const gerar = within(resumo).getByRole("button", { name: "Gerar relatório" });
+    const aviso = within(resumo).getByText("O PDF é baixado ao gerar e fica salvo no histórico da propriedade.");
+    expect(gerar.parentElement?.className).toContain("shrink-0");
+    expect(gerar.parentElement).toBe(aviso.parentElement);
+    expect(gerar.parentElement?.className).toContain("border-t");
+    expect(gerar.parentElement?.className).toContain("pb-2");
+    expect(gerar.closest(".overflow-y-auto")).toBeNull();
+    expect(resumo.className).toContain("xl:absolute");
+    expect(resumo.className).toContain("xl:inset-y-0");
   });
 
   it("salva o rascunho sozinho, com a versão lida", async () => {
@@ -116,7 +146,7 @@ describe("novo relatório financeiro", () => {
     vi.mocked(gerarRelatorioFinanceiro).mockResolvedValue(relatorio);
     vi.mocked(salvarPdfRelatorioFinanceiro).mockResolvedValue(undefined);
     const { onGerado } = renderizar();
-    fireEvent.click(screen.getByLabelText("Nutrição"));
+    selecionar("Categoria dos itens", "Nutrição");
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     await waitFor(() => expect(onGerado).toHaveBeenCalledWith(relatorio, null));
     expect(gerarRelatorioFinanceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Pecuária — agosto", categoriaIds: [3], status: ["CONFIRMADA"] }), 4);
