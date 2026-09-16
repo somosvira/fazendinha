@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";
 import { obterConfiguracoesFinanceiras, obterExtratoConta } from "./novo-api";
+import { escolher, esperarFoco, prepararPopups } from "./campos.test-utils";
 
 vi.mock("./novo-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./novo-api")>()),
@@ -13,6 +14,7 @@ vi.mock("./novo-api", async (importOriginal) => ({
 }));
 
 beforeEach(() => {
+  prepararPopups();
   window.history.replaceState(null, "", "/financeiro/contas");
   vi.clearAllMocks();
   vi.mocked(obterExtratoConta).mockResolvedValue([]);
@@ -26,7 +28,7 @@ beforeEach(() => {
   });
 });
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ContasFinanceiras — cadastros ativos", () => {
   it("não oferece conta inativa na transferência", async () => {
@@ -37,9 +39,10 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(obterExtratoConta).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Transferir" }));
     expect(await screen.findByRole("heading", { name: "Nova transferência" })).toBeTruthy();
-    expect(screen.getAllByRole("option", { name: /Banco principal/ }).length).toBeGreaterThan(0);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Nova transferência" })).getByRole("combobox", { name: "Conta de origem" }));
+    expect((await screen.findAllByRole("option", { name: /Banco principal/ })).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("option", { name: /Caixa auxiliar/ }).length).toBeGreaterThan(0);
-    expect(within(screen.getByRole("dialog")).queryByRole("option", { name: /Conta inativa/ })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
   });
   it("permite consultar o histórico de uma conta inativa", async () => {
     render(<ContasFinanceiras onNav={vi.fn()} />);
@@ -57,14 +60,28 @@ describe("ContasFinanceiras — cadastros ativos", () => {
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
     expect(within(tabela()!).queryByText("Caixa auxiliar")).toBeNull();
     fireEvent.change(within(secao).getByLabelText("Buscar conta"), { target: { value: "" } });
-    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "CAIXA" } });
+    await escolher("Tipo", "Caixa", within(secao));
     expect(within(tabela()!).getByText("Caixa auxiliar")).toBeTruthy();
-    fireEvent.change(within(secao).getByLabelText("Tipo"), { target: { value: "" } });
-    fireEvent.change(within(secao).getByLabelText("Instituição"), { target: { value: "Banco A" } });
+    expect(within(tabela()!).queryByText("Banco principal")).toBeNull();
+    await escolher("Tipo", "Todos os tipos", within(secao));
+    await escolher("Instituição", "Banco A", within(secao));
     expect(within(tabela()!).getByText("Banco principal")).toBeTruthy();
-    fireEvent.change(within(secao).getByLabelText("Situação"), { target: { value: "INATIVA" } });
+    await escolher("Situação", "Inativas", within(secao));
     expect(within(secao).getByText("Nenhuma conta encontrada para os filtros selecionados.")).toBeTruthy();
   });
+});
+
+it("explica os tipos de conta e a situação inativa no filtro", async () => {
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  const secao = (await screen.findByRole("heading", { name: "Contas" })).closest("section")!;
+  fireEvent.click(within(secao).getByRole("combobox", { name: "Tipo" }));
+  expect((await screen.findByRole("option", { name: "Banco" })).textContent).toContain("agência e número");
+  expect(screen.getByRole("option", { name: "Caixa" }).textContent).toContain("guardado na fazenda");
+  expect(screen.getByRole("option", { name: "Aplicação" }).textContent).toContain("investido");
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  await esperarFoco();
+  fireEvent.click(within(secao).getByRole("combobox", { name: "Situação" }));
+  expect((await screen.findByRole("option", { name: "Inativas" })).textContent).toContain("histórico");
 });
 
 it("abre uma conta diretamente e não substitui uma conta inexistente", async () => {

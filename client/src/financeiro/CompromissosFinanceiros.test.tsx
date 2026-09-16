@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CompromissosFinanceiros } from "./CompromissosFinanceiros";
+import { prepararPopups } from "./campos.test-utils";
 import { descartarRascunhoOperacao, listarCompromissos, obterConfiguracoesFinanceiras, obterRascunhoOperacao } from "./novo-api";
 
 vi.mock("./novo-api", () => ({
@@ -13,10 +14,11 @@ vi.mock("./novo-api", () => ({
 }));
 
 beforeEach(() => {
+  prepararPopups();
   window.history.replaceState(null, "", "/financeiro/compromissos");
   vi.clearAllMocks();
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("CompromissosFinanceiros — criação", () => {
   it("pede confirmação antes de substituir um rascunho", async () => {
@@ -89,6 +91,7 @@ describe("CompromissosFinanceiros — criação", () => {
 
     expect(await screen.findByText("(1/2) Serviço veterinário")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    fireEvent.click(await screen.findByRole("combobox", { name: "Conta" }));
     expect(await screen.findByRole("option", { name: /Conta ativa/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Conta inativa/ })).toBeNull();
   });

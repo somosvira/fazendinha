@@ -2,6 +2,7 @@ import { useState } from "react";
 import { liquidarCompromisso, type Compromisso, type Conta } from "./novo-api";
 import { brl, Button, hoje, Modal } from "./financeiro-ui";
 import { tituloCompromisso } from "./lib/compromissos";
+import { SelectBusca } from "../components/SelectBusca";
 
 export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiquidado, onErro }: {
   compromisso: Compromisso;
@@ -43,10 +44,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">Conta
-          <select className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" value={contaId} onChange={(e) => setContaId(e.target.value)}>
-            <option value="">Selecione</option>
-            {contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome} · {brl(conta.saldoAtual)}</option>)}
-          </select>
+          <SelectBusca aria-label="Conta" value={contaId} onValueChange={setContaId} options={contas.filter((conta) => conta.ativo).map((conta) => ({ value: String(conta.id), label: `${conta.nome} · ${brl(conta.saldoAtual)}` }))} buscaPlaceholder="Buscar conta…" vazioTexto="Nenhuma conta ativa encontrada." />
         </label>
         <label className="text-sm font-medium">Valor
           <input type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />

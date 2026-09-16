@@ -18,6 +18,8 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
 
@@ -39,6 +41,15 @@ const TIPO_LABEL: Record<TipoCustoCultivo, string> = {
   MAO_DE_OBRA: "Mão de obra",
   MAQUINA: "Máquina",
   OUTRO: "Outro",
+};
+// Explicação simples do tipo (só onde o nome não basta).
+const TIPO_DESCRICAO: Partial<Record<TipoCustoCultivo, string>> = {
+  TRATOS: "Cuidados com a lavoura durante o ciclo, entre o plantio e a colheita.",
+};
+// Efeito da classe no resumo da safra (server/src/services/cultivo/resumo.recompute.ts).
+const CLASSE_DESCRICAO: Record<ClassificacaoCategoria, string> = {
+  CUSTEIO: "Gasto da safra. Entra no custo por hectare e no custo por saca ou tonelada.",
+  INVESTIMENTO: "Gasto de longo prazo. É somado à parte e não entra no custo por hectare nem por saca.",
 };
 const TIPOS: TipoCustoCultivo[] = ["ADUBACAO", "PREPARO_SOLO", "PLANTIO", "TRATOS", "COLHEITA", "TRANSPORTE", "MAO_DE_OBRA", "MAQUINA", "OUTRO"];
 
@@ -155,7 +166,7 @@ export function CustosTab() {
   );
 }
 
-function LancamentoCustoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: number; onFechar: () => void; onSalvo: () => void }) {
+export function LancamentoCustoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: number; onFechar: () => void; onSalvo: () => void }) {
   const { data: areas } = useAreasCultivo(safraCultivoId);
   const [areaCultivoId, setAreaCultivoId] = useState<string>("");
   const [tipo, setTipo] = useState<TipoCustoCultivo>("ADUBACAO");
@@ -209,27 +220,27 @@ function LancamentoCustoForm({ safraCultivoId, onFechar, onSalvo }: { safraCulti
     >
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Tipo*" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoCustoCultivo)}>
-            {TIPOS.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}
-          </select>
+          <RebSelect aria-label="Tipo" value={tipo} onChange={(v) => setTipo(v as TipoCustoCultivo)}>
+            {TIPOS.map((t) => <option key={t} value={t} data-descricao={TIPO_DESCRICAO[t]}>{TIPO_LABEL[t]}</option>)}
+          </RebSelect>
         </RebField>
         <RebField label="Classe*" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={classe} onChange={(e) => setClasse(e.target.value as ClassificacaoCategoria)}>
-            <option value="CUSTEIO">Custeio</option>
-            <option value="INVESTIMENTO">Investimento</option>
-          </select>
+          <RebSelect aria-label="Classe" value={classe} onChange={(v) => setClasse(v as ClassificacaoCategoria)}>
+            <option value="CUSTEIO" data-descricao={CLASSE_DESCRICAO.CUSTEIO}>Custeio</option>
+            <option value="INVESTIMENTO" data-descricao={CLASSE_DESCRICAO.INVESTIMENTO}>Investimento</option>
+          </RebSelect>
         </RebField>
       </div>
 
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Área" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
+          <RebSelect aria-label="Área" value={areaCultivoId} onChange={setAreaCultivoId}>
             <option value="">—</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
-          </select>
+          </RebSelect>
         </RebField>
         <RebField label="Valor (R$)*" style={{ flex: 1 }}>
           <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />

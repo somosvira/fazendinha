@@ -5,6 +5,7 @@ import { ProdutoForm } from "./ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { SelectBusca } from "@/components/SelectBusca";
 
 const quantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
@@ -71,10 +72,17 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     </>}>
       <p className="mb-4 text-sm text-ink-3">Informe a quantidade encontrada na contagem. O ajuste corrige somente o estoque, sem gerar pagamento ou compromisso.</p>
       <RebField label="Produto">
-        <select aria-label="Produto" disabled={carregando || salvando} value={produtoId} onChange={e => { setProdutoId(e.target.value); setContada(""); }}>
-          <option value="">{carregando ? "Carregando estoque…" : "Selecione…"}</option>
-          {saldos.map(p => <option key={p.produtoId} value={p.produtoId}>{p.nome} ({p.unidade})</option>)}
-        </select>
+        <SelectBusca
+          variante="sublinhado"
+          aria-label="Produto"
+          disabled={carregando || salvando}
+          value={produtoId}
+          onValueChange={v => { setProdutoId(v); setContada(""); }}
+          placeholder={carregando ? "Carregando estoque…" : "Selecione…"}
+          buscaPlaceholder="Buscar produto…"
+          vazioTexto="Nenhum produto encontrado."
+          options={saldos.map(p => ({ value: String(p.produtoId), label: `${p.nome} (${p.unidade})` }))}
+        />
       </RebField>
       <RebButton disabled={salvando} onClick={() => setNovoProduto(true)}>Novo produto</RebButton>
       {produto && <p className="my-4">Quantidade no sistema: <strong>{quantidade(produto.saldo)} {produto.unidade}</strong></p>}

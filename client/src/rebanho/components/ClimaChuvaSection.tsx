@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MiniBarChart } from "../../components/charts";
 import { useChuva, registrarChuva, excluirChuva } from "../api";
 import { getHojeISO } from "../../lib/hoje";
+import { CampoData } from "@/components/CampoData";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const mm = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -55,7 +56,7 @@ export function ClimaChuvaSection() {
 
       {aberto && (
         <form onSubmit={salvar} className="mb-3 flex flex-wrap items-end gap-2">
-          <label className="flex flex-col text-xs text-ink-3">Data<input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.data} onChange={(e) => set("data", e.target.value)} /></label>
+          <label className="flex flex-col text-xs text-ink-3">Data<CampoData className="mt-0.5 w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" aria-label="Data" value={f.data} onChange={(v) => set("data", v)} /></label>
           <label className="flex flex-col text-xs text-ink-3">Chuva (mm)<input type="number" min={0} step="0.1" className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.mm} onChange={(e) => set("mm", e.target.value)} /></label>
           <label className="flex flex-col text-xs text-ink-3">Observação<input className="mt-0.5 w-48 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.observacao} onChange={(e) => set("observacao", e.target.value)} maxLength={200} /></label>
           <button type="submit" className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white">Salvar</button>

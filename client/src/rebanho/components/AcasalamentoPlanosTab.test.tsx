@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AcasalamentoPlanosTab, atualizarLinhaPlano } from "./AcasalamentoPlanosTab";
 import type {
   LinhaPlanoAcasalamentoDTO,
@@ -108,6 +108,22 @@ async function abrirPlano(onAbrirFicha?: (animalId: string) => void, fetchMock =
   return fetchMock;
 }
 
+class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
+
+const combo = (nome: string) => screen.getByRole("combobox", { name: nome });
+/* Ao fechar, o Radix devolve o foco ao gatilho num setTimeout(0); esperar esse
+ * tick evita que o foco atrasado feche o próximo dropdown aberto pelo teste. */
+async function escolher(nome: string, opcao: string | RegExp) {
+  fireEvent.click(combo(nome));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -123,8 +139,8 @@ describe("AcasalamentoPlanosTab", () => {
     expect(screen.getByRole("status").textContent).toContain("Carregando");
     expect(await screen.findByText("Nenhum plano de acasalamento criado")).toBeTruthy();
     expect(screen.getByText("Crie o primeiro plano para calcular candidatos por lote.")).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Primíparas" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Leite seguro" })).toBeTruthy();
+    expect(combo("Grupo do plano").textContent).toBe("Primíparas");
+    expect(combo("Combinação de medidas").textContent).toBe("Leite seguro");
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
@@ -142,8 +158,8 @@ describe("AcasalamentoPlanosTab", () => {
     render(createElement(AcasalamentoPlanosTab));
     await screen.findByText("Nenhum plano de acasalamento criado");
 
-    fireEvent.change(screen.getByLabelText("Grupo do plano"), { target: { value: "" } });
-    fireEvent.change(screen.getByLabelText("Combinação de medidas"), { target: { value: "" } });
+    await escolher("Grupo do plano", "Selecione");
+    await escolher("Combinação de medidas", "Selecione");
     fireEvent.click(screen.getByRole("button", { name: "Criar plano de acasalamento" }));
 
     expect(screen.getByRole("alert").textContent).toContain("Informe nome, grupo e combinação");
@@ -157,8 +173,8 @@ describe("AcasalamentoPlanosTab", () => {
     await screen.findByText("Nenhum plano de acasalamento criado");
 
     fireEvent.change(screen.getByLabelText("Nome do plano"), { target: { value: "Primíparas julho" } });
-    fireEvent.change(screen.getByLabelText("Grupo do plano"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("Combinação de medidas"), { target: { value: "3" } });
+    await escolher("Grupo do plano", "Primíparas");
+    await escolher("Combinação de medidas", "Leite seguro");
     fireEvent.click(screen.getByRole("button", { name: "Criar plano de acasalamento" }));
 
     await screen.findByText("Touro Seguro");
@@ -174,8 +190,7 @@ describe("AcasalamentoPlanosTab", () => {
     await abrirPlano(onAbrirFicha);
 
     expect(screen.getByText(/criado em 20\/07\/2026 · atualizado em 22\/07\/2026/)).toBeTruthy();
-    expect((screen.getByLabelText("Versão do plano") as HTMLSelectElement).value).toBe("2");
-    expect(screen.getByRole("option", { name: /Versão 1/ })).toBeTruthy();
+    expect(combo("Versão do plano").textContent).toMatch(/^Versão 2/);
     expect(screen.getByText("86%")).toBeTruthy();
     expect(screen.getByText("3,1% parentesco")).toBeTruthy();
     expect(screen.getByText("apto")).toBeTruthy();
@@ -183,6 +198,11 @@ describe("AcasalamentoPlanosTab", () => {
     expect(screen.getByText("consanguíneo")).toBeTruthy();
     expect(screen.getByText("restrito")).toBeTruthy();
     expect(screen.getByText("mérito leiteiro superior")).toBeTruthy();
+
+    fireEvent.click(combo("Versão do plano"));
+    expect(await screen.findByRole("option", { name: /Versão 1/ })).toBeTruthy();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
     const abrirFicha = screen.getByRole("button", { name: "Abrir ficha da fêmea 145 Jurema" });
     expect(abrirFicha.className).toContain("min-w-6");
@@ -193,18 +213,28 @@ describe("AcasalamentoPlanosTab", () => {
   it("não permite selecionar candidato consanguíneo ou restrito", async () => {
     await abrirPlano();
 
-    const seletor = screen.getByLabelText("Reprodutor para 145 Jurema");
-    expect((within(seletor).getByRole("option", { name: /Touro Consanguíneo/ }) as HTMLOptionElement).disabled).toBe(true);
-    expect((within(seletor).getByRole("option", { name: /Touro Restrito/ }) as HTMLOptionElement).disabled).toBe(true);
+    fireEvent.click(combo("Reprodutor para 145 Jurema"));
+    expect((await screen.findByRole("option", { name: /Touro Consanguíneo/ })).getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByRole("option", { name: /Touro Restrito/ }).getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByRole("option", { name: /Touro Seguro/ }).getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("explica na lista, em linguagem simples, o que cada situação do touro significa", async () => {
+    await abrirPlano();
+
+    fireEvent.click(combo("Reprodutor para 145 Jurema"));
+    expect((await screen.findByRole("option", { name: /Touro Incerto/ })).textContent).toContain("A genealogia cadastrada não basta para checar o parentesco");
+    expect(screen.getByRole("option", { name: /Touro Consanguíneo/ }).textContent).toContain("Parente próximo demais da fêmea");
+    expect(screen.getByRole("option", { name: /Touro Restrito/ }).textContent).toContain("indicador genético obrigatório");
   });
 
   it("restaura no seletor a escolha persistida ao trocar de versão", async () => {
     await abrirPlano(undefined, apiPlanos({ detalhe: plano([versao(1, 10), versao(2, 20)]) }));
 
-    expect((screen.getByLabelText("Reprodutor para 145 Jurema") as HTMLSelectElement).value).toBe("20");
-    fireEvent.change(screen.getByLabelText("Versão do plano"), { target: { value: "1" } });
+    expect(combo("Reprodutor para 145 Jurema").textContent).toMatch(/^Touro Incerto/);
+    await escolher("Versão do plano", /Versão 1/);
 
-    expect((screen.getByLabelText("Reprodutor para 145 Jurema") as HTMLSelectElement).value).toBe("10");
+    expect(combo("Reprodutor para 145 Jurema").textContent).toMatch(/^Touro Seguro/);
   });
 
   it("mantém a contagem de escolhas ao trocar o reprodutor de uma linha já escolhida", () => {
@@ -218,8 +248,7 @@ describe("AcasalamentoPlanosTab", () => {
 
   it("cancela a escolha de pedigree não verificável por botão ou Escape e devolve foco ao gatilho", async () => {
     const fetchMock = await abrirPlano();
-    const seletor = screen.getByLabelText("Reprodutor para 145 Jurema");
-    fireEvent.change(seletor, { target: { value: "20" } });
+    await escolher("Reprodutor para 145 Jurema", /Touro Incerto/);
     const gatilho = screen.getByRole("button", { name: "Escolher Touro Incerto para 145 Jurema" });
     gatilho.focus();
     fireEvent.click(gatilho);
@@ -238,7 +267,7 @@ describe("AcasalamentoPlanosTab", () => {
 
   it("confirma pedigree não verificável e envia a flag true", async () => {
     const fetchMock = await abrirPlano();
-    fireEvent.change(screen.getByLabelText("Reprodutor para 145 Jurema"), { target: { value: "20" } });
+    await escolher("Reprodutor para 145 Jurema", /Touro Incerto/);
     const gatilho = screen.getByRole("button", { name: "Escolher Touro Incerto para 145 Jurema" });
     fireEvent.click(gatilho);
     fireEvent.click(screen.getByRole("button", { name: "Confirmar Touro Incerto para 145 Jurema" }));
@@ -254,7 +283,7 @@ describe("AcasalamentoPlanosTab", () => {
   it("escolhe candidato apto com flag false e anuncia aviso de estoque sem tratá-lo como erro", async () => {
     const fetchMock = apiPlanos({ escolherAviso: "Escolha salva, mas o estoque de sêmen está sem doses." });
     await abrirPlano(undefined, fetchMock);
-    fireEvent.change(screen.getByLabelText("Reprodutor para 145 Jurema"), { target: { value: "10" } });
+    await escolher("Reprodutor para 145 Jurema", /Touro Seguro/);
     fireEvent.click(screen.getByRole("button", { name: "Escolher Touro Seguro para 145 Jurema" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/rebanho/acasalamento/linhas/301/escolha", expect.objectContaining({
@@ -271,7 +300,8 @@ describe("AcasalamentoPlanosTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Recalcular plano Primíparas julho" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/rebanho/acasalamento/planos/12/recalcular", expect.objectContaining({ method: "POST" })));
-    await waitFor(() => expect((screen.getByLabelText("Versão do plano") as HTMLSelectElement).value).toBe("3"));
-    expect(screen.getByRole("option", { name: /Versão 3/ })).toBeTruthy();
+    await waitFor(() => expect(combo("Versão do plano").textContent).toMatch(/^Versão 3/));
+    fireEvent.click(combo("Versão do plano"));
+    expect(await screen.findByRole("option", { name: /Versão 3/ })).toBeTruthy();
   });
 });

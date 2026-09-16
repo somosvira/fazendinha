@@ -1,9 +1,19 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  Element.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 const config: ConfiguracoesFinanceiras = {
@@ -25,30 +35,65 @@ function montar() {
   render(<FormOperacao config={config} onSalvo={vi.fn()} />);
 }
 
+const campo = (rotulo: string) => screen.getByRole("combobox", { name: rotulo });
+const abrir = (rotulo: string) => fireEvent.click(campo(rotulo));
+const fechar = () => fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+/* Ao fechar, o Radix devolve o foco ao gatilho num setTimeout(0); esperar esse
+ * tick evita que o foco atrasado feche o próximo dropdown aberto pelo teste. */
+async function escolher(rotulo: string, opcao: string) {
+  abrir(rotulo);
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+
 describe("FormOperacao", () => {
-  it("não oferece ajuste de estoque como nova operação", () => {
+  it("não oferece ajuste de estoque como nova operação", async () => {
     montar();
+    abrir("Tipo de operação");
+    expect(await screen.findByRole("option", { name: "Compra para estoque" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Ajuste de estoque" })).toBeNull();
-    expect(screen.getByRole("option", { name: "Compra para estoque" })).toBeTruthy();
   });
 
-  it("sugere pagamento sem aplicar automaticamente e permite escolher outra forma", () => {
+  it("explica em linguagem simples o tipo escolhido", async () => {
+    montar();
+    expect(screen.getByText(/O produto entra no estoque e o dinheiro sai da conta/)).toBeTruthy();
+    await escolher("Tipo de operação", "Venda");
+    expect(screen.getByText(/O produto sai do estoque e o dinheiro entra na conta/)).toBeTruthy();
+    expect(screen.queryByText(/O produto entra no estoque e o dinheiro sai da conta/)).toBeNull();
+  });
+
+  it("ilustra na lista para onde vão o produto e o dinheiro em cada tipo", async () => {
+    montar();
+    abrir("Tipo de operação");
+    const venda = await screen.findByRole("option", { name: "Venda" });
+    expect(venda.textContent).toContain("Você vende para um cliente");
+    fireEvent.focus(venda);
+    const previa = screen.getByRole("figure", { name: "O que acontece em Venda" });
+    expect(previa.textContent).toMatch(/Produto.*de Estoque.*para Cliente/);
+    expect(previa.textContent).toMatch(/Dinheiro.*de Cliente.*para Conta/);
+    fireEvent.focus(screen.getByRole("option", { name: "Inventário inicial" }));
+    const inventario = screen.getByRole("figure", { name: "O que acontece em Inventário inicial" });
+    expect(inventario.textContent).toMatch(/Produto.*de Contagem.*para Estoque/);
+    expect(inventario.textContent).toContain("Não mexe em dinheiro");
+  });
+
+  it("sugere pagamento sem aplicar automaticamente e permite escolher outra forma", async () => {
     render(<FormOperacao config={{ ...config, parceiros: [{ ...config.parceiros[0], papeis: ["PRESTADOR_SERVICO"], formaPagamentoPreferida: "BOLETO", condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30, 60] }] }} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+    await escolher("Prestador de serviço", "Fornecedor Rural");
     fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
-    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_VISTA");
-    expect((screen.getByLabelText("Forma de liquidação") as HTMLSelectElement).value).toBe("PIX");
+    expect(campo("Condição financeira").textContent).toBe("Liquidação integral na operação");
+    expect(campo("Forma de liquidação").textContent).toBe("Pix");
     fireEvent.click(screen.getByRole("button", { name: "Usar sugestão" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_VISTA");
+    expect(campo("Condição financeira").textContent).toBe("Liquidação integral na operação");
     fireEvent.click(screen.getByRole("button", { name: "Usar sugestão" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar sugestão" }));
-    expect((screen.getByLabelText("Condição financeira") as HTMLSelectElement).value).toBe("A_PRAZO");
+    expect(campo("Condição financeira").textContent).toBe("Liquidação integral a prazo");
     expect((screen.getByLabelText("Valor da parcela 1") as HTMLInputElement).value).toBe("50.00");
     expect((screen.getByLabelText("Valor da parcela 2") as HTMLInputElement).value).toBe("50.00");
-    fireEvent.change(screen.getByLabelText("Condição financeira"), { target: { value: "A_VISTA" } });
-    fireEvent.change(screen.getByLabelText("Forma de liquidação"), { target: { value: "DINHEIRO" } });
-    expect((screen.getByLabelText("Forma de liquidação") as HTMLSelectElement).value).toBe("DINHEIRO");
+    await escolher("Condição financeira", "Liquidação integral na operação");
+    await escolher("Forma de liquidação", "Dinheiro");
+    expect(campo("Forma de liquidação").textContent).toBe("Dinheiro");
   });
 
   it("bloqueia confirmação de rascunho cujo parceiro perdeu o papel necessário", () => {
@@ -57,11 +102,11 @@ describe("FormOperacao", () => {
     expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("abre como página e remove campos físicos quando o tipo é serviço", () => {
+  it("abre como página e remove campos físicos quando o tipo é serviço", async () => {
     montar();
     expect(screen.getByRole("heading", { name: "Nova operação" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    await escolher("Tipo de operação", "Serviço");
     expect(screen.queryByRole("combobox", { name: "Produto do item 1" })).toBeNull();
     expect(screen.getByRole("spinbutton", { name: "Valor total da operação" })).toBeTruthy();
   });
@@ -98,54 +143,75 @@ describe("FormOperacao", () => {
   it("retoma os dados persistidos ao recarregar a página", () => {
     render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />);
     expect((screen.getByRole("textbox", { name: "Descrição" }) as HTMLTextAreaElement).value).toBe("Manutenção programada");
-    expect((screen.getByRole("combobox", { name: "Condição financeira" }) as HTMLSelectElement).value).toBe("A_PRAZO");
+    expect(campo("Condição financeira").textContent).toBe("Liquidação integral a prazo");
+    expect(screen.getByRole("button", { name: "Data" }).textContent).toContain("07/09/2026");
+    expect(screen.getByRole("button", { name: "Vencimento da parcela 1" }).textContent).toContain("07/10/2026");
   });
 
-  it("permite alternar entre valor unitário e valor total do item", () => {
+  it("escolhe a data da operação pelo calendário", async () => {
+    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Frete", valorOperacao: "80.00", parceiroId: "1", contaId: "1", formaPagamento: "PIX", data: "2026-09-07" } } }} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Data" }));
+    fireEvent.click(screen.getByRole("button", { name: "12 de setembro de 2026" }));
+    expect(screen.getByRole("button", { name: "Data" }).textContent).toContain("12/09/2026");
+  });
+
+  it("permite alternar entre valor unitário e valor total do item", async () => {
     montar();
-    fireEvent.change(screen.getByRole("combobox", { name: "Base do valor do item 1" }), { target: { value: "TOTAL" } });
+    await escolher("Base do valor do item 1", "Valor total do item");
     expect(screen.getByRole("spinbutton", { name: "Valor total do item 1" })).toBeTruthy();
     expect(screen.queryByRole("spinbutton", { name: "Valor unitário do item 1" })).toBeNull();
   });
 
-  it("deriva a unidade do produto sem permitir edição", () => {
+  it("deriva a unidade do produto sem permitir edição", async () => {
     montar();
-    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await escolher("Produto do item 1", "Ração");
     expect(screen.getByLabelText("Unidade do item 1").textContent).toBe("kg");
     expect(screen.queryByRole("textbox", { name: "Unidade do item 1" })).toBeNull();
   });
 
-  it("não expõe o saldo no seletor de conta", () => {
+  it("busca produtos pelo nome sem acento", async () => {
+    render(<FormOperacao config={{ ...config, produtos: [...config.produtos, { id: 2, nome: "Vacina", unidade: "dose", estocavel: true, custoUnitario: "9" }] }} onSalvo={vi.fn()} />);
+    abrir("Produto do item 1");
+    fireEvent.change(screen.getByPlaceholderText("Buscar produto…"), { target: { value: "racao" } });
+    expect(screen.getByRole("option", { name: "Ração" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Vacina" })).toBeNull();
+  });
+
+  it("não expõe o saldo no seletor de conta", async () => {
     montar();
-    expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
+    abrir("Conta financeira");
+    expect(await screen.findByRole("option", { name: "Banco principal" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Banco principal.*R\$/ })).toBeNull();
   });
 
-  it("não oferece contas nem parceiros inativos em uma nova operação", () => {
+  it("não oferece contas nem parceiros inativos em uma nova operação", async () => {
     montar();
+    abrir("Conta financeira");
+    expect(await screen.findByRole("option", { name: "Banco principal" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Conta desativada" })).toBeNull();
+    fechar();
+    abrir("Fornecedor ou parceiro");
+    expect(await screen.findByRole("option", { name: "Fornecedor Rural" })).toBeTruthy();
     expect(screen.queryByRole("option", { name: "Fornecedor desativado" })).toBeNull();
-    expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Fornecedor Rural" })).toBeTruthy();
   });
 
   it("formata o valor informado com duas casas decimais", () => {
     montar();
-    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" });
-    fireEvent.change(campo, { target: { value: "12.5" } });
-    fireEvent.blur(campo);
-    expect((campo as HTMLInputElement).value).toBe("12.50");
+    const valor = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" });
+    fireEvent.change(valor, { target: { value: "12.5" } });
+    fireEvent.blur(valor);
+    expect((valor as HTMLInputElement).value).toBe("12.50");
   });
 
-  it("resume produto, quantidade e valor total de cada item", () => {
+  it("resume produto, quantidade e valor total de cada item", async () => {
     montar();
-    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await escolher("Produto do item 1", "Ração");
     fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "3" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
     const resumo = screen.getAllByText("Itens da operação").at(-1)!.parentElement!;
     expect(resumo.textContent).toContain("Ração");
     expect(resumo.textContent).toContain("3 kg");
-    expect(resumo.textContent?.replaceAll("\u00a0", " ")).toContain("R$ 15,00");
+    expect(resumo.textContent?.replaceAll(" ", " ")).toContain("R$ 15,00");
   });
 
   it("remove a introdução e posiciona o aviso antes da confirmação", () => {
@@ -156,9 +222,16 @@ describe("FormOperacao", () => {
     expect(aviso.compareDocumentPosition(botao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("explica e configura os compromissos derivados da condição a prazo", () => {
+  it("explica e configura os compromissos derivados da condição a prazo", async () => {
     montar();
-    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    abrir("Condição financeira");
+    const aPrazo = await screen.findByRole("option", { name: "Liquidação integral a prazo" });
+    expect(aPrazo.textContent).toContain("Nada é pago hoje");
+    fireEvent.focus(aPrazo);
+    const previa = screen.getByRole("figure", { name: "Quando o dinheiro se move em Liquidação integral a prazo" });
+    expect(previa.textContent).toMatch(/Hoje.*nada/);
+    expect(previa.textContent).toMatch(/Depois.*tudo, em parcelas/);
+    fireEvent.click(aPrazo);
     expect(screen.getByText("Cada parcela será criada como um compromisso vinculado a esta operação.")).toBeTruthy();
     expect(screen.getByRole("spinbutton", { name: "Valor da parcela 1" })).toBeTruthy();
     expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
@@ -171,21 +244,61 @@ describe("FormOperacao", () => {
   });
 });
 
-it("herda a categoria por produto, pede centro para mistura e preserva escolha manual", () => {
+describe("FormOperacao — arrastar e soltar documentos", () => {
+  const documento = { id: 31, tipo: "NOTA_FISCAL", nome: "nota.pdf", numero: null, mimeType: "application/pdf", tamanhoBytes: 4 };
+  function servidor() {
+    const fetchMock = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () => (url.endsWith("/rascunho/documentos") ? documento : { id: 8, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-16T12:00:00Z" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  const zona = () => screen.getByRole("button", { name: /Arraste os arquivos para cá/ });
+  const soltar = (...arquivos: File[]) => fireEvent.drop(zona(), { dataTransfer: { files: arquivos, types: ["Files"] } });
+
+  it("destaca a área enquanto um arquivo é arrastado por cima", () => {
+    montar();
+    expect(screen.queryByText("Solte para anexar")).toBeNull();
+    fireEvent.dragEnter(zona(), { dataTransfer: { types: ["Files"] } });
+    expect(screen.getByText("Solte para anexar")).toBeTruthy();
+    fireEvent.dragLeave(zona(), { dataTransfer: { types: ["Files"] } });
+    expect(screen.queryByText("Solte para anexar")).toBeNull();
+  });
+
+  it("anexa ao rascunho os arquivos soltos na área", async () => {
+    const fetchMock = servidor();
+    montar();
+    soltar(new File(["%PDF"], "nota.pdf", { type: "application/pdf" }));
+    expect(await screen.findByText("nota.pdf")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho/documentos", expect.objectContaining({ method: "POST" }));
+    expect(screen.queryByText("Solte para anexar")).toBeNull();
+  });
+
+  it("recusa arquivos soltos com formato não aceito", async () => {
+    const fetchMock = servidor();
+    montar();
+    soltar(new File(["MZ"], "programa.exe", { type: "application/octet-stream" }));
+    expect(await screen.findByText(/não foram adicionados.*programa\.exe/)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho/documentos", expect.anything());
+  });
+});
+
+it("herda a categoria por produto, pede centro para mistura e preserva escolha manual", async () => {
   render(<FormOperacao config={{ ...config,
     categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO", ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO", ativo: true, ordem: 0 }],
     centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
     produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoId: 2 }],
   }} onSalvo={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
-  expect((screen.getByLabelText("Categoria do item 1") as HTMLSelectElement).value).toBe("1");
-  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("1");
+  await escolher("Produto do item 1", "Ração");
+  expect(campo("Categoria do item 1").textContent).toBe("Silagem");
+  expect(campo("Centro de custo").textContent).toBe("Pecuária");
   fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
-  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
-  expect((screen.getByLabelText("Categoria do item 2") as HTMLSelectElement).value).toBe("2");
-  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("");
+  await escolher("Produto do item 2", "Vacina");
+  expect(campo("Categoria do item 2").textContent).toBe("Vacinas");
+  expect(campo("Centro de custo").textContent).toBe("Sem centro de custo");
   expect(screen.getByText(/Os produtos sugerem áreas diferentes/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "2" } });
-  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "1" } });
-  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("2");
+  await escolher("Centro de custo", "Agronomia");
+  await escolher("Produto do item 2", "Ração");
+  expect(campo("Centro de custo").textContent).toBe("Agronomia");
 });

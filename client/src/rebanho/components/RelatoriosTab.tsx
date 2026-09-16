@@ -3,6 +3,9 @@ import { DateRangePicker, type DateRange } from "../../components/DateRangePicke
 import { getHoje } from "../../lib/hoje";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
 import { RebBox, RebMain } from "@/components/rb/RebPrimitives";
 import {
   useGrupos,
@@ -141,19 +144,19 @@ export function RelatoriosTab({
       <RebBox className="p-5">
         <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 xl:grid-cols-4">
           <RebField label="Modelo de relatório" className="md:col-span-2">
-            <select aria-label="Modelo de relatório" value={templateId} onChange={(e) => { setTemplateId(e.target.value as FiltrosRelatorioRebanho["templateId"]); setFiltrosColunas({}); }}>
-              {fases.map((fase) => <optgroup key={fase} label={fase}>{templates.filter((t) => t.fase === fase).map((t) => <option key={t.id} value={t.id}>{t.titulo}</option>)}</optgroup>)}
+            <RebSelect aria-label="Modelo de relatório" value={templateId} onChange={(v) => { setTemplateId(v as FiltrosRelatorioRebanho["templateId"]); setFiltrosColunas({}); }}>
+              {fases.map((fase) => <optgroup key={fase} label={fase}>{templates.filter((t) => t.fase === fase).map((t) => <option key={t.id} value={t.id} data-descricao={t.descricao}>{t.titulo}</option>)}</optgroup>)}
               {!templates.length && <option value="ia-periodo">Inseminações no período</option>}
-            </select>
+            </RebSelect>
           </RebField>
-          <RebField label="Situação do animal"><select value={status} onChange={(e) => setStatus(e.target.value as FiltrosRelatorioRebanho["status"])}><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todos</option></select></RebField>
-          <RebField label="Categoria"><select value={categoria} onChange={(e) => setCategoria(e.target.value)}>{CATEGORIAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></RebField>
+          <RebField label="Situação do animal"><RebSelect aria-label="Situação do animal" value={status} onChange={(v) => setStatus(v as FiltrosRelatorioRebanho["status"])}><option value="ATIVO" data-descricao="Animais que estão no rebanho hoje.">Ativos</option><option value="BAIXADO" data-descricao="Animais que já saíram do rebanho.">Baixados</option><option value="TODOS" data-descricao="Ativos e baixados juntos.">Todos</option></RebSelect></RebField>
+          <RebField label="Categoria"><RebSelect aria-label="Categoria" value={categoria} onChange={setCategoria}>{CATEGORIAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</RebSelect></RebField>
           <RebField label="Animal"><input aria-label="Animal" value={animal} onChange={(e) => setAnimal(e.target.value)} placeholder="Número ou nome" /></RebField>
-          <RebField label="Grupo"><select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}><option value="">Todos os grupos</option>{grupos.data.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</select></RebField>
-          <RebField label="Setor"><select value={setor} onChange={(e) => setSetor(e.target.value)}><option value="">Todos os setores</option>{setores.data.map((s) => <option key={s} value={s}>{s}</option>)}</select></RebField>
+          <RebField label="Grupo"><SelectBusca variante="sublinhado" aria-label="Grupo" value={grupoId} onValueChange={setGrupoId} opcaoVazia="Todos os grupos" buscaPlaceholder="Buscar grupo…" options={grupos.data.map((g) => ({ value: String(g.id), label: g.nome }))} /></RebField>
+          <RebField label="Setor"><RebSelect aria-label="Setor" value={setor} onChange={setSetor}><option value="">Todos os setores</option>{setores.data.map((s) => <option key={s} value={s}>{s}</option>)}</RebSelect></RebField>
           {template?.filtrosEspecificos.includes("reprodutor") && <RebField label="Touro ou sêmen"><input aria-label="Touro ou sêmen" value={reprodutor} onChange={(e) => setReprodutor(e.target.value)} placeholder="Nome ou código" /></RebField>}
           {template?.filtrosEspecificos.includes("protocolo") && <RebField label="Protocolo"><input aria-label="Protocolo" value={protocolo} onChange={(e) => setProtocolo(e.target.value)} placeholder="Ex.: IATF 11d" /></RebField>}
-          {template?.filtrosEspecificos.includes("resultado") && <RebField label="Resultado"><select value={resultado} onChange={(e) => setResultado(e.target.value)}><option value="">Todos</option><option value="positivo">Positivo</option><option value="negativo">Negativo</option></select></RebField>}
+          {template?.filtrosEspecificos.includes("resultado") && <RebField label="Resultado"><RebSelect aria-label="Resultado" value={resultado} onChange={setResultado}><option value="">Todos</option><option value="positivo">Positivo</option><option value="negativo">Negativo</option></RebSelect></RebField>}
         </div>
         {!!template?.colunas?.length && <fieldset className="mb-4 border-t border-line pt-4">
           <legend className="pr-3 font-serif text-sm font-medium italic text-ink-3">Delimitar por parâmetros</legend>
@@ -161,8 +164,12 @@ export function RelatoriosTab({
             {(template.colunas ?? []).map((coluna) => coluna.tipo === "texto" ? <RebField key={coluna.chave} label={coluna.rotulo}>
               <input aria-label={`Filtrar ${coluna.rotulo}`} value={filtrosColunas[coluna.chave]?.valor ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "valor", e.target.value)} placeholder="Contém..." />
             </RebField> : <div key={coluna.chave} className="grid grid-cols-2 gap-2">
-              <RebField label={`${coluna.rotulo} — mínimo`}><input type={coluna.tipo === "data" ? "date" : "number"} aria-label={`${coluna.rotulo} mínimo`} value={filtrosColunas[coluna.chave]?.minimo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "minimo", e.target.value)} /></RebField>
-              <RebField label={`${coluna.rotulo} — máximo`}><input type={coluna.tipo === "data" ? "date" : "number"} aria-label={`${coluna.rotulo} máximo`} value={filtrosColunas[coluna.chave]?.maximo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "maximo", e.target.value)} /></RebField>
+              <RebField label={`${coluna.rotulo} — mínimo`}>{coluna.tipo === "data"
+                ? <CampoData variante="sublinhado" aria-label={`${coluna.rotulo} mínimo`} value={filtrosColunas[coluna.chave]?.minimo ?? ""} onChange={(v) => atualizarFiltro(coluna.chave, "minimo", v)} />
+                : <input type="number" aria-label={`${coluna.rotulo} mínimo`} value={filtrosColunas[coluna.chave]?.minimo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "minimo", e.target.value)} />}</RebField>
+              <RebField label={`${coluna.rotulo} — máximo`}>{coluna.tipo === "data"
+                ? <CampoData variante="sublinhado" aria-label={`${coluna.rotulo} máximo`} value={filtrosColunas[coluna.chave]?.maximo ?? ""} onChange={(v) => atualizarFiltro(coluna.chave, "maximo", v)} />
+                : <input type="number" aria-label={`${coluna.rotulo} máximo`} value={filtrosColunas[coluna.chave]?.maximo ?? ""} onChange={(e) => atualizarFiltro(coluna.chave, "maximo", e.target.value)} />}</RebField>
             </div>)}
           </div>
         </fieldset>}

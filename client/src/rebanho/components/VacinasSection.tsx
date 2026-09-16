@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useVacinas, agendarVacina, marcarVacinaAplicada, excluirVacina, type StatusVacina } from "../api";
 import { getHojeISO } from "../../lib/hoje";
+import { CampoData } from "@/components/CampoData";
 
 const fmtData = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR") : "—");
 
@@ -47,7 +48,7 @@ export function VacinasSection({ animalId }: { animalId: string }) {
         </label>
         <label className="flex flex-col text-xs text-ink-3">
           Prevista para
-          <input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
+          <CampoData variante="sublinhado" className="mt-0.5 w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]" aria-label="Prevista para" value={dataPrevista} onChange={setDataPrevista} />
         </label>
         <button type="submit" disabled={salvando || !vacina.trim() || !dataPrevista} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
           Agendar

@@ -10,6 +10,7 @@ import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
+import { SelectBusca } from "@/components/SelectBusca";
 import { RebMain, RebAnm, REB_SEC_SUB } from "@/components/rb/RebPrimitives";
 import { fmtBRL } from "@/components/charts";
 import type { ResumoLote, Lote } from "../types";
@@ -73,12 +74,21 @@ function Simulador({ lotes, onVoltar }: { lotes: Lote[]; onVoltar: () => void })
       />
 
       <RebField label="Lote a simular" style={{ maxWidth: 480 }}>
-        <select className="rb-field-select" value={loteId} onChange={(e) => setLoteId(e.target.value)}>
-          {lotes.map((l) => {
+        <SelectBusca
+          variante="sublinhado"
+          aria-label="Lote a simular"
+          value={loteId ?? ""}
+          onValueChange={setLoteId}
+          buscaPlaceholder="Buscar lote…"
+          options={lotes.map((l) => {
             const ready = (l.resumo?.pesoMedio ?? 0) >= 480;
-            return <option key={l.id} value={l.id}>{l.codigo} — {l.nome} ({l.numCabecas} cab · {l.resumo?.pesoMedio ?? "—"} kg){ready ? " · pronto" : ""}</option>;
+            return {
+              value: l.id,
+              label: `${l.codigo} — ${l.nome}`,
+              descricao: `${l.numCabecas} cab · ${l.resumo?.pesoMedio ?? "—"} kg${ready ? " · pronto para venda (480 kg ou mais)" : ""}`,
+            };
           })}
-        </select>
+        />
       </RebField>
 
       {lote && resumo && (

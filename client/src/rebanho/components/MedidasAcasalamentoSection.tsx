@@ -19,6 +19,7 @@ import {
 import { Loader } from "../../components/Loading";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebAnm, RebBox, RebEmpty, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
@@ -45,11 +46,11 @@ type ItemCombinacaoForm = { medidaId: string; peso: string; obrigatoria: boolean
 type CombinacaoForm = { nome: string; ativo: boolean; itens: ItemCombinacaoForm[] };
 type Exclusao = { tipo: "medida"; entidade: MedidaAcasalamentoDTO } | { tipo: "combinacao"; entidade: CombinacaoMedidaDTO };
 
-const TIPOS: { value: TipoMedidaAcasalamento; label: string }[] = [
-  { value: "MERITO", label: "Mérito genético" },
-  { value: "RESTRICAO_INDICADOR", label: "Restrição por indicador" },
-  { value: "CONSANGUINIDADE", label: "Consanguinidade" },
-  { value: "PEDIGREE", label: "Pedigree" },
+const TIPOS: { value: TipoMedidaAcasalamento; label: string; descricao?: string }[] = [
+  { value: "MERITO", label: "Mérito genético", descricao: "Dá nota aos touros pelos indicadores e pesos escolhidos." },
+  { value: "RESTRICAO_INDICADOR", label: "Restrição por indicador", descricao: "Descarta touros fora do mínimo ou máximo dos indicadores." },
+  { value: "CONSANGUINIDADE", label: "Consanguinidade", descricao: "Descarta touros com parentesco acima do limite com a vaca." },
+  { value: "PEDIGREE", label: "Pedigree", descricao: "Exige genealogia suficiente para conferir o parentesco." },
   { value: "SEMEN", label: "Disponibilidade de sêmen" },
 ];
 const TIPO_LABEL = Object.fromEntries(TIPOS.map((tipo) => [tipo.value, tipo.label])) as Record<TipoMedidaAcasalamento, string>;
@@ -458,9 +459,9 @@ export function MedidasAcasalamentoSection() {
                 <input value={formMedida.nome} onChange={(e) => setFormMedida((atual) => ({ ...atual, nome: e.target.value }))} maxLength={120} required />
               </RebField>
               <RebField label="Tipo de medida">
-                <select value={formMedida.tipo} onChange={(e) => mudarTipoMedida(e.target.value as TipoMedidaAcasalamento)}>
-                  {TIPOS.map((tipo) => <option key={tipo.value} value={tipo.value}>{tipo.label}</option>)}
-                </select>
+                <RebSelect aria-label="Tipo de medida" value={formMedida.tipo} onChange={(v) => mudarTipoMedida(v as TipoMedidaAcasalamento)}>
+                  {TIPOS.map((tipo) => <option key={tipo.value} value={tipo.value} data-descricao={tipo.descricao}>{tipo.label}</option>)}
+                </RebSelect>
               </RebField>
             </div>
 
@@ -487,10 +488,10 @@ export function MedidasAcasalamentoSection() {
                   {formMedida.itens.map((item, indice) => (
                     <div key={indice} className="grid grid-cols-[minmax(150px,2fr)_repeat(3,minmax(90px,1fr))_auto] items-end gap-x-3 max-[760px]:grid-cols-2">
                       <RebField label={`Indicador ${indice + 1}`}>
-                        <select value={item.indicadorId} onChange={(e) => atualizarItemMedida(indice, { indicadorId: e.target.value })} required>
+                        <RebSelect aria-label={`Indicador ${indice + 1}`} value={item.indicadorId} onChange={(v) => atualizarItemMedida(indice, { indicadorId: v })} required>
                           <option value="">Selecione</option>
                           {indicadores.map((indicador) => <option key={indicador.id} value={indicador.id}>{indicador.sigla} · {indicador.nome}</option>)}
-                        </select>
+                        </RebSelect>
                       </RebField>
                       <RebField label={`Peso ${indice + 1}`}>
                         <input type="number" min="0.0001" step="any" value={item.peso} onChange={(e) => atualizarItemMedida(indice, { peso: e.target.value })} required />
@@ -542,10 +543,10 @@ export function MedidasAcasalamentoSection() {
                 {formCombinacao.itens.map((item, indice) => (
                   <div key={indice} className="grid grid-cols-[minmax(170px,2fr)_minmax(90px,1fr)_minmax(80px,1fr)_auto_auto] items-end gap-x-3 max-[700px]:grid-cols-2">
                     <RebField label={`Medida ${indice + 1}`}>
-                      <select value={item.medidaId} onChange={(e) => atualizarItemCombinacao(indice, { medidaId: e.target.value })} required>
+                      <RebSelect aria-label={`Medida ${indice + 1}`} value={item.medidaId} onChange={(v) => atualizarItemCombinacao(indice, { medidaId: v })} required>
                         <option value="">Selecione</option>
-                        {medidas.map((medida) => <option key={medida.id} value={medida.id}>{medida.nome}{medida.ativo ? "" : " · inativa"}</option>)}
-                      </select>
+                        {medidas.map((medida) => <option key={medida.id} value={medida.id}>{`${medida.nome}${medida.ativo ? "" : " · inativa"}`}</option>)}
+                      </RebSelect>
                     </RebField>
                     <RebField label={`Peso da medida ${indice + 1}`}>
                       <input type="number" min="0.0001" step="any" value={item.peso} onChange={(e) => atualizarItemCombinacao(indice, { peso: e.target.value })} required />

@@ -5,6 +5,9 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
+import { EXPLICACAO_OPERACAO, EXPLICACAO_METODO_COLHEITA } from "../lib/explicacoes";
 
 // Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
 // decimal pt-BR) e campos vazios. Retorna {} quando não há número parseável.
@@ -166,22 +169,22 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
           )}
 
           <RebField label="Tipo de operação">
-            <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoOperacao)}>
-              {opcoesTipo.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
+            <RebSelect aria-label="Tipo de operação" value={tipo} onChange={(v) => setTipo(v as TipoOperacao)}>
+              {opcoesTipo.map((o) => <option key={o.v} value={o.v} data-descricao={dominio === "colheita" ? undefined : EXPLICACAO_OPERACAO[o.v]}>{o.label}</option>)}
+            </RebSelect>
           </RebField>
 
           <RebField label="Data">
-            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} />
           </RebField>
 
           {/* Fitossanidade — praga + produto + calda + incidência observada */}
           {dominio === "fitossanidade" && (
             <>
               <RebField label="Praga/doença alvo">
-                <select className="rb-field-select" value={praga} onChange={(e) => setPraga(e.target.value as PragaDoenca)}>
+                <RebSelect aria-label="Praga/doença alvo" value={praga} onChange={(v) => setPraga(v as PragaDoenca)}>
                   {PRAGAS.map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
-                </select>
+                </RebSelect>
               </RebField>
               {tipo !== "MONITORAMENTO_MIP" && (
                 <>
@@ -236,12 +239,12 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
           {dominio === "colheita" && (
             <>
               <RebField label="Método">
-                <select className="rb-field-select" value={metodoColheita} onChange={(e) => setMetodoColheita(e.target.value as any)}>
-                  <option value="DERRIÇA_PANO">Derriça no pano</option>
-                  <option value="DERRIÇA_MECANIZADA">Derriça mecanizada</option>
-                  <option value="SELETIVA">Seletiva (catação)</option>
-                  <option value="VARRIÇÃO">Varrição</option>
-                </select>
+                <RebSelect aria-label="Método" value={metodoColheita} onChange={(v) => setMetodoColheita(v as keyof typeof EXPLICACAO_METODO_COLHEITA)}>
+                  <option value="DERRIÇA_PANO" data-descricao={EXPLICACAO_METODO_COLHEITA["DERRIÇA_PANO"]}>Derriça no pano</option>
+                  <option value="DERRIÇA_MECANIZADA" data-descricao={EXPLICACAO_METODO_COLHEITA["DERRIÇA_MECANIZADA"]}>Derriça mecanizada</option>
+                  <option value="SELETIVA" data-descricao={EXPLICACAO_METODO_COLHEITA.SELETIVA}>Seletiva (catação)</option>
+                  <option value="VARRIÇÃO" data-descricao={EXPLICACAO_METODO_COLHEITA["VARRIÇÃO"]}>Varrição</option>
+                </RebSelect>
               </RebField>
               <RebField label="Litros de cereja colhidos">
                 <input type="number" value={litrosCereja} onChange={(e) => setLitrosCereja(e.target.value)} placeholder="Medido no campo" />

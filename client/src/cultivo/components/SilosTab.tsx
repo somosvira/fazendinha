@@ -17,6 +17,8 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -34,6 +36,12 @@ const ORIGEM_LABEL: Record<OrigemMovimentoSilo, string> = {
   AJUSTE: "Ajuste",
 };
 // Movimentos manuais aceitos pelo backend — ENTRADA/COLHEITA é automática (produção).
+// Explicação simples das saídas manuais (server/src/services/cultivo/silos.ts).
+const ORIGEM_DESCRICAO: Partial<Record<OrigemMovimentoSilo, string>> = {
+  NUTRICAO: "Saída para alimentar o rebanho.",
+  VENDA: "Saída vendida.",
+  AJUSTE: "Corrige o saldo quando a conferência do silo não bate.",
+};
 const ORIGENS_MANUAIS: OrigemMovimentoSilo[] = ["NUTRICAO", "VENDA", "AJUSTE"];
 
 /* Silos (saldo + tipo) e razão de movimentos — selecionar um silo abre o
@@ -160,7 +168,7 @@ function SiloDetalhe({ silo, onVoltar }: { silo: { id: number; nome: string; tip
   );
 }
 
-function SiloForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
+export function SiloForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoSilo>("GRAO");
   const [capacidade, setCapacidade] = useState("");
@@ -207,10 +215,10 @@ function SiloForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => 
       </RebField>
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Tipo*" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoSilo)}>
-            <option value="GRAO">Grão</option>
-            <option value="SILAGEM">Silagem</option>
-          </select>
+          <RebSelect aria-label="Tipo" value={tipo} onChange={(v) => mudarTipo(v as TipoSilo)}>
+            <option value="GRAO" data-descricao="Guarda milho em grão, medido em sacas.">Grão</option>
+            <option value="SILAGEM" data-descricao="Guarda silagem, medida em toneladas.">Silagem</option>
+          </RebSelect>
         </RebField>
         <RebField label="Unidade*" style={{ flex: 1 }}>
           <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="sc / ton" />
@@ -224,7 +232,7 @@ function SiloForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => 
   );
 }
 
-function MovimentoSiloForm({ siloId, onFechar, onSalvo }: { siloId: number; onFechar: () => void; onSalvo: () => void }) {
+export function MovimentoSiloForm({ siloId, onFechar, onSalvo }: { siloId: number; onFechar: () => void; onSalvo: () => void }) {
   const [data, setData] = useState<string>(HOJE);
   const [tipo] = useState<TipoMovimentoSilo>("SAIDA");
   const [quantidade, setQuantidade] = useState("");
@@ -265,12 +273,12 @@ function MovimentoSiloForm({ siloId, onFechar, onSalvo }: { siloId: number; onFe
     >
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Origem*" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={origem} onChange={(e) => setOrigem(e.target.value as OrigemMovimentoSilo)}>
-            {ORIGENS_MANUAIS.map((o) => <option key={o} value={o}>{ORIGEM_LABEL[o]}</option>)}
-          </select>
+          <RebSelect aria-label="Origem" value={origem} onChange={(v) => setOrigem(v as OrigemMovimentoSilo)}>
+            {ORIGENS_MANUAIS.map((o) => <option key={o} value={o} data-descricao={ORIGEM_DESCRICAO[o]}>{ORIGEM_LABEL[o]}</option>)}
+          </RebSelect>
         </RebField>
         <RebField label="Quantidade*" style={{ flex: 1 }}>
           <input type="number" step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />

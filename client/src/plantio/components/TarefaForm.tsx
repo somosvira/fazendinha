@@ -5,6 +5,10 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
+import { EXPLICACAO_OPERACAO } from "../lib/explicacoes";
 
 // Conjunto de tipos de operação — reusa os mesmos rótulos do OperacaoForm,
 // agora num único select (a tarefa não distingue domínio).
@@ -136,23 +140,29 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
               </RebField>
 
               <RebField label="Tipo de operação">
-                <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                  {TIPOS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-                </select>
+                <RebSelect aria-label="Tipo de operação" value={tipo} onChange={setTipo}>
+                  {TIPOS.map((o) => <option key={o.v} value={o.v} data-descricao={EXPLICACAO_OPERACAO[o.v]}>{o.label}</option>)}
+                </RebSelect>
               </RebField>
 
               <div style={{ display: "flex", gap: 10 }}>
                 <RebField label="Talhão" style={{ flex: 1 }}>
-                  <select className="rb-field-select" value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
-                    <option value="">— (lavoura toda)</option>
-                    {talhoes.map((th) => <option key={th.id} value={th.id}>{th.codigo} · {th.nome}</option>)}
-                  </select>
+                  <SelectBusca
+                    variante="sublinhado"
+                    aria-label="Talhão"
+                    value={talhaoId}
+                    onValueChange={setTalhaoId}
+                    opcaoVazia="— (lavoura toda)"
+                    placeholder="— (lavoura toda)"
+                    buscaPlaceholder="Buscar talhão…"
+                    options={talhoes.map((th) => ({ value: String(th.id), label: `${th.codigo} · ${th.nome}` }))}
+                  />
                 </RebField>
                 <RebField label="Lavoura" style={{ flex: 1 }}>
-                  <select className="rb-field-select" value={lavouraId} onChange={(e) => setLavouraId(e.target.value)}>
+                  <RebSelect aria-label="Lavoura" value={lavouraId} onChange={setLavouraId}>
                     <option value="">—</option>
                     {lavouras.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-                  </select>
+                  </RebSelect>
                 </RebField>
               </div>
 
@@ -181,7 +191,7 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <RebField label="Data prevista" style={{ flex: 1 }}>
-                    <input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
+                    <CampoData variante="sublinhado" aria-label="Data prevista" value={dataPrevista} onChange={setDataPrevista} />
                   </RebField>
                   <RebField label="Custo previsto (R$)" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={custoPrev} onChange={(e) => setCustoPrev(e.target.value)} />
@@ -198,9 +208,9 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
               </p>
 
               <RebField label="Status">
-                <select className="rb-field-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <RebSelect aria-label="Status" value={status} onChange={setStatus}>
                   {STATUS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-                </select>
+                </RebSelect>
               </RebField>
 
               <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: 12, margin: "10px 0" }}>
@@ -215,7 +225,7 @@ export function TarefaForm({ modo, safraId, tarefa, onFechar, onSalvo }: {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <RebField label="Data realizada" style={{ flex: 1 }}>
-                    <input type="date" value={dataRealizada} onChange={(e) => setDataRealizada(e.target.value)} />
+                    <CampoData variante="sublinhado" aria-label="Data realizada" value={dataRealizada} onChange={setDataRealizada} />
                   </RebField>
                   <RebField label="Custo real (R$)" style={{ flex: 1 }}>
                     <input type="number" step="0.01" value={custoReal} onChange={(e) => setCustoReal(e.target.value)} />

@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { obterAnaliseCategorias, obterConfiguracoesFinanceiras, type AnaliseCategorias as Dados, type ConfiguracoesFinanceiras } from "./novo-api";
 import { brl, ErrorBox, Panel } from "./financeiro-ui";
+import { CampoData } from "../components/CampoData";
+import { CampoSelect } from "../components/CampoSelect";
+import { SelectBusca } from "../components/SelectBusca";
 
-const SELECT = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm";
+/* As frases curtas resumem o que o serviço soma em cada base
+ * (server/src/services/financeiro/analise-categorias.ts). */
+const OPCOES_BASE = [
+  { value: "compras", label: "Compras e serviços", descricao: "Quanto foi comprado em produtos e serviços, pela data da compra." },
+  { value: "pagamentos", label: "Pagamentos", descricao: "Quanto saiu das contas para pagar, pela data do pagamento." },
+  { value: "pendente", label: "A pagar", descricao: "Quanto ainda falta pagar nas parcelas que vencem no período." },
+];
 const hoje = new Date().toISOString().slice(0, 10);
 const explicacoes: Record<string, string> = {
   compras: "Valor dos itens comprados e serviços contratados na data da operação. Operações canceladas são excluídas.",
@@ -28,11 +37,11 @@ export function AnaliseCategorias() {
     <p className="mt-2 text-sm text-ink-3">Consulte quanto foi comprado, pago ou está a pagar na fazenda selecionada.</p>
     <Panel className="mt-4 p-5">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="text-sm">Consultar<select className={SELECT} value={filtros.base} onChange={(e) => alterar("base", e.target.value)}><option value="compras">Compras e serviços</option><option value="pagamentos">Pagamentos</option><option value="pendente">A pagar</option></select></label>
-        <label className="text-sm">Data inicial<input type="date" className={SELECT} value={filtros.inicio} onChange={(e) => alterar("inicio", e.target.value)} /></label>
-        <label className="text-sm">Data final<input type="date" className={SELECT} value={filtros.fim} onChange={(e) => alterar("fim", e.target.value)} /></label>
-        <label className="text-sm">Categoria<select className={SELECT} value={filtros.categoriaId} onChange={(e) => alterar("categoriaId", e.target.value)}><option value="">Todas as categorias</option><option value="0">Sem categoria</option>{config?.categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select></label>
-        <label className="text-sm">Centro de custo<select className={SELECT} value={filtros.centroCustoId} onChange={(e) => alterar("centroCustoId", e.target.value)}><option value="">Todos os centros</option><option value="0">Sem centro de custo</option>{config?.centrosCusto.map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</select></label>
+        <label className="text-sm">Consultar<CampoSelect aria-label="Consultar" value={filtros.base} onValueChange={(v) => alterar("base", v)} options={OPCOES_BASE} /></label>
+        <label className="text-sm">Data inicial<CampoData aria-label="Data inicial" value={filtros.inicio} onChange={(v) => alterar("inicio", v)} /></label>
+        <label className="text-sm">Data final<CampoData aria-label="Data final" value={filtros.fim} onChange={(v) => alterar("fim", v)} /></label>
+        <label className="text-sm">Categoria<SelectBusca aria-label="Categoria" value={filtros.categoriaId} onValueChange={(v) => alterar("categoriaId", v)} opcaoVazia="Todas as categorias" options={[{ value: "0", label: "Sem categoria" }, ...(config?.categorias ?? []).map((c) => ({ value: String(c.id), label: `${c.nome}${c.ativo ? "" : " (inativa)"}` }))]} buscaPlaceholder="Buscar categoria…" /></label>
+        <label className="text-sm">Centro de custo<SelectBusca aria-label="Centro de custo" value={filtros.centroCustoId} onValueChange={(v) => alterar("centroCustoId", v)} opcaoVazia="Todos os centros" options={[{ value: "0", label: "Sem centro de custo" }, ...(config?.centrosCusto ?? []).map((c) => ({ value: String(c.id), label: `${c.nome}${c.ativo ? "" : " (inativo)"}` }))]} buscaPlaceholder="Buscar centro de custo…" /></label>
       </div>
       <p className="mt-4 text-sm text-ink-3">{explicacoes[filtros.base]}</p><ErrorBox erro={erro} />
       {carregando ? <p className="mt-5" role="status">Calculando despesas…</p> : dados && <>

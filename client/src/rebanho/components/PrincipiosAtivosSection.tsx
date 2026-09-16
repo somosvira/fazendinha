@@ -4,6 +4,7 @@ import {
   listarProdutos, obterComposicaoProduto, definirComposicaoProduto,
   type PrincipioAtivoDTO, type ProdutoDTO, type ComposicaoProdutoDTO,
 } from "../api";
+import { SelectBusca } from "@/components/SelectBusca";
 
 // Catálogo de princípios ativos + composição de medicamentos. Base para carência/antibiótico:
 // um medicamento tem 1+ princípios; a carência efetiva do leite/carne deriva da composição.
@@ -137,10 +138,17 @@ function ComposicaoEditor({ principios, onMudou }: { principios: PrincipioAtivoD
   return (
     <div className="border-t border-[color:var(--rule-soft)] pt-3">
       <p className="mb-2 text-xs uppercase tracking-[.06em] text-ink-3">Composição de um medicamento</p>
-      <select className="mb-2 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={produtoId} onChange={(e) => setProdutoId(e.target.value)}>
-        <option value="">selecione um medicamento…</option>
-        {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-      </select>
+      <SelectBusca
+        variante="sublinhado"
+        className="mb-2 w-auto min-w-56 max-w-sm rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]"
+        aria-label="Medicamento"
+        value={produtoId}
+        onValueChange={setProdutoId}
+        placeholder="selecione um medicamento…"
+        buscaPlaceholder="Buscar medicamento…"
+        vazioTexto="Nenhum medicamento encontrado."
+        options={produtos.map((p) => ({ value: String(p.id), label: p.nome }))}
+      />
 
       {produtoId && (
         <>

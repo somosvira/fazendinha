@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebFieldset } from "@/components/rb/RebPrimitives";
+import { RebSelect } from "@/components/rb/RebSelect";
 import {
   criarFolhaCampo,
   criarModeloFormularioCampo,
@@ -136,7 +137,7 @@ export function FormularioCampoModal({
       <div className="grid min-h-[540px] gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className="min-w-0">
           <label className="mb-4 grid gap-1 text-sm font-semibold text-foreground">Nome da folha<input aria-label="Nome da folha" value={nome} onChange={(e) => setNome(e.target.value)} /></label>
-          <label className="mb-4 grid gap-1 text-sm font-semibold text-foreground">Usar modelo salvo<select value={modeloId} onChange={(e) => usarModelo(e.target.value)}><option value="">Configuração atual</option>{modelos.map((modelo) => <option key={modelo.id} value={modelo.id}>{modelo.nome}</option>)}</select></label>
+          <label className="mb-4 grid gap-1 text-sm font-semibold text-foreground">Usar modelo salvo<RebSelect aria-label="Usar modelo salvo" value={modeloId} onChange={usarModelo}><option value="" data-descricao="Mantém as colunas e campos marcados abaixo.">Configuração atual</option>{modelos.map((modelo) => <option key={modelo.id} value={modelo.id}>{modelo.nome}</option>)}</RebSelect></label>
           <RebFieldset><legend>Dados preenchidos pelo sistema</legend><div className="grid gap-2 pb-3">{colunasDisponiveis.map((coluna) => <label key={coluna.chave} className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" aria-label={coluna.rotulo} checked={colunasSistema.includes(coluna.chave)} onChange={() => toggleColuna(coluna.chave)} />{coluna.rotulo}</label>)}</div></RebFieldset>
           <RebFieldset><legend>Campos para preencher no papel</legend><div className="grid gap-2 pb-3">{campos.map((campo) => <label key={campo.chave} className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" aria-label={campo.rotulo} checked={camposPapel.includes(campo.chave)} onChange={() => toggleCampo(campo.chave)} />{campo.rotulo}{campo.obrigatorio && <span className="text-xs text-ink-3">obrigatório</span>}</label>)}</div></RebFieldset>
         </div>

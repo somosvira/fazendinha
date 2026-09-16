@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ listar: vi.fn(), ajustar: vi.fn(), propriedades: vi.fn() }));
 vi.mock("../api", () => ({ listarSaldos: mocks.listar, ajustarContagem: mocks.ajustar, listarPropriedades: mocks.propriedades }));
 vi.mock("./ProdutoForm", () => ({ ProdutoForm: () => null }));
 import { MovimentoForm } from "./MovimentoForm";
-afterEach(cleanup);
-beforeEach(() => { vi.clearAllMocks(); mocks.propriedades.mockResolvedValue([{ id: 1 }]); mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 12 }]); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => { vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} }); Element.prototype.scrollIntoView = vi.fn(); vi.clearAllMocks(); mocks.propriedades.mockResolvedValue([{ id: 1 }]); mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 12 }]); });
 async function preencher(contada = "10") {
   render(<MovimentoForm onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByRole("option", { name: "Ração (kg)" });
-  fireEvent.change(screen.getByLabelText("Produto"), { target: { value: "1" } });
+  const produto = screen.getByRole("combobox", { name: "Produto" }) as HTMLButtonElement;
+  await waitFor(() => expect(produto.disabled).toBe(false));
+  fireEvent.click(produto);
+  fireEvent.click(await screen.findByRole("option", { name: "Ração (kg)" }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect(produto.textContent).toBe("Ração (kg)");
   fireEvent.change(screen.getByLabelText("Quantidade encontrada na contagem"), { target: { value: contada } });
   fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Contagem conferida" } });
 }

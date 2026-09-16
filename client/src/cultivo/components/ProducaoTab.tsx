@@ -18,6 +18,8 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { RebMain, RebEmpty, RebAnm } from "@/components/rb/RebPrimitives";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -134,7 +136,7 @@ export function ProducaoTab() {
   );
 }
 
-function ProducaoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: number; onFechar: () => void; onSalvo: () => void }) {
+export function ProducaoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: number; onFechar: () => void; onSalvo: () => void }) {
   const { data: areas } = useAreasCultivo(safraCultivoId);
   const [areaCultivoId, setAreaCultivoId] = useState<string>("");
   const [data, setData] = useState<string>(HOJE);
@@ -193,19 +195,19 @@ function ProducaoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: n
     >
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Tipo*" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={tipo} onChange={(e) => mudarTipo(e.target.value as TipoProducao)}>
-            <option value="GRAO">Grão (SC)</option>
-            <option value="SILAGEM">Silagem (TON)</option>
-          </select>
+          <RebSelect aria-label="Tipo" value={tipo} onChange={(v) => mudarTipo(v as TipoProducao)}>
+            <option value="GRAO" data-descricao="Milho colhido em grão, medido em sacas.">Grão (SC)</option>
+            <option value="SILAGEM" data-descricao="Milho colhido para silagem, medido em toneladas.">Silagem (TON)</option>
+          </RebSelect>
         </RebField>
         <RebField label="Área" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={areaCultivoId} onChange={(e) => setAreaCultivoId(e.target.value)}>
+          <RebSelect aria-label="Área" value={areaCultivoId} onChange={setAreaCultivoId}>
             <option value="">—</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
-          </select>
+          </RebSelect>
         </RebField>
       </div>
 
@@ -214,18 +216,19 @@ function ProducaoForm({ safraCultivoId, onFechar, onSalvo }: { safraCultivoId: n
           <input type="number" step="0.01" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} />
         </RebField>
         <RebField label="Destino" style={{ flex: 1 }}>
-          <select className="rb-field-select" value={destino} onChange={(e) => setDestino(e.target.value as DestinoProducao | "")}>
+          {/* Efeitos conforme server/src/services/cultivo/producao.ts. */}
+          <RebSelect aria-label="Destino" value={destino} onChange={(v) => setDestino(v as DestinoProducao | "")}>
             <option value="">—</option>
-            <option value="VENDA">Venda</option>
-            <option value="SILO">Silo</option>
-          </select>
+            <option value="VENDA" data-descricao="Vendida direto da colheita; não mexe no saldo de nenhum silo.">Venda</option>
+            <option value="SILO" data-descricao="Guardada no silo escolhido; a quantidade entra no saldo dele.">Silo</option>
+          </RebSelect>
         </RebField>
         {destino === "SILO" && (
           <RebField label="Silo" style={{ flex: 1 }}>
-            <select className="rb-field-select" value={siloId} onChange={(e) => setSiloId(e.target.value)}>
+            <RebSelect aria-label="Silo" value={siloId} onChange={setSiloId}>
               <option value="">Selecione…</option>
               {silos.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
+            </RebSelect>
           </RebField>
         )}
       </div>

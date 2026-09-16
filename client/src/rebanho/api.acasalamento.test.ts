@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import {
   atualizarMedidaAcasalamento,
   criarCombinacaoMedida,
@@ -44,6 +44,18 @@ function apiVazia(input: RequestInfo | URL, init?: RequestInit) {
   if (url.endsWith("/rebanho/acasalamento/medidas") || url.endsWith("/rebanho/acasalamento/medidas?inativas=1")) return resposta([]);
   if (url.endsWith("/rebanho/acasalamento/combinacoes") || url.endsWith("/rebanho/acasalamento/combinacoes?inativas=1")) return resposta([]);
   return resposta([]);
+}
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
+/* Abre o seletor, escolhe a opção e espera o Radix devolver o foco ao gatilho. */
+async function escolher(rotulo: string, opcao: string, dentro: Pick<typeof screen, "getByRole"> = screen) {
+  fireEvent.click(dentro.getByRole("combobox", { name: rotulo }));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
 afterEach(() => {
@@ -183,6 +195,18 @@ describe("cadastro de medidas e combinações", () => {
     expect(screen.getByRole("button", { name: "Cadastrar primeira medida" })).toBeTruthy();
   });
 
+  it("explica em linguagem simples cada tipo de medida", async () => {
+    vi.stubGlobal("fetch", vi.fn(apiVazia));
+    render(createElement(CadastrosView));
+    fireEvent.click(screen.getByRole("button", { name: "Medidas de acasalamento" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cadastrar primeira medida" }));
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Tipo de medida" }));
+    expect((await screen.findByRole("option", { name: "Restrição por indicador" })).textContent).toContain("Descarta touros fora do mínimo ou máximo dos indicadores.");
+    expect(screen.getByRole("option", { name: "Consanguinidade" }).textContent).toContain("Descarta touros com parentesco acima do limite com a vaca.");
+    expect(screen.getByRole("option", { name: "Pedigree" }).textContent).toContain("Exige genealogia suficiente para conferir o parentesco.");
+  });
+
   it("converte 12,5% em 0,125 ao criar medida de consanguinidade", async () => {
     const fetchMock = vi.fn(apiVazia);
     vi.stubGlobal("fetch", fetchMock);
@@ -191,7 +215,7 @@ describe("cadastro de medidas e combinações", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cadastrar primeira medida" }));
 
     fireEvent.change(screen.getByLabelText("Nome da medida"), { target: { value: "Consanguinidade controlada" } });
-    fireEvent.change(screen.getByLabelText("Tipo de medida"), { target: { value: "CONSANGUINIDADE" } });
+    await escolher("Tipo de medida", "Consanguinidade");
     fireEvent.change(screen.getByLabelText("Limite de consanguinidade (%)"), { target: { value: "12.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar medida" }));
 
@@ -216,8 +240,8 @@ describe("cadastro de medidas e combinações", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cadastrar primeira medida" }));
 
     fireEvent.change(screen.getByLabelText("Nome da medida"), { target: { value: "Mérito leiteiro" } });
-    fireEvent.change(screen.getByLabelText("Tipo de medida"), { target: { value: "MERITO" } });
-    fireEvent.change(screen.getByLabelText("Indicador 1"), { target: { value: "7" } });
+    await escolher("Tipo de medida", "Mérito genético");
+    await escolher("Indicador 1", "PTA_L · PTA leite");
     fireEvent.change(screen.getByLabelText("Peso 1"), { target: { value: "2.5" } });
     fireEvent.change(screen.getByLabelText("Mínimo 1"), { target: { value: "400" } });
     fireEvent.change(screen.getByLabelText("Máximo 1"), { target: { value: "900" } });
@@ -244,10 +268,10 @@ describe("cadastro de medidas e combinações", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cadastrar primeira medida" }));
 
     fireEvent.change(screen.getByLabelText("Nome da medida"), { target: { value: "Mérito duplicado" } });
-    fireEvent.change(screen.getByLabelText("Tipo de medida"), { target: { value: "MERITO" } });
-    fireEvent.change(screen.getByLabelText("Indicador 1"), { target: { value: "7" } });
+    await escolher("Tipo de medida", "Mérito genético");
+    await escolher("Indicador 1", "PTA_L · PTA leite");
     fireEvent.click(screen.getByRole("button", { name: "Adicionar indicador" }));
-    fireEvent.change(screen.getByLabelText("Indicador 2"), { target: { value: "7" } });
+    await escolher("Indicador 2", "PTA_L · PTA leite");
     fireEvent.click(screen.getByRole("button", { name: "Salvar medida" }));
 
     expect(screen.getByRole("alert").textContent).toContain("O indicador não pode se repetir");
@@ -274,7 +298,7 @@ describe("cadastro de medidas e combinações", () => {
 
     const formulario = screen.getByRole("form", { name: "Cadastro de combinação" });
     fireEvent.change(within(formulario).getByLabelText("Nome da combinação"), { target: { value: "Leite seguro" } });
-    fireEvent.change(within(formulario).getByLabelText("Medida 1"), { target: { value: "4" } });
+    await escolher("Medida 1", "Mérito leiteiro", within(formulario));
     fireEvent.change(within(formulario).getByLabelText("Peso da medida 1"), { target: { value: "1.5" } });
     fireEvent.click(within(formulario).getByLabelText("Obrigatória 1"));
     fireEvent.change(within(formulario).getByLabelText("Ordem 1"), { target: { value: "2" } });

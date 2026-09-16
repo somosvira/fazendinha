@@ -6,10 +6,41 @@ import { descartarRascunhoOperacao, listarOperacoes, obterConfiguracoesFinanceir
 import { useRascunhoAtivo } from "./rascunhoAtivo";
 import { FormOperacao } from "./FormOperacao";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
+import { CampoData } from "../components/CampoData";
+import { CampoMes } from "../components/CampoMes";
+import { CampoSelect } from "../components/CampoSelect";
+import { EXPLICACAO_TIPO } from "./lib/explicacoes";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
 type EfeitoFiltro = "TODOS" | "ESTOQUE" | "PAGAMENTO" | "RECEBIMENTO" | "A_PAGAR" | "A_RECEBER" | "TRANSFERENCIA" | "SEM_EFEITOS";
 type ModoPeriodo = "DIA" | "MES" | "INTERVALO";
+
+/* Filtros da barra. Os textos de efeito seguem possuiEfeito(); os de status,
+ * o cancelamento em services/financeiro/operacoes.ts (estorna transações e
+ * estoque e cancela compromissos, mantendo o registro). */
+const EXPLICACAO_TIPO_EXTRA: Record<string, string> = {
+  APORTE: "Dinheiro colocado numa conta da fazenda.",
+  RETIRADA: "Dinheiro tirado de uma conta da fazenda.",
+  TRANSFERENCIA_FINANCEIRA: "Dinheiro movido entre contas da própria fazenda.",
+  TRANSFERENCIA_ESTOQUE: "Produto que sai de um estoque e entra em outro.",
+};
+const CLASSE_FILTRO = "mt-0 h-[42px] w-full min-w-0 py-0 sm:w-auto";
+const OPCOES_TIPO = [{ value: "TODOS", label: "Todos os tipos" }, ...Object.entries(TIPO_OPERACAO).map(([value, label]) => ({ value, label, descricao: EXPLICACAO_TIPO[value]?.descricao ?? EXPLICACAO_TIPO_EXTRA[value] }))];
+const OPCOES_EFEITO: { value: EfeitoFiltro; label: string; descricao?: string }[] = [
+  { value: "TODOS", label: "Todos os efeitos" },
+  { value: "ESTOQUE", label: "Estoque", descricao: "Operações que mexeram na quantidade do estoque." },
+  { value: "PAGAMENTO", label: "Pagamento", descricao: "Operações em que saiu dinheiro de uma conta." },
+  { value: "RECEBIMENTO", label: "Recebimento", descricao: "Operações em que entrou dinheiro numa conta." },
+  { value: "A_PAGAR", label: "A pagar", descricao: "Operações que criaram parcelas a pagar, com vencimento." },
+  { value: "A_RECEBER", label: "A receber", descricao: "Operações que criaram parcelas a receber, com vencimento." },
+  { value: "TRANSFERENCIA", label: "Transferência", descricao: "Dinheiro movido entre contas da própria fazenda." },
+  { value: "SEM_EFEITOS", label: "Sem efeitos", descricao: "Não mexeram em estoque, contas nem parcelas." },
+];
+const OPCOES_STATUS = [
+  { value: "TODOS", label: "Todos os status" },
+  { value: "CONFIRMADA", label: "Confirmadas", descricao: "Operações válidas, com seus efeitos aplicados." },
+  { value: "CANCELADA", label: "Canceladas", descricao: "Os efeitos foram desfeitos, mas o registro fica no histórico." },
+];
 
 const isoLocal = (data: Date) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
 const mesPorIso = (valor: string) => valor.slice(0, 7);
@@ -20,7 +51,7 @@ function FiltroPeriodo({ inicio, fim, onChange }: { inicio: string; fim: string;
   const escolherDia = (dia: string) => { if (!dia) return; onChange(dia, dia); setAberto(false); };
   const escolherMes = (mes: string) => { if (!mes) return; const [ano, numero] = mes.split("-").map(Number); onChange(`${mes}-01`, isoLocal(new Date(ano, numero, 0))); setAberto(false); };
   const aplicarIntervalo = () => { if (!rascunhoInicio || !rascunhoFim || rascunhoInicio > rascunhoFim) return; onChange(rascunhoInicio, rascunhoFim); setAberto(false); };
-  return <Popover open={aberto} onOpenChange={(novo) => { setAberto(novo); if (novo) { setRascunhoInicio(inicio); setRascunhoFim(fim); } }}><PopoverTrigger asChild><button type="button" className="inline-flex h-[42px] w-full min-w-0 flex-[1_1_210px] items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink sm:w-auto"><span className="inline-flex min-w-0 items-center gap-2"><CalendarRange size={16} className="shrink-0 text-ink-3" /><span className="truncate">{rotuloPeriodo(inicio, fim)}</span></span><span className="text-[10px] text-ink-3">▾</span></button></PopoverTrigger><PopoverContent align="start" sideOffset={6} className="w-[min(360px,calc(100vw-24px))] rounded-xl border border-border bg-white p-4 shadow-xl"><div className="grid grid-cols-3 rounded-lg bg-[#f4f2e9] p-1">{(["DIA", "MES", "INTERVALO"] as ModoPeriodo[]).map((item) => <button key={item} type="button" onClick={() => setModo(item)} className={`rounded-md px-2 py-2 text-xs font-semibold ${modo === item ? "bg-white text-ink shadow-sm" : "text-ink-3"}`}>{item === "DIA" ? "Dia" : item === "MES" ? "Mês" : "Intervalo"}</button>)}</div>{modo === "DIA" && <label className="mt-4 block text-sm font-medium">Data<input aria-label="Escolher uma data" type="date" defaultValue={inicio} onChange={(e) => escolherDia(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" /></label>}{modo === "MES" && <label className="mt-4 block text-sm font-medium">Mês<input aria-label="Escolher um mês" type="month" defaultValue={mesPorIso(inicio)} onChange={(e) => escolherMes(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" /></label>}{modo === "INTERVALO" && <div className="mt-4"><div className="grid grid-cols-2 gap-3"><label className="text-sm font-medium">De<input aria-label="Início do intervalo" type="date" value={rascunhoInicio} max={rascunhoFim} onChange={(e) => setRascunhoInicio(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" /></label><label className="text-sm font-medium">Até<input aria-label="Fim do intervalo" type="date" value={rascunhoFim} min={rascunhoInicio} onChange={(e) => setRascunhoFim(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal" /></label></div><Button className="mt-4 w-full" disabled={!rascunhoInicio || !rascunhoFim || rascunhoInicio > rascunhoFim} onClick={aplicarIntervalo}>Aplicar período</Button></div>}</PopoverContent></Popover>;
+  return <Popover open={aberto} onOpenChange={(novo) => { setAberto(novo); if (novo) { setRascunhoInicio(inicio); setRascunhoFim(fim); } }}><PopoverTrigger asChild><button type="button" aria-label={`Período: ${rotuloPeriodo(inicio, fim)}`} className="inline-flex h-[42px] w-full min-w-0 flex-[1_1_210px] items-center justify-between gap-3 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink sm:w-auto"><span className="inline-flex min-w-0 items-center gap-2"><CalendarRange size={16} className="shrink-0 text-ink-3" /><span className="truncate">{rotuloPeriodo(inicio, fim)}</span></span><span className="text-[10px] text-ink-3">▾</span></button></PopoverTrigger><PopoverContent align="start" sideOffset={6} className="w-[min(360px,calc(100vw-24px))] rounded-xl border border-border bg-white p-4 shadow-xl"><div className="grid grid-cols-3 rounded-lg bg-[#f4f2e9] p-1">{(["DIA", "MES", "INTERVALO"] as ModoPeriodo[]).map((item) => <button key={item} type="button" onClick={() => setModo(item)} className={`rounded-md px-2 py-2 text-xs font-semibold ${modo === item ? "bg-white text-ink shadow-sm" : "text-ink-3"}`}>{item === "DIA" ? "Dia" : item === "MES" ? "Mês" : "Intervalo"}</button>)}</div>{modo === "DIA" && <label className="mt-4 block text-sm font-medium">Data<CampoData aria-label="Escolher uma data" value={inicio} onChange={escolherDia} /></label>}{modo === "MES" && <label className="mt-4 block text-sm font-medium">Mês<CampoMes aria-label="Escolher um mês" value={mesPorIso(inicio)} onChange={escolherMes} /></label>}{modo === "INTERVALO" && <div className="mt-4"><div className="grid grid-cols-2 gap-3"><label className="text-sm font-medium">De<CampoData aria-label="Início do intervalo" value={rascunhoInicio} max={rascunhoFim} onChange={setRascunhoInicio} /></label><label className="text-sm font-medium">Até<CampoData aria-label="Fim do intervalo" value={rascunhoFim} min={rascunhoInicio} onChange={setRascunhoFim} /></label></div><Button className="mt-4 w-full" disabled={!rascunhoInicio || !rascunhoFim || rascunhoInicio > rascunhoFim} onClick={aplicarIntervalo}>Aplicar período</Button></div>}</PopoverContent></Popover>;
 }
 
 function Efeitos({ operacao }: { operacao: Operacao }) {
@@ -102,9 +133,9 @@ export function OperacoesFinanceiras() {
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
         <label className="relative w-full min-w-0 flex-[1_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar operações" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <FiltroPeriodo inicio={inicio} fim={fim} onChange={(novoInicio, novoFim) => { setInicio(novoInicio); setFim(novoFim); }} />
-        <select aria-label="Filtrar por tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_180px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os tipos</option>{Object.entries(TIPO_OPERACAO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select>
-        <select aria-label="Filtrar por efeito" value={efeito} onChange={(e) => setEfeito(e.target.value as EfeitoFiltro)} className="h-[42px] w-full min-w-0 flex-[1_1_170px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os efeitos</option><option value="ESTOQUE">Estoque</option><option value="PAGAMENTO">Pagamento</option><option value="RECEBIMENTO">Recebimento</option><option value="A_PAGAR">A pagar</option><option value="A_RECEBER">A receber</option><option value="TRANSFERENCIA">Transferência</option><option value="SEM_EFEITOS">Sem efeitos</option></select>
-        <select aria-label="Filtrar por status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="TODOS">Todos os status</option><option value="CONFIRMADA">Confirmadas</option><option value="CANCELADA">Canceladas</option></select>
+        <CampoSelect aria-label="Filtrar por tipo" value={tipo} onValueChange={setTipo} options={OPCOES_TIPO} className={`${CLASSE_FILTRO} flex-[1_1_180px]`} />
+        <CampoSelect aria-label="Filtrar por efeito" value={efeito} onValueChange={(v) => setEfeito(v as EfeitoFiltro)} options={OPCOES_EFEITO} className={`${CLASSE_FILTRO} flex-[1_1_170px]`} />
+        <CampoSelect aria-label="Filtrar por status" value={status} onValueChange={setStatus} options={OPCOES_STATUS} className={`${CLASSE_FILTRO} flex-[1_1_150px]`} />
       </div>
       {filtradas.length ? <TabelaFinanceira rotulo="Operações do período" itens={filtradas} colunas={COLUNAS} chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} classeLinha={(operacao) => operacao.status === "CANCELADA" ? "opacity-60" : ""} /> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </Panel>

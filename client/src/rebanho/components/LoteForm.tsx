@@ -3,6 +3,7 @@ import { criarLote, editarLote, excluirLote, obterLote, useAnimaisDisponiveis, u
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField, REB_FIELD_BOXED } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebFieldset, REB_SUB } from "@/components/rb/RebPrimitives";
 import { AnimalIdentity } from "./AnimalIdentity";
 
@@ -127,10 +128,10 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
       <RebField label="Nome*"><input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="ex.: Lactação alta" autoFocus /></RebField>
 
         <RebField label="Dieta">
-          <select className="rb-field-select" value={dietaId} onChange={(e) => setDietaId(e.target.value)}>
+          <RebSelect aria-label="Dieta" value={dietaId} onChange={setDietaId}>
             <option value="">— sem dieta —</option>
             {dietas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
-          </select>
+          </RebSelect>
         </RebField>
 
         <RebFieldset style={{ padding: "10px 14px 12px" }}>

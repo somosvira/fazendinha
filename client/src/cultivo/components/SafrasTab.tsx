@@ -22,6 +22,7 @@ import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
 import { RebMain, RebEmpty, RebAnm, RebPill } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";
 import { fmtMoneyExact } from "@/components/charts";
@@ -229,7 +230,7 @@ function SafraDetalhe({ safraId, onVoltar, onNavMil }: { safraId: number; onVolt
   );
 }
 
-function SafraForm({ modo, safra, onFechar, onSalvo }: {
+export function SafraForm({ modo, safra, onFechar, onSalvo }: {
   modo: "novo" | "editar";
   safra?: { id: number; nome: string; ano: number; dataInicio: string; dataFim: string | null; areaHaTotal: number | null; observacao: string | null };
   onFechar: () => void;
@@ -290,10 +291,10 @@ function SafraForm({ modo, safra, onFechar, onSalvo }: {
 
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Início*" style={{ flex: 1 }}>
-          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Início" value={dataInicio} onChange={setDataInicio} max={HOJE} />
         </RebField>
         <RebField label="Fim (previsto)" style={{ flex: 1 }}>
-          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          <CampoData variante="sublinhado" aria-label="Fim (previsto)" value={dataFim} onChange={setDataFim} />
         </RebField>
         <RebField label="Área total (ha)" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={areaHaTotal} onChange={(e) => setAreaHaTotal(e.target.value)} />

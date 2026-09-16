@@ -9,9 +9,12 @@
  * O gatilho tem o look de campo sublinhado dos <input> do RebField (borda-inferior
  * transparente → café no foco/aberto), então cai natural dentro de <RebField>.
  * Radix proíbe SelectItem com value="" — mapeamos "" ↔ __vazio__ internamente
- * (o <option value=""> continua sendo um item selecionável, ex.: "—"). */
+ * (o <option value=""> continua sendo um item selecionável, ex.: "—").
+ * `<option data-descricao="…">` mostra uma explicação curta só na lista aberta. */
 
 import * as React from "react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -31,7 +34,7 @@ const s = (v: unknown) => (v == null ? "" : String(v));
 const TRIGGER =
   "h-auto w-full justify-between rounded-none border-0 border-b border-b-border bg-transparent px-0.5 py-2 text-sm font-normal text-foreground hover:border-b-ink-2 focus-visible:border-b-[color:var(--cafe)] focus-visible:outline-none data-[state=open]:border-b-[color:var(--cafe)]";
 
-type OptEl = React.ReactElement<{ value?: unknown; children?: React.ReactNode; disabled?: boolean }>;
+type OptEl = React.ReactElement<{ value?: unknown; children?: React.ReactNode; disabled?: boolean; "data-descricao"?: string }>;
 type GroupEl = React.ReactElement<{ label?: string; children?: React.ReactNode }>;
 
 const isEl = (node: React.ReactNode, type: string): boolean =>
@@ -57,6 +60,24 @@ function acharLabel(children: React.ReactNode, val: string): React.ReactNode | u
 
 function renderItem(el: OptEl, key: React.Key) {
   const val = s(el.props.value);
+  const descricao = el.props["data-descricao"];
+  if (descricao) {
+    return (
+      <SelectPrimitive.Item
+        key={key}
+        value={val === "" ? VAZIO : val}
+        disabled={el.props.disabled}
+        data-slot="select-item"
+        className="relative flex w-full cursor-pointer select-none flex-col px-3 py-2 pr-9 font-sans text-[13px] outline-none transition-colors focus:bg-[color:var(--leite-soft)] focus:text-ink data-[state=checked]:bg-mast data-[state=checked]:font-semibold data-[state=checked]:text-mast-ink data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+      >
+        <SelectPrimitive.ItemText>{el.props.children}</SelectPrimitive.ItemText>
+        <span className="mt-0.5 max-w-[46ch] text-xs font-normal leading-4 opacity-75">{descricao}</span>
+        <span className="absolute right-3 top-2.5 flex size-4 items-center justify-center">
+          <SelectPrimitive.ItemIndicator><Check className="size-4 stroke-[2.5]" /></SelectPrimitive.ItemIndicator>
+        </span>
+      </SelectPrimitive.Item>
+    );
+  }
   return (
     <SelectItem key={key} value={val === "" ? VAZIO : val} disabled={el.props.disabled}>
       {el.props.children}
@@ -92,6 +113,8 @@ export interface RebSelectProps {
   placeholder?: string;
   disabled?: boolean;
   id?: string;
+  required?: boolean;
+  name?: string;
   "aria-label"?: string;
 }
 
@@ -103,6 +126,8 @@ export function RebSelect({
   placeholder,
   disabled,
   id,
+  required,
+  name,
   "aria-label": ariaLabel,
 }: RebSelectProps) {
   const val = s(value);
@@ -112,6 +137,8 @@ export function RebSelect({
       value={val === "" ? VAZIO : val}
       onValueChange={(v) => onChange(v === VAZIO ? "" : v)}
       disabled={disabled}
+      required={required}
+      name={name}
     >
       <SelectTrigger id={id} aria-label={ariaLabel} className={cn(TRIGGER, className)}>
         <SelectValue placeholder={placeholder}>{label}</SelectValue>

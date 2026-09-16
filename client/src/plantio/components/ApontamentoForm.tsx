@@ -4,6 +4,8 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
 import { fmtMoneyExact } from "@/components/charts";
 
 const num = (s: string): number | null => {
@@ -78,14 +80,20 @@ export function ApontamentoForm({ safraId, onFechar, onSalvo }: {
           </div>
 
           <RebField label="Data">
-            <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+            <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} />
           </RebField>
 
           <RebField label="Talhão">
-            <select className="rb-field-select" value={talhaoId} onChange={(e) => setTalhaoId(e.target.value)}>
-              <option value="">— (geral / lavoura)</option>
-              {talhoes.map((th) => <option key={th.id} value={th.id}>{th.codigo} · {th.nome}</option>)}
-            </select>
+            <SelectBusca
+                    variante="sublinhado"
+                    aria-label="Talhão"
+                    value={talhaoId}
+                    onValueChange={setTalhaoId}
+                    opcaoVazia="— (geral / lavoura)"
+                    placeholder="— (geral / lavoura)"
+                    buscaPlaceholder="Buscar talhão…"
+                    options={talhoes.map((th) => ({ value: String(th.id), label: `${th.codigo} · ${th.nome}` }))}
+                  />
           </RebField>
 
           <RebField label={tipo === "MAQUINA" ? "Máquina / recurso*" : "Pessoa / equipe*"}>

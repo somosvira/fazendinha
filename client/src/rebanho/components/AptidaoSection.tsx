@@ -10,6 +10,12 @@ import { getHojeISO } from "../../lib/hoje";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebBox, RebEmpty, RebPill } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { SelectBusca } from "@/components/SelectBusca";
+import { CampoData } from "@/components/CampoData";
+
+// Visual em caixa dos campos desta faixa, aplicado aos gatilhos estilizados.
+const CAIXA = "rounded border border-[color:var(--rule-soft)] bg-card px-2 py-1.5 text-sm text-foreground";
 
 const fmtData = (data: string) => new Date(`${data}T00:00:00Z`).toLocaleDateString("pt-BR");
 
@@ -105,21 +111,26 @@ export function AptidaoSection({
       <form onSubmit={salvarManual} className="mt-4 grid items-end gap-2 border-t border-dashed border-[color:var(--rule-soft)] pt-3 sm:grid-cols-[minmax(150px,1.4fr)_130px_110px_minmax(170px,1.5fr)_auto]">
         <label className="flex flex-col gap-1 text-xs text-ink-3">
           Decisão manual
-          <select className="rounded border border-[color:var(--rule-soft)] bg-card px-2 py-1.5 text-sm text-foreground" value={animalId} onChange={(e) => setAnimalId(e.target.value)}>
-            <option value="">selecione a novilha…</option>
-            {novilhas.map((animal) => <option key={animal.id} value={animal.id}>{animal.numero}{animal.nome ? ` · ${animal.nome}` : ""}</option>)}
-          </select>
+          <SelectBusca
+            className={CAIXA}
+            aria-label="Novilha"
+            value={animalId}
+            onValueChange={setAnimalId}
+            placeholder="selecione a novilha…"
+            buscaPlaceholder="Buscar animal…"
+            options={novilhas.map((animal) => ({ value: String(animal.id), label: `${animal.numero}${animal.nome ? ` · ${animal.nome}` : ""}` }))}
+          />
         </label>
         <label className="flex flex-col gap-1 text-xs text-ink-3">
           Data
-          <input type="date" className="rounded border border-[color:var(--rule-soft)] bg-card px-2 py-1.5 text-sm text-foreground" value={data} onChange={(e) => setData(e.target.value)} />
+          <CampoData className={CAIXA} aria-label="Data" value={data} onChange={setData} />
         </label>
         <label className="flex flex-col gap-1 text-xs text-ink-3">
           Decisão
-          <select className="rounded border border-[color:var(--rule-soft)] bg-card px-2 py-1.5 text-sm text-foreground" value={apta ? "1" : "0"} onChange={(e) => setApta(e.target.value === "1")}>
-            <option value="1">Apta</option>
-            <option value="0">Inapta</option>
-          </select>
+          <RebSelect className={CAIXA} aria-label="Decisão" value={apta ? "1" : "0"} onChange={(v) => setApta(v === "1")}>
+            <option value="1" data-descricao="A novilha pode entrar na reprodução.">Apta</option>
+            <option value="0" data-descricao="A novilha ainda não entra na reprodução.">Inapta</option>
+          </RebSelect>
         </label>
         <label className="flex flex-col gap-1 text-xs text-ink-3">
           Motivo

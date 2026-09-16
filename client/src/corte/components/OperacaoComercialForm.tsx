@@ -6,15 +6,19 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { fmtBRL } from "@/components/charts";
 
 /* Tipos de operação comercial. O valor é o enum TipoComercial em UPPERCASE. */
-const TIPOS: { v: TipoComercial; lab: string }[] = [
-  { v: "VENDA_ABATE", lab: "Venda — abate (frigorífico)" },
-  { v: "VENDA_REPRODUCAO", lab: "Venda — reprodução / matriz" },
-  { v: "DESCARTE", lab: "Descarte (vaca / touro)" },
-  { v: "COMPRA", lab: "Compra (reposição)" },
-  { v: "TRANSFERENCIA_ATIVIDADE", lab: "Transferência de atividade" },
+/* `desc` explica o efeito no lote e na receita, conforme
+ * server/src/services/corte/operacoes.ts e custo.ts. */
+const TIPOS: { v: TipoComercial; lab: string; desc: string }[] = [
+  { v: "VENDA_ABATE", lab: "Venda — abate (frigorífico)", desc: "Entra como receita. Vendendo todas as cabeças, o lote fica como vendido." },
+  { v: "VENDA_REPRODUCAO", lab: "Venda — reprodução / matriz", desc: "Entra como receita e tira as cabeças vendidas do lote." },
+  { v: "DESCARTE", lab: "Descarte (vaca / touro)", desc: "Tira as cabeças do lote, mas não conta como receita de venda." },
+  { v: "COMPRA", lab: "Compra (reposição)", desc: "Só registra a compra: o número de cabeças do lote não muda sozinho." },
+  { v: "TRANSFERENCIA_ATIVIDADE", lab: "Transferência de atividade", desc: "Só registra: não mexe nas cabeças do lote nem na receita." },
 ];
 
 const PRECO_SPOT_MG = 317;
@@ -74,14 +78,14 @@ export function OperacaoComercialForm({ lote, onFechar, onSalvo }: { lote: Lote;
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Venda/compra/descarte — entra na linha do tempo do lote.</p>
 
       <RebField label="Tipo de operação*">
-        <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComercial)}>
-          {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
-        </select>
+        <RebSelect aria-label="Tipo de operação" value={tipo} onChange={(v) => setTipo(v as TipoComercial)}>
+          {TIPOS.map((t) => <option key={t.v} value={t.v} data-descricao={t.desc}>{t.lab}</option>)}
+        </RebSelect>
       </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Cabeças*" style={{ flex: 1 }}>
           <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} max={lote.numCabecas} />

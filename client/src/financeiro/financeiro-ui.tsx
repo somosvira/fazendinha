@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import { CalendarDays, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { CampoMes } from "../components/CampoMes";
 import { Loader } from "../components/Loading";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
@@ -87,7 +88,7 @@ export function Empty({ children }: { children: React.ReactNode }) {
 }
 
 export function MonthControl({ mes, onChange }: { mes: string; onChange: (mes: string) => void }) {
-  return <label className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink-2"><CalendarDays size={16} className="text-ink-3" /><span className="sr-only">Período</span><input type="month" value={mes} onChange={(e) => onChange(e.target.value)} className="bg-transparent font-medium outline-none" /></label>;
+  return <CampoMes aria-label="Período" value={mes} onChange={onChange} className="mt-0 w-auto py-2 font-medium text-ink-2" />;
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean }) {

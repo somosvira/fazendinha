@@ -7,6 +7,8 @@ import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
 import { RebMain, RebBox, RebAnm, RebEmpty } from "@/components/rb/RebPrimitives";
 import { QualidadeLeiteSection } from "./QualidadeLeiteSection";
 import { TanquesSection } from "./TanquesSection";
@@ -42,12 +44,9 @@ function LoteForm({ onSalvo }: { onSalvo: () => void }) {
       <h4>Registrar produção do tanque / lote</h4>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <RebField label="Lote" style={{ marginBottom: 0 }}>
-          <select className="rb-field-select" value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
-            <option value="">Fazenda inteira</option>
-            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-          </select>
+          <SelectBusca variante="sublinhado" className="min-w-48" aria-label="Lote" value={grupoId} onValueChange={setGrupoId} opcaoVazia="Fazenda inteira" buscaPlaceholder="Buscar lote…" options={grupos.map((g) => ({ value: String(g.id), label: g.nome }))} />
         </RebField>
-        <RebField label="Data*" style={{ marginBottom: 0 }}><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></RebField>
+        <RebField label="Data*" style={{ marginBottom: 0 }}><CampoData variante="sublinhado" className="min-w-36" aria-label="Data" value={data} onChange={setData} /></RebField>
         <RebField label="Litros*" style={{ marginBottom: 0 }}><input type="number" min={0} step="0.1" value={litros} onChange={(e) => setLitros(e.target.value)} /></RebField>
         <RebButton variant="pri" disabled={salvando || !litros} onClick={salvar}>{salvando ? "Salvando…" : "Salvar"}</RebButton>
       </div>

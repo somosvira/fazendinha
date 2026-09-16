@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useAplicacoesSanitarias, useProtocolosSanitarios, aplicarProtocoloSanitario, excluirAplicacaoSanitaria } from "../api";
 import { getHojeISO } from "../../lib/hoje";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
+
+// Gatilhos no mesmo look de caixa pequena dos inputs vizinhos.
+const CAIXA_SELECT = "mt-0.5 w-auto min-w-44 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]";
+const CAIXA_DATA = "mt-0.5 w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 
@@ -39,13 +45,10 @@ export function ProtocoloSanitarioSection({ animalId }: { animalId: string }) {
       ) : (
         <form onSubmit={aplicar} className="mb-3 flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-xs text-ink-3">Protocolo
-            <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={protocoloId} onChange={(e) => setProtocoloId(e.target.value)}>
-              <option value="">selecione…</option>
-              {protos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            <SelectBusca variante="sublinhado" className={CAIXA_SELECT} aria-label="Protocolo" value={protocoloId} onValueChange={setProtocoloId} placeholder="selecione…" buscaPlaceholder="Buscar protocolo…" options={protos.map((p) => ({ value: String(p.id), label: p.nome }))} />
           </label>
           <label className="flex flex-col text-xs text-ink-3">Início (D0)
-            <input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+            <CampoData variante="sublinhado" className={CAIXA_DATA} aria-label="Início (D0)" value={dataInicio} onChange={setDataInicio} />
           </label>
           <button type="submit" disabled={salvando || !protocoloId || !dataInicio} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Aplicar</button>
         </form>

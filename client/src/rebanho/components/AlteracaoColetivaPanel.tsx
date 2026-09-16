@@ -5,6 +5,10 @@ import {
 } from "../api";
 import type { Animal, FinalidadeAnimal } from "../types";
 import { AnimalIdentity } from "./AnimalIdentity";
+import { RebSelect } from "@/components/rb/RebSelect";
+
+// Visual em caixa dos filtros deste painel, aplicado ao gatilho do RebSelect.
+const CAIXA = "mt-0.5 min-w-40 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]";
 
 // Alteração coletiva: filtra os animais e aplica grupo, localização e/ou finalidade produtiva.
 // O backend grava movimentações quando grupo/localização mudam. Painel próprio (lista leve com
@@ -73,21 +77,21 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
       {/* Filtro de origem */}
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-xs text-ink-3">Filtrar por grupo
-          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)}>
+          <RebSelect className={CAIXA} aria-label="Filtrar por grupo" value={filtroGrupo} onChange={setFiltroGrupo}>
             <option value="">todos</option>
             {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-          </select>
+          </RebSelect>
         </label>
         <label className="flex flex-col text-xs text-ink-3">Filtrar por localização
-          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}>
+          <RebSelect className={CAIXA} aria-label="Filtrar por localização" value={filtroSetor} onChange={setFiltroSetor}>
             <option value="">todos</option>
             {(setores ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          </RebSelect>
         </label>
         <label className="flex flex-col text-xs text-ink-3">Filtrar por finalidade
-          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={filtroFinalidade} onChange={(e) => setFiltroFinalidade(e.target.value)}>
-            <option value="">todas</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
-          </select>
+          <RebSelect className={CAIXA} aria-label="Filtrar por finalidade" value={filtroFinalidade} onChange={setFiltroFinalidade}>
+            <option value="">todas</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO" data-descricao="Criado tanto para leite quanto para corte.">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
+          </RebSelect>
         </label>
       </div>
 
@@ -114,19 +118,19 @@ export function AlteracaoColetivaPanel({ onFechar, onAplicado }: { onFechar: () 
       {/* Destino */}
       <div className="mb-2 flex flex-wrap items-end gap-2">
         <label className="flex flex-col text-xs text-ink-3">Novo grupo
-          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={destinoGrupo} onChange={(e) => setDestinoGrupo(e.target.value)}>
+          <RebSelect className={CAIXA} aria-label="Novo grupo" value={destinoGrupo} onChange={setDestinoGrupo}>
             <option value="">(não mexer)</option>
             {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-          </select>
+          </RebSelect>
         </label>
         <label className="flex flex-col text-xs text-ink-3">Nova localização
           <input className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={destinoSetor} onChange={(e) => setDestinoSetor(e.target.value)} placeholder="(não mexer)" list="setores-lista" maxLength={40} />
           <datalist id="setores-lista">{(setores ?? []).map((s) => <option key={s} value={s} />)}</datalist>
         </label>
         <label className="flex flex-col text-xs text-ink-3">Nova finalidade
-          <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={destinoFinalidade} onChange={(e) => setDestinoFinalidade(e.target.value)}>
-            <option value="">(não mexer)</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
-          </select>
+          <RebSelect className={CAIXA} aria-label="Nova finalidade" value={destinoFinalidade} onChange={setDestinoFinalidade}>
+            <option value="">(não mexer)</option><option value="LEITE">leite</option><option value="CORTE">corte</option><option value="DUPLA_APTIDAO" data-descricao="Criado tanto para leite quanto para corte.">dupla aptidão</option><option value="NAO_INFORMADA">não informada</option>
+          </RebSelect>
         </label>
         <button onClick={aplicar} disabled={!podeAplicar} className="rounded bg-[color:var(--cafe)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
           Aplicar a {sel.size} {sel.size === 1 ? "animal" : "animais"}

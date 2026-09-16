@@ -4,6 +4,7 @@ import { criarFuncionario, editarFuncionario, baixarFuncionario, type Funcionari
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
 
 /* Drawer de cadastro/edição/baixa de funcionário — espelha o TalhaoForm.
  * Opcionais vazios são enviados como `undefined` (o backend trata como ausência),
@@ -143,7 +144,7 @@ export function FuncionarioForm({
           <input type="number" step="0.5" value={jornadaDiariaHoras} onChange={(e) => setJornadaDiariaHoras(e.target.value)} />
         </RebField>
         <RebField label="Admissão" style={{ flex: 1 }}>
-          <input type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
+          <CampoData variante="sublinhado" aria-label="Admissão" value={dataAdmissao} onChange={setDataAdmissao} />
         </RebField>
       </div>
 

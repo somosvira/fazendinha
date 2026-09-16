@@ -5,13 +5,15 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 
 type Metodo = Pesagem["metodo"];
-const METODOS: { k: Metodo; lab: string }[] = [
-  { k: "BALANCA_LOTE", lab: "Balança de lote" },
-  { k: "BALANCA_INDIVIDUAL", lab: "Balança individual" },
-  { k: "FITA_TORACICA", lab: "Fita torácica" },
-  { k: "VISUAL_ESTIMADO", lab: "Estimativa visual" },
+const METODOS: { k: Metodo; lab: string; desc: string }[] = [
+  { k: "BALANCA_LOTE", lab: "Balança de lote", desc: "Pesa vários animais juntos e divide pelo número de cabeças." },
+  { k: "BALANCA_INDIVIDUAL", lab: "Balança individual", desc: "Pesa um animal por vez e tira a média." },
+  { k: "FITA_TORACICA", lab: "Fita torácica", desc: "Estima o peso medindo a volta do peito do animal com uma fita." },
+  { k: "VISUAL_ESTIMADO", lab: "Estimativa visual", desc: "Peso calculado no olho, sem balança nem fita." },
 ];
 
 /* Drawer de registro de pesagem — espelha o OperacaoForm do plantio.
@@ -62,7 +64,7 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. O GMD é recalculado a partir da pesagem anterior.</p>
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Peso médio (kg)*" style={{ flex: 1 }}>
           <input type="number" step="0.1" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
@@ -73,9 +75,9 @@ export function PesagemForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar:
       </div>
 
       <RebField label="Método*">
-        <select className="rb-field-select" value={metodo} onChange={(e) => setMetodo(e.target.value as Metodo)}>
-          {METODOS.map((m) => <option key={m.k} value={m.k}>{m.lab}</option>)}
-        </select>
+        <RebSelect aria-label="Método" value={metodo} onChange={(v) => setMetodo(v as Metodo)}>
+          {METODOS.map((m) => <option key={m.k} value={m.k} data-descricao={m.desc}>{m.lab}</option>)}
+        </RebSelect>
       </RebField>
 
       <RebField label="Responsável">

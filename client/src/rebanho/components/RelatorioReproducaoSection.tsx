@@ -5,6 +5,7 @@ import { RebBox, RebEmpty } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
 
 const pct = (t: number | null) => (t == null ? "—" : `${(t * 100).toFixed(1)}%`);
 const METODO_LABEL: Record<string, string> = { IA: "Inseminação", MN: "Monta natural", TE: "Transferência de embrião" };
@@ -30,8 +31,8 @@ export function RelatorioReproducaoSection() {
     <RebBox>
       <h4>Relatório reprodutivo</h4>
       <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap", marginBottom: 12 }}>
-        <RebField label="De"><input type="date" value={de} onChange={(e) => setDe(e.target.value)} /></RebField>
-        <RebField label="Até"><input type="date" value={ate} onChange={(e) => setAte(e.target.value)} /></RebField>
+        <RebField label="De"><CampoData variante="sublinhado" className="min-w-36" aria-label="De" value={de} onChange={setDe} /></RebField>
+        <RebField label="Até"><CampoData variante="sublinhado" className="min-w-36" aria-label="Até" value={ate} onChange={setAte} /></RebField>
         <RebButton variant="pri" onClick={carregar}>Aplicar período</RebButton>
       </div>
 

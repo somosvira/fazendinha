@@ -5,6 +5,18 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
+
+const MOTIVOS_BAIXA = [
+  "Erradicação (lavoura exausta)",
+  "Conversão para pasto",
+  "Conversão para outra cultura",
+  "Geada severa",
+  "Desapropriação / venda",
+  "Outro",
+];
 
 export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" | "editar" | "baixa"; talhao?: Talhao; onFechar: () => void; onSalvo: () => void }) {
   const t = talhao;
@@ -103,15 +115,11 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
       >
         <p className="text-sm text-ink-3">O talhão sai do conjunto ativo. Mantém histórico para fins contábeis.</p>
         <RebField label="Motivo">
-          <select className="rb-field-select" value={motivoBaixa} onChange={(e) => setMotivoBaixa(e.target.value)}>
+          {/* RebSelect lê o `value` explícito — o texto da opção é o valor enviado. */}
+          <RebSelect aria-label="Motivo" value={motivoBaixa} onChange={setMotivoBaixa}>
             <option value="">Selecione…</option>
-            <option>Erradicação (lavoura exausta)</option>
-            <option>Conversão para pasto</option>
-            <option>Conversão para outra cultura</option>
-            <option>Geada severa</option>
-            <option>Desapropriação / venda</option>
-            <option>Outro</option>
-          </select>
+            {MOTIVOS_BAIXA.map((m) => <option key={m} value={m}>{m}</option>)}
+          </RebSelect>
         </RebField>
         {erro && <p className="text-[13px] text-prejuizo">{erro}</p>}
       </RebModal>
@@ -140,17 +148,22 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
           </div>
 
           <RebField label="Variedade*">
-            <select className="rb-field-select" value={variedadeId} onChange={(e) => setVariedadeId(e.target.value)}>
-              <option value="">Selecione…</option>
-              {variedades.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
-            </select>
+            <SelectBusca
+              variante="sublinhado"
+              aria-label="Variedade"
+              value={variedadeId}
+              onValueChange={setVariedadeId}
+              placeholder="Selecione…"
+              buscaPlaceholder="Buscar variedade…"
+              options={variedades.map((v) => ({ value: String(v.id), label: v.nome }))}
+            />
           </RebField>
 
           <RebField label="Lavoura (agrupador)">
-            <select className="rb-field-select" value={lavouraId} onChange={(e) => setLavouraId(e.target.value)}>
+            <RebSelect aria-label="Lavoura (agrupador)" value={lavouraId} onChange={setLavouraId}>
               <option value="">—</option>
               {lavouras.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-            </select>
+            </RebSelect>
           </RebField>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -166,7 +179,7 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
           </div>
 
           <RebField label="Data de plantio*">
-            <input type="date" value={dataPlantio} onChange={(e) => setDataPlantio(e.target.value)} max={HOJE} />
+            <CampoData variante="sublinhado" aria-label="Data de plantio" value={dataPlantio} onChange={setDataPlantio} max={HOJE} />
           </RebField>
 
           <fieldset style={{ border: "1px solid var(--rule)", borderRadius: 8, padding: 12, margin: "10px 0" }}>
@@ -187,13 +200,13 @@ export function TalhaoForm({ modo, talhao, onFechar, onSalvo }: { modo: "novo" |
 
           <div style={{ display: "flex", gap: 10 }}>
             <RebField label="Exposição" style={{ flex: 1 }}>
-              <select className="rb-field-select" value={exposicao} onChange={(e) => setExposicao(e.target.value)}>
+              <RebSelect aria-label="Exposição" value={exposicao} onChange={setExposicao}>
                 <option value="">—</option>
                 <option value="norte">norte</option>
                 <option value="sul">sul</option>
                 <option value="leste">leste</option>
                 <option value="oeste">oeste</option>
-              </select>
+              </RebSelect>
             </RebField>
             <RebField label="Declive (%)" style={{ flex: 1 }}>
               <input type="number" value={declive} onChange={(e) => setDeclive(e.target.value)} />

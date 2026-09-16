@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { RelatoriosTab } from "./RelatoriosTab";
 
@@ -33,15 +33,44 @@ function stubFetch() {
   return spy;
 }
 
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
+
+// Os templates chegam por fetch; a descrição do modelo padrão aparece quando carregam.
+const aguardarTemplates = () => screen.findByText("Uma linha por tentativa.");
+
+async function escolher(rotulo: string, opcao: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: rotulo }));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
 
 describe("RelatoriosTab", () => {
   it("monta o formulário com templates e não consulta antes de Gerar", async () => {
     const spy = stubFetch();
     render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
     expect(screen.getByRole("heading", { name: "Relatórios" })).toBeTruthy();
+    await aguardarTemplates();
+    fireEvent.click(screen.getByRole("combobox", { name: "Modelo de relatório" }));
     expect(await screen.findByRole("option", { name: "Inseminações no período" })).toBeTruthy();
     expect(spy.mock.calls.some(([url]) => String(url).includes("/rebanho/relatorios?"))).toBe(false);
+  });
+
+  it("explica cada modelo e a situação do animal na lista aberta", async () => {
+    stubFetch();
+    render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
+    await aguardarTemplates();
+    fireEvent.click(screen.getByRole("combobox", { name: "Modelo de relatório" }));
+    const gestantes = await screen.findByRole("option", { name: "Gestantes atualmente" });
+    expect(gestantes.textContent).toContain("Foto atual.");
+    fireEvent.click(gestantes);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.getByRole("combobox", { name: "Modelo de relatório" }).textContent).toBe("Gestantes atualmente");
+    fireEvent.click(screen.getByRole("combobox", { name: "Situação do animal" }));
+    expect((await screen.findByRole("option", { name: "Baixados" })).textContent).toContain("Animais que já saíram do rebanho.");
   });
 
   it("gera uma lista operacional e encaminha ficha e ação", async () => {
@@ -49,7 +78,7 @@ describe("RelatoriosTab", () => {
     const onRegistrar = vi.fn();
     stubFetch();
     render(<RelatoriosTab onAbrirFicha={onAbrirFicha} onRegistrar={onRegistrar} />);
-    await screen.findByRole("option", { name: "Inseminações no período" });
+    await aguardarTemplates();
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     expect(await screen.findByText("Lua")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Abrir ficha.*150/i }));
@@ -61,18 +90,18 @@ describe("RelatoriosTab", () => {
   it("mostra filtros específicos do template escolhido", async () => {
     stubFetch();
     render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
-    await screen.findByRole("option", { name: "Inseminações no período" });
+    await aguardarTemplates();
     expect(screen.getByLabelText("Touro ou sêmen")).toBeTruthy();
     expect(screen.getByLabelText("Protocolo")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Modelo de relatório"), { target: { value: "gestantes-atual" } });
+    await escolher("Modelo de relatório", "Gestantes atualmente");
     await waitFor(() => expect(screen.queryByLabelText("Touro ou sêmen")).toBeNull());
   });
 
   it("permite delimitar parâmetros numéricos por mínimo e máximo", async () => {
     const spy = stubFetch();
     render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
-    await screen.findByRole("option", { name: "Gestantes atualmente" });
-    fireEvent.change(screen.getByLabelText("Modelo de relatório"), { target: { value: "gestantes-atual" } });
+    await aguardarTemplates();
+    await escolher("Modelo de relatório", "Gestantes atualmente");
     fireEvent.change(screen.getByLabelText("Dias de gestação mínimo"), { target: { value: "63" } });
     fireEvent.change(screen.getByLabelText("Dias de gestação máximo"), { target: { value: "70" } });
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
@@ -85,7 +114,7 @@ describe("RelatoriosTab", () => {
   it("exporta o PDF diretamente a partir do resultado do relatório", async () => {
     stubFetch();
     render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
-    await screen.findByRole("option", { name: "Inseminações no período" });
+    await aguardarTemplates();
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     await screen.findByText("Lua");
 
@@ -103,7 +132,7 @@ describe("RelatoriosTab", () => {
   it("permite remover e reordenar colunas antes de exportar", async () => {
     stubFetch();
     render(<RelatoriosTab onAbrirFicha={() => {}} onRegistrar={() => {}} />);
-    await screen.findByRole("option", { name: "Inseminações no período" });
+    await aguardarTemplates();
     fireEvent.click(screen.getByRole("button", { name: "Gerar relatório" }));
     await screen.findByText("Lua");
 

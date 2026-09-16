@@ -600,7 +600,7 @@ a { color: inherit; }
 /* focus ring — as primitivas shadcn (Button/Input) trazem o próprio anel
    (focus-visible:ring-*); excluí-las evita anel duplo (outline + box-shadow),
    já que esta regra não-layered vence utilities do Tailwind. Ver base.css. */
-button:focus-visible:not([data-slot="button"]),
+button:focus-visible:not([data-slot="button"]):not([data-slot="campo-gatilho"]):not([data-slot="zona-soltar"]),
 a:focus-visible,
 input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
   outline: 2px solid var(--ink);

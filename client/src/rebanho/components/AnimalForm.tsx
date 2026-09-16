@@ -6,23 +6,35 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { RebFieldset, REB_SANGUE_ROW, REB_SANGUE_RACA, REB_SANGUE_INPUT, REB_SANGUE_FRAC_COMP } from "@/components/rb/RebPrimitives";
 import { rotuloAnimal } from "./AnimalIdentity";
 
 type Modo = "novo" | "editar" | "baixa";
 
-const CATEGORIAS_POR_ESPECIE: Record<EspecieAnimal, { id: CategoriaAnimal; label: string }[]> = {
+// Descrições conforme DOMAIN.md (§1 Sexo e categoria, §13 Caprinos).
+const CATEGORIAS_POR_ESPECIE: Record<EspecieAnimal, { id: CategoriaAnimal; label: string; descricao: string }[]> = {
   BOVINO: [
-    { id: "BEZERRA", label: "Bezerra" }, { id: "NOVILHA", label: "Novilha" }, { id: "VACA", label: "Vaca" },
-    { id: "BEZERRO", label: "Bezerro" }, { id: "TOURO", label: "Touro" },
+    { id: "BEZERRA", label: "Bezerra", descricao: "Fêmea do nascimento ao desmame (cerca de 6 meses)." },
+    { id: "NOVILHA", label: "Novilha", descricao: "Fêmea desmamada que ainda não pariu." },
+    { id: "VACA", label: "Vaca", descricao: "Fêmea que já teve o primeiro parto." },
+    { id: "BEZERRO", label: "Bezerro", descricao: "Macho do nascimento ao desmame." },
+    { id: "TOURO", label: "Touro", descricao: "Macho adulto usado na reprodução." },
   ],
   CAPRINO: [
-    { id: "CABRITA", label: "Cabrita" }, { id: "CABRA", label: "Cabra" },
-    { id: "CABRITO", label: "Cabrito" }, { id: "BODE", label: "Bode" },
+    { id: "CABRITA", label: "Cabrita", descricao: "Fêmea jovem que ainda não pariu." },
+    { id: "CABRA", label: "Cabra", descricao: "Fêmea que já pariu." },
+    { id: "CABRITO", label: "Cabrito", descricao: "Macho do nascimento ao desmame." },
+    { id: "BODE", label: "Bode", descricao: "Macho adulto usado na reprodução." },
   ],
 };
 
 const LABEL_ESPECIE: Record<RacaDTO["especie"], string> = { BOVINO: "Bovinos", CAPRINO: "Caprinos" };
+
+const DESCRICAO_BAIXA: Record<string, string> = {
+  "Descarte por fertilidade": "Sai do rebanho por problemas para emprenhar.",
+  "Descarte por mastite": "Sai do rebanho por mastite (inflamação do úbere) que não resolve.",
+};
 
 const MOTIVOS_BAIXA = [
   "Venda",
@@ -128,36 +140,36 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
       <>
         {modo === "baixa" ? (
           <RebField label="Motivo da baixa">
-            <RebSelect value={f.motivo} onChange={(v) => set("motivo", v)}>
-              {MOTIVOS_BAIXA.map((motivo) => <option key={motivo} value={motivo}>{motivo}</option>)}
+            <RebSelect aria-label="Motivo da baixa" value={f.motivo} onChange={(v) => set("motivo", v)}>
+              {MOTIVOS_BAIXA.map((motivo) => <option key={motivo} value={motivo} data-descricao={DESCRICAO_BAIXA[motivo]}>{motivo}</option>)}
             </RebSelect>
           </RebField>
         ) : (
           <>
             <RebField label="Número do animal*"><input value={f.numero} onChange={(e) => set("numero", e.target.value)} /></RebField>
             <RebField label="Nome"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></RebField>
-            <RebField label="Sexo"><RebSelect value={f.sexo} onChange={(v) => set("sexo", v)}><option value="F">Fêmea</option><option value="M">Macho</option></RebSelect></RebField>
+            <RebField label="Sexo"><RebSelect aria-label="Sexo" value={f.sexo} onChange={(v) => set("sexo", v)}><option value="F">Fêmea</option><option value="M">Macho</option></RebSelect></RebField>
             <RebField label="Categoria">
-              <RebSelect value={f.categoria} onChange={(v) => trocarCategoria(v)}>
+              <RebSelect aria-label="Categoria" value={f.categoria} onChange={(v) => trocarCategoria(v)}>
                 {(["BOVINO", "CAPRINO"] as const).map((esp) => (
                   <optgroup key={esp} label={LABEL_ESPECIE[esp]}>
-                    {CATEGORIAS_POR_ESPECIE[esp].map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    {CATEGORIAS_POR_ESPECIE[esp].map((c) => <option key={c.id} value={c.id} data-descricao={c.descricao}>{c.label}</option>)}
                   </optgroup>
                 ))}
               </RebSelect>
             </RebField>
 
             <RebField label="Finalidade produtiva">
-              <RebSelect value={f.finalidade} onChange={(v) => set("finalidade", v)}>
+              <RebSelect aria-label="Finalidade produtiva" value={f.finalidade} onChange={(v) => set("finalidade", v)}>
                 <option value="NAO_INFORMADA">Não informada</option>
                 <option value="LEITE">Leite</option>
                 <option value="CORTE">Corte</option>
-                <option value="DUPLA_APTIDAO">Dupla aptidão</option>
+                <option value="DUPLA_APTIDAO" data-descricao="Criado tanto para leite quanto para corte.">Dupla aptidão</option>
               </RebSelect>
             </RebField>
 
             <RebField label="Raça">
-              <RebSelect value={f.racaId} onChange={(v) => set("racaId", v)}>
+              <RebSelect aria-label="Raça" value={f.racaId} onChange={(v) => set("racaId", v)}>
                 <option value="">—</option>
                 {racasDaEspecie.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
               </RebSelect>
@@ -184,9 +196,9 @@ export function AnimalForm({ modo, animal, onFechar, onSalvo }: { modo: Modo; an
               </RebFieldset>
             )}
 
-            <RebField label="Grupo"><RebSelect value={f.grupoId} onChange={(v) => set("grupoId", v)}><option value="">—</option>{grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</RebSelect></RebField>
-            <RebField label="Nascimento"><input type="date" value={f.dataNascimento} onChange={(e) => set("dataNascimento", e.target.value)} /></RebField>
-            <RebField label="Entrada*"><input type="date" value={f.dataEntrada} onChange={(e) => set("dataEntrada", e.target.value)} /></RebField>
+            <RebField label="Grupo"><RebSelect aria-label="Grupo" value={f.grupoId} onChange={(v) => set("grupoId", v)}><option value="">—</option>{grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}</RebSelect></RebField>
+            <RebField label="Nascimento"><CampoData variante="sublinhado" aria-label="Nascimento" value={f.dataNascimento} onChange={(v) => set("dataNascimento", v)} /></RebField>
+            <RebField label="Entrada*"><CampoData variante="sublinhado" aria-label="Entrada" value={f.dataEntrada} onChange={(v) => set("dataEntrada", v)} /></RebField>
             <RebField label="Brinco eletrônico"><input value={f.brincoEletronico} onChange={(e) => set("brincoEletronico", e.target.value)} /></RebField>
           </>
         )}

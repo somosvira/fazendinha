@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { abrirRotaNovaOperacao } from "../router";
+import { escolher, escolherData, prepararPopups } from "./campos.test-utils";
+import { listarOperacoes } from "./novo-api";
 
 vi.mock("./novo-api", () => ({
   listarOperacoes: vi.fn().mockResolvedValue([]),
@@ -27,7 +29,10 @@ vi.mock("./OperacaoFinanceiraDetalhe", () => ({
 
 const rascunho = { id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { descricao: "Compra mensal" } } };
 
+afterEach(() => { vi.unstubAllGlobals(); });
+
 beforeEach(() => {
+  prepararPopups();
   cleanup(); vi.clearAllMocks(); limparRascunhoAtivo();
   window.history.replaceState(null, "", "/financeiro/operacoes");
   // A API real publica o rascunho na store compartilhada; os dublês fazem o mesmo.
@@ -87,5 +92,35 @@ describe("OperacoesFinanceiras — rascunho", () => {
     act(() => { abrirRotaNovaOperacao(); });
 
     expect(await screen.findByText("Formulário com rascunho")).toBeTruthy();
+  });
+});
+
+describe("OperacoesFinanceiras — filtros", () => {
+  it("explica em linguagem simples os filtros de efeito, status e tipo", async () => {
+    render(<OperacoesFinanceiras />);
+    fireEvent.click(await screen.findByRole("combobox", { name: "Filtrar por efeito" }));
+    expect((await screen.findByRole("option", { name: "A pagar" })).textContent).toContain("parcelas a pagar");
+    expect(screen.getByRole("option", { name: "Sem efeitos" }).textContent).toContain("Não mexeram em estoque, contas nem parcelas");
+    fireEvent.click(screen.getByRole("option", { name: "Estoque" }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    fireEvent.click(screen.getByRole("combobox", { name: "Filtrar por status" }));
+    expect((await screen.findByRole("option", { name: "Canceladas" })).textContent).toContain("desfeitos");
+    fireEvent.click(screen.getByRole("option", { name: "Confirmadas" }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    fireEvent.click(screen.getByRole("combobox", { name: "Filtrar por tipo" }));
+    expect((await screen.findByRole("option", { name: "Transferência" })).textContent).toContain("entre contas da própria fazenda");
+    expect(screen.getByRole("option", { name: "Venda" }).textContent).toContain("Você vende para um cliente");
+  });
+
+  it("consulta o intervalo escolhido no calendário do período", async () => {
+    render(<OperacoesFinanceiras />);
+    await screen.findByRole("combobox", { name: "Filtrar por tipo" });
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
+    await escolherData("Início do intervalo", "2 de agosto de 2026");
+    await escolherData("Fim do intervalo", "20 de agosto de 2026");
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
+    await waitFor(() => expect(listarOperacoes).toHaveBeenLastCalledWith({ inicio: "2026-08-02", fim: "2026-08-20" }));
+    await escolher("Filtrar por tipo", "Venda");
+    expect(screen.getByRole("combobox", { name: "Filtrar por tipo" }).textContent).toBe("Venda");
   });
 });

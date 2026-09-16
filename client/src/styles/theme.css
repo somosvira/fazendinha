@@ -158,6 +158,15 @@
 @keyframes rb-check-circle { from { stroke-dashoffset: 132; } to { stroke-dashoffset: 0; } }
 @keyframes rb-check-path { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
 
+/* Ilustrações das prévias dos seletores (financeiro/EfeitosIlustrados):
+ * o ícone percorre a trilha da origem ao destino; a barra enche da esquerda. */
+@keyframes campo-fluxo {
+  0% { left: 0; opacity: 0; }
+  15%, 85% { opacity: 1; }
+  100% { left: calc(100% - 1rem); opacity: 0; }
+}
+@keyframes campo-encher { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 @layer components {
   /* RebModal usa estas classes: backdrop e card. As bindings de animation vinham
    * do `.rb-drawer-bg`/`.rb-drawer` do rebanho.css (que morre no PR-3); aqui viram

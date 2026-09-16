@@ -2,15 +2,23 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { deslocarMes } from "./lib/calendario";
 import { mesAtual } from "./financeiro-ui";
+import { CampoMes } from "../components/CampoMes";
+import { CampoSelect } from "../components/CampoSelect";
 
-const OPCOES_PERIODO = [
-  { valor: "ano-atual", label: "Este ano" },
-  { valor: "ano-anterior", label: "Ano passado" },
-  { valor: "1", label: "1 mês" },
-  { valor: "3", label: "3 meses" },
-  { valor: "6", label: "6 meses" },
-  { valor: "24", label: "2 anos" },
-] as const;
+/* Explicações seguem aplicarAtalho: anos vão de janeiro a dezembro; janelas
+ * de N meses terminam no mês atual. */
+function opcoesPeriodo(ano: number) {
+  return [
+    { value: "personalizado", label: "Personalizado", descricao: "Você escolhe o mês inicial e o mês final ao lado." },
+    { value: "ano-atual", label: `Este ano (${ano})`, descricao: `De janeiro a dezembro de ${ano}.` },
+    { value: "ano-anterior", label: `Ano passado (${ano - 1})`, descricao: `De janeiro a dezembro de ${ano - 1}.` },
+    { value: "1", label: "1 mês", descricao: "Só o mês atual." },
+    { value: "3", label: "3 meses", descricao: "Os últimos 3 meses, contando o atual." },
+    { value: "6", label: "6 meses", descricao: "Os últimos 6 meses, contando o atual." },
+    { value: "24", label: "2 anos", descricao: "Os últimos 24 meses, contando o atual." },
+  ];
+}
+const CLASSE_CONTROLE = "mt-1 min-h-10 py-2 font-medium";
 
 function inicioDaJanela(fim: string, meses: number) {
   return deslocarMes(fim, -(meses - 1));
@@ -69,16 +77,13 @@ export function PeriodoGraficoControl({ inicio, fim, onChange, id = "" }: {
   return <div className="flex flex-wrap items-end gap-2">
     <button type="button" aria-label={`Período anterior do gráfico${sufixo}`} onClick={() => deslocar(-1)} className="rounded-lg border border-border bg-white p-2.5 hover:bg-surface-2"><ChevronLeft size={18} /></button>
     <label className="text-xs font-semibold text-ink-3">Intervalo
-      <select aria-label={`Intervalo do gráfico${sufixo}`} value={atalho} onChange={(e) => aplicarAtalho(e.target.value)} className="mt-1 block min-h-10 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink">
-        <option value="personalizado">Personalizado</option>
-        {OPCOES_PERIODO.map((opcao) => <option key={opcao.valor} value={opcao.valor}>{opcao.label}{opcao.valor === "ano-atual" ? ` (${new Date().getFullYear()})` : opcao.valor === "ano-anterior" ? ` (${new Date().getFullYear() - 1})` : ""}</option>)}
-      </select>
+      <CampoSelect aria-label={`Intervalo do gráfico${sufixo}`} value={atalho} onValueChange={aplicarAtalho} options={opcoesPeriodo(new Date().getFullYear())} className={`${CLASSE_CONTROLE} min-w-[10.5rem]`} />
     </label>
     <label className="text-xs font-semibold text-ink-3">Mês inicial
-      <input aria-label={`Mês inicial do gráfico${sufixo}`} type="month" value={inicio} onChange={(e) => alterarInicio(e.target.value)} className="mt-1 block min-h-10 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink" />
+      <CampoMes aria-label={`Mês inicial do gráfico${sufixo}`} value={inicio} onChange={alterarInicio} className={`${CLASSE_CONTROLE} min-w-[8.5rem]`} />
     </label>
     <label className="text-xs font-semibold text-ink-3">Mês final
-      <input aria-label={`Mês final do gráfico${sufixo}`} type="month" value={fim} onChange={(e) => alterarFim(e.target.value)} className="mt-1 block min-h-10 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink" />
+      <CampoMes aria-label={`Mês final do gráfico${sufixo}`} value={fim} onChange={alterarFim} className={`${CLASSE_CONTROLE} min-w-[8.5rem]`} />
     </label>
     <button type="button" aria-label={`Próximo período do gráfico${sufixo}`} onClick={() => deslocar(1)} className="rounded-lg border border-border bg-white p-2.5 hover:bg-surface-2"><ChevronRight size={18} /></button>
   </div>;

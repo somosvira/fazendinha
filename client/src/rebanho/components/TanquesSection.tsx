@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTanques, criarTanque, excluirTanque, registrarAnaliseTanque, type TanqueDTO } from "../api";
 import { MiniBarChart } from "../../components/charts";
 import { getHojeISO } from "../../lib/hoje";
+import { CampoData } from "@/components/CampoData";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const fmtMes = (iso: string) => {
@@ -110,7 +111,7 @@ function TanqueCard({ tanque, onMudou, onExcluir }: { tanque: TanqueDTO; onMudou
 
       {aberto && (
         <form onSubmit={salvar} className="mb-2 flex flex-wrap items-end gap-2">
-          <label className="flex flex-col text-xs text-ink-3">Data<input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={data} onChange={(e) => setData(e.target.value)} /></label>
+          <label className="flex flex-col text-xs text-ink-3">Data<CampoData variante="sublinhado" className="mt-0.5 w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]" aria-label="Data" value={data} onChange={setData} /></label>
           <label className="flex flex-col text-xs text-ink-3">CCS<input type="number" min={0} className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={ccs} onChange={(e) => setCcs(e.target.value)} placeholder="mil/mL" /></label>
           <label className="flex flex-col text-xs text-ink-3">CBT<input type="number" min={0} className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={cbt} onChange={(e) => setCbt(e.target.value)} placeholder="mil UFC" /></label>
           <label className="flex flex-col text-xs text-ink-3">Gordura %<input type="number" min={0} step="0.1" className="mt-0.5 w-20 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={gordura} onChange={(e) => setGordura(e.target.value)} /></label>

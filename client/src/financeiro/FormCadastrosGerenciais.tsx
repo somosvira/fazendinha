@@ -10,6 +10,14 @@ import {
 } from "./novo-api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
+import { CampoSelect } from "../components/CampoSelect";
+import { EXPLICACAO_CLASSIFICACAO } from "./lib/explicacoes";
+
+const OPCOES_CLASSIFICACAO = [
+  { value: "", label: "Não classificada", descricao: EXPLICACAO_CLASSIFICACAO[""] },
+  { value: "CUSTEIO", label: "Custeio", descricao: EXPLICACAO_CLASSIFICACAO.CUSTEIO },
+  { value: "INVESTIMENTO", label: "Investimento", descricao: EXPLICACAO_CLASSIFICACAO.INVESTIMENTO },
+];
 
 type Erros = Record<string, string>;
 
@@ -45,7 +53,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <select {...p} value={classificacao} onChange={(e) => setClassificacao(e.target.value as typeof classificacao)} className={classeInput}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select>}</CampoFormulario>
+      <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <CampoSelect id={p.id} aria-label={p["aria-label"]} aria-invalid={p["aria-invalid"]} aria-describedby={p["aria-describedby"]}  value={classificacao} onValueChange={(v) => setClassificacao(v as typeof classificacao)} options={OPCOES_CLASSIFICACAO} />}</CampoFormulario>
     </form>
   </PainelCadastro>;
 }

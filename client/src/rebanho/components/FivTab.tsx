@@ -6,6 +6,10 @@ import {
 import { Loader } from "../../components/Loading";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
+import { MultiSelect } from "@/components/MultiSelect";
 import { RebMain, RebBox, RebAnm, RebEmpty, RebPill } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebHeader } from "./RebHeader";
@@ -96,16 +100,22 @@ function NovaColetaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: 
       <h4>Nova coleta</h4>
       {erro && <p role="alert" className="text-sm text-prejuizo">{erro}</p>}
       <RebField label="Doadora">
-        <select className="rb-field-select" value={doadoraId} onChange={(e) => setDoadoraId(e.target.value)}>
-          <option value="">— selecionar —</option>
-          {doadoras.map((d) => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
-        </select>
+        <SelectBusca
+          variante="sublinhado"
+          aria-label="Doadora"
+          value={doadoraId}
+          onValueChange={setDoadoraId}
+          placeholder="— selecionar —"
+          buscaPlaceholder="Buscar animal…"
+          options={doadoras.map((d) => ({ value: String(d.id), label: d.rotulo }))}
+        />
       </RebField>
-      <RebField label="Data"><input type="date" value={data} onChange={(e) => setData(e.target.value)} /></RebField>
+      <RebField label="Data"><CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} /></RebField>
       <RebField label="Método">
-        <select className="rb-field-select" value={metodo} onChange={(e) => setMetodo(e.target.value as "FIV" | "TE_CONVENCIONAL")}>
-          <option value="FIV">FIV</option><option value="TE_CONVENCIONAL">TE convencional</option>
-        </select>
+        <RebSelect aria-label="Método" value={metodo} onChange={(v) => setMetodo(v as "FIV" | "TE_CONVENCIONAL")}>
+          <option value="FIV" data-descricao="Fertilização in vitro: os oócitos da doadora são fecundados em laboratório.">FIV</option>
+          <option value="TE_CONVENCIONAL">TE convencional</option>
+        </RebSelect>
       </RebField>
       <RebField label="Técnico (opcional)"><input value={tecnico} onChange={(e) => setTecnico(e.target.value)} /></RebField>
 
@@ -118,7 +128,7 @@ function NovaColetaForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: 
       <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
         <RebField label="Qualidade"><input value={qualidade} onChange={(e) => setQualidade(e.target.value)} style={{ width: 80 }} /></RebField>
         <RebField label="Viável">
-          <select className="rb-field-select" value={viavel ? "1" : "0"} onChange={(e) => setViavel(e.target.value === "1")}><option value="1">Sim</option><option value="0">Não</option></select>
+          <RebSelect aria-label="Viável" value={viavel ? "1" : "0"} onChange={(v) => setViavel(v === "1")}><option value="1">Sim</option><option value="0">Não</option></RebSelect>
         </RebField>
         <RebField label="Quantidade"><input type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(e.target.value)} style={{ width: 90 }} /></RebField>
         <RebButton onClick={addOocito}>Adicionar</RebButton>
@@ -160,11 +170,16 @@ function PoolSecao() {
         <h4>Novo grupo de doadoras</h4>
         {erro && <p role="alert" className="text-sm text-prejuizo">{erro}</p>}
         <RebField label="Nome"><input value={nome} onChange={(e) => setNome(e.target.value)} /></RebField>
-        <RebField label="Doadoras">
-          <select multiple className="rb-field-select" value={selecionadas.map(String)} onChange={(e) => setSelecionadas(Array.from(e.target.selectedOptions, (o) => Number(o.value)))} style={{ minHeight: 120 }}>
-            {doadoras.map((d) => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
-          </select>
-        </RebField>
+        <div className="mb-3.5">
+          <MultiSelect
+            label="Doadoras"
+            placeholder="Escolha as doadoras…"
+            searchPlaceholder="Buscar animal…"
+            options={doadoras.map((d) => ({ value: d.id, label: d.rotulo }))}
+            value={selecionadas}
+            onValueChange={setSelecionadas}
+          />
+        </div>
         <RebButton variant="pri" onClick={criar}>Criar grupo</RebButton>
       </RebBox>
 

@@ -7,6 +7,7 @@ import { Loader } from "../../components/Loading";
 import type { FinalidadeAnimal, ResumoAnimal } from "../types";
 import { ToolbarSelect } from "@/components/ToolbarSelect";
 import { RebButton } from "@/components/rb/RebButton";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { PromptDialog } from "@/components/PromptDialog";
 import { AlteracaoColetivaPanel } from "./AlteracaoColetivaPanel";
@@ -96,15 +97,15 @@ export function AnimalTab({ onAbrirAnimal, onNovo }: { onAbrirAnimal: (id: strin
         options={[{ value: "", label: "Todas as localizações" }, ...(setores ?? []).map((s) => ({ value: s, label: s }))]}
       />
       {(filtros.data ?? []).length > 0 && (
-        <select
+        <RebSelect
           aria-label="Aplicar filtro salvo"
-          className="rounded border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-2 py-1 text-sm text-[color:var(--ink)]"
+          className="w-auto gap-2 rounded-[8px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-[13px] py-[7px] text-sm text-[color:var(--ink)]"
           value=""
-          onChange={(e) => { const f = (filtros.data ?? []).find((x) => String(x.id) === e.target.value); if (f) aplicarFiltro(f.criterios); }}
+          onChange={(v) => { const f = (filtros.data ?? []).find((x) => String(x.id) === v); if (f) aplicarFiltro(f.criterios); }}
         >
           <option value="">Filtros salvos…</option>
           {(filtros.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
-        </select>
+        </RebSelect>
       )}
       <RebButton onClick={() => setPromptFiltroAberto(true)}>Salvar filtro</RebButton>
       <RebButton className="ml-auto" aria-pressed={bulkAberto} onClick={() => setBulkAberto((v) => !v)}>Alteração coletiva</RebButton>

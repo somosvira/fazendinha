@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import {
@@ -17,6 +17,18 @@ function resposta(body: unknown) {
     status: 200,
     headers: { "content-type": "application/json" },
   }));
+}
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
+/* Abre o seletor, escolhe a opção e espera o Radix devolver o foco ao gatilho. */
+async function escolher(rotulo: string, opcao: string, dentro: Pick<typeof screen, "getByRole"> = screen) {
+  fireEvent.click(dentro.getByRole("combobox", { name: rotulo }));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
 afterEach(() => {
@@ -122,6 +134,22 @@ describe("UI de genética e sêmen", () => {
     expect(indicadores.getAttribute("style")).toContain("var(--cafe)");
   });
 
+  it("explica a direção e o espelho do indicador na lista aberta", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => resposta([])));
+    render(createElement(CadastrosView));
+    fireEvent.click(screen.getByRole("button", { name: "Indicadores" }));
+    fireEvent.click(await screen.findByRole("button", { name: "+ Novo indicador" }));
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Direção desejável" }));
+    expect((await screen.findByRole("option", { name: "Menor é melhor" })).textContent).toContain("Na escolha de touros, valor mais baixo conta a favor.");
+    fireEvent.click(screen.getByRole("option", { name: "Menor é melhor" }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.getByRole("combobox", { name: "Direção desejável" }).textContent).toBe("Menor é melhor");
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Espelhar no índice atual" }));
+    expect((await screen.findByRole("option", { name: "TPI" })).textContent).toContain("O valor também preenche o campo TPI do touro, usado no ranking atual.");
+  });
+
   it("expande uma ficha técnica acessível com ranking, genética e estoque", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -195,16 +223,17 @@ describe("UI de genética e sêmen", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { container } = render(createElement(ReprodutoresSection));
-    const seletor = await screen.findByRole("combobox", { name: "Ordenar reprodutores por" });
-    fireEvent.change(seletor, { target: { value: "7" } });
-    fireEvent.change(seletor, { target: { value: "8" } });
+    const seletor = await screen.findByRole("combobox", { name: "Ordenar reprodutores por" }) as HTMLButtonElement;
+    await waitFor(() => expect(seletor.disabled).toBe(false));
+    await escolher("Ordenar reprodutores por", "PTA_L · PTA leite");
+    await escolher("Ordenar reprodutores por", "TPI_X · TPI novo");
 
     await act(async () => { resolverSegundo(await resposta({ ordem: [9, 12], indicadorId: 8 })); });
     await act(async () => { resolverPrimeiro(await resposta({ ordem: [12, 9], indicadorId: 7 })); });
 
     const nomes = Array.from(container.querySelectorAll("article")).map((article) => article.textContent ?? "");
     expect(nomes[0]).toContain("Semex Chief");
-    expect(seletor).toHaveProperty("value", "8");
+    expect(seletor.textContent).toBe("TPI_X · TPI novo");
   });
 
   it("anuncia erro de dose dentro do bloco de estoque", async () => {

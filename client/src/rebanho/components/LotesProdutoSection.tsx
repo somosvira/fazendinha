@@ -5,6 +5,12 @@ import {
   type LocalArmazenamentoDTO, type ProdutoDTO, type StatusValidadeLote,
 } from "../api";
 import { PromptDialog } from "@/components/PromptDialog";
+import { CampoData } from "@/components/CampoData";
+import { SelectBusca } from "@/components/SelectBusca";
+
+// Gatilhos no mesmo look de caixa pequena dos inputs vizinhos.
+const CAIXA_SELECT = "mt-0.5 w-auto min-w-44 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]";
+const CAIXA_DATA = "mt-0.5 w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
 const STATUS_COR: Record<StatusValidadeLote, string> = { vencido: "var(--prejuizo)", "a-vencer": "var(--atencao)", ok: "var(--lucro)", "sem-validade": "var(--ink-mute)" };
@@ -66,16 +72,12 @@ export function LotesProdutoSection() {
       {aberto && (
         <form onSubmit={salvar} className="mb-3 flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-xs text-ink-3">Produto
-            <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.produtoId} onChange={(e) => set("produtoId", e.target.value)}>
-              <option value="">selecione…</option>{produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            <SelectBusca variante="sublinhado" className={CAIXA_SELECT} aria-label="Produto" value={f.produtoId} onValueChange={(v) => set("produtoId", v)} placeholder="selecione…" buscaPlaceholder="Buscar produto…" vazioTexto="Nenhum produto encontrado." options={produtos.map((p) => ({ value: String(p.id), label: p.nome }))} />
           </label>
           <label className="flex flex-col text-xs text-ink-3">Código<input className="mt-0.5 w-28 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.codigo} onChange={(e) => set("codigo", e.target.value)} maxLength={60} /></label>
-          <label className="flex flex-col text-xs text-ink-3">Validade<input type="date" className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.validade} onChange={(e) => set("validade", e.target.value)} /></label>
+          <label className="flex flex-col text-xs text-ink-3">Validade<CampoData variante="sublinhado" className={CAIXA_DATA} aria-label="Validade" value={f.validade} onChange={(v) => set("validade", v)} /></label>
           <label className="flex flex-col text-xs text-ink-3">Local
-            <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.localId} onChange={(e) => set("localId", e.target.value)}>
-              <option value="">—</option>{locais.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-            </select>
+            <SelectBusca variante="sublinhado" className={CAIXA_SELECT} aria-label="Local" value={f.localId} onValueChange={(v) => set("localId", v)} placeholder="—" opcaoVazia="—" buscaPlaceholder="Buscar local…" options={locais.map((l) => ({ value: String(l.id), label: l.nome }))} />
           </label>
           <button type="button" onClick={() => setPromptLocalAberto(true)} className="pb-1 text-xs text-[color:var(--cafe)] hover:underline">+ local</button>
           <label className="flex flex-col text-xs text-ink-3">Qtde<input type="number" min={0} className="mt-0.5 w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={f.quantidade} onChange={(e) => set("quantidade", e.target.value)} /></label>

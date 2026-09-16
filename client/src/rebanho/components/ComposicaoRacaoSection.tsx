@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SelectBusca } from "@/components/SelectBusca";
 import { listarProdutos, obterComposicaoRacao, definirComposicaoRacao, type ProdutoDTO, type ComposicaoRacaoDTO } from "../api";
 
 type ItemEdit = { ingredienteId: string; proporcao: string };
@@ -46,20 +47,31 @@ export function ComposicaoRacaoSection() {
     <div className="mt-[18px] rounded-[10px] border border-[color:var(--rule-soft)] bg-[color:var(--bg-card)] px-4 py-[15px]">
       <h4 className="mb-[11px] mt-0 text-sm uppercase tracking-[.06em] text-ink-3">Composição de ração (receita)</h4>
 
-      <select className="mb-3 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={produtoId} onChange={(e) => setProdutoId(e.target.value)}>
-        <option value="">selecione o produto (ração)…</option>
-        {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-      </select>
+      <SelectBusca
+        className="mb-3 w-auto min-w-64 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]"
+        aria-label="Produto (ração)"
+        value={produtoId}
+        onValueChange={setProdutoId}
+        placeholder="selecione o produto (ração)…"
+        buscaPlaceholder="Buscar produto…"
+        options={produtos.map((p) => ({ value: String(p.id), label: p.nome }))}
+      />
+      <p className="-mt-2 mb-3 text-xs text-ink-3">Receita: de quais produtos a ração é feita e quanto (%) entra de cada um; a soma deve dar 100%.</p>
 
       {produtoId && (
         <>
           <div className="mb-2 flex flex-col gap-1.5">
             {itens.map((it, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
-                <select className="min-w-[180px] flex-1 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={it.ingredienteId} onChange={(e) => setItem(i, { ingredienteId: e.target.value })} aria-label={`Ingrediente ${i + 1}`}>
-                  <option value="">ingrediente…</option>
-                  {outros.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                <SelectBusca
+                  className="w-auto min-w-[180px] flex-1 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm"
+                  aria-label={`Ingrediente ${i + 1}`}
+                  value={it.ingredienteId}
+                  onValueChange={(v) => setItem(i, { ingredienteId: v })}
+                  placeholder="ingrediente…"
+                  buscaPlaceholder="Buscar produto…"
+                  options={outros.map((p) => ({ value: String(p.id), label: p.nome }))}
+                />
                 <input type="number" min={0} max={100} step="0.1" className="w-24 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm" value={it.proporcao} onChange={(e) => setItem(i, { proporcao: e.target.value })} placeholder="%" aria-label={`Proporção ${i + 1}`} />
                 <button type="button" onClick={() => removeItem(i)} className="text-sm text-ink-3 hover:text-prejuizo" aria-label={`Remover ingrediente ${i + 1}`}>×</button>
               </div>

@@ -1,8 +1,9 @@
 import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
-
-const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal";
+import { CampoData } from "../components/CampoData";
+import { CampoSelect } from "../components/CampoSelect";
+import { SelectBusca } from "../components/SelectBusca";
 
 export type FiltrosExtratoGeral = {
   inicio: string;
@@ -22,6 +23,12 @@ export function filtrarMovimentosExtratoGeral(movimentos: MovimentoGeral[], filt
   });
 }
 
+/* Usado também no filtro de contas: instituições cadastradas + "sem instituição". */
+export function opcoesInstituicao(contas: Pick<Conta, "instituicao">[]) {
+  const nomes = Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort();
+  return [{ value: "", label: "Todas as instituições" }, ...nomes.map(i => ({ value: i, label: i })), { value: "__sem__", label: "Sem instituição" }];
+}
+
 export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, carregando, erro, onAbrir }: {
   contas: Conta[];
   movimentos: MovimentoGeral[];
@@ -39,10 +46,11 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
     <p className="mt-2 text-sm text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
     <Panel className="mt-4 overflow-hidden">
       <div className="grid gap-4 border-b border-border p-5 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="text-sm font-medium">Data inicial<input type="date" value={inicio} onChange={e => onChangeFiltros({ ...filtros, inicio: e.target.value })} className={CAMPO} /></label>
-        <label className="text-sm font-medium">Data final<input type="date" value={fim} onChange={e => onChangeFiltros({ ...filtros, fim: e.target.value })} className={CAMPO} /></label>
-        <label className="text-sm font-medium">Conta<select value={conta} onChange={e => onChangeFiltros({ ...filtros, conta: e.target.value })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
-        <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => onChangeFiltros({ ...filtros, instituicao: e.target.value })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
+        <label className="text-sm font-medium">Data inicial<CampoData aria-label="Data inicial" value={inicio} onChange={v => onChangeFiltros({ ...filtros, inicio: v })} /></label>
+        <label className="text-sm font-medium">Data final<CampoData aria-label="Data final" value={fim} onChange={v => onChangeFiltros({ ...filtros, fim: v })} /></label>
+        <label className="text-sm font-medium">Conta<SelectBusca aria-label="Conta" value={conta} onValueChange={v => onChangeFiltros({ ...filtros, conta: v })} opcaoVazia="Todas as contas" options={contas.map(c => ({ value: String(c.id), label: `${c.nome}${!c.ativo ? " (inativa)" : ""}` }))} buscaPlaceholder="Buscar conta…" /></label>
+        <label className="text-sm font-medium">Instituição<CampoSelect aria-label="Instituição" value={instituicao} onValueChange={v => onChangeFiltros({ ...filtros, instituicao: v })} options={opcoesInstituicao(contas)} /></label>
+        {(inicio || fim) && <button type="button" onClick={() => onChangeFiltros({ ...filtros, inicio: "", fim: "" })} className="justify-self-start text-sm font-medium text-ink-3 underline underline-offset-4 hover:text-ink sm:col-span-2 xl:col-span-4">Limpar datas</button>}
       </div>
       <ErrorBox erro={erro} />
       {intervaloInvalido ? <p role="alert" className="p-5">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <p role="status" className="p-5">Carregando extrato geral…</p> : erro ? <p className="p-5">Não foi possível carregar as movimentações.</p> : filtrados.length ? <TabelaFinanceira rotulo="Extrato geral" itens={filtrados} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[

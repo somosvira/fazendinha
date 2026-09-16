@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSaudeUbere, registrarExameQuarto, type Quarto, type ScoreCmt, type EstadoQuarto, type QuartoInput } from "../api";
 import { getHojeISO } from "../../lib/hoje";
+import { CampoData } from "@/components/CampoData";
 
 const QUARTOS: Quarto[] = ["AE", "AD", "PE", "PD"];
 const QUARTO_LABEL: Record<Quarto, string> = { AE: "Ant. Esq.", AD: "Ant. Dir.", PE: "Post. Esq.", PD: "Post. Dir." };
@@ -117,7 +118,7 @@ export function SaudeUbereSection({ animalId }: { animalId: string }) {
         <form onSubmit={salvar} className="mb-3 rounded-[8px] border border-dashed border-[color:var(--rule-soft)] px-3 py-2.5">
           <label className="mb-2 flex items-center gap-2 text-xs text-ink-3">
             Data
-            <input type="date" className="rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={data_} onChange={(e) => setData_(e.target.value)} />
+            <CampoData variante="sublinhado" className="w-36 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]" aria-label="Data" value={data_} onChange={setData_} />
           </label>
           <div className="flex flex-col gap-1.5">
             {QUARTOS.map((q) => (

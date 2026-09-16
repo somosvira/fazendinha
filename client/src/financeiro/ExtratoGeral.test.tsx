@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, type FiltrosExtratoGeral } from "./ExtratoGeral";
 import type { Conta, MovimentoGeral } from "./novo-api";
-afterEach(cleanup);
+import { escolher, escolherData, prepararPopups } from "./campos.test-utils";
+beforeEach(prepararPopups);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const contas = [{ id: 1, nome: "Banco A", instituicao: "Instituição A", ativo: true }, { id: 2, nome: "Caixa B", instituicao: null, ativo: false }] as Conta[];
 const movimentos: MovimentoGeral[] = [
   { id: 11, contaId: 1, conta: contas[0], direcao: "ENTRADA", valor: "25", transacao: { id: 21, tipo: "RECEBIMENTO", formaPagamento: null, parceiro: null, operacao: null, data: "2026-09-13", descricao: "Venda A", status: "CONFIRMADA" } },
@@ -17,16 +19,19 @@ function ExtratoControlado({ itens = movimentos, erro = null, onAbrir = vi.fn() 
 it("combina filtros inclusivos de data, conta e instituição e abre o movimento exato", async () => {
   const abrir = vi.fn(); render(<ExtratoControlado onAbrir={abrir} />);
   const tabela = within(await screen.findByRole("table", { name: "Extrato geral" }));
-  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-13" } });
-  fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-13" } });
-  fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
-  fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
+  await escolherData("Data inicial", "13 de setembro de 2026");
+  await escolherData("Data final", "13 de setembro de 2026");
+  await escolher("Conta", "Banco A");
+  await escolher("Instituição", "Instituição A");
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
-  fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "__sem__" } });
+  await escolher("Instituição", "Sem instituição");
   expect(screen.getByText(/Nenhuma movimentação encontrada/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-11" } });
+  await escolherData("Data final", "11 de setembro de 2026");
   expect(screen.getByRole("alert").textContent).toContain("data final");
+  fireEvent.click(screen.getByRole("button", { name: "Limpar datas" }));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("button", { name: "Data inicial" }).textContent).toContain("dd/mm/aaaa");
 });
 it("distingue erro de carregamento de extrato vazio", async () => {
   render(<ExtratoControlado itens={[]} erro="Falha na consulta" />);

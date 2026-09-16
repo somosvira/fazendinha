@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
 import { ApiError, atualizarConta, atualizarParceiro, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { escolherData, esperarFoco, prepararPopups } from "./campos.test-utils";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
 vi.mock("./novo-api", async (importOriginal) => ({
@@ -29,12 +30,12 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 
 beforeEach(() => {
   vi.clearAllMocks();
-  Element.prototype.scrollIntoView = vi.fn();
+  prepararPopups();
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue(config);
   vi.mocked(atualizarConta).mockResolvedValue(config.contas[0]);
   vi.mocked(atualizarParceiro).mockResolvedValue(config.parceiros[0]);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 async function montar(aba: "contas" | "parceiros" | "categorias" | "centros" = "contas") {
   render(<ConfiguracoesFinanceiras />);
@@ -47,6 +48,7 @@ async function montar(aba: "contas" | "parceiros" | "categorias" | "centros" = "
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
   fireEvent.click(within(painel).getByRole("combobox", { name: rotulo }));
   fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await esperarFoco();
 }
 
 describe("ConfiguracoesFinanceiras — contas", () => {
@@ -103,7 +105,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     await escolherSelect(painel, "Tipo", "Aplicação financeira");
     fireEvent.change(within(painel).getByLabelText("Instituição"), { target: { value: "Sicredi" } });
     fireEvent.change(within(painel).getByLabelText("Saldo de abertura"), { target: { value: "500" } });
-    fireEvent.change(within(painel).getByLabelText("Data do saldo de abertura"), { target: { value: "2026-03-15" } });
+    await escolherData("Data do saldo de abertura", "15 de março de 2026", within(painel));
     fireEvent.click(within(painel).getByLabelText("Incluir no saldo geral"));
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
     await waitFor(() => expect(criarConta).toHaveBeenCalledWith(expect.objectContaining({ nome: "Aplicação CDB", tipo: "APLICACAO", instituicao: "Sicredi", identificacao: null, saldoAbertura: 500, dataSaldoAbertura: "2026-03-15", incluirNoSaldoGeral: false, ordem: 1 })));
@@ -146,7 +148,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     expect((within(painel).getByLabelText("Nome de exibição") as HTMLInputElement).value).toBe("Banco principal");
     expect((within(painel).getByLabelText("Instituição") as HTMLInputElement).value).toBe("Sicoob");
     expect((within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement).disabled).toBe(true);
-    expect((within(painel).getByLabelText("Data do saldo de abertura") as HTMLInputElement).disabled).toBe(true);
+    expect((within(painel).getByRole("button", { name: "Data do saldo de abertura" }) as HTMLButtonElement).disabled).toBe(true);
     expect(within(painel).getByText(/já possui movimentos/)).toBeTruthy();
     fireEvent.change(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Banco BB" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar conta" }));
@@ -189,12 +191,21 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     fireEvent.click(primeiro("button", "Editar Cooperativa"));
     const painel = await screen.findByRole("dialog");
     fireEvent.click(within(painel).getByRole("checkbox", { name: "Prestador de serviço" }));
-    fireEvent.change(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
+    await escolherSelect(painel, "Condição sugerida", "A prazo");
     fireEvent.change(within(painel).getByLabelText("Prazos em dias"), { target: { value: "30/60" } });
-    fireEvent.change(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
+    await escolherSelect(painel, "Forma de pagamento sugerida", "Boleto");
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
     await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(7, { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
   });
+  it("explica à vista e a prazo na condição sugerida", async () => {
+    await montar("parceiros");
+    fireEvent.click(primeiro("button", "Editar Cooperativa"));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.click(within(painel).getByRole("combobox", { name: "Condição sugerida" }));
+    expect((await screen.findByRole("option", { name: "À vista" })).textContent).toContain("Tudo é pago ou recebido hoje");
+    expect(screen.getByRole("option", { name: "A prazo" }).textContent).toContain("O valor vira parcelas com vencimento");
+  });
+
   it("edição carrega nome, documento formatado, papel, telefone e e-mail", async () => {
     await montar("parceiros");
     fireEvent.click((await screen.findAllByText("Cooperativa"))[0].closest("tr")!);
@@ -261,9 +272,27 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
     const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
-    fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
+    await escolherSelect(painel, "Classificação", "Custeio");
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+  });
+
+  it("explica custeio e investimento na classificação da categoria", async () => {
+    await montar("categorias");
+    fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.click(within(painel).getByRole("combobox", { name: "Classificação" }));
+    expect((await screen.findByRole("option", { name: "Custeio" })).textContent).toContain("Gasto do dia a dia para produzir");
+    expect(screen.getByRole("option", { name: "Investimento" }).textContent).toContain("Compra que dura anos");
+  });
+
+  it("mantém o texto de ajuda da classificação ligado ao campo", async () => {
+    await montar("categorias");
+    fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
+    const painel = await screen.findByRole("dialog");
+    const campo = within(painel).getByRole("combobox", { name: "Classificação" });
+    const ajuda = document.getElementById(campo.getAttribute("aria-describedby") ?? "");
+    expect(ajuda?.textContent).toContain("A direção financeira continua sendo definida pelo tipo da operação.");
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

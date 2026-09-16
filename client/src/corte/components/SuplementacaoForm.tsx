@@ -5,16 +5,19 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 import { fmtMoneyExact, fmtBRL } from "@/components/charts";
 
 /* Catálogo de suplementos típicos Sul de Minas (espelha o da NutricaoTab). O
  * valor é o enum TipoSuplemento em UPPERCASE; o resto pré-preenche o formulário. */
-const SUPLEMENTOS: { v: TipoSuplemento; lab: string; produto: string; gCabDia: number; custoKg: number }[] = [
-  { v: "MINERAL", lab: "Mineral 80", produto: "Mineral 80", gCabDia: 80, custoKg: 5.20 },
-  { v: "PROTEICO_SECA", lab: "Proteinado 30% PB · seca", produto: "Proteinado 30% PB", gCabDia: 800, custoKg: 4.80 },
-  { v: "ENERGETICO_AGUAS", lab: "Energético 18% PB + ureia · águas", produto: "Energético 18% PB", gCabDia: 500, custoKg: 4.30 },
-  { v: "RACAO_CONFINAMENTO", lab: "Ração alto-grão (terminação)", produto: "Ração confinamento alto-grão", gCabDia: 9_500, custoKg: 1.95 },
-  { v: "SAL_BRANCO", lab: "Sal branco (manutenção)", produto: "Sal branco", gCabDia: 60, custoKg: 1.10 },
+// `desc`: explicação simples (PB = proteína bruta, DOMAIN.md; águas = época das chuvas).
+const SUPLEMENTOS: { v: TipoSuplemento; lab: string; produto: string; gCabDia: number; custoKg: number; desc: string }[] = [
+  { v: "MINERAL", lab: "Mineral 80", produto: "Mineral 80", gCabDia: 80, custoKg: 5.20, desc: "Sal mineral, cerca de 80 g por cabeça por dia." },
+  { v: "PROTEICO_SECA", lab: "Proteinado 30% PB · seca", produto: "Proteinado 30% PB", gCabDia: 800, custoKg: 4.80, desc: "Para a seca. PB é a proteína bruta: 30% do produto é proteína." },
+  { v: "ENERGETICO_AGUAS", lab: "Energético 18% PB + ureia · águas", produto: "Energético 18% PB", gCabDia: 500, custoKg: 4.30, desc: "Energia extra para a época das águas (chuvas)." },
+  { v: "RACAO_CONFINAMENTO", lab: "Ração alto-grão (terminação)", produto: "Ração confinamento alto-grão", gCabDia: 9_500, custoKg: 1.95, desc: "Ração de confinamento para a engorda final, cerca de 9,5 kg por cabeça por dia." },
+  { v: "SAL_BRANCO", lab: "Sal branco (manutenção)", produto: "Sal branco", gCabDia: 60, custoKg: 1.10, desc: "Sal comum, só para manter os animais." },
 ];
 
 /* Drawer de registro de suplementação — espelha o PesagemForm. O select de tipo
@@ -76,9 +79,9 @@ export function SuplementacaoForm({ lote, onFechar, onSalvo }: { lote: Lote; onF
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Define o protocolo de suplemento vigente do lote.</p>
 
       <RebField label="Tipo de suplemento*">
-        <select className="rb-field-select" value={tipo} onChange={(e) => escolherTipo(e.target.value as TipoSuplemento)}>
-          {SUPLEMENTOS.map((s) => <option key={s.v} value={s.v}>{s.lab}</option>)}
-        </select>
+        <RebSelect aria-label="Tipo de suplemento" value={tipo} onChange={(v) => escolherTipo(v as TipoSuplemento)}>
+          {SUPLEMENTOS.map((s) => <option key={s.v} value={s.v} data-descricao={s.desc}>{s.lab}</option>)}
+        </RebSelect>
       </RebField>
 
       <RebField label="Produto*">
@@ -103,10 +106,10 @@ export function SuplementacaoForm({ lote, onFechar, onSalvo }: { lote: Lote; onF
 
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Início*" style={{ flex: 1 }}>
-          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Início" value={dataInicio} onChange={setDataInicio} max={HOJE} />
         </RebField>
         <RebField label="Fim (opcional)" style={{ flex: 1 }}>
-          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          <CampoData variante="sublinhado" aria-label="Fim (opcional)" value={dataFim} onChange={setDataFim} />
         </RebField>
       </div>
 

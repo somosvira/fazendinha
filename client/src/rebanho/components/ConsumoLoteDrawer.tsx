@@ -4,6 +4,7 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
 import { RebAnm } from "@/components/rb/RebPrimitives";
 import { getHoje } from "@/lib/hoje";
 import { fmtMoneyExact } from "@/components/charts";
@@ -71,8 +72,8 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <RebField label="Início" style={{ flex: 1 }}><input type="date" value={dataInicio} max={dataFim} onChange={(e) => setDataInicio(e.target.value)} /></RebField>
-          <RebField label="Fim" style={{ flex: 1 }}><input type="date" value={dataFim} min={dataInicio} onChange={(e) => setDataFim(e.target.value)} /></RebField>
+          <RebField label="Início" style={{ flex: 1 }}><CampoData variante="sublinhado" aria-label="Início" value={dataInicio} max={dataFim} onChange={setDataInicio} /></RebField>
+          <RebField label="Fim" style={{ flex: 1 }}><CampoData variante="sublinhado" aria-label="Fim" value={dataFim} min={dataInicio} onChange={setDataFim} /></RebField>
         </div>
 
         {carregando ? <p className="mt-[7px] text-sm text-ink-3">Calculando prévia…</p>

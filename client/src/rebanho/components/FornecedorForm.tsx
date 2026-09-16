@@ -3,6 +3,7 @@ import { criarFornecedor, editarFornecedor, type FornecedorDTO, type TipoPessoa 
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 
 const TIPOS: { id: TipoPessoa; label: string }[] = [
   { id: "FORNECEDOR", label: "Fornecedor" },
@@ -50,7 +51,7 @@ export function FornecedorForm({ fornecedor, onFechar, onSalvo }: { fornecedor?:
       }
     >
       <RebField label="Nome*"><input value={f.nome} onChange={(e) => set("nome", e.target.value)} /></RebField>
-      <RebField label="Tipo"><select className="rb-field-select" value={f.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></RebField>
+      <RebField label="Tipo"><RebSelect aria-label="Tipo" value={f.tipo} onChange={(v) => set("tipo", v)}>{TIPOS.map((t) => <option key={t.id} value={t.id} data-descricao={t.id === "AMBOS" ? "Vende para a fazenda e também compra dela." : undefined}>{t.label}</option>)}</RebSelect></RebField>
       <RebField label="Documento (CPF/CNPJ)"><input value={f.documento} onChange={(e) => set("documento", e.target.value)} /></RebField>
       <RebField label="Telefone"><input value={f.telefone} onChange={(e) => set("telefone", e.target.value)} /></RebField>
       <RebField label="E-mail"><input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></RebField>

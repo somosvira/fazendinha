@@ -3,6 +3,7 @@ import {
   useProtocolosIatf, criarProtocoloIatf, atualizarProtocoloIatf, excluirProtocoloIatf,
   type ProtocoloIatfDTO,
 } from "../api";
+import { RebSelect } from "@/components/rb/RebSelect";
 
 type EtapaEdit = { dia: string; acao: string; hormonio: string };
 
@@ -85,10 +86,10 @@ export function ProtocolosIatf() {
             </label>
             <label className="flex flex-col text-xs text-ink-3">
               Finalidade
-              <select className="mt-0.5 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-sm text-[color:var(--ink)]" value={finalidade} onChange={(e) => setFinalidade(e.target.value as "IATF" | "TETF")}>
-                <option value="IATF">IATF · inseminação</option>
-                <option value="TETF">TETF · transferência de embrião</option>
-              </select>
+              <RebSelect className="mt-0.5 w-auto min-w-56 gap-3 rounded border border-[color:var(--rule-soft)] px-2 py-1 text-[color:var(--ink)]" aria-label="Finalidade" value={finalidade} onChange={(v) => setFinalidade(v as "IATF" | "TETF")}>
+                <option value="IATF" data-descricao="Inseminação artificial em tempo fixo: o protocolo termina com a inseminação.">IATF · inseminação</option>
+                <option value="TETF" data-descricao="O protocolo termina com a transferência de embrião em data marcada.">TETF · transferência de embrião</option>
+              </RebSelect>
             </label>
             <label className="flex flex-col text-xs text-ink-3">
               Hormônio-base (opcional)

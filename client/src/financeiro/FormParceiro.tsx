@@ -4,7 +4,16 @@ import { CamposCadastro } from "./CamposCadastro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro, FORMAS_PAGAMENTO } from "./lib/parceiros";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
+import { CampoSelect } from "../components/CampoSelect";
+import { EXPLICACAO_CONDICAO } from "./lib/explicacoes";
 import { formatarDocumento, somenteDigitos, validarDocumento, validarParceiro, type ErrosCampo } from "./lib/validacao";
+
+const OPCOES_CONDICAO = [
+  { value: "", label: "Sem preferência" },
+  { value: "A_VISTA", label: "À vista", descricao: EXPLICACAO_CONDICAO.A_VISTA.descricao },
+  { value: "A_PRAZO", label: "A prazo", descricao: EXPLICACAO_CONDICAO.A_PRAZO.descricao },
+];
+const OPCOES_FORMA = [{ value: "", label: "Sem preferência" }, ...Object.entries(FORMAS_PAGAMENTO).map(([value, label]) => ({ value, label }))];
 
 const ENDERECO = [["cep", "CEP", 9], ["logradouro", "Logradouro", 160], ["numero", "Número", 20], ["complemento", "Complemento", 100], ["bairro", "Bairro", 100], ["cidade", "Cidade", 100], ["uf", "UF", 2], ["referencia", "Referência", 240]] as const;
 
@@ -75,9 +84,9 @@ export function FormParceiro({ parceiro, aberto, onSalvo, onFechar }: { parceiro
       <details open={ENDERECO.some(([campo]) => Boolean(erros[campo])) || undefined} className="border-t border-border pt-4"><summary className="mb-4 cursor-pointer font-medium">Endereço</summary><CamposCadastro prefixo="parceiro" campos={ENDERECO} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} /></details>
       <fieldset className="grid gap-4 border-t border-border pt-4"><legend className="font-medium">Preferências de pagamento</legend>
         <p className="text-sm text-ink-3">Sugestões opcionais. Você pode escolher outras condições em cada operação.</p>
-        <CampoFormulario id="parceiro-condicao" rotulo="Condição sugerida" erro={erros.condicaoPagamentoPreferida}>{(p) => <select {...p} value={condicaoPreferida} onChange={(e) => setCondicaoPreferida(e.target.value as typeof condicaoPreferida)} className={classeInput}><option value="">Sem preferência</option><option value="A_VISTA">À vista</option><option value="A_PRAZO">A prazo</option></select>}</CampoFormulario>
+        <CampoFormulario id="parceiro-condicao" rotulo="Condição sugerida" erro={erros.condicaoPagamentoPreferida}>{(p) => <CampoSelect id={p.id} aria-label={p["aria-label"]} aria-invalid={p["aria-invalid"]} aria-describedby={p["aria-describedby"]} value={condicaoPreferida} onValueChange={(v) => setCondicaoPreferida(v as typeof condicaoPreferida)} options={OPCOES_CONDICAO} />}</CampoFormulario>
         {condicaoPreferida === "A_PRAZO" && <CampoFormulario id="parceiro-prazos" rotulo="Prazos em dias" erro={erros.prazosPagamento} ajuda="Ex.: 30/60 para duas parcelas após a data da operação.">{(p) => <input {...p} value={prazos} onChange={(e) => setPrazos(e.target.value)} placeholder="30/60" className={classeInput} />}</CampoFormulario>}
-        <CampoFormulario id="parceiro-forma" rotulo="Forma de pagamento sugerida" erro={erros.formaPagamentoPreferida}>{(p) => <select {...p} value={formaPreferida} onChange={(e) => setFormaPreferida(e.target.value)} className={classeInput}><option value="">Sem preferência</option>{Object.entries(FORMAS_PAGAMENTO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>}</CampoFormulario>
+        <CampoFormulario id="parceiro-forma" rotulo="Forma de pagamento sugerida" erro={erros.formaPagamentoPreferida}>{(p) => <CampoSelect id={p.id} aria-label={p["aria-label"]} aria-invalid={p["aria-invalid"]} aria-describedby={p["aria-describedby"]} value={formaPreferida} onValueChange={setFormaPreferida} options={OPCOES_FORMA} />}</CampoFormulario>
       </fieldset>
       <CampoFormulario id="parceiro-observacoes" rotulo="Observações" erro={erros.observacoes}>{(p) => <textarea {...p} maxLength={1000} value={extras.observacoes} onChange={(e) => setExtras((s) => ({ ...s, observacoes: e.target.value }))} className={classeInput} />}</CampoFormulario>
     </form>

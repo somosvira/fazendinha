@@ -3,6 +3,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Loader } from "../../components/Loading";
 import { fmt } from "../../components/charts";
 import { RebAnm, RebBox, RebEmpty, RebMain, RebPill } from "@/components/rb/RebPrimitives";
+import { RebSelect } from "@/components/rb/RebSelect";
 import {
   criarPlanoAcasalamento,
   escolherReprodutorPlano,
@@ -25,11 +26,15 @@ const BTN = "min-h-6 rounded-lg border border-[color:var(--cafe)] bg-transparent
 const BTN_PRIMARY = `${BTN} bg-[color:var(--cafe)] text-[color:var(--bg-card)] hover:bg-[color:var(--cafe)]`;
 const FIELD = "min-h-6 w-full rounded-lg border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--cafe)]";
 
-const STATUS: Record<StatusCandidatoAcasalamento, { label: string; tone: "ok" | "warn" | "bad" }> = {
-  ok: { label: "apto", tone: "ok" },
-  nao_verificavel: { label: "pedigree não verificável", tone: "warn" },
-  consanguineo: { label: "consanguíneo", tone: "bad" },
-  restrito: { label: "restrito", tone: "bad" },
+// Gatilho do RebSelect com o mesmo visual em caixa do FIELD.
+const FIELD_SELECT = `${FIELD} font-normal`;
+
+// `descricao` segue as regras de recomendar-acasalamento.calc.ts (server).
+const STATUS: Record<StatusCandidatoAcasalamento, { label: string; tone: "ok" | "warn" | "bad"; descricao: string }> = {
+  ok: { label: "apto", tone: "ok", descricao: "Pode ser escolhido: parentesco dentro do limite e indicadores obrigatórios atendidos." },
+  nao_verificavel: { label: "pedigree não verificável", tone: "warn", descricao: "A genealogia cadastrada não basta para checar o parentesco; pede confirmação." },
+  consanguineo: { label: "consanguíneo", tone: "bad", descricao: "Parente próximo demais da fêmea (acima do limite do plano); bloqueado." },
+  restrito: { label: "restrito", tone: "bad", descricao: "Não atende a um indicador genético obrigatório do plano; bloqueado." },
 };
 
 function percentual(valor: number) {
@@ -235,17 +240,17 @@ export function AcasalamentoPlanosTab({ onAbrirFicha }: { onAbrirFicha?: (animal
               </label>
               <label className="grid gap-1 text-sm font-semibold text-foreground">
                 Grupo do plano
-                <select className={FIELD} value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+                <RebSelect className={FIELD_SELECT} aria-label="Grupo do plano" value={grupoId} onChange={setGrupoId}>
                   <option value="">Selecione</option>
                   {grupos.map((grupo) => <option key={grupo.id} value={grupo.id}>{grupo.nome}</option>)}
-                </select>
+                </RebSelect>
               </label>
               <label className="grid gap-1 text-sm font-semibold text-foreground">
                 Combinação de medidas
-                <select className={FIELD} value={combinacaoId} onChange={(e) => setCombinacaoId(e.target.value)}>
+                <RebSelect className={FIELD_SELECT} aria-label="Combinação de medidas" value={combinacaoId} onChange={setCombinacaoId}>
                   <option value="">Selecione</option>
                   {combinacoes.map((combinacao) => <option key={combinacao.id} value={combinacao.id}>{combinacao.nome}</option>)}
-                </select>
+                </RebSelect>
               </label>
               <button className={BTN_PRIMARY} disabled={ocupado} type="submit">Criar plano de acasalamento</button>
             </form>
@@ -290,11 +295,11 @@ export function AcasalamentoPlanosTab({ onAbrirFicha }: { onAbrirFicha?: (animal
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="grid gap-1 text-xs font-semibold text-foreground">
                     Versão do plano
-                    <select className={FIELD} value={versaoSelecionada ?? ""} onChange={(e) => selecionarVersao(Number(e.target.value))}>
+                    <RebSelect className={FIELD_SELECT} aria-label="Versão do plano" value={versaoSelecionada ?? ""} onChange={(v) => selecionarVersao(Number(v))}>
                       {[...plano.versoes].sort((a, b) => b.versao - a.versao).map((item) => (
                         <option key={item.id} value={item.versao}>Versão {item.versao} · {dataPtBr(item.createdAt)}</option>
                       ))}
-                    </select>
+                    </RebSelect>
                   </label>
                   <button className={BTN_PRIMARY} disabled={ocupado} onClick={() => void recalcular()} type="button" aria-label={`Recalcular plano ${plano.nome}`}>Recalcular</button>
                 </div>
@@ -320,14 +325,19 @@ export function AcasalamentoPlanosTab({ onAbrirFicha }: { onAbrirFicha?: (animal
                             <td className="p-2">
                               <label className="grid gap-1 font-semibold text-foreground">
                                 Reprodutor para {linha.femeaNumero}{linha.femeaNome ? ` ${linha.femeaNome}` : ""}
-                                <select className={FIELD} value={selecoes[linha.id] ?? ""} onChange={(e) => setSelecoes((atuais) => ({ ...atuais, [linha.id]: e.target.value ? Number(e.target.value) : null }))}>
+                                <RebSelect
+                                  className={FIELD_SELECT}
+                                  aria-label={`Reprodutor para ${linha.femeaNumero}${linha.femeaNome ? ` ${linha.femeaNome}` : ""}`}
+                                  value={selecoes[linha.id] ?? ""}
+                                  onChange={(v) => setSelecoes((atuais) => ({ ...atuais, [linha.id]: v ? Number(v) : null }))}
+                                >
                                   <option value="">Selecione</option>
                                   {linha.ranking.map((candidato) => (
-                                    <option key={candidato.reprodutorId} value={candidato.reprodutorId} disabled={candidato.status === "consanguineo" || candidato.status === "restrito"}>
+                                    <option key={candidato.reprodutorId} value={candidato.reprodutorId} disabled={candidato.status === "consanguineo" || candidato.status === "restrito"} data-descricao={STATUS[candidato.status].descricao}>
                                       {candidato.nome} · {STATUS[candidato.status].label}
                                     </option>
                                   ))}
-                                </select>
+                                </RebSelect>
                               </label>
                               <button
                                 className={`${BTN_PRIMARY} mt-2 w-full`}

@@ -5,18 +5,22 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
+import { CampoData } from "@/components/CampoData";
 
 /* Catálogo de manejos sanitários (Calendário Embrapa cronograma 11). O label é
  * editorial; o valor é o enum TipoSanitario em UPPERCASE que o backend espera. */
-const TIPOS: { v: TipoSanitario; lab: string }[] = [
-  { v: "VACINA_AFTOSA", lab: "Vacina — Aftosa" },
-  { v: "VACINA_BRUCELOSE_B19", lab: "Vacina — Brucelose B19 (fêmeas 3-8 meses)" },
-  { v: "VACINA_CLOSTRIDIOSE", lab: "Vacina — Clostridiose (polivalente)" },
+/* `desc` = explicação simples mostrada na lista aberta. Fonte: calendário
+ * sanitário do módulo (../lib/calendario). Só onde o nome não basta. */
+const TIPOS: { v: TipoSanitario; lab: string; desc?: string }[] = [
+  { v: "VACINA_AFTOSA", lab: "Vacina — Aftosa", desc: "Obrigatória, em duas etapas por ano (no Sul de Minas, maio e novembro)." },
+  { v: "VACINA_BRUCELOSE_B19", lab: "Vacina — Brucelose B19 (fêmeas 3-8 meses)", desc: "Obrigatória, só para bezerras de 3 a 8 meses de idade." },
+  { v: "VACINA_CLOSTRIDIOSE", lab: "Vacina — Clostridiose (polivalente)", desc: "Uma vacina contra várias doenças; a 1ª dose costuma ser na desmama." },
   { v: "VACINA_RAIVA", lab: "Vacina — Raiva" },
   { v: "VACINA_CARBUNCULO", lab: "Vacina — Carbúnculo" },
   { v: "VACINA_LEPTOSPIROSE", lab: "Vacina — Leptospirose" },
   { v: "VACINA_IBR_BVD", lab: "Vacina — IBR / BVD" },
-  { v: "VERMIFUGACAO_5811", lab: "Vermifugação — esquema 5/8/11" },
+  { v: "VERMIFUGACAO_5811", lab: "Vermifugação — esquema 5/8/11", desc: "Vermífugo em maio, agosto e novembro, da desmama até 2 anos." },
   { v: "VERMIFUGACAO_ESTRATEGICA", lab: "Vermifugação — estratégica" },
   { v: "CONTROLE_CARRAPATO", lab: "Controle de carrapato" },
   { v: "CONTROLE_MOSCA", lab: "Controle de mosca-dos-chifres" },
@@ -80,14 +84,14 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
       <p className="text-sm text-ink-3">{lote.nome} · {lote.numCabecas} cabeças. Vacina, vermífugo e controles entram na linha do tempo do lote.</p>
 
       <RebField label="Tipo de manejo*">
-        <select className="rb-field-select" value={tipo} onChange={(e) => setTipo(e.target.value as TipoSanitario)}>
-          {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.lab}</option>)}
-        </select>
+        <RebSelect aria-label="Tipo de manejo" value={tipo} onChange={(v) => setTipo(v as TipoSanitario)}>
+          {TIPOS.map((t) => <option key={t.v} value={t.v} data-descricao={t.desc}>{t.lab}</option>)}
+        </RebSelect>
       </RebField>
 
       <div style={{ display: "flex", gap: 10 }}>
         <RebField label="Data*" style={{ flex: 1 }}>
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} max={HOJE} />
+          <CampoData variante="sublinhado" aria-label="Data" value={data} onChange={setData} max={HOJE} />
         </RebField>
         <RebField label="Cabeças manejadas*" style={{ flex: 1 }}>
           <input type="number" value={numCabecas} onChange={(e) => setNumCabecas(e.target.value)} />
@@ -108,7 +112,7 @@ export function ManejoForm({ lote, onFechar, onSalvo }: { lote: Lote; onFechar: 
           <input type="number" value={carenciaDias} onChange={(e) => setCarenciaDias(e.target.value)} placeholder="até liberar venda" />
         </RebField>
         <RebField label="Próxima dose" style={{ flex: 1 }}>
-          <input type="date" value={proximaDose} onChange={(e) => setProximaDose(e.target.value)} />
+          <CampoData variante="sublinhado" aria-label="Próxima dose" value={proximaDose} onChange={setProximaDose} />
         </RebField>
       </div>
 

@@ -7,6 +7,7 @@ import { fetchRelatorioGerencial } from "../../api";
 import { getHoje } from "../../lib/hoje";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
 import { usePropriedades } from "../../rebanho/api";
+import { CampoSelect } from "../CampoSelect";
 import { DateRangePicker, type DateRange } from "../DateRangePicker";
 import { useToast } from "../Toast";
 import { RelatorioGerencialDocumento } from "./RelatorioGerencialDocumento";
@@ -88,10 +89,14 @@ export function RelatorioGerencial({ onVoltar }: { onVoltar?: () => void }) {
         {ativas.length >= 2 && (
           <label className="flex flex-col gap-1 text-xs text-ink-3">
             Propriedade
-            <select className="rounded-md border border-border bg-[color:var(--bg)] px-3 py-2 text-sm text-foreground" value={propriedadeId ?? ""} onChange={(e) => setPropriedadeId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">Consolidado</option>
-              {ativas.map((p) => <option key={p.id} value={p.id}>{p.apelido ?? p.nome}</option>)}
-            </select>
+            <CampoSelect
+              aria-label="Propriedade"
+              className="mt-0 min-w-[12rem] py-2"
+              value={propriedadeId == null ? "" : String(propriedadeId)}
+              onValueChange={(v) => setPropriedadeId(v ? Number(v) : null)}
+              // Sem X-Propriedade-Id o servidor não filtra por sítio (services/propriedade.ts).
+              options={[{ value: "", label: "Consolidado", descricao: "Junta os números de todas as propriedades." }, ...ativas.map((p) => ({ value: String(p.id), label: p.apelido ?? p.nome }))]}
+            />
           </label>
         )}
         <div className="flex flex-col gap-1 text-xs text-ink-3">Período<DateRangePicker value={range} onChange={setRange} /></div>

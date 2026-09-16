@@ -4,6 +4,7 @@ import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CampoData } from "@/components/CampoData";
 
 export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
   animalId: string;
@@ -40,7 +41,7 @@ export function ControleForm({ animalId, modo, onFechar, onSalvo }: {
         </>
       }
     >
-      <RebField label="Data*"><input type="date" value={f.data} onChange={(e) => set("data", e.target.value)} /></RebField>
+      <RebField label="Data*"><CampoData variante="sublinhado" aria-label="Data" value={f.data} onChange={(v) => set("data", v)} /></RebField>
       {modo === "ORDENHA" ? (
         <>
           <RebField label="1ª ordenha (manhã) · L"><input type="number" min={0} step="0.1" value={f.peso1} onChange={(e) => set("peso1", e.target.value)} /></RebField>

@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createElement, type ChangeEvent, type ReactNode } from "react";
+import { createElement } from "react";
 
 const apiMocks = vi.hoisted(() => ({
   registrarEvento: vi.fn(),
@@ -19,27 +19,25 @@ vi.mock("../api", async (importOriginal) => ({
   useResultadosGinecologicos: () => ({ data: [], loading: true }),
 }));
 
-vi.mock("@/components/rb/RebSelect", () => ({
-  RebSelect: ({ value, onChange, children, ...props }: {
-    value: string | number | null | undefined;
-    onChange: (value: string) => void;
-    children: ReactNode;
-    [key: string]: unknown;
-  }) => {
-    return createElement("select", {
-      ...props,
-      value: value == null ? "" : String(value),
-      onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value),
-    }, children);
-  },
-}));
-
 import { EventoForm } from "./EventoForm";
+
+class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
+
+const combo = (nome: string) => screen.getByRole("combobox", { name: nome });
+/* Ao fechar, o Radix devolve o foco ao gatilho num setTimeout(0); esperar esse
+ * tick evita que o foco atrasado feche o próximo dropdown aberto pelo teste. */
+async function escolher(nome: string, opcao: string) {
+  fireEvent.click(combo(nome));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
 
 const base = { animalId: "1", animal: { id: "1", numero: "1188", nome: "Jurema", categoria: "VACA" as const }, onFechar: vi.fn(), onSalvo: vi.fn() };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  Element.prototype.scrollIntoView = vi.fn();
   apiMocks.listarRacas.mockResolvedValue([
     { id: 1, nome: "Holandês", codigo: "HO", especie: "BOVINO" },
     { id: 2, nome: "Gir", codigo: "GI", especie: "BOVINO" },
@@ -49,7 +47,7 @@ beforeEach(() => {
   apiMocks.obterAnimal.mockResolvedValue({ ...base.animal, resumo: null });
 });
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("EventoForm tipoInicial", () => {
   it.each([
@@ -59,18 +57,39 @@ describe("EventoForm tipoInicial", () => {
     ["INSEMINACAO", "Inseminação"],
   ] as const)("inicia reprodução em %s", (tipo, label) => {
     render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo } }));
-    expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe(label);
+    expect(combo("Tipo").textContent).toBe(label);
   });
 
-  it("oferece cadastro ou vínculo da cria ao iniciar em parto", () => {
+  it("explica em linguagem simples cada tipo de evento reprodutivo na lista", async () => {
+    render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "INSEMINACAO" } }));
+    const tipo = combo("Tipo");
+    fireEvent.click(tipo);
+    expect((await screen.findByRole("option", { name: "Diagnóstico" })).textContent).toContain("confirma se a fêmea ficou prenhe");
+    expect(screen.getByRole("option", { name: "Secagem" }).textContent).toContain("Parar de ordenhar");
+    // A explicação fica só na lista; o campo mostra apenas o rótulo.
+    expect(tipo.textContent).toBe("Inseminação");
+  });
+
+  it("explica os tipos sanitários e a gravidade da mastite", async () => {
+    render(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "MASTITE" } }));
+    fireEvent.click(combo("Severidade"));
+    expect((await screen.findByRole("option", { name: "Subclínica" })).textContent).toContain("Sem sinais visíveis");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    fireEvent.click(combo("Quarto"));
+    expect((await screen.findByRole("option", { name: "AD" })).textContent).toContain("Anterior direito");
+  });
+
+  it("oferece cadastro ou vínculo da cria ao iniciar em parto", async () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "PARTO" } }));
-    expect(screen.getByRole("option", { name: "Cadastrar a cria" })).toBeTruthy();
+    fireEvent.click(combo("Destino da cria"));
+    expect(await screen.findByRole("option", { name: "Cadastrar a cria" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Vincular cria existente" })).toBeTruthy();
   });
 
   it("usa somente raça e grau de sangue na inseminação", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "INSEMINACAO" } }));
-    expect(screen.getByLabelText("Raça do reprodutor*")).toBeTruthy();
+    expect(combo("Raça do reprodutor")).toBeTruthy();
     expect(screen.queryByLabelText("Reprodutor do catálogo (opcional)")).toBeNull();
     expect(screen.queryByLabelText("Lote de sêmen")).toBeNull();
   });
@@ -83,9 +102,9 @@ describe("EventoForm tipoInicial", () => {
       tipoInicial: { dominio: "reproducao", tipo: "DIAGNOSTICO" },
     }));
 
-    const previsao = await screen.findByLabelText(/^Parto previsto/) as HTMLInputElement;
-    await waitFor(() => expect(previsao.value).toBe("2027-02-27"));
-    expect(previsao.readOnly).toBe(true);
+    const previsao = await screen.findByRole("button", { name: "Parto previsto" }) as HTMLButtonElement;
+    await waitFor(() => expect(previsao.textContent).toBe("27/02/2027"));
+    expect(previsao.disabled).toBe(true);
   });
 
   it("permite informar o sexo de cada uma de três crias", async () => {
@@ -100,9 +119,9 @@ describe("EventoForm tipoInicial", () => {
     }));
 
     fireEvent.change(screen.getByLabelText("Crias vivas"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("Sexo da cria 1"), { target: { value: "F" } });
-    fireEvent.change(screen.getByLabelText("Sexo da cria 2"), { target: { value: "M" } });
-    fireEvent.change(screen.getByLabelText("Sexo da cria 3"), { target: { value: "F" } });
+    await escolher("Sexo da cria 1", "Fêmea");
+    await escolher("Sexo da cria 2", "Macho");
+    await escolher("Sexo da cria 3", "Fêmea");
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(apiMocks.registrarEvento).toHaveBeenCalledWith("1", expect.objectContaining({
@@ -113,13 +132,12 @@ describe("EventoForm tipoInicial", () => {
 
   it("oferece resultado oficial ao iniciar em exame ginecológico", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "reproducao", tipoInicial: { dominio: "reproducao", tipo: "EXAME_GINECOLOGICO" } }));
-    expect(screen.getByLabelText("Resultado oficial")).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Carregando catálogo…" })).toBeTruthy();
+    expect(combo("Resultado oficial").textContent).toBe("Carregando catálogo…");
   });
 
   it("inicia sanidade em exame", () => {
     render(createElement(EventoForm, { ...base, dominioFixo: "sanidade", tipoInicial: { dominio: "sanidade", tipo: "EXAME" } }));
-    expect(screen.getAllByRole<HTMLSelectElement>("combobox")[0].selectedOptions[0]?.textContent).toBe("Exame");
+    expect(combo("Tipo").textContent).toBe("Exame");
   });
 
   it("mantém o modal aberto até confirmar um aviso retornado ao salvar", async () => {
@@ -137,7 +155,8 @@ describe("EventoForm tipoInicial", () => {
       dataInicial: "2026-07-27",
     }));
 
-    fireEvent.change(await screen.findByLabelText("Raça do reprodutor*"), { target: { value: "1" } });
+    await waitFor(() => expect(apiMocks.listarRacas).toHaveBeenCalled());
+    await escolher("Raça do reprodutor", "Holandês");
 
     const salvar = screen.getByRole("button", { name: "Salvar" });
     fireEvent.click(salvar);
@@ -173,7 +192,8 @@ describe("EventoForm tipoInicial", () => {
       dataInicial: "2026-07-27",
     }));
 
-    fireEvent.change(await screen.findByLabelText("Raça do reprodutor*"), { target: { value: "1" } });
+    await waitFor(() => expect(apiMocks.listarRacas).toHaveBeenCalled());
+    await escolher("Raça do reprodutor", "Holandês");
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(apiMocks.registrarEvento).toHaveBeenCalledTimes(1));
 

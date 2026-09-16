@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FolhaCampoDTO } from "../api";
 import { FolhaCampoView } from "./FolhaCampoView";
+import { formatBRDateISO, getHojeISO } from "../../lib/hoje";
 
 const folha: FolhaCampoDTO = {
   id: 20, nome: "Toque julho", templateId: "ia-periodo", status: "AGUARDANDO_LANCAMENTO", filtros: {},
@@ -29,20 +30,43 @@ function stubFetch() {
   });
 }
 
+class ResizeObserverMock { observe() {} unobserve() {} disconnect() {} }
+
+beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  Element.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+const combo = (nome: string) => screen.getByRole("combobox", { name: nome });
+/* Ao fechar, o Radix devolve o foco ao gatilho num setTimeout(0); esperar esse
+ * tick evita que o foco atrasado feche o próximo dropdown aberto pelo teste. */
+async function escolher(nome: string, opcao: string) {
+  fireEvent.click(combo(nome));
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+
+/** Resolve a linha 150 (DG positivo com data de hoje) e marca a 184 como não realizada. */
+async function resolverLinhas() {
+  await escolher("Resultado do toque do animal 150", "Prenhe");
+  fireEvent.click(screen.getByRole("button", { name: "Data do procedimento do animal 150" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Hoje" }));
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect(screen.getByRole("button", { name: "Data do procedimento do animal 150" }).textContent).toBe(formatBRDateISO(getHojeISO()));
+  await escolher("Situação da linha do animal 184", "Não realizado");
+  fireEvent.change(screen.getByLabelText("Motivo de não realizar no animal 184"), { target: { value: "Animal ausente" } });
+}
 
 describe("digitação da folha de campo", () => {
   it("mantém concluir bloqueado com pendência e habilita ao resolver tudo", async () => {
     vi.stubGlobal("fetch", stubFetch());
     render(<FolhaCampoView folhaInicial={folha} onVoltar={() => {}} onAtualizada={() => {}} />);
-    await screen.findByLabelText("Resultado do toque do animal 150");
+    await screen.findByRole("combobox", { name: "Resultado do toque do animal 150" });
     const concluir = screen.getByRole("button", { name: /Concluir e registrar/ });
     expect((concluir as HTMLButtonElement).disabled).toBe(true);
 
-    fireEvent.change(screen.getByLabelText("Resultado do toque do animal 150"), { target: { value: "positivo" } });
-    fireEvent.change(screen.getByLabelText("Data do procedimento do animal 150"), { target: { value: "2026-08-03" } });
-    fireEvent.change(screen.getByLabelText("Situação da linha do animal 184"), { target: { value: "NAO_REALIZADO" } });
-    fireEvent.change(screen.getByLabelText("Motivo de não realizar no animal 184"), { target: { value: "Animal ausente" } });
+    await resolverLinhas();
 
     await waitFor(() => expect((concluir as HTMLButtonElement).disabled).toBe(false));
   });
@@ -52,16 +76,24 @@ describe("digitação da folha de campo", () => {
     vi.stubGlobal("fetch", fetch);
     const onAtualizada = vi.fn();
     render(<FolhaCampoView folhaInicial={folha} onVoltar={() => {}} onAtualizada={onAtualizada} />);
-    await screen.findByLabelText("Resultado do toque do animal 150");
-    fireEvent.change(screen.getByLabelText("Resultado do toque do animal 150"), { target: { value: "positivo" } });
-    fireEvent.change(screen.getByLabelText("Data do procedimento do animal 150"), { target: { value: "2026-08-03" } });
-    fireEvent.change(screen.getByLabelText("Situação da linha do animal 184"), { target: { value: "NAO_REALIZADO" } });
-    fireEvent.change(screen.getByLabelText("Motivo de não realizar no animal 184"), { target: { value: "Animal ausente" } });
+    await screen.findByRole("combobox", { name: "Resultado do toque do animal 150" });
+    await resolverLinhas();
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
     await waitFor(() => expect(fetch.mock.calls.some(([url, init]) => String(url).endsWith("/linhas") && init?.method === "PATCH")).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: /Concluir e registrar/ }));
     await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).endsWith("/concluir"))).toBe(true));
     expect(onAtualizada).toHaveBeenCalledWith(expect.objectContaining({ status: "CONCLUIDA" }));
+    const patch = fetch.mock.calls.find(([url, init]) => String(url).endsWith("/linhas") && init?.method === "PATCH");
+    expect(String(patch?.[1]?.body)).toContain(getHojeISO());
+  });
+
+  it("explica na lista o que cada situação da linha significa", async () => {
+    vi.stubGlobal("fetch", stubFetch());
+    render(<FolhaCampoView folhaInicial={folha} onVoltar={() => {}} onAtualizada={() => {}} />);
+    await screen.findByRole("combobox", { name: "Resultado do toque do animal 150" });
+    fireEvent.click(combo("Situação da linha do animal 150"));
+    expect((await screen.findByRole("option", { name: "Não realizado" })).textContent).toContain("não foi feito neste animal");
+    expect(screen.getByRole("option", { name: "Pendente" }).textContent).toContain("impede concluir");
   });
 });

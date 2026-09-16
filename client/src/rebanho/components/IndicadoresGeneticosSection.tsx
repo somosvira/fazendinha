@@ -12,6 +12,7 @@ import {
 import { Loader } from "../../components/Loading";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebAnm, RebEmpty, RebPill } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
@@ -219,16 +220,16 @@ export function IndicadoresGeneticosSection() {
                 <input value={form.unidade} onChange={(e) => setForm((atual) => ({ ...atual, unidade: e.target.value }))} placeholder="kg, %, pontos…" />
               </RebField>
               <RebField label="Direção desejável">
-                <select value={form.direcao} onChange={(e) => setForm((atual) => ({ ...atual, direcao: e.target.value as DirecaoIndicadorGenetico }))}>
-                  <option value="maior_melhor">Maior é melhor</option>
-                  <option value="menor_melhor">Menor é melhor</option>
-                </select>
+                <RebSelect aria-label="Direção desejável" value={form.direcao} onChange={(v) => setForm((atual) => ({ ...atual, direcao: v as DirecaoIndicadorGenetico }))}>
+                  <option value="maior_melhor" data-descricao="Na escolha de touros, valor mais alto conta a favor.">Maior é melhor</option>
+                  <option value="menor_melhor" data-descricao="Na escolha de touros, valor mais baixo conta a favor.">Menor é melhor</option>
+                </RebSelect>
               </RebField>
               <RebField label="Espelhar no índice atual">
-                <select value={form.colunaLegada} onChange={(e) => setForm((atual) => ({ ...atual, colunaLegada: e.target.value as FormIndicador["colunaLegada"] }))}>
-                  <option value="">Nenhum</option>
-                  {COLUNAS_LEGADAS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
+                <RebSelect aria-label="Espelhar no índice atual" value={form.colunaLegada} onChange={(v) => setForm((atual) => ({ ...atual, colunaLegada: v as FormIndicador["colunaLegada"] }))}>
+                  <option value="" data-descricao="O valor fica guardado só neste indicador.">Nenhum</option>
+                  {COLUNAS_LEGADAS.map((item) => <option key={item.value} value={item.value} data-descricao={`O valor também preenche o campo ${item.label} do touro, usado no ranking atual.`}>{item.label}</option>)}
+                </RebSelect>
               </RebField>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">

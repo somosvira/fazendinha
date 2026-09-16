@@ -30,6 +30,7 @@ import { PromptDialog } from "@/components/PromptDialog";
 import { fmt } from "@/components/charts";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { RebSelect } from "@/components/rb/RebSelect";
 import { RebAnm, RebBox, RebBoxSection, RebEmpty, RebPill } from "@/components/rb/RebPrimitives";
 import { RebTable } from "@/components/rb/RebTable";
 
@@ -204,17 +205,18 @@ export function ReprodutoresSection() {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-y border-dashed border-[color:var(--rule-soft)] py-3">
         <label className="flex min-w-[240px] flex-col gap-1 font-serif text-sm italic text-ink-3">
           Ordenar reprodutores por
-          <select
-            className="min-h-9 rounded-lg border border-border bg-card px-3 py-1.5 font-sans text-sm not-italic text-foreground"
+          <RebSelect
+            className="min-h-9 rounded-lg border border-border bg-card px-3 py-1.5 font-sans not-italic hover:border-border focus-visible:border-[color:var(--cafe)] data-[state=open]:border-[color:var(--cafe)]"
+            aria-label="Ordenar reprodutores por"
             value={indicadorRanking}
-            onChange={(e) => void mudarRanking(e.target.value)}
+            onChange={(v) => void mudarRanking(v)}
             disabled={carregandoCatalogos}
           >
-            <option value="">PTA leite / TPI atuais</option>
+            <option value="" data-descricao="Ordem padrão pelos valores de PTA leite e TPI já cadastrados.">PTA leite / TPI atuais</option>
             {catalogos.indicadores.filter((indicador) => indicador.ranking && indicador.ativo).map((indicador) => (
               <option key={indicador.id} value={indicador.id}>{indicador.sigla} · {indicador.nome}</option>
             ))}
-          </select>
+          </RebSelect>
         </label>
         <p className="m-0 text-sm text-ink-3">Ausentes ficam no fim; empates mantêm ordem estável.</p>
       </div>
@@ -305,10 +307,10 @@ function NovoReprodutorForm({
         <RebField label="Nome"><input value={form.nome} onChange={(e) => set("nome", e.target.value)} maxLength={120} required /></RebField>
         <RebField label="Código"><input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} maxLength={60} /></RebField>
         <RebField label="Raça">
-          <select value={form.racaId} onChange={(e) => set("racaId", e.target.value)}><option value="">Não informada</option>{racas.map((raca) => <option key={raca.id} value={raca.id}>{raca.nome}</option>)}</select>
+          <RebSelect aria-label="Raça" value={form.racaId} onChange={(v) => set("racaId", v)}><option value="">Não informada</option>{racas.map((raca) => <option key={raca.id} value={raca.id}>{raca.nome}</option>)}</RebSelect>
         </RebField>
         <RebField label="Central">
-          <select value={form.centralSemenId} onChange={(e) => set("centralSemenId", e.target.value)}><option value="">Não informada</option>{centrais.map((central) => <option key={central.id} value={central.id}>{central.nome}</option>)}</select>
+          <RebSelect aria-label="Central" value={form.centralSemenId} onChange={(v) => set("centralSemenId", v)}><option value="">Não informada</option>{centrais.map((central) => <option key={central.id} value={central.id}>{central.nome}</option>)}</RebSelect>
         </RebField>
       </div>
       <div className="grid grid-cols-4 gap-x-4 max-[620px]:grid-cols-2">
@@ -644,10 +646,10 @@ function EstoqueSemenDrawer({ reprodutor, tipos, estoque, setEstoque }: {
         <h5 className="mb-2 mt-0 font-serif text-sm font-medium italic text-ink-3">Nova entrada de doses</h5>
         <div className="grid grid-cols-2 gap-x-3 max-[460px]:grid-cols-1">
           <RebField label="Tipo de sêmen">
-            <select value={novoLote.tipoSemenId} onChange={(e) => setNovoLote((atual) => ({ ...atual, tipoSemenId: e.target.value }))}>
+            <RebSelect aria-label="Tipo de sêmen" value={novoLote.tipoSemenId} onChange={(v) => setNovoLote((atual) => ({ ...atual, tipoSemenId: v }))}>
               <option value="">Não informado</option>
               {tipos.map((tipo) => <option key={tipo.id} value={tipo.id}>{tipo.sigla} · {tipo.nome}</option>)}
-            </select>
+            </RebSelect>
           </RebField>
           <RebField label="Doses">
             <input type="number" min="0" step="1" value={novoLote.dosesDisponiveis} onChange={(e) => setNovoLote((atual) => ({ ...atual, dosesDisponiveis: e.target.value }))} required />
