@@ -137,32 +137,32 @@ export async function salvarPdfRelatorioFinanceiro(relatorio: Pick<RelatorioFina
   // Revogar no mesmo tick cancela o download em alguns navegadores.
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export async function anexarDocumentoRascunho(input: { arquivo: File; tipo: string; numero?: string }) {
-  const form = new FormData(); form.set("arquivo", input.arquivo); form.set("nome", input.arquivo.name); form.set("tipo", input.tipo);
-  if (input.numero) form.set("numero", input.numero);
-  const resposta = await fetch("/api/financeiro/operacoes/rascunho/documentos", { method: "POST", body: form, headers: comPropriedade() });
-  const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
-  return corpo as DocumentoFinanceiro;
+type UploadIntent = { uploadToken: string; uploadUrl: string; headers: Record<string, string>; expiresAt: string };
+
+async function sha256(arquivo: File) {
+  const digest = await crypto.subtle.digest("SHA-256", await arquivo.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
+
+async function enviarDocumentoDireto(intencaoPath: string, confirmacaoPath: string, input: { arquivo: File; tipo: string; numero?: string }) {
+  const intent = await req<UploadIntent>(intencaoPath, { method: "POST", body: JSON.stringify({
+    tipo: input.tipo, nome: input.arquivo.name, numero: input.numero || null, mimeType: input.arquivo.type || "application/octet-stream",
+    tamanhoBytes: input.arquivo.size, sha256: await sha256(input.arquivo),
+  }) });
+  const envio = await fetch(intent.uploadUrl, { method: "PUT", headers: intent.headers, body: input.arquivo });
+  if (!envio.ok) throw new ApiError("Não foi possível enviar o arquivo ao armazenamento", envio.status);
+  return req<DocumentoFinanceiro>(confirmacaoPath, { method: "POST", body: JSON.stringify({ uploadToken: intent.uploadToken }) });
+}
+
+export const anexarDocumentoRascunho = (input: { arquivo: File; tipo: string; numero?: string }) =>
+  enviarDocumentoDireto("/financeiro/operacoes/rascunho/documentos/intencao", "/financeiro/operacoes/rascunho/documentos/confirmacao-upload", input);
 export async function removerDocumentoRascunho(id: number) {
   const resposta = await fetch(`/api/financeiro/operacoes/rascunho/documentos/${id}`, { method: "DELETE", headers: comPropriedade() });
   if (!resposta.ok) { const corpo = await resposta.json().catch(() => ({})); throw new Error(corpo.error ?? `Erro HTTP ${resposta.status}`); }
 }
 export const atualizarDocumentoRascunho = (id: number, input: { tipo?: string; numero?: string | null }) => req<DocumentoFinanceiro>(`/financeiro/operacoes/rascunho/documentos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export async function anexarDocumentoOperacao(operacaoId: number, input: { arquivo: File; tipo: string; numero?: string }) {
-  const form = new FormData();
-  form.set("arquivo", input.arquivo);
-  form.set("nome", input.arquivo.name);
-  form.set("tipo", input.tipo);
-  if (input.numero) form.set("numero", input.numero);
-  const resposta = await fetch(`/api/financeiro/operacoes/${operacaoId}/documentos`, {
-    method: "POST", body: form, headers: comPropriedade(),
-  });
-  const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? `Erro HTTP ${resposta.status}`, resposta.status, corpo.code, corpo.campo);
-  return corpo as DocumentoFinanceiro;
-}
+export const anexarDocumentoOperacao = (operacaoId: number, input: { arquivo: File; tipo: string; numero?: string }) =>
+  enviarDocumentoDireto(`/financeiro/operacoes/${operacaoId}/documentos/intencao`, `/financeiro/operacoes/${operacaoId}/documentos/confirmacao-upload`, input);
 export const estornarOperacao = (id: number, motivo: string) => req<Operacao>(`/financeiro/operacoes/${id}/estorno`, { method: "POST", body: JSON.stringify({ motivo }) });
 export const liquidarCompromisso = (id: number, input: unknown) => req(`/financeiro/compromissos/${id}/liquidacoes`, { method: "POST", body: JSON.stringify(input) });
 export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/financeiro/contas", { method: "POST", body: JSON.stringify(input) });
