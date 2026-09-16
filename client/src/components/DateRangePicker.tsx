@@ -4,7 +4,7 @@
  * click/posicionamento). O calendário pt-BR é próprio (11 presets, "Hoje"
  * pinado) — NÃO adotar react-day-picker; só as classes migraram. */
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { getHoje } from "../lib/hoje";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -176,10 +176,18 @@ export function DateRangePicker({
   value,
   onChange,
   anchor = "left",
+  triggerLabel,
+  triggerClassName,
+  triggerAriaLabel,
+  showPresets = true,
 }: {
   value: DateRange;
   onChange: (r: DateRange) => void;
   anchor?: "left" | "right";
+  triggerLabel?: ReactNode;
+  triggerClassName?: string;
+  triggerAriaLabel?: string;
+  showPresets?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange>({ start: value?.start || null, end: value?.end || null });
@@ -224,6 +232,14 @@ export function DateRangePicker({
     setDraft({ start: value?.start || null, end: value?.end || null });
     setOpen(false);
   };
+  const changeOpen = (next: boolean) => {
+    if (next) {
+      setDraft({ start: value?.start || null, end: value?.end || null });
+      setLeftView(value?.start ? startOfMonth(value.start) : addMonths(startOfMonth(today), -1));
+      setHoverEnd(null);
+    }
+    setOpen(next);
+  };
 
   const matchedPreset = useMemo(() => {
     if (!value?.start || !value?.end) return null;
@@ -231,11 +247,12 @@ export function DateRangePicker({
   }, [value, presets]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="group inline-flex cursor-pointer items-center gap-2.5 border border-border bg-card px-3.5 py-2 font-sans text-sm font-semibold tracking-[0.02em] text-foreground transition-colors hover:border-ink-3 aria-expanded:border-mast aria-expanded:bg-mast aria-expanded:text-mast-ink"
+          aria-label={triggerAriaLabel}
+          className={cn("group inline-flex cursor-pointer items-center gap-2.5 border border-border bg-card px-3.5 py-2 font-sans text-sm font-semibold tracking-[0.02em] text-foreground transition-colors hover:border-ink-3 aria-expanded:border-mast aria-expanded:bg-mast aria-expanded:text-mast-ink", triggerClassName)}
         >
           <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
             <rect x="3" y="5" width="18" height="16" rx="1"></rect>
@@ -243,7 +260,7 @@ export function DateRangePicker({
             <line x1="8" y1="3" x2="8" y2="7"></line>
             <line x1="16" y1="3" x2="16" y2="7"></line>
           </svg>
-          <span className="font-sans tabular-nums">{formatRangeLabel(value)}</span>
+          <span className="font-sans tabular-nums">{triggerLabel ?? formatRangeLabel(value)}</span>
           <span className="text-[10px] text-ink-3 group-aria-expanded:text-[color:var(--mast-ink-2)]">▾</span>
         </button>
       </PopoverTrigger>
@@ -251,9 +268,12 @@ export function DateRangePicker({
       <PopoverContent
         align={anchor === "right" ? "end" : "start"}
         sideOffset={6}
-        className="grid w-auto min-w-[720px] grid-cols-[180px_1fr] bg-background p-0 shadow-[0_18px_48px_rgba(20,25,26,0.18),0_4px_14px_rgba(20,25,26,0.06)]"
+        className={cn(
+          "w-[min(720px,calc(100vw-24px))] bg-background p-0 shadow-[0_18px_48px_rgba(20,25,26,0.18),0_4px_14px_rgba(20,25,26,0.06)]",
+          showPresets ? "grid grid-cols-[180px_1fr]" : "w-[min(540px,calc(100vw-24px))]",
+        )}
       >
-        <aside className="flex flex-col border-r border-border bg-card py-4">
+        {showPresets ? <aside className="flex flex-col border-r border-border bg-card py-4">
           <div className="px-4 pb-3 font-sans text-[10px] uppercase tracking-[0.18em] text-ink-3">Presets</div>
           {presets.map((p) => (
             <button
@@ -267,7 +287,7 @@ export function DateRangePicker({
               {p.label}
             </button>
           ))}
-        </aside>
+        </aside> : null}
 
         <div className="flex flex-col px-5 pt-4">
           <div className="mb-2.5 flex items-center">
@@ -287,7 +307,7 @@ export function DateRangePicker({
               ›
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-7 pb-3.5">
+          <div className="grid grid-cols-1 gap-7 pb-3.5 sm:grid-cols-2">
             <CalendarMonth
               year={leftView.getFullYear()}
               month={leftView.getMonth()}
@@ -310,7 +330,7 @@ export function DateRangePicker({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-4 border-t border-border py-3.5">
+          <div className="flex flex-col gap-4 border-t border-border py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[10px] uppercase tracking-[0.18em] text-ink-3">Início</span>
