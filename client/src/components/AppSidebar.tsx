@@ -294,32 +294,30 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, vazio = "Nova operação
     ? `${ativo ? "Rascunho em edição" : "Continuar rascunho"}: ${resumo.titulo}`
     : ativo ? `${vazio} em edição` : vazio;
   return (
-    <div role="group" aria-label="Trabalho ativo" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
-      <button
-        type="button"
-        onClick={onAbrir}
-        aria-label={rotulo}
-        title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
-        className={cn(
-          "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
-          "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
-          RAIL_ICON_BTN,
-          // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
-          // duas linhas finas, em vez do respiro do modo ícone.
-          "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
-          ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
-        )}
-      >
-        <span className="relative flex-none leading-none">
-          {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
-          {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
-        </span>
-        <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
-          <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : vazio}</span>
-          {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
-        </span>
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onAbrir}
+      aria-label={rotulo}
+      title={[rotulo, resumo?.detalhe, salvo].filter(Boolean).join("\n")}
+      className={cn(
+        "flex min-h-[38px] w-full cursor-pointer items-center gap-3 rounded-[7px] border border-[rgba(232,220,196,0.14)] bg-[rgba(232,220,196,0.05)] px-2.5 py-[3px] text-left font-sans text-[var(--mast-ink)]",
+        "hover:bg-[rgba(232,220,196,0.09)] [&_svg]:h-[16px] [&_svg]:w-[16px] [&_svg]:flex-none",
+        RAIL_ICON_BTN,
+        // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
+        // duas linhas finas, em vez do respiro do modo ícone.
+        "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
+        ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
+      )}
+    >
+      <span className="relative flex-none leading-none">
+        {resumo ? <FilePenLine strokeWidth={1.7} aria-hidden /> : <Plus strokeWidth={1.7} aria-hidden />}
+        {resumo && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-mast bg-leite" />}
+      </span>
+      <span className={cn("min-w-0 flex-1", RAIL_BLOCK)}>
+        <span className="block truncate text-[13px] font-medium leading-4">{resumo ? resumo.titulo : vazio}</span>
+        {resumo?.tipo && <span className="block truncate text-[11px] leading-[14px] text-[var(--side-mute)]">{resumo.tipo}</span>}
+      </span>
+    </button>
   );
 }
 
@@ -507,19 +505,14 @@ export function AppSidebar({
 
   const navBody = (
     <div className="flex flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
-      {trabalhoAtivo && (
-        <TrabalhoAtivo
-          resumo={trabalhoAtivo.resumo}
-          ativo={trabalhoAtivo.ativo}
-          onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }}
-        />
-      )}
-      {trabalhoAtivoRelatorio && (
-        <TrabalhoAtivo
-          resumo={trabalhoAtivoRelatorio.resumo}
-          ativo={trabalhoAtivoRelatorio.ativo}
-          onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }}
-        />
+      {(trabalhoAtivo || trabalhoAtivoRelatorio) && (
+        <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
+          <h2 className={cn("mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[rgba(232,220,196,0.62)]", RAIL_LABEL)}>Trabalhos ativos</h2>
+          <div className="flex flex-col gap-2">
+            {trabalhoAtivo && <TrabalhoAtivo resumo={trabalhoAtivo.resumo} ativo={trabalhoAtivo.ativo} onAbrir={() => { trabalhoAtivo.onAbrir(); onMobileToggle(false); }} />}
+            {trabalhoAtivoRelatorio && <TrabalhoAtivo resumo={trabalhoAtivoRelatorio.resumo} ativo={trabalhoAtivoRelatorio.ativo} onAbrir={() => { trabalhoAtivoRelatorio.onAbrir(); onMobileToggle(false); }} />}
+          </div>
+        </section>
       )}
       {itensFinanceiros.length > 0 && (
         <div className="flex flex-col gap-px">
