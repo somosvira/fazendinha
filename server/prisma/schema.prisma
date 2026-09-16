@@ -250,6 +250,7 @@ model Produto {
   composicao         ComposicaoProdutoItem[] @relation("ComposicaoDaRacao")
   usadoEmComposicoes ComposicaoProdutoItem[] @relation("IngredienteEmComposicao")
   lotes              LoteProduto[]
+  fornecedores       ProdutoFornecedor[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
@@ -385,12 +386,26 @@ model Parceiro {
   operacoes                  Operacao[]
   compromissos               CompromissoFinanceiro[]
   transacoes                 TransacaoFinanceira[]
+  produtosFornecidos         ProdutoFornecedor[]
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
 
   @@unique([documento])
   @@index([nome])
   @@index([tipo, ativo])
+}
+
+// Catálogo opcional de fornecedores usuais do produto. O fornecedor efetivo de
+// cada entrada continua sendo o parceiro da Operacao que originou o movimento.
+model ProdutoFornecedor {
+  produto      Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId    Int
+  fornecedor   Parceiro @relation(fields: [fornecedorId], references: [id], onDelete: Cascade)
+  fornecedorId Int
+  createdAt    DateTime @default(now())
+
+  @@id([produtoId, fornecedorId])
+  @@index([fornecedorId])
 }
 
 model ParceiroPapel {

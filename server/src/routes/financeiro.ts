@@ -9,11 +9,12 @@ import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, patchProdutoFinanceiroSchema, produtoFinanceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
+import * as produtos from "../services/financeiro/produtos.js";
 import { exigePermissao } from "../middleware/permissao.js";
 
 function usuarioId(c: Context): number | null {
@@ -48,12 +49,21 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gerenciais, produtos] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtosAtivos, produtosCadastro] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
       prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true, categoriaId: true, centroCustoId: true } }),
+      produtos.listarProdutosCadastro(),
     ]);
-    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos });
+    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos: produtosAtivos, produtosCadastro });
+  })
+  .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoFinanceiroSchema), async (c) => {
+    try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoFinanceiroSchema), async (c) => {
+    try { return c.json(await produtos.atualizarProduto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
     try { return c.json(await cadastros.criarCategoria(c.req.valid("json"), usuarioId(c)), 201); }

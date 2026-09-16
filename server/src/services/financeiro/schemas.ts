@@ -93,6 +93,24 @@ export const centroCustoSchema = z.object({
 
 export const patchCentroCustoSchema = centroCustoSchema.partial().extend({ ativo: z.boolean().optional() });
 
+const tipoProdutoSchema = z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]);
+const fornecedorIdsSchema = z.array(z.number().int().positive()).max(200)
+  .refine((ids) => new Set(ids).size === ids.length, "Fornecedores repetidos");
+
+export const produtoFinanceiroSchema = z.object({
+  nome: z.string().trim().min(2).max(80),
+  tipo: tipoProdutoSchema.default("INSUMO"),
+  unidade: z.string().trim().min(1).max(12).default("un"),
+  custoUnitario: z.number().nonnegative().max(9_999_999_999.99).nullable().default(null),
+  estocavel: z.boolean().default(true),
+  minimoEstoque: z.number().nonnegative().max(9_999_999_999.99).nullable().default(null),
+  categoriaId: z.number().int().positive().nullable().default(null),
+  centroCustoId: z.number().int().positive().nullable().default(null),
+  fornecedorIds: fornecedorIdsSchema.default([]),
+});
+
+export const patchProdutoFinanceiroSchema = produtoFinanceiroSchema.partial().extend({ ativo: z.boolean().optional() });
+
 export const parceiroSchema = z.object({
   ...camposParceiro,
   nome: z.string().trim().min(2).max(120),

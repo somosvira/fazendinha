@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, patchProdutoFinanceiroSchema, produtoFinanceiroSchema, rascunhoOperacaoSchema, tipoDocumentoFinanceiroSchema } from "./schemas.js";
 
 const base = {
   data: "2026-09-02",
@@ -110,5 +110,16 @@ describe("schemas de categorias e centros de custo", () => {
   it("rejeita nomes curtos, ordem negativa", () => {
     expect(categoriaCadastroSchema.safeParse({ nome: "A" }).success).toBe(false);
     expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
+  });
+});
+
+describe("schema financeiro de produto", () => {
+  it("aceita produto sem fornecedor e aplica defaults", () => {
+    expect(produtoFinanceiroSchema.parse({ nome: " Sal mineral " })).toMatchObject({ nome: "Sal mineral", tipo: "INSUMO", unidade: "un", fornecedorIds: [] });
+  });
+
+  it("rejeita fornecedores repetidos e preserva patch parcial", () => {
+    expect(produtoFinanceiroSchema.safeParse({ nome: "Ração", fornecedorIds: [7, 7] }).success).toBe(false);
+    expect(patchProdutoFinanceiroSchema.parse({ ativo: false })).toEqual({ ativo: false });
   });
 });

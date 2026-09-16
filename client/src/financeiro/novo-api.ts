@@ -27,8 +27,17 @@ export type ParceiroInput = DadosParceiro & { nome: string; documento?: string |
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-export type Produto = { categoriaId?: number | null; centroCustoId?: number | null; id: number; nome: string; unidade: string; estocavel: boolean; custoUnitario: string | null };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[] };
+export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
+export type Produto = {
+  categoriaId?: number | null; centroCustoId?: number | null; id: number; nome: string; tipo?: TipoProduto;
+  unidade: string; estocavel: boolean; custoUnitario: string | null; minimoEstoque?: string | null; ativo?: boolean;
+  fornecedores?: { id: number; nome: string; ativo: boolean }[];
+};
+export type ProdutoInput = {
+  nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; estocavel: boolean;
+  minimoEstoque: number | null; categoriaId: number | null; centroCustoId: number | null; fornecedorIds: number[];
+};
+export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
 export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; dataVencimento: string; numeroParcela: number; totalParcelas: number; vencido: boolean; parceiro: ParceiroBase | null; operacao: { id: number; tipo: string; descricao: string | null } };
 export type ItemOperacao = { categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
 export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
@@ -175,6 +184,8 @@ export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financ
 export const atualizarCategoria = (id: number, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarCentroCusto = (input: CentroCustoInput) => req<CentroCusto>("/financeiro/centros-custo", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCentroCusto = (id: number, input: Partial<CentroCustoInput> & { ativo?: boolean }) => req<CentroCusto>(`/financeiro/centros-custo/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const criarProduto = (input: ProdutoInput) => req<Produto>("/financeiro/produtos", { method: "POST", body: JSON.stringify(input) });
+export const atualizarProduto = (id: number, input: Partial<ProdutoInput> & { ativo?: boolean }) => req<Produto>(`/financeiro/produtos/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const transferir = (input: unknown) => req("/financeiro/transferencias", { method: "POST", body: JSON.stringify(input) });
 
 export type MovimentoGeral = MovimentoConta & { contaId: number; conta: { id: number; nome: string; instituicao: string | null } };

@@ -671,7 +671,8 @@ Diferenças fisiológicas relevantes:
 - **Conta bancária:** disponibilidade mantida numa instituição; pode ser corrente, poupança ou de pagamento. **Caixa físico:** dinheiro em espécie sob responsabilidade da fazenda. Dinheiro é forma de pagamento, não outro tipo de conta.
 - **Aplicação financeira:** cadastro básico de saldo e instituição; este escopo não inclui rentabilidade, resgates automáticos nem conciliação de investimentos.
 - **Papéis do parceiro:** a mesma pessoa/empresa pode ser cliente, fornecedor, prestador de serviço, funcionário/colaborador, sócio/proprietário ou outro. Esses papéis não são contas de acesso nem permissões. Sócio/proprietário identifica a contraparte de aportes/retiradas; não torna o parceiro dono do sistema.
-- **Prestador de serviço:** contraparte de uma operação de serviço. Não pressupõe venda de produtos; se também fornecer materiais, marcar fornecedor. Produto e parceiro se relacionam pelo histórico de operações/itens, sem cadastro obrigatório de catálogo por fornecedor.
+- **Prestador de serviço:** contraparte de uma operação de serviço. Não pressupõe venda de produtos; se também fornecer materiais, marcar fornecedor.
+- **Fornecedores do produto:** catálogo opcional de parceiros que normalmente fornecem um produto. Um produto pode não ter fornecedor cadastrado e uma compra pode usar outro fornecedor; o fornecedor efetivo permanece registrado na operação, preservando o histórico do movimento de estoque.
 - **Preferência de pagamento:** sugestão opcional de forma, condição e prazos em dias. Pode ser ignorada ou alterada em cada operação; nunca obriga uma forma de liquidação.
 
 ## Referências cruzadas
