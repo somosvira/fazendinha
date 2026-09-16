@@ -6,13 +6,15 @@ export type OperacaoClassificada = Classificada & { valorTotal?: Prisma.Decimal 
 /** Rateio determinístico por maiores restos. Centavos fecham no valor original. */
 export function ratearCategorias(operacao: OperacaoClassificada | null, valor: Prisma.Decimal | string | number) {
   const itens = operacao?.itens.length ? [...operacao.itens].sort((a, b) => a.id - b.id) : [{ ...operacao, id: 0, valorTotal: 1 }];
-  const pesos = itens.map((i) => new Prisma.Decimal(i.valorTotal).mul(100).round());
+  // O Decimal do Prisma no Worker não expõe os atalhos round() e floor().
+  const pesos = itens.map((i) => new Prisma.Decimal(i.valorTotal).mul(100).toDecimalPlaces(0));
   const soma = pesos.reduce((a, b) => a.plus(b), new Prisma.Decimal(0));
-  const centavos = new Prisma.Decimal(valor).mul(100).round();
+  const centavos = new Prisma.Decimal(valor).mul(100).toDecimalPlaces(0);
   if (soma.isZero()) return [{ categoriaId: null, categoriaNome: "Sem categoria", classificacao: null, valor: centavos.div(100) }];
   const partes = pesos.map((peso, indice) => {
     const exato = centavos.abs().mul(peso).div(soma);
-    return { indice, inteiro: exato.floor(), resto: exato.minus(exato.floor()) };
+    const inteiro = exato.toDecimalPlaces(0, Prisma.Decimal.ROUND_FLOOR);
+    return { indice, inteiro, resto: exato.minus(inteiro) };
   });
   const faltam = centavos.abs().minus(partes.reduce((a, p) => a.plus(p.inteiro), new Prisma.Decimal(0))).toNumber();
   [...partes].sort((a, b) => b.resto.comparedTo(a.resto) || a.indice - b.indice).slice(0, faltam).forEach((p) => { p.inteiro = p.inteiro.plus(1); });
