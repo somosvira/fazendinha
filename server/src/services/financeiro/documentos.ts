@@ -2,6 +2,15 @@ import crypto from "node:crypto";
 import type { TipoDocumentoFinanceiro } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { env } from "../../env.js";
+import {
+  criarUploadDireto,
+  lerIntentUpload,
+  promoverUploadDireto,
+  removerUploadPromovido,
+  removerUploadTemporario,
+  UploadInvalidoError,
+  type UploadIntent,
+} from "../../lib/uploads.js";
 import { getStorage } from "../../lib/storage.js";
 import { auditar, FinanceiroError } from "./regras.js";
 
@@ -36,7 +45,7 @@ export type NovoDocumentoRascunho = Omit<NovoDocumentoOperacao, "operacaoId"> & 
 };
 
 type UploadContexto = "operacao" | "rascunho";
-type UploadIntent = {
+type DadosUploadFinanceiro = {
   contexto: UploadContexto;
   destinoId: number;
   propriedadeId: number;
@@ -44,16 +53,13 @@ type UploadIntent = {
   tipo: TipoDocumentoFinanceiro;
   nome: string;
   numero: string | null;
-  mimeType: string;
-  tamanhoBytes: number;
-  sha256: string;
   extensao: string;
-  temporarioKey: string;
-  exp: number;
 };
 
+type UploadFinanceiro = UploadIntent<DadosUploadFinanceiro>;
+
 export type SolicitarUpload = Pick<
-  UploadIntent,
+  UploadFinanceiro,
   "tipo" | "nome" | "mimeType" | "tamanhoBytes" | "sha256"
 > & { numero?: string | null };
 
@@ -89,32 +95,6 @@ function validarMetadados(input: SolicitarUpload) {
   };
 }
 
-function assinarIntent(intent: UploadIntent) {
-  const payload = Buffer.from(JSON.stringify(intent)).toString("base64url");
-  const assinatura = crypto.createHmac("sha256", env.JWT_SECRET).update(payload).digest("base64url");
-  return `${payload}.${assinatura}`;
-}
-
-function lerIntent(token: string): UploadIntent {
-  const [payload, assinatura] = token.split(".");
-  if (!payload || !assinatura) {
-    throw new FinanceiroError("VALIDACAO", "Upload inválido ou expirado");
-  }
-
-  const esperado = crypto.createHmac("sha256", env.JWT_SECRET).update(payload).digest("base64url");
-  if (assinatura.length !== esperado.length || !crypto.timingSafeEqual(Buffer.from(assinatura), Buffer.from(esperado))) {
-    throw new FinanceiroError("VALIDACAO", "Upload inválido ou expirado");
-  }
-
-  try {
-    const intent = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as UploadIntent;
-    if (intent.exp < Math.floor(Date.now() / 1000)) throw new Error("expirado");
-    return intent;
-  } catch {
-    throw new FinanceiroError("VALIDACAO", "Upload inválido ou expirado");
-  }
-}
-
 async function criarIntent(
   contexto: UploadContexto,
   destinoId: number,
@@ -129,37 +109,24 @@ async function criarIntent(
   }
 
   const uploadId = crypto.randomUUID();
-  const exp = Math.floor(Date.now() / 1000) + 600;
   const namespace = env.STORAGE_NAMESPACE;
   const temporarioKey = `tmp/${namespace}/${uploadId}.${extensao}`;
-  const intent: UploadIntent = {
-    contexto,
-    destinoId,
-    propriedadeId,
-    usuarioId,
-    tipo: input.tipo,
-    nome,
-    numero: input.numero?.trim().slice(0, 80) || null,
+  return criarUploadDireto({
+    temporarioKey,
     mimeType,
     tamanhoBytes: input.tamanhoBytes,
     sha256,
-    extensao,
-    temporarioKey,
-    exp,
-  };
-  const uploadUrl = await (await getStorage()).getSignedUploadUrl({
-    key: temporarioKey,
-    contentType: mimeType,
-    metadata: { sha256 },
-    ttlSeconds: 600,
+    dados: {
+      contexto,
+      destinoId,
+      propriedadeId,
+      usuarioId,
+      tipo: input.tipo,
+      nome,
+      numero: input.numero?.trim().slice(0, 80) || null,
+      extensao,
+    },
   });
-
-  return {
-    uploadToken: assinarIntent(intent),
-    uploadUrl,
-    headers: { "Content-Type": mimeType, "x-amz-meta-sha256": sha256 },
-    expiresAt: new Date(exp * 1000).toISOString(),
-  };
 }
 
 export async function solicitarUploadOperacao(
@@ -191,20 +158,15 @@ export async function solicitarUploadRascunho(
 }
 
 export async function confirmarUpload(uploadToken: string, propriedadeId: number, usuarioId: number | null) {
-  const intent = lerIntent(uploadToken);
-  if (intent.propriedadeId !== propriedadeId || intent.usuarioId !== usuarioId) {
-    throw new FinanceiroError("NAO_ENCONTRADO", "Upload não encontrado");
+  let intent: UploadFinanceiro;
+  try {
+    intent = lerIntentUpload<DadosUploadFinanceiro>(uploadToken);
+  } catch {
+    throw new FinanceiroError("VALIDACAO", "Upload inválido ou expirado");
   }
 
-  const storage = await getStorage();
-  const head = await storage.headObject({ key: intent.temporarioKey });
-  if (
-    head.contentLength !== intent.tamanhoBytes ||
-    head.contentType !== intent.mimeType ||
-    head.metadata.sha256 !== intent.sha256
-  ) {
-    await storage.deleteObject({ key: intent.temporarioKey });
-    throw new FinanceiroError("VALIDACAO", "O arquivo enviado não confere com a solicitação");
+  if (intent.propriedadeId !== propriedadeId || intent.usuarioId !== usuarioId) {
+    throw new FinanceiroError("NAO_ENCONTRADO", "Upload não encontrado");
   }
 
   const duplicado = await prisma.documentoFinanceiro.findUnique({ where: { sha256: intent.sha256 } });
@@ -214,12 +176,14 @@ export async function confirmarUpload(uploadToken: string, propriedadeId: number
 
   const namespace = env.STORAGE_NAMESPACE;
   const storageKey = `${namespace}/financeiro/documentos/${crypto.randomUUID()}.${intent.extensao}`;
-  await storage.copyObject({
-    sourceKey: intent.temporarioKey,
-    destinationKey: storageKey,
-    contentType: intent.mimeType,
-    metadata: { sha256: intent.sha256 },
-  });
+  try {
+    await promoverUploadDireto(intent, storageKey);
+  } catch (erro) {
+    if (erro instanceof UploadInvalidoError) {
+      throw new FinanceiroError("VALIDACAO", erro.message);
+    }
+    throw erro;
+  }
 
   try {
     const documento = await prisma.documentoFinanceiro.create({
@@ -248,10 +212,10 @@ export async function confirmarUpload(uploadToken: string, propriedadeId: number
       });
     }
 
-    await storage.deleteObject({ key: intent.temporarioKey });
+    await removerUploadTemporario(intent.temporarioKey);
     return documento;
   } catch (erro) {
-    await storage.deleteObject({ key: storageKey });
+    await removerUploadPromovido(storageKey);
     throw erro;
   }
 }
