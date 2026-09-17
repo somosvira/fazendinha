@@ -91,7 +91,8 @@ export const TIPOS_DESPESA: readonly string[] = ["COMPRA_ESTOQUE", "COMPRA_CONSU
 export const LIMITE_LINHAS_COMPOSICAO = 3000;
 
 const zero = () => new Prisma.Decimal(0);
-const pct = (parte: Prisma.Decimal, total: Prisma.Decimal) => total.isZero() ? 0 : parte.div(total).mul(10000).round().div(100).toNumber();
+// O Decimal do Prisma no Worker não expõe o atalho round() do Node.
+const pct = (parte: Prisma.Decimal, total: Prisma.Decimal) => total.isZero() ? 0 : parte.div(total).mul(10000).toDecimalPlaces(0).div(100).toNumber();
 
 /** Itens das operações pela data da operação (competência). Operação sem itens
  * vira uma linha única com a própria classificação. */
