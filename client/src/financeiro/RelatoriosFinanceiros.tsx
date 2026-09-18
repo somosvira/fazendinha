@@ -1,3 +1,5 @@
+import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
+import { isoDate } from "../components/DateRangePicker";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronRight, Download, FilePenLine, FilePlus2, RotateCcw } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -38,6 +40,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const [aviso, setAviso] = useState<string | null>(null);
   const [recente, setRecente] = useState<number | null>(null);
   const [iniciando, setIniciando] = useState(false);
+  const [periodoEmissao, setPeriodoEmissao] = useState({ inicio: "", fim: "" });
   const [confirmarNovo, setConfirmarNovo] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -88,6 +91,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   }
   if (!relatorios) return <PaginaSemDados titulo="Relatórios financeiros" descricao={DESCRICAO} label="Carregando relatórios" erro={erro} />;
 
+  const relatoriosFiltrados = relatorios.filter(r => { const dia = isoDate(new Date(r.geradoEm)); return (!periodoEmissao.inicio || dia >= periodoEmissao.inicio) && (!periodoEmissao.fim || dia <= periodoEmissao.fim); });
   const variasPropriedades = new Set(relatorios.map((r) => r.propriedadeId)).size > 1;
   const colunas: ColunaTabela<RelatorioFinanceiro>[] = [
     { chave: "nome", titulo: "Relatório", principal: true, larguraMinima: 240, celula: (r) => <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="break-words">{r.nome}</strong>{r.status !== "CONCLUIDO" && <StatusPill status={r.status} />}{r.id === recente && <span className="text-[11px] font-semibold uppercase tracking-[.1em] text-green-800">Novo</span>}</div><div className="mt-0.5 text-xs text-ink-3">{recorte(r)}</div>{r.erro && <div className="mt-1 text-xs text-red-700">{r.erro}</div>}</div> },
@@ -111,9 +115,10 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
         <div><h2 className="font-serif text-xl">Histórico</h2><p className="mt-1 text-xs text-ink-3">Do mais recente para o mais antigo. Abra um relatório para ver o conteúdo salvo.</p></div>
         <button onClick={() => void carregar()} aria-label="Atualizar histórico" className="rounded-lg p-2 hover:bg-surface-2"><RotateCcw size={17} /></button>
       </div>
-      {relatorios.length === 0
-        ? <Empty>Nenhum relatório foi gerado ainda.{podeExportar ? " Use “Novo relatório” para montar o primeiro." : ""}</Empty>
-        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} itens={relatorios} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-[#f6f9f2]" : ""} />}
+      <div className="border-b border-border p-5"><PeriodoFinanceiroControl inicio={periodoEmissao.inicio} fim={periodoEmissao.fim} allowAll label="Período de emissão" onChange={setPeriodoEmissao} /><p className="mt-2 text-xs text-ink-3">Filtro pela data de emissão; o recorte salvo de cada relatório aparece na tabela.</p></div>
+      {relatoriosFiltrados.length === 0
+        ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
+        : <TabelaFinanceira rotulo="Relatórios gerados" colunas={colunas} itens={relatoriosFiltrados} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-[#f6f9f2]" : ""} />}
     </Panel>
     <ConfirmDialog
       open={confirmarNovo}

@@ -16,6 +16,9 @@ import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import { exigePermissao } from "../middleware/permissao.js";
 
+export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
+const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
+
 const uploadIntentSchema = z.object({
   tipo: tipoDocumentoFinanceiroSchema,
   nome: z.string().max(180),
@@ -87,11 +90,13 @@ export const financeiroRouter = new Hono()
     try { return c.json(await analisarCategorias(c.req.valid("query"), await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/dashboard", async (c) => {
+  .get("/financeiro/dashboard", validarPeriodo, async (c) => {
     const agora = new Date();
-    const inicio = c.req.query("inicio") ? new Date(c.req.query("inicio")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-    const fim = c.req.query("fim") ? new Date(c.req.query("fim")!) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 0, 23, 59, 59));
-    return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim));
+    const periodo = c.req.valid("query");
+    const inicio = periodo.inicio ? new Date(`${periodo.inicio}T00:00:00Z`) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
+    const fim = periodo.fim ? new Date(`${periodo.fim}T23:59:59.999Z`) : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+    try { return c.json(await obterDashboard(await resolverEscopoLeitura(c), inicio, fim)); }
+    catch (e) { return falha(c, e); }
   })
   .get("/financeiro/contas", async (c) => c.json(await contas.listarContas(await resolverEscopoLeitura(c), c.req.query("inativas") === "true")))
   .post("/financeiro/contas", exigePermissao("lancar"), validarCadastro(contaSchema), async (c) => {
@@ -208,7 +213,10 @@ export const financeiroRouter = new Hono()
       return c.redirect(await storage.getSignedDownloadUrl({ key: documento.storageKey!, filename: documento.nome }));
     } catch (e) { return falha(c, e); }
   })
-  .get("/financeiro/compromissos", async (c) => c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c))))
+  .get("/financeiro/compromissos", validarPeriodo, async (c) => {
+    const periodo = c.req.valid("query");
+    return c.json(await operacoes.listarCompromissos(await resolverEscopoLeitura(c), periodo.inicio && periodo.fim ? { inicio: new Date(`${periodo.inicio}T00:00:00Z`), fim: new Date(`${periodo.fim}T23:59:59.999Z`) } : undefined));
+  })
   .post("/financeiro/compromissos/:id/liquidacoes", zValidator("json", liquidacaoSchema), async (c) => {
     try { return c.json(await operacoes.liquidarCompromisso(Number(c.req.param("id")), { ...c.req.valid("json"), usuarioId: usuarioId(c) }), 201); }
     catch (e) { return falha(c, e); }

@@ -17,14 +17,19 @@ function ExtratoControlado({ itens = movimentos, erro = null, onAbrir = vi.fn() 
 it("combina filtros inclusivos de data, conta e instituição e abre o movimento exato", async () => {
   const abrir = vi.fn(); render(<ExtratoControlado onAbrir={abrir} />);
   const tabela = within(await screen.findByRole("table", { name: "Extrato geral" }));
+  fireEvent.click(screen.getByRole("button", { name: "Período do extrato geral" }));
+  fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
   fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-13" } });
   fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-13" } });
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
   fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
   fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "Instituição A" } });
   expect(tabela.queryByText("Compra B")).toBeNull();
   fireEvent.click(tabela.getByText("Venda A")); expect(abrir).toHaveBeenCalledWith(movimentos[0]);
   fireEvent.change(screen.getByLabelText("Instituição"), { target: { value: "__sem__" } });
   expect(screen.getByText(/Nenhuma movimentação encontrada/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Período do extrato geral" }));
+  fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
   fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-11" } });
   expect(screen.getByRole("alert").textContent).toContain("data final");
 });

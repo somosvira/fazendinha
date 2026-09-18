@@ -37,7 +37,16 @@ export type DocumentoFinanceiro = { id: number; tipo: string; nome: string; nume
 export type RascunhoOperacao = { id: number; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[] };
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: number; descricao: string | null; tipo: string } | null; reversaoDe?: { tipo: string } | null } };
-export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; fluxo: { data: string; entradas: string; saidas: string }[]; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
+export type BaseFinanceira = {
+  operacoes: { total: number; estados: Record<string, number>; comEstoque: number; semParceiro: number; semEfeitos: number };
+  compromissos: { total: number; estados: Record<string, number> };
+  transacoes: { total: number; estados: Record<string, number>; estornos: number; avulsas: number; comLiquidacao: number; semMovimentos: number; transferenciasIncompletas: number };
+  movimentos: { total: number; confirmados: number; revertidos: number; estornos: number };
+  volumeEconomico: string;
+  porTipo: { tipo: string; valor: string }[];
+  vinculosAusentes: { transacaoId: number; operacaoId: number | null; motivo: string }[];
+};
+export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; fluxo: { data: string; entradas: string; saidas: string }[]; compromissos: { aPagar: string; aReceber: string }; proximosCompromissos: Compromisso[]; base: BaseFinanceira; despesasPorCategoria: { categoriaId: number | null; categoria: string; valor: string }[] };
 export type RegimeRelatorioFinanceiro = "ambos" | "realizado" | "previsto";
 export type ClassificacaoRelatorio = "CUSTEIO" | "INVESTIMENTO" | "SEM_CLASSIFICACAO";
 /** Opções que definem o conteúdo do documento. Em centros e categorias, 0 = "sem". */
@@ -81,7 +90,7 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
   return req<Operacao[]>(`/financeiro/operacoes${query ? `?${query}` : ""}`);
 };
 export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoes/${id}`);
-export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
+export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
 // As quatro chamadas abaixo publicam o resultado em `rascunhoAtivo`, que alimenta

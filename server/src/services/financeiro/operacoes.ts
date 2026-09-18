@@ -324,9 +324,9 @@ export async function listarOperacoes(propriedadeId?: number | null, inicio?: Da
   });
 }
 
-export async function listarCompromissos(propriedadeId?: number | null) {
+export async function listarCompromissos(propriedadeId?: number | null, periodo?: { inicio: Date; fim: Date }) {
   const compromissos = await prisma.compromissoFinanceiro.findMany({
-    where: propriedadeId ? { operacao: { propriedadeId } } : {}, include: { parceiro: true, operacao: true, liquidacoes: { include: { transacao: true } } },
+    where: { ...(propriedadeId ? { operacao: { propriedadeId } } : {}), ...(periodo ? { dataVencimento: { gte: periodo.inicio, lte: periodo.fim } } : {}) }, include: { parceiro: true, operacao: true, liquidacoes: { include: { transacao: true } } },
     orderBy: [{ dataVencimento: "asc" }, { id: "asc" }],
   });
   return compromissos.map((compromisso) => {

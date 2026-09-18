@@ -86,3 +86,16 @@ describe("central de relatórios financeiros", () => {
     expect(obterRascunhoRelatorioFinanceiro).not.toHaveBeenCalled();
   });
 });
+
+it("filtra o histórico pela emissão sem alterar o período do documento salvo", async () => {
+  render(<RelatoriosFinanceiros />);
+  await screen.findAllByRole("table", { name: "Relatórios gerados" });
+  fireEvent.click(screen.getByRole("button", { name: "Período de emissão" }));
+  fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
+  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-01" } });
+  fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
+  expect(screen.queryByText("Fechamento julho")).toBeNull();
+  expect(screen.getAllByText("Pecuária — agosto").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("01/08/2026 a 31/08/2026").length).toBeGreaterThan(0);
+});

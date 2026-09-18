@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, FileDown, Trash2 } from "lucide-react";
+import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
 import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { DateRangePicker, type DateRange } from "@/components/DateRangePicker";
-import { getHoje } from "../lib/hoje";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { usePropriedades } from "../rebanho/api";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracaoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { Button, ErrorBox, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
-import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, periodoMes, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
+import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
 const TITULO_SECAO = "mb-3 text-xs font-semibold uppercase tracking-[.12em] text-ink-3";
@@ -118,14 +117,6 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     }
   };
 
-  const hoje = getHoje();
-  const mesPassado = periodoMes(hoje, -1);
-  const atalhos = [
-    { rotulo: "Mês passado", detalhe: mesPassado.nome, ...mesPassado },
-    { rotulo: "Mês atual", detalhe: "Até hoje", dataInicio: periodoMes(hoje).dataInicio, dataFim: isoLocal(hoje) },
-    { rotulo: "Ano atual", detalhe: `${hoje.getFullYear()} até hoje`, dataInicio: `${hoje.getFullYear()}-01-01`, dataFim: isoLocal(hoje) },
-  ];
-  const atalhoAtivo = atalhos.find((atalho) => atalho.dataInicio === config.dataInicio && atalho.dataFim === config.dataFim)?.rotulo ?? null;
   const range: DateRange = { start: dateFromIso(config.dataInicio), end: dateFromIso(config.dataFim) };
   const problemaPeriodo = erroPeriodo(config);
   const tipos = useMemo(() => TIPOS_RELATORIO.map((tipo) => [tipo, TIPO_OPERACAO[tipo] ?? tipo] as const), []);
@@ -160,26 +151,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
 
         <section>
           <h3 className={TITULO_SECAO}>Período</h3>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {atalhos.map((atalho) => {
-              const ativo = atalhoAtivo === atalho.rotulo;
-              return <button key={atalho.rotulo} type="button" aria-label={atalho.rotulo} aria-pressed={ativo} onClick={() => setConfig((atual) => ({ ...atual, dataInicio: atalho.dataInicio, dataFim: atalho.dataFim }))} className={`flex min-h-[66px] items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${ativo ? "border-mast bg-[#eef1e9]" : "border-border bg-white hover:bg-surface-2"}`}>
-                <span><strong className="block text-sm font-semibold text-ink">{atalho.rotulo}</strong><span className="mt-0.5 block text-xs text-ink-3">{atalho.detalhe}</span></span>
-                {ativo ? <Check size={17} className="shrink-0 text-green-800" aria-hidden="true" /> : null}
-              </button>;
-            })}
-            <DateRangePicker
-              value={range}
-              showPresets={false}
-              triggerLabel={<span className="text-left"><strong className="block text-sm font-semibold">Personalizar período</strong><span className="mt-0.5 block text-xs font-normal text-ink-3 group-aria-expanded:text-[color:var(--mast-ink-2)]">{config.dataInicio && config.dataFim ? `${config.dataInicio.split("-").reverse().join("/")} a ${config.dataFim.split("-").reverse().join("/")}` : "Escolher na agenda"}</span></span>}
-              triggerAriaLabel="Personalizar período"
-              triggerClassName={`min-h-[66px] w-full justify-between rounded-lg p-3 normal-case tracking-normal ${atalhoAtivo ? "" : "border-mast bg-[#eef1e9]"}`}
-              onChange={(novo) => {
-                const { start, end } = novo;
-                if (start && end) setConfig((atual) => ({ ...atual, dataInicio: isoLocal(start), dataFim: isoLocal(end) }));
-              }}
-            />
-          </div>
+          <DateRangePicker value={range} triggerAriaLabel="Período do relatório" onChange={({ start, end }) => {
+            if (start && end) setConfig(atual => ({ ...atual, dataInicio: isoLocal(start), dataFim: isoLocal(end) }));
+          }} />
           {problemaPeriodo && <p role="alert" className="mt-2 text-sm text-red-700">{problemaPeriodo}</p>}
         </section>
 

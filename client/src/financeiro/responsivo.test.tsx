@@ -12,6 +12,7 @@
  *   4. o carregamento é o loader de página centralizado, não um bloco solto;
  *   5. toda página financeira usa o mesmo envelope (gutter + folga do menu).
  */
+import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
@@ -162,7 +163,8 @@ describe("telas financeiras — envelope e carregamento", () => {
       realizado: { entradas: "412870.22", saidas: "298345.68", resultado: "114524.54" },
       fluxo: [{ data: "2026-09-02", entradas: "412870.22", saidas: "298345.68" }],
       compromissos: { aPagar: "204500.9", aReceber: "278140.55" },
-      despesasPorCategoria: [{ categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
+      base: baseFinanceiraVazia(), proximosCompromissos: [],
+      despesasPorCategoria: [{ categoriaId: 1, categoria: "Nutrição e alimentação do rebanho leiteiro", valor: "184500.9" }],
     });
     obterConfiguracoesFinanceiras.mockResolvedValue({
       contas: [{ id: 1, nome: "Banco do Brasil — conta corrente principal", tipo: "BANCO", instituicao: "Banco do Brasil S.A.", identificacao: null, saldoAbertura: "0", dataSaldoAbertura: "2026-01-01", saldoAtual: "1284530.75", incluirNoSaldoGeral: true, ativo: true }],

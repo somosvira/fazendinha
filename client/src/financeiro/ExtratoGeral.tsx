@@ -1,3 +1,4 @@
+import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
@@ -39,8 +40,7 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
     <p className="mt-2 text-sm text-ink-3">Movimentações de todas as contas da fazenda selecionada, da mais recente à mais antiga. Clique para localizar o registro na conta.</p>
     <Panel className="mt-4 overflow-hidden">
       <div className="grid gap-4 border-b border-border p-5 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="text-sm font-medium">Data inicial<input type="date" value={inicio} onChange={e => onChangeFiltros({ ...filtros, inicio: e.target.value })} className={CAMPO} /></label>
-        <label className="text-sm font-medium">Data final<input type="date" value={fim} onChange={e => onChangeFiltros({ ...filtros, fim: e.target.value })} className={CAMPO} /></label>
+        <div className="sm:col-span-2"><PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll label="Período do extrato geral" onChange={periodo => onChangeFiltros({ ...filtros, ...periodo })} /></div>
         <label className="text-sm font-medium">Conta<select value={conta} onChange={e => onChangeFiltros({ ...filtros, conta: e.target.value })} className={CAMPO}><option value="">Todas as contas</option>{contas.map(c => <option key={c.id} value={c.id}>{c.nome}{!c.ativo ? " (inativa)" : ""}</option>)}</select></label>
         <label className="text-sm font-medium">Instituição<select value={instituicao} onChange={e => onChangeFiltros({ ...filtros, instituicao: e.target.value })} className={CAMPO}><option value="">Todas as instituições</option>{Array.from(new Set(contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort().map(i => <option key={i} value={i}>{i}</option>)}<option value="__sem__">Sem instituição</option></select></label>
       </div>
