@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, Check, X } from "lucide-react";
 import { Loader } from "../components/Loading";
@@ -131,7 +132,7 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false }: {
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
@@ -139,15 +140,47 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   classeLinha?: (item: T) => string;
   ancoraDe?: (item: T) => string;
   rotulo: string;
+  /** Exibe uma barra horizontal acima da tabela em telas intermediárias. */
+  barraRolagemSuperior?: boolean;
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
   const acoes = colunas.filter((coluna) => coluna.acoes);
+  const tabelaRef = useRef<HTMLDivElement>(null);
+  const barraRef = useRef<HTMLDivElement>(null);
+  const larguraRef = useRef<HTMLDivElement>(null);
+  const [temRolagem, setTemRolagem] = useState(false);
+
+  useEffect(() => {
+    if (!barraRolagemSuperior) return;
+    const tabela = tabelaRef.current;
+    if (!tabela) return;
+    const atualizar = () => setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+    atualizar();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", atualizar);
+      return () => window.removeEventListener("resize", atualizar);
+    }
+    const observador = new ResizeObserver(atualizar);
+    observador.observe(tabela);
+    return () => observador.disconnect();
+  }, [barraRolagemSuperior, larguraMinima, itens.length]);
+
+  const sincronizarRolagem = (origem: "tabela" | "barra") => {
+    const tabela = tabelaRef.current;
+    const barra = barraRef.current;
+    if (!tabela || !barra) return;
+    if (origem === "tabela" && barra.scrollLeft !== tabela.scrollLeft) barra.scrollLeft = tabela.scrollLeft;
+    if (origem === "barra" && tabela.scrollLeft !== barra.scrollLeft) tabela.scrollLeft = barra.scrollLeft;
+  };
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    <div className="hidden overflow-x-auto md:block">
+    {barraRolagemSuperior && temRolagem && <div ref={barraRef} aria-label={`Rolagem horizontal: ${rotulo}`} className="hidden overflow-x-auto border-b border-border bg-surface-2 md:block" onScroll={() => sincronizarRolagem("barra")}>
+      <div ref={larguraRef} style={{ width: larguraMinima, height: 1 }} />
+    </div>}
+    <div ref={tabelaRef} className="hidden overflow-x-auto md:block" onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <caption className="sr-only">{rotulo}</caption>
         <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">

@@ -10,7 +10,7 @@ const operacao = {
   id: 6, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-02", descricao: "Compra de ração", valorTotal: "360",
   parceiro: { id: 1, nome: "Cooperativa", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true },
   itens: [{ id: 1, descricao: "Ração", quantidade: "30", unidade: "kg", valorUnitario: "12", valorTotal: "360", estocavel: true, produtoId: 1 }],
-  transacoes: [{ id: 1, tipo: "PAGAMENTO", status: "CONFIRMADA", valorTotal: "360", movimentos: [] }],
+  transacoes: [{ id: 1, tipo: "PAGAMENTO", status: "CONFIRMADA", data: "2026-09-02", formaPagamento: "PIX", valorTotal: "360", movimentos: [] }],
   compromissos: [], movimentosEstoque: [{ id: 1, tipo: "ENTRADA", status: "CONFIRMADO", quantidade: "30", valorTotal: "360", produtoId: 1 }], documentos: [],
 };
 

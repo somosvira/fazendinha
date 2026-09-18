@@ -247,8 +247,8 @@ export async function criarTransacaoAvulsa(input: TransacaoAvulsaInput) {
   });
 }
 
-async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, motivo: string, usuarioId?: number | null) {
-    const original = await tx.transacaoFinanceira.findUnique({ where: { id }, include: { movimentos: true, liquidacoes: true, revertidaPor: true } });
+async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, motivo: string, usuarioId?: number | null, propriedadeId?: number | null) {
+    const original = await tx.transacaoFinanceira.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: { movimentos: true, liquidacoes: true, revertidaPor: true } });
     if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Transação não encontrada");
     if (original.status === "REVERTIDA" || original.revertidaPor) throw new FinanceiroError("JA_REVERTIDO", "A transação já foi estornada");
     await exigirPeriodoAberto(tx, original.propriedadeId, new Date());
@@ -261,7 +261,6 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
       })) },
     }, include: { movimentos: true } });
     await tx.transacaoFinanceira.update({ where: { id }, data: { status: "REVERTIDA" } });
-    for (const liquidacao of original.liquidacoes) await tx.liquidacao.delete({ where: { id: liquidacao.id } });
     const compromissoIds = [...new Set(original.liquidacoes.map((item) => item.compromissoId))];
     for (const compromissoId of compromissoIds) {
       const compromisso = await tx.compromissoFinanceiro.findUniqueOrThrow({ where: { id: compromissoId }, include: { liquidacoes: { include: { transacao: true } } } });
@@ -272,14 +271,14 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
     return estorno;
 }
 
-export async function estornarTransacao(id: number, motivo: string, usuarioId?: number | null) {
-  return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, motivo, usuarioId));
+export async function estornarTransacao(id: number, motivo: string, usuarioId?: number | null, propriedadeId?: number | null) {
+  return prisma.$transaction((tx) => estornarTransacaoTx(tx, id, motivo, usuarioId, propriedadeId));
 }
 
-export async function estornarOperacao(id: number, motivo: string, usuarioId?: number | null) {
+export async function estornarOperacao(id: number, motivo: string, usuarioId?: number | null, propriedadeId?: number | null) {
   return prisma.$transaction(async (tx) => {
-    const operacao = await tx.operacao.findUnique({
-      where: { id },
+    const operacao = await tx.operacao.findFirst({
+      where: { id, ...(propriedadeId ? { propriedadeId } : {}) },
       include: { transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true } } },
     });
     if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
@@ -287,7 +286,7 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
-      await estornarTransacaoTx(tx, transacao.id, `Cancelamento da operação #${id}: ${motivo}`, usuarioId);
+      await estornarTransacaoTx(tx, transacao.id, `Cancelamento da operação #${id}: ${motivo}`, usuarioId, operacao.propriedadeId);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
       await tx.movimentoEstoque.create({ data: {
@@ -308,12 +307,50 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
   });
 }
 
-const includeOperacao = { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, corrigeOperacao: { select: { id: true, descricao: true } }, correcoes: { select: { id: true, descricao: true, status: true } } } as const;
+const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
+  parceiro: true,
+  itens: true,
+  compromissos: {
+    include: {
+      liquidacoes: {
+        include: {
+          transacao: {
+            include: {
+              movimentos: { include: { conta: { select: { id: true, nome: true } } } },
+              reversaoDe: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+              revertidaPor: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+            },
+          },
+        },
+        orderBy: [{ transacao: { data: "asc" } }, { id: "asc" }],
+      },
+    },
+  },
+  transacoes: {
+    include: {
+      movimentos: { include: { conta: { select: { id: true, nome: true } } } },
+      reversaoDe: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+      revertidaPor: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+    },
+    orderBy: [{ data: "asc" }, { id: "asc" }],
+  },
+  movimentosEstoque: true,
+  documentos: { select: documentoPublico },
+  corrigeOperacao: { select: { id: true, descricao: true } },
+  correcoes: { select: { id: true, descricao: true, status: true } },
+});
+
+function valoresCompromisso<T extends { valorOriginal: Prisma.Decimal; liquidacoes: { valor: Prisma.Decimal; transacao: { status: string } }[] }>(compromisso: T) {
+  const valorLiquidado = compromisso.liquidacoes
+    .filter((item) => item.transacao.status === "CONFIRMADA")
+    .reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
+  return { ...compromisso, valorLiquidado, saldoPendente: compromisso.valorOriginal.minus(valorLiquidado) };
+}
 
 export async function obterOperacao(id: number, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
-  return operacao;
+  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso) };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
@@ -329,8 +366,8 @@ export async function listarCompromissos(propriedadeId?: number | null) {
     where: propriedadeId ? { operacao: { propriedadeId } } : {}, include: { parceiro: true, operacao: true, liquidacoes: { include: { transacao: true } } },
     orderBy: [{ dataVencimento: "asc" }, { id: "asc" }],
   });
-  return compromissos.map((compromisso) => {
-    const valorLiquidado = compromisso.liquidacoes.filter((item) => item.transacao.status === "CONFIRMADA").reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-    return { ...compromisso, valorLiquidado, saldoPendente: compromisso.valorOriginal.minus(valorLiquidado), vencido: compromisso.status !== "LIQUIDADO" && compromisso.status !== "CANCELADO" && compromisso.dataVencimento < new Date() };
-  });
+  return compromissos.map((compromisso) => ({
+    ...valoresCompromisso(compromisso),
+    vencido: compromisso.status !== "LIQUIDADO" && compromisso.status !== "CANCELADO" && compromisso.dataVencimento < new Date(),
+  }));
 }
