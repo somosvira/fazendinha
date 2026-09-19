@@ -198,15 +198,15 @@ Em cada checkpoint anotar arquivos alterados, comando executado/resultado e pró
 
 ### Registro da execução
 
-#### 2026-09-18 — execução parcial
+#### 2026-09-18 — execução inicial, reavaliada pelo PR #286
 
 - [x] A — Base `main` em `e1e5004`; branch criada: `feat/285-operacoes-rastreabilidade`. Foram preservados `.claude/worktrees/` e `AGENTS.md`, ambos não rastreados e fora do commit.
-- [x] B — Histórico de liquidações é preservado no estorno; detalhe inclui movimentos, contas e reversões; as rotas de estorno exigem `lancar` e recebem escopo de propriedade. Build do servidor passou. Atomicidade em PostgreSQL está pendente por banco local indisponível.
+- [ ] B — Histórico de liquidações foi preservado no estorno; detalhe inclui movimentos, contas e reversões; as rotas de estorno exigem `lancar` e recebem escopo de propriedade. Ainda faltam DTOs consistentes para cancelamento e a distinção entre saldo histórico e exigível de compromisso cancelado.
 - [x] C — Lista pagina 15 itens após filtros, com faixa, controles e seletor de página. `TabelaFinanceira` recebeu rolagem superior opt-in. Cobertura adicionada para 16 itens e salto de página.
-- [x] D — Detalhe exibe contas/movimentos, links ao extrato e modal acionável de parcelas com valores e histórico. Escritas respeitam `podeLancar`, inclusive por acesso direto ao formulário.
-- [x] E — Estorno de liquidação confirmada recarrega o detalhe e mantém seu histórico. O cancelamento continua transacional; o resumo detalhado e cenários em banco real ainda requerem validação.
+- [ ] D — Detalhe exibe contas/movimentos, links ao extrato e modal acionável de parcelas com valores e histórico. Escritas respeitam `podeLancar`, inclusive por acesso direto ao formulário. Faltam identificar relações de reversão individualmente e cobrir os links com dados reais.
+- [ ] E — Estorno de liquidação mantém seu histórico. O cancelamento continua transacional, mas o resumo não é individualizado e o estorno pelo modal ainda não bloqueia envio concorrente.
 - [ ] F — Pendente de decisão: “Devolução” em parcela paga é devolução de dinheiro, mercadoria ao fornecedor, ou ambos? O schema não permite inferir essa semântica com segurança.
-- [x] G — `lib/parcelas.ts` gera valores em centavos e datas civis semanais/mensais; a UI permite gerar, editar e mostra total anotado/restante. A validação final de criação permanece no servidor.
-- [x] H — Resumo ocupa a altura do formulário; falhas de confirmação aparecem junto ao botão com alerta e foco.
-- [x] I — `COMPONENTS.md` documenta tabela financeira, rolagem opt-in e paginação da lista.
-- [ ] J — Passaram testes focalizados (45), suite completa do servidor (1.346 testes; 2 ignorados), suite completa do client (538 testes), builds client/server e `git diff --check`. O client iniciou e respondeu HTTP 200; a automação de navegador não está disponível nesta sessão, portanto a inspeção em 720/1180/1440 px segue pendente. A integração financeira não rodou: PostgreSQL em `localhost:54332` recusou conexão e Docker não está disponível no WSL.
+- [ ] G — `lib/parcelas.ts` gera valores em centavos e datas civis semanais/mensais; a UI permite gerar, editar e mostra total anotado/restante. Falta paridade com o arredondamento do backend, confirmação antes de substituir edições e persistência do modo/configuração.
+- [ ] H — Resumo ocupa a altura do formulário; falhas de confirmação aparecem junto ao botão com alerta e foco. Ainda faltam separar autosave/anexo de confirmação e usar `ApiError.campo`.
+- [ ] I — `COMPONENTS.md` documenta tabela financeira, rolagem opt-in e paginação da lista. A documentação do gerador, dos cancelamentos e os critérios de aceite precisam acompanhar a correção.
+- [ ] J — Os checks anteriores passaram para o estado inicial, mas não validam as correções planejadas em `docs/plano-correcao-pr-286.md`. A integração financeira e a inspeção visual seguem pendentes.

@@ -1,13 +1,15 @@
 import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
+import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
 import type { z } from "zod";
-import type { liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
+import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
+type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
 
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
@@ -88,13 +90,17 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
-      valorUnitario: new Prisma.Decimal(item.valorUnitario),
-      valorTotal: dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario)),
+      valorUnitario: item.valorTotal === undefined
+        ? new Prisma.Decimal(item.valorUnitario ?? 0)
+        : dinheiro(item.valorTotal).div(item.quantidade),
+      valorTotal: item.valorTotal === undefined
+        ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
+        : dinheiro(item.valorTotal),
       estocavel: item.estocavel,
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
-    const totalItens = dinheiro(itens.reduce((soma, item) => soma.plus(item.valorTotal), new Prisma.Decimal(0)));
+    const totalItens = totalItensFinanceiros(itens);
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
@@ -174,6 +180,21 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       where: { id: operacao.id },
       include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
     });
+}
+
+export function simularParcelas(input: SimulacaoParcelasInput) {
+  const totalOperacao = input.itens.length
+    ? totalItensFinanceiros(input.itens)
+    : dinheiro(input.valorTotal ?? 0);
+  const valorPagoAgora = dinheiro(input.valorPagoAgora ?? 0);
+  const saldoAPrazo = dinheiro(totalOperacao.minus(valorPagoAgora));
+  if (!saldoAPrazo.isPositive()) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
+  return {
+    totalOperacao,
+    valorPagoAgora,
+    saldoAPrazo,
+    parcelas: gerarParcelasFinanceiras(saldoAPrazo, input.quantidadeParcelas, input.frequencia, input.primeiroVencimento),
+  };
 }
 
 export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput) {
@@ -265,7 +286,9 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
     for (const compromissoId of compromissoIds) {
       const compromisso = await tx.compromissoFinanceiro.findUniqueOrThrow({ where: { id: compromissoId }, include: { liquidacoes: { include: { transacao: true } } } });
       const pago = compromisso.liquidacoes.filter((item) => item.transacao.status === "CONFIRMADA").reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-      await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: pago.isZero() ? "PENDENTE" : pago.lessThan(compromisso.valorOriginal) ? "PARCIAL" : "LIQUIDADO" } });
+      if (compromisso.status !== "CANCELADO") {
+        await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: pago.isZero() ? "PENDENTE" : pago.lessThan(compromisso.valorOriginal) ? "PARCIAL" : "LIQUIDADO" } });
+      }
     }
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: id, acao: "ESTORNADA", motivo, usuarioId, antes: original, depois: estorno });
     return estorno;
@@ -334,23 +357,53 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
     },
     orderBy: [{ data: "asc" }, { id: "asc" }],
   },
-  movimentosEstoque: true,
+  movimentosEstoque: { include: { revertidoPor: { select: { id: true } } } },
   documentos: { select: documentoPublico },
   corrigeOperacao: { select: { id: true, descricao: true } },
   correcoes: { select: { id: true, descricao: true, status: true } },
 });
 
-function valoresCompromisso<T extends { valorOriginal: Prisma.Decimal; liquidacoes: { valor: Prisma.Decimal; transacao: { status: string } }[] }>(compromisso: T) {
+function valoresCompromisso<T extends { status: string; valorOriginal: Prisma.Decimal; liquidacoes: { valor: Prisma.Decimal; transacao: { status: string } }[] }>(compromisso: T) {
   const valorLiquidado = compromisso.liquidacoes
     .filter((item) => item.transacao.status === "CONFIRMADA")
     .reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-  return { ...compromisso, valorLiquidado, saldoPendente: compromisso.valorOriginal.minus(valorLiquidado) };
+  const saldoPendente = compromisso.valorOriginal.minus(valorLiquidado);
+  return { ...compromisso, valorLiquidado, saldoPendente, saldoExigivel: compromisso.status === "CANCELADO" ? new Prisma.Decimal(0) : saldoPendente };
+}
+
+function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeof includeOperacao }>) {
+  const compromissos = operacao.compromissos
+    .filter((compromisso) => compromisso.status !== "CANCELADO")
+    .map(valoresCompromisso)
+    .map((compromisso) => ({ id: compromisso.id, numeroParcela: compromisso.numeroParcela, status: compromisso.status, valorOriginal: compromisso.valorOriginal, valorLiquidado: compromisso.valorLiquidado, saldoExigivel: compromisso.saldoExigivel }));
+  const transacoes = operacao.transacoes
+    .filter((transacao) => transacao.tipo !== "REVERSAO" && transacao.status === "CONFIRMADA" && !transacao.revertidaPor)
+    .map((transacao) => ({
+      id: transacao.id, tipo: transacao.tipo, data: transacao.data, valorTotal: transacao.valorTotal,
+      movimentos: transacao.movimentos.map((movimento) => ({ id: movimento.id, contaId: movimento.contaId, conta: movimento.conta, valor: movimento.valor, direcaoInversa: movimento.direcao === "ENTRADA" ? "SAIDA" : "ENTRADA" })),
+    }));
+  const estoque = operacao.movimentosEstoque
+    .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
+    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, quantidade: movimento.quantidade, unidade: "un", tipo: movimento.tipo }));
+  const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
+  for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
+    const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };
+    if (movimento.direcaoInversa === "ENTRADA") atual.entrada = atual.entrada.plus(movimento.valor); else atual.saida = atual.saida.plus(movimento.valor);
+    impactosPorConta.set(movimento.contaId, atual);
+  }
+  return {
+    compromissos,
+    transacoes,
+    estoque,
+    impactosPorConta: [...impactosPorConta.values()],
+    documentosPreservados: operacao.documentos.length,
+  };
 }
 
 export async function obterOperacao(id: number, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
-  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso) };
+  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
