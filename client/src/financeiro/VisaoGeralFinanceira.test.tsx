@@ -103,10 +103,25 @@ describe("Visão geral — período global", () => {
       base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 0, semParceiro: 1, semEfeitos: 3 } },
     });
     render(<VisaoGeralFinanceira onNav={vi.fn()} />);
-    const linha = (await screen.findByText(/Sem efeitos vinculados/)).closest("p")!;
+    const linha = (await screen.findByText(/Sem efeitos vinculados/)).closest("div")!;
     const link = within(linha).getByRole("link");
     expect(link.textContent).toBe("3");
     expect(link.getAttribute("href")).toBe("/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
+  });
+  it("mostra os indicadores de apoio da rastreabilidade como cards e destaca só os vínculos ausentes", async () => {
+    vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce({
+      periodo: { inicio: "2026-01-01", fim: "2026-12-31" }, saldoGeral: "0", contas: [],
+      realizado: { entradas: "0", saidas: "0", resultado: "0" }, fluxo: [], compromissos: { aPagar: "0", aReceber: "0" },
+      despesasPorCategoria: [], proximosCompromissos: [],
+      base: { ...baseFinanceiraVazia(), operacoes: { total: 5, estados: {}, comEstoque: 2, semParceiro: 1, semEfeitos: 0 }, transacoes: { ...baseFinanceiraVazia().transacoes, avulsas: 2, semMovimentos: 1, transferenciasIncompletas: 0 } },
+    });
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+    const card = async (rotulo: string) => (await screen.findByText(rotulo)).closest("div")!;
+    expect((await card("Com efeito de estoque")).textContent).toContain("2");
+    expect((await card("Avulsas (sem operação)")).textContent).toContain("2");
+    expect((await card("Sem movimento de conta")).className).toContain("bg-red-50");
+    expect((await card("Transferências sem as duas pontas")).className).not.toContain("bg-red-50");
+    expect((await card("Sem parceiro")).className).not.toContain("bg-red-50");
   });
   it("mostra erro e permite tentar novamente sem restaurar o período antigo", async () => {
     vi.mocked(obterDashboardFinanceiro).mockRejectedValueOnce(new Error("Falha de rede"));
