@@ -41,3 +41,12 @@ it("abate categorias com estorno de períodos anteriores no total e omite fatias
   expect(screen.getByRole("list", { name: "Estornos por categoria" }).textContent).toContain("−R$ 100,00");
   expect(within(screen.getByRole("list", { name: "Legenda: Despesas por categoria" })).queryByText("Sem despesa")).toBeNull();
 });
+it("agrupa as menores categorias em 'Outras' para que cada fatia tenha cor própria na legenda", () => {
+  const muitas = [800, 700, 600, 500, 400, 300, 200, 100].map((valor, indice) => ({ categoriaId: indice + 1, categoria: `Categoria ${indice + 1}`, valor: String(valor) }));
+  render(<AnaliseCategorias despesas={muitas} categorias={muitas.map(item => ({ id: item.categoriaId, nome: item.categoria }))} />);
+  const itens = within(screen.getByRole("list", { name: "Legenda: Despesas por categoria" })).getAllByRole("listitem");
+  expect(itens).toHaveLength(6);
+  expect(itens[5].textContent).toContain("Outras (3)");
+  expect(itens[5].textContent).toContain("R$ 600,00");
+  expect(screen.getByText("R$ 3.600,00")).toBeTruthy();
+});

@@ -321,8 +321,14 @@ export function MonetaryDonutChart({ data, label, emptyLabel }: {
   label: string;
   emptyLabel: string;
 }) {
-  const colors = ["var(--leite)", "var(--cafe)", "var(--outros)", "var(--pos)", "var(--neg)", "var(--ink-3)"];
-  const points = data.filter(item => item.value > 0).map((item, index) => ({ ...item, key: `segmento${index}`, color: colors[index % colors.length] }));
+  // Só tokens neutros (sem --pos/--neg, que significam ganho/perda) e sem repetir cor:
+  // passando de 6 fatias, as menores viram "Outras (N)" para gráfico e legenda casarem.
+  const colors = ["var(--leite)", "var(--cafe)", "var(--outros)", "var(--cafe-2)", "var(--outros-2)", "var(--ink-3)"];
+  const positivos = data.filter(item => item.value > 0).sort((a, b) => b.value - a.value);
+  const visiveis = positivos.length > colors.length ? positivos.slice(0, colors.length - 1) : positivos;
+  const agrupados = positivos.slice(visiveis.length);
+  const consolidados = agrupados.length ? [...visiveis, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100 }] : visiveis;
+  const points = consolidados.map((item, index) => ({ ...item, key: `segmento${index}`, color: colors[index] }));
   const adjustments = data.filter(item => item.value < 0);
   const total = data.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
   const positiveTotal = points.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
