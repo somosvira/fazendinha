@@ -162,7 +162,7 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   });
   it.each(["A_VISTA", "A_PRAZO", "PARCIAL"])("cancelamento %s neutraliza estoque e dinheiro sem apagar histórico", async condicao => {
     await snapshot("antes"); const op = await ops.criarOperacao(input(condicao)); await snapshot("confirmada");
-    await ops.estornarOperacao(op.id, "Cancelamento QA", userId);
+    await ops.estornarOperacao(op.id, "Cancelamento QA", { propriedadeId: pid, usuarioId: userId });
     const state = await snapshot("cancelada");
     expect.soft(state.saldoConta).toBe(1000); expect.soft(state.saldoEstoque).toBe(0);
     expect(state.operacoes[0].status).toBe("CANCELADA");
@@ -171,15 +171,15 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
     expect(state.operacoes[0].compromissos.every(c => c.status === "CANCELADO")).toBe(true);
   });
   it("estorno repetido é recusado sem gerar novos efeitos", async () => {
-    const op = await ops.criarOperacao(input("A_VISTA")); await ops.estornarOperacao(op.id, "Primeiro estorno", userId);
+    const op = await ops.criarOperacao(input("A_VISTA")); await ops.estornarOperacao(op.id, "Primeiro estorno", { propriedadeId: pid, usuarioId: userId });
     const before = await snapshot("primeiro estorno");
-    await expect(ops.estornarOperacao(op.id, "Segundo estorno", userId)).rejects.toThrow("já foi cancelada");
+    await expect(ops.estornarOperacao(op.id, "Segundo estorno", { propriedadeId: pid, usuarioId: userId })).rejects.toThrow("já foi cancelada");
     expect(await snapshot("repetição recusada")).toEqual(before);
   });
   it("estorno de liquidação reabre compromisso e preserva vínculo histórico", async () => {
     const op = await ops.criarOperacao(input()); const tx = await pay(op.compromissos[0].id, 100);
     const before = await snapshot("liquidada");
-    await ops.estornarTransacao(tx.id, "Estorno QA", userId);
+    await ops.estornarTransacao(tx.id, "Estorno QA", { propriedadeId: pid, usuarioId: userId });
     const after = await snapshot("liquidação estornada");
     expect(after.saldoConta).toBe(1000); expect(after.saldoEstoque).toBe(10);
     expect(after.operacoes[0].compromissos[0].status).toBe("PENDENTE");
@@ -207,7 +207,7 @@ describe("#249 — regras reais Financeiro/Estoque", () => {
   it("falha durante cancelamento conserva todos os efeitos originais", async () => {
     const op = await ops.criarOperacao(input("A_VISTA"));
     const before = await snapshot("confirmada");
-    await failAudit(() => ops.estornarOperacao(op.id, "Cancelamento com falha", userId));
+    await failAudit(() => ops.estornarOperacao(op.id, "Cancelamento com falha", { propriedadeId: pid, usuarioId: userId }));
     expect(await snapshot("falha no cancelamento")).toEqual(before);
   });
 
@@ -317,7 +317,7 @@ describe("categorias por item e relatórios", () => {
     expect(dashboard.despesasPorCategoria.map((c) => [c.categoria, Number(c.valor)])).toContainEqual([silagem.nome, 400]);
     const relatorio = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "ambos" }, pid);
     expect(relatorio.categorias?.itens).toEqual(expect.arrayContaining([expect.objectContaining({ categoria: silagem.nome, total: 400 })]));
-    const estorno = await ops.estornarTransacao(pagamento.id, "Estorno de teste", userId);
+    const estorno = await ops.estornarTransacao(pagamento.id, "Estorno de teste", { propriedadeId: pid, usuarioId: userId });
     // Posiciona o estorno em outro mês para verificar a competência de caixa.
     await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
     expect((await analisarCategorias({ ...filtro, base: "pagamentos" }, pid)).total).toBe("0.00");
@@ -327,7 +327,7 @@ describe("categorias por item e relatórios", () => {
     expect(relatorioEstornado.resumo.saidas).toBe(0);
     expect(relatorioEstornado.operacoes.find((o) => o.tipo === "estorno")).toMatchObject({ quantidade: 1, valor: 500 });
     expect(relatorioEstornado.operacoes.find((o) => o.tipo === "custeio")).toMatchObject({ quantidade: 1, valor: 400 });
-    await ops.estornarOperacao(op.id, "Cancelar teste misto", userId);
+    await ops.estornarOperacao(op.id, "Cancelar teste misto", { propriedadeId: pid, usuarioId: userId });
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("0.00");
   });
@@ -354,7 +354,7 @@ describe("correções da revisão", () => {
     expect((await analisarCategorias({ ...filtro, centroCustoId: 999999 }, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "compras" }, pid)).total).toBe("0.00");
     expect((await analisarCategorias(filtro, pid + 99999)).total).toBe("0.00");
-    const estorno = await ops.estornarTransacao(pagamento.id, "Reverter frete avulso", userId);
+    const estorno = await ops.estornarTransacao(pagamento.id, "Reverter frete avulso", { propriedadeId: pid, usuarioId: userId });
     await db.transacaoFinanceira.update({ where: { id: estorno.id }, data: { data: new Date("2026-10-02") } });
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, fim: "2026-09-30" }, pid)).total).toBe("100.00");

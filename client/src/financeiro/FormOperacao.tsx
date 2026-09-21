@@ -68,7 +68,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const permiteFinanceiro = TIPOS_FINANCEIROS.has(tipo);
   const exigeParceiro = TIPOS_COM_PARCEIRO.has(tipo);
   const entradaFinanceira = tipo === "VENDA" || tipo === "DEVOLUCAO";
-  const total = comItens ? itens.reduce((soma, item) => soma + totalItem(item), 0) : Number(valorOperacao || 0);
+  // O backend arredonda cada item antes de somá-los; repetir a mesma ordem
+  // evita validar na tela uma distribuição de parcelas que o servidor rejeita.
+  const centavosTotal = comItens
+    ? itens.reduce((soma, item) => soma + Math.round(totalItem(item) * 100), 0)
+    : Math.round(Number(valorOperacao || 0) * 100);
+  const total = centavosTotal / 100;
   const realizadoAgora = condicao === "A_VISTA" ? total : Number(valorAgora || 0);
   const centavosParcelas = parcelas.reduce((soma, parcela) => soma + Math.round(Number(parcela.valor || 0) * 100), 0);
   const totalParcelas = centavosParcelas / 100;
@@ -198,8 +203,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     acc[nome] = (acc[nome] ?? 0) + Math.round(totalItem(item) * 100); return acc;
   }, {})) : [[categorias.find((c) => c.id === Number(categoriaId))?.nome ?? "Sem categoria", Math.round(total * 100)]] as [string, number][];
   const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId));
-  const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && centavosParcelas === Math.round(total * 100)
-    : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturo > 0 && parcelas.length > 0 && centavosParcelas === Math.round(total * 100) - Math.round(realizadoAgora * 100) : true;
+  const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && centavosParcelas === centavosTotal
+    : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturo > 0 && parcelas.length > 0 && centavosParcelas === centavosTotal - Math.round(realizadoAgora * 100) : true;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
   const podeConfirmar = (!comItens || centrosSugeridos.length <= 1 || !!centroCustoId) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 

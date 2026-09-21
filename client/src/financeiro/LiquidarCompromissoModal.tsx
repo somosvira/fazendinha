@@ -34,8 +34,12 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
         data,
         formaPagamento,
       });
-      await onLiquidado();
       onClose();
+      try {
+        await onLiquidado();
+      } catch (e) {
+        onErro(e instanceof Error ? e.message : String(e));
+      }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem); onErro(mensagem);

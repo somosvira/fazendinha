@@ -160,6 +160,22 @@ describe("visualizações financeiras integradas", () => {
     expect(listarCompromissos).toHaveBeenCalledTimes(2);
   });
 
+  it("fecha a liquidação concluída mesmo quando a atualização da tela falha", async () => {
+    vi.mocked(listarCompromissos).mockResolvedValue([compromisso(1)]);
+    vi.mocked(obterDashboardFinanceiro)
+      .mockResolvedValueOnce({ periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, saldoGeral: "120", contas, realizado: { entradas: "120", saidas: "25", resultado: "95" }, fluxo: [], compromissos: { aPagar: "100", aReceber: "0" }, despesasPorCategoria: [] })
+      .mockRejectedValueOnce(new Error("Falha ao atualizar painel"));
+    render(<VisaoGeralFinanceira onNav={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Registrar pagamento" }));
+    fireEvent.change(screen.getByLabelText("Conta"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar liquidação" }));
+
+    await waitFor(() => expect(liquidarCompromisso).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("dialog", { name: "Registrar pagamento" })).toBeNull();
+    expect(await screen.findByText("Falha ao atualizar painel")).toBeTruthy();
+  });
+
   it("aplica as abas e o filtro de vencidos ao calendário e mantém a liquidação disponível", async () => {
     vi.mocked(listarCompromissos).mockResolvedValue([
       compromisso(1, { vencido: true, status: "PARCIAL", saldoPendente: "50", valorLiquidado: "50", numeroParcela: 1, totalParcelas: 2 }),

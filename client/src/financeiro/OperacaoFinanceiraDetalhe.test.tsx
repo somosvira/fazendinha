@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OperacaoFinanceiraDetalhe } from "./OperacaoFinanceiraDetalhe";
 
-const { obterOperacao, estornarOperacao } = vi.hoisted(() => ({ obterOperacao: vi.fn(), estornarOperacao: vi.fn() }));
-vi.mock("./novo-api", () => ({ obterOperacao, estornarOperacao }));
+const { obterOperacao, estornarOperacao, estornarTransacao } = vi.hoisted(() => ({ obterOperacao: vi.fn(), estornarOperacao: vi.fn(), estornarTransacao: vi.fn() }));
+vi.mock("./novo-api", () => ({ obterOperacao, estornarOperacao, estornarTransacao }));
 
 const operacao = {
   id: 6, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-02", descricao: "Compra de ração", valorTotal: "360",
@@ -20,7 +20,7 @@ describe("OperacaoFinanceiraDetalhe", () => {
   it("abre uma página própria e revisa os efeitos antes de cancelar", async () => {
     obterOperacao.mockResolvedValue(operacao);
     estornarOperacao.mockResolvedValue({ ...operacao, status: "CANCELADA" });
-    render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} />);
+    render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />);
     expect(await screen.findByRole("heading", { name: "Compra de ração" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar operação" }));
     expect(screen.getByText(/Reverter 1 movimento de estoque/)).toBeTruthy();
@@ -30,5 +30,23 @@ describe("OperacaoFinanceiraDetalhe", () => {
     fireEvent.change(screen.getByLabelText("Motivo do cancelamento"), { target: { value: "Nota fiscal incorreta" } });
     fireEvent.click(confirmar);
     await waitFor(() => expect(estornarOperacao).toHaveBeenCalledWith(6, "Nota fiscal incorreta"));
+  });
+
+  it("não oferece ações destrutivas sem a permissão de lançar", async () => {
+    obterOperacao.mockResolvedValue(operacao);
+    render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar={false} />);
+    expect(await screen.findByRole("heading", { name: "Compra de ração" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancelar operação" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Estornar pagamento/ })).toBeNull();
+  });
+
+  it("não anuncia reversão física para movimentos já estornados", async () => {
+    obterOperacao.mockResolvedValue({ ...operacao, movimentosEstoque: [
+      { ...operacao.movimentosEstoque[0], status: "REVERTIDO", revertidoPor: { id: 2 } },
+      { ...operacao.movimentosEstoque[0], id: 2, tipo: "SAIDA", reversaoDeId: 1 },
+    ] });
+    render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar operação" }));
+    expect(screen.queryByText(/Reverter .* movimento.* de estoque/)).toBeNull();
   });
 });
