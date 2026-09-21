@@ -1,4 +1,3 @@
-import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { useState } from "react";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import type { MovimentoConta } from "./novo-api";
@@ -7,14 +6,15 @@ import { brl, dataBR, Empty, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { fluxoPeriodo } from "./lib/fluxo-contas";
 import { periodoDoAnoAtual } from "./PeriodoGraficoControl";
 
-export function FluxoContasFinanceiras({ movimentos, consolidado = false, carregando, erro, escopo, periodo, onChangePeriodo }: {
+// O período é um único controle compartilhado com o extrato (ExtratoGeral ou
+// o painel da conta), renderizado pelo componente pai — não duplicar aqui.
+export function FluxoContasFinanceiras({ movimentos, consolidado = false, carregando, erro, escopo, periodo }: {
   movimentos: MovimentoConta[];
   consolidado?: boolean;
   carregando: boolean;
   erro: string | null;
   escopo: string;
   periodo: { inicio: string; fim: string };
-  onChangePeriodo: (periodo: { inicio: string; fim: string }) => void;
 }) {
   const { inicio, fim } = periodo;
   const datas = movimentos.map(m => m.transacao.data.slice(0, 10)).sort();
@@ -30,9 +30,6 @@ export function FluxoContasFinanceiras({ movimentos, consolidado = false, carreg
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5">
       <div className="min-w-0"><h2 className="font-serif text-xl">Receitas e despesas</h2><p className="mt-1 text-xs text-ink-3">{escopo} · <span className="capitalize">{rotuloPeriodo}</span></p></div>
       <ChartTypeControl value={tipoGrafico} onChange={setTipoGrafico} />
-    </div>
-    <div className="flex flex-wrap items-end gap-2 border-b border-border bg-surface-2 px-5 py-4">
-      <PeriodoFinanceiroControl allowAll inicio={inicio} fim={fim} onChange={onChangePeriodo} />
     </div>
     {carregando ? <p role="status" className="p-5">Carregando receitas e despesas…</p> : erro ? <p className="p-5 text-sm text-red-800">Não foi possível carregar os dados do gráfico.</p> : entradas === 0 && saidas === 0 ? <Empty>Sem movimentações no período selecionado para este escopo.</Empty> : <>
       <div className="grid gap-4 p-5 sm:grid-cols-2"><div className="rounded-lg bg-green-50 p-4"><div className="flex items-center gap-2 text-xs font-semibold text-green-900"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--pos)]" />Receitas no período</div><strong className="mt-2 block break-words font-serif text-2xl text-green-900">{brl(entradas)}</strong></div><div className="rounded-lg bg-red-50 p-4"><div className="flex items-center gap-2 text-xs font-semibold text-red-900"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--neg)]" />Despesas no período</div><strong className="mt-2 block break-words font-serif text-2xl text-red-900">{brl(saidas)}</strong></div></div>
