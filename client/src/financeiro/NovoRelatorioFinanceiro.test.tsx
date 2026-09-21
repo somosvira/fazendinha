@@ -59,14 +59,14 @@ describe("novo relatório financeiro", () => {
 
   it("aplica períodos rápidos e abre a agenda para personalizar", () => {
     const { resumo } = renderizar();
-    expect(screen.getByRole("button", { name: "Período do relatório" }).textContent).toContain("Mês anterior");
-    fireEvent.click(screen.getByRole("button", { name: "Período do relatório" }));
+    expect(screen.getByRole("button", { name: /^Período do relatório:/ }).textContent).toContain("Mês anterior");
+    fireEvent.click(screen.getByRole("button", { name: /^Período do relatório:/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Ano atual" }));
-    expect(screen.getByRole("button", { name: "Período do relatório" }).textContent).toContain("Ano atual");
+    expect(screen.getByRole("button", { name: /^Período do relatório:/ }).textContent).toContain("Ano atual");
     expect(resumo().getByText(/01\/01\/2026 a/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Período do relatório" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período do relatório:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
     expect(screen.getByRole("button", { name: "Aplicar período" })).toBeTruthy();
     expect(screen.queryByText("Presets")).toBeNull();

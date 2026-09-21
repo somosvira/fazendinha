@@ -5,14 +5,14 @@ import { buildPresets, DateRangePicker, formatRangeLabel } from "./DateRangePick
 
 afterEach(cleanup);
 const range = { start: new Date(2026, 4, 1), end: new Date(2026, 4, 31) };
-const openCustom = () => { fireEvent.click(screen.getByRole("button", { name: "Período" })); fireEvent.click(screen.getByRole("button", { name: "Período personalizado" })); };
+const openCustom = () => { fireEvent.click(screen.getByRole("button", { name: /^Período:/ })); fireEvent.click(screen.getByRole("button", { name: "Período personalizado" })); };
 
 describe("DateRangePicker", () => {
   it("mostra somente o dropdown e aplica presets sem abrir campos de data", () => {
     const change = vi.fn();
     render(<DateRangePicker value={range} onChange={change} />);
     expect(screen.queryByLabelText("Data inicial")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Período" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     expect(screen.queryByLabelText("Data inicial")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
     expect(change).toHaveBeenCalledOnce();
@@ -67,13 +67,22 @@ describe("DateRangePicker", () => {
     vi.setSystemTime(new Date(2026, 8, 21));
     const mesAtual = buildPresets(new Date(2026, 8, 21)).find(p => p.id === "1")!.range;
     render(<DateRangePicker value={mesAtual} onChange={vi.fn()} />);
-    const gatilho = screen.getByRole("button", { name: "Período" });
+    const gatilho = screen.getByRole("button", { name: /^Período:/ });
     expect(gatilho.textContent).toContain("Mês atual");
     expect(gatilho.textContent).toContain("01–30 set/26");
     vi.useRealTimers();
   });
   it("sem preset correspondente, mostra só o intervalo (período personalizado)", () => {
     render(<DateRangePicker value={range} onChange={vi.fn()} />);
-    expect(screen.getByRole("button", { name: "Período" }).textContent).toBe("01–31 mai/26▾");
+    expect(screen.getByRole("button", { name: /^Período:/ }).textContent).toBe("01–31 mai/26▾");
+  });
+  it("anuncia o período aplicado no nome acessível do gatilho, não só o rótulo do campo", () => {
+    const { rerender } = render(<DateRangePicker value={range} onChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Período: 01–31 mai/26" })).toBeTruthy();
+    rerender(<DateRangePicker value={{ start: null, end: null }} allowAll triggerAriaLabel="Período de vencimento" onChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Período de vencimento: Todo o período" })).toBeTruthy();
+    // Com rótulo visível próprio, o nome acessível não é sobrescrito.
+    rerender(<DateRangePicker value={range} triggerLabel="Filtrar datas" triggerAriaLabel="Filtrar datas" onChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Filtrar datas" })).toBeTruthy();
   });
 });

@@ -56,15 +56,15 @@ describe("visualizações financeiras integradas", () => {
     expect(total("Despesas no período")).toContain("R$ 65,00");
     // Um único seletor compartilhado governa o gráfico e o extrato geral —
     // não há mais um controle de período por bloco (issue #284 / review #287).
-    expect(screen.getByRole("button", { name: "Período do fluxo e extrato geral" }).textContent).toContain("Ano atual");
+    expect(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }).textContent).toContain("Ano atual");
     expect(screen.queryByLabelText("Data inicial")).toBeNull();
     expect(screen.getByRole("button", { name: "Linhas" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Barras" }));
     expect(screen.getByRole("button", { name: "Barras" }).getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Período do fluxo e extrato geral" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Últimos 3 meses" }));
-    expect(screen.getByRole("button", { name: "Período do fluxo e extrato geral" }).textContent).toContain("Últimos 3 meses");
-    fireEvent.click(screen.getByRole("button", { name: "Período do fluxo e extrato geral" }));
+    expect(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }).textContent).toContain("Últimos 3 meses");
+    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
     expect(obterExtratoGeral).toHaveBeenCalledOnce();
     fireEvent.change(screen.getByLabelText("Tipo"), { target: { value: "CAIXA" } });
@@ -74,7 +74,7 @@ describe("visualizações financeiras integradas", () => {
     fireEvent.change(within(secaoExtrato).getByLabelText("Instituição"), { target: { value: "__sem__" } });
     expect(total("Receitas no período")).toContain("R$ 0,00");
     expect(total("Despesas no período")).toContain("R$ 25,00");
-    fireEvent.click(screen.getByRole("button", { name: "Período do fluxo e extrato geral" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período do fluxo e extrato geral:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
     fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-09-15" } });
     fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-09-30" } });
@@ -87,9 +87,9 @@ describe("visualizações financeiras integradas", () => {
     window.history.replaceState(null, "", "/financeiro/contas/1");
     render(<ContasFinanceiras onNav={vi.fn()} />);
     await waitFor(() => expect(total("Receitas no período")).toContain("R$ 210,00"));
-    const controles = screen.getAllByRole("button", { name: "Período do extrato da conta" });
+    const controles = screen.getAllByRole("button", { name: /^Período do extrato da conta:/ });
     expect(controles).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: "Período" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Período:/ })).toBeNull();
   });
 
   it.each([1, 2])("o detalhe da conta %s usa somente seu extrato e liga a transferência à operação", async id => {
@@ -140,10 +140,10 @@ describe("visualizações financeiras integradas", () => {
     expect(window.location.pathname + window.location.search).toBe("/financeiro/compromissos?inicio=2026-01-01&fim=2026-12-31");
     expect(onNav).not.toHaveBeenCalled();
     window.history.replaceState(null, "", "/financeiro");
-    fireEvent.click(screen.getByRole("button", { name: "Período" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
     await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2025-01-01", expect.stringContaining("2025-12-31")));
-    fireEvent.click(screen.getByRole("button", { name: "Período" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ano atual" }));
     await waitFor(() => expect(obterDashboardFinanceiro).toHaveBeenLastCalledWith("2026-01-01", expect.stringContaining("2026-12-31")));
   });

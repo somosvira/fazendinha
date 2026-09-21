@@ -82,12 +82,12 @@ describe("Visão geral — período global", () => {
     expect(headings.filter(h => ["Próximos compromissos", "Base financeira", "Receitas e despesas", "Contas e disponibilidade", "Despesas por categoria"].includes(h!))).toEqual(["Próximos compromissos", "Base financeira", "Receitas e despesas", "Contas e disponibilidade", "Despesas por categoria"]);
     let resolveOld!: (value: DashboardFinanceiro) => void;
     vi.mocked(obterDashboardFinanceiro).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
-    fireEvent.click(screen.getByRole("button", { name: "Período" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ano anterior" }));
     expect(screen.queryByText("R$ 321,00")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Base financeira" })).toBeNull();
     vi.mocked(obterDashboardFinanceiro).mockResolvedValueOnce(snapshot("876"));
-    fireEvent.click(screen.getByRole("button", { name: "Período" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Período:/ }));
     fireEvent.click(screen.getByRole("button", { name: "Mês atual" }));
     await screen.findAllByText("R$ 876,00");
     await act(async () => resolveOld(snapshot("999")));
