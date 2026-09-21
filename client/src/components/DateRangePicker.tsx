@@ -201,11 +201,23 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
   const presets = buildPresets(getHoje());
   const matched = presets.find(p => sameDay(p.range.start, value.start) && sameDay(p.range.end, value.end));
   const valid = !!draft.start && !!draft.end && !isAfter(draft.start, draft.end);
+  // O clique no calendário preenche o campo ativo (o último clicado ou o próximo passo).
   const pickDay = (day: Date) => {
-    if (step === "start") { setDraft({ start: day, end: null }); setStep("end"); }
-    else if (draft.start && !isBefore(day, draft.start)) { setDraft({ start: draft.start, end: day }); }
+    if (step === "start") {
+      setDraft({ start: day, end: draft.end && !isBefore(draft.end, day) ? draft.end : null });
+      setStep("end");
+    } else if (!draft.start) {
+      setDraft({ start: null, end: day });
+      setStep("start");
+    } else if (!isBefore(day, draft.start)) {
+      setDraft({ start: draft.start, end: day });
+    }
     setHoverEnd(null);
   };
+  const mostrarMes = (date: Date | null) => {
+    if (date && (startOfDay(date).getTime() < leftView.getTime() || startOfDay(date).getTime() >= addMonths(leftView, 2).getTime())) setLeftView(startOfMonth(date));
+  };
+  const limpar = () => { setDraft({ start: null, end: null }); setStep("start"); setHoverEnd(null); };
   const changeOpen = (next: boolean) => {
     if (next) { setCustom(!showPresets); setDraft(value); setStep("start"); setHoverEnd(null); setLeftView(startOfMonth(value.start ?? getHoje())); }
     setOpen(next);
@@ -236,20 +248,20 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
         {presets.map(p => <Button type="button" variant="ghost" key={p.id} aria-pressed={matched?.id === p.id} className="justify-start" onClick={() => { onChange(p.range); setOpen(false); }}>{p.label}</Button>)}
         <Button type="button" variant="outline" onClick={() => { setCustom(true); setDraft(value); setStep("start"); }}>Período personalizado</Button>
       </div> : <div className="space-y-4">
-        <h3 className="font-serif text-xl">Período personalizado</h3>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p role="status" className="text-sm text-ink-2">{step === "start" ? "1. Escolha a data inicial." : "2. Escolha a data final, igual ou posterior ao início."}</p>
-          {draft.start && <Button type="button" variant="ghost" onClick={() => { setDraft({ start: null, end: null }); setStep("start"); setHoverEnd(null); }}>Recomeçar</Button>}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-serif text-xl">Período personalizado</h3>
+          <Button type="button" variant="ghost" disabled={!draft.start && !draft.end} onClick={limpar}>Limpar</Button>
         </div>
+        {/* Só leitor de tela: o passo ativo e o intervalo em formação já aparecem nos campos e no calendário. */}
+        <p role="status" className="sr-only">{step === "start" ? "Escolha a data inicial." : "Escolha a data final, igual ou posterior ao início."} {draft.start ? formatBR(draft.start) : "Início a escolher"} a {draft.end ? formatBR(draft.end) : "Fim a escolher"}.</p>
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm">1. Data inicial<input autoFocus type="date" aria-label="Data inicial" value={draft.start ? isoDate(draft.start) : ""} onFocus={() => setStep("start")} onChange={event => { const start = dateFromIso(event.target.value); setDraft({ start, end: draft.end }); if (start) { setStep("end"); setLeftView(startOfMonth(start)); } }} className="mt-1 block min-h-10 w-full rounded-lg border border-border bg-card px-2" /></label>
-          <label className="text-sm">2. Data final<input type="date" aria-label="Data final" min={draft.start ? isoDate(draft.start) : undefined} value={draft.end ? isoDate(draft.end) : ""} onFocus={() => setStep("end")} onChange={event => setDraft({ ...draft, end: dateFromIso(event.target.value) })} className="mt-1 block min-h-10 w-full rounded-lg border border-border bg-card px-2" /></label>
+          <label className="text-sm">1. Data inicial<input autoFocus type="date" aria-label="Data inicial" value={draft.start ? isoDate(draft.start) : ""} onFocus={() => { setStep("start"); mostrarMes(draft.start); }} onClick={() => { setStep("start"); mostrarMes(draft.start); }} onChange={event => { const start = dateFromIso(event.target.value); setDraft({ start, end: draft.end }); if (start) { setStep("end"); setLeftView(startOfMonth(start)); } }} className={cn("mt-1 block min-h-10 w-full rounded-lg border bg-card px-2 [&::-webkit-calendar-picker-indicator]:hidden", step === "start" ? "border-foreground ring-1 ring-foreground" : "border-border")} /></label>
+          <label className="text-sm">2. Data final<input type="date" aria-label="Data final" min={draft.start ? isoDate(draft.start) : undefined} value={draft.end ? isoDate(draft.end) : ""} onFocus={() => { setStep("end"); mostrarMes(draft.end); }} onClick={() => { setStep("end"); mostrarMes(draft.end); }} onChange={event => { const end = dateFromIso(event.target.value); setDraft({ ...draft, end }); mostrarMes(end); }} className={cn("mt-1 block min-h-10 w-full rounded-lg border bg-card px-2 [&::-webkit-calendar-picker-indicator]:hidden", step === "end" ? "border-foreground ring-1 ring-foreground" : "border-border")} /></label>
         </div>
         <div className="flex justify-between"><Button type="button" variant="outline" aria-label="Mês anterior" onClick={() => setLeftView(addMonths(leftView, -1))}>‹</Button><Button type="button" variant="outline" aria-label="Próximo mês" onClick={() => setLeftView(addMonths(leftView, 1))}>›</Button></div>
         <div data-calendars className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {[leftView, addMonths(leftView, 1)].map(view => <CalendarMonth key={isoDate(view)} year={view.getFullYear()} month={view.getMonth()} range={draft} hoverEnd={hoverEnd} minDate={step === "end" ? draft.start ?? undefined : undefined} onNavigate={navigate} onPickDay={pickDay} onHoverDay={day => { if (step === "end" && draft.start && !isBefore(day, draft.start)) setHoverEnd(day); }} />)}
         </div>
-        <p aria-live="polite" className="text-sm tabular-nums">{draft.start ? formatBR(draft.start) : "Início a escolher"} → {draft.end ? formatBR(draft.end) : "Fim a escolher"}</p>
         {draft.start && draft.end && !valid && <p role="alert" className="text-sm text-red-800">A data final deve ser igual ou posterior à data inicial.</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button type="button" disabled={!valid} onClick={() => { if (valid) { onChange(draft); setOpen(false); } }}>Aplicar período</Button></div>
       </div>}
