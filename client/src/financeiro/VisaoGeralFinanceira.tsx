@@ -21,6 +21,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
   const [liquidando, setLiquidando] = useState<Compromisso | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroConfig, setErroConfig] = useState<string | null>(null);
   const [visao, setVisao] = useState<VisaoCompromissos>("lista");
   const [mesCalendario, setMesCalendario] = useState(mesAtual());
   const [carregando, setCarregando] = useState(true);
@@ -60,7 +61,10 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   }, [inicioPeriodo, fimPeriodo, revisao]);
   useEffect(() => {
     let vigente = true;
-    obterConfiguracoesFinanceiras().then(cfg => { if (vigente) setConfig(cfg); }).catch(e => { if (vigente) setErro(e.message); });
+    // Falha aqui não deve poluir o erro/"Tentar novamente" do painel principal:
+    // config só alimenta o filtro de categorias e a lista de contas do modal
+    // de liquidação, ambos com um estado próprio para se degradar sem o dado.
+    obterConfiguracoesFinanceiras().then(cfg => { if (vigente) setConfig(cfg); }).catch(e => { if (vigente) setErroConfig(e instanceof Error ? e.message : String(e)); });
     return () => { vigente = false; };
   }, []);
   const dadosAtuais = periodoDados === `${inicioPeriodo}/${fimPeriodo}` ? dados : null;
@@ -105,6 +109,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-xs text-ink-3">Fotografia dos saldos atuais calculados pelo extrato; não é uma soma no período</p></div><button onClick={() => onNav("caixinha")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver extratos <ChevronRight size={15} /></button></div>
           <div className="divide-y divide-border">{dadosAtuais.contas.map((c) => <button key={c.id} onClick={() => onNav("caixinha")} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 text-left hover:bg-surface-2"><div className="flex min-w-0 flex-[1_1_180px] items-center gap-3"><div className="shrink-0 rounded-lg bg-[#eef1e9] p-2 text-mast">{c.tipo === "BANCO" ? <Landmark size={17} /> : <WalletCards size={17} />}</div><div className="min-w-0"><div className="break-words font-semibold text-ink">{c.nome}</div><div className="mt-0.5 break-words text-xs text-ink-3">{c.tipo}{c.instituicao ? ` · ${c.instituicao}` : ""}{!c.incluirNoSaldoGeral ? " · fora do saldo geral" : ""}</div></div></div><div className="shrink-0 text-right"><strong className="whitespace-nowrap text-base">{brl(c.saldoAtual)}</strong><div className="mt-1 text-[11px] text-ink-3">saldo atual</div></div></button>)}</div>
         </Panel>
+      <ErrorBox erro={erroConfig} />
       <AnaliseCategorias despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />
     </>}
     {podeLancar && liquidando && <LiquidarCompromissoModal key={liquidando.id} compromisso={liquidando} contas={config?.contas ?? []} onClose={() => setLiquidando(null)} onLiquidado={recarregar} onErro={setErro} />}
