@@ -1,4 +1,6 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
+import { periodoDoAnoAtual, periodoInicial } from "./lib/periodo";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, Settings2 } from "lucide-react";
 import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, filtrarMovimentosExtratoGeral, type FiltrosExtratoGeral } from "./ExtratoGeral";
 import { navegarPara, parseContaFinanceiraId } from "../router";
@@ -21,13 +23,19 @@ const COLUNAS_EXTRATO: ColunaTabela<MovimentoConta>[] = [
 
 export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
   const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const [contaId, setContaId] = useState(() => parseContaFinanceiraId(window.location.pathname)); const selecionada = config?.contas.find(c => c.id === contaId) ?? null; const [carregandoExtrato, setCarregandoExtrato] = useState(false); const [erroExtrato, setErroExtrato] = useState<string | null>(null); const [extrato, setExtrato] = useState<MovimentoConta[]>([]); const [erro, setErro] = useState<string | null>(null); const [transferindo, setTransferindo] = useState(false); const [origemId, setOrigemId] = useState(""); const [destinoId, setDestinoId] = useState(""); const [valor, setValor] = useState("");
+  const [dataTransferencia, setDataTransferencia] = useState(hoje);
+  const transferenciaEmCurso = useRef(false);
+  const [registrandoTransferencia, setRegistrandoTransferencia] = useState(false);
+  const fecharTransferencia = () => { if (!transferenciaEmCurso.current) setTransferindo(false); };
   const [buscaConta, setBuscaConta] = useState(""); const [tipoConta, setTipoConta] = useState(""); const [instituicaoConta, setInstituicaoConta] = useState(""); const [statusConta, setStatusConta] = useState("");
   const [movimentosGerais, setMovimentosGerais] = useState<MovimentoGeral[]>([]);
-  const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>({ ...FILTROS_EXTRATO_GERAL_INICIAIS });
+  const [filtrosExtratoGeral, setFiltrosExtratoGeral] = useState<FiltrosExtratoGeral>(() => ({ ...FILTROS_EXTRATO_GERAL_INICIAIS, ...periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }) }));
+  const [periodoConta, setPeriodoConta] = useState(() => periodoInicial(periodoDoAnoAtual(), { permitirVazio: true }));
+  const extratoFiltrado = extrato.filter(m => (!periodoConta.inicio || m.transacao.data.slice(0, 10) >= periodoConta.inicio) && (!periodoConta.fim || m.transacao.data.slice(0, 10) <= periodoConta.fim));
   const carregar = useCallback(() => obterConfiguracoesFinanceiras().then((cfg) => { setConfig(cfg);  }).catch((e) => setErro(e.message)), []);
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { const atualizar = () => setContaId(parseContaFinanceiraId(window.location.pathname)); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
-  const navegar = (id: number | null, movimentoId?: number) => navegarPara(id == null ? "/financeiro/contas" : `/financeiro/contas/${id}${movimentoId ? `#movimento-${movimentoId}` : ""}`);
+  const navegar = (id: number | null, movimentoId?: number) => navegarPara(id == null ? "/financeiro/contas" : `/financeiro/contas/${id}?${new URLSearchParams({ inicio: filtrosExtratoGeral.inicio, fim: filtrosExtratoGeral.fim })}${movimentoId ? `#movimento-${movimentoId}` : ""}`);
 
   useEffect(() => {
     let vigente = true;
@@ -58,7 +66,28 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
       && (!statusConta || (statusConta === "ATIVA" ? c.ativo : !c.ativo));
   });
   const movimentosFiltradosExtratoGeral = filtrarMovimentosExtratoGeral(movimentosGerais, filtrosExtratoGeral);
-  const registrarTransferencia = async (e: FormEvent) => { e.preventDefault(); try { await transferir({ contaOrigemId: Number(origemId), contaDestinoId: Number(destinoId), valor: Number(valor), data: hoje(), descricao: "Transferência entre contas" }); setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); await carregar(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } };
+  const origem = config.contas.find(c => String(c.id) === origemId && c.ativo);
+  const destino = config.contas.find(c => String(c.id) === destinoId && c.ativo);
+  const valorTransferencia = Number(valor);
+  const transferenciaValida = !!origem && !!destino && origem.id !== destino.id && Number.isFinite(valorTransferencia) && valorTransferencia > 0 && !!dataTransferencia && dataTransferencia <= hoje();
+  const impactoSaldoGeral = transferenciaValida ? Math.round(valorTransferencia * 100) * (Number(destino.incluirNoSaldoGeral) - Number(origem.incluirNoSaldoGeral)) / 100 : 0;
+  const registrarTransferencia = async (e: FormEvent) => {
+    e.preventDefault();
+    if (transferenciaEmCurso.current || !transferenciaValida) return;
+    transferenciaEmCurso.current = true;
+    setRegistrandoTransferencia(true);
+    setErro(null);
+    try {
+      await transferir({ contaOrigemId: origem.id, contaDestinoId: destino.id, valor: valorTransferencia, data: dataTransferencia, descricao: "Transferência entre contas" });
+      setTransferindo(false); setOrigemId(""); setDestinoId(""); setValor(""); setDataTransferencia(hoje());
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      transferenciaEmCurso.current = false;
+      setRegistrandoTransferencia(false);
+    }
+  };
 
   return <PaginaFinanceira>
     {contaId != null && <Button secondary onClick={() => navegar(null)}>← Voltar para contas</Button>}
@@ -75,19 +104,21 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
         { chave: "ultima", titulo: "Última movimentação", alinhamento: "centro", larguraMinima: 220, celula: c => c.ultimaOperacao ? <><div>{c.ultimaOperacao.descricao || c.ultimaOperacao.tipo.replaceAll("_", " ")}</div><div className="mt-1 text-xs text-ink-3">{dataBR(c.ultimaOperacao.data)}</div></> : "Sem movimentações" },
         { chave: "acao", titulo: "Ação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: c => <a href={`/financeiro/contas/${c.id}`} className="inline-flex rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-stone-50" aria-label={`Ver conta ${c.nome}`} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegar(c.id); } }}>Ver conta →</a> },
       ]} /> : <Empty>Nenhuma conta encontrada para os filtros selecionados.</Empty>}</Panel></section>
-      <FluxoContasFinanceiras key="consolidado" movimentos={movimentosFiltradosExtratoGeral} consolidado carregando={carregandoExtrato} erro={erroExtrato} escopo="Mesmo escopo dos filtros do extrato geral abaixo" />
-      <ExtratoGeral contas={config.contas} movimentos={movimentosGerais} filtros={filtrosExtratoGeral} onChangeFiltros={setFiltrosExtratoGeral} carregando={carregandoExtrato} erro={erroExtrato} onAbrir={(m) => navegar(m.contaId, m.id)} />
+      <div className="mt-6 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={filtrosExtratoGeral.inicio} fim={filtrosExtratoGeral.fim} allowAll label="Período do fluxo e extrato geral" onChange={periodo => setFiltrosExtratoGeral(atual => ({ ...atual, ...periodo }))} /><span className="text-xs text-ink-3">Um único período para o gráfico de receitas e despesas e o extrato geral abaixo.</span></div>
+      <FluxoContasFinanceiras key="consolidado" movimentos={movimentosFiltradosExtratoGeral} consolidado periodo={filtrosExtratoGeral} carregando={carregandoExtrato} erro={erroExtrato} escopo="Mesmo escopo do extrato geral abaixo" />
+      <ExtratoGeral contas={config.contas} movimentos={movimentosGerais} filtros={filtrosExtratoGeral} onChangeFiltros={setFiltrosExtratoGeral} carregando={carregandoExtrato} erro={erroExtrato} onAbrir={(m) => { setPeriodoConta({ inicio: filtrosExtratoGeral.inicio, fim: filtrosExtratoGeral.fim }); navegar(m.contaId, m.id); }} />
     </>}
     {contaId != null && !selecionada && <Empty>Esta conta não está disponível na fazenda selecionada.</Empty>}
-    {selecionada && <FluxoContasFinanceiras key={selecionada.id} movimentos={extrato} carregando={carregandoExtrato} erro={erroExtrato} escopo={selecionada.nome} />}
+    {selecionada && <div className="mt-6 flex flex-wrap items-center gap-3"><PeriodoFinanceiroControl inicio={periodoConta.inicio} fim={periodoConta.fim} allowAll label="Período do extrato da conta" onChange={setPeriodoConta} /><span className="text-xs text-ink-3">Um único período para o gráfico e a tabela de extrato desta conta.</span></div>}
+    {selecionada && <FluxoContasFinanceiras key={selecionada.id} movimentos={extrato} periodo={periodoConta} carregando={carregandoExtrato} erro={erroExtrato} escopo={selecionada.nome} />}
     {selecionada && <Panel className="mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5"><div className="min-w-0 flex-[1_1_260px]"><div className="eyebrow">Extrato da conta</div><h2 className="mt-1 break-words font-serif text-2xl">{selecionada.nome}</h2><p className="mt-1 break-words text-xs text-ink-3">Abertura em {dataBR(selecionada.dataSaldoAbertura)} com {brl(selecionada.saldoAbertura)}</p></div><div className="min-w-0"><div className="text-xs text-ink-3">Saldo atual da conta</div><div className="mt-1 whitespace-nowrap font-serif text-3xl">{brl(selecionada.saldoAtual)}</div>{!selecionada.incluirNoSaldoGeral && <p className="mt-1 text-xs text-ink-3">Não incluída no saldo geral</p>}</div><Pill tone={selecionada.ativo ? "green" : "neutral"}>{selecionada.ativo ? "Ativa" : "Inativa"}</Pill></div>
       <dl className="grid gap-5 border-b border-border p-5 sm:grid-cols-2 lg:grid-cols-3">{([
         ["Tipo", selecionada.tipo], ["Instituição", selecionada.instituicao], ["Identificação", selecionada.identificacao], ["Tipo bancário", selecionada.tipoBancario], ["Agência", selecionada.agencia], ["Número da conta", selecionada.numeroConta], ["Dígito", selecionada.digito], ["Titular", selecionada.titular], ["Local", selecionada.local], ["Responsável", selecionada.responsavel], ["Incluída no saldo geral", selecionada.ativo && selecionada.incluirNoSaldoGeral ? "Sim" : "Não"], ["Observações", selecionada.observacoes],
       ] as const).map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-ink-3">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{value || "—"}</dd></div>)}</dl>
       <ErrorBox erro={erroExtrato} />
-      {carregandoExtrato ? <p role="status" className="p-5">Carregando extrato…</p> : erroExtrato ? <p className="p-5">Não foi possível carregar o extrato.</p> : extrato.length ? <TabelaFinanceira rotulo={`Extrato de ${selecionada.nome}`} itens={extrato} colunas={COLUNAS_EXTRATO} chaveDe={(m) => m.id} ancoraDe={m => `movimento-${m.id}`} classeLinha={(m) => `${m.transacao.status === "REVERTIDA" ? "opacity-55" : ""} ${window.location.hash === `#movimento-${m.id}` ? "bg-amber-50 ring-1 ring-inset ring-amber-300" : ""}`} /> : <Empty>Esta conta ainda não possui movimentos.</Empty>}
+      {carregandoExtrato ? <p role="status" className="p-5">Carregando extrato…</p> : erroExtrato ? <p className="p-5">Não foi possível carregar o extrato.</p> : extratoFiltrado.length ? <TabelaFinanceira rotulo={`Extrato de ${selecionada.nome}`} itens={extratoFiltrado} colunas={COLUNAS_EXTRATO} chaveDe={(m) => m.id} ancoraDe={m => `movimento-${m.id}`} classeLinha={(m) => `${m.transacao.status === "REVERTIDA" ? "opacity-55" : ""} ${window.location.hash === `#movimento-${m.id}` ? "bg-amber-50 ring-1 ring-inset ring-amber-300" : ""}`} /> : <Empty>Nenhum movimento desta conta no período selecionado.</Empty>}
     </Panel>}
 
-    {transferindo && <Modal titulo="Nova transferência" eyebrow="Entre contas próprias" onClose={() => setTransferindo(false)}><form onSubmit={registrarTransferencia} className="p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta de origem<select required value={origemId} onChange={(e) => setOrigemId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome} · {brl(c.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Conta de destino<select required value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo && String(c.id) !== origemId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label><label className="text-sm font-medium sm:col-span-2">Valor<input required min="0.01" step="0.01" type="number" value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label></div><div className="mt-5 rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Impacto no saldo geral: {brl(0)}</strong><p className="mt-1 text-xs">O valor sairá da origem e entrará no destino na mesma confirmação.</p></div><div className="mt-5 flex justify-end gap-2"><Button secondary onClick={() => setTransferindo(false)}>Cancelar</Button><Button type="submit" disabled={!origemId || !destinoId || Number(valor) <= 0}>Registrar transferência</Button></div></form></Modal>}
+    {transferindo && <Modal titulo="Nova transferência" eyebrow="Entre contas próprias" onClose={fecharTransferencia}><form onSubmit={registrarTransferencia} className="p-5"><ErrorBox erro={erro} /><div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Conta de origem<select required disabled={registrandoTransferencia} value={origemId} onChange={(e) => { setOrigemId(e.target.value); if (e.target.value === destinoId) setDestinoId(""); }} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome} · {brl(c.saldoAtual)}</option>)}</select></label><label className="text-sm font-medium">Conta de destino<select required disabled={registrandoTransferencia} value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal"><option value="">Selecione</option>{config.contas.filter((c) => c.ativo && String(c.id) !== origemId).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label><label className="text-sm font-medium sm:col-span-2">Valor<input required disabled={registrandoTransferencia} min="0.01" step="0.01" type="number" value={valor} onChange={(e) => setValor(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label><label className="text-sm font-medium sm:col-span-2">Data da transferência<input disabled={registrandoTransferencia} required type="date" max={hoje()} value={dataTransferencia} onChange={e => setDataTransferencia(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label></div><div className="mt-5 rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>{transferenciaValida ? `Impacto no saldo geral: ${brl(impactoSaldoGeral)}` : "Selecione as contas e informe o valor para revisar o impacto."}</strong><p className="mt-1 text-xs">O valor sairá da origem e entrará no destino na mesma confirmação. Somente contas incluídas no saldo geral participam desse total.</p></div><div className="mt-5 flex justify-end gap-2"><Button secondary disabled={registrandoTransferencia} onClick={fecharTransferencia}>Cancelar</Button><Button type="submit" disabled={registrandoTransferencia || !transferenciaValida}>{registrandoTransferencia ? "Registrando…" : "Registrar transferência"}</Button></div></form></Modal>}
   </PaginaFinanceira>;
 }

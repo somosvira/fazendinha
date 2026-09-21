@@ -37,6 +37,7 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/fazendinha_test
       DIRECT_URL: postgresql://ci:ci@localhost:5432/fazendinha_test
       AUTH_DB_INTEGRATION: "1"
+      FINANCE_DB_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # lê packageManager (pnpm@10.7.1) do package.json

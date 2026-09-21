@@ -177,6 +177,18 @@ describe("FormOperacao", () => {
     expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
   });
 
+  it("soma itens já arredondados em centavos como o backend", () => {
+    montar();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "0.001" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 2" }), { target: { value: "0.001" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 2" }), { target: { value: "5" } });
+    // As parcelas passaram a ser geradas sob demanda pelo servidor; a regra local
+    // que resta é o total da operação: cada item arredondado (0,005 → 0,01) e depois somado.
+    expect(screen.getAllByText(/R\$\s*0,02/).length).toBeGreaterThan(0);
+  });
+
   it("oferece documentos tipificados no próprio cadastro", () => {
     montar();
     expect(screen.getByLabelText("Anexar documentos")).toBeTruthy();

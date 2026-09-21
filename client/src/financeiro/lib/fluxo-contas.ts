@@ -42,8 +42,10 @@ function mesesEntre(inicio: string, fim: string) {
 
 /** Um único mês mantém o detalhe diário; intervalos maiores são consolidados por mês. */
 export function fluxoPeriodo(movimentos: MovimentoConta[], inicio: string, fim: string, consolidado = false): FluxoPeriodo[] {
-  if (inicio === fim) return fluxoDiario(movimentos, inicio, consolidado);
-  const meses = mesesEntre(inicio, fim);
+  const mesInicio = inicio.slice(0, 7); const mesFim = fim.slice(0, 7);
+  const filtrados = movimentos.filter(m => (inicio.length === 7 || m.transacao.data.slice(0, 10) >= inicio) && (fim.length === 7 || m.transacao.data.slice(0, 10) <= fim));
+  if (mesInicio === mesFim) return fluxoDiario(filtrados, mesInicio, consolidado).filter(d => (inicio.length === 7 || d.data >= inicio) && (fim.length === 7 || d.data <= fim));
+  const meses = mesesEntre(mesInicio, mesFim);
   const indice = new Map(meses.map((mes, posicao) => [mes, posicao]));
   const centavos = meses.map((mes) => ({
     data: `${mes}-01`,
@@ -52,7 +54,7 @@ export function fluxoPeriodo(movimentos: MovimentoConta[], inicio: string, fim: 
     entradas: 0,
     saidas: 0,
   }));
-  for (const movimento of movimentos) {
+  for (const movimento of filtrados) {
     const posicao = indice.get(movimento.transacao.data.slice(0, 7));
     if (posicao == null || !entraNoFluxo(movimento, consolidado)) continue;
     centavos[posicao][movimento.direcao === "ENTRADA" ? "entradas" : "saidas"] += Math.round(Number(movimento.valor) * 100);

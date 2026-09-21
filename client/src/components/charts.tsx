@@ -314,3 +314,38 @@ export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: 
     </ComposedChart>
   </ChartContainer>;
 }
+
+/** Distribuição monetária com legenda textual acessível e sem fatias zeradas. */
+export function MonetaryDonutChart({ data, label, emptyLabel }: {
+  data: { label: string; value: number }[];
+  label: string;
+  emptyLabel: string;
+}) {
+  // Só tokens neutros (sem --pos/--neg, que significam ganho/perda) e sem repetir cor:
+  // passando de 6 fatias, as menores viram "Outras (N)" para gráfico e legenda casarem.
+  const colors = ["var(--leite)", "var(--cafe)", "var(--outros)", "var(--cafe-2)", "var(--outros-2)", "var(--ink-3)"];
+  const positivos = data.filter(item => item.value > 0).sort((a, b) => b.value - a.value);
+  const visiveis = positivos.length > colors.length ? positivos.slice(0, colors.length - 1) : positivos;
+  const agrupados = positivos.slice(visiveis.length);
+  const consolidados = agrupados.length ? [...visiveis, { label: `Outras (${agrupados.length})`, value: agrupados.reduce((sum, item) => sum + Math.round(item.value * 100), 0) / 100 }] : visiveis;
+  const points = consolidados.map((item, index) => ({ ...item, key: `segmento${index}`, color: colors[index] }));
+  const adjustments = data.filter(item => item.value < 0);
+  const total = data.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
+  const positiveTotal = points.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
+  const config: ChartConfig = Object.fromEntries(points.map(point => [point.key, { label: point.label, color: point.color }]));
+  return <div className="p-5">
+    <p className="text-xs text-ink-3">Total do período</p><strong className="mt-1 block font-serif text-2xl">{fmtMoneyExact(total)}</strong>
+    {points.length ? <div className="grid min-w-0 items-center gap-4 md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]">
+      <ChartContainer config={config} className="h-[260px] w-full aspect-auto overflow-x-auto" role="img" aria-label={label}>
+        <PieChart accessibilityLayer><Pie data={points} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="85%" stroke="none" paddingAngle={points.length > 1 ? 2 : 0} isAnimationActive={false}>
+          {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} />)}
+        </Pie><ChartTooltip formatter={tooltipMoney} /></PieChart>
+      </ChartContainer>
+      <ul aria-label={`Legenda: ${label}`} className="space-y-3 text-sm">{points.map(point => <li key={point.key} className="flex flex-wrap items-start justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: point.color }} /><span className="break-words">{point.label}</span></span>
+        <span className="tabular-nums">{fmtMoneyExact(point.value)} · {(point.value / positiveTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</span>
+      </li>)}</ul>
+    </div> : <p role="status" className="py-6 text-sm text-ink-3">{emptyLabel}</p>}
+    {adjustments.length > 0 && <div className="mt-3 space-y-2 text-sm text-ink-3"><p>Estornos de despesas de outros períodos abatem o total. O gráfico mostra a participação nos valores positivos.</p><ul aria-label="Estornos por categoria">{adjustments.map((item, index) => <li key={index}>{item.label}: {fmtMoneyExact(item.value)}</li>)}</ul></div>}
+  </div>;
+}

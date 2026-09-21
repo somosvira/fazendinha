@@ -36,14 +36,23 @@ export type TransacaoOperacao = { id: number; tipo: string; status: string; data
 export type Liquidacao = { id: number; valor: string; transacao: TransacaoOperacao };
 export type Compromisso = { id: number; tipo: "PAGAR" | "RECEBER"; status: string; valorOriginal: string; valorLiquidado: string; saldoPendente: string; saldoExigivel?: string; dataVencimento: string; numeroParcela: number | null; totalParcelas: number | null; vencido?: boolean; parceiro: ParceiroBase | null; operacao: { id: number; tipo: string; descricao: string | null }; liquidacoes?: Liquidacao[] };
 export type ItemOperacao = { categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; descricao: string; quantidade: string; unidade: string; valorUnitario: string; valorTotal: string; estocavel: boolean; produtoId: number | null };
-export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number };
+export type MovimentoEstoqueOperacao = { id: number; tipo: string; status: string; quantidade: string; valorTotal: string; produtoId: number; reversaoDeId?: number | null; revertidoPor?: { id: number } | null };
 export type DocumentoFinanceiro = { id: number; tipo: string; nome: string; numero: string | null; mimeType: string | null; tamanhoBytes: number | null };
 export type RascunhoOperacao = { id: number; dados: { formulario?: Record<string, unknown>; operacao?: Record<string, unknown> }; versao: number; updatedAt: string; documentos: DocumentoFinanceiro[] };
 export type SimulacaoParcelas = { totalOperacao: string; valorPagoAgora: string; saldoAPrazo: string; parcelas: { valor: string; dataVencimento: string }[] };
 export type ResumoCancelamento = { compromissos: { id: number; numeroParcela: number | null; status: string; valorOriginal: string; valorLiquidado: string; saldoExigivel: string }[]; transacoes: { id: number; tipo: string; data: string; valorTotal: string; movimentos: (MovimentoOperacao & { direcaoInversa: "ENTRADA" | "SAIDA" })[] }[]; estoque: { id: number; produtoId: number; produtoNome: string; quantidade: string; unidade: string; tipo: string }[]; impactosPorConta: { conta: ContaHistorico; entrada: string; saida: string }[]; documentosPreservados: number };
 export type Operacao = { categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; id: number; tipo: string; status: string; data: string; descricao: string | null; valorTotal: string; parceiro: ParceiroBase | null; parceiroId?: number | null; categoriaId?: number | null; centroCustoId?: number | null; corrigeOperacaoId?: number | null; corrigeOperacao?: { id: number; descricao: string | null } | null; correcoes?: { id: number; descricao: string | null; status: string }[]; itens: ItemOperacao[]; compromissos: Compromisso[]; transacoes: TransacaoOperacao[]; movimentosEstoque: MovimentoEstoqueOperacao[]; documentos: DocumentoFinanceiro[]; resumoCancelamento?: ResumoCancelamento };
 export type MovimentoConta = { id: number; contaId?: number; direcao: "ENTRADA" | "SAIDA"; valor: string; transacao: { id: number; tipo: string; status: string; data: string; descricao: string | null; formaPagamento: string | null; parceiro: ParceiroBase | null; operacao: { id: number; descricao: string | null; tipo: string } | null; reversaoDe?: { id?: number; tipo: string; descricao?: string | null; operacaoId?: number | null } | null } };
-export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; fluxo: { data: string; entradas: string; saidas: string }[]; compromissos: { aPagar: string; aReceber: string }; despesasPorCategoria: { categoria: string; valor: string }[] };
+export type BaseFinanceira = {
+  operacoes: { total: number; estados: Record<string, number>; comEstoque: number; semParceiro: number; semEfeitos: number };
+  compromissos: { total: number; estados: Record<string, number> };
+  transacoes: { total: number; estados: Record<string, number>; estornos: number; avulsas: number; comLiquidacao: number; semMovimentos: number; transferenciasIncompletas: number };
+  movimentos: { total: number; confirmados: number; revertidos: number; estornos: number };
+  volumeEconomico: string;
+  porTipo: { tipo: string; valor: string }[];
+  vinculosAusentes: { transacaoId: number; operacaoId: number | null; motivo: string }[];
+};
+export type DashboardFinanceiro = { periodo: { inicio: string; fim: string }; saldoGeral: string; contas: Conta[]; realizado: { entradas: string; saidas: string; resultado: string }; fluxo: { data: string; entradas: string; saidas: string }[]; compromissos: { aPagar: string; aReceber: string }; proximosCompromissos: Compromisso[]; base: BaseFinanceira; despesasPorCategoria: { categoriaId: number | null; categoria: string; valor: string }[] };
 export type RegimeRelatorioFinanceiro = "ambos" | "realizado" | "previsto";
 export type ClassificacaoRelatorio = "CUSTEIO" | "INVESTIMENTO" | "SEM_CLASSIFICACAO";
 /** Opções que definem o conteúdo do documento. Em centros e categorias, 0 = "sem". */
@@ -87,7 +96,7 @@ export const listarOperacoes = (filtros?: { inicio?: string; fim?: string }) => 
   return req<Operacao[]>(`/financeiro/operacoes${query ? `?${query}` : ""}`);
 };
 export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoes/${id}`);
-export const listarCompromissos = () => req<Compromisso[]>("/financeiro/compromissos");
+export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
 export const simularParcelasOperacao = (input: unknown) => req<SimulacaoParcelas>("/financeiro/operacoes/simulacao-parcelas", { method: "POST", body: JSON.stringify(input) });
