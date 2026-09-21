@@ -112,3 +112,25 @@ describe("schemas de categorias e centros de custo", () => {
     expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
   });
 });
+
+describe("operacaoSchema — mensagens de parcela em português", () => {
+  const servico = { tipo: "SERVICO", data: "2026-09-02", descricao: "Serviço de teste", parceiroId: 1, valorTotal: 100, itens: [] };
+  const primeiraMensagem = (parcelas: unknown[]) => {
+    const r = operacaoSchema.safeParse({ ...servico, financeiro: { condicao: "A_PRAZO", parcelas } });
+    return r.success ? null : r.error.issues[0]?.message;
+  };
+
+  it("parcela sem valor não vaza a mensagem padrão em inglês do zod", () => {
+    const mensagem = primeiraMensagem([{ valor: "50", dataVencimento: "2026-10-02" }, { valor: "", dataVencimento: "2026-11-02" }]);
+    expect(mensagem).toBe("Nenhuma parcela pode ficar sem valor. Informe um valor maior que zero ou remova a parcela.");
+    expect(mensagem).not.toMatch(/Number must be/);
+  });
+
+  it("parcela sem vencimento pede a data", () => {
+    expect(primeiraMensagem([{ valor: "100", dataVencimento: "" }])).toBe("Informe a data de vencimento de todas as parcelas");
+  });
+
+  it("valor não numérico na parcela pede um número válido", () => {
+    expect(primeiraMensagem([{ valor: "abc", dataVencimento: "2026-10-02" }])).toBe("Informe um valor numérico válido para a parcela");
+  });
+});
