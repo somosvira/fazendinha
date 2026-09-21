@@ -29,6 +29,12 @@ function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
 
 const inicioMes = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`; };
 const hojeLocal = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`; };
+const EFEITOS_FILTRO: EfeitoFiltro[] = ["TODOS", "ESTOQUE", "PAGAMENTO", "RECEBIMENTO", "A_PAGAR", "A_RECEBER", "TRANSFERENCIA", "SEM_EFEITOS"];
+/** Acesso pela rastreabilidade da Base financeira (?efeito=SEM_EFEITOS). */
+const efeitoInicial = (): EfeitoFiltro => {
+  const valor = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("efeito");
+  return (EFEITOS_FILTRO as string[]).includes(valor ?? "") ? (valor as EfeitoFiltro) : "TODOS";
+};
 
 /* Colunas da lista de operações. `alinhamento` vale para o cabeçalho, para a
  * célula e para o valor no cartão — não há como cabeçalho e conteúdo divergirem. */
@@ -46,7 +52,7 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 export function OperacoesFinanceiras() {
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
   const [iniciandoNova, setIniciandoNova] = useState(false);
-  const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>("TODOS"); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
+  const [busca, setBusca] = useState(""); const [status, setStatus] = useState("TODOS"); const [tipo, setTipo] = useState("TODOS"); const [efeito, setEfeito] = useState<EfeitoFiltro>(efeitoInicial); const [inicio, setInicio] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).inicio); const [fim, setFim] = useState(() => periodoInicial({ inicio: inicioMes(), fim: hojeLocal() }).fim);
   const [detalheId, setDetalheId] = useState<number | null>(() => typeof window === "undefined" ? null : parseOperacaoFinanceiraId(window.location.pathname));
   // O rascunho vem da store compartilhada (a mesma do atalho da sidebar):
   // obterRascunhoOperacao a atualiza, e cada autosave também.
