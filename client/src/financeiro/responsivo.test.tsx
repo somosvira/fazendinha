@@ -15,6 +15,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 
 const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao, listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro } = vi.hoisted(() => ({
   obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
@@ -134,6 +135,20 @@ describe("TabelaFinanceira", () => {
   it("não mostra a barra de rolagem superior quando o conteúdo cabe no contêiner", () => {
     const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
     expect(container.querySelector('[aria-label="Rolagem horizontal: Operações"]')).toBeNull();
+  });
+
+  // Regressão: um `overflow-hidden` entre a barra e a viewport vira o contêiner
+  // de rolagem do `position: sticky` da barra e a prende ao topo desse
+  // contêiner em vez da tela — ela para de acompanhar a rolagem da página.
+  it("em Operações, nenhum ancestral da tabela usa overflow-hidden (isso prenderia a barra sticky ao painel, não à viewport)", async () => {
+    listarOperacoes.mockResolvedValue([{ id: 1, data: "2026-09-18T12:00:00.000Z", descricao: "Operação 1", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "10.00", parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [] }]);
+    obterConfiguracoesFinanceiras.mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
+    obterRascunhoOperacao.mockResolvedValue(null);
+    render(<OperacoesFinanceiras />);
+    const tabela = await screen.findByRole("table"); // findBy* falha (e tenta de novo) enquanto não existir — ao contrário de container.querySelector, que "acharia" null sem erro
+    for (let el: Element | null = tabela; el; el = el.parentElement) {
+      expect(el.className, `elemento ${el.tagName} não pode ter overflow-hidden`).not.toMatch(/(^|\s)overflow-hidden(\s|$)/);
+    }
   });
 });
 

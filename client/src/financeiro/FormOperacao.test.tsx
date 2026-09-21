@@ -242,3 +242,51 @@ describe("FormOperacao — geração de parcelas", () => {
     expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
   });
 });
+
+describe("FormOperacao — erro de confirmação por campo", () => {
+  it("marca o campo indicado pela API, associa a mensagem por aria-describedby e limpa a marcação ao editar", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const caminho = String(url);
+      if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+        return { ok: true, json: async () => ({ id: 9, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+      }
+      if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+        return { ok: false, status: 422, json: async () => ({ error: "Selecione um parceiro com papel compatível com esta operação", code: "VALIDACAO", campo: "parceiroId" }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Manutenção do trator" } });
+    fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
+
+    const confirmar = screen.getByRole("button", { name: "Confirmar operação" });
+    fireEvent.click(confirmar);
+
+    // Erro específico acima do botão (além do ErrorBox geral no topo do
+    // formulário), associado ao botão por aria-describedby.
+    const alertas = await screen.findAllByRole("alert");
+    const alertaConfirmacao = alertas.find((el) => el.id === "erro-confirmacao");
+    expect(alertaConfirmacao).toBeTruthy();
+    expect(confirmar.getAttribute("aria-describedby")).toBe("erro-confirmacao");
+
+    // Campo indicado pela API fica marcado e descrito pela mensagem específica —
+    // não só pelo alerta geral.
+    const parceiroSelect = screen.getByLabelText("Prestador de serviço");
+    expect(parceiroSelect.getAttribute("aria-invalid")).toBe("true");
+    expect(parceiroSelect.getAttribute("aria-describedby")).toBe("erro-parceiroId");
+    expect(screen.getByText("Selecione um parceiro válido.").id).toBe("erro-parceiroId");
+
+    // Falha atômica: os dados preenchidos continuam lá para nova tentativa.
+    expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Manutenção do trator");
+    expect((screen.getByLabelText("Valor total da operação") as HTMLInputElement).value).toBe("100");
+
+    // Editar o campo limpa a marcação.
+    fireEvent.change(parceiroSelect, { target: { value: "" } });
+    expect(parceiroSelect.getAttribute("aria-invalid")).toBeNull();
+    expect(parceiroSelect.getAttribute("aria-describedby")).toBeNull();
+    expect(screen.queryByText("Selecione um parceiro válido.")).toBeNull();
+  });
+});
