@@ -74,5 +74,13 @@ ${colorConfig.map(([key, item]) => {
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
 
-export const ChartTooltip = RechartsPrimitive.Tooltip;
+/**
+ * Tooltip sem a transição de `transform` do Recharts. Com ela o balão desliza até a
+ * posição nova e, no caminho, cruza a borda do gráfico: o contêiner ganhava barra de
+ * rolagem por um instante, o layout mudava e a tela piscava. Sem animação a posição
+ * já nasce limitada à área do gráfico.
+ */
+export function ChartTooltip(props: React.ComponentProps<typeof RechartsPrimitive.Tooltip>) {
+  return <RechartsPrimitive.Tooltip isAnimationActive={false} {...props} />;
+}
 export const ChartLegend = RechartsPrimitive.Legend;
