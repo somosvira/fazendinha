@@ -6,7 +6,7 @@ import { BaseFinanceiraResumo } from "./BaseFinanceiraResumo";
 import { descartarRascunhoOperacao, obterConfiguracoesFinanceiras, obterDashboardFinanceiro, obterRascunhoOperacao, type Compromisso, type ConfiguracoesFinanceiras, type DashboardFinanceiro } from "./novo-api";
 import { brl, Button, dataBR, Empty, ErrorBox, mesAtual, Metric, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill } from "./financeiro-ui";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { abrirRotaNovaOperacao } from "../router";
+import { abrirRotaNovaOperacao, navegarPara } from "../router";
 import { tituloCompromisso } from "./lib/compromissos";
 import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
@@ -68,6 +68,9 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
     .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.id - b.id);
   const proximos = pendentes.slice(0, 5);
   const recarregar = async () => { setRevisao(value => value + 1); };
+  // Preserva o período do topo ao abrir a lista completa — mesmo padrão de
+  // navegação usado pelos links da Base financeira.
+  const hrefCompromissos = `/financeiro/compromissos?${new URLSearchParams({ inicio: inicioPeriodo, fim: fimPeriodo })}`;
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
   return <PaginaFinanceira>
@@ -85,7 +88,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
       </div>
 
       <Panel className="mt-6 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Próximos compromissos</h2><p className="mt-1 text-xs text-ink-3">Vencimentos no período selecionado no topo; não compõem o saldo atual</p></div><div className="flex flex-wrap items-center gap-4"><ControleVisaoCompromissos visao={visao} onChange={setVisao} /><button onClick={() => onNav("gastos")} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div className="min-w-0"><h2 className="font-serif text-xl">Próximos compromissos</h2><p className="mt-1 text-xs text-ink-3">Vencimentos no período selecionado no topo; não compõem o saldo atual</p></div><div className="flex flex-wrap items-center gap-4"><ControleVisaoCompromissos visao={visao} onChange={setVisao} /><a href={hrefCompromissos} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(hrefCompromissos); } }} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></a></div></div>
         {visao === "calendario" ? <CalendarioCompromissos itens={pendentes} mes={mesCalendario} onChangeMes={setMesCalendario} onLiquidar={podeLancar ? setLiquidando : undefined} /> : proximos.length ? <div className="divide-y divide-border">{proximos.map((c) => <div key={c.id} className={`grid items-center gap-3 px-5 py-4 ${podeLancar ? "md:grid-cols-[minmax(0,1fr)_auto_auto_auto]" : "md:grid-cols-[minmax(0,1fr)_auto_auto]"}`}><div className="min-w-0"><div className="break-words font-semibold">{tituloCompromisso(c)}</div><div className="mt-1 break-words text-xs text-ink-3">{c.parceiro?.nome ?? "Sem parceiro"} · vence em {dataBR(c.dataVencimento)}</div></div>{/* div sempre presente: um `display:none` aqui tiraria a trilha do grid e o valor escorregaria de coluna, desalinhando as linhas sem pill */}<div>{c.vencido && <Pill tone="red">Vencido</Pill>}</div><strong className={`whitespace-nowrap md:text-right ${c.tipo === "RECEBER" ? "text-green-800" : "text-ink"}`}>{brl(c.saldoPendente)}</strong>{podeLancar && <Button className="w-full md:w-auto" secondary onClick={() => setLiquidando(c)}>{c.tipo === "PAGAR" ? "Registrar pagamento" : "Registrar recebimento"}</Button>}</div>)}</div> : <Empty>Não há compromissos pendentes com vencimento no período.</Empty>}
       </Panel>
 
