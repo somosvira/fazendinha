@@ -1,14 +1,21 @@
 import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
+import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
 import type { z } from "zod";
-import type { liquidacaoSchema, operacaoSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
+import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null };
 type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type ContextoEstorno = { propriedadeId: number; usuarioId?: number | null };
+type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
+
+// Prefixo padronizado da descrição do estorno gerado por um cancelamento de
+// operação — usado tanto para criar a descrição quanto (no client) para
+// detectar que uma reversão no extrato veio de um cancelamento e linkar de volta.
+export const PREFIXO_CANCELAMENTO_OPERACAO = "Cancelamento da operação #";
 
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
@@ -89,13 +96,23 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
-      valorUnitario: new Prisma.Decimal(item.valorUnitario),
-      valorTotal: dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario)),
+      // Quando o item vem por valor total, `valorTotal` é o campo autoritativo
+      // (é ele que soma para o total da operação, nunca a reconstrução
+      // quantidade × unitário). `valorUnitario` aqui é só um derivado para
+      // exibição/relatório e é arredondado explicitamente às 4 casas da
+      // coluna — sem isso, quocientes não exatos (ex.: 100 ÷ 3) dependeriam
+      // do arredondamento implícito do driver do Postgres ao gravar.
+      valorUnitario: item.valorTotal === undefined
+        ? new Prisma.Decimal(item.valorUnitario ?? 0)
+        : dinheiro(item.valorTotal).div(item.quantidade).toDecimalPlaces(4),
+      valorTotal: item.valorTotal === undefined
+        ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
+        : dinheiro(item.valorTotal),
       estocavel: item.estocavel,
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
-    const totalItens = dinheiro(itens.reduce((soma, item) => soma.plus(item.valorTotal), new Prisma.Decimal(0)));
+    const totalItens = totalItensFinanceiros(itens);
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
@@ -175,6 +192,23 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       where: { id: operacao.id },
       include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
     });
+}
+
+export function simularParcelas(input: SimulacaoParcelasInput) {
+  const totalOperacao = input.itens.length
+    ? totalItensFinanceiros(input.itens)
+    : dinheiro(input.valorTotal ?? 0);
+  const valorPagoAgora = dinheiro(input.valorPagoAgora ?? 0);
+  const saldoAPrazo = dinheiro(totalOperacao.minus(valorPagoAgora));
+  // `isPositive()` do decimal.js considera zero positivo (sinal +1) — usar
+  // lessThanOrEqualTo(0) para realmente exigir saldo > 0 aqui.
+  if (saldoAPrazo.lessThanOrEqualTo(0)) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
+  return {
+    totalOperacao,
+    valorPagoAgora,
+    saldoAPrazo,
+    parcelas: gerarParcelasFinanceiras(saldoAPrazo, input.quantidadeParcelas, input.frequencia, input.primeiroVencimento),
+  };
 }
 
 export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: OperacaoInput) {
@@ -288,7 +322,9 @@ async function estornarTransacaoTx(tx: Prisma.TransactionClient, id: number, mot
     for (const compromissoId of compromissoIds) {
       const compromisso = await tx.compromissoFinanceiro.findUniqueOrThrow({ where: { id: compromissoId }, include: { liquidacoes: { include: { transacao: true } } } });
       const pago = compromisso.liquidacoes.filter((item) => item.transacao.status === "CONFIRMADA").reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-      await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: pago.isZero() ? "PENDENTE" : pago.lessThan(compromisso.valorOriginal) ? "PARCIAL" : "LIQUIDADO" } });
+      if (compromisso.status !== "CANCELADO") {
+        await tx.compromissoFinanceiro.update({ where: { id: compromissoId }, data: { status: pago.isZero() ? "PENDENTE" : pago.lessThan(compromisso.valorOriginal) ? "PARCIAL" : "LIQUIDADO" } });
+      }
     }
     await auditar(tx, { entidade: "TransacaoFinanceira", entidadeId: id, acao: "ESTORNADA", motivo, usuarioId: contexto.usuarioId, antes: original, depois: estorno });
     return estorno;
@@ -310,7 +346,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
-      await estornarTransacaoTx(tx, transacao.id, `Cancelamento da operação #${id}: ${motivo}`, contexto);
+      await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`, contexto);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
       await tx.movimentoEstoque.create({ data: {
@@ -320,7 +356,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id,
-        reversaoDeId: movimento.id, observacao: `Cancelamento da operação #${id}: ${motivo}`,
+        reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
     }
@@ -331,12 +367,80 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
   });
 }
 
-const includeOperacao = { parceiro: true, itens: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } }, transacoes: { include: { movimentos: true } }, movimentosEstoque: { include: { revertidoPor: { select: { id: true } } } }, documentos: { select: documentoPublico }, corrigeOperacao: { select: { id: true, descricao: true } }, correcoes: { select: { id: true, descricao: true, status: true } } } as const;
+const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
+  parceiro: true,
+  itens: true,
+  compromissos: {
+    include: {
+      liquidacoes: {
+        include: {
+          transacao: {
+            include: {
+              movimentos: { include: { conta: { select: { id: true, nome: true } } } },
+              reversaoDe: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+              revertidaPor: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+            },
+          },
+        },
+        orderBy: [{ transacao: { data: "asc" } }, { id: "asc" }],
+      },
+    },
+  },
+  transacoes: {
+    include: {
+      movimentos: { include: { conta: { select: { id: true, nome: true } } } },
+      reversaoDe: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+      revertidaPor: { select: { id: true, tipo: true, status: true, data: true, descricao: true } },
+    },
+    orderBy: [{ data: "asc" }, { id: "asc" }],
+  },
+  movimentosEstoque: { include: { revertidoPor: { select: { id: true } }, produto: { select: { id: true, nome: true, unidade: true } } } },
+  documentos: { select: documentoPublico },
+  corrigeOperacao: { select: { id: true, descricao: true } },
+  correcoes: { select: { id: true, descricao: true, status: true } },
+});
+
+function valoresCompromisso<T extends { status: string; valorOriginal: Prisma.Decimal; liquidacoes: { valor: Prisma.Decimal; transacao: { status: string } }[] }>(compromisso: T) {
+  const valorLiquidado = compromisso.liquidacoes
+    .filter((item) => item.transacao.status === "CONFIRMADA")
+    .reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
+  const saldoPendente = compromisso.valorOriginal.minus(valorLiquidado);
+  return { ...compromisso, valorLiquidado, saldoPendente, saldoExigivel: compromisso.status === "CANCELADO" ? new Prisma.Decimal(0) : saldoPendente };
+}
+
+function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeof includeOperacao }>) {
+  const compromissos = operacao.compromissos
+    .filter((compromisso) => compromisso.status !== "CANCELADO")
+    .map(valoresCompromisso)
+    .map((compromisso) => ({ id: compromisso.id, numeroParcela: compromisso.numeroParcela, status: compromisso.status, valorOriginal: compromisso.valorOriginal, valorLiquidado: compromisso.valorLiquidado, saldoExigivel: compromisso.saldoExigivel }));
+  const transacoes = operacao.transacoes
+    .filter((transacao) => transacao.tipo !== "REVERSAO" && transacao.status === "CONFIRMADA" && !transacao.revertidaPor)
+    .map((transacao) => ({
+      id: transacao.id, tipo: transacao.tipo, data: transacao.data, valorTotal: transacao.valorTotal,
+      movimentos: transacao.movimentos.map((movimento) => ({ id: movimento.id, contaId: movimento.contaId, conta: movimento.conta, valor: movimento.valor, direcaoInversa: movimento.direcao === "ENTRADA" ? "SAIDA" : "ENTRADA" })),
+    }));
+  const estoque = operacao.movimentosEstoque
+    .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
+    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: movimento.produto.unidade, tipo: movimento.tipo }));
+  const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
+  for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
+    const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };
+    if (movimento.direcaoInversa === "ENTRADA") atual.entrada = atual.entrada.plus(movimento.valor); else atual.saida = atual.saida.plus(movimento.valor);
+    impactosPorConta.set(movimento.contaId, atual);
+  }
+  return {
+    compromissos,
+    transacoes,
+    estoque,
+    impactosPorConta: [...impactosPorConta.values()],
+    documentosPreservados: operacao.documentos.length,
+  };
+}
 
 export async function obterOperacao(id: number, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
-  return operacao;
+  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
@@ -352,8 +456,8 @@ export async function listarCompromissos(propriedadeId?: number | null, periodo?
     where: { ...(propriedadeId ? { operacao: { propriedadeId } } : {}), ...(periodo ? { dataVencimento: { gte: periodo.inicio, lte: periodo.fim } } : {}) }, include: { parceiro: true, operacao: true, liquidacoes: { include: { transacao: true } } },
     orderBy: [{ dataVencimento: "asc" }, { id: "asc" }],
   });
-  return compromissos.map((compromisso) => {
-    const valorLiquidado = compromisso.liquidacoes.filter((item) => item.transacao.status === "CONFIRMADA").reduce((soma, item) => soma.plus(item.valor), new Prisma.Decimal(0));
-    return { ...compromisso, valorLiquidado, saldoPendente: compromisso.valorOriginal.minus(valorLiquidado), vencido: compromisso.status !== "LIQUIDADO" && compromisso.status !== "CANCELADO" && compromisso.dataVencimento < new Date() };
-  });
+  return compromissos.map((compromisso) => ({
+    ...valoresCompromisso(compromisso),
+    vencido: compromisso.status !== "LIQUIDADO" && compromisso.status !== "CANCELADO" && compromisso.dataVencimento < new Date(),
+  }));
 }

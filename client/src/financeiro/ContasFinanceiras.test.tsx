@@ -95,3 +95,13 @@ it("localiza o movimento do endereço depois de carregar o extrato", async () =>
     expect(document.activeElement?.getAttribute("data-ancora")).toBe("movimento-42");
   } finally { rects.mockRestore(); HTMLElement.prototype.scrollIntoView = originalScroll; }
 });
+
+it("identifica no extrato que a reversão veio do cancelamento de uma operação e linka de volta", async () => {
+  window.history.replaceState(null, "", "/financeiro/contas/1");
+  vi.mocked(obterExtratoConta).mockResolvedValue([
+    { id: 50, direcao: "ENTRADA", valor: "60", transacao: { id: 9, tipo: "REVERSAO", status: "CONFIRMADA", data: "2026-09-20", descricao: "Cancelamento da operação #5: fornecedor errado", formaPagamento: null, parceiro: null, operacao: { id: 5, descricao: "Compra de ração", tipo: "COMPRA_ESTOQUE" }, reversaoDe: { tipo: "PAGAMENTO" } } },
+  ]);
+  render(<ContasFinanceiras onNav={vi.fn()} />);
+  expect((await screen.findAllByText(/Estorno pelo cancelamento da OP-0005/)).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole("link", { name: "OP-0005" }).length).toBeGreaterThan(0);
+});

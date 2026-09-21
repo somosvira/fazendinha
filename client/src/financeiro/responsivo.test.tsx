@@ -16,6 +16,7 @@ import { baseFinanceiraVazia } from "./dashboard.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { TabelaFinanceira, type ColunaTabela } from "./financeiro-ui";
+import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
 
 const { obterDashboardFinanceiro, obterConfiguracoesFinanceiras, listarCompromissos, listarOperacoes, obterExtratoConta, obterRascunhoOperacao, listarRelatoriosFinanceiros, obterRascunhoRelatorioFinanceiro } = vi.hoisted(() => ({
   obterDashboardFinanceiro: vi.fn(), obterConfiguracoesFinanceiras: vi.fn(), listarCompromissos: vi.fn(),
@@ -105,6 +106,50 @@ describe("TabelaFinanceira", () => {
     // não vira role="button": isso tiraria a linha da semântica de tabela
     expect(linha.getAttribute("role")).toBeNull();
     expect(container.querySelector("ul button")).toBeTruthy(); // no cartão, um botão de verdade
+  });
+
+  it("só mostra a barra de rolagem superior quando o conteúdo excede o contêiner, e sincroniza o scroll", () => {
+    // jsdom não faz layout: simula overflow via scrollWidth/clientWidth do wrapper.
+    const clientWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    const scrollWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 400 });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 900 });
+    try {
+      const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+      const barra = container.querySelector('[aria-label="Rolagem horizontal: Operações"]') as HTMLElement;
+      expect(barra).toBeTruthy();
+      expect(barra.getAttribute("tabindex")).toBe("0");
+      const tabela = container.querySelector("table")!.parentElement as HTMLElement;
+      tabela.scrollLeft = 120;
+      tabela.dispatchEvent(new Event("scroll"));
+      expect(barra.scrollLeft).toBe(120);
+    } finally {
+      // jsdom expõe clientWidth/scrollWidth via Element.prototype — sem descritor
+      // próprio em HTMLElement.prototype, então "restaurar" é remover o override.
+      if (clientWidthOriginal) Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+      if (scrollWidthOriginal) Object.defineProperty(HTMLElement.prototype, "scrollWidth", scrollWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+    }
+  });
+
+  it("não mostra a barra de rolagem superior quando o conteúdo cabe no contêiner", () => {
+    const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+    expect(container.querySelector('[aria-label="Rolagem horizontal: Operações"]')).toBeNull();
+  });
+
+  // Regressão: um `overflow-hidden` entre a barra e a viewport vira o contêiner
+  // de rolagem do `position: sticky` da barra e a prende ao topo desse
+  // contêiner em vez da tela — ela para de acompanhar a rolagem da página.
+  it("em Operações, nenhum ancestral da tabela usa overflow-hidden (isso prenderia a barra sticky ao painel, não à viewport)", async () => {
+    listarOperacoes.mockResolvedValue([{ id: 1, data: "2026-09-18T12:00:00.000Z", descricao: "Operação 1", tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "10.00", parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [] }]);
+    obterConfiguracoesFinanceiras.mockResolvedValue({ contas: [], parceiros: [], categorias: [], centrosCusto: [], produtos: [] });
+    obterRascunhoOperacao.mockResolvedValue(null);
+    render(<OperacoesFinanceiras />);
+    const tabela = await screen.findByRole("table"); // findBy* falha (e tenta de novo) enquanto não existir — ao contrário de container.querySelector, que "acharia" null sem erro
+    for (let el: Element | null = tabela; el; el = el.parentElement) {
+      expect(el.className, `elemento ${el.tagName} não pode ter overflow-hidden`).not.toMatch(/(^|\s)overflow-hidden(\s|$)/);
+    }
   });
 });
 

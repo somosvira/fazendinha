@@ -1,3 +1,4 @@
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Check, X } from "lucide-react";
 import { Loader } from "../components/Loading";
@@ -54,10 +55,16 @@ export function PageHeader({ titulo, descricao, acao }: { titulo: string; descri
   </header>;
 }
 
-export function Button({ children, onClick, type = "button", disabled, danger, secondary, className = "", form }: { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string }) {
-  const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-  return <button type={type} form={form} onClick={onClick} disabled={disabled} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
-}
+// forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
+// PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
+// para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
+  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+    const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
+    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+  },
+);
+Button.displayName = "Button";
 
 export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
@@ -127,7 +134,7 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false }: {
   colunas: ColunaTabela<T>[];
   itens: T[];
   chaveDe: (item: T) => React.Key;
@@ -135,15 +142,59 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   classeLinha?: (item: T) => string;
   ancoraDe?: (item: T) => string;
   rotulo: string;
+  /** Exibe uma barra horizontal acima da tabela em telas intermediárias. */
+  barraRolagemSuperior?: boolean;
 }) {
   const larguraMinima = colunas.reduce((soma, coluna) => soma + (coluna.larguraMinima ?? 120), 0);
   const principal = colunas.find((coluna) => coluna.principal) ?? colunas[0];
   const secundarias = colunas.filter((coluna) => coluna !== principal && !coluna.ocultarNoCartao && !coluna.acoes && coluna.titulo);
   const acoes = colunas.filter((coluna) => coluna.acoes);
+  const tabelaRef = useRef<HTMLDivElement>(null);
+  const barraRef = useRef<HTMLDivElement>(null);
+  const [temRolagem, setTemRolagem] = useState(false);
+  // Largura real da tabela renderizada — colunas com conteúdo longo podem
+  // esticar além de `larguraMinima`, então o espaçador da barra precisa
+  // medir o scrollWidth de verdade para a barra rolar até o fim.
+  const [larguraRolagem, setLarguraRolagem] = useState(larguraMinima);
+
+  useEffect(() => {
+    if (!barraRolagemSuperior) return;
+    const tabela = tabelaRef.current;
+    if (!tabela) return;
+    const atualizar = () => {
+      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+      setLarguraRolagem(tabela.scrollWidth);
+    };
+    atualizar();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", atualizar);
+      return () => window.removeEventListener("resize", atualizar);
+    }
+    const observador = new ResizeObserver(atualizar);
+    observador.observe(tabela);
+    return () => observador.disconnect();
+  }, [barraRolagemSuperior, larguraMinima, itens.length]);
+
+  const sincronizarRolagem = (origem: "tabela" | "barra") => {
+    const tabela = tabelaRef.current;
+    const barra = barraRef.current;
+    if (!tabela || !barra) return;
+    if (origem === "tabela" && barra.scrollLeft !== tabela.scrollLeft) barra.scrollLeft = tabela.scrollLeft;
+    if (origem === "barra" && tabela.scrollLeft !== barra.scrollLeft) tabela.scrollLeft = barra.scrollLeft;
+  };
+  const roladaPorTeclado = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const barra = barraRef.current;
+    if (!barra) return;
+    if (e.key === "ArrowRight") { barra.scrollLeft += 96; e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
+  };
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    <div className="hidden overflow-x-auto md:block">
+    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+      <div style={{ width: larguraRolagem, height: 1 }} />
+    </div>}
+    <div ref={tabelaRef} className="hidden overflow-x-auto md:block" onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <caption className="sr-only">{rotulo}</caption>
         <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">

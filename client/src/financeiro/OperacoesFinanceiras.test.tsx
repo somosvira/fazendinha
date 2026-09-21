@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OperacoesFinanceiras } from "./OperacoesFinanceiras";
-import { descartarRascunhoOperacao, obterRascunhoOperacao } from "./novo-api";
+import { descartarRascunhoOperacao, listarOperacoes, obterRascunhoOperacao } from "./novo-api";
 import { limparRascunhoAtivo, prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { abrirRotaNovaOperacao } from "../router";
 
@@ -102,5 +102,24 @@ describe("OperacoesFinanceiras — filtro de efeito vindo da rastreabilidade", (
     window.history.replaceState(null, "", "/financeiro/operacoes?efeito=NAO_EXISTE");
     render(<OperacoesFinanceiras />);
     expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("TODOS");
+  });
+});
+
+describe("OperacoesFinanceiras — paginação", () => {
+  it("mostra quinze operações por página e permite ir diretamente à próxima", async () => {
+    vi.mocked(listarOperacoes).mockResolvedValue(Array.from({ length: 16 }, (_, indice) => ({
+      id: indice + 1, data: "2026-09-18T12:00:00.000Z", descricao: `Operação ${indice + 1}`, tipo: "SERVICO", status: "CONFIRMADA", valorTotal: "10.00",
+      parceiro: null, movimentosEstoque: [], transacoes: [], compromissos: [], itens: [],
+    })) as never);
+
+    render(<OperacoesFinanceiras />);
+    expect((await screen.findAllByText("Operação 15")).length).toBe(2);
+    expect(screen.queryAllByText("Operação 16")).toHaveLength(0);
+    expect(screen.getByText("1–15 de 16 operações")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Ir para a página"), { target: { value: "2" } });
+    expect((await screen.findAllByText("Operação 16")).length).toBe(2);
+    expect(screen.queryAllByText("Operação 15")).toHaveLength(0);
+    expect(screen.getByText("16–16 de 16 operações")).toBeTruthy();
   });
 });
