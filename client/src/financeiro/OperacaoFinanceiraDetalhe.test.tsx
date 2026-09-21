@@ -81,7 +81,7 @@ describe("OperacaoFinanceiraDetalhe — detalhe da parcela", () => {
     expect(semNbsp(dialog.getByText("Pago").nextElementSibling?.textContent)).toBe("R$ 80,00");
     expect(semNbsp(dialog.getByText("Restante").nextElementSibling?.textContent)).toBe("R$ 20,00");
 
-    fireEvent.click(dialog.getByRole("button", { name: "Banco principal" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Ver movimentação" }));
     expect(window.location.pathname + window.location.hash).toBe("/financeiro/contas/1#movimento-9");
   });
 

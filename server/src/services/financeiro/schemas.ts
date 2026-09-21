@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 const dataIso = z.coerce.date();
-const valorPositivo = z.coerce.number().positive();
+// Mensagens em português: estas chegam direto ao usuário (o primeiro issue do
+// zod vira o `error` da resposta 422), então o texto padrão em inglês
+// ("Number must be greater than 0") não pode vazar para a tela.
+const valorPositivo = z.coerce.number({ invalid_type_error: "Informe um valor numérico válido" }).positive("Informe um valor maior que zero");
 const saldoAberturaSchema = z.union([z.number(), z.string().trim().min(1)]).pipe(z.coerce.number().finite().min(-999999999999.99).max(999999999999.99));
 const dataAberturaSchema = z.union([z.string().trim().min(1), z.date()]).pipe(z.coerce.date());
 
@@ -128,7 +131,10 @@ export const itemOperacaoSchema = z.object({
   estocavel: z.boolean().default(false),
 }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
 
-const parcelaSchema = z.object({ valor: valorPositivo, dataVencimento: dataIso });
+const parcelaSchema = z.object({
+  valor: z.coerce.number({ invalid_type_error: "Informe um valor numérico válido para a parcela" }).positive("Nenhuma parcela pode ficar sem valor. Informe um valor maior que zero ou remova a parcela."),
+  dataVencimento: z.coerce.date({ errorMap: () => ({ message: "Informe a data de vencimento de todas as parcelas" }) }),
+});
 
 export const simulacaoParcelasSchema = z.object({
   itens: z.array(z.object({ quantidade: valorPositivo, valorUnitario: z.coerce.number().nonnegative().optional(), valorTotal: z.coerce.number().positive().optional() }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item" })).default([]),
