@@ -12,6 +12,13 @@ export class EstoqueError extends Error {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+// O original e seu movimento inverso se anulam no razão físico.
+export const statusSaldoEstoque: Prisma.EnumStatusMovimentoEstoqueFilter = { in: ["CONFIRMADO", "REVERTIDO"] };
+export const saidaConsumoConfirmada = {
+  tipo: "SAIDA",
+  status: "CONFIRMADO",
+  reversaoDeId: null,
+} satisfies Prisma.MovimentoEstoqueWhereInput;
 const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
 // Limites compatíveis com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma
@@ -52,7 +59,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
-    include: { movimentos: { where: { status: "CONFIRMADO", ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
+    include: { movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
   });
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
@@ -81,7 +88,7 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
   const where: any = {};
-  where.status = "CONFIRMADO";
+  where.status = statusSaldoEstoque;
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo;
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
@@ -98,6 +105,8 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
     setor: setorOuGeral(m.produto.setor), // setor operacional herdado do produto
     tipo: m.tipo,
     origem: m.origem, // MANUAL | NUTRICAO | PERDA | AJUSTE_INVENTARIO
+    status: m.status,
+    reversaoDeId: m.reversaoDeId,
     data: iso(m.data),
     quantidade: Number(m.quantidade),
     custoUnitario: Number(m.custoUnitario),
@@ -166,7 +175,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
     return await prisma.$transaction(async tx => {
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true, estocavel: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo de estoque não encontrado");
-      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: "CONFIRMADO" }, select: { tipo: true, quantidade: true } });
+      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: statusSaldoEstoque }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(2);
       if (!saldo.equals(input.saldoEsperado)) throw new EstoqueError("CONFLITO", "O estoque mudou desde a consulta. Atualize o saldo e confira a diferença antes de confirmar.");
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);
@@ -186,6 +195,19 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
 
 export async function excluirMovimento(id: number, propriedadeId: number | null = null) {
   return prisma.$transaction(async (tx) => {
+    const referencia = await tx.movimentoEstoque.findFirst({
+      where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
+      select: { operacaoId: true },
+    });
+    if (!referencia) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
+
+    // Usa o mesmo lock do cancelamento financeiro. Depois de obtê-lo, relê o
+    // movimento para decidir com o estado que venceu a corrida.
+    if (referencia.operacaoId != null) {
+      await tx.$queryRaw`SELECT "id" FROM "Operacao" WHERE "id" = ${referencia.operacaoId} FOR NO KEY UPDATE`;
+    } else {
+      await tx.$queryRaw`SELECT "id" FROM "MovimentoEstoque" WHERE "id" = ${id} FOR NO KEY UPDATE`;
+    }
     const mov = await tx.movimentoEstoque.findFirst({
       where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
       include: { revertidoPor: true },
@@ -198,6 +220,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
     if (mov.origem === "NUTRICAO" || mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
 
     if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
+    if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
     const pid = mov.propriedadeId ?? await propriedadePrincipalId();
     if (await mesFechado(tx, pid, new Date())) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
     await tx.movimentoEstoque.create({ data: {
@@ -205,7 +228,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
       tipo: mov.tipo === "ENTRADA" ? "SAIDA" : mov.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
       origem: "AJUSTE_INVENTARIO", data: new Date(),
       quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
-      custoUnitario: mov.custoUnitario, valorTotal: mov.valorTotal,
+      custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal.negated() : mov.valorTotal,
       propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id,
       observacao: `Estorno do movimento #${mov.id}`,
     } });
@@ -220,7 +243,7 @@ export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: num
   const limite = new Date(hoje); // meia-noite UTC do dia de hoje — alinha com a janela da função pura (inclui a data-limite)
   limite.setDate(limite.getDate() - periodoDias);
   const saidas = await prisma.movimentoEstoque.findMany({
-    where: { tipo: "SAIDA", status: "CONFIRMADO", data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
+    where: { ...saidaConsumoConfirmada, data: { gte: limite }, ...(propriedadeId ? { propriedadeId } : {}) },
     select: { valorTotal: true, data: true },
   });
   const arr = saidas.map((s) => ({ valorTotal: Number(s.valorTotal), data: iso(s.data) }));

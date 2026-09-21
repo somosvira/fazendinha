@@ -106,6 +106,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
       <section className="mt-8" aria-label="Leitura de caixa e compromissos">
         <h2 className="font-serif text-2xl">Leitura de caixa e compromissos</h2>
         <p className="mt-2 text-sm text-ink-3">Pagamentos rateados pelas categorias dos itens, compromissos em aberto e saldo das contas{snapshot.filtros.categorias.length + snapshot.filtros.centrosCusto.length + (snapshot.filtros.parceiros?.length ?? 0) + snapshot.filtros.tipos.length + snapshot.filtros.status.length + snapshot.filtros.classificacoes.length > 0 ? " (o saldo das contas nunca é filtrado)" : ""}.</p>
+        <p className="mt-2 text-xs text-ink-3">O saldo histórico do relatório inclui todas as contas da fazenda, inclusive inativas e fora do saldo geral. A disponibilidade atual da visão geral considera somente contas ativas incluídas nesse total.</p>
         <div className="rg-previa mt-4 min-w-0 overflow-x-auto"><RelatorioGerencialDocumento dto={snapshot.gerencial} template={{ ...templatePadrao(), titulo: dados.nome }} /></div>
       </section>
     </>}

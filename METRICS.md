@@ -95,7 +95,9 @@
 | **Origem** | `ContaFinanceira` × `MovimentoConta` |
 | **Implementação** | `services/financeiro/contas.ts:listarContas` (saldo por conta) e `resumoSaldos` (saldo geral) |
 | **Onde aparece** | KPI "Saldo geral" + painel "Contas e disponibilidades" (Visão geral) e a tela de Contas |
-| **Interpretação** | Disponibilidade **agora**, não no período selecionado. Transferência entre contas próprias não muda o saldo geral. |
+| **Interpretação** | Disponibilidade **agora**, não no período selecionado. Transferência entre duas contas incluídas não muda o saldo geral; envolvendo conta excluída, o impacto depende da inclusão de origem e destino. |
+
+O impacto de uma transferência no saldo geral é `valor × (destino incluído − origem incluída)`, considerando somente contas ativas. O saldo histórico dos relatórios inclui todas as contas da fazenda, inclusive inativas e excluídas da disponibilidade atual.
 
 ### 2.5 Compromissos a pagar / a receber
 
@@ -115,6 +117,8 @@ A listagem (`services/financeiro/operacoes.ts:listarCompromissos`, `GET /api/fin
 - `vencido` = `status ∉ (LIQUIDADO, CANCELADO)` **e** `dataVencimento < hoje`.
 
 Uma liquidação nunca pode exceder o saldo pendente (`FinanceiroError("VALIDACAO")`), e ao zerar o saldo o compromisso vira `LIQUIDADO`; caso contrário, `PARCIAL`.
+
+Liquidações e estornos da mesma operação são serializados por bloqueio no PostgreSQL. O saldo é relido sob o bloqueio antes de persistir a liquidação. Estornar um pagamento preserva sua `Liquidacao` para o histórico; a transação `REVERTIDA` deixa de compor o valor liquidado.
 
 ### 2.6 Despesas realizadas por categoria
 
@@ -360,9 +364,11 @@ Função pura: `producao.recompute.ts:ratearProducao(litros, vacasEmLactacao)`.
 
 ### 7.1 Custo vaca/dia
 
+O saldo físico soma entradas e ajustes e subtrai saídas, incluindo movimentos `CONFIRMADO` e `REVERTIDO`. O original estornado e seu inverso se anulam em quantidade e valor; no movimento inverso de um ajuste, quantidade e valor têm seus sinais invertidos.
+
 | Item | Detalhe |
 |---|---|
-| **Fórmula** | `Σ MovimentoEstoque(tipo=SAIDA, últimos 30d).valorTotal ÷ (vacasEmLactacao × 30)` |
+| **Fórmula** | `Σ MovimentoEstoque(tipo=SAIDA, status=CONFIRMADO, reversaoDeId=null, últimos 30d).valorTotal ÷ (vacasEmLactacao × 30)` |
 | **Origem** | `MovimentoEstoque` × `ResumoAnimal` |
 | **Implementação** | `services/rebanho/estoque.calc.ts:custoVacaDia` (pura) |
 | **Apresentação** | `R$ X,XX /vaca/dia` |

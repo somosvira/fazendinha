@@ -194,8 +194,11 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/operacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarOperacao(Number(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await operacoes.estornarOperacao(Number(c.req.param("id")), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+    }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/:id/documentos/intencao", zValidator("json", uploadIntentSchema), async (c) => {
@@ -235,7 +238,10 @@ export const financeiroRouter = new Hono()
       return c.json(await operacoes.criarTransacaoAvulsa({ ...input, propriedadeId, usuarioId: usuarioId(c) }), 201);
     } catch (e) { return falha(c, e); }
   })
-  .post("/financeiro/transacoes/:id/estorno", zValidator("json", estornoSchema), async (c) => {
-    try { return c.json(await operacoes.estornarTransacao(Number(c.req.param("id")), c.req.valid("json").motivo, usuarioId(c)), 201); }
+  .post("/financeiro/transacoes/:id/estorno", exigePermissao("lancar"), zValidator("json", estornoSchema), async (c) => {
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await operacoes.estornarTransacao(Number(c.req.param("id")), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }), 201);
+    }
     catch (e) { return falha(c, e); }
   });

@@ -244,7 +244,13 @@ export function EstoqueTab() {
         : (
           <RebTable>
             <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtde</th><th>Valor</th><th>Origem/destino</th><th></th></tr></thead>
-            <tbody>{movimentos.data.map((m) => (
+            <tbody>{movimentos.data.map((m) => {
+              const motivoBloqueio = m.reversaoDeId != null ? "Movimento de estorno — não pode ser estornado novamente"
+                : m.status === "REVERTIDO" ? "Movimento já estornado"
+                  : m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição"
+                    : m.origem === "SANIDADE" ? "Baixa sanitária — estorne o evento na ficha do animal"
+                      : null;
+              return (
               <tr key={m.id}>
                 <td>{m.data}</td>
                 <td><RebAnm>{m.produto}</RebAnm></td>
@@ -252,9 +258,10 @@ export function EstoqueTab() {
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={m.origem === "NUTRICAO"} title={m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição" : "Excluir"}>Excluir</RebButton></td>
+                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={motivoBloqueio != null} title={motivoBloqueio ?? "Excluir"}>Excluir</RebButton></td>
               </tr>
-            ))}</tbody>
+              );
+            })}</tbody>
           </RebTable>
         )}
 

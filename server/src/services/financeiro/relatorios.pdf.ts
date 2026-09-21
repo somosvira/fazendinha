@@ -314,6 +314,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
 
   if (g.saldoContas) {
     doc.secao(filtrado ? "Saldo das contas (sem filtros)" : "Saldo das contas");
+    doc.paragrafo("Saldo histórico de todas as contas da fazenda, inclusive inativas e fora do saldo geral. A disponibilidade atual da visão geral considera somente contas ativas incluídas nesse total.");
     doc.tabela(
       [{ titulo: "Conta", largura: 150 }, { titulo: "Saldo inicial", largura: 85, alinhamento: "direita" }, { titulo: "Entradas", largura: 85, alinhamento: "direita" }, { titulo: "Saídas", largura: 85, alinhamento: "direita" }, { titulo: "Saldo final", largura: 95, alinhamento: "direita" }],
       g.saldoContas.contas.map((conta) => [conta.nome, dinheiro(conta.saldoInicial), dinheiro(conta.entradas), dinheiro(conta.saidas), dinheiro(conta.saldoFinal)]),
