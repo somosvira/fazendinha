@@ -215,9 +215,15 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
     setLeftView(startOfMonth(date));
     requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-calendars] button[data-date="${isoDate(date)}"]:not(:disabled)`)?.focus());
   };
+  // O nome do preset sozinho não diz qual intervalo está de fato aplicado —
+  // mostra as datas junto (ocultas em telas muito estreitas, onde só o nome
+  // já preenche o gatilho) para que o período efetivo fique visível sem abrir.
+  const rotulo = triggerLabel ?? (!value.start && !value.end && allowAll ? "Todo o período"
+    : matched ? <>{matched.label}<span className="hidden text-ink-3 sm:inline"> · {formatRangeLabel(value)}</span></>
+    : formatRangeLabel(value));
   return <Popover open={open} onOpenChange={changeOpen}>
     <PopoverTrigger asChild><button ref={triggerRef} type="button" aria-label={triggerAriaLabel} className={cn("inline-flex min-h-10 max-w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus-visible:outline-2 focus-visible:outline-mast", triggerClassName)}>
-      <span>{triggerLabel ?? (matched?.label ?? (!value.start && !value.end && allowAll ? "Todo o período" : formatRangeLabel(value)))}</span><span aria-hidden="true">▾</span>
+      <span className="truncate">{rotulo}</span><span aria-hidden="true">▾</span>
     </button></PopoverTrigger>
     <PopoverContent onCloseAutoFocus={event => { event.preventDefault(); triggerRef.current?.focus(); }} align={anchor === "right" ? "end" : "start"} className={cn("max-h-[min(680px,85vh)] overflow-y-auto bg-background p-4", custom ? "w-[min(540px,calc(100vw-24px))]" : "w-[min(280px,calc(100vw-24px))]")}>
       {!custom ? <div className="flex flex-col gap-1" role="group" aria-label="Períodos predefinidos">
