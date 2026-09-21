@@ -45,7 +45,8 @@ const rolaHorizontal = (el: Element) => /overflow-x-auto|overflow-x-scroll/.test
 /** Elementos que forçam largura mínima — por classe Tailwind ou style inline. */
 function comLarguraMinima(raiz: HTMLElement) {
   return [...raiz.querySelectorAll<HTMLElement>("*")].filter(
-    (el) => /min-w-\[\d+px\]/.test(el.className) || !!el.style.minWidth,
+    // `min-width: 0` (o ResponsiveContainer do Recharts) existe para permitir encolher: não força largura.
+    (el) => /min-w-\[\d+px\]/.test(el.className) || (parseFloat(el.style.minWidth) || 0) > 0,
   );
 }
 

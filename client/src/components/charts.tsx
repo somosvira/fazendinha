@@ -128,7 +128,7 @@ export function MonthlyFlowChart({ data, tipo = "line" }: { data: FluxoMensal[];
     receitas: item.receitaLeite + item.receitaCafe + item.receitaOutros,
     despesas: item.custeio + item.investimento,
   }));
-  return <ChartContainer config={fluxoConfig} className="h-[320px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Receitas e despesas mensais">
+  return <ChartContainer config={fluxoConfig} className="h-[320px] w-full aspect-auto overflow-hidden" role="img" aria-label="Receitas e despesas mensais">
     <ComposedChart data={pontos} margin={chartMargin} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
       <XAxis dataKey="mes" {...axisProps} />
@@ -164,7 +164,7 @@ export function WaterfallChart({ data }: { data: WaterfallStep[] }) {
       faixa: total == null ? [Math.min(anterior, acumulado), Math.max(anterior, acumulado)] : [Math.min(0, total), Math.max(0, total)],
     };
   });
-  return <ChartContainer config={waterfallConfig} className="h-[340px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Composição do fluxo financeiro">
+  return <ChartContainer config={waterfallConfig} className="h-[340px] w-full aspect-auto overflow-hidden" role="img" aria-label="Composição do fluxo financeiro">
     <BarChart data={pontos} margin={{ ...chartMargin, bottom: 24 }} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
       <XAxis dataKey="label" interval={0} angle={-15} textAnchor="end" {...axisProps} />
@@ -190,7 +190,7 @@ export function MiniBarChart({
   const config = { valor: { label: "Valor", color } } satisfies ChartConfig;
   return <div className="w-full max-w-[400px]">
     <div className="mb-1 flex justify-end"><ChartTypeControl value={tipo} onChange={setTipo} label="Tipo do gráfico da série" /></div>
-    <ChartContainer config={config} className="h-[120px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Série de valores">
+    <ChartContainer config={config} className="h-[120px] w-full aspect-auto overflow-hidden" role="img" aria-label="Série de valores">
       <Chart data={data} margin={{ top: 18, right: 8, bottom: 0, left: 8 }} accessibilityLayer>
         <XAxis dataKey="x" interval="preserveStartEnd" {...axisProps} />
         <YAxis hide domain={[0, "auto"]} />
@@ -221,7 +221,7 @@ export function MonthlyTrendChart({
     atual: { label: "Período atual", color },
     anterior: { label: "Período anterior", color: "var(--ink-mute)" },
   } satisfies ChartConfig;
-  return <ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Comparação da tendência mensal">
+  return <ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-hidden" role="img" aria-label="Comparação da tendência mensal">
     <ComposedChart data={data} margin={chartMargin} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
       <XAxis dataKey="label" {...axisProps} />
@@ -273,19 +273,32 @@ export function serieEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType): E
   });
 }
 
+/** A API devolve um ponto por mês (sempre no dia 1) quando o período cruza meses, e um por dia dentro de um mês. */
+export function serieEhMensal(data: EntradaSaidaPoint[]) {
+  return data.length > 1 && data.every((ponto) => ponto.data.endsWith("-01")) && new Set(data.map((ponto) => ponto.data.slice(0, 7))).size === data.length;
+}
+
+/** Rótulos únicos por ponto: o Recharts localiza o ponto ativo pelo rótulo do eixo, então repetidos travam o tooltip no primeiro. */
+export function pontosEntradaSaida(data: EntradaSaidaPoint[], tipo: ChartType) {
+  const mensal = data.length > 31 || serieEhMensal(data);
+  const mes = (ponto: EntradaSaidaPoint) => new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${ponto.data.slice(0, 7)}-01T00:00:00Z`)).replace(" de ", "/");
+  return serieEntradaSaida(data, tipo).map((ponto) => ({
+    ...ponto,
+    rotuloEixo: ponto.rotulo ?? (mensal ? mes(ponto) : String(Number(ponto.data.slice(8, 10)))),
+    rotuloTooltip: ponto.rotulo ?? (mensal ? mes(ponto) : ponto.data.slice(0, 10).split("-").reverse().join("/")),
+  }));
+}
+
 /** Receitas e despesas em reais, com valores exatos no tooltip. */
 export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaPoint[]; tipo?: ChartType }) {
-  const formatarRotulo = (ponto: EntradaSaidaPoint) => ponto.rotulo ?? (data.length > 31
-    ? new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${ponto.data.slice(0, 7)}-01T00:00:00Z`)).replace(" de ", "/")
-    : String(Number(ponto.data.slice(8, 10))));
-  const pontos = serieEntradaSaida(data, tipo).map((ponto) => ({ ...ponto, rotuloEixo: formatarRotulo(ponto) }));
+  const pontos = pontosEntradaSaida(data, tipo);
   return <>
-    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
+    <ChartContainer config={fluxoConfig} className="h-[300px] w-full aspect-auto overflow-hidden" role="img" aria-label={tipo === "line" ? "Totais acumulados de receitas e despesas por dia ou mês" : "Entradas e saídas por dia ou mês, apresentadas como receitas e despesas em reais"}>
       <ComposedChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 24 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
         <XAxis dataKey="rotuloEixo" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
         <YAxis width={88} tickFormatter={(value) => fmtBRL(Number(value))} {...axisProps} />
-        <ChartTooltip labelFormatter={(_label, payload) => payload?.[0]?.payload?.rotulo ?? payload?.[0]?.payload?.data ?? ""} formatter={tooltipMoney} />
+        <ChartTooltip labelFormatter={(_label, payload) => payload?.[0]?.payload?.rotuloTooltip ?? ""} formatter={tooltipMoney} />
         <ChartLegend />
         {tipo === "line" ? <>
           <Line type="linear" dataKey="entradas" name="Receitas" stroke="var(--color-receitas)" strokeWidth={2.5} dot={pontos.length <= 31 ? { r: 2.5 } : false} activeDot={{ r: 5 }} isAnimationActive={false} />
@@ -302,7 +315,7 @@ export function EntradaSaidaChart({ data, tipo = "line" }: { data: EntradaSaidaP
 
 export function CategoryValueChart({ data, tipo = "bar" }: { data: { categoria: string; valor: number }[]; tipo?: ChartType }) {
   const config = { despesas: { label: "Despesas", color: "var(--neg)" } } satisfies ChartConfig;
-  return <ChartContainer config={config} className="h-[300px] w-full aspect-auto overflow-x-auto" role="img" aria-label="Despesas realizadas por categoria">
+  return <ChartContainer config={config} className="h-[300px] w-full aspect-auto overflow-hidden" role="img" aria-label="Despesas realizadas por categoria">
     <ComposedChart data={data} margin={{ top: 18, right: 14, bottom: 38, left: 18 }} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
       <XAxis dataKey="categoria" interval={0} angle={-20} textAnchor="end" height={62} {...axisProps} />
@@ -336,7 +349,7 @@ export function MonetaryDonutChart({ data, label, emptyLabel }: {
   return <div className="p-5">
     <p className="text-xs text-ink-3">Total do período</p><strong className="mt-1 block font-serif text-2xl">{fmtMoneyExact(total)}</strong>
     {points.length ? <div className="grid min-w-0 items-center gap-4 md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]">
-      <ChartContainer config={config} className="h-[260px] w-full aspect-auto overflow-x-auto" role="img" aria-label={label}>
+      <ChartContainer config={config} className="h-[260px] w-full aspect-auto overflow-hidden" role="img" aria-label={label}>
         <PieChart accessibilityLayer><Pie data={points} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="85%" stroke="none" paddingAngle={points.length > 1 ? 2 : 0} isAnimationActive={false}>
           {points.map(point => <Cell key={point.key} fill={`var(--color-${point.key})`} />)}
         </Pie><ChartTooltip formatter={tooltipMoney} /></PieChart>
