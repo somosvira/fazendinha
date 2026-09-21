@@ -47,8 +47,8 @@ describe("contas financeiras", () => {
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { conta: {} } }));
   });
 
-  it("inclui o tipo da transação revertida nos extratos individual e geral", async () => {
-    const transacao = { include: { parceiro: true, operacao: true, reversaoDe: { select: { tipo: true } } } };
+  it("inclui a transação revertida (com id, tipo, descrição e operação) nos extratos individual e geral", async () => {
+    const transacao = { include: { parceiro: true, operacao: true, reversaoDe: { select: { id: true, tipo: true, descricao: true, operacaoId: true } } } };
     await listarExtrato(1, null);
     expect(mocks.movimentosFindMany).toHaveBeenLastCalledWith(expect.objectContaining({ include: { transacao } }));
     await listarExtratoGeral(null);

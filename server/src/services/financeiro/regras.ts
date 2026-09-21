@@ -35,7 +35,9 @@ export const dinheiro = (valor: Prisma.Decimal.Value) => new Prisma.Decimal(valo
 
 export function exigirPositivo(valor: Prisma.Decimal.Value, campo = "valor") {
   const decimal = dinheiro(valor);
-  if (!decimal.isPositive()) throw new FinanceiroError("VALIDACAO", `${campo} deve ser maior que zero`);
+  // `isPositive()` do decimal.js considera zero positivo (sinal +1) — usar
+  // lessThanOrEqualTo(0) para realmente exigir um valor > 0 aqui.
+  if (decimal.lessThanOrEqualTo(0)) throw new FinanceiroError("VALIDACAO", `${campo} deve ser maior que zero`);
   return decimal;
 }
 

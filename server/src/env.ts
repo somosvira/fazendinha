@@ -46,16 +46,16 @@ const envSchema = z
     // (fôlego/ruptura de caixa). Default 6.
     DASHBOARD_MESES_QUEIMA: z.coerce.number().int().positive().default(6),
 
-    // Storage de notas fiscais. "local" guarda em server/.uploads/ (dev sem nuvem).
-    // "r2" exige as R2_* abaixo (Cloudflare R2 — S3-compatible).
-    STORAGE_DRIVER: z.enum(["local", "r2"]).default("local"),
-    LOCAL_STORAGE_DIR: z.string().default(".uploads"),
-    LOCAL_DOWNLOAD_SECRET: z.string().min(16).default("dev-local-download-secret-trocar"),
-
-    R2_ACCOUNT_ID: z.string().optional(),
-    R2_ACCESS_KEY_ID: z.string().optional(),
-    R2_SECRET_ACCESS_KEY: z.string().optional(),
-    R2_BUCKET_NOTAS: z.string().optional(),
+    // Storage único de documentos: Cloudflare R2 em dev, CI e produção.
+    R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID ausente"),
+    R2_ACCESS_KEY_ID: z.string().min(1, "R2_ACCESS_KEY_ID ausente"),
+    R2_SECRET_ACCESS_KEY: z.string().min(1, "R2_SECRET_ACCESS_KEY ausente"),
+    R2_BUCKET_NOTAS: z.string().min(1, "R2_BUCKET_NOTAS ausente"),
+    // Prefixo lógico para separar os ambientes no mesmo bucket.
+    // Deve ser declarado explicitamente: não há namespace padrão.
+    STORAGE_NAMESPACE: z.enum(["dev", "staging", "prod", "test"], {
+      message: "STORAGE_NAMESPACE deve ser dev, staging, prod ou test",
+    }),
 
     // --- Contas / login (Fatia auth) ---
     // Se setado e a tabela Usuario estiver vazia, o boot cria o dono com este
@@ -76,16 +76,6 @@ const envSchema = z
     AUTH_RESET_MAX_PER_IP: z.coerce.number().int().positive().default(10),
   })
   .superRefine((v, ctx) => {
-    if (v.STORAGE_DRIVER === "r2") {
-      if (!v.R2_ACCOUNT_ID)
-        ctx.addIssue({ code: "custom", path: ["R2_ACCOUNT_ID"], message: "obrigatório quando STORAGE_DRIVER=r2" });
-      if (!v.R2_ACCESS_KEY_ID)
-        ctx.addIssue({ code: "custom", path: ["R2_ACCESS_KEY_ID"], message: "obrigatório quando STORAGE_DRIVER=r2" });
-      if (!v.R2_SECRET_ACCESS_KEY)
-        ctx.addIssue({ code: "custom", path: ["R2_SECRET_ACCESS_KEY"], message: "obrigatório quando STORAGE_DRIVER=r2" });
-      if (!v.R2_BUCKET_NOTAS)
-        ctx.addIssue({ code: "custom", path: ["R2_BUCKET_NOTAS"], message: "obrigatório quando STORAGE_DRIVER=r2" });
-    }
     if (v.AUTH_EMAIL_PROVIDER === "resend") {
       if (!v.RESEND_API_KEY)
         ctx.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });

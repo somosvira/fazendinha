@@ -239,6 +239,19 @@ Convenções de leitura:
 </table>
 ```
 
+### `<TabelaFinanceira>`
+
+- **Path:** `client/src/financeiro/financeiro-ui.tsx`
+- **Função:** uma declaração de colunas produz tabela em `md+` e cartões abaixo
+  de 768 px, preservando a mesma fatia de itens, os rótulos e a navegação por
+  teclado.
+- **Rolagem intermediária:** `barraRolagemSuperior` é opt-in. Quando usado, a
+  tabela ganha uma barra horizontal sincronizada acima do cabeçalho apenas se
+  houver conteúdo excedente; outros consumidores mantêm o comportamento atual.
+- **Paginação:** pertence à página consumidora, depois dos filtros e antes de
+  passar `itens` ao componente. A lista de operações usa 15 itens por página e
+  seletor de página direta.
+
 ### Regras
 
 - **Sem zebra-striping.** Linhas se separam por espaço, não por cor.
