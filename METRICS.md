@@ -120,18 +120,19 @@ Uma liquidação nunca pode exceder o saldo pendente (`FinanceiroError("VALIDACA
 
 Liquidações e estornos da mesma operação são serializados por bloqueio no PostgreSQL. O saldo é relido sob o bloqueio antes de persistir a liquidação. Estornar um pagamento preserva sua `Liquidacao` para o histórico; a transação `REVERTIDA` deixa de compor o valor liquidado.
 
-### 2.6 Despesas realizadas por categoria
+### 2.6 Despesas por categoria
 
 | Item | Detalhe |
 |---|---|
-| **Fórmula** | Agrupa os `MovimentoConta` do período por `transacao.operacao.categoria.nome` (fallback `"Sem categoria"`), somando `+valor` para `SAIDA` e `−valor` para `ENTRADA` |
-| **Exclusões** | `transacao.tipo = TRANSFERENCIA` e `operacao.tipo = VENDA`; depois descarta os grupos com total **≤ 0** |
-| **Ordenação** | Total desc, sem corte no backend |
-| **Implementação** | `services/financeiro/dashboard.ts` → `despesasPorCategoria` |
-| **Onde aparece** | Painel "Despesas realizadas" (Visão geral) — a UI mostra **top 6** com barra horizontal proporcional ao maior valor |
-| **Interpretação** | Onde o dinheiro saiu no período. Transação avulsa (sem operação) cai em `"Sem categoria"`. |
+| **Fórmula** | Para cada `MovimentoConta` `SAIDA` realizado no período global, rateia o valor por categoria (`ratearTransacao`, fallback `"Sem categoria"`) e soma por `categoriaId` |
+| **Estornos** | O estorno abate a natureza original **na data do evento inverso** (`dashboard.calc.ts:movimentoRealizado`). Uma categoria pode ficar com total líquido **negativo** (estorno de despesa de outro período) |
+| **Exclusões** | `TRANSFERENCIA` e reversões de transferência; entradas nunca entram como despesa |
+| **Ordenação** | Total desc, sem corte no backend; grupos com total zero são descartados |
+| **Implementação** | `services/financeiro/dashboard.ts` → `despesasPorCategoria` (`{ categoriaId, categoria, valor }`) |
+| **Onde aparece** | Bloco "Despesas por categoria" (Visão geral), donut monetário (`MonetaryDonutChart`). Único filtro local: multiselect de categorias (vazio = todas; "Sem categoria" = `categoriaId` nulo) |
+| **Interpretação** | Onde o dinheiro saiu no período do topo, líquido de estornos. Valores negativos abatem o total e aparecem em texto, sem fatia. Passando de 6 categorias positivas, as menores são agrupadas em "Outras (N)". Transação avulsa (sem operação) cai em `"Sem categoria"`. |
 
-Não há delta YoY nem recorte por centro de custo nesta métrica.
+Não há delta YoY nem recorte por centro de custo nesta métrica. O bloco "Despesas realizadas" deixou de existir.
 
 ### 2.7 Período financeiro (bloqueio de escrita)
 
@@ -150,19 +151,18 @@ O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/reban
 
 > **Sem endpoint.** Não existe rota HTTP para fechar ou reabrir período — os registros só nascem via banco/seed. A trava funciona; a operação de fechamento ainda não tem UI nem API.
 
-### 2.8 Relatórios financeiros (base auditável)
+### 2.8 Base financeira (rastreabilidade da Visão geral)
 
-Calculado **no cliente** (`client/src/financeiro/RelatoriosFinanceiros.tsx`) a partir de `GET /api/financeiro/operacoes` + `GET /api/financeiro/compromissos`:
+Calculada **no servidor** para o período global do topo (`services/financeiro/dashboard.ts:obterDashboard` → `base`), sem carregar todas as operações no cliente. Cada etapa da cadeia **Operação → Compromisso → Transação → Movimento de conta** usa a sua própria data de corte e a sua própria grandeza; elas não são somadas entre si:
 
-| Métrica | Fórmula |
-|---|---|
-| Operações confirmadas | `count(Operacao.status = CONFIRMADA)` |
-| Volume econômico | `Σ Operacao.valorTotal` das confirmadas (base **econômica**, não de caixa) |
-| Com efeito de estoque | `count(Operacao com movimentosEstoque ≠ [])` |
-| Volume por tipo de operação | `Σ valorTotal` das confirmadas agrupado por `Operacao.tipo`, desc |
-| Rastreabilidade | contagem de compromissos, de operações `CANCELADA` e de operações com `parceiro` |
+| Etapa | Data usada | Contagens e estados | Grandeza financeira |
+|---|---|---|---|
+| Operação | `Operacao.data` | total; `CONFIRMADA`/`RASCUNHO`/`CANCELADA`; com estoque; sem parceiro; sem efeitos vinculados | Volume econômico: `Σ valorTotal` das **confirmadas**, por tipo (`base.porTipo`, sem tipos zerados) |
+| Compromisso | `dataVencimento` | total; `PENDENTE`/`PARCIAL`/`LIQUIDADO`/`CANCELADO` | Saldo pendente a pagar / a receber |
+| Transação | `TransacaoFinanceira.data` | total; `CONFIRMADA`/`REVERTIDA`; estornos; avulsas; com liquidação; sem movimentos; transferências incompletas | Dinheiro realizado líquido de estornos (`realizado`) |
+| Movimento de conta | data da transação | total; confirmados; revertidos; estornos | Inclui as duas pontas de cada transferência, sem somá-las ao realizado |
 
-A própria tela avisa que exportação, conciliação bancária e relatórios documentais **não existem** na API.
+`base.vinculosAusentes` lista até 20 transações sem movimento de conta ou com transferência sem as duas pontas, com o link para a operação de origem quando existe. Os links da tela levam a Operações, Compromissos e Contas preservando `?inicio&fim` (e `?efeito=SEM_EFEITOS`). Volume por tipo de operação é exibido como donut com total, participação por tipo e estado vazio. Exportação e relatórios documentais seguem em §2.9.
 
 ### 2.9 Métricas sem implementação atual
 
