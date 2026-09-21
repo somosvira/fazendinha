@@ -105,6 +105,36 @@ describe("TabelaFinanceira", () => {
     expect(linha.getAttribute("role")).toBeNull();
     expect(container.querySelector("ul button")).toBeTruthy(); // no cartão, um botão de verdade
   });
+
+  it("só mostra a barra de rolagem superior quando o conteúdo excede o contêiner, e sincroniza o scroll", () => {
+    // jsdom não faz layout: simula overflow via scrollWidth/clientWidth do wrapper.
+    const clientWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    const scrollWidthOriginal = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 400 });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 900 });
+    try {
+      const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+      const barra = container.querySelector('[aria-label="Rolagem horizontal: Operações"]') as HTMLElement;
+      expect(barra).toBeTruthy();
+      expect(barra.getAttribute("tabindex")).toBe("0");
+      const tabela = container.querySelector("table")!.parentElement as HTMLElement;
+      tabela.scrollLeft = 120;
+      tabela.dispatchEvent(new Event("scroll"));
+      expect(barra.scrollLeft).toBe(120);
+    } finally {
+      // jsdom expõe clientWidth/scrollWidth via Element.prototype — sem descritor
+      // próprio em HTMLElement.prototype, então "restaurar" é remover o override.
+      if (clientWidthOriginal) Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+      if (scrollWidthOriginal) Object.defineProperty(HTMLElement.prototype, "scrollWidth", scrollWidthOriginal);
+      else delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+    }
+  });
+
+  it("não mostra a barra de rolagem superior quando o conteúdo cabe no contêiner", () => {
+    const { container } = render(<TabelaFinanceira rotulo="Operações" itens={LINHAS} colunas={COLUNAS} chaveDe={(l) => l.id} barraRolagemSuperior />);
+    expect(container.querySelector('[aria-label="Rolagem horizontal: Operações"]')).toBeNull();
+  });
 });
 
 describe("telas financeiras — envelope e carregamento", () => {

@@ -189,3 +189,56 @@ it("herda a categoria por produto, pede centro para mistura e preserva escolha m
   fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "1" } });
   expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("2");
 });
+
+describe("FormOperacao — geração de parcelas", () => {
+  it("confirma um rascunho a prazo carregado sem exigir clique em Gerar parcelas", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const caminho = String(url);
+      if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+        return { ok: true, json: async () => ({ id: 8, dados: {}, versao: 3, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+      }
+      if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+        return { ok: true, json: async () => ({ id: 42, tipo: "SERVICO", status: "CONFIRMADA", data: "2026-09-07", descricao: "Manutenção programada", valorTotal: "800.00", parceiro: null, itens: [], compromissos: [], transacoes: [], movimentosEstoque: [], documentos: [] }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 2, updatedAt: "2026-09-07T12:00:00Z", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção programada", valorOperacao: "800.00", itens: [], parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-07", valorAgora: "", parcelas: [{ id: 1, valor: "800.00", vencimento: "2026-10-07" }] } } }} onSalvo={vi.fn()} />);
+    expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("confirmacao"), expect.objectContaining({ method: "POST" })));
+  });
+
+  it("mantém uma parcela editada manualmente mesmo quando o total muda depois", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "100" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("100.00");
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "60.00" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "200" } });
+    expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("60.00");
+    expect(screen.getAllByText(/A soma das parcelas deve corresponder/).length).toBeGreaterThan(0);
+  });
+
+  it("mostra excedente quando a soma das parcelas ultrapassa o total", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "100" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "150" } });
+    expect(screen.getAllByText(/Excedente/).length).toBeGreaterThan(0);
+  });
+
+  it("oferece frequência Personalizada e desativa a geração automática", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "90" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade de parcelas" }), { target: { value: "3" } });
+    expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
+    fireEvent.change(screen.getByRole("combobox", { name: "Intervalo das parcelas" }), { target: { value: "PERSONALIZADA" } });
+    expect((screen.getByRole("button", { name: "Gerar parcelas" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
+  });
+});

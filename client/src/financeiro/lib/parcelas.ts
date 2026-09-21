@@ -1,4 +1,4 @@
-export type FrequenciaParcelas = "SEMANAL" | "MENSAL";
+export type FrequenciaParcelas = "SEMANAL" | "MENSAL" | "PERSONALIZADA";
 
 export type ParcelaCalculada = { valor: string; vencimento: string };
 
@@ -27,6 +27,8 @@ function adicionarMeses(data: string, meses: number) {
 }
 
 export function gerarParcelas(total: string, quantidade: number, frequencia: FrequenciaParcelas, primeiroVencimento: string): ParcelaCalculada[] {
+  // Personalizada não tem regra de geração — o usuário edita cada parcela manualmente.
+  if (frequencia === "PERSONALIZADA") return [];
   const centavos = paraCentavos(total);
   if (centavos == null || quantidade < 1 || !Number.isInteger(quantidade) || quantidade > centavos || !/^\d{4}-\d{2}-\d{2}$/.test(primeiroVencimento)) return [];
   const base = Math.floor(centavos / quantidade);

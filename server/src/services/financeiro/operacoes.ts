@@ -11,6 +11,11 @@ type TransferenciaInput = z.infer<typeof transferenciaSchema> & { propriedadeId:
 type TransacaoAvulsaInput = z.infer<typeof transacaoAvulsaSchema> & { propriedadeId: number; usuarioId?: number | null };
 type SimulacaoParcelasInput = z.infer<typeof simulacaoParcelasSchema>;
 
+// Prefixo padronizado da descrição do estorno gerado por um cancelamento de
+// operação — usado tanto para criar a descrição quanto (no client) para
+// detectar que uma reversão no extrato veio de um cancelamento e linkar de volta.
+export const PREFIXO_CANCELAMENTO_OPERACAO = "Cancelamento da operação #";
+
 const incluiEstoque = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
 const retiraEstoque = new Set(["VENDA", "DEVOLUCAO"]);
 const documentoPublico = { id: true, tipo: true, nome: true, numero: true, mimeType: true, tamanhoBytes: true, createdAt: true } as const;
@@ -90,9 +95,15 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
+      // Quando o item vem por valor total, `valorTotal` é o campo autoritativo
+      // (é ele que soma para o total da operação, nunca a reconstrução
+      // quantidade × unitário). `valorUnitario` aqui é só um derivado para
+      // exibição/relatório e é arredondado explicitamente às 4 casas da
+      // coluna — sem isso, quocientes não exatos (ex.: 100 ÷ 3) dependeriam
+      // do arredondamento implícito do driver do Postgres ao gravar.
       valorUnitario: item.valorTotal === undefined
         ? new Prisma.Decimal(item.valorUnitario ?? 0)
-        : dinheiro(item.valorTotal).div(item.quantidade),
+        : dinheiro(item.valorTotal).div(item.quantidade).toDecimalPlaces(4),
       valorTotal: item.valorTotal === undefined
         ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
         : dinheiro(item.valorTotal),
@@ -188,7 +199,9 @@ export function simularParcelas(input: SimulacaoParcelasInput) {
     : dinheiro(input.valorTotal ?? 0);
   const valorPagoAgora = dinheiro(input.valorPagoAgora ?? 0);
   const saldoAPrazo = dinheiro(totalOperacao.minus(valorPagoAgora));
-  if (!saldoAPrazo.isPositive()) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
+  // `isPositive()` do decimal.js considera zero positivo (sinal +1) — usar
+  // lessThanOrEqualTo(0) para realmente exigir saldo > 0 aqui.
+  if (saldoAPrazo.lessThanOrEqualTo(0)) throw new FinanceiroError("VALIDACAO", "O saldo a prazo deve ser maior que zero", "valorPagoAgora");
   return {
     totalOperacao,
     valorPagoAgora,
@@ -309,7 +322,7 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
-      await estornarTransacaoTx(tx, transacao.id, `Cancelamento da operação #${id}: ${motivo}`, usuarioId, operacao.propriedadeId);
+      await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`, usuarioId, operacao.propriedadeId);
     }
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
       await tx.movimentoEstoque.create({ data: {
@@ -319,7 +332,7 @@ export async function estornarOperacao(id: number, motivo: string, usuarioId?: n
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id,
-        reversaoDeId: movimento.id, observacao: `Cancelamento da operação #${id}: ${motivo}`,
+        reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
     }
@@ -357,7 +370,7 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
     },
     orderBy: [{ data: "asc" }, { id: "asc" }],
   },
-  movimentosEstoque: { include: { revertidoPor: { select: { id: true } } } },
+  movimentosEstoque: { include: { revertidoPor: { select: { id: true } }, produto: { select: { id: true, nome: true, unidade: true } } } },
   documentos: { select: documentoPublico },
   corrigeOperacao: { select: { id: true, descricao: true } },
   correcoes: { select: { id: true, descricao: true, status: true } },
@@ -384,7 +397,7 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
     }));
   const estoque = operacao.movimentosEstoque
     .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
-    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, quantidade: movimento.quantidade, unidade: "un", tipo: movimento.tipo }));
+    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: movimento.produto.unidade, tipo: movimento.tipo }));
   const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
   for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
     const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };

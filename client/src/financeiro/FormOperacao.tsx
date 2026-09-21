@@ -1,10 +1,10 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { anexarDocumentoOperacao, anexarDocumentoRascunho, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
-import { brl, Button, emDias, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
+import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
+import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
-import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
+import { deCentavos, gerarParcelas, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
@@ -65,6 +65,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [salvando, setSalvando] = useState(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
   const [confirmarSugestao, setConfirmarSugestao] = useState(false);
+  const [condicaoPendente, setCondicaoPendente] = useState<Condicao | null>(null);
   const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(rascunho ? "SALVO" : "ALTERADO");
   const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
@@ -72,6 +73,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [erro, setErro] = useState<string | null>(null);
   const erroConfirmacaoRef = useRef<HTMLDivElement>(null);
   const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
+  const [campoInvalido, setCampoInvalido] = useState<string | null>(null);
   const [simulacao, setSimulacao] = useState<{ assinatura: string; resultado: SimulacaoParcelas } | null>(null);
 
   const comItens = TIPOS_COM_ITENS.has(tipo);
@@ -106,6 +108,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && sugestaoParcelas.length) {
       setCondicao("A_PRAZO");
       setParcelas(sugestaoParcelas.map((parcela) => ({ ...parcela, id: proximoId++ })));
+      // A sugestão do parceiro não segue necessariamente uma grade semanal/mensal
+      // uniforme — trata como personalizada para o recálculo automático não a substituir.
+      setGeradorParcelas((atual) => ({ ...atual, modo: "PERSONALIZADO", quantidade: String(sugestaoParcelas.length), primeiroVencimento: sugestaoParcelas[0]?.vencimento ?? atual.primeiroVencimento }));
     }
     setConfirmarSugestao(false);
   };
@@ -184,14 +189,23 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (!TIPOS_FINANCEIROS.has(novoTipo)) setCondicao("SEM_EFEITO_FINANCEIRO");
     else if (condicao === "SEM_EFEITO_FINANCEIRO") setCondicao("A_VISTA");
   };
-  const alterarCondicao = (novaCondicao: Condicao) => {
+  const parcelasPersonalizadasPreenchidas = geradorParcelas.modo === "PERSONALIZADO" && parcelas.some((parcela) => parcela.valor || parcela.vencimento);
+  const aplicarCondicao = (novaCondicao: Condicao) => {
     setCondicao(novaCondicao);
-    if (novaCondicao === "A_PRAZO") setParcelas([{ ...novaParcela(), valor: total ? total.toFixed(2) : "" }]);
-    if (novaCondicao === "PARCIAL") {
-      const metade = total / 2;
-      setValorAgora(metade ? metade.toFixed(2) : "");
-      setParcelas([{ ...novaParcela(), valor: metade ? (total - metade).toFixed(2) : "" }]);
+    if (novaCondicao === "A_PRAZO" || novaCondicao === "PARCIAL") {
+      // Deixa o recálculo automático da grade (efeito em EfeitoFinanceiro) gerar
+      // as parcelas a partir do total/saldo futuro — evita duplicar a lógica aqui.
+      setGeradorParcelas((atual) => ({ ...atual, modo: "GERADO" }));
     }
+    if (novaCondicao === "PARCIAL") {
+      const totalCentavos = paraCentavos(total.toFixed(2)) ?? Math.round(total * 100);
+      const metadeCentavos = Math.floor(totalCentavos / 2);
+      setValorAgora(metadeCentavos ? deCentavos(metadeCentavos) : "");
+    }
+  };
+  const alterarCondicao = (novaCondicao: Condicao) => {
+    if ((novaCondicao === "A_PRAZO" || novaCondicao === "PARCIAL") && parcelasPersonalizadasPreenchidas) { setCondicaoPendente(novaCondicao); return; }
+    aplicarCondicao(novaCondicao);
   };
   const selecionarAnexos = async (evento: ChangeEvent<HTMLInputElement>) => {
     const arquivos = Array.from(evento.target.files ?? []);
@@ -218,15 +232,19 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, {})) : [[categorias.find((c) => c.id === Number(categoriaId))?.nome ?? "Sem categoria", Math.round(total * 100)]] as [string, number][];
   const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId));
   const totalParcelasEmCentavos = somarParcelas(parcelas);
-  const parcelasValidas = condicao === "A_PRAZO" ? !!simulacaoAtual && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(totalFinanceiro.toFixed(2))
-    : condicao === "PARCIAL" ? !!simulacaoAtual && realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
+  const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(totalFinanceiro.toFixed(2))
+    : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
+  // Marca o campo apontado pela API (`ApiError.campo`) sem depender só do alerta geral.
+  const classeCampoErro = (campo: string) => campoInvalido === campo ? " border-red-400 ring-2 ring-red-200" : "";
+  const limparCampoInvalido = (campo: string) => { if (campoInvalido === campo) setCampoInvalido(null); };
   const podeConfirmar = (!comItens || centrosSugeridos.length <= 1 || !!centroCustoId) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
     if (!podeConfirmar) return;
     setErroConfirmacao(null);
+    setCampoInvalido(null);
     setSalvando(true);
     try {
       let operacao: Operacao;
@@ -241,8 +259,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         catch (falha) { falhas.push(`${anexo.arquivo.name}: ${falha instanceof Error ? falha.message : String(falha)}`); }
       }
       onSalvo(operacao, falhas.length ? `A operação OP-${String(operacao.id).padStart(4, "0")} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
-    } catch (falha) { const mensagem = falha instanceof Error ? falha.message : String(falha); setErroConfirmacao(mensagem); setErro(mensagem); }
-    finally { setSalvando(false); }
+    } catch (falha) {
+      const mensagem = falha instanceof Error ? falha.message : String(falha);
+      setErroConfirmacao(mensagem);
+      setErro(mensagem);
+      if (falha instanceof ApiError && falha.campo) setCampoInvalido(falha.campo);
+    } finally { setSalvando(false); }
   };
 
   useEffect(() => { if (erroConfirmacao) erroConfirmacaoRef.current?.focus(); }, [erroConfirmacao]);
@@ -268,18 +290,19 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
+        <ErrorBox erro={erro} />
         {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na OP-{String(operacaoBase.id).padStart(4, "0")}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{tipo === "AJUSTE_ESTOQUE" && <option value="AJUSTE_ESTOQUE" disabled>Ajuste de estoque — use Estoque</option>}{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["AJUSTE_ESTOQUE", "TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
             <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>
-            {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select aria-label={parceiroLabel(tipo)} required className={SELECT} value={parceiroId} onChange={(e) => setParceiroId(e.target.value)}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select></label>}
+            {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onChange={(e) => { setParceiroId(e.target.value); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select>{campoInvalido === "parceiroId" && <span className="mt-1 block text-xs font-medium text-red-700">Selecione um parceiro válido.</span>}</label>}
             <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea aria-label="Descrição" required maxLength={240} className={`${CAMPO} min-h-20`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></label>
           </div>
         </section>
         {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input aria-label="Valor total da operação" required min="0.01" step="0.01" type="number" className={CAMPO} value={valorOperacao} onChange={(e) => setValorOperacao(e.target.value)} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} /></label></section>}
-        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" className={SELECT} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select></label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" className={SELECT} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select></label></div></section>
+        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <span className="mt-1 block text-xs font-medium text-red-700">Selecione uma categoria ativa.</span>}</label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <span className="mt-1 block text-xs font-medium text-red-700">Selecione um centro de custo ativo.</span>}</label></div></section>
         {comItens && centrosSugeridos.length > 1 && !centroCustoId && <p className="text-sm text-amber-800">Os produtos sugerem áreas diferentes. Escolha o centro de custo desta operação.</p>}
         {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
         {permiteFinanceiro && parceiroSelecionado && (parceiroSelecionado.formaPagamentoPreferida || parceiroSelecionado.condicaoPagamentoPreferida) && <div className="rounded-lg border border-border p-4 text-sm">
@@ -293,6 +316,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 space-y-2 text-xs"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">Gerar {itens.length} movimento{itens.length === 1 ? "" : "s"} físico{itens.length === 1 ? "" : "s"} de estoque.</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || !podeConfirmar} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : "Confirmar operação"}</Button></div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
+    <ConfirmDialog open={condicaoPendente !== null} title="Trocar a condição de pagamento?" message="As parcelas personalizadas serão substituídas por uma nova grade calculada automaticamente a partir do total." confirmLabel="Trocar condição" onCancel={() => setCondicaoPendente(null)} onConfirm={() => { if (condicaoPendente) aplicarCondicao(condicaoPendente); setCondicaoPendente(null); }} />
     <ConfirmDialog
       open={confirmarLimpeza}
       title="Limpar rascunho?"
@@ -333,31 +357,6 @@ function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarIte
   </section>;
 }
 
-function EfeitoFinanceiroLegado({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, parcelasValidas, saldoFuturo, entradaSimulacao, assinaturaSimulacao, onSimulacao }: { permite: boolean; condicao: Condicao; alterarCondicao: (condicao: Condicao) => void; contaId: string; setContaId: (id: string) => void; formaPagamento: string; setFormaPagamento: (forma: string) => void; config: ConfiguracoesFinanceiras; valorAgora: string; setValorAgora: (valor: string) => void; total: number; parcelas: ParcelaForm[]; setParcelas: React.Dispatch<React.SetStateAction<ParcelaForm[]>>; parcelasValidas: boolean; saldoFuturo: number; entradaSimulacao: { itens: ({ quantidade: string; valorTotal: string } | { quantidade: string; valorUnitario: string })[]; valorTotal?: string; valorPagoAgora?: string }; assinaturaSimulacao: string; onSimulacao: (resultado: SimulacaoParcelas) => void }) {
-  const [quantidade, setQuantidade] = useState(String(Math.max(1, parcelas.length)));
-  const [frequencia, setFrequencia] = useState<FrequenciaParcelas>("MENSAL");
-  const [primeiroVencimento, setPrimeiroVencimento] = useState(parcelas[0]?.vencimento ?? emDias(30));
-  const totalAnotado = somarParcelas(parcelas);
-  const esperado = Math.round((condicao === "PARCIAL" ? saldoFuturo : total) * 100);
-  const diferenca = esperado - totalAnotado;
-  const [gerando, setGerando] = useState(false);
-  const [erroGeracao, setErroGeracao] = useState<string | null>(null);
-  const [confirmarSubstituicao, setConfirmarSubstituicao] = useState(false);
-  const [modo, setModo] = useState<"GERADO" | "PERSONALIZADO">("GERADO");
-  const gerar = async () => {
-    setGerando(true); setErroGeracao(null);
-    try {
-      const resultado = await simularParcelasOperacao({ ...entradaSimulacao, quantidadeParcelas: Number(quantidade), frequencia, primeiroVencimento });
-      onSimulacao(resultado);
-      setParcelas(resultado.parcelas.map((parcela) => ({ id: proximoId++, valor: parcela.valor, vencimento: parcela.dataVencimento })));
-      setModo("GERADO"); setConfirmarSubstituicao(false);
-    } catch (falha) { setErroGeracao(falha instanceof Error ? falha.message : String(falha)); }
-    finally { setGerando(false); }
-  };
-  const solicitarGeracao = () => { if (modo === "PERSONALIZADO" && parcelas.some((parcela) => parcela.valor || parcela.vencimento)) setConfirmarSubstituicao(true); else { void gerar(); } };
-  return <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>{permite ? <div className="space-y-4"><div className="grid gap-4 md:grid-cols-3"><label className="text-sm font-medium">Condição<select aria-label="Condição financeira" className={SELECT} value={condicao} onChange={(e) => alterarCondicao(e.target.value as Condicao)}><option value="A_VISTA">Liquidação integral na operação</option><option value="A_PRAZO">Liquidação integral a prazo</option><option value="PARCIAL">Liquidação parcial com saldo a prazo</option><option value="SEM_EFEITO_FINANCEIRO">Sem movimentação financeira</option></select></label>{(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<select aria-label="Conta financeira" required className={SELECT} value={contaId} onChange={(e) => setContaId(e.target.value)}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label className="text-sm font-medium">Forma de liquidação<select aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label></> }</div>{condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<input aria-label="Valor liquidado na operação" required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO} value={valorAgora} onChange={(e) => setValorAgora(e.target.value)} /></label>}{(condicao === "A_PRAZO" || condicao === "PARCIAL") && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><strong className="text-sm">Parcelas do compromisso</strong><p className="mt-1 text-xs text-ink-3">Cada parcela será criada como um compromisso vinculado a esta operação.</p></div><Button type="button" secondary onClick={() => setParcelas((atuais) => [...atuais, novaParcela(atuais.length)])}><Plus size={15} /> Parcela</Button></div><div className="grid gap-3 md:grid-cols-4"><label className="text-sm font-medium">Quantidade<input aria-label="Quantidade de parcelas" min="1" step="1" type="number" className={CAMPO} value={quantidade} onChange={(e) => setQuantidade(e.target.value)} /></label><label className="text-sm font-medium">Intervalo<select aria-label="Intervalo das parcelas" className={SELECT} value={frequencia} onChange={(e) => setFrequencia(e.target.value as FrequenciaParcelas)}><option value="MENSAL">Mensal</option><option value="SEMANAL">Semanal</option></select></label><label className="text-sm font-medium">Primeiro vencimento<input aria-label="Primeiro vencimento" type="date" className={CAMPO} value={primeiroVencimento} onChange={(e) => setPrimeiroVencimento(e.target.value)} /></label><div className="self-end"><Button type="button" secondary className="w-full" onClick={gerar}>Gerar parcelas</Button></div></div><div className="mt-4 space-y-3">{parcelas.map((parcela, indice) => <div key={parcela.id} className="grid items-end gap-3 sm:grid-cols-[80px_1fr_1fr_40px]"><strong className="pb-2.5 text-sm">{indice + 1}/{parcelas.length}</strong><label className="text-sm font-medium">Valor<input aria-label={`Valor da parcela ${indice + 1}`} required min="0.01" step="0.01" type="number" className={CAMPO} value={parcela.valor} onChange={(e) => setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, valor: e.target.value } : atual))} /></label><label className="text-sm font-medium">Vencimento<input aria-label={`Vencimento da parcela ${indice + 1}`} required type="date" className={CAMPO} value={parcela.vencimento} onChange={(e) => setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, vencimento: e.target.value } : atual))} /></label><button type="button" disabled={parcelas.length === 1} aria-label={`Remover parcela ${indice + 1}`} onClick={() => setParcelas((atuais) => atuais.filter((atual) => atual.id !== parcela.id))} className="mb-1 rounded-lg p-2 text-red-700 hover:bg-red-50 disabled:opacity-30"><Trash2 size={16} /></button></div>)}</div><div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs"><span>Total das parcelas anotadas: <strong>{brl(deCentavos(totalAnotado))}</strong></span><span className={diferenca < 0 ? "text-red-700" : "text-ink-3"}>{diferenca < 0 ? "Excedente" : "Restante para distribuir"}: <strong>{brl(deCentavos(Math.abs(diferenca)))}</strong></span></div>{!parcelasValidas && <p className="mt-3 text-xs font-medium text-red-700">A soma das parcelas deve corresponder a {brl(condicao === "PARCIAL" ? saldoFuturo : total)}.</p>}</div>}</div> : <div className="rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Sem movimentação financeira</strong><p className="mt-1 text-xs leading-5">Este tipo registra somente o efeito físico ou de valorização. Nenhuma conta ou compromisso será criado.</p></div>}</section>;
-}
-
 type GeradorParcelas = NonNullable<EstadoFormulario["geradorParcelas"]>;
 type PropsEfeitoFinanceiro = {
   permite: boolean; condicao: Condicao; alterarCondicao: (condicao: Condicao) => void;
@@ -373,6 +372,7 @@ type PropsEfeitoFinanceiro = {
 function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, parcelasValidas, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas }: PropsEfeitoFinanceiro) {
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | null>(null);
+  const [campoInvalidoGeracao, setCampoInvalidoGeracao] = useState<string | null>(null);
   const [confirmarSubstituicao, setConfirmarSubstituicao] = useState(false);
   const totalAnotado = somarParcelas(parcelas);
   const esperado = Math.round((condicao === "PARCIAL" ? saldoFuturo : total) * 100);
@@ -384,6 +384,7 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
   const gerar = async () => {
     setGerando(true);
     setErroGeracao(null);
+    setCampoInvalidoGeracao(null);
     try {
       const resultado = await simularParcelasOperacao({
         ...entradaSimulacao,
@@ -397,6 +398,7 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
       setConfirmarSubstituicao(false);
     } catch (falha) {
       setErroGeracao(falha instanceof Error ? falha.message : "Não foi possível gerar as parcelas.");
+      if (falha instanceof ApiError && falha.campo) setCampoInvalidoGeracao(falha.campo);
     } finally {
       setGerando(false);
     }
@@ -409,6 +411,32 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
     void gerar();
   };
   const aPrazo = condicao === "A_PRAZO" || condicao === "PARCIAL";
+  const alvo = condicao === "PARCIAL" ? saldoFuturo : total;
+
+  // Recálculo automático: enquanto a grade não foi personalizada manualmente,
+  // acompanha total/saldo futuro/quantidade/frequência/primeiro vencimento sem
+  // exigir clique em "Gerar parcelas" — mas nunca toca em parcelas personalizadas.
+  useEffect(() => {
+    if (!aPrazo || geradorParcelas.modo !== "GERADO" || geradorParcelas.frequencia === "PERSONALIZADA") return;
+    const quantidade = Number(geradorParcelas.quantidade);
+    if (!Number.isInteger(quantidade) || quantidade < 1 || alvo <= 0) return;
+    const geradas = gerarParcelas(alvo.toFixed(2), quantidade, geradorParcelas.frequencia, geradorParcelas.primeiroVencimento);
+    if (!geradas.length) return;
+    setParcelas(geradas.map((parcela) => ({ id: proximoId++, valor: parcela.valor, vencimento: parcela.vencimento })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aPrazo, alvo, geradorParcelas.modo, geradorParcelas.quantidade, geradorParcelas.frequencia, geradorParcelas.primeiroVencimento]);
+
+  const alterarFrequencia = (frequencia: FrequenciaParcelas) => {
+    if (frequencia === "PERSONALIZADA") {
+      setGeradorParcelas((atual) => ({ ...atual, frequencia, modo: "PERSONALIZADO" }));
+      if (!parcelas.some((parcela) => parcela.valor || parcela.vencimento)) {
+        const quantidade = Math.max(1, Number(geradorParcelas.quantidade) || 1);
+        setParcelas(Array.from({ length: quantidade }, (_, indice) => novaParcela(indice)));
+      }
+      return;
+    }
+    setGeradorParcelas((atual) => ({ ...atual, frequencia, modo: "GERADO" }));
+  };
 
   return <section>
     <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>
@@ -420,7 +448,8 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
       {condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<input aria-label="Valor liquidado na operação" required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO} value={valorAgora} onChange={(e) => setValorAgora(e.target.value)} /></label>}
       {aPrazo && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><strong className="text-sm">Parcelas do compromisso</strong><p className="mt-1 text-xs text-ink-3">Cada parcela será criada como um compromisso vinculado a esta operação.</p><p className="mt-1 text-xs text-ink-3">Defina a grade ou personalize parcelas individuais.</p></div><Button type="button" secondary onClick={() => alterarParcelas((atuais) => [...atuais, novaParcela(atuais.length)])}><Plus size={15} /> Parcela</Button></div>
-        <div className="grid gap-3 md:grid-cols-4"><label className="text-sm font-medium">Quantidade<input aria-label="Quantidade de parcelas" min="1" max="360" step="1" type="number" className={CAMPO} value={geradorParcelas.quantidade} onChange={(e) => setGeradorParcelas((atual) => ({ ...atual, quantidade: e.target.value }))} /></label><label className="text-sm font-medium">Intervalo<select aria-label="Intervalo das parcelas" className={SELECT} value={geradorParcelas.frequencia} onChange={(e) => setGeradorParcelas((atual) => ({ ...atual, frequencia: e.target.value as FrequenciaParcelas }))}><option value="MENSAL">Mensal</option><option value="SEMANAL">Semanal</option></select></label><label className="text-sm font-medium">Primeiro vencimento<input aria-label="Primeiro vencimento" type="date" className={CAMPO} value={geradorParcelas.primeiroVencimento} onChange={(e) => setGeradorParcelas((atual) => ({ ...atual, primeiroVencimento: e.target.value }))} /></label><div className="self-end"><Button type="button" secondary className="w-full" disabled={gerando} onClick={solicitarGeracao}>{gerando ? "Gerando..." : "Gerar parcelas"}</Button></div></div>
+        <div className="grid gap-3 md:grid-cols-4"><label className="text-sm font-medium">Quantidade<input aria-label="Quantidade de parcelas" aria-invalid={campoInvalidoGeracao === "quantidadeParcelas" || undefined} min="1" max="360" step="1" type="number" className={CAMPO + (campoInvalidoGeracao === "quantidadeParcelas" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.quantidade} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, quantidade: e.target.value })); setCampoInvalidoGeracao(null); }} /></label><label className="text-sm font-medium">Intervalo<select aria-label="Intervalo das parcelas" className={SELECT} value={geradorParcelas.frequencia} onChange={(e) => alterarFrequencia(e.target.value as FrequenciaParcelas)}><option value="MENSAL">Mensal</option><option value="SEMANAL">Semanal</option><option value="PERSONALIZADA">Personalizada</option></select></label><label className="text-sm font-medium">Primeiro vencimento<input aria-label="Primeiro vencimento" aria-invalid={campoInvalidoGeracao === "primeiroVencimento" || undefined} type="date" className={CAMPO + (campoInvalidoGeracao === "primeiroVencimento" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.primeiroVencimento} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, primeiroVencimento: e.target.value })); setCampoInvalidoGeracao(null); }} /></label><div className="self-end"><Button type="button" secondary className="w-full" disabled={gerando || geradorParcelas.frequencia === "PERSONALIZADA"} onClick={solicitarGeracao}>{gerando ? "Gerando..." : "Gerar parcelas"}</Button></div></div>
+        {geradorParcelas.frequencia === "PERSONALIZADA" && <p className="mt-2 text-xs text-ink-3">Frequência personalizada: edite valor e vencimento de cada parcela abaixo.</p>}
         {erroGeracao && <p role="alert" className="mt-3 text-sm text-red-700">{erroGeracao}</p>}
         <div className="mt-4 space-y-3">{parcelas.map((parcela, indice) => <div key={parcela.id} className="grid items-end gap-3 sm:grid-cols-[80px_1fr_1fr_40px]"><strong className="pb-2.5 text-sm">{indice + 1}/{parcelas.length}</strong><label className="text-sm font-medium">Valor<input aria-label={`Valor da parcela ${indice + 1}`} required min="0.01" step="0.01" type="number" className={CAMPO} value={parcela.valor} onChange={(e) => alterarParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, valor: e.target.value } : atual))} /></label><label className="text-sm font-medium">Vencimento<input aria-label={`Vencimento da parcela ${indice + 1}`} required type="date" className={CAMPO} value={parcela.vencimento} onChange={(e) => alterarParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, vencimento: e.target.value } : atual))} /></label><button type="button" disabled={parcelas.length === 1} aria-label={`Remover parcela ${indice + 1}`} onClick={() => alterarParcelas((atuais) => atuais.filter((atual) => atual.id !== parcela.id))} className="mb-1 rounded-lg p-2 text-red-700 hover:bg-red-50 disabled:opacity-30"><Trash2 size={16} /></button></div>)}</div>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs"><span>Total das parcelas anotadas: <strong>{brl(deCentavos(totalAnotado))}</strong></span><span className={diferenca < 0 ? "text-red-700" : "text-ink-3"}>{diferenca < 0 ? "Excedente" : "Restante para distribuir"}: <strong>{brl(deCentavos(Math.abs(diferenca)))}</strong></span></div>

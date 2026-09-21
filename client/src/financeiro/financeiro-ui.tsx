@@ -149,14 +149,20 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
-  const larguraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
+  // Largura real da tabela renderizada — colunas com conteúdo longo podem
+  // esticar além de `larguraMinima`, então o espaçador da barra precisa
+  // medir o scrollWidth de verdade para a barra rolar até o fim.
+  const [larguraRolagem, setLarguraRolagem] = useState(larguraMinima);
 
   useEffect(() => {
     if (!barraRolagemSuperior) return;
     const tabela = tabelaRef.current;
     if (!tabela) return;
-    const atualizar = () => setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+    const atualizar = () => {
+      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
+      setLarguraRolagem(tabela.scrollWidth);
+    };
     atualizar();
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", atualizar);
@@ -174,11 +180,17 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     if (origem === "tabela" && barra.scrollLeft !== tabela.scrollLeft) barra.scrollLeft = tabela.scrollLeft;
     if (origem === "barra" && tabela.scrollLeft !== barra.scrollLeft) tabela.scrollLeft = barra.scrollLeft;
   };
+  const roladaPorTeclado = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const barra = barraRef.current;
+    if (!barra) return;
+    if (e.key === "ArrowRight") { barra.scrollLeft += 96; e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
+  };
 
   return <>
     {/* ≥768px — tabela; a rolagem horizontal fica presa a este wrapper */}
-    {barraRolagemSuperior && temRolagem && <div ref={barraRef} aria-label={`Rolagem horizontal: ${rotulo}`} className="hidden overflow-x-auto border-b border-border bg-surface-2 md:block" onScroll={() => sincronizarRolagem("barra")}>
-      <div ref={larguraRef} style={{ width: larguraMinima, height: 1 }} />
+    {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+      <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
     <div ref={tabelaRef} className="hidden overflow-x-auto md:block" onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>

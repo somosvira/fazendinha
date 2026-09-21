@@ -1,6 +1,7 @@
 import type { Conta, MovimentoGeral } from "./novo-api";
 import { brl, dataBR, Empty, ErrorBox, Panel, TabelaFinanceira } from "./financeiro-ui";
 import { LinkOperacaoFinanceira } from "./LinkOperacaoFinanceira";
+import { infoReversao } from "./lib/reversao";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white p-2.5 font-normal";
 
@@ -47,7 +48,7 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
       <ErrorBox erro={erro} />
       {intervaloInvalido ? <p role="alert" className="p-5">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <p role="status" className="p-5">Carregando extrato geral…</p> : erro ? <p className="p-5">Não foi possível carregar as movimentações.</p> : filtrados.length ? <TabelaFinanceira rotulo="Extrato geral" itens={filtrados} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
         { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: m => dataBR(m.transacao.data) },
-        { chave: "descricao", titulo: "Movimentação", alinhamento: "centro", principal: true, larguraMinima: 220, celula: m => <><strong>{m.transacao.descricao || m.transacao.tipo.replaceAll("_", " ")}</strong>{m.transacao.status === "REVERTIDA" && <div className="mt-1 text-xs text-ink-3">Revertida</div>}</> },
+        { chave: "descricao", titulo: "Movimentação", alinhamento: "centro", principal: true, larguraMinima: 220, celula: m => { const reversao = infoReversao(m.transacao); return <><strong>{m.transacao.descricao || m.transacao.tipo.replaceAll("_", " ")}</strong>{m.transacao.status === "REVERTIDA" && <div className="mt-1 text-xs text-ink-3">Revertida</div>}{reversao && <div className="mt-1 text-xs font-medium text-amber-800">{reversao.detalhe}{reversao.operacaoId != null && <> · <LinkOperacaoFinanceira id={reversao.operacaoId} /></>}</div>}</>; } },
         { chave: "conta", titulo: "Conta", alinhamento: "centro", larguraMinima: 160, celula: m => m.conta.nome },
         { chave: "instituicao", titulo: "Instituição", alinhamento: "centro", larguraMinima: 140, celula: m => m.conta.instituicao || "—" },
         { chave: "operacao", titulo: "Operação", alinhamento: "centro", larguraMinima: 140, acoes: true, celula: m => m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} /> : <span className="text-xs text-ink-3">Transação avulsa</span> },
