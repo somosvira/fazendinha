@@ -68,6 +68,8 @@ export async function obterDashboard(propriedadeId: number | null, inicio: Date,
     realizado: { entradas, saidas, resultado: entradas.minus(saidas) },
     fluxo: serieFluxo(realizados, inicio, fim),
     compromissos: { aPagar: pendente("PAGAR"), aReceber: pendente("RECEBER") },
-    despesasPorCategoria: [...porCategoria.entries()].filter(([, valor]) => valor.isPositive()).map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor.comparedTo(a.valor)),
+    // `isPositive()` do decimal.js considera zero positivo — usar greaterThan(0)
+    // para não listar categoria cuja despesa foi totalmente estornada.
+    despesasPorCategoria: [...porCategoria.entries()].filter(([, valor]) => valor.greaterThan(0)).map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor.comparedTo(a.valor)),
   };
 }

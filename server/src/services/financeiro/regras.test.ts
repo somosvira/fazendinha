@@ -1,6 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { exigirParceiroAtivo, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
+import { exigirParceiroAtivo, exigirPositivo, FinanceiroError, traduzirConflitoUnico } from "./regras.js";
+
+describe("exigirPositivo", () => {
+  // decimal.js trata zero como "positivo" (sinal +1) — exigirPositivo precisa
+  // rejeitar explicitamente, senão um valor 0 (ou que arredonda para 0 em
+  // duas casas) passaria como pagamento/transferência válido.
+  it("rejeita zero", () => {
+    expect(() => exigirPositivo(0)).toThrow(FinanceiroError);
+    expect(() => exigirPositivo(0, "valorPago")).toThrow(expect.objectContaining({ code: "VALIDACAO" }));
+  });
+
+  it("rejeita um valor que arredonda para zero em duas casas", () => {
+    expect(() => exigirPositivo("0.004")).toThrow(FinanceiroError);
+  });
+
+  it("rejeita negativo e aceita positivo", () => {
+    expect(() => exigirPositivo(-10)).toThrow(FinanceiroError);
+    expect(exigirPositivo(10).toString()).toBe("10");
+  });
+});
 
 describe("regras financeiras — parceiro e conflitos", () => {
   it("exigirParceiroAtivo lança quando não há parceiro ativo", async () => {

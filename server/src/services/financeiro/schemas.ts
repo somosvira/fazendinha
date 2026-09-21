@@ -123,11 +123,23 @@ export const itemOperacaoSchema = z.object({
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,
   unidade: z.string().trim().min(1).max(20),
-  valorUnitario: z.coerce.number().nonnegative(),
+  valorUnitario: z.coerce.number().nonnegative().optional(),
+  valorTotal: z.coerce.number().positive().optional(),
   estocavel: z.boolean().default(false),
-});
+}).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
 
 const parcelaSchema = z.object({ valor: valorPositivo, dataVencimento: dataIso });
+
+export const simulacaoParcelasSchema = z.object({
+  itens: z.array(z.object({ quantidade: valorPositivo, valorUnitario: z.coerce.number().nonnegative().optional(), valorTotal: z.coerce.number().positive().optional() }).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item" })).default([]),
+  valorTotal: z.coerce.number().positive().optional(),
+  valorPagoAgora: z.coerce.number().nonnegative().optional(),
+  quantidadeParcelas: z.number().int().min(1).max(360),
+  frequencia: z.enum(["SEMANAL", "MENSAL"]),
+  primeiroVencimento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).superRefine((input, ctx) => {
+  if (!input.itens.length && input.valorTotal === undefined) ctx.addIssue({ code: "custom", path: ["valorTotal"], message: "Informe itens ou o valor total" });
+});
 
 export const operacaoSchema = z.object({
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
