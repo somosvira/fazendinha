@@ -55,8 +55,6 @@ export function CompromissosFinanceiros({ onNav, podeLancar = true }: { onNav: (
     finally { setPreparando(false); }
   };
 
-
-
   if (carregando && !config && !erro) return <PaginaCarregando label="Carregando compromissos" />;
 
   return <PaginaFinanceira>

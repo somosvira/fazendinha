@@ -12,7 +12,8 @@ import { CalendarioCompromissos } from "./CalendarioCompromissos";
 import { ControleVisaoCompromissos, type VisaoCompromissos } from "./ControleVisaoCompromissos";
 import { LiquidarCompromissoModal } from "./LiquidarCompromissoModal";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
-import { PeriodoGraficoControl, periodoDoAnoAtual } from "./PeriodoGraficoControl";
+import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
+import { periodoDoAnoAtual } from "./lib/periodo";
 
 export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab: Tab) => void; podeLancar?: boolean }) {
   const [inicioPeriodo, setInicioPeriodo] = useState(() => periodoDoAnoAtual().inicio);
@@ -78,7 +79,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   if (!periodoDados && carregando && !erro) return <PaginaCarregando label="Carregando financeiro" />;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoGraficoControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
+    <PageHeader titulo="Visão geral financeira" descricao="Disponibilidade atual, dinheiro realizado no período e compromissos com vencimento no período selecionado." acao={<div className="flex flex-wrap items-end gap-2"><PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={(periodo) => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />{podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus size={16} /> Nova operação</Button>}</div>} />
     <ErrorBox erro={erro} />
     {(carregando || (!dadosAtuais && !erro)) && <p role="status" className="mt-6">Carregando financeiro do período…</p>}
     {erro && !dadosAtuais && <Button secondary onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}

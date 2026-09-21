@@ -1,3 +1,13 @@
+import { getHoje } from "../../lib/hoje";
+
+export function periodoDoAno(ano: number) {
+  return { inicio: `${ano}-01-01`, fim: `${ano}-12-31` };
+}
+
+export function periodoDoAnoAtual() {
+  return periodoDoAno(getHoje().getFullYear());
+}
+
 /**
  * Preserva o período nos acessos da rastreabilidade ao detalhamento.
  *

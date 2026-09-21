@@ -2,9 +2,8 @@ import { useState } from "react";
 import { ChartTypeControl, EntradaSaidaChart, type ChartType } from "../components/charts";
 import type { MovimentoConta } from "./novo-api";
 import { brl, dataBR, Empty, Panel, TabelaFinanceira } from "./financeiro-ui";
-
 import { fluxoPeriodo } from "./lib/fluxo-contas";
-import { periodoDoAnoAtual } from "./PeriodoGraficoControl";
+import { periodoDoAnoAtual } from "./lib/periodo";
 
 // O período é um único controle compartilhado com o extrato (ExtratoGeral ou
 // o painel da conta), renderizado pelo componente pai — não duplicar aqui.

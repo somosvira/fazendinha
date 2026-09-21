@@ -1,6 +1,5 @@
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
-import { periodoDoAnoAtual } from "./PeriodoGraficoControl";
-import { periodoInicial } from "./lib/periodo";
+import { periodoDoAnoAtual, periodoInicial } from "./lib/periodo";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeftRight, Settings2 } from "lucide-react";
 import { ExtratoGeral, FILTROS_EXTRATO_GERAL_INICIAIS, filtrarMovimentosExtratoGeral, type FiltrosExtratoGeral } from "./ExtratoGeral";
