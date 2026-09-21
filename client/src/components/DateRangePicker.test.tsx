@@ -85,4 +85,21 @@ describe("DateRangePicker", () => {
     rerender(<DateRangePicker value={range} triggerLabel="Filtrar datas" triggerAriaLabel="Filtrar datas" onChange={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Filtrar datas" })).toBeTruthy();
   });
+  it("permite recomeçar o intervalo pelo calendário sem digitar as datas", () => {
+    const change = vi.fn();
+    const { container } = render(<DateRangePicker value={range} onChange={change} />);
+    openCustom();
+    fireEvent.click(screen.getByRole("button", { name: "Recomeçar" }));
+    expect(screen.getByRole("status").textContent).toContain("1. Escolha a data inicial");
+    expect((screen.getByLabelText("Data inicial") as HTMLInputElement).value).toBe("");
+    expect((screen.getByRole("button", { name: "Aplicar período" }) as HTMLButtonElement).disabled).toBe(true);
+    const dia = (iso: string) => container.ownerDocument.querySelector(`[data-calendars] button[data-date="${iso}"]`) as HTMLButtonElement;
+    fireEvent.click(dia("2026-05-10"));
+    expect(screen.getByRole("status").textContent).toContain("2. Escolha a data final");
+    fireEvent.click(dia("2026-05-20"));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
+    expect(change).toHaveBeenCalledTimes(1);
+    expect(change.mock.calls[0][0].start.getDate()).toBe(10);
+    expect(change.mock.calls[0][0].end.getDate()).toBe(20);
+  });
 });

@@ -237,7 +237,10 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
         <Button type="button" variant="outline" onClick={() => { setCustom(true); setDraft(value); setStep("start"); }}>Período personalizado</Button>
       </div> : <div className="space-y-4">
         <h3 className="font-serif text-xl">Período personalizado</h3>
-        <p role="status" className="text-sm text-ink-2">{step === "start" ? "1. Escolha a data inicial." : "2. Escolha a data final, igual ou posterior ao início."}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p role="status" className="text-sm text-ink-2">{step === "start" ? "1. Escolha a data inicial." : "2. Escolha a data final, igual ou posterior ao início."}</p>
+          {draft.start && <Button type="button" variant="ghost" onClick={() => { setDraft({ start: null, end: null }); setStep("start"); setHoverEnd(null); }}>Recomeçar</Button>}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="text-sm">1. Data inicial<input autoFocus type="date" aria-label="Data inicial" value={draft.start ? isoDate(draft.start) : ""} onFocus={() => setStep("start")} onChange={event => { const start = dateFromIso(event.target.value); setDraft({ start, end: draft.end }); if (start) { setStep("end"); setLeftView(startOfMonth(start)); } }} className="mt-1 block min-h-10 w-full rounded-lg border border-border bg-card px-2" /></label>
           <label className="text-sm">2. Data final<input type="date" aria-label="Data final" min={draft.start ? isoDate(draft.start) : undefined} value={draft.end ? isoDate(draft.end) : ""} onFocus={() => setStep("end")} onChange={event => setDraft({ ...draft, end: dateFromIso(event.target.value) })} className="mt-1 block min-h-10 w-full rounded-lg border border-border bg-card px-2" /></label>
