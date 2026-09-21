@@ -60,4 +60,20 @@ describe("DateRangePicker", () => {
     expect(formatRangeLabel(range)).toBe("01–31 mai/26");
     expect(formatRangeLabel(null)).toBe("Personalizado");
   });
+  it("mostra o preset e o intervalo efetivo juntos no gatilho fechado", () => {
+    // Só o nome do preset ("Mês atual") não diz qual é o intervalo de fato
+    // aplicado sem abrir o dropdown — o gatilho passa a mostrar os dois.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 21));
+    const mesAtual = buildPresets(new Date(2026, 8, 21)).find(p => p.id === "1")!.range;
+    render(<DateRangePicker value={mesAtual} onChange={vi.fn()} />);
+    const gatilho = screen.getByRole("button", { name: "Período" });
+    expect(gatilho.textContent).toContain("Mês atual");
+    expect(gatilho.textContent).toContain("01–30 set/26");
+    vi.useRealTimers();
+  });
+  it("sem preset correspondente, mostra só o intervalo (período personalizado)", () => {
+    render(<DateRangePicker value={range} onChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Período" }).textContent).toBe("01–31 mai/26▾");
+  });
 });
