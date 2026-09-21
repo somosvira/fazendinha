@@ -105,7 +105,10 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   return <PaginaFinanceira>
     <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />
     <ErrorBox erro={erro} />
-    <Panel className="mt-6 overflow-hidden">
+    {/* overflow-clip (não overflow-hidden): overflow-hidden faria deste Panel o
+     * contêiner de rolagem do `position: sticky` da barra de TabelaFinanceira,
+     * o que a prenderia ao topo do Panel em vez de à viewport. */}
+    <Panel className="mt-6 overflow-clip">
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
         <label className="relative w-full min-w-0 flex-[1_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
         <FiltroPeriodo inicio={inicio} fim={fim} onChange={(novoInicio, novoFim) => { setInicio(novoInicio); setFim(novoFim); setPagina(1); }} />
