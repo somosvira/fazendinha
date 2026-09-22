@@ -277,6 +277,37 @@ describe("editarOperacao", () => {
       }));
     });
 
+    it("PATCH { observacao } com centro anterior desativado não falha — centro herdado não é revalidado", async () => {
+      mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+      mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+      mocks.centroCustoFindFirst.mockResolvedValue(null); // centro 5 foi desativado depois
+
+      await editarOperacao(10, { observacao: "nova obs" } as any);
+
+      expect(mocks.centroCustoFindFirst).not.toHaveBeenCalled();
+      expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+      expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+      expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ movimentoEstoqueId: 88, observacao: "nova obs" }),
+      }));
+    });
+
+    it("PATCH { produtoId: B } sem centroCustoId não herda o centro do produto A — resolve o centro único de B", async () => {
+      const produtoB = { id: 7, nome: "Boro", estocavel: true, custoUnitario: new Prisma.Decimal(3), unidade: "kg", centrosCusto: [{ centroCustoId: 42 }] };
+      mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+      mocks.produtoFindUnique.mockResolvedValue(produtoB);
+      mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+      mocks.movimentoCreate
+        .mockResolvedValueOnce({ id: 400, quantidade: new Prisma.Decimal(20) }) // inverso
+        .mockResolvedValueOnce({ id: 401, quantidade: new Prisma.Decimal(20) }); // novo, produto B
+
+      await editarOperacao(10, { produtoId: 7 } as any);
+
+      expect(mocks.centroCustoFindFirst).not.toHaveBeenCalled(); // centro não veio do input, não é validado
+      const novo = mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === undefined);
+      expect(novo).toEqual(expect.objectContaining({ produtoId: 7, centroCustoId: 42 }));
+    });
+
     it("PATCH { centroCustoId: null } explícito estorna o movimento com centro 5 e recria sem centro", async () => {
       mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
       mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });

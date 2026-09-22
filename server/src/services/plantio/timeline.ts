@@ -158,11 +158,17 @@ async function planejarMovimento(
   talhao: { areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
+  opts: { validarCentroAtivo?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
   const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, custoUnitario: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
-  if (input.centroCustoId != null) {
+  // Só valida "ativo" quando o centro veio explícito do input (usuário
+  // escolheu); um centro herdado do movimento anterior (edição sem
+  // centroCustoId no PATCH) não é revalidado — senão uma edição trivial (ex.:
+  // só observacao) quebraria ao herdar um centro que foi desativado depois.
+  const validarCentroAtivo = opts.validarCentroAtivo ?? true;
+  if (input.centroCustoId != null && validarCentroAtivo) {
     const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
     if (!centro) throw new PlantioEventoError("NAO_ENCONTRADO", "centro de custo não encontrado");
   }
@@ -245,41 +251,48 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
   if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
   const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
 
-  // OperacaoAgricola não guarda o centro de custo — ele só existe no movimento
-  // de estoque gerado. Lido ANTES de planejar a edição: se o input não manda
-  // centroCustoId, o contexto passado ao planejamento é o centro que já estava
-  // gravado no movimento anterior (nunca o centro inferido do produto de novo).
-  const movimentoAnterior = existente.movimentoEstoqueId != null
-    ? await prisma.movimentoEstoque.findUnique({ where: { id: existente.movimentoEstoqueId } })
-    : null;
-
   // PATCH parcial: campos ausentes no input mantêm o valor existente.
   const tipoMerged = (input.tipo ?? existente.tipo) as CriarOperacaoInput["tipo"];
-  const merged = {
-    dominio: dominioDaOperacao(tipoMerged).toUpperCase() as CriarOperacaoInput["dominio"],
-    tipo: tipoMerged,
-    data: input.data ?? iso(existente.data),
-    responsavel: input.responsavel !== undefined ? input.responsavel : existente.responsavel,
-    produto: input.produto !== undefined ? input.produto : existente.produto,
-    observacao: input.observacao !== undefined ? input.observacao : existente.observacao,
-    doseValor: input.doseValor !== undefined ? input.doseValor : num(existente.doseValor) ?? null,
-    doseUnidade: input.doseUnidade !== undefined ? input.doseUnidade : existente.doseUnidade,
-    pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
-    produtoId: input.produtoId !== undefined ? input.produtoId : existente.produtoId,
-    quantidadeTotal: input.quantidadeTotal !== undefined ? input.quantidadeTotal : num(existente.quantidadeTotal) ?? null,
-    centroCustoId: input.centroCustoId !== undefined ? input.centroCustoId : movimentoAnterior?.centroCustoId ?? null,
-  } satisfies CriarOperacaoInput;
-
-  const data = new Date(merged.data);
+  const produtoIdMerged = input.produtoId !== undefined ? input.produtoId : existente.produtoId;
+  const centroVeioDoInput = input.centroCustoId !== undefined;
+  const dataMerged = input.data ?? iso(existente.data);
+  const data = new Date(dataMerged);
 
   const o = await prisma.$transaction(async (tx) => {
     await assertPeriodoAberto(tx, propriedadeId, data);
     if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeId, existente.data);
-    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId);
+
+    // OperacaoAgricola não guarda o centro de custo — ele só existe no
+    // movimento de estoque gerado. Lido uma única vez, dentro da tx: se o
+    // input não manda centroCustoId E o produto não mudou, herda o centro que
+    // já estava gravado no movimento anterior; se o produto mudou, o centro
+    // deixa de fazer sentido e volta a ser resolvido do zero (centro único do
+    // produto novo, se houver — nunca o do produto antigo).
+    const anterior = existente.movimentoEstoqueId != null
+      ? await tx.movimentoEstoque.findUnique({ where: { id: existente.movimentoEstoqueId } })
+      : null;
+
+    const merged = {
+      dominio: dominioDaOperacao(tipoMerged).toUpperCase() as CriarOperacaoInput["dominio"],
+      tipo: tipoMerged,
+      data: dataMerged,
+      responsavel: input.responsavel !== undefined ? input.responsavel : existente.responsavel,
+      produto: input.produto !== undefined ? input.produto : existente.produto,
+      observacao: input.observacao !== undefined ? input.observacao : existente.observacao,
+      doseValor: input.doseValor !== undefined ? input.doseValor : num(existente.doseValor) ?? null,
+      doseUnidade: input.doseUnidade !== undefined ? input.doseUnidade : existente.doseUnidade,
+      pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
+      produtoId: produtoIdMerged,
+      quantidadeTotal: input.quantidadeTotal !== undefined ? input.quantidadeTotal : num(existente.quantidadeTotal) ?? null,
+      centroCustoId: centroVeioDoInput
+        ? input.centroCustoId
+        : (produtoIdMerged === anterior?.produtoId ? anterior?.centroCustoId ?? null : undefined),
+    } satisfies CriarOperacaoInput;
+
+    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput });
     let movimentoEstoqueId = existente.movimentoEstoqueId;
     let quantidadeTotal: Prisma.Decimal | null = null;
     const plano = movimento?.plano ?? null;
-    const anterior = movimentoEstoqueId != null ? await tx.movimentoEstoque.findUnique({ where: { id: movimentoEstoqueId } }) : null;
     // Movimento confirmado não é editado nem apagado: se algo relevante ao
     // estoque mudou, estorna o antigo e cria um novo (contrato do financeiro).
     const mudouBaixa = plano != null && (

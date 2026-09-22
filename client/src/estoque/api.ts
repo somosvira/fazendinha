@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -46,31 +46,41 @@ export const ajustarContagem = (p: AjusteContagemInput) => req<{ id: number; ope
 export const excluirMovimento = (id: number) => req<{ ok: true }>(`/estoque/movimentos/${id}`, { method: "DELETE" });
 export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/estoque/custo-vaca-dia?dias=${dias}`);
 
-// `enabled = false` evita a busca dupla quando quem chama ainda não resolveu o
-// filtro inicial (ver EstoqueContent/`aguardarFiltro`): fica em `loading` até
-// virar `true`, sem disparar a requisição sem filtro primeiro.
-export function useSaldos(f?: { centroCustoId?: number | string }, enabled = true) {
+// Descarta uma resposta que chegou depois de o filtro/parâmetro já ter mudado
+// (ou o hook ter desmontado) — sem isso, uma busca sem filtro que só termina
+// depois de uma busca já filtrada sobrescreveria a lista filtrada.
+export function useSaldos(f?: { centroCustoId?: number | string }) {
   const [data, setData] = useState<SaldoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    if (!enabled) return;
+  const idRef = useRef(0);
+  const buscar = useCallback(() => {
+    const id = ++idRef.current;
     setLoading(true); setErro(null);
-    listarSaldos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+    listarSaldos(f).then((d) => { if (id === idRef.current) setData(d); })
+      .catch((e) => { if (id === idRef.current) setErro(e.message); })
+      .finally(() => { if (id === idRef.current) setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enabled]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading: enabled ? loading : true, erro, recarregar };
+  }, [key]);
+  useEffect(() => { buscar(); return () => { idRef.current++; }; }, [buscar]);
+  return { data, loading, erro, recarregar: buscar };
 }
 
 export function useCustoVacaDia(dias = 30) {
   const [data, setData] = useState<CustoVacaDia | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoVacaDia(dias).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [dias]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
+  const idRef = useRef(0);
+  const buscar = useCallback(() => {
+    const id = ++idRef.current;
+    setLoading(true); setErro(null);
+    obterCustoVacaDia(dias).then((d) => { if (id === idRef.current) setData(d); })
+      .catch((e) => { if (id === idRef.current) setErro(e.message); })
+      .finally(() => { if (id === idRef.current) setLoading(false); });
+  }, [dias]);
+  useEffect(() => { buscar(); return () => { idRef.current++; }; }, [buscar]);
+  return { data, loading, erro, recarregar: buscar };
 }
 
 // ── Cadastros (Produtos + referências financeiras) ─────────────────────────
@@ -100,12 +110,16 @@ export function useProdutosEstoque(f?: { tipo?: string; q?: string; ativo?: bool
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const key = JSON.stringify(f ?? {});
+  const idRef = useRef(0);
   const recarregar = useCallback(() => {
+    const id = ++idRef.current;
     setLoading(true); setErro(null);
-    listarProdutos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
+    listarProdutos(f).then((d) => { if (id === idRef.current) setData(d); })
+      .catch((e) => { if (id === idRef.current) setErro(e.message); })
+      .finally(() => { if (id === idRef.current) setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
+  useEffect(() => { recarregar(); return () => { idRef.current++; }; }, [recarregar]);
   return { data, loading, erro, recarregar };
 }
 
@@ -114,9 +128,13 @@ export const listarCategorias = () => req<RefDTO[]>(`/estoque/categorias`);
 export const listarCentrosCusto = () => req<RefDTO[]>(`/estoque/centros-custo`);
 export function useCentrosCustoEstoque() {
   const [data, setData] = useState<RefDTO[]>([]);
-  const recarregar = useCallback(() => { listarCentrosCusto().then(setData).catch(() => {}); }, []);
+  const [erro, setErro] = useState<string | null>(null);
+  const recarregar = useCallback(() => {
+    setErro(null);
+    listarCentrosCusto().then(setData).catch((e) => setErro(e instanceof Error ? e.message : String(e)));
+  }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, recarregar };
+  return { data, erro, recarregar };
 }
 
 // ── Princípios ativos (composição de medicamento — base carência/antibiótico) ──

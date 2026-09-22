@@ -37,8 +37,11 @@ export async function criarLocal(input: CriarLocalInput, propriedadeId: number |
   return { id: l.id, nome: l.nome, ativo: l.ativo, totalLotes: 0 };
 }
 
-export async function excluirLocal(id: number): Promise<void> {
-  if (!(await prisma.localArmazenamento.findUnique({ where: { id } }))) throw new LoteError("NAO_ENCONTRADO", "local não encontrado");
+export async function excluirLocal(id: number, propriedadeId: number | null): Promise<void> {
+  const existente = await prisma.localArmazenamento.findFirst({
+    where: propriedadeId != null ? { id, OR: [{ propriedadeId }, { propriedadeId: null }] } : { id },
+  });
+  if (!existente) throw new LoteError("NAO_ENCONTRADO", "local não encontrado");
   const emUso = await prisma.loteProduto.count({ where: { localId: id } });
   if (emUso > 0) { await prisma.localArmazenamento.update({ where: { id }, data: { ativo: false } }); return; }
   await prisma.localArmazenamento.delete({ where: { id } });
@@ -66,6 +69,12 @@ export async function listarLotes(propriedadeId: number | null): Promise<LotesRe
 
 export async function criarLote(input: CriarLoteInput, propriedadeId: number | null): Promise<LoteDTO> {
   if (!(await prisma.produto.findUnique({ where: { id: input.produtoId } }))) throw new LoteError("NAO_ENCONTRADO", "produto não encontrado");
+  if (input.localId != null) {
+    const local = await prisma.localArmazenamento.findFirst({
+      where: propriedadeId != null ? { id: input.localId, OR: [{ propriedadeId }, { propriedadeId: null }] } : { id: input.localId },
+    });
+    if (!local) throw new LoteError("NAO_ENCONTRADO", "local de armazenamento não encontrado");
+  }
   const l = await prisma.loteProduto.create({
     data: {
       produtoId: input.produtoId, codigo: input.codigo,
@@ -78,7 +87,10 @@ export async function criarLote(input: CriarLoteInput, propriedadeId: number | n
   return { id: l.id, produtoId: l.produtoId, produtoNome: l.produto.nome, codigo: l.codigo, validade, localId: l.localId, localNome: l.local?.nome ?? null, quantidade: num(l.quantidade), status: statusValidade(validade, hojeUTC()) };
 }
 
-export async function excluirLote(id: number): Promise<void> {
-  if (!(await prisma.loteProduto.findUnique({ where: { id } }))) throw new LoteError("NAO_ENCONTRADO", "lote não encontrado");
+export async function excluirLote(id: number, propriedadeId: number | null): Promise<void> {
+  const existente = await prisma.loteProduto.findFirst({
+    where: propriedadeId != null ? { id, OR: [{ propriedadeId }, { propriedadeId: null }] } : { id },
+  });
+  if (!existente) throw new LoteError("NAO_ENCONTRADO", "lote não encontrado");
   await prisma.loteProduto.delete({ where: { id } });
 }

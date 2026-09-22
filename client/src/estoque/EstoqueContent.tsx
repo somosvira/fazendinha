@@ -47,15 +47,15 @@ function useMovimentos() {
 type SortKey = "nome" | "tipo" | "valor";
 type SortDir = "asc" | "desc";
 
-export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro, aguardarFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string; aguardarFiltro?: boolean } = {}) {
+export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string } = {}) {
   const custo = useCustoVacaDia();
+  // `centroCustoIdInicial` já chega resolvido: quem chama com um centro de
+  // atividade (rebanho/plantio) só monta este componente depois de resolver o
+  // centro (ver RebanhoContent/PlantioContent, que usam `key` para remontar);
+  // o menu `/estoque` chama sem prop nenhuma (undefined = sem filtro).
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const [agrupar, setAgrupar] = useState(false);
-  // Quando `aguardarFiltro` está ligado (rebanho/plantio resolvendo o centro de
-  // atividade), evita buscar saldos sem filtro e depois de novo com filtro —
-  // só busca quando `centroCustoIdInicial` deixa de ser `undefined`.
-  const filtroPronto = !aguardarFiltro || centroCustoIdInicial !== undefined;
-  const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined, filtroPronto);
+  const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined);
   const movimentos = useMovimentos();
   const [form, setForm] = useState(false);
   const [busca, setBusca] = useState("");
@@ -74,7 +74,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro, agua
   }, []);
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
-  useEffect(() => { if (centroCustoIdInicial != null) setCentroFiltro(String(centroCustoIdInicial)); }, [centroCustoIdInicial]);
 
   function trocarSort(key: SortKey) {
     setSort((s) => {

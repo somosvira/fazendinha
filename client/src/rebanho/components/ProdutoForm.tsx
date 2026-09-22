@@ -42,7 +42,7 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
   });
   const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
   const [categorias, setCategorias] = useState<RefDTO[]>([]);
-  const { data: centros } = useCentrosCustoEstoque();
+  const { data: centros, erro: erroCentros } = useCentrosCustoEstoque();
   const [erro, setErro] = useState<string | null>(null);
   const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -120,7 +120,7 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
         </select>
       </RebField>
       {erroCategoria && <p id="produto-categoria-rebanho-erro" role="alert" className="-mt-2 mb-3.5 text-[13px] text-prejuizo">{erroCategoria}</p>}
-      <CentrosCustoFieldset idBase="produto-centros-rebanho" centros={centros} selecionados={centroCustoIds} onToggle={alternarCentro} />
+      <CentrosCustoFieldset idBase="produto-centros-rebanho" centros={centros} selecionados={centroCustoIds} onToggle={alternarCentro} erro={erroCentros ? "Não foi possível carregar os centros de custo." : undefined} />
       <RebField label="Carência (dias)"><input type="number" min={0} step="1" value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
       <RebField label="% de matéria seca"><input type="number" min={0} step="0.01" value={f.percentualMS} onChange={(e) => set("percentualMS", e.target.value)} /></RebField>
       <RebField label="Estoque mínimo"><input type="number" step="0.01" min={0} value={f.minimoEstoque} onChange={(e) => set("minimoEstoque", e.target.value)} placeholder="dispara alerta abaixo desse valor" /></RebField>

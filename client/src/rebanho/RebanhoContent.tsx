@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader } from "../components/Loading";
 import { AnimalCockpit } from "./components/AnimalCockpit";
 import { AnimalTab } from "./components/AnimalTab";
 import { ReproducaoTab } from "./components/ReproducaoTab";
@@ -39,8 +40,10 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
   const [recargaRelatorio, setRecargaRelatorio] = useState(0);
-  // `undefined` = ainda resolvendo o centro de atividade (EstoqueContent espera
-  // via `aguardarFiltro`); `null` = resolvido, mas sem centro cadastrado.
+  // `undefined` = ainda resolvendo o centro de atividade (mostra Loader em vez
+  // de montar o EstoqueContent, evitando a busca de saldos sem filtro); `null`
+  // = resolvido, mas sem centro cadastrado. O `key` no EstoqueContent remonta o
+  // componente quando o centro muda, então ele já nasce com o filtro certo.
   const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
   const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
   // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesma
@@ -147,7 +150,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                 : aba === "producao"
                   ? <ProducaoTab />
                   : aba === "estoque"
-                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} aguardarFiltro />
+                    ? (centroCustoEstoque === undefined
+                        ? <Loader />
+                        : <EstoqueContent key={String(centroCustoEstoque)} centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />)
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader } from "../components/Loading";
 import { TalhaoCockpit } from "./components/TalhaoCockpit";
 import { TalhaoTab } from "./components/TalhaoTab";
 import { FenologiaTab } from "./components/FenologiaTab";
@@ -26,8 +27,10 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
-  // `undefined` = ainda resolvendo o centro de atividade (EstoqueContent espera
-  // via `aguardarFiltro`); `null` = resolvido, mas sem centro cadastrado.
+  // `undefined` = ainda resolvendo o centro de atividade (mostra Loader em vez
+  // de montar o EstoqueContent, evitando a busca de saldos sem filtro); `null`
+  // = resolvido, mas sem centro cadastrado. O `key` no EstoqueContent remonta o
+  // componente quando o centro muda, então ele já nasce com o filtro certo.
   const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
   const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
   // Filtro inicial da tela de Estoque: resolve o centro "Plantio Café" (mesma constante
@@ -90,7 +93,9 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
                   : aba === "planejamento"
                     ? <PlanejamentoTab />
                     : aba === "estoque"
-                      ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} aguardarFiltro />
+                      ? (centroCustoEstoque === undefined
+                          ? <Loader />
+                          : <EstoqueContent key={String(centroCustoEstoque)} centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />)
                       : aba === "custo"
                         ? <CustoTab />
                         : <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />}

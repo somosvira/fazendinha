@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { TipoProduto } from "@prisma/client";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
 import { produtoSchema, patchProdutoSchema } from "../services/estoque/produtos.schemas.js";
@@ -8,7 +9,9 @@ import * as refSvc from "../services/rebanho/financeiro-ref.js";
 import * as principioSvc from "../services/rebanho/principio-ativo.js";
 import { criarPrincipioSchema, atualizarPrincipioSchema, definirComposicaoSchema } from "../services/rebanho/principio-ativo.schemas.js";
 import * as composicaoRacaoSvc from "../services/rebanho/composicao-produto.js";
+import { composicaoRacaoBodySchema } from "../services/rebanho/composicao-produto.schemas.js";
 import * as lotesSvc from "../services/rebanho/lotes.js";
+import { criarLocalSchema, criarLoteSchema } from "../services/rebanho/lotes.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
@@ -53,23 +56,8 @@ const idParamSchema = z.object({ id: z.coerce.number().int().positive() });
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
 
-const produtosQuerySchema = z.object({ tipo: z.string().optional(), q: z.string().optional(), ativo: z.enum(["true", "false"]).optional() });
+const produtosQuerySchema = z.object({ tipo: z.nativeEnum(TipoProduto).optional(), q: z.string().optional(), ativo: z.enum(["true", "false"]).optional() });
 const principiosQuerySchema = z.object({ inativos: z.string().optional() });
-const composicaoRacaoBodySchema = z.object({
-  itens: z.array(z.object({
-    ingredienteId: z.number().int().positive(),
-    proporcao: z.number().min(0).max(100),
-  })).max(50),
-});
-const criarLocalSchema = z.object({ nome: z.string().min(1).max(80), ativo: z.boolean().optional() });
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
-const criarLoteSchema = z.object({
-  produtoId: z.number().int().positive(),
-  codigo: z.string().min(1, "informe o código do lote").max(60),
-  validade: isoDate.nullable().optional(),
-  localId: z.number().int().positive().nullable().optional(),
-  quantidade: z.number().min(0).max(9_999_999).nullable().optional(),
-});
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
@@ -168,11 +156,19 @@ export const estoqueRouter = new Hono()
   // ── Locais de armazenamento + lotes de produto (código/validade) ───────────
   .get("/estoque/locais-armazenamento", async (c) => c.json(await lotesSvc.listarLocais(await resolverEscopoLeitura(c))))
   .post("/estoque/locais-armazenamento", exigePermissao("lancar"), zValidator("json", criarLocalSchema), async (c) => {
-    const propriedadeId = await resolverEscopoEscrita(c);
-    return c.json(await lotesSvc.criarLocal(c.req.valid("json"), propriedadeId), 201);
+    try {
+      const propriedadeId = await resolverEscopoEscrita(c);
+      return c.json(await lotesSvc.criarLocal(c.req.valid("json"), propriedadeId), 201);
+    }
+    catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
   .delete("/estoque/locais-armazenamento/:id", exigePermissao("lancar"), zValidator("param", idParamSchema), async (c) => {
-    try { const { id } = c.req.valid("param"); await lotesSvc.excluirLocal(id); return c.json({ ok: true }); }
+    try {
+      const { id } = c.req.valid("param");
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await lotesSvc.excluirLocal(id, propriedadeId);
+      return c.json({ ok: true });
+    }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
   .get("/estoque/lotes-produto", async (c) => c.json(await lotesSvc.listarLotes(await resolverEscopoLeitura(c))))
@@ -183,6 +179,11 @@ export const estoqueRouter = new Hono()
     } catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
   .delete("/estoque/lotes-produto/:id", exigePermissao("lancar"), zValidator("param", idParamSchema), async (c) => {
-    try { const { id } = c.req.valid("param"); await lotesSvc.excluirLote(id); return c.json({ ok: true }); }
+    try {
+      const { id } = c.req.valid("param");
+      const propriedadeId = await resolverEscopoEscrita(c);
+      await lotesSvc.excluirLote(id, propriedadeId);
+      return c.json({ ok: true });
+    }
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   });
