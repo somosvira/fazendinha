@@ -69,7 +69,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   const querRealizado = regime !== "previsto";
   const querPrevisto = regime !== "realizado";
 
-  const [movimentos, compromissos, contas, anteriores, fechamentos, propriedade] = await Promise.all([
+  const [movimentos, compromissos, contas, anteriores, fechamentos, propriedade, centrosCusto] = await Promise.all([
     querRealizado ? prisma.movimentoConta.findMany({
       where: { transacao: { ...escopo, data: { gte: de, lte: ate } } },
       include: {
@@ -108,18 +108,29 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     propriedadeId != null
       ? prisma.propriedade.findUnique({ where: { id: propriedadeId }, select: { id: true, nome: true } })
       : Promise.resolve(null),
+    prisma.centroCusto.findMany({ select: { id: true, nome: true } }),
   ]);
+  // Nome vivo por id: o snapshot de um item pode estar desatualizado se o
+  // centro foi renomeado depois — agrupamento (agregarRealizado) é por id,
+  // mas o rótulo exibido precisa ser o nome atual, não o congelado no item.
+  const nomesCentro = new Map(centrosCusto.map((c) => [c.id, c.nome]));
 
   // Base do extrato (por lançamento): centro da operação. As linhas analíticas
   // abaixo substituem categoria e centro pelos da PARTE rateada (item ?? operação).
-  const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => ({
-    categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
-    centroCusto: { nome: operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL },
-  });
-  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: number | null; centroCustoNome: string | null }) => ({
-    categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
-    centroCusto: { nome: (parte.centroCustoId ? parte.centroCustoNome : null) ?? SEM_CENTRO_GERENCIAL },
-  });
+  const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => {
+    const id = operacao?.centroCustoId ?? operacao?.centroCusto?.id ?? null;
+    return {
+      categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
+      centroCusto: { id, nome: id ? nomesCentro.get(id) ?? operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
+    };
+  };
+  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: number | null; centroCustoNome: string | null }) => {
+    const id = parte.centroCustoId ?? null;
+    return {
+      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+      centroCusto: { id, nome: id ? nomesCentro.get(id) ?? parte.centroCustoNome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
+    };
+  };
 
   const linhasRealizadas: LinhaLancamento[] = movimentos.map((movimento) => {
     const { transacao } = movimento;

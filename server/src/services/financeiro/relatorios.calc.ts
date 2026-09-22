@@ -76,7 +76,7 @@ export interface OperacaoComposicao {
 export interface LinhaComposicao {
   operacaoId: number; data: string; tipo: string; status: string; descricao: string | null; item: string | null;
   quantidade: string | null; unidade: string | null; parceiro: string | null;
-  categoriaId: number | null; categoria: string; centroCusto: string; classificacao: Classificacao; valor: string;
+  categoriaId: number | null; categoria: string; centroCustoId: number | null; centroCusto: string; classificacao: Classificacao; valor: string;
 }
 export interface TotalGrupo { nome: string; total: string; pct: number }
 export interface TotalCategoria extends TotalGrupo { custeio: string; investimento: string; semClassificacao: string }
@@ -97,8 +97,14 @@ const zero = () => new Prisma.Decimal(0);
 const pct = (parte: Prisma.Decimal, total: Prisma.Decimal) => total.isZero() ? 0 : parte.div(total).mul(10000).toDecimalPlaces(0).div(100).toNumber();
 
 /** Itens das operações pela data da operação (competência). Operação sem itens
- * vira uma linha única com a própria classificação. */
-export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRelatorio | null): Composicao {
+ * vira uma linha única com a própria classificação.
+ *
+ * `nomesCentro` é o nome VIVO de cada centro (id → nome) no instante da
+ * geração — o nome do item pode ser um snapshot antigo (congelado na criação
+ * do item), então agrupar só por esse nome duplicaria a linha de um centro
+ * renomeado. Sem o mapa, cai no nome do snapshot (compat). */
+export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRelatorio | null, nomesCentro?: Map<number, string>): Composicao {
+  const nomeCentro = (id: number | null, snapshot: string | null | undefined) => (id ? nomesCentro?.get(id) ?? snapshot ?? SEM_CENTRO : SEM_CENTRO);
   const linhas: LinhaComposicao[] = [];
   for (const operacao of operacoes) {
     if (!operacaoPassa(filtro, operacao)) continue;
@@ -112,10 +118,12 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
       : [{ categoriaId: operacao.categoriaId, categoriaNome: operacao.categoriaNome, classificacao: operacao.classificacao, ...centroOperacao, valorTotal: operacao.valorTotal, item: null, quantidade: null, unidade: null }];
     for (const parte of partes) {
       if (!partePassa(filtro, parte)) continue;
+      const centroCustoId = parte.centroCustoId ?? null;
       linhas.push({
         operacaoId: operacao.id, data: operacao.data.toISOString().slice(0, 10), tipo: operacao.tipo, status: operacao.status,
         descricao: operacao.descricao, item: parte.item, quantidade: parte.quantidade, unidade: parte.unidade, parceiro: operacao.parceiro?.nome ?? null,
-        categoriaId: parte.categoriaId ?? null, categoria: parte.categoriaNome ?? SEM_CATEGORIA, centroCusto: (parte.centroCustoId ? parte.centroCustoNome : null) ?? SEM_CENTRO,
+        categoriaId: parte.categoriaId ?? null, categoria: parte.categoriaNome ?? SEM_CATEGORIA,
+        centroCustoId, centroCusto: nomeCentro(centroCustoId, parte.centroCustoNome),
         classificacao: parte.classificacao ?? null, valor: new Prisma.Decimal(parte.valorTotal).toFixed(2),
       });
     }
@@ -133,7 +141,9 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
   const despesas = linhas.filter((linha) => TIPOS_DESPESA.includes(linha.tipo) && linha.status === "CONFIRMADA");
   const totais = { total: zero(), custeio: zero(), investimento: zero(), semClassificacao: zero() };
   const porCategoria = new Map<string, { nome: string; total: Prisma.Decimal; custeio: Prisma.Decimal; investimento: Prisma.Decimal; semClassificacao: Prisma.Decimal }>();
-  const porCentro = new Map<string, Prisma.Decimal>();
+  // Agrupado pela chave (id), não pelo nome: um centro renomeado no meio do
+  // período não pode virar duas linhas no relatório.
+  const porCentro = new Map<number, { nome: string; total: Prisma.Decimal }>();
   for (const linha of despesas) {
     const chaveClassificacao = linha.classificacao === "CUSTEIO" ? "custeio" : linha.classificacao === "INVESTIMENTO" ? "investimento" : "semClassificacao";
     totais.total = totais.total.plus(linha.valor);
@@ -143,7 +153,10 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
     categoria.total = categoria.total.plus(linha.valor);
     categoria[chaveClassificacao] = categoria[chaveClassificacao].plus(linha.valor);
     porCategoria.set(chave, categoria);
-    porCentro.set(linha.centroCusto, (porCentro.get(linha.centroCusto) ?? zero()).plus(linha.valor));
+    const centroId = linha.centroCustoId ?? 0;
+    const centro = porCentro.get(centroId) ?? { nome: linha.centroCusto, total: zero() };
+    centro.total = centro.total.plus(linha.valor);
+    porCentro.set(centroId, centro);
   }
   const desc = (a: { total: Prisma.Decimal; nome: string }, b: { total: Prisma.Decimal; nome: string }) => b.total.comparedTo(a.total) || a.nome.localeCompare(b.nome, "pt-BR");
 
@@ -158,7 +171,7 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
     despesas: {
       total: totais.total.toFixed(2), custeio: totais.custeio.toFixed(2), investimento: totais.investimento.toFixed(2), semClassificacao: totais.semClassificacao.toFixed(2),
       porCategoria: [...porCategoria.values()].sort(desc).map((c) => ({ nome: c.nome, total: c.total.toFixed(2), pct: pct(c.total, totais.total), custeio: c.custeio.toFixed(2), investimento: c.investimento.toFixed(2), semClassificacao: c.semClassificacao.toFixed(2) })),
-      porCentro: [...porCentro.entries()].map(([nome, total]) => ({ nome, total })).sort(desc).map((c) => ({ nome: c.nome, total: c.total.toFixed(2), pct: pct(c.total, totais.total) })),
+      porCentro: [...porCentro.values()].sort(desc).map((c) => ({ nome: c.nome, total: c.total.toFixed(2), pct: pct(c.total, totais.total) })),
     },
   };
 }

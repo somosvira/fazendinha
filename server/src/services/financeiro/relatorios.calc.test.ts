@@ -95,6 +95,31 @@ describe("composição por item", () => {
     expect(c.despesas.porCentro.map((p) => [p.nome, p.total])).toEqual([["Pecuária", "500.00"], ["Agronomia", "300.00"], ["Sede", "200.00"]]);
   });
 
+  it("centro renomeado depois do snapshot do item agrupa numa única linha com o nome vivo", () => {
+    // O item da operação "mistaPorCentro" guarda o snapshot "Pecuária" (id 1);
+    // se o cadastro foi renomeado para "Bovinocultura", o mapa de nomes vivos
+    // deve prevalecer tanto na linha quanto no total por centro.
+    const nomesCentro = new Map([[1, "Bovinocultura"]]);
+    const c = comporItens([mistaPorCentro], semFiltro, nomesCentro);
+    expect(c.linhas.map((l) => [l.item, l.centroCustoId, l.centroCusto])).toEqual([
+      ["Ração", 1, "Bovinocultura"], ["Adubo", 2, "Agronomia"], ["Frete", 9, "Sede"],
+    ]);
+    expect(c.despesas.porCentro.map((p) => [p.nome, p.total])).toEqual([["Bovinocultura", "500.00"], ["Agronomia", "300.00"], ["Sede", "200.00"]]);
+  });
+
+  it("sem mapa de nomes vivos, mesmo id com nomes de snapshot diferentes ainda vira uma linha só (agrupa por id)", () => {
+    const duasGrafias = operacao({
+      id: 30, valorTotal: "600.00",
+      itens: [
+        { id: 31, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "400.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 1, centroCustoNome: "Pecuária" },
+        { id: 32, descricao: "Sal", quantidade: "1", unidade: "sc", valorTotal: "200.00", categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 1, centroCustoNome: "Bovinocultura (antigo)" },
+      ],
+    });
+    const c = comporItens([duasGrafias], semFiltro);
+    expect(c.despesas.porCentro).toHaveLength(1);
+    expect(c.despesas.porCentro[0].total).toBe("600.00");
+  });
+
   it("filtro por centro devolve só as partes daquele centro; o centro da operação vale para o item sem centro", () => {
     const agronomia = comporItens([mistaPorCentro, mista], filtro({ centroCustoIds: [2] }));
     expect(agronomia.linhas.map((l) => l.item)).toEqual(["Adubo"]);
