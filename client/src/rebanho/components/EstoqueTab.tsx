@@ -260,12 +260,13 @@ export function EstoqueTab() {
                 : m.status === "REVERTIDO" ? "Movimento já estornado"
                   : m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição"
                     : m.origem === "SANIDADE" ? "Baixa sanitária — estorne o evento na ficha do animal"
-                      : null;
+                      : m.origem === "APLICACAO" ? "esta saída veio de uma operação agrícola — exclua a operação na timeline do talhão, não aqui"
+                        : null;
               return (
               <tr key={m.id}>
                 <td>{m.data}</td>
                 <td><RebAnm>{m.produto}</RebAnm></td>
-                <td><RebPill tone={m.tipo === "SAIDA" ? "warn" : "ok"}>{TIPO_MOV[m.tipo]}</RebPill>{m.origem === "NUTRICAO" && <RebPill style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</RebPill>}</td>
+                <td><RebPill tone={m.tipo === "SAIDA" ? "warn" : "ok"}>{TIPO_MOV[m.tipo]}</RebPill>{m.origem === "NUTRICAO" && <RebPill style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</RebPill>}{m.origem === "APLICACAO" && <RebPill style={{ marginLeft: 4, background: "var(--cafe)", color: "#fff" }} title="Aplicação agrícola">Aplicação</RebPill>}</td>
                 <td>{qtd(m.quantidade)}</td>
                 <td>{money(m.valorTotal)}</td>
                 <td>{m.fornecedor ?? m.grupo ?? "—"}</td>

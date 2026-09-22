@@ -62,10 +62,16 @@ export const criarOperacaoSchema = z.object({
   doseValor: z.number().nonnegative().nullish(),
   doseUnidade: z.string().max(20).nullish(),
   pragaAlvo: pragaDoenca.nullish(),
+  produtoId: z.number().int().positive().nullish(),
+  quantidadeTotal: z.number().nonnegative().nullish(),
+  centroCustoId: z.number().int().positive().nullish(),
 });
+
+export const editarOperacaoSchema = criarOperacaoSchema;
 
 export type CriarTalhaoInput = z.infer<typeof criarTalhaoSchema>;
 export type EditarTalhaoInput = z.infer<typeof editarTalhaoSchema>;
 export type BaixaInput = z.infer<typeof baixaSchema>;
 export type ListFiltros = z.infer<typeof listFiltrosSchema>;
 export type CriarOperacaoInput = z.infer<typeof criarOperacaoSchema>;
+export type EditarOperacaoInput = z.infer<typeof editarOperacaoSchema>;

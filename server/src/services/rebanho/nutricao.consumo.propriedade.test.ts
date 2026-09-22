@@ -55,7 +55,7 @@ describe("consumo de dieta por propriedade", () => {
           produtoId: 4,
           unidade: "kg",
           qtdPorCabecaDia: 2,
-          produto: { id: 4, nome: "Ração", custoUnitario: 3 },
+          produto: { id: 4, nome: "Ração", custoUnitario: 3, centrosCusto: [] },
         }],
       },
     });

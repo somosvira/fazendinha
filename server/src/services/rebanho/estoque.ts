@@ -4,6 +4,7 @@ import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
+import { resolverCentroSaida } from "../estoque/centro.calc.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -35,6 +36,7 @@ export const movimentoSchema = z
     grupoId: z.number().int().optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
     propriedadeId: z.number().int().optional(), // sítio (multi-propriedade)
+    centroCustoId: z.number().int().positive().nullable().optional(),
   })
   // ENTRADA/SAIDA exigem quantidade positiva; AJUSTE aceita negativa (correção de saldo) mas nunca zero.
   .superRefine((v, ctx) => {
@@ -49,6 +51,7 @@ export const ajusteContagemSchema = z.object({
   saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.01),
   observacao: z.string().trim().min(5, "justificativa é obrigatória").max(200),
   propriedadeId: z.number().int().positive().optional(),
+  centroCustoId: z.number().int().positive().nullable().optional(),
 });
 
 export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null }) {
@@ -133,8 +136,10 @@ export async function registrarMovimento(input: MovimentoInput) {
 }
 
 async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoInput, propriedadeId: number, usuarioId?: number) {
-    const produto = await tx.produto.findUnique({ where: { id: input.produtoId } });
+    const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, include: { centrosCusto: { select: { centroCustoId: true } } } });
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
+    if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new EstoqueError("NAO_ENCONTRADO", "centro de custo não encontrado");
+    const centroCustoId = resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: input.centroCustoId });
     const custo = input.custoUnitario ?? (produto.custoUnitario != null ? Number(produto.custoUnitario) : 0);
     // Valor do ajuste físico, calculado sem arredondamento intermediário em float.
     const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
@@ -161,6 +166,7 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
         operacaoId: operacao.id,
         itemOperacaoId: operacao.itens[0]?.id,
         propriedadeId,
+        centroCustoId,
         observacao: input.observacao,
         criadoPorId: usuarioId,
       },
@@ -219,6 +225,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
     // avulsamente deixaria o fato de origem e o saldo de estoque divergentes.
     if (mov.origem === "SANIDADE") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de um evento sanitário — exclua ou estorne o evento na ficha do animal");
     if (mov.origem === "NUTRICAO" || mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
+    if (mov.origem === "APLICACAO") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de uma operação agrícola — exclua a operação na timeline do talhão, não aqui");
 
     if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
     if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
@@ -230,7 +237,7 @@ export async function excluirMovimento(id: number, propriedadeId: number | null 
       origem: "AJUSTE_INVENTARIO", data: new Date(),
       quantidade: mov.tipo === "AJUSTE" ? mov.quantidade.negated() : mov.quantidade,
       custoUnitario: mov.custoUnitario, valorTotal: mov.tipo === "AJUSTE" ? mov.valorTotal.negated() : mov.valorTotal,
-      propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id,
+      propriedadeId: pid, operacaoId: mov.operacaoId, reversaoDeId: mov.id, centroCustoId: mov.centroCustoId,
       observacao: `Estorno do movimento #${mov.id}`,
     } });
     await tx.movimentoEstoque.update({ where: { id }, data: { status: "REVERTIDO" } });

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { criarOperacaoSchema } from "../../services/plantio/schemas.js";
-import { montarTimeline, criarOperacao, PlantioEventoError } from "../../services/plantio/timeline.js";
+import { criarOperacaoSchema, editarOperacaoSchema } from "../../services/plantio/schemas.js";
+import { montarTimeline, criarOperacao, editarOperacao, excluirOperacao, PlantioEventoError } from "../../services/plantio/timeline.js";
 
 function handle(err: unknown): { status: 404 | 409 | 500; body: { error: string } } {
   if (err instanceof PlantioEventoError) {
@@ -30,6 +30,27 @@ export const plantioEventosRouter = new Hono()
     if (id == null) return c.json({ error: "id inválido" }, 404);
     try {
       return c.json(await criarOperacao(id, c.req.valid("json")), 201);
+    } catch (e) {
+      const { status, body } = handle(e);
+      return c.json(body, status);
+    }
+  })
+  .patch("/plantio/operacoes/:id", zValidator("json", editarOperacaoSchema), async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (id == null) return c.json({ error: "id inválido" }, 404);
+    try {
+      return c.json(await editarOperacao(id, c.req.valid("json")));
+    } catch (e) {
+      const { status, body } = handle(e);
+      return c.json(body, status);
+    }
+  })
+  .delete("/plantio/operacoes/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (id == null) return c.json({ error: "id inválido" }, 404);
+    try {
+      await excluirOperacao(id);
+      return c.body(null, 204);
     } catch (e) {
       const { status, body } = handle(e);
       return c.json(body, status);
