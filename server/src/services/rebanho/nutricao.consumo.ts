@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, type MovIn } from "../estoque/estoque.calc.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";

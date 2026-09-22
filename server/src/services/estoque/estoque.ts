@@ -4,7 +4,7 @@ import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
-import { resolverCentroSaida } from "../estoque/centro.calc.js";
+import { resolverCentroSaida } from "./centro.calc.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
@@ -54,9 +54,9 @@ export const ajusteContagemSchema = z.object({
   centroCustoId: z.number().int().positive().nullable().optional(),
 });
 
-export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null }) {
+export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; apenasSubtipoPlantio?: boolean }) {
   const produtos = await prisma.produto.findMany({
-    where: { estocavel: true, ativo: true },
+    where: { estocavel: true, ativo: true, ...(f?.apenasSubtipoPlantio ? { subtipoPlantio: { not: null } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {

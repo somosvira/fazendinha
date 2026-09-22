@@ -23,7 +23,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 vi.mock("./config.js", () => ({ obterConfig: mocks.obterConfig }));
-vi.mock("./estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia }));
+vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia }));
 vi.mock("../../env.js", () => ({ env: {} }));
 
 import { agregarProducao } from "./producao.js";

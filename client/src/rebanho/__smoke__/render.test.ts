@@ -11,7 +11,7 @@ import { RebanhoContent } from "../RebanhoContent";
 import { ConfiguracoesView } from "../components/ConfiguracoesView";
 import { CadastrosView } from "../components/CadastrosView";
 import { ProducaoTab } from "../components/ProducaoTab";
-import { EstoqueTab } from "../components/EstoqueTab";
+import { EstoqueContent } from "../../estoque/EstoqueContent";
 import { CustoProducaoTab } from "../components/CustoProducaoTab";
 import { CarteiraTab } from "../components/CarteiraTab";
 import { SugestoesTab } from "../components/SugestoesTab";
@@ -124,8 +124,8 @@ describe("render smoke", () => {
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 
-  it("EstoqueTab renders the loading shell (fetches /rebanho/estoque/*)", () => {
-    const html = renderToString(h(EstoqueTab));
+  it("EstoqueContent renders the loading shell (fetches /estoque/*)", () => {
+    const html = renderToString(h(EstoqueContent));
     expect(html).toContain("Carregando"); // shell de loading (título de topo removido)
   });
 

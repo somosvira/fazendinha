@@ -384,11 +384,11 @@ export function useAnimalInsights(id: string | null) {
 }
 
 export interface DietaDTO { id: number; nome: string; descricao: string | null; pb: number | null; edMcal: number | null; ativo: boolean; }
-export interface LoteDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; numAnimais: number; producaoMedia: number | null; }
+export interface LoteDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; numAnimais: number; producaoMedia: number | null; centroCustoId?: number | null; }
 export interface DietaInput { nome: string; descricao?: string; pb?: number; edMcal?: number; }
-export interface LoteInput { nome: string; dietaId?: number | null; animalIds: number[]; }
+export interface LoteInput { nome: string; dietaId?: number | null; animalIds: number[]; centroCustoId?: number | null; }
 export interface AnimalLoteDTO { id: number; numero: string; nome: string | null; categoria: Animal["categoria"]; }
-export interface LoteDetalheDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; animais: AnimalLoteDTO[]; }
+export interface LoteDetalheDTO { id: number; nome: string; dietaId: number | null; dietaNome: string | null; animais: AnimalLoteDTO[]; centroCustoId?: number | null; }
 export interface AnimalDisponivelDTO { id: number; numero: string; nome: string | null; categoria: Animal["categoria"]; grupoId: number | null; grupoNome: string | null; }
 export const listarDietas = () => req<DietaDTO[]>(`/rebanho/dietas`);
 export const criarDieta = (p: DietaInput) => req<DietaDTO>(`/rebanho/dietas`, { method: "POST", body: JSON.stringify(p) });
@@ -408,6 +408,10 @@ export function useLotes() {
 }
 export function useDietas() {
   const [data, setData] = useState<DietaDTO[]>([]); const recarregar = useCallback(() => { listarDietas().then(setData).catch(() => {}); }, []);
+  useEffect(() => { recarregar(); }, [recarregar]); return { data, recarregar };
+}
+export function useCentrosCusto() {
+  const [data, setData] = useState<RefDTO[]>([]); const recarregar = useCallback(() => { listarCentrosCusto().then(setData).catch(() => {}); }, []);
   useEffect(() => { recarregar(); }, [recarregar]); return { data, recarregar };
 }
 export function useAnimaisDisponiveis() {
@@ -1103,44 +1107,7 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
   return { data, loading, erro, recarregar };
 }
 
-// ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
-export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
-export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; gerarLancamento?: boolean; categoriaId?: number; centroCustoId?: number; }
-export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
-export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
-
-export const listarSaldos = (f?: { centroCustoId?: number | string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
-export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
-export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
-export interface AjusteContagemInput { produtoId: number; quantidadeContada: number; saldoEsperado: number; observacao: string; }
-export const ajustarContagem = (p: AjusteContagemInput) => req<{ id: number; operacaoId: number; saldoAnterior: number; quantidadeContada: number; diferenca: number }>(`/rebanho/estoque/ajustes`, { method: "POST", body: JSON.stringify(p) });
-export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
-export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
-
-export function useSaldos(f?: { centroCustoId?: number | string }) {
-  const [data, setData] = useState<SaldoDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const key = JSON.stringify(f ?? {});
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarSaldos(f).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
-}
-
-export function useCustoVacaDia(dias = 30) {
-  const [data, setData] = useState<CustoVacaDia | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); obterCustoVacaDia(dias).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [dias]);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
-}
+// ── Estoque: movido para client/src/estoque/api.ts (rota /api/estoque/*). ──
 
 // ── Custo de Sanidade (Fatia 18): gasto real de medicamento rateado por aplicações ──────────
 export interface CustoSanidade {

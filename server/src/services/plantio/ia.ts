@@ -16,7 +16,7 @@ import {
 } from "./ia.context.js";
 import { responderDemo, type RespostaIA } from "./ia.responder.js";
 import { responderComLLM } from "./ia.llm.js";
-import { listarEstoquePlantio } from "./estoque.js";
+import { listarSaldos } from "../estoque/estoque.js";
 import { gerarInsightsPlantio, type IaInsightDTO } from "./ia.insights.js";
 
 // "Hoje" da lavoura — ancorado no mock (28/05/2026), igual ao dashboard real.
@@ -65,7 +65,7 @@ async function carregarColheita(propriedadeId?: number | null): Promise<Colheita
 }
 
 async function carregarEstoqueBaixo(propriedadeId?: number | null): Promise<EstoqueBaixoCtx[]> {
-  const saldos = await listarEstoquePlantio(propriedadeId);
+  const saldos = await listarSaldos({ propriedadeId, apenasSubtipoPlantio: true });
   return saldos
     .filter((s) => s.abaixoMinimo)
     .map((s) => ({ nome: s.nome, saldo: s.saldo, unidade: s.unidade, minimoEstoque: s.minimoEstoque }));

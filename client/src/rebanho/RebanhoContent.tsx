@@ -6,7 +6,8 @@ import { FivTab } from "./components/FivTab";
 import { SanidadeTab } from "./components/SanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ProducaoTab } from "./components/ProducaoTab";
-import { EstoqueTab } from "./components/EstoqueTab";
+import { EstoqueContent } from "../estoque/EstoqueContent";
+import { listarCentrosCusto } from "./api";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
@@ -38,6 +39,19 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
   const [recargaRelatorio, setRecargaRelatorio] = useState(0);
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null>(null);
+  // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesmo nome
+  // usado em custo-producao.ts) por nome, uma vez, quando a aba Estoque é aberta.
+  useEffect(() => {
+    if (aba !== "estoque") return;
+    let cancelado = false;
+    listarCentrosCusto().then((cs) => {
+      if (cancelado) return;
+      const alvo = cs.find((c) => c.nome === "Atividade Leiteira");
+      setCentroCustoEstoque(alvo?.id ?? null);
+    }).catch(() => {});
+    return () => { cancelado = true; };
+  }, [aba]);
   // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
   // remonta este conteúdo inteiro via `key`, então aqui não há estado de escopo.
 
@@ -125,7 +139,7 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                 : aba === "producao"
                   ? <ProducaoTab />
                   : aba === "estoque"
-                    ? <EstoqueTab />
+                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" />
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"

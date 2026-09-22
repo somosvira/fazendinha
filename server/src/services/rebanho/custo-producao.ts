@@ -1,6 +1,6 @@
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
-import { calcularCustoVacaDia } from "./estoque.js";
+import { calcularCustoVacaDia } from "../estoque/estoque.js";
 
 // ── Motor puro (TDD) ────────────────────────────────────────────────────────
 // Quebra o custeio do leite por componente: soma por categoria, ordena desc e

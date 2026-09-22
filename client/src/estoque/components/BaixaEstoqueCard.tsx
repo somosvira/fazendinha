@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  listarProdutos,
-  listarSaldos,
-  registrarMovimento,
-  type ProdutoDTO,
-  type SaldoDTO,
-} from "../api";
-import type { Animal } from "../types";
-import { AnimalIdentity, mencaoAnimal } from "./AnimalIdentity";
+import { listarSaldos, registrarMovimento, type SaldoDTO } from "../api";
+import { listarProdutos, type ProdutoDTO } from "../../rebanho/api";
+import type { Animal } from "../../rebanho/types";
+import { AnimalIdentity, mencaoAnimal } from "../../rebanho/components/AnimalIdentity";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";

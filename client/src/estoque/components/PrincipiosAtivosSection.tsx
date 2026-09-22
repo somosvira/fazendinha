@@ -3,7 +3,7 @@ import {
   usePrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarProdutos, obterComposicaoProduto, definirComposicaoProduto,
   type PrincipioAtivoDTO, type ProdutoDTO, type ComposicaoProdutoDTO,
-} from "../api";
+} from "../../rebanho/api";
 
 // Catálogo de princípios ativos + composição de medicamentos. Base para carência/antibiótico:
 // um medicamento tem 1+ princípios; a carência efetiva do leite/carne deriva da composição.

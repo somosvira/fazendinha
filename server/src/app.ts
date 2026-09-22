@@ -7,7 +7,7 @@ import { logger } from "hono/logger";
 import { env } from "./env.js";
 import { resetPrismaPorRequisicao } from "./db.js";
 import { authMiddleware } from "./middleware/auth.js";
-import { exigeArea } from "./middleware/permissao.js";
+import { exigeArea, exigeQualquerArea } from "./middleware/permissao.js";
 import { categoriasRouter } from "./routes/categorias.js";
 import { financeiroRouter } from "./routes/financeiro.js";
 import { healthRouter } from "./routes/health.js";
@@ -48,7 +48,7 @@ import { composicaoProdutoRouter } from "./routes/rebanho/composicao-produto.js"
 import { lotesRouter } from "./routes/rebanho/lotes.js";
 import { cadastrosRouter } from "./routes/rebanho/cadastros.js";
 import { principioAtivoRouter } from "./routes/rebanho/principio-ativo.js";
-import { estoqueRouter } from "./routes/rebanho/estoque.js";
+import { estoqueRouter } from "./routes/estoque.js";
 import { custoProducaoRouter } from "./routes/rebanho/custo-producao.js";
 import { custoSanidadeRouter } from "./routes/rebanho/custo-sanidade.js";
 import { financeiroRefRouter } from "./routes/rebanho/financeiro-ref.js";
@@ -66,7 +66,6 @@ import { plantioDashboardRouter } from "./routes/plantio/dashboard.js";
 import { plantioCadastrosRouter } from "./routes/plantio/cadastros.js";
 import { plantioEventosRouter } from "./routes/plantio/eventos.js";
 import { plantioCustoRouter } from "./routes/plantio/custo.js";
-import { plantioEstoqueRouter } from "./routes/plantio/estoque.js";
 import { plantioColheitaRouter } from "./routes/plantio/colheita.js";
 import { plantioPlanejamentoRouter } from "./routes/plantio/planejamento.js";
 import { plantioIaRouter } from "./routes/plantio/ia.js";
@@ -142,6 +141,7 @@ app.use("/api/ponto/*", exigeArea("equipe"));
 for (const path of [
   "/api/financeiro", "/api/financeiro/*", "/api/categorias", "/api/categorias/*",
 ]) app.use(path, exigeArea("financeiro"));
+app.use("/api/estoque/*", exigeQualquerArea(["pecuaria", "agricultura", "financeiro"]));
 
 // Protegidos (exigem sessão resolvida pelo authMiddleware):
 app.route("/api", authPrivadoRouter);
@@ -200,7 +200,6 @@ app.route("/api", plantioDashboardRouter);
 app.route("/api", plantioCadastrosRouter);
 app.route("/api", plantioEventosRouter);
 app.route("/api", plantioCustoRouter);
-app.route("/api", plantioEstoqueRouter);
 app.route("/api", plantioColheitaRouter);
 app.route("/api", plantioPlanejamentoRouter);
 app.route("/api", plantioIaRouter);

@@ -27,6 +27,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   acessos: "/acessos",
   config: "/configuracoes",
   cadastros: "/financeiro/configuracoes",
+  estoque: "/estoque",
   "reb-dashboard": "/pecuaria/dashboard",
   "reb-animal": "/pecuaria/animal",
   "reb-reproducao": "/pecuaria/reproducao",

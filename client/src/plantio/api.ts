@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, TipoInsumoPlantio, IaInsight } from "./types";
+import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, IaInsight } from "./types";
 import { HOJE } from "./HOJE";
 import { comPropriedade } from "../propriedadeScope";
 
@@ -27,6 +27,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
     throw new Error(msg);
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
@@ -72,6 +73,9 @@ export interface OperacaoInput {
   doseValor?: number;
   doseUnidade?: string;         // ex.: "mL/ha", "kg/ha", "t/ha"
   pragaAlvo?: string;           // PragaDoenca (só fitossanidade)
+  produtoId?: number | null;         // produto do estoque — gera baixa automática se estocável
+  quantidadeTotal?: number | null;   // sobrescreve a estimativa (dose × área) quando informado
+  centroCustoId?: number | null;     // se vazio, o server usa o centro da lavoura ou o único do produto
 }
 
 export interface TalhaoInput {
@@ -120,6 +124,10 @@ export const darBaixa = (id: string, input: { motivo: string; data?: string }) =
   req<Talhao>(`/plantio/talhoes/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
 export const registrarOperacao = (talhaoId: string, input: OperacaoInput) =>
   req<EventoTimeline>(`/plantio/talhoes/${talhaoId}/operacoes`, { method: "POST", body: JSON.stringify(input) });
+export const editarOperacao = (id: string, input: Partial<OperacaoInput>) =>
+  req<EventoTimeline>(`/plantio/operacoes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const excluirOperacao = (id: string) =>
+  req<void>(`/plantio/operacoes/${id}`, { method: "DELETE" });
 
 // HOOKS -------------------------------------------------------------------
 
@@ -469,34 +477,7 @@ export function useCustoOperacionalCafe(safraId: number | null) {
   return { data, loading, erro };
 }
 
-// ESTOQUE de insumos da lavoura (P real — Produto.subtipoPlantio) ----------
-
-// Espelha o DTO SaldoPlantio do backend (server/.../plantio/estoque.ts). `tipo`
-// é o subtipoPlantio (FERTILIZANTE/DEFENSIVO/…); minimoEstoque pode ser null.
-export interface Saldo {
-  produtoId: number;
-  nome: string;
-  tipo: TipoInsumoPlantio;
-  saldo: number;
-  unidade: string;
-  valor: number;            // R$
-  minimoEstoque: number | null;
-  abaixoMinimo: boolean;
-}
-
-export const listarEstoquePlantio = () => req<Saldo[]>(`/plantio/estoque`);
-
-export function useEstoquePlantio() {
-  const [data, setData] = useState<Saldo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => {
-    setLoading(true); setErro(null);
-    listarEstoquePlantio().then(setData).catch((e) => { setErro(e.message); setData([]); }).finally(() => setLoading(false));
-  }, []);
-  useEffect(() => { recarregar(); }, [recarregar]);
-  return { data, loading, erro, recarregar };
-}
+// ESTOQUE: unificado em client/src/estoque/ (tela "Estoque", rota /api/estoque/*).
 
 // IA (real — POST /plantio/ia; modo demo sem ANTHROPIC_API_KEY, modo IA com ela)
 

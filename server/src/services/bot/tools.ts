@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { ContextoConsulta } from "../consulta/tipos.js";
 import { toolsConsulta } from "./tools-consulta.js";
-import { statusSaldoEstoque } from "../rebanho/estoque.js";
+import { statusSaldoEstoque } from "../estoque/estoque.js";
 
 export type Json = Record<string, unknown>;
 type Handler = (args: Json, ctx: ContextoConsulta) => Promise<unknown>;

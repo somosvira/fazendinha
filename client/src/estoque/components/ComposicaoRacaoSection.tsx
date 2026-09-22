@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listarProdutos, obterComposicaoRacao, definirComposicaoRacao, type ProdutoDTO, type ComposicaoRacaoDTO } from "../api";
+import { listarProdutos, obterComposicaoRacao, definirComposicaoRacao, type ProdutoDTO, type ComposicaoRacaoDTO } from "../../rebanho/api";
 
 type ItemEdit = { ingredienteId: string; proporcao: string };
 

@@ -6,7 +6,7 @@
 
 import { prisma } from "../../db.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
-import { calcularCustoVacaDia } from "./estoque.js";
+import { calcularCustoVacaDia } from "../estoque/estoque.js";
 import { scoreDoResumo } from "./score.calc.js";
 import {
   agregarCarteira, simularDescarte as simularDescartePuro,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { ajustarContagem, listarSaldos, listarPropriedades, type SaldoDTO } from "../api";
+import { ajustarContagem, listarSaldos, type SaldoDTO } from "../api";
+import { listarPropriedades } from "../../rebanho/api";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
-import { ProdutoForm } from "./ProdutoForm";
+import { ProdutoForm } from "../../rebanho/components/ProdutoForm";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";

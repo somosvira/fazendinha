@@ -15,6 +15,16 @@ export function exigeArea(area: Area): MiddlewareHandler {
   };
 }
 
+/** Gate por qualquer uma das áreas informadas (ex.: Estoque, visível a pecuária/agricultura/financeiro). */
+export function exigeQualquerArea(areas: Area[]): MiddlewareHandler {
+  return async (c, next) => {
+    const u = getUsuario(c);
+    if (!u) return c.json({ error: "não autenticado" }, 401);
+    if (!areas.some((area) => temArea(u, area))) return c.json({ error: "sem acesso a esta área" }, 403);
+    return next();
+  };
+}
+
 export function exigePermissao(flag: Flag): MiddlewareHandler {
   return async (c, next) => {
     const u = getUsuario(c);

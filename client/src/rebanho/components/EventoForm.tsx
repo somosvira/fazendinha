@@ -3,7 +3,7 @@ import { registrarEvento, registrarEventoSanidade, editarEventoSanidade, listarR
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
-import { BaixaEstoqueCard } from "./BaixaEstoqueCard";
+import { BaixaEstoqueCard } from "../../estoque/components/BaixaEstoqueCard";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";

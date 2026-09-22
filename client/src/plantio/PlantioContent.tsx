@@ -6,7 +6,8 @@ import { FitossanidadeTab } from "./components/FitossanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ColheitaTab } from "./components/ColheitaTab";
 import { PlanejamentoTab } from "./components/PlanejamentoTab";
-import { EstoqueTab } from "./components/EstoqueTab";
+import { EstoqueContent } from "../estoque/EstoqueContent";
+import { listarCentrosCusto } from "../rebanho/api";
 import { CustoTab } from "./components/CustoTab";
 import { DashboardView } from "./components/DashboardView";
 import { TalhaoForm } from "./components/TalhaoForm";
@@ -25,6 +26,19 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null>(null);
+  // Filtro inicial da tela de Estoque: resolve o centro "Plantio Café" (mesmo nome usado em
+  // services/plantio/custo.ts) por nome, uma vez, quando a aba Estoque é aberta.
+  useEffect(() => {
+    if (aba !== "estoque") return;
+    let cancelado = false;
+    listarCentrosCusto().then((cs) => {
+      if (cancelado) return;
+      const alvo = cs.find((c) => c.nome === "Plantio Café");
+      setCentroCustoEstoque(alvo?.id ?? null);
+    }).catch(() => {});
+    return () => { cancelado = true; };
+  }, [aba]);
 
   // Guarda o talhão a abrir após uma troca de aba (deep-link ⌘K), para o efeito
   // [aba] abaixo não limpar o cockpit recém-aberto. Espelha o proximoAnimalRef.
@@ -68,7 +82,7 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
                   : aba === "planejamento"
                     ? <PlanejamentoTab />
                     : aba === "estoque"
-                      ? <EstoqueTab />
+                      ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" />
                       : aba === "custo"
                         ? <CustoTab />
                         : <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />}

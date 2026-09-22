@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader } from "../../components/Loading";
-import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, listarCentrosCusto, type MovimentoDTO, type ProdutoDTO, type RefDTO, type SaldoDTO } from "../api";
-import { MovimentoForm } from "./MovimentoForm";
-import { ProdutoForm } from "./ProdutoForm";
-import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
-import { ComposicaoRacaoSection } from "./ComposicaoRacaoSection";
-import { LotesProdutoSection } from "./LotesProdutoSection";
-import { RebHeader } from "./RebHeader";
+import { Loader } from "../components/Loading";
+import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, type MovimentoDTO, type SaldoDTO } from "./api";
+import { listarProdutos, listarCentrosCusto, type ProdutoDTO, type RefDTO } from "../rebanho/api";
+import { MovimentoForm } from "./components/MovimentoForm";
+import { ProdutoForm } from "../rebanho/components/ProdutoForm";
+import { PrincipiosAtivosSection } from "./components/PrincipiosAtivosSection";
+import { ComposicaoRacaoSection } from "./components/ComposicaoRacaoSection";
+import { LotesProdutoSection } from "./components/LotesProdutoSection";
+import { RebHeader } from "../rebanho/components/RebHeader";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
@@ -47,9 +48,9 @@ function useMovimentos() {
 type SortKey = "nome" | "tipo" | "valor";
 type SortDir = "asc" | "desc";
 
-export function EstoqueTab() {
+export function EstoqueContent({ centroCustoIdInicial, titulo }: { centroCustoIdInicial?: number | null; titulo?: string } = {}) {
   const custo = useCustoVacaDia();
-  const [centroFiltro, setCentroFiltro] = useState("");
+  const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const [agrupar, setAgrupar] = useState(false);
   const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined);
   const movimentos = useMovimentos();
@@ -68,6 +69,7 @@ export function EstoqueTab() {
   }, []);
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
   useEffect(() => { listarCentrosCusto().then(setCentros).catch(() => {}); }, []);
+  useEffect(() => { if (centroCustoIdInicial != null) setCentroFiltro(String(centroCustoIdInicial)); }, [centroCustoIdInicial]);
 
   function trocarSort(key: SortKey) {
     setSort((s) => {
@@ -138,7 +140,7 @@ export function EstoqueTab() {
   // exclusão real acontece dentro do modal de confirmação
 
   if (custo.loading && saldos.loading && movimentos.loading) {
-    return <RebMain><RebHeader eyebrow="Rebanho" title="Estoque" /><Loader /></RebMain>;
+    return <RebMain><RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} /><Loader /></RebMain>;
   }
 
   const c = custo.data;
@@ -146,7 +148,7 @@ export function EstoqueTab() {
 
   return (
     <RebMain>
-      <RebHeader eyebrow="Rebanho · insumos e consumo" title="Estoque" />
+      <RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} />
 
       {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
       <RebKpiStrip cols={3}>
