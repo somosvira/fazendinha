@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { criarProduto, editarProduto, listarCategorias, useCentrosCusto, type ProdutoDTO, type RefDTO, type TipoInsumoPlantio, type TipoProduto } from "../api";
+import { criarProduto, editarProduto, listarCategorias, useCentrosCustoEstoque, type ProdutoDTO, type RefDTO, type TipoInsumoPlantio, type TipoProduto } from "../../estoque/api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
@@ -42,7 +42,7 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
   });
   const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
   const [categorias, setCategorias] = useState<RefDTO[]>([]);
-  const { data: centros } = useCentrosCusto();
+  const { data: centros } = useCentrosCustoEstoque();
   const [erro, setErro] = useState<string | null>(null);
   const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);

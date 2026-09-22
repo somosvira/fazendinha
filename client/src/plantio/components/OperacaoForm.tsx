@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
-import { useProdutos, listarCentrosCusto, type RefDTO } from "../../rebanho/api";
+import { useProdutosEstoque, listarCentrosCusto, type RefDTO } from "../../estoque/api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -103,13 +103,14 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [kKg, setKKg] = useState("");
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
-  const { data: produtos } = useProdutos({ ativo: true });
+  const { data: produtos } = useProdutosEstoque({ ativo: true });
   const produtosEstocaveis = useMemo(
     () => produtos.filter((p) => p.estocavel && p.ativo && p.subtipoPlantio).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos],
   );
   const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
-  useEffect(() => { listarCentrosCusto().then(setCentrosCusto).catch(() => {}); }, []);
+  const [erroCentrosCusto, setErroCentrosCusto] = useState<string | null>(null);
+  useEffect(() => { listarCentrosCusto().then((cs) => { setCentrosCusto(cs); setErroCentrosCusto(null); }).catch((e) => setErroCentrosCusto(e instanceof Error ? e.message : String(e))); }, []);
   const produtoSelecionado = produtosEstocaveis.find((p) => String(p.id) === produtoId);
 
   const baixaEstimada = (() => {
@@ -317,11 +318,12 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   </RebField>
                   <RebField label="Centro de custo">
                     <select className="rb-field-select" value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}>
-                      <option value="">— usar centro da lavoura / do produto —</option>
+                      <option value="">— usar o centro do produto —</option>
                       {centrosCusto.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
                     </select>
                   </RebField>
-                  <p className="text-sm text-ink-3">Se vazio, usa o centro da lavoura ou o único centro do produto.</p>
+                  <p className="text-sm text-ink-3">Se vazio, usa o único centro do produto (se houver).</p>
+                  {erroCentrosCusto && <p className="text-sm text-prejuizo">Erro ao carregar centros de custo: {erroCentrosCusto}</p>}
                 </>
               )}
             </>

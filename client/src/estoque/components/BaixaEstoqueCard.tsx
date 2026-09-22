@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listarSaldos, registrarMovimento, type SaldoDTO } from "../api";
-import { listarProdutos, type ProdutoDTO } from "../../rebanho/api";
+import { listarSaldos, registrarMovimento, listarProdutos, type SaldoDTO, type ProdutoDTO } from "../api";
 import type { Animal } from "../../rebanho/types";
 import { AnimalIdentity, mencaoAnimal } from "../../rebanho/components/AnimalIdentity";
 import { RebModal } from "@/components/rb/RebModal";

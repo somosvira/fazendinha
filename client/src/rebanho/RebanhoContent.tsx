@@ -39,7 +39,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
   const [recargaRelatorio, setRecargaRelatorio] = useState(0);
-  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null>(null);
+  // `undefined` = ainda resolvendo o centro de atividade (EstoqueContent espera
+  // via `aguardarFiltro`); `null` = resolvido, mas sem centro cadastrado.
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
   const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
   // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesma
   // constante usada em custo-producao.ts, via /estoque/centros-atividade), uma vez,
@@ -51,7 +53,11 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
       if (cancelado) return;
       setCentroCustoEstoque(centros.leite);
       setAvisoEstoque(centros.leite == null ? "Centro da atividade não cadastrado — mostrando todos os produtos." : undefined);
-    }).catch(() => {});
+    }).catch((e) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(null);
+      setAvisoEstoque(`Não foi possível resolver o centro da atividade leiteira: ${e instanceof Error ? e.message : String(e)}`);
+    });
     return () => { cancelado = true; };
   }, [aba]);
   // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
@@ -141,7 +147,7 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                 : aba === "producao"
                   ? <ProducaoTab />
                   : aba === "estoque"
-                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />
+                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} aguardarFiltro />
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"

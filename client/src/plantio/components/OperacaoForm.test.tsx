@@ -31,8 +31,8 @@ vi.mock("../api", async (importOriginal) => ({
   registrarOperacao: apiMocks.registrarOperacao,
 }));
 
-vi.mock("../../rebanho/api", () => ({
-  useProdutos: () => ({ data: rebanhoApiMocks.produtos, loading: false, erro: null }),
+vi.mock("../../estoque/api", () => ({
+  useProdutosEstoque: () => ({ data: rebanhoApiMocks.produtos, loading: false, erro: null }),
   listarCentrosCusto: rebanhoApiMocks.listarCentrosCusto,
 }));
 

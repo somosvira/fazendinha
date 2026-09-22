@@ -26,7 +26,9 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
   const [registroInline, setRegistroInline] = useState<{ talhao: Talhao; dominio: "fitossanidade" | "nutricao" } | null>(null);
   // Contador de recarga: bump força o remount (e o refetch) da tab/cockpit após salvar.
   const [recarga, setRecarga] = useState(0);
-  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null>(null);
+  // `undefined` = ainda resolvendo o centro de atividade (EstoqueContent espera
+  // via `aguardarFiltro`); `null` = resolvido, mas sem centro cadastrado.
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
   const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
   // Filtro inicial da tela de Estoque: resolve o centro "Plantio Café" (mesma constante
   // usada em services/plantio/custo.ts, via /estoque/centros-atividade), uma vez,
@@ -38,7 +40,11 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
       if (cancelado) return;
       setCentroCustoEstoque(centros.cafe);
       setAvisoEstoque(centros.cafe == null ? "Centro da atividade não cadastrado — mostrando todos os produtos." : undefined);
-    }).catch(() => {});
+    }).catch((e) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(null);
+      setAvisoEstoque(`Não foi possível resolver o centro do plantio de café: ${e instanceof Error ? e.message : String(e)}`);
+    });
     return () => { cancelado = true; };
   }, [aba]);
 
@@ -84,7 +90,7 @@ export function PlantioContent({ aba, onNavPla, abrirId, onAbriuEntidade }: { ab
                   : aba === "planejamento"
                     ? <PlanejamentoTab />
                     : aba === "estoque"
-                      ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />
+                      ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} aguardarFiltro />
                       : aba === "custo"
                         ? <CustoTab />
                         : <DashboardView onNav={(t) => onNavPla?.(t as PlaSub)} />}

@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => ({
   excluirMovimento: vi.fn(),
   escrita: vi.fn(),
   leitura: vi.fn(),
+  listarProdutos: vi.fn(),
+  criarProduto: vi.fn(),
+  atualizarProduto: vi.fn(),
+  listarCategorias: vi.fn(),
+  listarCentrosCusto: vi.fn(),
 }));
 
 vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
@@ -21,12 +26,26 @@ vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
   };
 });
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
+vi.mock("../services/estoque/produtos.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../services/estoque/produtos.js")>();
+  return {
+    ...real,
+    listarProdutos: mocks.listarProdutos,
+    criarProduto: mocks.criarProduto,
+    atualizarProduto: mocks.atualizarProduto,
+  };
+});
+vi.mock("../services/rebanho/financeiro-ref.js", () => ({
+  listarCategorias: mocks.listarCategorias,
+  listarCentrosCusto: mocks.listarCentrosCusto,
+}));
 
 import { estoqueRouter } from "./estoque.js";
 
 const base = { id: 7, nome: "Peão", email: "p@x", papel: "OPERADOR", abas: [], areas: ["pecuaria"], status: "ATIVO", dono: false };
 const semLancar = { ...base, flags: ["verValores"] };
 const comLancar = { ...base, flags: ["lancar"] };
+const soAgricultura = { ...base, id: 9, areas: ["agricultura"], flags: ["verValores"] };
 
 function appCom(usuario: unknown) {
   return new Hono().use("*", async (c, next) => { c.set("usuario" as never, usuario as never); await next(); }).route("/", estoqueRouter);
@@ -48,6 +67,11 @@ beforeEach(() => {
   mocks.ajustarContagem.mockResolvedValue({ id: 1, operacaoId: 2 });
   mocks.registrarMovimento.mockResolvedValue({ id: 1, operacaoId: 2 });
   mocks.excluirMovimento.mockResolvedValue(undefined);
+  mocks.listarProdutos.mockResolvedValue([]);
+  mocks.criarProduto.mockResolvedValue({ id: 1 });
+  mocks.atualizarProduto.mockResolvedValue({ id: 1 });
+  mocks.listarCategorias.mockResolvedValue([]);
+  mocks.listarCentrosCusto.mockResolvedValue([]);
 });
 
 describe("escritas exigem a flag lancar", () => {
@@ -90,5 +114,61 @@ describe("GET /estoque/saldos", () => {
     const res = await appCom(semLancar).request(`/estoque/saldos?centroCustoId=${v}`);
     expect(res.status).toBe(400);
     expect(mocks.listarSaldos).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /estoque/movimentos", () => {
+  it.each(["abc", "-1", "1.5"])("produtoId=%s → 400", async (v) => {
+    const res = await appCom(semLancar).request(`/estoque/movimentos?produtoId=${v}`);
+    expect(res.status).toBe(400);
+    expect(mocks.listarSaldos).not.toHaveBeenCalled();
+  });
+  it("tipo inválido → 400", async () => {
+    const res = await appCom(semLancar).request("/estoque/movimentos?tipo=INVALIDO");
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /estoque/custo-vaca-dia", () => {
+  it.each(["0", "366", "abc", "-1"])("dias=%s → 400", async (v) => {
+    const res = await appCom(semLancar).request(`/estoque/custo-vaca-dia?dias=${v}`);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("DELETE /estoque/movimentos/:id", () => {
+  it.each(["abc", "-1", "1.5"])("id=%s → 400", async (v) => {
+    const res = await appCom(comLancar).request(`/estoque/movimentos/${v}`, { method: "DELETE" });
+    expect(res.status).toBe(400);
+    expect(mocks.excluirMovimento).not.toHaveBeenCalled();
+  });
+});
+
+describe("acesso de usuário só-agricultura aos cadastros do estoque", () => {
+  it("GET /estoque/produtos → 200", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/produtos");
+    expect(res.status).toBe(200);
+  });
+  it("GET /estoque/categorias → 200", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/categorias");
+    expect(res.status).toBe(200);
+  });
+  it("GET /estoque/centros-custo → 200", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/centros-custo");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("POST /estoque/produtos", () => {
+  const body = { nome: "Ureia", tipo: "INSUMO", unidade: "kg", estocavel: true, categoriaId: 1 };
+  it("sem lancar → 403", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
+    expect(res.status).toBe(403);
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+  });
+  it("com lancar → chega ao service", async () => {
+    const res = await appCom(comLancar).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
+    expect(res.status).toBe(201);
+    expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Ureia" }), 7);
   });
 });

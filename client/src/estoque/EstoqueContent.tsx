@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader } from "../components/Loading";
-import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, type MovimentoDTO, type SaldoDTO } from "./api";
-import { listarProdutos, listarCentrosCusto, type ProdutoDTO, type RefDTO } from "../rebanho/api";
+import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, listarProdutos, listarCentrosCusto, type MovimentoDTO, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
 import { MovimentoForm } from "./components/MovimentoForm";
 import { ProdutoForm } from "../rebanho/components/ProdutoForm";
 import { PrincipiosAtivosSection } from "./components/PrincipiosAtivosSection";
@@ -48,11 +47,15 @@ function useMovimentos() {
 type SortKey = "nome" | "tipo" | "valor";
 type SortDir = "asc" | "desc";
 
-export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string } = {}) {
+export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro, aguardarFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string; aguardarFiltro?: boolean } = {}) {
   const custo = useCustoVacaDia();
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const [agrupar, setAgrupar] = useState(false);
-  const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined);
+  // Quando `aguardarFiltro` está ligado (rebanho/plantio resolvendo o centro de
+  // atividade), evita buscar saldos sem filtro e depois de novo com filtro —
+  // só busca quando `centroCustoIdInicial` deixa de ser `undefined`.
+  const filtroPronto = !aguardarFiltro || centroCustoIdInicial !== undefined;
+  const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined, filtroPronto);
   const movimentos = useMovimentos();
   const [form, setForm] = useState(false);
   const [busca, setBusca] = useState("");
@@ -60,15 +63,17 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [centros, setCentros] = useState<RefDTO[]>([]);
+  const [erroProdutos, setErroProdutos] = useState<string | null>(null);
+  const [erroCentros, setErroCentros] = useState<string | null>(null);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
 
   const carregarProdutos = useCallback(() => {
-    listarProdutos({ ativo: true }).then(setProdutos).catch(() => {});
+    listarProdutos({ ativo: true }).then((ps) => { setProdutos(ps); setErroProdutos(null); }).catch((e) => setErroProdutos(e instanceof Error ? e.message : String(e)));
   }, []);
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
-  useEffect(() => { listarCentrosCusto().then(setCentros).catch(() => {}); }, []);
+  useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
   useEffect(() => { if (centroCustoIdInicial != null) setCentroFiltro(String(centroCustoIdInicial)); }, [centroCustoIdInicial]);
 
   function trocarSort(key: SortKey) {
@@ -151,6 +156,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} />
 
       {avisoFiltro && <p className="mt-[7px] text-sm text-amber-800">{avisoFiltro}</p>}
+      {erroProdutos && <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar produtos: {erroProdutos}</p>}
+      {erroCentros && <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar centros de custo: {erroCentros}</p>}
 
       {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
       <RebKpiStrip cols={3}>

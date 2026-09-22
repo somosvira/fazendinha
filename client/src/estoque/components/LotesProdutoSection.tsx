@@ -3,7 +3,7 @@ import {
   useLotesProduto, criarLoteProduto, excluirLoteProduto,
   listarLocaisArmazenamento, criarLocalArmazenamento, listarProdutos,
   type LocalArmazenamentoDTO, type ProdutoDTO, type StatusValidadeLote,
-} from "../../rebanho/api";
+} from "../api";
 import { PromptDialog } from "@/components/PromptDialog";
 
 const fmtData = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR");
