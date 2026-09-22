@@ -64,6 +64,15 @@ async function criarTransacaoComMovimento(
   });
 }
 
+/** Uma consulta para todos os centros usados na operação (cabeçalho + itens).
+ * Devolve id → nome só dos ativos; quem chamou decide o campo do erro. */
+async function resolverCentros(tx: Prisma.TransactionClient, ids: number[]) {
+  const unicos = [...new Set(ids)];
+  if (!unicos.length) return new Map<number, string>();
+  const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ativo: true }, select: { id: true, nome: true } });
+  return new Map(centros.map((centro) => [centro.id, centro.nome]));
+}
+
 async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
@@ -74,9 +83,25 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     }
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
     const produtos = produtosIds.length
-      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true } })
+      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
       : [];
     const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
+    // Produto com exatamente um centro cadastrado o transmite ao item; com vários
+    // (ou nenhum) o item fica sem centro próprio e herda o da operação.
+    const centroUnicoDoProduto = (produto: (typeof produtos)[number] | undefined) =>
+      produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
+    const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? 0)) : item.centroCustoId);
+    const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
+    if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
+    centrosItens.forEach((id, indice) => {
+      if (id && !centros.has(id)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", `itens.${indice}.centroCustoId`);
+      // Item não estocável sem centro efetivo (próprio ou da operação) não tem
+      // onde parar nos relatórios; estocável pode ficar sem centro (o consumo
+      // futuro decide).
+      if (!input.itens[indice].estocavel && !(id ?? input.centroCustoId)) {
+        throw new FinanceiroError("VALIDACAO", "Informe o centro de custo deste item ou um centro padrão para a operação", `itens.${indice}.centroCustoId`);
+      }
+    });
     const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
     if (temEfeitoEstoque) {
       for (const item of input.itens.filter((item) => item.estocavel)) {
@@ -91,8 +116,10 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
       return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
     };
-    const itens = await Promise.all(input.itens.map(async (item) => ({
+    const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       produtoId: item.produtoId,
+      centroCustoId: centrosItens[indice],
+      centroCustoNome: centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
@@ -118,11 +145,6 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       throw new FinanceiroError("VALIDACAO", "O valor total informado deve corresponder à soma dos itens");
     }
     if (valorTotal.isNegative()) throw new FinanceiroError("VALIDACAO", "O valor total da operação não pode ser negativo");
-
-    if (input.centroCustoId) {
-      const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
-      if (!centro) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
-    }
 
     if (input.financeiro.condicao === "PARCIAL") {
       const futuro = input.financeiro.parcelas.reduce((soma, parcela) => soma.plus(parcela.valor), new Prisma.Decimal(0));
@@ -162,6 +184,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
           custoUnitario: item.valorUnitario, valorTotal: item.valorTotal, operacaoId: operacao.id, itemOperacaoId: item.id,
+          centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,
         } });
@@ -355,7 +378,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
         origem: "AJUSTE_INVENTARIO", data: new Date(),
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
         custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
-        propriedadeId: movimento.propriedadeId, operacaoId: operacao.id,
+        propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
         reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
       } });
       await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
@@ -369,6 +392,7 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
 
 const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
   parceiro: true,
+  centroCusto: { select: { id: true, nome: true } },
   itens: true,
   compromissos: {
     include: {

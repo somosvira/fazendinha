@@ -31,6 +31,7 @@ export function quebrarPorCategoria(itens: ItemCusto[]): QuebraCusto {
 
 // ── Service (agrega Lancamento real) ────────────────────────────────────────
 const toNum = (x: any) => (x != null ? Number(x) : 0);
+const CENTRO_LEITE = "Atividade Leiteira";
 
 export async function agregarCustoProducao(meses = 12, propriedadeId: number | null = null) {
   const desde = new Date();
@@ -38,16 +39,23 @@ export async function agregarCustoProducao(meses = 12, propriedadeId: number | n
 
   // Custeio do leite (real): mesmos filtros do buildDashboard (LIQUIDADO,
   // estornado=false, dataLiquidacao recente) + DEBITO + CCusto "Atividade Leiteira".
-  const lancs = await prisma.transacaoFinanceira.findMany({
+  // Resolve o centro por id (o item guarda centroCustoNome como snapshot;
+  // comparar por nome quebraria se o centro fosse renomeado).
+  const idsLeite = (await prisma.centroCusto.findMany({ where: { nome: CENTRO_LEITE }, select: { id: true } })).map((c) => c.id);
+  const lancs = idsLeite.length === 0 ? [] : await prisma.transacaoFinanceira.findMany({
     where: {
       OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
       data: { gte: desde },
-      operacao: { centroCusto: { nome: "Atividade Leiteira" } },
+      // Pré-filtro: a operação ou algum item aponta o centro do leite; o rateio
+      // abaixo fica só com as partes cujo centro efetivo (item ?? operação) é ele.
+      operacao: { OR: [{ centroCustoId: { in: idsLeite } }, { itens: { some: { centroCustoId: { in: idsLeite } } } }] },
       ...(propriedadeId != null ? { propriedadeId } : {}),
     },
     select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
   });
-  const quebra = quebrarPorCategoria(lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal).filter((p) => p.classificacao !== "INVESTIMENTO").map((p) => ({ categoria: p.categoriaNome, valor: p.valor.toNumber() }))));
+  const quebra = quebrarPorCategoria(lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal)
+    .filter((p) => p.classificacao !== "INVESTIMENTO" && p.centroCustoId != null && idsLeite.includes(p.centroCustoId))
+    .map((p) => ({ categoria: p.categoriaNome, valor: p.valor.toNumber() }))));
 
   // Custo vaca/dia (real): reusa o motor do Estoque (consumo de insumo ÷ vacas×dias).
   const cvd = await calcularCustoVacaDia(30, propriedadeId); // { custoVacaDia, vacasEmLactacao, totalConsumo }

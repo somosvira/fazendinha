@@ -196,23 +196,141 @@ describe("FormOperacao", () => {
   });
 });
 
-it("herda a categoria por produto, pede centro para mistura e preserva escolha manual", () => {
-  render(<FormOperacao config={{ ...config,
-    categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO", ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO", ativo: true, ordem: 0 }],
+function configCentrosDivergentes() {
+  return { ...config,
+    categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0 }],
     centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
     produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoIds: [2] }],
-  }} onSalvo={vi.fn()} />);
+  };
+}
+
+it("produto com um único centro preenche o item e sugere o centro da operação", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
   fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
   expect((screen.getByLabelText("Categoria do item 1") as HTMLSelectElement).value).toBe("1");
   expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("1");
+});
+
+it("produtos com centros divergentes mostram aviso e 'Separar por item' preenche o modo por item", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
   fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
   fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
   expect((screen.getByLabelText("Categoria do item 2") as HTMLSelectElement).value).toBe("2");
   expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("");
-  expect(screen.getByText(/Os produtos sugerem áreas diferentes/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "2" } });
-  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "1" } });
-  expect((screen.getByLabelText("Centro de custo") as HTMLSelectElement).value).toBe("2");
+  expect(screen.getByText(/Os produtos pertencem a centros de custo diferentes/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("1");
+  expect((screen.getByLabelText("Centro de custo do item 2") as HTMLSelectElement).value).toBe("2");
+  expect(screen.getByText("Centro padrão (itens sem centro)")).toBeTruthy();
+});
+
+it("modo por item envia centroCustoId por item e null nos itens sem centro próprio", async () => {
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    const caminho = String(url);
+    if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      return { ok: true, json: async () => ({ id: 9, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+    }
+    if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      return { ok: true, json: async () => ({ id: 43, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", data: "2026-09-22", descricao: "Compra mista", valorTotal: "100.00", parceiro: null, itens: [], compromissos: [], transacoes: [], movimentosEstoque: [], documentos: [] }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  const cfg = configCentrosDivergentes();
+  render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra mista" } });
+  fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(config.parceiros[0].id) } });
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "100" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  fireEvent.change(screen.getByLabelText("Centro de custo do item 2"), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: String(config.contas[0].id) } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  const chamadaConfirmar = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao"));
+  expect(chamadaConfirmar).toBeTruthy();
+});
+
+it("item não estocável sem centro de custo bloqueia a confirmação com mensagem no campo", () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  try {
+    const cfg = configCentrosDivergentes();
+    render(<FormOperacao config={cfg} tipoInicial="COMPRA_CONSUMO_DIRETO" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(cfg.parceiros[0].id) } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Serviço avulso" } });
+    fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Item sem centro" } });
+    fireEvent.change(screen.getByLabelText("Quantidade do item 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(campo);
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
+it("'Separar por item' deixa vazio (herda a operação) quando o produto não tem centro único", () => {
+  const cfg = { ...configCentrosDivergentes() };
+  cfg.produtos = [{ ...cfg.produtos[0], centroCustoIds: [] }, cfg.produtos[1]];
+  render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("radio", { name: /Por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Centro de custo do item 2") as HTMLSelectElement).value).toBe("2");
+});
+
+it("erro do servidor itens.N.centroCustoId no modo Único marca e rola até o centro da operação", async () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  const scroll = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scroll;
+  const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+    const caminho = String(url);
+    if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") {
+      return { ok: true, json: async () => ({ id: 10, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-07T12:00:00Z" }) };
+    }
+    if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) {
+      return { ok: false, status: 422, json: async () => ({ error: "Selecione um centro de custo ativo", campo: "itens.0.centroCustoId" }) };
+    }
+    return { ok: true, json: async () => ({}) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const cfg = configCentrosDivergentes();
+    render(<FormOperacao config={cfg} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: String(cfg.parceiros[0].id) } });
+    fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Centro de custo"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: String(cfg.contas[0].id) } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(screen.getByLabelText("Centro de custo").getAttribute("aria-invalid")).toBe("true"));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.id).toBe("campo-centroCustoId");
+    expect(scroll).toHaveBeenCalled();
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
+it("voltar para Único limpa os centros preenchidos nos itens", () => {
+  render(<FormOperacao config={configCentrosDivergentes()} onSalvo={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+  fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: /Separar por item/i }));
+  expect((screen.getByLabelText("Centro de custo do item 1") as HTMLSelectElement).value).toBe("1");
+  fireEvent.click(screen.getByRole("radio", { name: /Único para a operação/i }));
+  expect(screen.queryByLabelText("Centro de custo do item 1")).toBeNull();
+  expect(screen.queryByLabelText("Centro de custo do item 2")).toBeNull();
 });
 
 describe("FormOperacao — geração de parcelas", () => {
@@ -473,17 +591,17 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     expect(scroll).toHaveBeenCalled();
   });
 
-  it("centro de custo ambíguo entre produtos: rola e foca o campo", () => {
+  it("item não estocável sem centro de custo: rola e foca o campo do item", () => {
     const [, scroll] = comScrollStub(() => {
       render(<FormOperacao config={{ ...config,
         centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
         produtos: [{ ...config.produtos[0], centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoIds: [2] }],
-      }} onSalvo={vi.fn()} />);
+      }} tipoInicial="COMPRA_CONSUMO_DIRETO" onSalvo={vi.fn()} />);
       fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
       fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });
-      fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
-      fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
-      fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+      fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Item avulso" } });
+      fireEvent.change(screen.getByLabelText("Quantidade do item 1"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
       fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
       fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
       const campo = screen.getByLabelText("Centro de custo");

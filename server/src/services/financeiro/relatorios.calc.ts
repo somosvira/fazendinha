@@ -1,9 +1,10 @@
 /* Relatórios financeiros persistidos — regras puras de composição.
  *
  * O filtro atua em dois níveis, como a análise por categoria:
- *  - operação: tipo, situação e centro de custo;
- *  - fatia classificada: categoria e custeio × investimento. Uma operação com
- *    itens de categorias diferentes entra só com as fatias que batem no filtro.
+ *  - operação: tipo, situação e parceiro;
+ *  - fatia classificada: categoria, custeio × investimento e centro de custo
+ *    efetivo (o do item, senão o da operação). Uma operação com itens de
+ *    categorias ou centros diferentes entra só com as fatias que batem.
  */
 import { Prisma } from "@prisma/client";
 import type { ConfiguracaoRelatorioFinanceiro } from "./relatorios.schemas.js";
@@ -29,22 +30,23 @@ export function filtroVazio(filtro?: FiltroRelatorio | null) {
 }
 
 /** Lançamento sem operação (transferência, pagamento avulso) não tem tipo nem
- * situação: só entra com esses filtros livres e conta como "sem centro". */
-export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; centroCustoId: number | null; parceiroId?: number | null } | null) {
+ * situação: só entra com esses filtros livres. O centro é filtrado por parte
+ * (`partePassa`) — o avulso rateia numa única parte "sem centro". */
+export function operacaoPassa(filtro: FiltroRelatorio | null | undefined, operacao: { tipo: string; status: string; parceiroId?: number | null } | null) {
   if (!filtro) return true;
-  const centroOk = (id: number | null) => !filtro.centroCustoIds.length || filtro.centroCustoIds.includes(id ?? 0);
   const parceiroOk = (id: number | null | undefined) => !filtro.parceiroIds?.length || filtro.parceiroIds.includes(id ?? 0);
-  if (!operacao) return !filtro.tipos.length && !filtro.status.length && centroOk(null) && parceiroOk(null);
+  if (!operacao) return !filtro.tipos.length && !filtro.status.length && parceiroOk(null);
   return (!filtro.tipos.length || (filtro.tipos as readonly string[]).includes(operacao.tipo))
     && (!filtro.status.length || (filtro.status as readonly string[]).includes(operacao.status))
-    && centroOk(operacao.centroCustoId)
     && parceiroOk(operacao.parceiroId);
 }
 
-export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { categoriaId?: number | null; classificacao?: Classificacao }) {
+/** `centroCustoId` aqui é o efetivo da parte (item ?? operação); 0 = sem centro. */
+export function partePassa(filtro: FiltroRelatorio | null | undefined, parte: { categoriaId?: number | null; classificacao?: Classificacao; centroCustoId?: number | null }) {
   if (!filtro) return true;
   return (!filtro.categoriaIds.length || filtro.categoriaIds.includes(parte.categoriaId ?? 0))
-    && (!filtro.classificacoes.length || filtro.classificacoes.includes(parte.classificacao ?? "SEM_CLASSIFICACAO"));
+    && (!filtro.classificacoes.length || filtro.classificacoes.includes(parte.classificacao ?? "SEM_CLASSIFICACAO"))
+    && (!filtro.centroCustoIds.length || filtro.centroCustoIds.includes(parte.centroCustoId ?? 0));
 }
 
 export interface CadastrosFiltro { categorias: { id: number; nome: string }[]; centrosCusto: { id: number; nome: string }[]; parceiros?: { id: number; nome: string }[] }
@@ -69,7 +71,7 @@ export interface OperacaoComposicao {
   id: number; data: Date; tipo: string; status: string; descricao: string | null; valorTotal: Valor;
   centroCustoId: number | null; centroCusto: { nome: string } | null; parceiro: { nome: string } | null;
   categoriaId: number | null; categoriaNome: string | null; classificacao: Classificacao;
-  itens: { id: number; descricao: string; quantidade: Valor; unidade: string; valorTotal: Valor; categoriaId: number | null; categoriaNome: string | null; classificacao: Classificacao }[];
+  itens: { id: number; descricao: string; quantidade: Valor; unidade: string; valorTotal: Valor; categoriaId: number | null; categoriaNome: string | null; classificacao: Classificacao; centroCustoId: number | null; centroCustoNome: string | null }[];
 }
 export interface LinhaComposicao {
   operacaoId: number; data: string; tipo: string; status: string; descricao: string | null; item: string | null;
@@ -100,15 +102,20 @@ export function comporItens(operacoes: OperacaoComposicao[], filtro?: FiltroRela
   const linhas: LinhaComposicao[] = [];
   for (const operacao of operacoes) {
     if (!operacaoPassa(filtro, operacao)) continue;
+    // Centro efetivo da parte: o do item, senão o da operação.
+    const centroOperacao = { centroCustoId: operacao.centroCustoId, centroCustoNome: operacao.centroCusto?.nome ?? null };
     const partes = operacao.itens.length
-      ? [...operacao.itens].sort((a, b) => a.id - b.id).map((item) => ({ ...item, item: item.descricao, quantidade: new Prisma.Decimal(item.quantidade).toString(), unidade: item.unidade as string | null }))
-      : [{ categoriaId: operacao.categoriaId, categoriaNome: operacao.categoriaNome, classificacao: operacao.classificacao, valorTotal: operacao.valorTotal, item: null, quantidade: null, unidade: null }];
+      ? [...operacao.itens].sort((a, b) => a.id - b.id).map((item) => ({
+        ...item, ...(item.centroCustoId ? { centroCustoId: item.centroCustoId, centroCustoNome: item.centroCustoNome } : centroOperacao),
+        item: item.descricao, quantidade: new Prisma.Decimal(item.quantidade).toString(), unidade: item.unidade as string | null,
+      }))
+      : [{ categoriaId: operacao.categoriaId, categoriaNome: operacao.categoriaNome, classificacao: operacao.classificacao, ...centroOperacao, valorTotal: operacao.valorTotal, item: null, quantidade: null, unidade: null }];
     for (const parte of partes) {
       if (!partePassa(filtro, parte)) continue;
       linhas.push({
         operacaoId: operacao.id, data: operacao.data.toISOString().slice(0, 10), tipo: operacao.tipo, status: operacao.status,
         descricao: operacao.descricao, item: parte.item, quantidade: parte.quantidade, unidade: parte.unidade, parceiro: operacao.parceiro?.nome ?? null,
-        categoriaId: parte.categoriaId ?? null, categoria: parte.categoriaNome ?? SEM_CATEGORIA, centroCusto: operacao.centroCusto?.nome ?? SEM_CENTRO,
+        categoriaId: parte.categoriaId ?? null, categoria: parte.categoriaNome ?? SEM_CATEGORIA, centroCusto: (parte.centroCustoId ? parte.centroCustoNome : null) ?? SEM_CENTRO,
         classificacao: parte.classificacao ?? null, valor: new Prisma.Decimal(parte.valorTotal).toFixed(2),
       });
     }

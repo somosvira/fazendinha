@@ -42,7 +42,9 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
     where: {
       OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],
       data: { gte: desde },
-      operacao: { centroCustoId: { in: centroCafeIds } },
+      // Pré-filtro: a operação ou algum item aponta um centro do café. O rateio
+      // abaixo fica só com as partes cujo centro efetivo (item ?? operação) é café.
+      operacao: { OR: [{ centroCustoId: { in: centroCafeIds } }, { itens: { some: { centroCustoId: { in: centroCafeIds } } } }] },
     },
     select: {
       id: true, valorTotal: true,
@@ -51,7 +53,7 @@ export async function agregarCustoPlantio(meses = 12, classe: ClasseCusto = "cus
   });
 
   // Classificação gravada em cada item; o nome do centro não define investimento.
-  const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal));
+  const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal).filter((p) => p.centroCustoId != null && centroCafeIds.includes(p.centroCustoId)));
   const custeio = partes.filter((p) => p.classificacao !== "INVESTIMENTO");
   const investimento = partes.filter((p) => p.classificacao === "INVESTIMENTO");
   const custeioTotal = Math.round(custeio.reduce((s, p) => s + p.valor.toNumber(), 0) * 100) / 100;

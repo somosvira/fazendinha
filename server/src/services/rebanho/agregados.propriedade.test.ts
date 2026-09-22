@@ -19,6 +19,7 @@ vi.mock("../../db.js", () => ({
     eventoSanitario: { findMany: mocks.eventoFindMany },
     transacaoFinanceira: { findMany: mocks.transacaoFindMany },
     produto: { findMany: mocks.produtoFindMany },
+    centroCusto: { findMany: vi.fn().mockResolvedValue([{ id: 1 }]) },
   },
 }));
 vi.mock("./config.js", () => ({ obterConfig: mocks.obterConfig }));

@@ -20,6 +20,7 @@
  */
 import { prisma } from "../../db.js";
 import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { RENDIMENTO_CARCACA, KG_POR_ARROBA, HOJE_ANCORA } from "./resumos.recompute.js";
 
 // Preço da arroba spot — mesma referência do dashboard (Cepea/Esalq MG).
@@ -234,17 +235,22 @@ export async function agregarCustoCorte(meses = 12): Promise<CustoCorteData> {
   let custoFinanceiroExtra = 0;
   let temCentroCorte = false;
   if (centrosCorte.length) {
+    const idsCorte = centrosCorte.map((c) => c.id);
+    // Pré-filtro: a operação ou algum item aponta um centro de corte. Soma só
+    // as partes rateadas cujo centro efetivo (item ?? operação) é de corte —
+    // uma nota mista (ração do corte + insumo do leite) não entra inteira.
     const lancs = await prisma.transacaoFinanceira.findMany({
       where: {
         status: "CONFIRMADA",
         tipo: "PAGAMENTO",
         data: { gte: desde },
-        operacao: { centroCustoId: { in: centrosCorte.map((c) => c.id) } },
+        operacao: { OR: [{ centroCustoId: { in: idsCorte } }, { itens: { some: { centroCustoId: { in: idsCorte } } } }] },
       },
-      select: { valorTotal: true },
+      select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
     });
-    custoFinanceiroExtra = lancs.reduce((s, l) => s + toNum(l.valorTotal), 0);
-    temCentroCorte = lancs.length > 0;
+    const partes = lancs.flatMap((l) => ratearTransacao(l.operacao, l.id, l.valorTotal).filter((p) => p.centroCustoId != null && idsCorte.includes(p.centroCustoId)));
+    custoFinanceiroExtra = Math.round(partes.reduce((s, p) => s + p.valor.toNumber(), 0) * 100) / 100;
+    temCentroCorte = partes.length > 0;
   }
 
   // 6) Economia unitária (núcleo puro).

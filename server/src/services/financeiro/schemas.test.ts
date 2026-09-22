@@ -18,6 +18,15 @@ const item = {
 };
 
 describe("schema de criação de operação", () => {
+  it("item aceita centroCustoId ausente (herda do produto), nulo (herda da operação) ou positivo", () => {
+    const parse = (centroCustoId?: number | null) => operacaoSchema.safeParse({ ...base, tipo: "COMPRA_ESTOQUE", itens: [{ ...item, ...(centroCustoId === undefined ? {} : { centroCustoId }) }] });
+    const centroDoItem = (centroCustoId?: number | null) => { const r = parse(centroCustoId); return r.success ? r.data.itens[0].centroCustoId : "erro"; };
+    expect(centroDoItem()).toBeUndefined();
+    expect(centroDoItem(null)).toBeNull();
+    expect(centroDoItem(3)).toBe(3);
+    expect(parse(0).success).toBe(false);
+  });
+
   it("aceita serviço com valor total e sem item físico", () => {
     const resultado = operacaoSchema.safeParse({ ...base, tipo: "SERVICO", valorTotal: 500, itens: [] });
     expect(resultado.success).toBe(true);

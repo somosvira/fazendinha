@@ -73,6 +73,24 @@ describe("relatório gerencial com filtro de composição", () => {
     expect(semCentro.categorias?.itens).toEqual([{ categoria: "Sem categoria", total: 200, pct: 100 }]);
   });
 
+  it("centro do item prevalece sobre o da operação; item sem centro herda o da operação", async () => {
+    const mistaPorCentro = {
+      ...compraMista,
+      itens: [
+        { id: 1, valorTotal: d("800"), categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 2, centroCustoNome: "Agronomia" },
+        { id: 2, valorTotal: d("500"), categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+      ],
+    };
+    mocks.movimentos.mockResolvedValue([movimento(100, { id: 10, tipo: "PAGAMENTO", operacao: mistaPorCentro }, "1300")]);
+    const tudo = await gerarRelatorioGerencial(query, 7, semFiltro);
+    expect(tudo.categorias?.centros.map((c) => [c.centro, c.total])).toEqual([["Agronomia", 800], ["Pecuária", 500]]);
+    const agronomia = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [2] });
+    expect(agronomia.categorias?.itens).toEqual([{ categoria: "Nutrição", total: 800, pct: 100 }]);
+    const pecuaria = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [1] });
+    expect(pecuaria.categorias?.itens).toEqual([{ categoria: "Benfeitorias", total: 500, pct: 100 }]);
+    expect((await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [0] })).categorias?.itens).toEqual([]);
+  });
+
   it("situação da operação não recorta o caixa: avulso e pagamento de operação cancelada seguem no realizado", async () => {
     mocks.movimentos.mockResolvedValue([
       movimento(100, { id: 10, tipo: "PAGAMENTO", status: "REVERTIDA", operacao: { ...compraMista, status: "CANCELADA" } }, "1300"),

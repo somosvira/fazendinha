@@ -17,7 +17,9 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
   const operacoes = await prisma.operacao.findMany({
     where: {
       ...(propriedadeId !== null ? { propriedadeId } : {}),
-      ...(filtro.centroCustoId !== undefined ? { centroCustoId: filtro.centroCustoId || null } : {}),
+      // Pré-filtro por centro: a operação entra se ela OU algum item aponta o
+      // centro; a fatia certa é escolhida abaixo pelo centro efetivo da parte.
+      ...(filtro.centroCustoId !== undefined ? { OR: [{ centroCustoId: filtro.centroCustoId || null }, { itens: { some: { centroCustoId: filtro.centroCustoId || null } } }] } : {}),
       tipo: { in: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO"] },
       ...(filtro.base === "compras" ? { status: "CONFIRMADA", data: periodo }
         : filtro.base === "pagamentos" ? { transacoes: { some: { data: periodo, tipo: { in: ["PAGAMENTO", "REVERSAO"] } } } }
@@ -31,8 +33,9 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
     const incluir = (partes: ReturnType<typeof ratearCategorias>, data: Date) => {
       for (const p of partes) {
         if (filtro.categoriaId !== undefined && p.categoriaId !== (filtro.categoriaId || null)) continue;
+        if (filtro.centroCustoId !== undefined && p.centroCustoId !== (filtro.centroCustoId || null)) continue;
         if (p.valor.isZero()) continue;
-        linhas.push({ operacaoId: op.id, descricao: op.descricao, data: data.toISOString().slice(0, 10), categoriaId: p.categoriaId, categoria: p.categoriaNome, centroCusto: op.centroCusto?.nome ?? "Sem centro de custo", classificacao: p.classificacao, valor: p.valor.toFixed(2) });
+        linhas.push({ operacaoId: op.id, descricao: op.descricao, data: data.toISOString().slice(0, 10), categoriaId: p.categoriaId, categoria: p.categoriaNome, centroCusto: (p.centroCustoId ? p.centroCustoNome : null) ?? "Sem centro de custo", classificacao: p.classificacao, valor: p.valor.toFixed(2) });
       }
     };
     if (filtro.base === "compras") incluir(ratearCategorias(op, op.valorTotal), op.data);

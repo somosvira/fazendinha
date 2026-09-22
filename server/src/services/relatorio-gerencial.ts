@@ -54,6 +54,7 @@ export interface RelatorioGerencialDTO {
 const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const dataUtc = (s: string) => new Date(`${s}T00:00:00Z`);
 const toNum = (d: Prisma.Decimal | number) => (typeof d === "number" ? d : d.toNumber());
+const SEM_CENTRO_GERENCIAL = "(Sem centro de custo)";
 
 /** `filtro` recorta receitas, despesas, compromissos, tipos e rastreabilidade.
  * O saldo das contas é sempre integral: saldo filtrado não corresponde a extrato.
@@ -109,10 +110,15 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
       : Promise.resolve(null),
   ]);
 
+  // Base do extrato (por lançamento): centro da operação. As linhas analíticas
+  // abaixo substituem categoria e centro pelos da PARTE rateada (item ?? operação).
   const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => ({
     categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
-    centroCusto: { nome: operacao?.centroCusto?.nome ?? "(Sem centro de custo)" },
-
+    centroCusto: { nome: operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL },
+  });
+  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: number | null; centroCustoNome: string | null }) => ({
+    categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+    centroCusto: { nome: (parte.centroCustoId ? parte.centroCustoNome : null) ?? SEM_CENTRO_GERENCIAL },
   });
 
   const linhasRealizadas: LinhaLancamento[] = movimentos.map((movimento) => {
@@ -163,11 +169,11 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, linha.valor * (reversao ? -1 : 1)).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({
       ...linha, valor: parte.valor.toNumber(),
       natureza: reversao ? (linha.natureza === "CREDITO" ? "DEBITO" as const : "CREDITO" as const) : linha.natureza,
-      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+      ...linhaParte(parte),
     }));
   });
   const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => operacaoPassa(filtroCaixa, compromissos[index].operacao)
-    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } }))
+    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), ...linhaParte(parte) }))
     : []);
   const linhas = [...linhasAnaliticas, ...linhasPrevistasAnaliticas];
   // A auditoria classifica a reversão como evento próprio; não usa o sinal
