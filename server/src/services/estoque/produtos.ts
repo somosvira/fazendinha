@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, TipoProduto } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
@@ -29,9 +29,9 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
     ativo: produto.ativo,
-    centroCustoIds: produto.centrosCusto.map(({ centroCustoId }: any) => centroCustoId),
-    centrosCusto: produto.centrosCusto.map(({ centroCusto }: any) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
-    fornecedores: produto.fornecedores.map(({ fornecedor }: any) => ({ id: fornecedor.id, nome: fornecedor.nome, ativo: fornecedor.ativo })),
+    centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
+    centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
+    fornecedores: produto.fornecedores.map(({ fornecedor }) => ({ id: fornecedor.id, nome: fornecedor.nome, ativo: fornecedor.ativo })),
   };
 }
 
@@ -61,8 +61,8 @@ function separarRelacoes<T extends { fornecedorIds?: number[]; centroCustoIds?: 
 }
 
 export async function listarProdutos(f?: { tipo?: string; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
-  const where: any = {};
-  if (f?.tipo) where.tipo = f.tipo;
+  const where: Prisma.ProdutoWhereInput = {};
+  if (f?.tipo) where.tipo = f.tipo as TipoProduto;
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
   else if (!f?.incluirInativos) where.ativo = true;

@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { Prisma } from "@prisma/client";
+import { Prisma, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
@@ -91,10 +91,10 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
 }
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
-  const where: any = {};
+  const where: Prisma.MovimentoEstoqueWhereInput = {};
   where.status = statusSaldoEstoque;
   if (f?.produtoId) where.produtoId = f.produtoId;
-  if (f?.tipo) where.tipo = f.tipo;
+  if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
   const ms = await prisma.movimentoEstoque.findMany({
     where,

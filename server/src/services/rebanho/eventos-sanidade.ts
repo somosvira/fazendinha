@@ -11,8 +11,8 @@ import { resolverCentroSaida } from "../estoque/centro.calc.js";
 export class EventoSanError extends Error { constructor(public code: "NAO_ENCONTRADO" | "CONFLITO" | "MES_FECHADO", message: string) { super(message); } }
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
 
-async function assertPeriodoAberto(propriedadeId: number, data: Date) {
-  const periodo = await prisma.periodoFinanceiro.findUnique({ where: { propriedadeId_ano_mes: { propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } } });
+async function assertPeriodoAberto(tx: Prisma.TransactionClient, propriedadeId: number, data: Date) {
+  const periodo = await tx.periodoFinanceiro.findUnique({ where: { propriedadeId_ano_mes: { propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } } });
   if (periodo?.status === "FECHADO") throw new EventoSanError("MES_FECHADO", "período financeiro fechado");
 }
 
@@ -50,12 +50,12 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: animal.grupo?.centroCustoId }) : null;
   const propriedadeMovimentoId = animal.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  if (plano) await assertPeriodoAberto(propriedadeMovimentoId, data);
 
   // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
   const e = await prisma.$transaction(async (tx) => {
+    if (plano) await assertPeriodoAberto(tx, propriedadeMovimentoId, data);
     // SAIDA de consumo NÃO gera Lancamento (a compra ENTRADA já lançou no financeiro).
     const mov = plano
       ? await tx.movimentoEstoque.create({
@@ -97,13 +97,13 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
   const afetaEstoque = plano != null || existente.movimentoEstoqueId != null;
-  if (afetaEstoque) {
-    await assertPeriodoAberto(propriedadeMovimentoId, data);
-    if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(propriedadeMovimentoId, existente.data);
-  }
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
   const atualizado = await prisma.$transaction(async (tx) => {
+    if (afetaEstoque) {
+      await assertPeriodoAberto(tx, propriedadeMovimentoId, data);
+      if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeMovimentoId, existente.data);
+    }
     let movimentoEstoqueId = existente.movimentoEstoqueId;
     const dadosMovimento = plano ? {
       produtoId: plano.produtoId, tipo: "SAIDA" as const, origem: "SANIDADE" as const, data,
@@ -135,8 +135,8 @@ export async function excluirSanidade(eventoId: number, propriedadeId: number | 
   const e = await prisma.eventoSanitario.findFirst({ where: { id: eventoId, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) }, include: { animal: { select: { propriedadeId: true } } } });
   if (!e) throw new EventoSanError("NAO_ENCONTRADO", "evento não encontrado");
   const propriedadeMovimentoId = e.animal.propriedadeId ?? (await propriedadePrincipalId());
-  if (e.movimentoEstoqueId != null) await assertPeriodoAberto(propriedadeMovimentoId, e.data);
   await prisma.$transaction(async (tx) => {
+    if (e.movimentoEstoqueId != null) await assertPeriodoAberto(tx, propriedadeMovimentoId, e.data);
     await tx.eventoSanitario.delete({ where: { id: eventoId } });
     if (e.movimentoEstoqueId != null) await tx.movimentoEstoque.delete({ where: { id: e.movimentoEstoqueId } });
   });

@@ -244,6 +244,56 @@ describe("editarOperacao", () => {
       expect.objectContaining({ code: "MES_FECHADO" }),
     );
   });
+
+  // Produto pertence a 2 centros (ambíguo) — só o centro explícito gravado no
+  // movimento anterior (ou no input) deve valer; nunca a inferência do produto.
+  describe("centro de custo preservado (produto com múltiplos centros)", () => {
+    const movimentoComCentro = {
+      id: 88, produtoId: 3, quantidade: new Prisma.Decimal(20), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(40),
+      data: new Date("2026-01-10"), centroCustoId: 5, propriedadeId: 5, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO",
+      operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
+    };
+    const produtoDoisCentros = {
+      id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg",
+      centrosCusto: [{ centroCustoId: 10 }, { centroCustoId: 20 }],
+    };
+
+    beforeEach(() => {
+      mocks.movimentoFindUnique.mockResolvedValue(movimentoComCentro);
+      mocks.movimentoFindFirst.mockResolvedValue(movimentoComCentro);
+      mocks.produtoFindUnique.mockResolvedValue(produtoDoisCentros);
+    });
+
+    it("PATCH só { responsavel } preserva o centro 5 anterior — nenhum estorno nem novo movimento", async () => {
+      mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+      mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+      await editarOperacao(10, { responsavel: "João" } as any);
+
+      expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+      expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+      expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ movimentoEstoqueId: 88, responsavel: "João" }),
+      }));
+    });
+
+    it("PATCH { centroCustoId: null } explícito estorna o movimento com centro 5 e recria sem centro", async () => {
+      mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+      mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+      mocks.movimentoCreate
+        .mockResolvedValueOnce({ id: 200, quantidade: new Prisma.Decimal(20) }) // inverso
+        .mockResolvedValueOnce({ id: 300, quantidade: new Prisma.Decimal(20) }); // novo, sem centro
+
+      await editarOperacao(10, { centroCustoId: null } as any);
+
+      expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+      const novo = mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === undefined);
+      expect(novo).toEqual(expect.objectContaining({ centroCustoId: null }));
+      expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ movimentoEstoqueId: 300 }),
+      }));
+    });
+  });
 });
 
 describe("excluirOperacao", () => {

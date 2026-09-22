@@ -44,6 +44,7 @@ beforeEach(() => {
     fn({
       movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete },
       eventoSanitario: { create: mocks.eventoCreate, update: mocks.eventoUpdate },
+      periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
     }),
   );
   mocks.periodoFindUnique.mockResolvedValue(null);

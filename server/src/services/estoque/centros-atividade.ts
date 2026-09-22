@@ -21,3 +21,25 @@ export async function resolverIdsCentros(db: DbCentroCusto, nomes: readonly stri
   const centros = await db.centroCusto.findMany({ where: { nome: { in: [...nomes] } }, select: { id: true } });
   return centros.map((c) => c.id);
 }
+
+export interface DbCentroCustoComNome {
+  centroCusto: {
+    findMany(args: { where: { nome: { in: string[] } }; select: { id: true; nome: true } }): Promise<{ id: number; nome: string }[]>;
+  };
+}
+
+/**
+ * Ids dos centros "de atividade" (leite/café) num único findMany — usado pela
+ * tela de Estoque (`routes/estoque-centros.ts`) e por `/financeiro/configuracoes`
+ * (`routes/financeiro.ts`) para resolver o filtro inicial sem duas idas ao banco.
+ */
+export async function obterCentrosAtividade(db: DbCentroCustoComNome): Promise<{ leite: number | null; cafe: number | null }> {
+  const centros = await db.centroCusto.findMany({
+    where: { nome: { in: [CENTROS_ATIVIDADE.LEITE, CENTROS_ATIVIDADE.CAFE] } },
+    select: { id: true, nome: true },
+  });
+  return {
+    leite: centros.find((c) => c.nome === CENTROS_ATIVIDADE.LEITE)?.id ?? null,
+    cafe: centros.find((c) => c.nome === CENTROS_ATIVIDADE.CAFE)?.id ?? null,
+  };
+}

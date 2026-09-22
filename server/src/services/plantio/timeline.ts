@@ -143,8 +143,8 @@ export function passadaToTimeline(p: any): EventoTimeline {
 // Cria uma OperacaoAgricola e devolve o evento já no formato da timeline, para
 // a OperacaoForm do cliente reaproveitar direto na lista. Respeita
 // FechamentoMensal (regra do domínio): não registra em mês de caixa fechado.
-async function assertPeriodoAberto(propriedadeId: number, data: Date) {
-  const periodo = await prisma.periodoFinanceiro.findUnique({
+async function assertPeriodoAberto(tx: Prisma.TransactionClient, propriedadeId: number, data: Date) {
+  const periodo = await tx.periodoFinanceiro.findUnique({
     where: { propriedadeId_ano_mes: { propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } },
   });
   if (periodo?.status === "FECHADO") throw new PlantioEventoError("MES_FECHADO", "mês fechado — operação não pode ser registrada");
@@ -155,7 +155,7 @@ async function assertPeriodoAberto(propriedadeId: number, data: Date) {
 async function planejarMovimento(
   tx: Prisma.TransactionClient,
   input: CriarOperacaoInput | EditarOperacaoInput,
-  talhao: { areaHa: any; codigo?: string },
+  talhao: { areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
 ) {
@@ -209,9 +209,9 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
   }
   const propriedadeId = talhao.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  await assertPeriodoAberto(propriedadeId, data);
 
   const o = await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, data);
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
     const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
     return tx.operacaoAgricola.create({
@@ -245,6 +245,14 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
   if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
   const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
 
+  // OperacaoAgricola não guarda o centro de custo — ele só existe no movimento
+  // de estoque gerado. Lido ANTES de planejar a edição: se o input não manda
+  // centroCustoId, o contexto passado ao planejamento é o centro que já estava
+  // gravado no movimento anterior (nunca o centro inferido do produto de novo).
+  const movimentoAnterior = existente.movimentoEstoqueId != null
+    ? await prisma.movimentoEstoque.findUnique({ where: { id: existente.movimentoEstoqueId } })
+    : null;
+
   // PATCH parcial: campos ausentes no input mantêm o valor existente.
   const tipoMerged = (input.tipo ?? existente.tipo) as CriarOperacaoInput["tipo"];
   const merged = {
@@ -259,14 +267,14 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
     pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
     produtoId: input.produtoId !== undefined ? input.produtoId : existente.produtoId,
     quantidadeTotal: input.quantidadeTotal !== undefined ? input.quantidadeTotal : num(existente.quantidadeTotal) ?? null,
-    centroCustoId: input.centroCustoId !== undefined ? input.centroCustoId : undefined,
+    centroCustoId: input.centroCustoId !== undefined ? input.centroCustoId : movimentoAnterior?.centroCustoId ?? null,
   } satisfies CriarOperacaoInput;
 
   const data = new Date(merged.data);
-  await assertPeriodoAberto(propriedadeId, data);
-  if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(propriedadeId, existente.data);
 
   const o = await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, data);
+    if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeId, existente.data);
     const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId);
     let movimentoEstoqueId = existente.movimentoEstoqueId;
     let quantidadeTotal: Prisma.Decimal | null = null;
@@ -325,8 +333,8 @@ export async function excluirOperacao(operacaoId: number, usuarioId: number | nu
   });
   if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
   const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
-  await assertPeriodoAberto(propriedadeId, existente.data);
   await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, existente.data);
     // O fato operacional é apagado; o movimento de estoque (confirmado) é
     // estornado, nunca deletado — o original REVERTIDO e o inverso ficam no razão.
     if (existente.movimentoEstoqueId != null) {
