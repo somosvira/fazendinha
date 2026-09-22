@@ -24,6 +24,12 @@ function qs(f?: object): string {
   return s ? `?${s}` : "";
 }
 
+// Centros de custo "de atividade" (leite/café) — usados pelos módulos rebanho/
+// plantio para pré-filtrar a tela de Estoque. Rota própria (não atrás do gate
+// de área "financeiro"), montada sob /api/estoque/* (pecuaria|agricultura|financeiro).
+export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null }
+export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
+
 // ── Estoque: saldos + movimentos + custo vaca/dia ───────────────────────────
 export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";

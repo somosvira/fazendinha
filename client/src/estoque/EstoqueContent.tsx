@@ -48,7 +48,7 @@ function useMovimentos() {
 type SortKey = "nome" | "tipo" | "valor";
 type SortDir = "asc" | "desc";
 
-export function EstoqueContent({ centroCustoIdInicial, titulo }: { centroCustoIdInicial?: number | null; titulo?: string } = {}) {
+export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string } = {}) {
   const custo = useCustoVacaDia();
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
   const [agrupar, setAgrupar] = useState(false);
@@ -149,6 +149,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo }: { centroCustoId
   return (
     <RebMain>
       <RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} />
+
+      {avisoFiltro && <p className="mt-[7px] text-sm text-amber-800">{avisoFiltro}</p>}
 
       {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
       <RebKpiStrip cols={3}>

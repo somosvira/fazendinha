@@ -1,6 +1,7 @@
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
 import { calcularCustoVacaDia } from "../estoque/estoque.js";
+import { CENTROS_ATIVIDADE, resolverIdsCentros } from "../estoque/centros-atividade.js";
 
 // ── Motor puro (TDD) ────────────────────────────────────────────────────────
 // Quebra o custeio do leite por componente: soma por categoria, ordena desc e
@@ -31,7 +32,7 @@ export function quebrarPorCategoria(itens: ItemCusto[]): QuebraCusto {
 
 // ── Service (agrega Lancamento real) ────────────────────────────────────────
 const toNum = (x: any) => (x != null ? Number(x) : 0);
-const CENTRO_LEITE = "Atividade Leiteira";
+const CENTRO_LEITE = CENTROS_ATIVIDADE.LEITE;
 
 export async function agregarCustoProducao(meses = 12, propriedadeId: number | null = null) {
   const desde = new Date();
@@ -41,7 +42,7 @@ export async function agregarCustoProducao(meses = 12, propriedadeId: number | n
   // estornado=false, dataLiquidacao recente) + DEBITO + CCusto "Atividade Leiteira".
   // Resolve o centro por id (o item guarda centroCustoNome como snapshot;
   // comparar por nome quebraria se o centro fosse renomeado).
-  const idsLeite = (await prisma.centroCusto.findMany({ where: { nome: CENTRO_LEITE }, select: { id: true } })).map((c) => c.id);
+  const idsLeite = await resolverIdsCentros(prisma, [CENTRO_LEITE]);
   const lancs = idsLeite.length === 0 ? [] : await prisma.transacaoFinanceira.findMany({
     where: {
       OR: [{ tipo: "PAGAMENTO" }, { tipo: "REVERSAO", reversaoDe: { tipo: "PAGAMENTO" } }],

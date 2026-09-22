@@ -16,6 +16,8 @@ import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
 import * as produtos from "../services/estoque/produtos.js";
 import { exigePermissao } from "../middleware/permissao.js";
+import { prisma } from "../db.js";
+import { CENTROS_ATIVIDADE, resolverIdsCentros } from "../services/estoque/centros-atividade.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
@@ -62,13 +64,19 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gerenciais, produtosAtivos, produtosCadastro] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro, idsLeite, idsCafe] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
-      produtos.listarProdutos({ ativo: true }),
       produtos.listarProdutosCadastro(),
+      resolverIdsCentros(prisma, [CENTROS_ATIVIDADE.LEITE]),
+      resolverIdsCentros(prisma, [CENTROS_ATIVIDADE.CAFE]),
     ]);
-    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos: produtosAtivos, produtosCadastro });
+    const produtosAtivos = produtosCadastro.filter((p) => p.ativo);
+    return c.json({
+      contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais,
+      produtos: produtosAtivos, produtosCadastro,
+      centrosAtividade: { leite: idsLeite[0] ?? null, cafe: idsCafe[0] ?? null },
+    });
   })
   .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoSchema), async (c) => {
     try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }

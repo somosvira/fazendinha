@@ -7,7 +7,7 @@ import { SanidadeTab } from "./components/SanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ProducaoTab } from "./components/ProducaoTab";
 import { EstoqueContent } from "../estoque/EstoqueContent";
-import { listarCentrosCusto } from "./api";
+import { obterCentrosAtividade } from "../estoque/api";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
@@ -40,15 +40,17 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   const [recarga, setRecarga] = useState(0);
   const [recargaRelatorio, setRecargaRelatorio] = useState(0);
   const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null>(null);
-  // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesmo nome
-  // usado em custo-producao.ts) por nome, uma vez, quando a aba Estoque é aberta.
+  const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
+  // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesma
+  // constante usada em custo-producao.ts, via /estoque/centros-atividade), uma vez,
+  // quando a aba Estoque é aberta.
   useEffect(() => {
     if (aba !== "estoque") return;
     let cancelado = false;
-    listarCentrosCusto().then((cs) => {
+    obterCentrosAtividade().then((centros) => {
       if (cancelado) return;
-      const alvo = cs.find((c) => c.nome === "Atividade Leiteira");
-      setCentroCustoEstoque(alvo?.id ?? null);
+      setCentroCustoEstoque(centros.leite);
+      setAvisoEstoque(centros.leite == null ? "Centro da atividade não cadastrado — mostrando todos os produtos." : undefined);
     }).catch(() => {});
     return () => { cancelado = true; };
   }, [aba]);
@@ -139,7 +141,7 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                 : aba === "producao"
                   ? <ProducaoTab />
                   : aba === "estoque"
-                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" />
+                    ? <EstoqueContent centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"

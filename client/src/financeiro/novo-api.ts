@@ -42,7 +42,7 @@ export type ProdutoInput = {
   custoUnitario: number | null; carencia?: number | null; percentualMS?: number | null; estocavel: boolean;
   minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
 };
-export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
+export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { leite: number | null; cafe: number | null } };
 export type ContaHistorico = { id: number; nome: string };
 export type ReferenciaReversao = { id: number; tipo: string; status: string; data: string; descricao: string | null };
 export type MovimentoOperacao = { id: number; contaId: number; direcao: "ENTRADA" | "SAIDA"; valor: string; conta: ContaHistorico };

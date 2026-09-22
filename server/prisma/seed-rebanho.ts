@@ -10,6 +10,7 @@
 
 import { SexoAnimal, CategoriaAnimal } from "@prisma/client";
 import { prisma } from "../src/db.js";
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 async function main() {
   const grupos = ["Alta Produção", "Média Produção", "Bezerreiro"];
@@ -205,7 +206,7 @@ async function main() {
   const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
   const racaoCatId = await catId("Ração");
   const medCatId = await catId("Medicamento Animal");
-  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: "Atividade Leiteira" } }))?.id ?? null;
+  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE } }))?.id ?? null;
   const mapaContabil: Record<string, number | null> = {
     "Ração Lactação Alta": racaoCatId,
     "Núcleo Mineral": racaoCatId,

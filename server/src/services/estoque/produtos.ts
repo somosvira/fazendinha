@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
@@ -12,7 +13,7 @@ export const includeProduto = {
   categoria: true,
 } as const;
 
-export function produtoDTO(produto: any) {
+export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof includeProduto }>) {
   return {
     id: produto.id,
     nome: produto.nome,
