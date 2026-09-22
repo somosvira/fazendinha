@@ -50,7 +50,6 @@ const talhaoBase = {
   codigo: "T1",
   propriedadeId: 5,
   areaHa: new Prisma.Decimal(10),
-  lavoura: { centroCustoId: null },
 };
 
 // Movimento APLICACAO já existente (SAIDA 20 kg de Ureia em 10/01, sem centro).

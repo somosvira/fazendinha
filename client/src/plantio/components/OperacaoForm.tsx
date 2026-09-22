@@ -105,7 +105,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
   const { data: produtos } = useProdutos({ ativo: true });
   const produtosEstocaveis = useMemo(
-    () => produtos.filter((p) => p.estocavel && p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    () => produtos.filter((p) => p.estocavel && p.ativo && p.subtipoPlantio).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos],
   );
   const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
@@ -304,6 +304,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   {produtosEstocaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
+              <p className="-mt-2.5 text-xs text-ink-3">Só produtos com tipo agrícola aparecem aqui (Configurações → Produtos).</p>
               {produtoSelecionado && (
                 <>
                   {baixaEstimada && (

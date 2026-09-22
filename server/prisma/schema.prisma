@@ -135,7 +135,6 @@ model CentroCusto {
   itensOperacao     ItemOperacao[]
   movimentosEstoque MovimentoEstoque[]
   grupos            Grupo[]
-  lavouras          Lavoura[]
   safras            Safra[]
 }
 
@@ -196,10 +195,9 @@ enum TipoProduto {
   OUTRO
 }
 
-// Setor operacional (atividade/centro produtivo) a que o produto pertence —
 // Subtipo agrícola de um Produto usado no Plantio (café). Só preenchido nos
-// insumos da lavoura; null nos produtos do rebanho. A aba Estoque do Plantio
-// filtra Produto por este campo (não polui o estoque do rebanho).
+// insumos da lavoura; null nos produtos do rebanho. O seletor de produto da
+// operação agrícola e o alerta de estoque baixo do Plantio filtram por ele.
 enum TipoInsumoPlantio {
   FERTILIZANTE
   DEFENSIVO
@@ -2225,9 +2223,6 @@ model Lavoura {
   id              Int              @id @default(autoincrement())
   nome            String           @unique
   observacao      String?
-  // Atividade da lavoura: as aplicações nos talhões herdam este centro.
-  centroCusto     CentroCusto?     @relation(fields: [centroCustoId], references: [id])
-  centroCustoId   Int?
   planoAdubacao   PlanoAdubacao?   @relation(fields: [planoAdubacaoId], references: [id])
   planoAdubacaoId Int?
   talhoes         Talhao[]
@@ -2372,7 +2367,7 @@ model OperacaoAgricola {
   produto              String?
   produtoRef           Produto?          @relation(fields: [produtoId], references: [id])
   produtoId            Int?
-  quantidadeTotal      Decimal?          @db.Decimal(12, 3)
+  quantidadeTotal      Decimal?          @db.Decimal(12, 2)
   movimentoEstoque     MovimentoEstoque? @relation(fields: [movimentoEstoqueId], references: [id])
   movimentoEstoqueId   Int?              @unique
   doseValor            Decimal?          @db.Decimal(10, 3)

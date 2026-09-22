@@ -155,7 +155,7 @@ async function assertPeriodoAberto(propriedadeId: number, data: Date) {
 async function planejarMovimento(
   tx: Prisma.TransactionClient,
   input: CriarOperacaoInput | EditarOperacaoInput,
-  talhao: { areaHa: any; lavoura: { centroCustoId: number | null } | null; codigo?: string },
+  talhao: { areaHa: any; codigo?: string },
   data: Date,
   propriedadeId: number,
 ) {
@@ -178,7 +178,7 @@ async function planejarMovimento(
   const custoUnitario = produto.custoUnitario != null ? new Prisma.Decimal(produto.custoUnitario) : new Prisma.Decimal(0);
   const centroCustoId = resolverCentroSaida({
     produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId),
-    contextoCentroId: input.centroCustoId ?? talhao.lavoura?.centroCustoId,
+    contextoCentroId: input.centroCustoId,
   });
   const quantidade = new Prisma.Decimal(plano.quantidade);
   const valorTotal = quantidade.mul(custoUnitario).toDecimalPlaces(2);
@@ -202,7 +202,7 @@ async function planejarMovimento(
 export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput): Promise<EventoTimeline> {
   const talhao = await prisma.talhao.findUnique({
     where: { id: talhaoId },
-    select: { id: true, codigo: true, propriedadeId: true, areaHa: true, lavoura: { select: { centroCustoId: true } } },
+    select: { id: true, codigo: true, propriedadeId: true, areaHa: true },
   });
   if (!talhao) {
     throw new PlantioEventoError("NAO_ENCONTRADO", "talhão não encontrado");
@@ -240,7 +240,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput)
 export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput): Promise<EventoTimeline> {
   const existente = await prisma.operacaoAgricola.findUnique({
     where: { id: operacaoId },
-    include: { talhao: { select: { id: true, codigo: true, propriedadeId: true, areaHa: true, lavoura: { select: { centroCustoId: true } } } } },
+    include: { talhao: { select: { id: true, codigo: true, propriedadeId: true, areaHa: true } } },
   });
   if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
   const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
