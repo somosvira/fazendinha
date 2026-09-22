@@ -588,7 +588,7 @@ Orquestração faz I/O; `*.calc.ts` faz aritmética e é testado sem banco.
 ### Padrão de teste puro
 
 ```ts
-// services/rebanho/estoque.calc.test.ts
+// services/estoque/estoque.calc.test.ts
 import { describe, it, expect } from "vitest";
 import { custoVacaDia } from "./estoque.calc.js";
 

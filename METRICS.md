@@ -147,7 +147,7 @@ Chamado em `services/financeiro/operacoes.ts` por:
 | Transferência entre contas | `data` da transferência |
 | Estorno de transação e cancelamento de operação | **data de hoje** |
 
-O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/rebanho/estoque.ts`, `services/rebanho/nutricao.consumo.ts` e `services/plantio/timeline.ts`.
+O mesmo `PeriodoFinanceiro` é consultado fora do financeiro por `services/estoque/estoque.ts`, `services/rebanho/nutricao.consumo.ts` e `services/plantio/timeline.ts`.
 
 > **Sem endpoint.** Não existe rota HTTP para fechar ou reabrir período — os registros só nascem via banco/seed. A trava funciona; a operação de fechamento ainda não tem UI nem API.
 
@@ -370,7 +370,7 @@ O saldo físico soma entradas e ajustes e subtrai saídas, incluindo movimentos 
 |---|---|
 | **Fórmula** | `Σ MovimentoEstoque(tipo=SAIDA, status=CONFIRMADO, reversaoDeId=null, últimos 30d).valorTotal ÷ (vacasEmLactacao × 30)` |
 | **Origem** | `MovimentoEstoque` × `ResumoAnimal` |
-| **Implementação** | `services/rebanho/estoque.calc.ts:custoVacaDia` (pura) |
+| **Implementação** | `services/estoque/estoque.calc.ts:custoVacaDia` (pura) |
 | **Apresentação** | `R$ X,XX /vaca/dia` |
 
 ### 7.2 Custo / litro
@@ -557,6 +557,6 @@ Alertas aparecem no Dashboard Rebanho e em cards das telas de domínio. Regras e
 - `server/src/services/consulta/registro/financeiro.ts` — fatos financeiros expostos à IA.
 - `server/src/services/rebanho/insights.ts` — score + financeiro por animal.
 - `server/src/services/rebanho/custo-producao.ts` — R$/litro.
-- `server/src/services/rebanho/estoque.calc.ts` — custo vaca/dia.
+- `server/src/services/estoque/estoque.calc.ts` — custo vaca/dia.
 - `server/src/services/rebanho/producao.recompute.ts` — média móvel e P305.
 - `server/src/services/rebanho/dashboard.agg.ts` — KPIs do dashboard rebanho.
