@@ -192,8 +192,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     limparCampoInvalido(`item-${id}`);
   };
   const centrosSugeridos = [...new Set(itens.flatMap((item) => {
-    const centro = config.produtos.find((p) => p.id === Number(item.produtoId))?.centroCustoId;
-    return centro && config.centrosCusto.some((c) => c.id === centro && c.ativo) ? [String(centro)] : [];
+    const centros = config.produtos.find((p) => p.id === Number(item.produtoId))?.centroCustoIds ?? [];
+    return centros.filter((centro) => config.centrosCusto.some((c) => c.id === centro && c.ativo)).map(String);
   }))];
   const sugestaoCentro = centrosSugeridos.length === 1 ? centrosSugeridos[0] : "";
   useEffect(() => { if (!centroEscolhidoManualmente && comItens) setCentroCustoId(sugestaoCentro); }, [sugestaoCentro, centroEscolhidoManualmente, comItens]);

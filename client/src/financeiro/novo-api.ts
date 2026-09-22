@@ -28,14 +28,19 @@ export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
 export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
+export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
 export type Produto = {
-  categoriaId?: number | null; centroCustoId?: number | null; id: number; nome: string; tipo?: TipoProduto;
-  unidade: string; estocavel: boolean; custoUnitario: string | null; minimoEstoque?: string | null; ativo?: boolean;
+  id: number; nome: string; tipo?: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null;
+  unidade: string; estocavel: boolean; custoUnitario: string | null; carencia?: number | null; percentualMS?: string | null;
+  minimoEstoque?: string | null; ativo?: boolean;
+  categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
+  centroCustoIds?: number[]; centrosCusto?: { id: number; nome: string; ativo: boolean }[];
   fornecedores?: { id: number; nome: string; ativo: boolean }[];
 };
 export type ProdutoInput = {
-  nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; estocavel: boolean;
-  minimoEstoque: number | null; categoriaId: number | null; centroCustoId: number | null; fornecedorIds: number[];
+  nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
+  custoUnitario: number | null; carencia?: number | null; percentualMS?: number | null; estocavel: boolean;
+  minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[] };
 export type ContaHistorico = { id: number; nome: string };

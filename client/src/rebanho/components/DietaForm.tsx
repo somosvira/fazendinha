@@ -134,7 +134,8 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   const totalCusto = linhas.reduce((acc, l) => {
     const p = prodPorId.get(l.produtoId);
     const q = Number(l.qtd);
-    return p?.custoUnitario && Number.isFinite(q) ? acc + q * p.custoUnitario : acc;
+    const custo = p?.custoUnitario != null ? Number(p.custoUnitario) : null;
+    return custo != null && Number.isFinite(q) ? acc + q * custo : acc;
   }, 0);
 
   function adicionar() {

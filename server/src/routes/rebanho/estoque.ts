@@ -15,7 +15,10 @@ function fail(e: unknown): { status: Status; body: { error: string } } {
 }
 
 export const estoqueRouter = new Hono()
-  .get("/rebanho/estoque/saldos", async (c) => c.json(await svc.listarSaldos({ setor: c.req.query("setor"), propriedadeId: await resolverEscopoLeitura(c) })))
+  .get("/rebanho/estoque/saldos", async (c) => {
+    const centroCustoId = c.req.query("centroCustoId");
+    return c.json(await svc.listarSaldos({ centroCustoId: centroCustoId !== undefined ? Number(centroCustoId) : undefined, propriedadeId: await resolverEscopoLeitura(c) }));
+  })
   .get("/rebanho/estoque/movimentos", async (c) => {
     const produtoId = c.req.query("produtoId");
     return c.json(await svc.listarMovimentos({ produtoId: produtoId ? Number(produtoId) : undefined, tipo: c.req.query("tipo"), propriedadeId: await resolverEscopoLeitura(c) }));

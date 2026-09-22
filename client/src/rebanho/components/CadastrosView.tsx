@@ -88,7 +88,7 @@ function Produtos() {
                 <td><RebAnm>{p.nome}</RebAnm></td>
                 <td>{LABEL_PRODUTO[p.tipo]}</td>
                 <td>{p.unidade}</td>
-                <td>{p.custoUnitario != null ? money(p.custoUnitario) : "—"}</td>
+                <td>{p.custoUnitario != null ? money(Number(p.custoUnitario)) : "—"}</td>
                 <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(p)}>Editar</RebButton>{" "}

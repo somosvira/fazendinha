@@ -200,7 +200,7 @@ it("herda a categoria por produto, pede centro para mistura e preserva escolha m
   render(<FormOperacao config={{ ...config,
     categorias: [{ id: 1, nome: "Silagem", classificacao: "CUSTEIO", ativo: true, ordem: 0 }, { id: 2, nome: "Vacinas", classificacao: "CUSTEIO", ativo: true, ordem: 0 }],
     centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
-    produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoId: 2 }],
+    produtos: [{ ...config.produtos[0], categoriaId: 1, centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Vacina", categoriaId: 2, centroCustoIds: [2] }],
   }} onSalvo={vi.fn()} />);
   fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
   expect((screen.getByLabelText("Categoria do item 1") as HTMLSelectElement).value).toBe("1");
@@ -477,7 +477,7 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     const [, scroll] = comScrollStub(() => {
       render(<FormOperacao config={{ ...config,
         centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
-        produtos: [{ ...config.produtos[0], centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoId: 2 }],
+        produtos: [{ ...config.produtos[0], centroCustoIds: [1] }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoIds: [2] }],
       }} onSalvo={vi.fn()} />);
       fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
       fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });

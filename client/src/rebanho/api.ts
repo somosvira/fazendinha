@@ -417,7 +417,7 @@ export function useAnimaisDisponiveis() {
 }
 
 // ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
-export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; setor: SetorEstoque | null; ordem: number; }
+export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; ordem: number; }
 export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
 export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
 export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
@@ -976,18 +976,20 @@ export const listarCentrosCusto = () => req<RefDTO[]>(`/rebanho/centros-custo`);
 
 // ── Cadastros (Fatia 8): Produtos + Fornecedores ───────────────────────────
 export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
-// Setor operacional do produto (dimensão separada da categoria contábil). GERAL = sem setor.
-export type SetorEstoque = "LEITE" | "CAFE" | "CORTE" | "MILHO" | "GERAL";
-export const SETORES_ESTOQUE: { id: SetorEstoque; label: string }[] = [
-  { id: "LEITE", label: "Leite" },
-  { id: "CAFE", label: "Café" },
-  { id: "CORTE", label: "Corte" },
-  { id: "MILHO", label: "Milho" },
-  { id: "GERAL", label: "Geral" },
-];
-export const setorLabel = (s?: string | null): string => SETORES_ESTOQUE.find((x) => x.id === s)?.label ?? "Geral";
-export interface ProdutoDTO { id: number; nome: string; tipo: TipoProduto; unidade: string; custoUnitario: number | null; carencia: number | null; percentualMS: number | null; estocavel: boolean; minimoEstoque: number | null; ativo: boolean; setor: SetorEstoque | null; categoriaId: number | null; centroCustoId: number | null; categoriaNome: string | null; centroCustoNome: string | null; }
-export interface ProdutoInput { nome: string; tipo: TipoProduto; unidade: string; custoUnitario?: number; carencia?: number; percentualMS?: number; estocavel?: boolean; minimoEstoque?: number; ativo?: boolean; setor?: SetorEstoque | null; categoriaId?: number | null; centroCustoId?: number | null; }
+export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
+export interface ProdutoDTO {
+  id: number; nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
+  custoUnitario: string | null; carencia: number | null; percentualMS: string | null; estocavel: boolean;
+  minimoEstoque: string | null; ativo: boolean;
+  categoriaId: number | null; categoriaNome: string | null; classificacao: "CUSTEIO" | "INVESTIMENTO" | null;
+  centroCustoIds: number[]; centrosCusto: { id: number; nome: string; ativo: boolean }[];
+  fornecedores?: { id: number; nome: string; ativo: boolean }[];
+}
+export interface ProdutoInput {
+  nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
+  custoUnitario?: number | null; carencia?: number | null; percentualMS?: number | null; estocavel?: boolean;
+  minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
+}
 export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
@@ -1102,14 +1104,14 @@ export function useFornecedores(f?: { tipo?: string; q?: string }) {
 }
 
 // ── Estoque (Fatia 9): saldos + movimentos + custo vaca/dia ────────────────
-export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; setor: SetorEstoque; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; setor: SetorEstoque; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
 export interface MovimentoInput { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; fornecedorId?: number; observacao?: string; gerarLancamento?: boolean; categoriaId?: number; centroCustoId?: number; }
 export interface MovimentoResult { id: number; lancamentoCriado: boolean; lancamentoId?: number; motivo?: string; }
 export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
 
-export const listarSaldos = (f?: { setor?: string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
+export const listarSaldos = (f?: { centroCustoId?: number | string }) => req<SaldoDTO[]>(`/rebanho/estoque/saldos${qs(f)}`);
 export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/rebanho/estoque/movimentos${qs(f)}`);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/rebanho/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
 export interface AjusteContagemInput { produtoId: number; quantidadeContada: number; saldoEsperado: number; observacao: string; }
@@ -1117,7 +1119,7 @@ export const ajustarContagem = (p: AjusteContagemInput) => req<{ id: number; ope
 export const excluirMovimento = (id: number) => req<{ ok: true }>(`/rebanho/estoque/movimentos/${id}`, { method: "DELETE" });
 export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/rebanho/estoque/custo-vaca-dia?dias=${dias}`);
 
-export function useSaldos(f?: { setor?: string }) {
+export function useSaldos(f?: { centroCustoId?: number | string }) {
   const [data, setData] = useState<SaldoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);

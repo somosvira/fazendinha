@@ -192,7 +192,6 @@ const dietaItemDTO = (i: any) => ({
   unidade: i.unidade as string,
   qtdPorCabecaDia: Number(i.qtdPorCabecaDia),
   custoUnitario: i.produto?.custoUnitario != null ? Number(i.produto.custoUnitario) : null,
-  setor: i.produto?.setor ?? null,
   ordem: i.ordem as number,
 });
 

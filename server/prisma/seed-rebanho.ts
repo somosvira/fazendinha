@@ -215,7 +215,13 @@ async function main() {
   };
   for (const [nome, categoriaId] of Object.entries(mapaContabil)) {
     if (categoriaId == null) continue;
-    await prisma.produto.update({ where: { nome }, data: { categoriaId, centroCustoId: leiteiraId } });
+    await prisma.produto.update({
+      where: { nome },
+      data: {
+        categoriaId,
+        ...(leiteiraId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: leiteiraId }] } } : {}),
+      },
+    });
   }
 
   // Cadastros: parceiros fornecedores. Documento é a chave estável do seed.

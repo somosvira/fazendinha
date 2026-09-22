@@ -9,12 +9,12 @@ import * as documentos from "../services/financeiro/documentos.js";
 import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
-import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, patchProdutoFinanceiroSchema, produtoFinanceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
-import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
-import * as produtos from "../services/financeiro/produtos.js";
+import * as produtos from "../services/estoque/produtos.js";
 import { exigePermissao } from "../middleware/permissao.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
@@ -65,16 +65,16 @@ export const financeiroRouter = new Hono()
     const [contasFinanceiras, parceirosLista, gerenciais, produtosAtivos, produtosCadastro] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
-      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true, categoriaId: true, centroCustoId: true } }),
+      produtos.listarProdutos({ ativo: true }),
       produtos.listarProdutosCadastro(),
     ]);
     return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos: produtosAtivos, produtosCadastro });
   })
-  .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoFinanceiroSchema), async (c) => {
+  .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoSchema), async (c) => {
     try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
     catch (e) { return falha(c, e); }
   })
-  .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoFinanceiroSchema), async (c) => {
+  .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
     try { return c.json(await produtos.atualizarProduto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
     catch (e) { return falha(c, e); }
   })

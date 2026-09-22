@@ -51,15 +51,15 @@ export const ajusteContagemSchema = z.object({
   propriedadeId: z.number().int().positive().optional(),
 });
 
-// Setor é opcional no produto; sem setor o item conta como GERAL (insumo compartilhado).
-const setorOuGeral = (s: string | null | undefined): string => s ?? "GERAL";
-
-export async function listarSaldos(f?: { setor?: string; propriedadeId?: number | null }) {
+export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null }) {
   const produtos = await prisma.produto.findMany({
     where: { estocavel: true, ativo: true },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
-    include: { movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } } },
+    include: {
+      movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } },
+      centrosCusto: { include: { centroCusto: true } },
+    },
   });
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
@@ -75,15 +75,16 @@ export async function listarSaldos(f?: { setor?: string; propriedadeId?: number 
       nome: p.nome,
       tipo: p.tipo,
       unidade: p.unidade,
-      setor: setorOuGeral(p.setor), // null normalizado para GERAL na borda
+      centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       saldo,
       valor,
       minimoEstoque: minimo,
       abaixoMinimo: minimo != null && saldo < minimo,
     };
   });
-  // Filtro por setor: GERAL casa tanto produtos GERAL quanto os sem setor (null → GERAL acima).
-  return f?.setor ? linhas.filter((l) => l.setor === f.setor) : linhas;
+  if (f?.centroCustoId === 0) return linhas.filter((l) => l.centrosCusto.length === 0);
+  if (f?.centroCustoId) return linhas.filter((l) => l.centrosCusto.some((cc) => cc.id === f.centroCustoId));
+  return linhas;
 }
 
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
@@ -96,13 +97,13 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
     where,
     orderBy: { data: "desc" },
     take: 200,
-    include: { produto: true, operacao: { include: { parceiro: true } }, grupo: true },
+    include: { produto: { include: { centrosCusto: { include: { centroCusto: true } } } }, operacao: { include: { parceiro: true } }, grupo: true },
   });
   return ms.map((m) => ({
     id: m.id,
     produtoId: m.produtoId,
     produto: m.produto.nome,
-    setor: setorOuGeral(m.produto.setor), // setor operacional herdado do produto
+    centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
     tipo: m.tipo,
     origem: m.origem, // MANUAL | NUTRICAO | PERDA | AJUSTE_INVENTARIO
     status: m.status,

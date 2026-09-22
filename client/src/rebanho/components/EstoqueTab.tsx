@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, SETORES_ESTOQUE, setorLabel, type MovimentoDTO, type ProdutoDTO, type SaldoDTO } from "../api";
+import { useSaldos, useCustoVacaDia, listarMovimentos, listarProdutos, excluirMovimento, listarCentrosCusto, type MovimentoDTO, type ProdutoDTO, type RefDTO, type SaldoDTO } from "../api";
 import { MovimentoForm } from "./MovimentoForm";
 import { ProdutoForm } from "./ProdutoForm";
 import { PrincipiosAtivosSection } from "./PrincipiosAtivosSection";
@@ -19,16 +19,20 @@ import { fmtMoneyExact } from "@/components/charts";
 const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
-// Cor do setor via variáveis CSS já existentes (não hardcodar hex): Leite/Café têm var própria;
-// Corte/Milho reusam --outros (demais atividades); Geral fica neutro.
-const setorCor = (s: string) => (s === "LEITE" ? "var(--leite)" : s === "CAFE" ? "var(--cafe)" : s === "GERAL" ? "var(--ink-mute)" : "var(--outros)");
-function SetorChip({ setor }: { setor: string }) {
-  return (
-    <RebPill style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: setorCor(setor), flex: "0 0 auto" }} />
-      {setorLabel(setor)}
-    </RebPill>
-  );
+const SEM_CENTRO = "__sem_centro__";
+function CentrosChips({ centros }: { centros: { id: number; nome: string }[] }) {
+  if (!centros.length) return <RebPill style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ink-mute)", flex: "0 0 auto" }} />
+    Sem centro
+  </RebPill>;
+  return <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
+    {centros.map((c) => (
+      <RebPill key={c.id} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--outros)", flex: "0 0 auto" }} />
+        {c.nome}
+      </RebPill>
+    ))}
+  </span>;
 }
 
 function useMovimentos() {
@@ -45,15 +49,16 @@ type SortDir = "asc" | "desc";
 
 export function EstoqueTab() {
   const custo = useCustoVacaDia();
-  const [setorFiltro, setSetorFiltro] = useState("");
+  const [centroFiltro, setCentroFiltro] = useState("");
   const [agrupar, setAgrupar] = useState(false);
-  const saldos = useSaldos(setorFiltro ? { setor: setorFiltro } : undefined);
+  const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined);
   const movimentos = useMovimentos();
   const [form, setForm] = useState(false);
   const [busca, setBusca] = useState("");
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  const [centros, setCentros] = useState<RefDTO[]>([]);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
@@ -62,6 +67,7 @@ export function EstoqueTab() {
     listarProdutos({ ativo: true }).then(setProdutos).catch(() => {});
   }, []);
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
+  useEffect(() => { listarCentrosCusto().then(setCentros).catch(() => {}); }, []);
 
   function trocarSort(key: SortKey) {
     setSort((s) => {
@@ -90,18 +96,22 @@ export function EstoqueTab() {
 
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
 
-  // Agrupamento por setor operacional (Leite/Café/Corte/Milho/Geral) para a visão "Agrupar".
-  const gruposPorSetor = useMemo(() => {
-    const map = new Map<string, { linhas: SaldoDTO[]; valorTotal: number }>();
+  // Agrupamento por centro de custo para a visão "Agrupar". Produto com vários
+  // centros aparece em cada grupo; sem centro cai no grupo "Sem centro".
+  const gruposPorCentro = useMemo(() => {
+    const map = new Map<string, { nome: string; linhas: SaldoDTO[]; valorTotal: number }>();
     for (const s of saldosVisiveis) {
-      const g = map.get(s.setor) ?? { linhas: [], valorTotal: 0 };
-      g.linhas.push(s);
-      g.valorTotal += s.valor;
-      map.set(s.setor, g);
+      const alvos = s.centrosCusto.length ? s.centrosCusto.map((c) => ({ chave: String(c.id), nome: c.nome })) : [{ chave: SEM_CENTRO, nome: "Sem centro" }];
+      for (const alvo of alvos) {
+        const g = map.get(alvo.chave) ?? { nome: alvo.nome, linhas: [], valorTotal: 0 };
+        g.linhas.push(s);
+        g.valorTotal += s.valor;
+        map.set(alvo.chave, g);
+      }
     }
     return [...map.entries()]
-      .map(([setor, g]) => ({ setor, ...g }))
-      .sort((a, b) => setorLabel(a.setor).localeCompare(setorLabel(b.setor), "pt-BR"));
+      .map(([chave, g]) => ({ chave, ...g }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [saldosVisiveis]);
 
   function abrirEdicao(produtoId: number) {
@@ -115,7 +125,7 @@ export function EstoqueTab() {
     <tr key={s.produtoId}>
       <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
       <td>{s.tipo}</td>
-      <td><SetorChip setor={s.setor} /></td>
+      <td><CentrosChips centros={s.centrosCusto} /></td>
       <td>{qtd(s.saldo)} {s.unidade}</td>
       <td>{money(s.valor)}</td>
       <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
@@ -161,7 +171,7 @@ export function EstoqueTab() {
           </div>
         </div>
       </div>
-      {(saldos.data.length > 0 || setorFiltro) && (
+      {(saldos.data.length > 0 || centroFiltro) && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
           <input
             type="search"
@@ -173,12 +183,13 @@ export function EstoqueTab() {
           />
           <RebSelect
             className={`${REB_FIELD_BOXED} basis-[180px] grow-0 shrink`}
-            value={setorFiltro}
-            onChange={(v) => setSetorFiltro(v)}
-            aria-label="Filtrar por setor"
+            value={centroFiltro}
+            onChange={(v) => setCentroFiltro(v)}
+            aria-label="Centro de custo"
           >
-            <option value="">Todos os setores</option>
-            {SETORES_ESTOQUE.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            <option value="">Todos os centros</option>
+            <option value="0">Sem centro</option>
+            {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </RebSelect>
           <button
             type="button"
@@ -186,7 +197,7 @@ export function EstoqueTab() {
             onClick={() => setAgrupar((v) => !v)}
             style={agrupar ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}
           >
-            Agrupar por setor
+            Agrupar por centro
           </button>
           {nAbaixoMin > 0 && (
             <button
@@ -209,20 +220,20 @@ export function EstoqueTab() {
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
               <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
-              <th>Setor</th>
+              <th>Centros de custo</th>
               <th>Saldo</th>
               <th><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
               <th>Mínimo</th>
               <th></th>
             </tr></thead>
             {agrupar
-              ? gruposPorSetor.map((g) => (
-                  <tbody key={g.setor}>
+              ? gruposPorCentro.map((g) => (
+                  <tbody key={g.chave}>
                     <tr className="rb-tbl-group">
                       <td colSpan={7} style={{ background: "var(--surface-2, #f4f1ea)", fontWeight: 600 }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: setorCor(g.setor), flex: "0 0 auto" }} />
-                          {setorLabel(g.setor)}
+                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: g.chave === SEM_CENTRO ? "var(--ink-mute)" : "var(--outros)", flex: "0 0 auto" }} />
+                          {g.nome}
                           <span className="hint" style={{ fontWeight: 400 }}>· {g.linhas.length} {g.linhas.length === 1 ? "produto" : "produtos"} · {money(g.valorTotal)}</span>
                         </span>
                       </td>
