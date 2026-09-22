@@ -67,7 +67,7 @@ export const criarOperacaoSchema = z.object({
   centroCustoId: z.number().int().positive().nullish(),
 });
 
-export const editarOperacaoSchema = criarOperacaoSchema;
+export const editarOperacaoSchema = criarOperacaoSchema.partial();
 
 export type CriarTalhaoInput = z.infer<typeof criarTalhaoSchema>;
 export type EditarTalhaoInput = z.infer<typeof editarTalhaoSchema>;

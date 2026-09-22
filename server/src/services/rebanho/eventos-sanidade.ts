@@ -50,7 +50,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: animal.grupo?.centroCustoId }) : null;
   const propriedadeMovimentoId = animal.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  await assertPeriodoAberto(propriedadeMovimentoId, data);
+  if (plano) await assertPeriodoAberto(propriedadeMovimentoId, data);
 
   // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
@@ -96,7 +96,11 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: existente.animal.grupo?.centroCustoId }) : null;
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  await assertPeriodoAberto(propriedadeMovimentoId, data);
+  const afetaEstoque = plano != null || existente.movimentoEstoqueId != null;
+  if (afetaEstoque) {
+    await assertPeriodoAberto(propriedadeMovimentoId, data);
+    if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(propriedadeMovimentoId, existente.data);
+  }
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
   const atualizado = await prisma.$transaction(async (tx) => {
@@ -131,7 +135,7 @@ export async function excluirSanidade(eventoId: number, propriedadeId: number | 
   const e = await prisma.eventoSanitario.findFirst({ where: { id: eventoId, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) }, include: { animal: { select: { propriedadeId: true } } } });
   if (!e) throw new EventoSanError("NAO_ENCONTRADO", "evento não encontrado");
   const propriedadeMovimentoId = e.animal.propriedadeId ?? (await propriedadePrincipalId());
-  await assertPeriodoAberto(propriedadeMovimentoId, e.data);
+  if (e.movimentoEstoqueId != null) await assertPeriodoAberto(propriedadeMovimentoId, e.data);
   await prisma.$transaction(async (tx) => {
     await tx.eventoSanitario.delete({ where: { id: eventoId } });
     if (e.movimentoEstoqueId != null) await tx.movimentoEstoque.delete({ where: { id: e.movimentoEstoqueId } });

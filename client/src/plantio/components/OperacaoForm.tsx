@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
+import { useProdutos, listarCentrosCusto, type RefDTO } from "../../rebanho/api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -80,6 +81,9 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [data, setData] = useState(HOJE);
   const [praga, setPraga] = useState<PragaDoenca>("FERRUGEM");
   const [produto, setProduto] = useState("");
+  const [produtoId, setProdutoId] = useState<string>("");
+  const [quantidadeTotal, setQuantidadeTotal] = useState("");
+  const [centroCustoId, setCentroCustoId] = useState<string>("");
   const [dose, setDose] = useState("");
   const [volumeCalda, setVolumeCalda] = useState("");
   const [incidencia, setIncidencia] = useState("");
@@ -97,6 +101,35 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [nKg, setNKg] = useState("");
   const [pKg, setPKg] = useState("");
   const [kKg, setKKg] = useState("");
+
+  // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
+  const { data: produtos } = useProdutos({ ativo: true });
+  const produtosEstocaveis = useMemo(
+    () => produtos.filter((p) => p.estocavel && p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [produtos],
+  );
+  const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
+  useEffect(() => { listarCentrosCusto().then(setCentrosCusto).catch(() => {}); }, []);
+  const produtoSelecionado = produtosEstocaveis.find((p) => String(p.id) === produtoId);
+
+  const baixaEstimada = (() => {
+    if (!produtoSelecionado) return null;
+    const { doseValor, doseUnidade } = parseDose(dose);
+    if (doseValor == null) return null;
+    const valor = doseUnidade && /\/ha$/i.test(doseUnidade) && talhao?.areaHa ? doseValor * talhao.areaHa : doseValor;
+    return { valor, unidade: produtoSelecionado.unidade };
+  })();
+
+  function selecionarProduto(id: string) {
+    setProdutoId(id);
+    const p = produtosEstocaveis.find((x) => String(x.id) === id);
+    if (p) {
+      if (!produto.trim()) setProduto(p.nome);
+      setCentroCustoId(p.centroCustoIds.length === 1 ? String(p.centroCustoIds[0]) : "");
+    } else {
+      setCentroCustoId("");
+    }
+  }
 
   const opcoesTipo = dominio === "fitossanidade" ? OP_FITO
     : dominio === "nutricao" ? OP_NUT
@@ -134,6 +167,9 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         doseValor,
         doseUnidade,
         pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
+        produtoId: produtoId ? Number(produtoId) : null,
+        quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
+        centroCustoId: centroCustoId ? Number(centroCustoId) : null,
       });
       onSalvo();
     } catch (e: any) {
@@ -256,6 +292,39 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
               )}
             </>
           )}
+
+          {/* Baixa de estoque — opcional; liga o texto livre "produto" a um produto
+              cadastrado e estocável, para gerar a saída de estoque automática. */}
+          {(dominio === "fitossanidade" && tipo !== "MONITORAMENTO_MIP") ||
+          (dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR" || tipo === "CALAGEM" || tipo === "GESSAGEM")) ? (
+            <>
+              <RebField label="Produto do estoque">
+                <select className="rb-field-select" value={produtoId} onChange={(e) => selecionarProduto(e.target.value)}>
+                  <option value="">— sem baixa de estoque —</option>
+                  {produtosEstocaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </RebField>
+              {produtoSelecionado && (
+                <>
+                  {baixaEstimada && (
+                    <p className="text-sm text-ink-3">
+                      Baixa estimada: <b>{baixaEstimada.valor.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {baixaEstimada.unidade}</b>
+                    </p>
+                  )}
+                  <RebField label="Quantidade total (sobrescreve a estimativa)">
+                    <input type="number" value={quantidadeTotal} onChange={(e) => setQuantidadeTotal(e.target.value)} placeholder={baixaEstimada ? String(baixaEstimada.valor) : "Ex.: 120"} />
+                  </RebField>
+                  <RebField label="Centro de custo">
+                    <select className="rb-field-select" value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}>
+                      <option value="">— usar centro da lavoura / do produto —</option>
+                      {centrosCusto.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
+                    </select>
+                  </RebField>
+                  <p className="text-sm text-ink-3">Se vazio, usa o centro da lavoura ou o único centro do produto.</p>
+                </>
+              )}
+            </>
+          ) : null}
 
           <RebField label="Responsável">
             <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Quem executou" />
