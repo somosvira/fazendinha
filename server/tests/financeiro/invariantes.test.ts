@@ -23,7 +23,7 @@ let db: PrismaClient;
 let ops: typeof import("../../src/services/financeiro/operacoes.js");
 let drafts: typeof import("../../src/services/financeiro/rascunhos.js");
 let accounts: typeof import("../../src/services/financeiro/contas.js");
-let stock: typeof import("../../src/services/rebanho/estoque.js");
+let stock: typeof import("../../src/services/estoque/estoque.js");
 let schema: typeof import("../../src/services/financeiro/schemas.js");
 let pid: number, accountId: number, partnerId: number, productId: number, userId: number;
 let serial = 0;
@@ -35,7 +35,7 @@ beforeAll(async () => {
   ops = await import("../../src/services/financeiro/operacoes.js");
   drafts = await import("../../src/services/financeiro/rascunhos.js");
   accounts = await import("../../src/services/financeiro/contas.js");
-  stock = await import("../../src/services/rebanho/estoque.js");
+  stock = await import("../../src/services/estoque/estoque.js");
   schema = await import("../../src/services/financeiro/schemas.js");
   const rows = await db.$queryRaw<{ name: string }[]>`SELECT current_database()::text AS name`;
   expect(rows[0].name).toBe(database);

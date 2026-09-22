@@ -14,7 +14,7 @@ const { prisma } = await import("../src/db.js");
 const { hashSenha } = await import("../src/services/auth/hash.js");
 const { aplicarPreset } = await import("../src/services/auth/papeis.js");
 const { confirmarRascunhoOperacao } = await import("../src/services/financeiro/operacoes.js");
-const { listarSaldos } = await import("../src/services/rebanho/estoque.js");
+const { listarSaldos } = await import("../src/services/estoque/estoque.js");
 const { listarContas } = await import("../src/services/financeiro/contas.js");
 const { autenticar } = await import("../src/services/auth/contas.js");
 

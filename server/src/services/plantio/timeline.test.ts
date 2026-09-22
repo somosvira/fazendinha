@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   periodoFindUnique: vi.fn(),
   movimentoCreate: vi.fn(),
   movimentoUpdate: vi.fn(),
-  movimentoDelete: vi.fn(),
+  movimentoFindUnique: vi.fn(),
+  movimentoFindFirst: vi.fn(),
+  auditCreate: vi.fn(),
+  queryRaw: vi.fn(),
   operacaoCreate: vi.fn(),
   operacaoUpdate: vi.fn(),
   operacaoDelete: vi.fn(),
@@ -30,7 +33,7 @@ vi.mock("../../db.js", () => ({
     produto: { findUnique: mocks.produtoFindUnique },
     centroCusto: { findFirst: mocks.centroCustoFindFirst },
     periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
-    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete },
+    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst },
     propriedade: { findFirst: mocks.propriedadeFindFirst, count: vi.fn().mockResolvedValue(1) },
     inspecaoMIP: { findMany: vi.fn().mockResolvedValue([]) },
     amostraSolo: { findMany: vi.fn().mockResolvedValue([]) },
@@ -40,7 +43,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 
-import { criarOperacao, editarOperacao, PlantioEventoError } from "./timeline.js";
+import { criarOperacao, editarOperacao, excluirOperacao, PlantioEventoError } from "./timeline.js";
 
 const talhaoBase = {
   id: 1,
@@ -50,16 +53,32 @@ const talhaoBase = {
   lavoura: { centroCustoId: null },
 };
 
+// Movimento APLICACAO já existente (SAIDA 20 kg de Ureia em 10/01, sem centro).
+const movimentoExistente = {
+  id: 88, produtoId: 3, tipo: "SAIDA", origem: "APLICACAO", status: "CONFIRMADO", data: new Date("2026-01-10"),
+  quantidade: new Prisma.Decimal(20), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(40),
+  propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
+};
+
+const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg", centrosCusto: [] };
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
       produto: { findUnique: mocks.produtoFindUnique },
       centroCusto: { findFirst: mocks.centroCustoFindFirst },
-      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete },
+      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst },
       operacaoAgricola: { create: mocks.operacaoCreate, update: mocks.operacaoUpdate, delete: mocks.operacaoDelete },
+      periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
+      auditoriaFinanceira: { create: mocks.auditCreate },
+      $queryRaw: mocks.queryRaw,
     }),
   );
+  mocks.movimentoFindUnique.mockResolvedValue(movimentoExistente);
+  mocks.movimentoFindFirst.mockResolvedValue(movimentoExistente);
+  mocks.movimentoCreate.mockResolvedValue({ id: 89, quantidade: new Prisma.Decimal(20) });
+  mocks.queryRaw.mockResolvedValue([]);
   mocks.periodoFindUnique.mockResolvedValue(null);
   mocks.propriedadeFindFirst.mockResolvedValue({ id: 5 });
   mocks.centroCustoFindFirst.mockResolvedValue({ id: 9, ativo: true });
@@ -154,15 +173,54 @@ describe("editarOperacao", () => {
     talhao: talhaoBase,
   };
 
-  it("apaga o movimento quando a edição remove o produtoId", async () => {
+  const inversoCriado = () => mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === 88);
+  const novoCriado = () => mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === undefined);
+
+  it("estorna o movimento (não apaga) quando a edição remove o produtoId", async () => {
     mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
     mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
 
     await editarOperacao(10, { produtoId: null } as any);
 
-    expect(mocks.movimentoDelete).toHaveBeenCalledWith({ where: { id: 88 } });
+    expect(inversoCriado()).toEqual(expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: 88, observacao: "Estorno: operação agrícola #10 editada" }));
+    expect(Number(inversoCriado().quantidade)).toBe(20);
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+    expect(novoCriado()).toBeUndefined();
     expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ movimentoEstoqueId: null }),
+    }));
+  });
+
+  it("edição que muda a quantidade estorna o antigo e cria um novo movimento", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+    mocks.movimentoCreate
+      .mockResolvedValueOnce({ id: 200, quantidade: new Prisma.Decimal(20) }) // inverso
+      .mockResolvedValueOnce({ id: 201, quantidade: new Prisma.Decimal(30) }); // novo
+
+    await editarOperacao(10, { quantidadeTotal: 30 } as any);
+
+    expect(inversoCriado()).toEqual(expect.objectContaining({ reversaoDeId: 88, tipo: "ENTRADA" }));
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+    expect(novoCriado()).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "APLICACAO", produtoId: 3 }));
+    expect(Number(novoCriado().quantidade)).toBe(30);
+    expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movimentoEstoqueId: 201 }),
+    }));
+  });
+
+  it("edição que muda só o responsável não mexe no movimento", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await editarOperacao(10, { responsavel: "João" } as any);
+
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+    expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movimentoEstoqueId: 88, responsavel: "João" }),
     }));
   });
 
@@ -186,5 +244,31 @@ describe("editarOperacao", () => {
     await expect(editarOperacao(10, { data: "2026-02-05" } as any)).rejects.toEqual(
       expect.objectContaining({ code: "MES_FECHADO" }),
     );
+  });
+});
+
+describe("excluirOperacao", () => {
+  it("estorna o movimento e apaga a operação agrícola", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue({ id: 10, data: new Date("2026-01-10"), movimentoEstoqueId: 88, talhao: { propriedadeId: 5 } });
+
+    await excluirOperacao(10);
+
+    expect(mocks.movimentoCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ reversaoDeId: 88, tipo: "ENTRADA", observacao: "Estorno: operação agrícola #10 excluída" }) });
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+    expect(mocks.operacaoDelete).toHaveBeenCalledWith({ where: { id: 10 } });
+  });
+
+  it("sem movimento vinculado só apaga a operação", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue({ id: 11, data: new Date("2026-01-10"), movimentoEstoqueId: null, talhao: { propriedadeId: 5 } });
+    await excluirOperacao(11);
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoDelete).toHaveBeenCalledWith({ where: { id: 11 } });
+  });
+
+  it("recusa em mês fechado", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue({ id: 10, data: new Date("2026-01-10"), movimentoEstoqueId: 88, talhao: { propriedadeId: 5 } });
+    mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
+    await expect(excluirOperacao(10)).rejects.toEqual(expect.objectContaining({ code: "MES_FECHADO" }));
+    expect(mocks.operacaoDelete).not.toHaveBeenCalled();
   });
 });

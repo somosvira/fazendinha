@@ -4,6 +4,7 @@ import type { EventoTimeline } from "./mock.js";
 import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
 import { planejarBaixaAplicacao } from "./aplicacao-estoque.calc.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
+import { estornarMovimentoTx } from "../estoque/estoque.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
@@ -269,19 +270,29 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
     const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId);
     let movimentoEstoqueId = existente.movimentoEstoqueId;
     let quantidadeTotal: Prisma.Decimal | null = null;
-    if (movimento?.plano) {
-      if (movimentoEstoqueId != null) {
-        const atualizado = await tx.movimentoEstoque.update({ where: { id: movimentoEstoqueId }, data: movimento.plano });
-        quantidadeTotal = atualizado.quantidade;
-      } else {
-        const criado = await tx.movimentoEstoque.create({ data: movimento.plano });
-        movimentoEstoqueId = criado.id;
-        quantidadeTotal = criado.quantidade;
+    const plano = movimento?.plano ?? null;
+    const anterior = movimentoEstoqueId != null ? await tx.movimentoEstoque.findUnique({ where: { id: movimentoEstoqueId } }) : null;
+    // Movimento confirmado não é editado nem apagado: se algo relevante ao
+    // estoque mudou, estorna o antigo e cria um novo (contrato do financeiro).
+    const mudouBaixa = plano != null && (
+      anterior == null
+      || anterior.produtoId !== plano.produtoId
+      || !anterior.quantidade.equals(plano.quantidade)
+      || anterior.data.getTime() !== plano.data.getTime()
+      || (anterior.centroCustoId ?? null) !== (plano.centroCustoId ?? null)
+    );
+    if (plano && !mudouBaixa) {
+      quantidadeTotal = anterior!.quantidade;
+    } else if (plano) {
+      if (anterior) {
+        await estornarMovimentoTx(tx, anterior.id, { observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       }
+      const criado = await tx.movimentoEstoque.create({ data: plano });
+      movimentoEstoqueId = criado.id;
+      quantidadeTotal = criado.quantidade;
     } else if (movimentoEstoqueId != null) {
-      // Edição removeu o produto/dose: apaga o movimento gerado antes.
-      await tx.operacaoAgricola.update({ where: { id: operacaoId }, data: { movimentoEstoqueId: null } });
-      await tx.movimentoEstoque.delete({ where: { id: movimentoEstoqueId } });
+      // Edição removeu o produto/dose: estorna o movimento gerado antes.
+      await estornarMovimentoTx(tx, movimentoEstoqueId, { observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       movimentoEstoqueId = null;
     } else {
       quantidadeTotal = merged.quantidadeTotal != null ? new Prisma.Decimal(merged.quantidadeTotal) : null;
@@ -316,8 +327,12 @@ export async function excluirOperacao(operacaoId: number): Promise<void> {
   const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
   await assertPeriodoAberto(propriedadeId, existente.data);
   await prisma.$transaction(async (tx) => {
+    // O fato operacional é apagado; o movimento de estoque (confirmado) é
+    // estornado, nunca deletado — o original REVERTIDO e o inverso ficam no razão.
+    if (existente.movimentoEstoqueId != null) {
+      await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { observacao: `Estorno: operação agrícola #${operacaoId} excluída` });
+    }
     await tx.operacaoAgricola.delete({ where: { id: operacaoId } });
-    if (existente.movimentoEstoqueId != null) await tx.movimentoEstoque.delete({ where: { id: existente.movimentoEstoqueId } });
   });
 }
 
