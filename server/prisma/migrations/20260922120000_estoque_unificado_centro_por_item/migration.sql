@@ -12,15 +12,12 @@ ALTER TABLE "ItemOperacao" ADD COLUMN     "centroCustoId" INTEGER,
 ADD COLUMN     "centroCustoNome" TEXT;
 
 -- AlterTable
-ALTER TABLE "Lavoura" ADD COLUMN     "centroCustoId" INTEGER;
-
--- AlterTable
 ALTER TABLE "MovimentoEstoque" ADD COLUMN     "centroCustoId" INTEGER;
 
 -- AlterTable
 ALTER TABLE "OperacaoAgricola" ADD COLUMN     "movimentoEstoqueId" INTEGER,
 ADD COLUMN     "produtoId" INTEGER,
-ADD COLUMN     "quantidadeTotal" DECIMAL(12,3);
+ADD COLUMN     "quantidadeTotal" DECIMAL(12,2);
 
 -- AlterTable
 ALTER TABLE "Produto" DROP COLUMN "centroCustoId",
@@ -67,9 +64,6 @@ ALTER TABLE "Grupo" ADD CONSTRAINT "Grupo_centroCustoId_fkey" FOREIGN KEY ("cent
 
 -- AddForeignKey
 ALTER TABLE "MovimentoEstoque" ADD CONSTRAINT "MovimentoEstoque_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Lavoura" ADD CONSTRAINT "Lavoura_centroCustoId_fkey" FOREIGN KEY ("centroCustoId") REFERENCES "CentroCusto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OperacaoAgricola" ADD CONSTRAINT "OperacaoAgricola_produtoId_fkey" FOREIGN KEY ("produtoId") REFERENCES "Produto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
