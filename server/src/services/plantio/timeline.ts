@@ -199,7 +199,7 @@ async function planejarMovimento(
   };
 }
 
-export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput): Promise<EventoTimeline> {
+export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
   const talhao = await prisma.talhao.findUnique({
     where: { id: talhaoId },
     select: { id: true, codigo: true, propriedadeId: true, areaHa: true },
@@ -213,7 +213,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput)
 
   const o = await prisma.$transaction(async (tx) => {
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
-    const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: movimento.plano }) : null;
+    const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
     return tx.operacaoAgricola.create({
       data: {
         talhaoId,
@@ -237,7 +237,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput)
   return operacaoToTimeline(o);
 }
 
-export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput): Promise<EventoTimeline> {
+export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
   const existente = await prisma.operacaoAgricola.findUnique({
     where: { id: operacaoId },
     include: { talhao: { select: { id: true, codigo: true, propriedadeId: true, areaHa: true } } },
@@ -285,14 +285,14 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       quantidadeTotal = anterior!.quantidade;
     } else if (plano) {
       if (anterior) {
-        await estornarMovimentoTx(tx, anterior.id, { observacao: `Estorno: operação agrícola #${operacaoId} editada` });
+        await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       }
-      const criado = await tx.movimentoEstoque.create({ data: plano });
+      const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId } });
       movimentoEstoqueId = criado.id;
       quantidadeTotal = criado.quantidade;
     } else if (movimentoEstoqueId != null) {
       // Edição removeu o produto/dose: estorna o movimento gerado antes.
-      await estornarMovimentoTx(tx, movimentoEstoqueId, { observacao: `Estorno: operação agrícola #${operacaoId} editada` });
+      await estornarMovimentoTx(tx, movimentoEstoqueId, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       movimentoEstoqueId = null;
     } else {
       quantidadeTotal = merged.quantidadeTotal != null ? new Prisma.Decimal(merged.quantidadeTotal) : null;
@@ -318,7 +318,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
   return operacaoToTimeline(o);
 }
 
-export async function excluirOperacao(operacaoId: number): Promise<void> {
+export async function excluirOperacao(operacaoId: number, usuarioId: number | null = null): Promise<void> {
   const existente = await prisma.operacaoAgricola.findUnique({
     where: { id: operacaoId },
     include: { talhao: { select: { propriedadeId: true } } },
@@ -330,7 +330,7 @@ export async function excluirOperacao(operacaoId: number): Promise<void> {
     // O fato operacional é apagado; o movimento de estoque (confirmado) é
     // estornado, nunca deletado — o original REVERTIDO e o inverso ficam no razão.
     if (existente.movimentoEstoqueId != null) {
-      await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { observacao: `Estorno: operação agrícola #${operacaoId} excluída` });
+      await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} excluída` });
     }
     await tx.operacaoAgricola.delete({ where: { id: operacaoId } });
   });

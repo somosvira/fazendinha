@@ -4,6 +4,7 @@ import { criarOperacaoSchema, editarOperacaoSchema } from "../../services/planti
 import { montarTimeline, criarOperacao, editarOperacao, excluirOperacao, PlantioEventoError } from "../../services/plantio/timeline.js";
 import { prisma } from "../../db.js";
 import { resolverEscopoEscrita } from "../../services/propriedade.js";
+import { getUsuario } from "../../middleware/permissao.js";
 
 function handle(err: unknown): { status: 404 | 409 | 500; body: { error: string } } {
   if (err instanceof PlantioEventoError) {
@@ -45,7 +46,7 @@ export const plantioEventosRouter = new Hono()
     const id = parseId(c.req.param("id"));
     if (id == null) return c.json({ error: "id inválido" }, 404);
     try {
-      return c.json(await criarOperacao(id, c.req.valid("json")), 201);
+      return c.json(await criarOperacao(id, c.req.valid("json"), getUsuario(c)?.id ?? null), 201);
     } catch (e) {
       const { status, body } = handle(e);
       return c.json(body, status);
@@ -56,7 +57,7 @@ export const plantioEventosRouter = new Hono()
     if (id == null) return c.json({ error: "id inválido" }, 404);
     if (!(await assertEscopo(c, id))) return c.json({ error: "operação não encontrada" }, 404);
     try {
-      return c.json(await editarOperacao(id, c.req.valid("json")));
+      return c.json(await editarOperacao(id, c.req.valid("json"), getUsuario(c)?.id ?? null));
     } catch (e) {
       const { status, body } = handle(e);
       return c.json(body, status);
@@ -67,7 +68,7 @@ export const plantioEventosRouter = new Hono()
     if (id == null) return c.json({ error: "id inválido" }, 404);
     if (!(await assertEscopo(c, id))) return c.json({ error: "operação não encontrada" }, 404);
     try {
-      await excluirOperacao(id);
+      await excluirOperacao(id, getUsuario(c)?.id ?? null);
       return c.body(null, 204);
     } catch (e) {
       const { status, body } = handle(e);

@@ -108,12 +108,13 @@ export function BaixaEstoqueCard({
     setSalvando(true);
     setErro(null);
     try {
+      // O estoque só aceita ajuste manual justificado; a baixa vira ajuste negativo.
       await registrarMovimento({
         produtoId: produtoSel.id,
-        tipo: "SAIDA",
+        tipo: "AJUSTE",
         data,
-        quantidade: Number(quantidade),
-        observacao: observacao || undefined,
+        quantidade: -Number(quantidade),
+        observacao: `Baixa manual${observacao ? `: ${observacao}` : ""}`,
       });
       setSucesso(true);
       setTimeout(() => {

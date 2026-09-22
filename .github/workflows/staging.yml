@@ -87,6 +87,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter rionovo-server exec prisma generate
+      # O script roda com `node --env-file=.env`; no runner o arquivo não existe.
+      - run: printf 'DATABASE_URL=%s\nDIRECT_URL=%s\n' "$DATABASE_URL" "$DIRECT_URL" > server/.env
       # O script aplica as migrations (prisma migrate deploy) dentro do schema
       # efêmero que ele mesmo cria antes de rodar a bateria.
       - name: Bateria de invariantes do financeiro (banco real)

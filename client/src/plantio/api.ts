@@ -75,7 +75,7 @@ export interface OperacaoInput {
   pragaAlvo?: string;           // PragaDoenca (só fitossanidade)
   produtoId?: number | null;         // produto do estoque — gera baixa automática se estocável
   quantidadeTotal?: number | null;   // sobrescreve a estimativa (dose × área) quando informado
-  centroCustoId?: number | null;     // se vazio, o server usa o centro da lavoura ou o único do produto
+  centroCustoId?: number | null;     // se vazio, o server usa o único centro do produto (se houver)
 }
 
 export interface TalhaoInput {
