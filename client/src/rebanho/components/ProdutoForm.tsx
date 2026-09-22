@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { criarProduto, editarProduto, listarCategorias, listarCentrosCusto, type ProdutoDTO, type RefDTO, type TipoInsumoPlantio, type TipoProduto } from "../api";
+import { criarProduto, editarProduto, listarCategorias, useCentrosCusto, type ProdutoDTO, type RefDTO, type TipoInsumoPlantio, type TipoProduto } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
+import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
 
 /* Reuso do FormProduto do financeiro foi avaliado e descartado aqui: ele usa o
  * PainelCadastro (painel lateral fixo) sem suporte a `stacked` (modal aninhado
@@ -41,8 +42,9 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
   });
   const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
   const [categorias, setCategorias] = useState<RefDTO[]>([]);
-  const [centros, setCentros] = useState<RefDTO[]>([]);
+  const { data: centros } = useCentrosCusto();
   const [erro, setErro] = useState<string | null>(null);
+  const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const set = (k: string, v: string | boolean) => setF((s) => ({ ...s, [k]: v }));
   const alternarCentro = (id: number) => setCentroCustoIds((atuais) => {
@@ -51,12 +53,12 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
 
   useEffect(() => {
     listarCategorias().then(setCategorias).catch(() => {});
-    listarCentrosCusto().then(setCentros).catch(() => {});
   }, []);
 
   async function salvar() {
-    if (f.estocavel && !f.categoriaId) { setErro("Produto estocável precisa de uma categoria"); return; }
-    setSalvando(true); setErro(null);
+    setErro(null); setErroCategoria(null);
+    if (f.estocavel && !f.categoriaId) { setErroCategoria("Produto estocável precisa de uma categoria"); return; }
+    setSalvando(true);
     try {
       const payload = {
         nome: f.nome,
@@ -73,7 +75,13 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
       };
       if (produto) { await editarProduto(produto.id, payload); onSalvo(); }
       else { const criado = await criarProduto(payload); onSalvo(criado); }
-    } catch (e: any) { setErro(e.message); } finally { setSalvando(false); }
+    } catch (e: any) {
+      const msg: string = e?.message ?? String(e);
+      // req() do rebanho não repassa `campo` do erro do server (só a mensagem);
+      // como heurística, mensagens sobre categoria vão para o campo específico.
+      if (/categoria/i.test(msg)) setErroCategoria(msg);
+      else setErro(msg);
+    } finally { setSalvando(false); }
   }
 
   return (
@@ -99,20 +107,20 @@ export function ProdutoForm({ produto, onFechar, onSalvo, stacked = false }: { p
       </RebField>
       <RebField label="Custo unitário (R$)"><input type="number" value={f.custoUnitario} onChange={(e) => set("custoUnitario", e.target.value)} /></RebField>
       <RebField label="Categoria padrão">
-        <select className="rb-field-select" value={f.categoriaId} onChange={(e) => set("categoriaId", e.target.value)}>
+        <select
+          id="produto-categoria-rebanho"
+          className="rb-field-select"
+          value={f.categoriaId}
+          onChange={(e) => { set("categoriaId", e.target.value); setErroCategoria(null); }}
+          aria-invalid={!!erroCategoria}
+          aria-describedby={erroCategoria ? "produto-categoria-rebanho-erro" : undefined}
+        >
           <option value="">—</option>
           {categorias.map((cat) => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
         </select>
       </RebField>
-      <RebField label="Centros de custo">
-        <div className="grid max-h-40 gap-1 overflow-y-auto text-sm">
-          {centros.length === 0 ? <p className="text-ink-3">Nenhum centro de custo cadastrado.</p> : centros.map((c) => (
-            <label key={c.id} className="flex items-center gap-2">
-              <input type="checkbox" checked={centroCustoIds.has(c.id)} onChange={() => alternarCentro(c.id)} /> <span>{c.nome}</span>
-            </label>
-          ))}
-        </div>
-      </RebField>
+      {erroCategoria && <p id="produto-categoria-rebanho-erro" role="alert" className="-mt-2 mb-3.5 text-[13px] text-prejuizo">{erroCategoria}</p>}
+      <CentrosCustoFieldset idBase="produto-centros-rebanho" centros={centros} selecionados={centroCustoIds} onToggle={alternarCentro} />
       <RebField label="Carência (dias)"><input type="number" min={0} step="1" value={f.carencia} onChange={(e) => set("carencia", e.target.value)} /></RebField>
       <RebField label="% de matéria seca"><input type="number" min={0} step="0.01" value={f.percentualMS} onChange={(e) => set("percentualMS", e.target.value)} /></RebField>
       <RebField label="Estoque mínimo"><input type="number" step="0.01" min={0} value={f.minimoEstoque} onChange={(e) => set("minimoEstoque", e.target.value)} placeholder="dispara alerta abaixo desse valor" /></RebField>

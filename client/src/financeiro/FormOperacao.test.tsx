@@ -274,6 +274,38 @@ it("item não estocável sem centro de custo bloqueia a confirmação com mensag
   }
 });
 
+it("rascunho salvo antes do centro de custo por item existir (item sem centroCustoId): ao confirmar, marca o campo e não envia", () => {
+  const originalScroll = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  const fetchMock = vi.fn(async (_url: unknown, _init?: RequestInit) => ({ ok: true, json: async () => ({}) }));
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const cfg = configCentrosDivergentes();
+    // Simula um rascunho persistido antes de `centroCustoPorItem` existir: o
+    // item não tem a chave `centroCustoId` (não apenas ""), e o formulário
+    // também não tem `centroCustoPorItem`.
+    const rascunhoAntigo = {
+      id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [],
+      dados: {
+        formulario: {
+          tipo: "COMPRA_CONSUMO_DIRETO", condicao: "SEM_EFEITO_FINANCEIRO",
+          descricao: "Compra legada", valorOperacao: "10",
+          itens: [{ id: 1, categoriaId: "", classificacao: "", produtoId: "", descricao: "Item legado", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+          parceiroId: String(cfg.parceiros[0].id), categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
+        },
+      },
+    };
+    render(<FormOperacao config={cfg} rascunho={rascunhoAntigo} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const campo = screen.getByLabelText("Centro de custo");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(campo);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/financeiro/operacoes/rascunho/confirmacao"))).toBe(false);
+  } finally {
+    HTMLElement.prototype.scrollIntoView = originalScroll;
+  }
+});
+
 it("'Separar por item' deixa vazio (herda a operação) quando o produto não tem centro único", () => {
   const cfg = { ...configCentrosDivergentes() };
   cfg.produtos = [{ ...cfg.produtos[0], centroCustoIds: [] }, cfg.produtos[1]];

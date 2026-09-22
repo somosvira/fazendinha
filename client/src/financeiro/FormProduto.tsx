@@ -3,6 +3,7 @@ import { ApiError, atualizarProduto, criarProduto, type Categoria, type CentroCu
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
+import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
 
 const TIPOS: [TipoProduto, string][] = [
   ["INSUMO", "Insumo"], ["MEDICAMENTO", "Medicamento"], ["RACAO", "Ração"],
@@ -93,13 +94,13 @@ export function FormProduto({ produto, parceiros, categorias, centros, onSalvo, 
       </div>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>
       <CampoFormulario id="produto-categoria" rotulo="Categoria padrão" erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Sem categoria</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
-      <fieldset className="rounded-lg border border-border p-3" aria-describedby="produto-centros-ajuda">
-        <legend className="px-1 text-sm font-medium">Centros de custo</legend>
-        <p id="produto-centros-ajuda" className="mb-3 text-xs text-ink-3">Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas.</p>
-        <div className="grid max-h-48 gap-2 overflow-y-auto">
-          {centros.length === 0 ? <p className="text-sm text-ink-3">Nenhum centro de custo cadastrado.</p> : centros.filter((c) => c.ativo || centroCustoIds.has(c.id)).map((centro) => <label key={centro.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={centroCustoIds.has(centro.id)} disabled={!centro.ativo} onChange={() => alternarCentro(centro.id)} /> <span>{centro.nome}{centro.ativo ? "" : " (inativo)"}</span></label>)}
-        </div>
-      </fieldset>
+      <CentrosCustoFieldset
+        idBase="produto-centros"
+        centros={centros}
+        selecionados={centroCustoIds}
+        onToggle={alternarCentro}
+        ajuda="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
+      />
       <fieldset className="rounded-lg border border-border p-3" aria-describedby={erros.fornecedorIds ? "produto-fornecedores-erro" : "produto-fornecedores-ajuda"}>
         <legend className="px-1 text-sm font-medium">Fornecedores do produto</legend>
         <p id="produto-fornecedores-ajuda" className="mb-3 text-xs text-ink-3">Opcional. A compra continua podendo usar outro fornecedor.</p>

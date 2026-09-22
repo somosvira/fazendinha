@@ -38,16 +38,18 @@ export function Timeline({ eventos, onExcluido }: { eventos: EventoTimeline[]; o
   const anoTopo = ordenados[0] ? new Date(ordenados[0].data).getFullYear() : new Date().getFullYear();
   const [alvoExclusao, setAlvoExclusao] = useState<EventoTimeline | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function confirmarExclusao() {
     if (!alvoExclusao) return;
     setExcluindo(true);
+    setErro(null);
     try {
       await excluirOperacao(alvoExclusao.id.replace(/^op-/, ""));
       setAlvoExclusao(null);
       onExcluido?.();
-    } catch {
-      // erro fica visível pelo evento continuar na lista; usuário pode tentar de novo
+    } catch (e: any) {
+      setErro(e?.message ?? "Erro ao excluir.");
     } finally {
       setExcluindo(false);
     }
@@ -58,13 +60,18 @@ export function Timeline({ eventos, onExcluido }: { eventos: EventoTimeline[]; o
     <ConfirmDialog
       open={!!alvoExclusao}
       title="Excluir operação?"
-      message="Esta operação será removida da linha do tempo. Se ela gerou baixa de estoque, a baixa vinculada será desfeita. Esta ação não pode ser desfeita."
+      message={
+        <>
+          Esta operação será removida da linha do tempo. Se ela gerou baixa de estoque, a baixa vinculada será desfeita. Esta ação não pode ser desfeita.
+          {erro && <p className="mt-2 text-prejuizo">{erro}</p>}
+        </>
+      }
       confirmLabel={excluindo ? "Excluindo…" : "Excluir"}
       tone="danger"
       dangerFilled
       processando={excluindo}
       onConfirm={confirmarExclusao}
-      onCancel={() => setAlvoExclusao(null)}
+      onCancel={() => { setAlvoExclusao(null); setErro(null); }}
     />
     // .rb-tl — trilho vertical com border-left
     <div className="relative ml-1.5 border-l-2 border-[color:var(--rule)] pl-6">
