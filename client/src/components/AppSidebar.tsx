@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
 import { SidebarFarmPicker } from "./FarmPicker";
-import { temAcessoArea } from "@/lib/areas";
+import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
 import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
@@ -568,7 +568,7 @@ export function AppSidebar({
         );
       })}
 
-      {(temAcessoArea(areasEfetivas, "pecuaria") || temAcessoArea(areasEfetivas, "agricultura") || temAcessoArea(areasEfetivas, "financeiro")) && (
+      {temAcessoEstoque(areasEfetivas) && (
         <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
           <Item id="estoque" label="Estoque" current={current} onNav={nav} />
         </div>
