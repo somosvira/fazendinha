@@ -51,10 +51,23 @@ describe("FormOperacao", () => {
     expect((screen.getByLabelText("Forma de liquidação") as HTMLSelectElement).value).toBe("DINHEIRO");
   });
 
-  it("bloqueia confirmação de rascunho cujo parceiro perdeu o papel necessário", () => {
-    render(<FormOperacao config={config} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "2", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
-    expect(screen.getByRole("alert").textContent).toContain("não tem um papel compatível");
-    expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(true);
+  it("não bloqueia o botão com parceiro que perdeu o papel necessário — ao clicar, rola e foca o campo em vez de deixar o usuário procurando", () => {
+    const scroll = vi.fn();
+    const originalScroll = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      render(<FormOperacao config={config} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "2", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
+      expect(screen.getByRole("alert").textContent).toContain("não tem um papel compatível");
+      const confirmar = screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement;
+      expect(confirmar.disabled).toBe(false);
+
+      fireEvent.click(confirmar);
+      const parceiroSelect = screen.getByLabelText("Prestador de serviço");
+      expect(parceiroSelect.getAttribute("aria-invalid")).toBe("true");
+      expect(parceiroSelect.id).toBe("campo-parceiroId");
+      expect(scroll).toHaveBeenCalled();
+      expect(document.activeElement).toBe(parceiroSelect);
+    } finally { HTMLElement.prototype.scrollIntoView = originalScroll; }
   });
 
   it("abre como página e remove campos físicos quando o tipo é serviço", () => {
@@ -159,9 +172,21 @@ describe("FormOperacao", () => {
   it("explica e configura os compromissos derivados da condição a prazo", () => {
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
-    expect(screen.getByText("Cada parcela será criada como um compromisso vinculado a esta operação.")).toBeTruthy();
+    expect(screen.getByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeTruthy();
     expect(screen.getByRole("spinbutton", { name: "Valor da parcela 1" })).toBeTruthy();
     expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
+  });
+
+  it("soma itens já arredondados em centavos como o backend", () => {
+    montar();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "0.001" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade do item 2" }), { target: { value: "0.001" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor unitário do item 2" }), { target: { value: "5" } });
+    // As parcelas passaram a ser geradas sob demanda pelo servidor; a regra local
+    // que resta é o total da operação: cada item arredondado (0,005 → 0,01) e depois somado.
+    expect(screen.getAllByText(/R\$\s*0,02/).length).toBeGreaterThan(0);
   });
 
   it("oferece documentos tipificados no próprio cadastro", () => {
@@ -209,12 +234,12 @@ describe("FormOperacao — geração de parcelas", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("confirmacao"), expect.objectContaining({ method: "POST" })));
   });
 
-  it("mantém uma parcela editada manualmente mesmo quando o total muda depois", () => {
+  it("começa sem parcela preenchida (personalizado por padrão) e preserva o que o usuário digitar mesmo com o total mudando depois", () => {
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "100" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
-    expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("100.00");
+    expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("");
     fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "60.00" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "200" } });
     expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("60.00");
@@ -230,16 +255,110 @@ describe("FormOperacao — geração de parcelas", () => {
     expect(screen.getAllByText(/Excedente/).length).toBeGreaterThan(0);
   });
 
-  it("oferece frequência Personalizada e desativa a geração automática", () => {
+  it("a grade automática fica atrás do botão Gerar parcelas — não aparece fixa na página", () => {
     montar();
     fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "90" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    expect(screen.queryByRole("spinbutton", { name: "Quantidade de parcelas" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Gerar parcelas" }));
+    expect(screen.getByRole("spinbutton", { name: "Quantidade de parcelas" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Intervalo das parcelas" })).toBeTruthy();
+    // Não oferece mais "Personalizada": manual já é o padrão via "+ Parcela".
+    expect(screen.queryByRole("option", { name: "Personalizada" })).toBeNull();
+  });
+
+  it("+ Parcela fica sempre ao fim da lista e cada clique acrescenta uma linha", () => {
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "90" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(1);
+    const maisParcela = screen.getByRole("button", { name: "Parcela" });
+    fireEvent.click(maisParcela);
+    fireEvent.click(maisParcela);
+    const parcelasAtuais = screen.getAllByRole("spinbutton", { name: /Valor da parcela/ });
+    expect(parcelasAtuais).toHaveLength(3);
+    // O botão continua depois da última linha, não entre as parcelas.
+    expect(parcelasAtuais.at(-1)!.compareDocumentPosition(maisParcela) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("gerar no popover chama a API e substitui a lista de parcelas", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/financeiro/operacoes/simulacao-parcelas") && init?.method === "POST") {
+        return {
+          ok: true,
+          json: async () => ({
+            totalOperacao: "90.00", valorPagoAgora: "0", saldoAPrazo: "90.00",
+            parcelas: [{ valor: "30.00", dataVencimento: "2026-10-01" }, { valor: "30.00", dataVencimento: "2026-11-01" }, { valor: "30.00", dataVencimento: "2026-12-01" }],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ id: 9, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-21T12:00:00Z" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "90" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar parcelas" }));
     fireEvent.change(screen.getByRole("spinbutton", { name: "Quantidade de parcelas" }), { target: { value: "3" } });
-    expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
-    fireEvent.change(screen.getByRole("combobox", { name: "Intervalo das parcelas" }), { target: { value: "PERSONALIZADA" } });
-    expect((screen.getByRole("button", { name: "Gerar parcelas" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Gerar" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/simulacao-parcelas", expect.objectContaining({ method: "POST" })));
+    expect(await screen.findAllByRole("spinbutton", { name: /Valor da parcela/ })).toHaveLength(3);
+    expect((screen.getByRole("spinbutton", { name: "Valor da parcela 1" }) as HTMLInputElement).value).toBe("30.00");
+  });
+
+  it("gerar sobre parcelas já preenchidas à mão pede confirmação antes de substituir", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/financeiro/operacoes/simulacao-parcelas") && init?.method === "POST") {
+        return { ok: true, json: async () => ({ totalOperacao: "90.00", valorPagoAgora: "0", saldoAPrazo: "90.00", parcelas: [{ valor: "90.00", dataVencimento: "2026-10-01" }] }) };
+      }
+      return { ok: true, json: async () => ({ id: 9, dados: {}, versao: 1, documentos: [], updatedAt: "2026-09-21T12:00:00Z" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "SERVICO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor total da operação" }), { target: { value: "90" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "90.00" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Gerar parcelas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gerar" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Substituir as parcelas atuais?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Substituir parcelas" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("simulacao-parcelas"), expect.objectContaining({ method: "POST" })));
+  });
+
+  it("sanitiza a frequência de um rascunho salvo quando 'Personalizada' ainda existia, em vez de mandá-la de volta à API", async () => {
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (String(url).endsWith("/financeiro/operacoes/simulacao-parcelas") && init?.method === "POST") {
+        expect(JSON.parse(String(init.body)).frequencia).toBe("MENSAL");
+        return { ok: true, json: async () => ({ totalOperacao: "100.00", valorPagoAgora: "0", saldoAPrazo: "100.00", parcelas: [{ valor: "100.00", dataVencimento: "2026-10-21" }] }) };
+      }
+      return { ok: true, json: async () => ({ id: 5, dados: {}, versao: 2, documentos: [], updatedAt: "2026-09-21T00:00:00Z" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} rascunho={{
+      id: 5, versao: 1, updatedAt: "2026-09-21T00:00:00Z", documentos: [],
+      dados: { formulario: {
+        tipo: "SERVICO", condicao: "A_PRAZO", descricao: "Manutenção", valorOperacao: "100", itens: [],
+        parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-21", valorAgora: "",
+        parcelas: [{ id: 1, valor: "100.00", vencimento: "2026-10-21" }],
+        // Formato persistido por uma versão anterior do formulário, com a
+        // frequência "Personalizada" (removida) e o campo "modo" (também removido).
+        geradorParcelas: { modo: "PERSONALIZADO", frequencia: "PERSONALIZADA", quantidade: "5", primeiroVencimento: "2026-10-21" } as never,
+      } },
+    }} onSalvo={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Gerar parcelas" }));
+    expect((screen.getByRole("combobox", { name: "Intervalo das parcelas" }) as HTMLSelectElement).value).toBe("MENSAL");
+    fireEvent.click(screen.getByRole("button", { name: "Gerar" }));
+    // A parcela já vem preenchida do rascunho — pede confirmação antes de substituir.
+    fireEvent.click(screen.getByRole("button", { name: "Substituir parcelas" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("simulacao-parcelas"), expect.objectContaining({ method: "POST" })));
   });
 });
 
@@ -277,7 +396,7 @@ describe("FormOperacao — erro de confirmação por campo", () => {
     const parceiroSelect = screen.getByLabelText("Prestador de serviço");
     expect(parceiroSelect.getAttribute("aria-invalid")).toBe("true");
     expect(parceiroSelect.getAttribute("aria-describedby")).toBe("erro-parceiroId");
-    expect(screen.getByText("Selecione um parceiro válido.").id).toBe("erro-parceiroId");
+    expect(screen.getByText("Selecione um parceiro válido.").closest("#erro-parceiroId")).toBeTruthy();
 
     // Falha atômica: os dados preenchidos continuam lá para nova tentativa.
     expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Manutenção do trator");
@@ -288,5 +407,163 @@ describe("FormOperacao — erro de confirmação por campo", () => {
     expect(parceiroSelect.getAttribute("aria-invalid")).toBeNull();
     expect(parceiroSelect.getAttribute("aria-describedby")).toBeNull();
     expect(screen.queryByText("Selecione um parceiro válido.")).toBeNull();
+  });
+});
+
+describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não fica escondido/desabilitado)", () => {
+  // jsdom não faz layout: scrollIntoView existe como stub, mas trocamos por
+  // um mock pra provar que ele foi chamado — o foco real (document.activeElement)
+  // é o que garante de verdade que o usuário foi levado até o campo.
+  const comScrollStub = <T,>(rodar: () => T): [T, ReturnType<typeof vi.fn>] => {
+    const scroll = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try { return [rodar(), scroll]; } finally { HTMLElement.prototype.scrollIntoView = original; }
+  };
+
+  it("formulário em branco: o botão de confirmar nunca fica desabilitado", () => {
+    montar();
+    expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("mostra o motivo pendente abaixo do botão enquanto o formulário não está completo, e some quando fica válido", () => {
+    montar();
+    const motivo = screen.getByText(/Ainda há campos pendentes ou incompletos/);
+    expect(motivo.closest('[role="status"]')?.id).toBe("motivo-pendencia");
+    expect(screen.getByRole("button", { name: "Confirmar operação" }).getAttribute("aria-describedby")).toContain("motivo-pendencia");
+
+    // Preenche tudo que o tipo padrão (COMPRA_ESTOQUE, com item) exige.
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra de ração" } });
+    fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Ração" } });
+    fireEvent.change(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
+
+    expect(screen.queryByText(/Ainda há campos pendentes ou incompletos/)).toBeNull();
+  });
+
+  it("descrição vazia: rola e foca o campo ao tentar confirmar", () => {
+    const [, scroll] = comScrollStub(() => {
+      render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+      fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const campo = screen.getByLabelText("Descrição");
+      expect(campo.id).toBe("campo-descricao");
+      expect(campo.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(campo);
+    });
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("item que movimenta estoque sem produto selecionado: rola e foca o card do item, não um campo qualquer", () => {
+    const [, scroll] = comScrollStub(() => {
+      montar(); // COMPRA_ESTOQUE por padrão: itens com movimentação de estoque
+      fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra de insumos" } });
+      fireEvent.change(screen.getByLabelText("Descrição do item 1"), { target: { value: "Ração especial" } });
+      fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const itemCard = screen.getByLabelText("Descrição do item 1").closest('[id^="item-"]') as HTMLElement;
+      expect(itemCard.className).toContain("border-red-400");
+      expect(document.activeElement).toBe(itemCard);
+    });
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("centro de custo ambíguo entre produtos: rola e foca o campo", () => {
+    const [, scroll] = comScrollStub(() => {
+      render(<FormOperacao config={{ ...config,
+        centrosCusto: [{ id: 1, nome: "Pecuária", ativo: true, ordem: 0 }, { id: 2, nome: "Agronomia", ativo: true, ordem: 0 }],
+        produtos: [{ ...config.produtos[0], centroCustoId: 1 }, { ...config.produtos[0], id: 2, nome: "Adubo", centroCustoId: 2 }],
+      }} onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Compra combinada" } });
+      fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+      fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
+      fireEvent.change(screen.getByLabelText("Produto do item 2"), { target: { value: "2" } });
+      fireEvent.change(screen.getByLabelText("Conta financeira"), { target: { value: "1" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const campo = screen.getByLabelText("Centro de custo");
+      expect(campo.id).toBe("campo-centroCustoId");
+      expect(campo.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(campo);
+    });
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("conta financeira vazia: rola e foca o campo", () => {
+    const [, scroll] = comScrollStub(() => {
+      render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Manutenção" } });
+      fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const campo = screen.getByLabelText("Conta financeira");
+      expect(campo.id).toBe("campo-contaId");
+      expect(campo.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(campo);
+    });
+    expect(scroll).toHaveBeenCalled();
+  });
+
+  it("parcela em branco com a soma fechando: foca a parcela, explica o motivo em português e não chama a API", () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    const [, scroll] = comScrollStub(() => {
+      render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Manutenção" } });
+      fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+      fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "100" } });
+      fireEvent.click(screen.getByRole("button", { name: "Parcela" })); // parcela 2 fica em branco: soma continua fechando
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+
+      const campo = screen.getByRole("spinbutton", { name: "Valor da parcela 2" });
+      expect(campo.getAttribute("aria-invalid")).toBe("true");
+      expect(document.activeElement).toBe(campo);
+      expect(screen.getByText(/A parcela 2 está sem valor\. Informe um valor maior que zero ou remova a parcela\./)).toBeTruthy();
+      expect(screen.queryByText(/Number must be greater than 0/)).toBeNull();
+
+      // Corrigir o valor limpa o erro da linha.
+      fireEvent.change(campo, { target: { value: "0.01" } });
+      expect(campo.getAttribute("aria-invalid")).toBeNull();
+      expect(screen.queryByText(/está sem valor/)).toBeNull();
+    });
+    expect(scroll).toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("confirmacao"))).toBe(false);
+  });
+
+  it("parcela sem vencimento: foca o vencimento da parcela e explica o motivo", () => {
+    comScrollStub(() => {
+      render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Manutenção" } });
+      fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+      fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "100" } });
+      fireEvent.change(screen.getByLabelText("Vencimento da parcela 1"), { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      expect(document.activeElement).toBe(screen.getByLabelText("Vencimento da parcela 1"));
+      expect(screen.getByText(/A parcela 1 está sem data de vencimento/)).toBeTruthy();
+    });
+  });
+
+  it("parcelas com soma incorreta: rola e foca a seção de parcelas", () => {
+    const [, scroll] = comScrollStub(() => {
+      render(<FormOperacao config={config} tipoInicial="SERVICO" onSalvo={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Prestador de serviço"), { target: { value: "1" } });
+      fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "Manutenção" } });
+      fireEvent.change(screen.getByLabelText("Valor total da operação"), { target: { value: "100" } });
+      fireEvent.change(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Valor da parcela 1" }), { target: { value: "50" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+      const secao = document.getElementById("secao-parcelas");
+      expect(secao).toBe(document.activeElement);
+    });
+    expect(scroll).toHaveBeenCalled();
   });
 });

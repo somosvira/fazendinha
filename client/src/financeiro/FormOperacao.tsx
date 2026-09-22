@@ -1,10 +1,11 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
+import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
-import { deCentavos, gerarParcelas, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
+import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
@@ -12,11 +13,12 @@ type ModoValor = "UNITARIO" | "TOTAL";
 type ItemForm = { categoriaId: string; classificacao: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
 type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
+type AnexoEnviando = { id: number; nome: string; tamanho: number };
 type EstadoFormulario = {
   tipo: string; condicao: Condicao; descricao: string; valorOperacao: string; itens: ItemForm[];
   classificacao?: string; centroEscolhidoManualmente?: boolean; parceiroId: string; categoriaId: string; centroCustoId: string; contaId: string;
   formaPagamento: string; data: string; valorAgora: string; parcelas: ParcelaForm[];
-  geradorParcelas?: { modo: "GERADO" | "PERSONALIZADO"; quantidade: string; frequencia: FrequenciaParcelas; primeiroVencimento: string };
+  geradorParcelas?: { quantidade: string; frequencia: FrequenciaParcelas; primeiroVencimento: string };
 };
 
 const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
@@ -33,6 +35,11 @@ const novoItem = (): ItemForm => ({ id: proximoId++, categoriaId: "", classifica
 const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", vencimento: emDias(30 * (indice + 1)) });
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "SERVICO" ? "Prestador de serviço" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
+
+/** Mensagem de erro de campo, sempre com o mesmo destaque: ícone + texto em vermelho. */
+function CampoErro({ id, className = "mt-1.5", children }: { id?: string; className?: string; children: React.ReactNode }) {
+  return <span id={id} role="alert" className={`flex items-start gap-1.5 text-xs font-semibold text-red-700 ${className}`}><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{children}</span></span>;
+}
 
 export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
   const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
@@ -54,18 +61,23 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [data, setData] = useState(inicial?.data ?? hoje());
   const [valorAgora, setValorAgora] = useState(inicial?.valorAgora ?? (condicaoBase === "PARCIAL" ? transacaoBase?.valorTotal ?? "" : ""));
   const [parcelas, setParcelas] = useState<ParcelaForm[]>(() => inicial?.parcelas ?? (operacaoBase?.compromissos.length ? operacaoBase.compromissos.map((item) => ({ id: proximoId++, valor: item.valorOriginal, vencimento: item.dataVencimento.slice(0, 10) })) : [novaParcela()]));
-  const [geradorParcelas, setGeradorParcelas] = useState(() => inicial?.geradorParcelas ?? {
-    modo: (inicial?.parcelas || operacaoBase?.compromissos.length) ? "PERSONALIZADO" as const : "GERADO" as const,
-    quantidade: String(Math.max(1, inicial?.parcelas?.length ?? operacaoBase?.compromissos.length ?? 1)),
-    frequencia: "MENSAL" as FrequenciaParcelas,
-    primeiroVencimento: inicial?.parcelas?.[0]?.vencimento ?? operacaoBase?.compromissos[0]?.dataVencimento.slice(0, 10) ?? emDias(30),
+  const [geradorParcelas, setGeradorParcelas] = useState(() => {
+    const salvo = inicial?.geradorParcelas;
+    return {
+      quantidade: salvo?.quantidade ?? String(Math.max(1, inicial?.parcelas?.length ?? operacaoBase?.compromissos.length ?? 1)),
+      // Rascunhos salvos antes da remoção da frequência "Personalizada" podem
+      // trazer esse valor do banco — o <select> só oferece SEMANAL/MENSAL, e
+      // mandar o valor antigo pra API quebra com 422. Valida aqui na volta.
+      frequencia: salvo?.frequencia === "SEMANAL" ? "SEMANAL" as const : "MENSAL" as const,
+      primeiroVencimento: salvo?.primeiroVencimento ?? inicial?.parcelas?.[0]?.vencimento ?? operacaoBase?.compromissos[0]?.dataVencimento.slice(0, 10) ?? emDias(30),
+    };
   });
   const [anexos, setAnexos] = useState<AnexoForm[]>([]);
   const [documentosSalvos, setDocumentosSalvos] = useState<DocumentoFinanceiro[]>(rascunho?.documentos ?? []);
+  const [anexosEnviando, setAnexosEnviando] = useState<AnexoEnviando[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [confirmarLimpeza, setConfirmarLimpeza] = useState(false);
   const [confirmarSugestao, setConfirmarSugestao] = useState(false);
-  const [condicaoPendente, setCondicaoPendente] = useState<Condicao | null>(null);
   const [estadoSalvamento, setEstadoSalvamento] = useState<"ALTERADO" | "SALVANDO" | "SALVO" | "ERRO">(rascunho ? "SALVO" : "ALTERADO");
   const versaoRef = useRef(rascunho?.versao);
   const salvamentoEmCursoRef = useRef<Promise<RascunhoOperacao> | null>(null);
@@ -81,9 +93,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const permiteFinanceiro = TIPOS_FINANCEIROS.has(tipo);
   const exigeParceiro = TIPOS_COM_PARCEIRO.has(tipo);
   const entradaFinanceira = tipo === "VENDA" || tipo === "DEVOLUCAO";
-  const total = comItens ? itens.reduce((soma, item) => soma + totalItem(item), 0) : Number(valorOperacao || 0);
+  // O backend arredonda cada item antes de somá-los; repetir a mesma ordem
+  // evita validar na tela uma distribuição de parcelas que o servidor rejeita.
+  const centavosTotal = comItens
+    ? itens.reduce((soma, item) => soma + Math.round(totalItem(item) * 100), 0)
+    : Math.round(Number(valorOperacao || 0) * 100);
+  const total = centavosTotal / 100;
   const realizadoAgora = condicao === "A_VISTA" ? total : Number(valorAgora || 0);
-  const totalParcelas = parcelas.reduce((soma, parcela) => soma + Number(parcela.valor || 0), 0);
+  const centavosParcelas = parcelas.reduce((soma, parcela) => soma + Math.round(Number(parcela.valor || 0) * 100), 0);
+  const totalParcelas = centavosParcelas / 100;
+  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => config.produtos.some((produto) => produto.id === Number(item.produtoId) && produto.estocavel)).length : 0;
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const entradaSimulacao = useMemo(() => ({
     itens: comItens ? itens.map((item) => item.modoValor === "TOTAL"
@@ -108,9 +127,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && sugestaoParcelas.length) {
       setCondicao("A_PRAZO");
       setParcelas(sugestaoParcelas.map((parcela) => ({ ...parcela, id: proximoId++ })));
-      // A sugestão do parceiro não segue necessariamente uma grade semanal/mensal
-      // uniforme — trata como personalizada para o recálculo automático não a substituir.
-      setGeradorParcelas((atual) => ({ ...atual, modo: "PERSONALIZADO", quantidade: String(sugestaoParcelas.length), primeiroVencimento: sugestaoParcelas[0]?.vencimento ?? atual.primeiroVencimento }));
+      // Mantém a grade (quantidade/vencimento) em sincronia, caso o usuário
+      // abra o popover "Gerar parcelas" depois de aplicar a sugestão.
+      setGeradorParcelas((atual) => ({ ...atual, quantidade: String(sugestaoParcelas.length), primeiroVencimento: sugestaoParcelas[0]?.vencimento ?? atual.primeiroVencimento }));
     }
     setConfirmarSugestao(false);
   };
@@ -168,7 +187,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
   useEffect(() => (operacaoBase ? undefined : marcarEdicaoRascunho()), [operacaoBase]);
 
-  const atualizarItem = (id: number, patch: Partial<ItemForm>) => setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
+  const atualizarItem = (id: number, patch: Partial<ItemForm>) => {
+    setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
+    limparCampoInvalido(`item-${id}`);
+  };
   const centrosSugeridos = [...new Set(itens.flatMap((item) => {
     const centro = config.produtos.find((p) => p.id === Number(item.produtoId))?.centroCustoId;
     return centro && config.centrosCusto.some((c) => c.id === centro && c.ativo) ? [String(centro)] : [];
@@ -189,23 +211,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (!TIPOS_FINANCEIROS.has(novoTipo)) setCondicao("SEM_EFEITO_FINANCEIRO");
     else if (condicao === "SEM_EFEITO_FINANCEIRO") setCondicao("A_VISTA");
   };
-  const parcelasPersonalizadasPreenchidas = geradorParcelas.modo === "PERSONALIZADO" && parcelas.some((parcela) => parcela.valor || parcela.vencimento);
-  const aplicarCondicao = (novaCondicao: Condicao) => {
+  // A grade de parcelas só muda quando o usuário pede — clicando em "Gerar
+  // parcelas" ou editando uma linha — nunca como efeito colateral de trocar a
+  // condição, então não há risco de perder dados já preenchidos aqui.
+  const alterarCondicao = (novaCondicao: Condicao) => {
     setCondicao(novaCondicao);
-    if (novaCondicao === "A_PRAZO" || novaCondicao === "PARCIAL") {
-      // Deixa o recálculo automático da grade (efeito em EfeitoFinanceiro) gerar
-      // as parcelas a partir do total/saldo futuro — evita duplicar a lógica aqui.
-      setGeradorParcelas((atual) => ({ ...atual, modo: "GERADO" }));
-    }
     if (novaCondicao === "PARCIAL") {
       const totalCentavos = paraCentavos(total.toFixed(2)) ?? Math.round(total * 100);
       const metadeCentavos = Math.floor(totalCentavos / 2);
       setValorAgora(metadeCentavos ? deCentavos(metadeCentavos) : "");
     }
-  };
-  const alterarCondicao = (novaCondicao: Condicao) => {
-    if ((novaCondicao === "A_PRAZO" || novaCondicao === "PARCIAL") && parcelasPersonalizadasPreenchidas) { setCondicaoPendente(novaCondicao); return; }
-    aplicarCondicao(novaCondicao);
   };
   const selecionarAnexos = async (evento: ChangeEvent<HTMLInputElement>) => {
     const arquivos = Array.from(evento.target.files ?? []);
@@ -215,13 +230,22 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     const validos = arquivos.filter((arquivo) => !invalidos.includes(arquivo));
     if (operacaoBase) setAnexos((atuais) => [...atuais, ...validos.map((arquivo) => ({ id: proximoId++, arquivo, tipo: "NOTA_FISCAL", numero: "" }))]);
     else if (validos.length) {
+      // Linhas provisórias: o envio (rascunho + upload direto + confirmação) demora,
+      // e sem elas o usuário acha que o clique em "Anexar" não fez nada.
+      const pendentes = validos.map((arquivo) => ({ id: proximoId++, nome: arquivo.name, tamanho: arquivo.size }));
+      setAnexosEnviando((atuais) => [...atuais, ...pendentes]);
       try {
         await persistirRascunho();
-        for (const arquivo of validos) {
-          const documento = await anexarDocumentoRascunho({ arquivo, tipo: "NOTA_FISCAL" });
-          setDocumentosSalvos((atuais) => [...atuais, documento]);
+        for (const [indice, arquivo] of validos.entries()) {
+          try {
+            const documento = await anexarDocumentoRascunho({ arquivo, tipo: "NOTA_FISCAL" });
+            setDocumentosSalvos((atuais) => [...atuais, documento]);
+          } finally {
+            setAnexosEnviando((atuais) => atuais.filter((atual) => atual.id !== pendentes[indice].id));
+          }
         }
       } catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
+      finally { setAnexosEnviando((atuais) => atuais.filter((atual) => !pendentes.some((pendente) => pendente.id === atual.id))); }
     }
     evento.target.value = "";
   };
@@ -232,17 +256,59 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   }, {})) : [[categorias.find((c) => c.id === Number(categoriaId))?.nome ?? "Sem categoria", Math.round(total * 100)]] as [string, number][];
   const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId));
   const totalParcelasEmCentavos = somarParcelas(parcelas);
-  const parcelasValidas = condicao === "A_PRAZO" ? parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(totalFinanceiro.toFixed(2))
+  const somaParcelasConfere = condicao === "A_PRAZO" ? parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(totalFinanceiro.toFixed(2))
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
+  // A soma fechar não basta: uma parcela em branco (valor 0) passa na soma mas a
+  // API a rejeita. Cada parcela precisa de valor > 0 e de vencimento.
+  const parcelaIncompleta = condicao === "A_PRAZO" || condicao === "PARCIAL"
+    ? parcelas.find((parcela) => !((paraCentavos(parcela.valor) ?? 0) > 0) || !parcela.vencimento)
+    : undefined;
+  const parcelasValidas = somaParcelasConfere && !parcelaIncompleta;
   const contaValida = !["A_VISTA", "PARCIAL"].includes(condicao) || !!contaId;
-  // Marca o campo apontado pela API (`ApiError.campo`) sem depender só do alerta geral.
+  // Marca o campo apontado pela API (`ApiError.campo`) ou pela validação local
+  // ao tentar confirmar, sem depender só do alerta geral.
   const classeCampoErro = (campo: string) => campoInvalido === campo ? " border-red-400 ring-2 ring-red-200" : "";
   const limparCampoInvalido = (campo: string) => { if (campoInvalido === campo) setCampoInvalido(null); };
+  const itemInvalidoId = campoInvalido?.startsWith("item-") ? Number(campoInvalido.slice(5)) : null;
   const podeConfirmar = (!comItens || centrosSugeridos.length <= 1 || !!centroCustoId) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+
+  // Em vez de manter o botão desabilitado até tudo estar certo, deixamos o
+  // usuário clicar e, se faltar algo, achamos o primeiro campo com problema
+  // (na ordem em que aparecem na tela) pra rolar e focar nele — em vez de
+  // deixar o usuário procurando o que falta preencher.
+  const encontrarPrimeiroCampoInvalido = (): { campo: string; elementId: string } | null => {
+    if (exigeParceiro && !parceiroSelecionado) return { campo: "parceiroId", elementId: "campo-parceiroId" };
+    if (descricao.trim().length < 2) return { campo: "descricao", elementId: "campo-descricao" };
+    if (comItens) {
+      const itemInvalido = itens.find((item) => !item.descricao.trim() || !(Number(item.quantidade) > 0) || (movimentaEstoque && !item.produtoId));
+      if (itemInvalido) return { campo: `item-${itemInvalido.id}`, elementId: `item-${itemInvalido.id}` };
+    } else if (permiteFinanceiro && !(total > 0)) {
+      return { campo: "valorOperacao", elementId: "campo-valorOperacao" };
+    }
+    if (comItens && centrosSugeridos.length > 1 && !centroCustoId) return { campo: "centroCustoId", elementId: "campo-centroCustoId" };
+    if (!contaValida) return { campo: "contaId", elementId: "campo-contaId" };
+    if (condicao === "PARCIAL" && !(realizadoAgora > 0)) return { campo: "valorAgora", elementId: "campo-valorAgora" };
+    if (parcelaIncompleta) {
+      const chave = `${(paraCentavos(parcelaIncompleta.valor) ?? 0) > 0 ? "parcela-vencimento" : "parcela-valor"}-${parcelaIncompleta.id}`;
+      return { campo: chave, elementId: chave };
+    }
+    if (!parcelasValidas) return { campo: "parcelas", elementId: "secao-parcelas" };
+    return null;
+  };
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
-    if (!podeConfirmar) return;
+    if (anexosEnviando.length) return;
+    if (!podeConfirmar) {
+      const invalido = encontrarPrimeiroCampoInvalido();
+      if (invalido) {
+        setCampoInvalido(invalido.campo);
+        const elemento = document.getElementById(invalido.elementId);
+        elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
+        elemento?.focus?.();
+      }
+      return;
+    }
     setErroConfirmacao(null);
     setCampoInvalido(null);
     setSalvando(true);
@@ -288,7 +354,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
 
   return <div className="shell-wide pb-10">
     <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
-    <form onSubmit={submit} className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
+    {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
+     * sem isso, a validação nativa do navegador bloqueia o evento de submit
+     * antes do nosso onSubmit rodar sempre que um campo `required` estiver
+     * vazio (ou, pior, quando um <select required> perde a opção selecionada
+     * — o valor no DOM cai para "" e o navegador trata como vazio), o que
+     * impediria exatamente o comportamento de rolar+focar que construímos. */}
+    <form onSubmit={submit} noValidate className="grid min-h-[calc(100vh-180px)] overflow-hidden rounded-xl border border-border bg-white xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-7 p-5 md:p-7 xl:min-h-0 xl:overflow-y-auto">
         <ErrorBox erro={erro} />
         {operacaoBase && <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950"><strong>Nova operação baseada na OP-{String(operacaoBase.id).padStart(4, "0")}</strong><p className="mt-1 text-xs">Revise todos os dados e efeitos antes de confirmar. A operação cancelada permanecerá preservada no histórico.</p></div>}
@@ -297,12 +369,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{tipo === "AJUSTE_ESTOQUE" && <option value="AJUSTE_ESTOQUE" disabled>Ajuste de estoque — use Estoque</option>}{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["AJUSTE_ESTOQUE", "TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
             <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>
-            {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onChange={(e) => { setParceiroId(e.target.value); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select>{campoInvalido === "parceiroId" && <span id="erro-parceiroId" className="mt-1 block text-xs font-medium text-red-700">Selecione um parceiro válido.</span>}</label>}
-            <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea aria-label="Descrição" required maxLength={240} className={`${CAMPO} min-h-20`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></label>
+            {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onChange={(e) => { setParceiroId(e.target.value); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
+            <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea id="campo-descricao" aria-label="Descrição" aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">Descreva a operação (pelo menos 2 caracteres).</CampoErro>}</label>
           </div>
         </section>
-        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input aria-label="Valor total da operação" required min="0.01" step="0.01" type="number" className={CAMPO} value={valorOperacao} onChange={(e) => setValorOperacao(e.target.value)} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} /></label></section>}
-        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <span id="erro-categoriaId" className="mt-1 block text-xs font-medium text-red-700">Selecione uma categoria ativa.</span>}</label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">Centro de custo<select aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <span id="erro-centroCustoId" className="mt-1 block text-xs font-medium text-red-700">Selecione um centro de custo ativo.</span>}</label></div></section>
+        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3><div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <CampoErro id="erro-categoriaId">Selecione uma categoria ativa.</CampoErro>}</label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">Centro de custo<select id="campo-centroCustoId" aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <CampoErro id="erro-centroCustoId">Selecione um centro de custo ativo.</CampoErro>}</label></div></section>
         {comItens && centrosSugeridos.length > 1 && !centroCustoId && <p className="text-sm text-amber-800">Os produtos sugerem áreas diferentes. Escolha o centro de custo desta operação.</p>}
         {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
         {permiteFinanceiro && parceiroSelecionado && (parceiroSelecionado.formaPagamentoPreferida || parceiroSelecionado.condicaoPagamentoPreferida) && <div className="rounded-lg border border-border p-4 text-sm">
@@ -310,13 +382,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <p className="my-2 text-xs text-ink-3">É apenas uma sugestão. Você pode escolher outras condições livremente.{parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length && " Informe o valor e a data para calcular as parcelas."}</p>
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
-        <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} parcelasValidas={parcelasValidas} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} />
-        <Documentos anexos={anexos} setAnexos={setAnexos} documentosSalvos={documentosSalvos} atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
+        <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
+        <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
       </div>
-      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 space-y-2 text-xs"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">Gerar {itens.length} movimento{itens.length === 1 ? "" : "s"} físico{itens.length === 1 ? "" : "s"} de estoque.</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || !podeConfirmar} ariaDescribedby={erroConfirmacao ? "erro-confirmacao" : undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : "Confirmar operação"}</Button></div></aside>
+      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 space-y-2 text-xs"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">{movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar.</span></p>}</div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
-    <ConfirmDialog open={condicaoPendente !== null} title="Trocar a condição de pagamento?" message="As parcelas personalizadas serão substituídas por uma nova grade calculada automaticamente a partir do total." confirmLabel="Trocar condição" onCancel={() => setCondicaoPendente(null)} onConfirm={() => { if (condicaoPendente) aplicarCondicao(condicaoPendente); setCondicaoPendente(null); }} />
     <ConfirmDialog
       open={confirmarLimpeza}
       title="Limpar rascunho?"
@@ -330,14 +401,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarItem, alterarProduto }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void }) {
+function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
       const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
       const unidade = produto?.unidade ?? item.unidade;
-      return <div key={item.id} className="rounded-xl border border-border bg-[#faf9f4] p-4">
+      const invalido = item.id === itemInvalidoId;
+      return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
         <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <button type="button" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button>}</div>
+        {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""} deste item.</CampoErro>}
         <div className="grid gap-4 md:grid-cols-[minmax(200px,0.8fr)_minmax(0,2fr)]">
           <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<select aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onChange={(e) => alterarProduto(item.id, e.target.value)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</select></label>
           <label className="text-sm font-medium">Descrição do item *<input aria-label={`Descrição do item ${indice + 1}`} required className={CAMPO} value={item.descricao} onChange={(e) => atualizarItem(item.id, { descricao: e.target.value })} /></label>
@@ -363,24 +436,22 @@ type PropsEfeitoFinanceiro = {
   contaId: string; setContaId: (id: string) => void; formaPagamento: string; setFormaPagamento: (forma: string) => void;
   config: ConfiguracoesFinanceiras; valorAgora: string; setValorAgora: (valor: string) => void;
   total: number; parcelas: ParcelaForm[]; setParcelas: React.Dispatch<React.SetStateAction<ParcelaForm[]>>;
-  parcelasValidas: boolean; saldoFuturo: number;
+  somaParcelasConfere: boolean; saldoFuturo: number;
   entradaSimulacao: { itens: ({ quantidade: string; valorTotal: string } | { quantidade: string; valorUnitario: string })[]; valorTotal?: string; valorPagoAgora?: string };
   assinaturaSimulacao: string; onSimulacao: (resultado: SimulacaoParcelas) => void;
   geradorParcelas: GeradorParcelas; setGeradorParcelas: React.Dispatch<React.SetStateAction<GeradorParcelas>>;
+  campoInvalido: string | null; limparCampoInvalido: (campo: string) => void;
 };
 
-function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, parcelasValidas, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas }: PropsEfeitoFinanceiro) {
+function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setContaId, formaPagamento, setFormaPagamento, config, valorAgora, setValorAgora, total, parcelas, setParcelas, somaParcelasConfere, saldoFuturo, entradaSimulacao, onSimulacao, geradorParcelas, setGeradorParcelas, campoInvalido, limparCampoInvalido }: PropsEfeitoFinanceiro) {
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | null>(null);
   const [campoInvalidoGeracao, setCampoInvalidoGeracao] = useState<string | null>(null);
+  const [popoverAberto, setPopoverAberto] = useState(false);
   const [confirmarSubstituicao, setConfirmarSubstituicao] = useState(false);
   const totalAnotado = somarParcelas(parcelas);
   const esperado = Math.round((condicao === "PARCIAL" ? saldoFuturo : total) * 100);
   const diferenca = esperado - totalAnotado;
-  const alterarParcelas = (atualizar: (atuais: ParcelaForm[]) => ParcelaForm[]) => {
-    setParcelas((atuais) => atualizar(atuais));
-    setGeradorParcelas((atual) => ({ ...atual, modo: "PERSONALIZADO" }));
-  };
   const gerar = async () => {
     setGerando(true);
     setErroGeracao(null);
@@ -394,8 +465,9 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
       });
       onSimulacao(resultado);
       setParcelas(resultado.parcelas.map((parcela) => ({ id: proximoId++, valor: parcela.valor, vencimento: parcela.dataVencimento })));
-      setGeradorParcelas((atual) => ({ ...atual, modo: "GERADO" }));
       setConfirmarSubstituicao(false);
+      setPopoverAberto(false);
+      limparCampoInvalido("parcelas");
     } catch (falha) {
       setErroGeracao(falha instanceof Error ? falha.message : "Não foi possível gerar as parcelas.");
       if (falha instanceof ApiError && falha.campo) setCampoInvalidoGeracao(falha.campo);
@@ -403,64 +475,66 @@ function EfeitoFinanceiro({ permite, condicao, alterarCondicao, contaId, setCont
       setGerando(false);
     }
   };
+  // Gerar sempre substitui a lista inteira — se já houver alguma parcela
+  // preenchida à mão, confirma antes de descartar. Só o valor conta aqui: o
+  // vencimento vem preenchido por padrão em toda parcela nova (novaParcela),
+  // então usá-lo pediria confirmação mesmo num formulário ainda em branco.
   const solicitarGeracao = () => {
-    if (geradorParcelas.modo === "PERSONALIZADO" && parcelas.some((parcela) => parcela.valor || parcela.vencimento)) {
+    if (parcelas.some((parcela) => parcela.valor)) {
       setConfirmarSubstituicao(true);
       return;
     }
     void gerar();
   };
   const aPrazo = condicao === "A_PRAZO" || condicao === "PARCIAL";
-  const alvo = condicao === "PARCIAL" ? saldoFuturo : total;
-
-  // Recálculo automático: enquanto a grade não foi personalizada manualmente,
-  // acompanha total/saldo futuro/quantidade/frequência/primeiro vencimento sem
-  // exigir clique em "Gerar parcelas" — mas nunca toca em parcelas personalizadas.
-  useEffect(() => {
-    if (!aPrazo || geradorParcelas.modo !== "GERADO" || geradorParcelas.frequencia === "PERSONALIZADA") return;
-    const quantidade = Number(geradorParcelas.quantidade);
-    if (!Number.isInteger(quantidade) || quantidade < 1 || alvo <= 0) return;
-    const geradas = gerarParcelas(alvo.toFixed(2), quantidade, geradorParcelas.frequencia, geradorParcelas.primeiroVencimento);
-    if (!geradas.length) return;
-    setParcelas(geradas.map((parcela) => ({ id: proximoId++, valor: parcela.valor, vencimento: parcela.vencimento })));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aPrazo, alvo, geradorParcelas.modo, geradorParcelas.quantidade, geradorParcelas.frequencia, geradorParcelas.primeiroVencimento]);
-
-  const alterarFrequencia = (frequencia: FrequenciaParcelas) => {
-    if (frequencia === "PERSONALIZADA") {
-      setGeradorParcelas((atual) => ({ ...atual, frequencia, modo: "PERSONALIZADO" }));
-      if (!parcelas.some((parcela) => parcela.valor || parcela.vencimento)) {
-        const quantidade = Math.max(1, Number(geradorParcelas.quantidade) || 1);
-        setParcelas(Array.from({ length: quantidade }, (_, indice) => novaParcela(indice)));
-      }
-      return;
-    }
-    setGeradorParcelas((atual) => ({ ...atual, frequencia, modo: "GERADO" }));
-  };
 
   return <section>
     <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Efeito financeiro</h3>
     {!permite ? <div className="rounded-lg bg-[#eef1e9] p-4 text-sm text-green-900"><strong>Sem movimentação financeira</strong><p className="mt-1 text-xs leading-5">Este tipo registra somente o efeito físico ou de valorização. Nenhuma conta ou compromisso será criado.</p></div> : <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <label className="text-sm font-medium">Condição<select aria-label="Condição financeira" className={SELECT} value={condicao} onChange={(e) => alterarCondicao(e.target.value as Condicao)}><option value="A_VISTA">Liquidação integral na operação</option><option value="A_PRAZO">Liquidação integral a prazo</option><option value="PARCIAL">Liquidação parcial com saldo a prazo</option><option value="SEM_EFEITO_FINANCEIRO">Sem movimentação financeira</option></select></label>
-        {(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<select aria-label="Conta financeira" required className={SELECT} value={contaId} onChange={(e) => setContaId(e.target.value)}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select></label><label className="text-sm font-medium">Forma de liquidação<select aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label></>}
+        {(condicao === "A_VISTA" || condicao === "PARCIAL") && <><label className="text-sm font-medium">Conta financeira *<select id="campo-contaId" aria-label="Conta financeira" aria-invalid={campoInvalido === "contaId" || undefined} aria-describedby={campoInvalido === "contaId" ? "erro-contaId" : undefined} required className={SELECT + (campoInvalido === "contaId" ? " border-red-400 ring-2 ring-red-200" : "")} value={contaId} onChange={(e) => { setContaId(e.target.value); limparCampoInvalido("contaId"); }}><option value="">Selecione</option>{config.contas.filter((conta) => conta.ativo).map((conta) => <option key={conta.id} value={conta.id}>{conta.nome}</option>)}</select>{campoInvalido === "contaId" && <CampoErro id="erro-contaId">Selecione a conta financeira.</CampoErro>}</label><label className="text-sm font-medium">Forma de liquidação<select aria-label="Forma de liquidação" className={SELECT} value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)}>{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label></>}
       </div>
-      {condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<input aria-label="Valor liquidado na operação" required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO} value={valorAgora} onChange={(e) => setValorAgora(e.target.value)} /></label>}
-      {aPrazo && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><strong className="text-sm">Parcelas do compromisso</strong><p className="mt-1 text-xs text-ink-3">Cada parcela será criada como um compromisso vinculado a esta operação.</p><p className="mt-1 text-xs text-ink-3">Defina a grade ou personalize parcelas individuais.</p></div><Button type="button" secondary onClick={() => alterarParcelas((atuais) => [...atuais, novaParcela(atuais.length)])}><Plus size={15} /> Parcela</Button></div>
-        <div className="grid gap-3 md:grid-cols-4"><label className="text-sm font-medium">Quantidade<input aria-label="Quantidade de parcelas" aria-invalid={campoInvalidoGeracao === "quantidadeParcelas" || undefined} min="1" max="360" step="1" type="number" className={CAMPO + (campoInvalidoGeracao === "quantidadeParcelas" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.quantidade} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, quantidade: e.target.value })); setCampoInvalidoGeracao(null); }} /></label><label className="text-sm font-medium">Intervalo<select aria-label="Intervalo das parcelas" className={SELECT} value={geradorParcelas.frequencia} onChange={(e) => alterarFrequencia(e.target.value as FrequenciaParcelas)}><option value="MENSAL">Mensal</option><option value="SEMANAL">Semanal</option><option value="PERSONALIZADA">Personalizada</option></select></label><label className="text-sm font-medium">Primeiro vencimento<input aria-label="Primeiro vencimento" aria-invalid={campoInvalidoGeracao === "primeiroVencimento" || undefined} type="date" className={CAMPO + (campoInvalidoGeracao === "primeiroVencimento" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.primeiroVencimento} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, primeiroVencimento: e.target.value })); setCampoInvalidoGeracao(null); }} /></label><div className="self-end"><Button type="button" secondary className="w-full" disabled={gerando || geradorParcelas.frequencia === "PERSONALIZADA"} onClick={solicitarGeracao}>{gerando ? "Gerando..." : "Gerar parcelas"}</Button></div></div>
-        {geradorParcelas.frequencia === "PERSONALIZADA" && <p className="mt-2 text-xs text-ink-3">Frequência personalizada: edite valor e vencimento de cada parcela abaixo.</p>}
-        {erroGeracao && <p role="alert" className="mt-3 text-sm text-red-700">{erroGeracao}</p>}
-        <div className="mt-4 space-y-3">{parcelas.map((parcela, indice) => <div key={parcela.id} className="grid items-end gap-3 sm:grid-cols-[80px_1fr_1fr_40px]"><strong className="pb-2.5 text-sm">{indice + 1}/{parcelas.length}</strong><label className="text-sm font-medium">Valor<input aria-label={`Valor da parcela ${indice + 1}`} required min="0.01" step="0.01" type="number" className={CAMPO} value={parcela.valor} onChange={(e) => alterarParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, valor: e.target.value } : atual))} /></label><label className="text-sm font-medium">Vencimento<input aria-label={`Vencimento da parcela ${indice + 1}`} required type="date" className={CAMPO} value={parcela.vencimento} onChange={(e) => alterarParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, vencimento: e.target.value } : atual))} /></label><button type="button" disabled={parcelas.length === 1} aria-label={`Remover parcela ${indice + 1}`} onClick={() => alterarParcelas((atuais) => atuais.filter((atual) => atual.id !== parcela.id))} className="mb-1 rounded-lg p-2 text-red-700 hover:bg-red-50 disabled:opacity-30"><Trash2 size={16} /></button></div>)}</div>
+      {condicao === "PARCIAL" && <label className="block max-w-xs text-sm font-medium">Valor liquidado na operação *<input id="campo-valorAgora" aria-label="Valor liquidado na operação" aria-invalid={campoInvalido === "valorAgora" || undefined} aria-describedby={campoInvalido === "valorAgora" ? "erro-valorAgora" : undefined} required min="0.01" max={Math.max(total - 0.01, 0)} step="0.01" type="number" className={CAMPO + (campoInvalido === "valorAgora" ? " border-red-400 ring-2 ring-red-200" : "")} value={valorAgora} onChange={(e) => { setValorAgora(e.target.value); limparCampoInvalido("valorAgora"); }} />{campoInvalido === "valorAgora" && <CampoErro id="erro-valorAgora">Informe o valor liquidado agora.</CampoErro>}</label>}
+      {aPrazo && <div id="secao-parcelas" tabIndex={-1} className={`rounded-xl border border-amber-200 bg-amber-50/50 p-4 outline-none${campoInvalido === "parcelas" ? " ring-2 ring-red-300" : ""}`}>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div><strong className="text-sm">Parcelas do compromisso</strong><p className="mt-1 text-xs text-ink-3">Cada parcela será criada como um compromisso vinculado a esta operação. Adicione uma a uma ou gere uma grade automática.</p></div>
+          <Popover open={popoverAberto} onOpenChange={setPopoverAberto}>
+            <PopoverTrigger asChild><Button type="button" secondary><Wand2 size={15} /> Gerar parcelas</Button></PopoverTrigger>
+            <PopoverContent align="end" sideOffset={6} className="w-[min(300px,calc(100vw-24px))] rounded-xl border border-border bg-white p-4 shadow-xl">
+              <div className="space-y-3">
+                <label className="block text-sm font-medium">Quantidade<input aria-label="Quantidade de parcelas" aria-invalid={campoInvalidoGeracao === "quantidadeParcelas" || undefined} min="1" max="360" step="1" type="number" className={CAMPO + (campoInvalidoGeracao === "quantidadeParcelas" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.quantidade} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, quantidade: e.target.value })); setCampoInvalidoGeracao(null); }} /></label>
+                <label className="block text-sm font-medium">Intervalo<select aria-label="Intervalo das parcelas" className={SELECT} value={geradorParcelas.frequencia} onChange={(e) => setGeradorParcelas((atual) => ({ ...atual, frequencia: e.target.value as FrequenciaParcelas }))}><option value="MENSAL">Mensal</option><option value="SEMANAL">Semanal</option></select></label>
+                <label className="block text-sm font-medium">Primeiro vencimento<input aria-label="Primeiro vencimento" aria-invalid={campoInvalidoGeracao === "primeiroVencimento" || undefined} type="date" className={CAMPO + (campoInvalidoGeracao === "primeiroVencimento" ? " border-red-400 ring-2 ring-red-200" : "")} value={geradorParcelas.primeiroVencimento} onChange={(e) => { setGeradorParcelas((atual) => ({ ...atual, primeiroVencimento: e.target.value })); setCampoInvalidoGeracao(null); }} /></label>
+                {erroGeracao && <CampoErro className="mt-0">{erroGeracao}</CampoErro>}
+                <Button type="button" className="w-full" disabled={gerando} onClick={solicitarGeracao}>{gerando ? "Gerando…" : "Gerar"}</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-3">{parcelas.map((parcela, indice) => {
+          const idValor = `parcela-valor-${parcela.id}`;
+          const idVencimento = `parcela-vencimento-${parcela.id}`;
+          const erroValor = campoInvalido === idValor;
+          const erroVencimento = campoInvalido === idVencimento;
+          return <div key={parcela.id}>
+            <div className="grid items-end gap-3 sm:grid-cols-[80px_1fr_1fr_40px]"><strong className="pb-2.5 text-sm">{indice + 1}/{parcelas.length}</strong><label className="text-sm font-medium">Valor<input id={idValor} aria-label={`Valor da parcela ${indice + 1}`} aria-invalid={erroValor || undefined} aria-describedby={erroValor ? `erro-${idValor}` : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + (erroValor ? " border-red-400 ring-2 ring-red-200" : "")} value={parcela.valor} onChange={(e) => { setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, valor: e.target.value } : atual)); limparCampoInvalido(idValor); limparCampoInvalido("parcelas"); }} /></label><label className="text-sm font-medium">Vencimento<input id={idVencimento} aria-label={`Vencimento da parcela ${indice + 1}`} aria-invalid={erroVencimento || undefined} aria-describedby={erroVencimento ? `erro-${idVencimento}` : undefined} required type="date" className={CAMPO + (erroVencimento ? " border-red-400 ring-2 ring-red-200" : "")} value={parcela.vencimento} onChange={(e) => { setParcelas((atuais) => atuais.map((atual) => atual.id === parcela.id ? { ...atual, vencimento: e.target.value } : atual)); limparCampoInvalido(idVencimento); limparCampoInvalido("parcelas"); }} /></label><button type="button" disabled={parcelas.length === 1} aria-label={`Remover parcela ${indice + 1}`} onClick={() => setParcelas((atuais) => atuais.filter((atual) => atual.id !== parcela.id))} className="mb-1 rounded-lg p-2 text-red-700 hover:bg-red-50 disabled:opacity-30"><Trash2 size={16} /></button></div>
+            {erroValor && <CampoErro id={`erro-${idValor}`} className="mt-1.5 sm:pl-[92px]">{parcela.valor === "" ? `A parcela ${indice + 1} está sem valor. Informe um valor maior que zero ou remova a parcela.` : `Informe um valor válido para a parcela ${indice + 1}: maior que zero, com até duas casas decimais.`}</CampoErro>}
+            {erroVencimento && <CampoErro id={`erro-${idVencimento}`} className="mt-1.5 sm:pl-[92px]">{`A parcela ${indice + 1} está sem data de vencimento. Informe a data para continuar.`}</CampoErro>}
+          </div>;
+        })}</div>
+        {/* Sempre ao fim da lista: cada clique acrescenta uma linha nova. */}
+        <Button type="button" secondary className="mt-3 w-full" onClick={() => setParcelas((atuais) => [...atuais, novaParcela(atuais.length)])}><Plus size={15} /> Parcela</Button>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs"><span>Total das parcelas anotadas: <strong>{brl(deCentavos(totalAnotado))}</strong></span><span className={diferenca < 0 ? "text-red-700" : "text-ink-3"}>{diferenca < 0 ? "Excedente" : "Restante para distribuir"}: <strong>{brl(deCentavos(Math.abs(diferenca)))}</strong></span></div>
-        {!parcelasValidas && <p className="mt-3 text-xs font-medium text-red-700">A soma das parcelas deve corresponder a {brl(condicao === "PARCIAL" ? saldoFuturo : total)}.</p>}
+        {!somaParcelasConfere && <CampoErro className="mt-3">A soma das parcelas deve corresponder a {brl(condicao === "PARCIAL" ? saldoFuturo : total)}.</CampoErro>}
       </div>}
     </div>}
-    <ConfirmDialog open={confirmarSubstituicao} title="Substituir parcelas personalizadas?" message="A nova grade substituirá os valores e vencimentos que você ajustou manualmente." confirmLabel="Substituir parcelas" processando={gerando} onCancel={() => setConfirmarSubstituicao(false)} onConfirm={() => void gerar()} />
+    <ConfirmDialog open={confirmarSubstituicao} title="Substituir as parcelas atuais?" message="A nova grade substituirá todas as parcelas já preenchidas nesta lista." confirmLabel="Substituir parcelas" processando={gerando} onCancel={() => setConfirmarSubstituicao(false)} onConfirm={() => void gerar()} />
   </section>;
 }
 
-function Documentos({ anexos, setAnexos, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: number, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: number) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
-  const vazio = !anexos.length && !documentosSalvos.length;
-  return <section><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Documentos</h3><p className="mt-1 text-xs text-ink-3">PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.</p></div><label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold hover:bg-[#faf9f4]"><Paperclip size={15} /> Anexar<input aria-label="Anexar documentos" type="file" multiple accept=".pdf,.xml,.jpg,.jpeg,.png,.webp,application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp" className="sr-only" onChange={selecionarAnexos} /></label></div>{!vazio ? <div className="space-y-2">{documentosSalvos.map((documento) => <div key={`salvo-${documento.id}`} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{documento.nome}</div><div className="text-xs text-ink-3">Salvo no rascunho</div></div></div><select aria-label={`Tipo do documento ${documento.nome}`} className={`${SELECT} mt-0 p-2 text-sm`} value={documento.tipo} onChange={(e) => atualizarDocumentoSalvo(documento.id, { tipo: e.target.value })}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${documento.nome}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm" value={documento.numero ?? ""} onChange={(e) => atualizarDocumentoSalvo(documento.id, { numero: e.target.value })} /><button type="button" aria-label={`Remover documento ${documento.nome}`} onClick={() => removerDocumentoSalvo(documento.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexos.map((anexo) => <div key={anexo.id} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{anexo.arquivo.name}</div><div className="text-xs text-ink-3">{(anexo.arquivo.size / 1024 / 1024).toFixed(2)} MB</div></div></div><select aria-label={`Tipo do documento ${anexo.arquivo.name}`} className={`${SELECT} mt-0 p-2 text-sm`} value={anexo.tipo} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, tipo: e.target.value } : atual))}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${anexo.arquivo.name}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={anexo.numero} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, numero: e.target.value } : atual))} /><button type="button" aria-label={`Remover documento ${anexo.arquivo.name}`} onClick={() => setAnexos((atuais) => atuais.filter((atual) => atual.id !== anexo.id))} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}</div> : <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-ink-3">Nenhum documento anexado.</div>}</section>;
+function Documentos({ anexos, setAnexos, anexosEnviando, documentosSalvos, atualizarDocumentoSalvo, removerDocumentoSalvo, selecionarAnexos }: { anexos: AnexoForm[]; setAnexos: React.Dispatch<React.SetStateAction<AnexoForm[]>>; anexosEnviando: AnexoEnviando[]; documentosSalvos: DocumentoFinanceiro[]; atualizarDocumentoSalvo: (id: number, patch: { tipo?: string; numero?: string | null }) => void; removerDocumentoSalvo: (id: number) => void; selecionarAnexos: (evento: ChangeEvent<HTMLInputElement>) => void }) {
+  const vazio = !anexos.length && !documentosSalvos.length && !anexosEnviando.length;
+  const enviando = anexosEnviando.length > 0;
+  return <section><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Documentos</h3><p className="mt-1 text-xs text-ink-3">PDF, XML, JPG, PNG ou WEBP, com até 10 MB por arquivo.</p></div><label aria-disabled={enviando} className={`inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-semibold ${enviando ? "cursor-wait opacity-60" : "cursor-pointer hover:bg-[#faf9f4]"}`}>{enviando ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Paperclip size={15} />} {enviando ? "Anexando…" : "Anexar"}<input aria-label="Anexar documentos" type="file" multiple disabled={enviando} accept=".pdf,.xml,.jpg,.jpeg,.png,.webp,application/pdf,application/xml,text/xml,image/jpeg,image/png,image/webp" className="sr-only" onChange={selecionarAnexos} /></label></div>{!vazio ? <div className="space-y-2">{documentosSalvos.map((documento) => <div key={`salvo-${documento.id}`} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{documento.nome}</div><div className="text-xs text-ink-3">Salvo no rascunho</div></div></div><select aria-label={`Tipo do documento ${documento.nome}`} className={`${SELECT} mt-0 p-2 text-sm`} value={documento.tipo} onChange={(e) => atualizarDocumentoSalvo(documento.id, { tipo: e.target.value })}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${documento.nome}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm" value={documento.numero ?? ""} onChange={(e) => atualizarDocumentoSalvo(documento.id, { numero: e.target.value })} /><button type="button" aria-label={`Remover documento ${documento.nome}`} onClick={() => removerDocumentoSalvo(documento.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexos.map((anexo) => <div key={anexo.id} className="grid items-center gap-3 rounded-lg border border-border p-3 md:grid-cols-[minmax(0,1fr)_180px_160px_36px]"><div className="flex min-w-0 items-center gap-3"><FileText size={18} className="shrink-0 text-ink-3" /><div className="min-w-0"><div className="truncate text-sm font-medium">{anexo.arquivo.name}</div><div className="text-xs text-ink-3">{(anexo.arquivo.size / 1024 / 1024).toFixed(2)} MB</div></div></div><select aria-label={`Tipo do documento ${anexo.arquivo.name}`} className={`${SELECT} mt-0 p-2 text-sm`} value={anexo.tipo} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, tipo: e.target.value } : atual))}>{Object.entries(TIPOS_DOCUMENTO).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select><input aria-label={`Número do documento ${anexo.arquivo.name}`} placeholder="Número (opcional)" className="rounded-lg border border-[#d8cfbb] bg-white p-2 text-sm outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={anexo.numero} onChange={(e) => setAnexos((atuais) => atuais.map((atual) => atual.id === anexo.id ? { ...atual, numero: e.target.value } : atual))} /><button type="button" aria-label={`Remover documento ${anexo.arquivo.name}`} onClick={() => setAnexos((atuais) => atuais.filter((atual) => atual.id !== anexo.id))} className="rounded-lg p-2 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button></div>)}{anexosEnviando.map((pendente) => <div key={`enviando-${pendente.id}`} role="status" aria-busy="true" aria-label={`Anexando documento ${pendente.nome}`} className="flex items-center gap-3 rounded-lg border border-dashed border-[#6f7d68]/50 bg-[#faf9f4] p-3"><Loader2 size={18} className="shrink-0 animate-spin text-[#6f7d68]" aria-hidden /><div className="min-w-0"><div className="truncate text-sm font-medium">{pendente.nome}</div><div className="text-xs text-ink-3">Anexando… {(pendente.tamanho / 1024 / 1024).toFixed(2)} MB</div></div></div>)}</div> : <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-ink-3">Nenhum documento anexado.</div>}</section>;
 }

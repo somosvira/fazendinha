@@ -90,6 +90,21 @@ describe("OperacoesFinanceiras — rascunho", () => {
   });
 });
 
+describe("OperacoesFinanceiras — filtro de efeito vindo da rastreabilidade", () => {
+  // A Base financeira linka "Sem efeitos vinculados" para
+  // /financeiro/operacoes?...&efeito=SEM_EFEITOS (issue #284 / review #287, P-C).
+  it("abre já filtrado por SEM_EFEITOS quando a URL pede", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes?inicio=2026-01-01&fim=2026-12-31&efeito=SEM_EFEITOS");
+    render(<OperacoesFinanceiras />);
+    expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("SEM_EFEITOS");
+  });
+  it("ignora um valor de efeito desconhecido e mantém 'Todos os efeitos'", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes?efeito=NAO_EXISTE");
+    render(<OperacoesFinanceiras />);
+    expect((await screen.findByLabelText("Filtrar por efeito") as HTMLSelectElement).value).toBe("TODOS");
+  });
+});
+
 describe("OperacoesFinanceiras — paginação", () => {
   it("mostra quinze operações por página e permite ir diretamente à próxima", async () => {
     vi.mocked(listarOperacoes).mockResolvedValue(Array.from({ length: 16 }, (_, indice) => ({

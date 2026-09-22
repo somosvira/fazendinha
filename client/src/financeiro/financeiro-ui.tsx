@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CalendarDays, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Loader } from "../components/Loading";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
@@ -55,10 +55,16 @@ export function PageHeader({ titulo, descricao, acao }: { titulo: string; descri
   </header>;
 }
 
-export function Button({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }: { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }) {
-  const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
-  return <button type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
-}
+// forwardRef (não ref-as-prop): um <Button> usado como `asChild` de um
+// PopoverTrigger/DialogTrigger do Radix precisa repassar a ref de verdade
+// para o <button> nativo, senão o Radix não consegue posicionar/focar nele.
+export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode; onClick?: () => void; type?: "button" | "submit"; disabled?: boolean; danger?: boolean; secondary?: boolean; className?: string; /** id do form a submeter quando o botão vive fora dele (rodapé de painel) */ form?: string; /** associa o botão a uma mensagem de erro/ajuda (ex.: o alerta de confirmação) */ ariaDescribedby?: string }>(
+  ({ children, onClick, type = "button", disabled, danger, secondary, className = "", form, ariaDescribedby }, ref) => {
+    const cor = danger ? "bg-red-800 text-white hover:bg-red-900" : secondary ? "border border-border bg-white text-ink hover:bg-surface-2" : "bg-mast text-white hover:opacity-90";
+    return <button ref={ref} type={type} form={form} onClick={onClick} disabled={disabled} aria-describedby={ariaDescribedby} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${cor} ${className}`}>{children}</button>;
+  },
+);
+Button.displayName = "Button";
 
 export function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] ${className}`}>{children}</section>;
@@ -85,10 +91,6 @@ export function ErrorBox({ erro }: { erro: string | null }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="p-10 text-center text-sm text-ink-3">{children}</div>;
-}
-
-export function MonthControl({ mes, onChange }: { mes: string; onChange: (mes: string) => void }) {
-  return <label className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm text-ink-2"><CalendarDays size={16} className="text-ink-3" /><span className="sr-only">Período</span><input type="month" value={mes} onChange={(e) => onChange(e.target.value)} className="bg-transparent font-medium outline-none" /></label>;
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean }) {

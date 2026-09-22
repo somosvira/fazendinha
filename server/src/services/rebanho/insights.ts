@@ -5,6 +5,7 @@
 import { prisma } from "../../db.js";
 import type { ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "./estoque.calc.js";
+import { saidaConsumoConfirmada } from "./estoque.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
 import { scoreDoResumo } from "./score.calc.js";
@@ -169,7 +170,7 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   // ── Custos do rebanho (vaca/dia) — 30 dias ─────────────────────────────
   const limite30 = new Date(hoje); limite30.setDate(hoje.getDate() - 30);
   const saidas30 = await prisma.movimentoEstoque.findMany({
-    where: { tipo: "SAIDA", data: { gte: limite30 } },
+    where: { ...saidaConsumoConfirmada, data: { gte: limite30 } },
     select: { valorTotal: true, data: true },
   });
   const vacasEmLactacao = await prisma.animal.count({ where: { status: "ATIVO", resumo: { del: { not: null } } } });

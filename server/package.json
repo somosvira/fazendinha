@@ -47,6 +47,7 @@
     "@prisma/adapter-neon": "^6.1.0",
     "@prisma/adapter-pg": "^6.1.0",
     "@prisma/client": "^6.1.0",
+    "@xmldom/xmldom": "^0.9.12",
     "hono": "^4.6.15",
     "openai": "^6.44.0",
     "pg": "^8.13.1",

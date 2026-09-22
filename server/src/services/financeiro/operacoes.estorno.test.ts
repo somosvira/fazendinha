@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   movimentoEstoqueUpdate: vi.fn(),
   auditoriaCreate: vi.fn(),
   contaFindFirst: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -31,6 +32,7 @@ vi.mock("../../db.js", () => {
     movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
+    $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
   return { prisma: { $transaction: mocks.transaction, operacao: { findFirst: mocks.operacaoFindFirstDireto } } };
@@ -42,6 +44,7 @@ const decimal = (valor: Prisma.Decimal.Value) => new Prisma.Decimal(valor);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.queryRaw.mockResolvedValue([{ id: 5 }]); // bloqueio FOR NO KEY UPDATE encontra a linha
   mocks.periodo.mockResolvedValue(null); // sem PeriodoFinanceiro cadastrado = mês aberto
   mocks.transacaoCreate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: 900, ...data, movimentos: [] }));
   mocks.transacaoUpdate.mockResolvedValue({});
@@ -63,7 +66,7 @@ describe("estornarTransacao", () => {
       liquidacoes: [{ valor: decimal("60.00"), transacao: { status: "REVERTIDA" } }],
     });
 
-    await estornarTransacao(10, "Pagamento em duplicidade", 1);
+    await estornarTransacao(10, "Pagamento em duplicidade", { propriedadeId: 1, usuarioId: 1 });
 
     // Nunca apaga a liquidação original — só cria o evento inverso.
     expect(mocks.transacaoCreate).toHaveBeenCalledTimes(1);
@@ -88,13 +91,13 @@ describe("estornarTransacao", () => {
       liquidacoes: [{ valor: decimal("60.00"), transacao: { status: "REVERTIDA" } }],
     });
 
-    await estornarTransacao(11, "Estorno após cancelamento", 1);
+    await estornarTransacao(11, "Estorno após cancelamento", { propriedadeId: 1, usuarioId: 1 });
     expect(mocks.compromissoUpdate).not.toHaveBeenCalled();
   });
 
   it("recusa estornar uma transação que já foi revertida", async () => {
     mocks.transacaoFindFirst.mockResolvedValue({ id: 12, status: "REVERTIDA", propriedadeId: 1, revertidaPor: null, movimentos: [], liquidacoes: [] });
-    await expect(estornarTransacao(12, "Duplo estorno", 1)).rejects.toMatchObject({ code: "JA_REVERTIDO" });
+    await expect(estornarTransacao(12, "Duplo estorno", { propriedadeId: 1, usuarioId: 1 })).rejects.toMatchObject({ code: "JA_REVERTIDO" });
     expect(mocks.transacaoCreate).not.toHaveBeenCalled();
   });
 
@@ -130,7 +133,7 @@ describe("estornarOperacao", () => {
     mocks.movimentoEstoqueCreate.mockResolvedValue({});
     mocks.movimentoEstoqueUpdate.mockResolvedValue({});
 
-    await estornarOperacao(5, "Compra cancelada pelo fornecedor", 1, 1);
+    await estornarOperacao(5, "Compra cancelada pelo fornecedor", { propriedadeId: 1, usuarioId: 1 });
 
     expect(mocks.transacaoCreate).toHaveBeenCalledTimes(1); // reversão da transação
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
@@ -142,7 +145,7 @@ describe("estornarOperacao", () => {
 
   it("recusa cancelar uma operação já cancelada", async () => {
     mocks.operacaoFindFirst.mockResolvedValue({ ...operacaoBase, status: "CANCELADA" });
-    await expect(estornarOperacao(5, "Motivo qualquer", 1, 1)).rejects.toMatchObject({ code: "JA_REVERTIDO" });
+    await expect(estornarOperacao(5, "Motivo qualquer", { propriedadeId: 1, usuarioId: 1 })).rejects.toMatchObject({ code: "JA_REVERTIDO" });
     expect(mocks.operacaoUpdate).not.toHaveBeenCalled();
   });
 
@@ -154,7 +157,7 @@ describe("estornarOperacao", () => {
     });
     mocks.transacaoCreate.mockRejectedValueOnce(new Error("conexão perdida"));
 
-    await expect(estornarOperacao(5, "Compra cancelada", 1, 1)).rejects.toThrow("conexão perdida");
+    await expect(estornarOperacao(5, "Compra cancelada", { propriedadeId: 1, usuarioId: 1 })).rejects.toThrow("conexão perdida");
     expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
     expect(mocks.compromissoUpdateMany).not.toHaveBeenCalled();
     expect(mocks.operacaoUpdate).not.toHaveBeenCalled();
