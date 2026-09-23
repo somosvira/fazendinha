@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   centroFindFirst: vi.fn(),
   periodoFindUnique: vi.fn(),
   movFindMany: vi.fn(),
+  movCount: vi.fn(),
   movGroupBy: vi.fn(),
   produtoFindMany: vi.fn(),
   movFindFirst: vi.fn(),
@@ -22,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
   produto: { findMany: mocks.produtoFindMany },
-  movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany },
+  movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany, count: mocks.movCount },
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
@@ -302,16 +303,16 @@ describe("listarMovimentos — origem para navegação", () => {
   it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
     mocks.movFindMany.mockResolvedValue([]);
     await listarMovimentos({ propriedadeId: 1 });
-    expect(mocks.movFindMany.mock.calls[0][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
+    expect(mocks.movFindMany.mock.calls[0][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, AND: [{ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] }] });
     await listarMovimentos({ propriedadeId: 2, produtoId: 3 });
-    expect(mocks.movFindMany.mock.calls[1][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, produtoId: 3, propriedadeId: 2 });
+    expect(mocks.movFindMany.mock.calls[1][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, produtoId: 3, AND: [{ propriedadeId: 2 }] });
     await listarMovimentos({ propriedadeId: null });
-    expect(mocks.movFindMany.mock.calls[2][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] } });
+    expect(mocks.movFindMany.mock.calls[2][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, AND: [{}] });
   });
 
   it("expõe operacaoId e nenhum vínculo quando o movimento nasceu de uma operação", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: 1, tipo: "ENTRADA", origem: "COMPRA", operacaoId: 42, operacao: { parceiro: { nome: "Agro" } } }]);
-    const [m] = await listarMovimentos();
+    const { itens: [m] } = await listarMovimentos();
     expect(m.operacaoId).toBe(42);
     expect(m.vinculo).toBeNull();
     expect(m.fornecedor).toBe("Agro");
@@ -323,7 +324,7 @@ describe("listarMovimentos — origem para navegação", () => {
       { ...base, id: 3, origem: "SANIDADE", eventoSanitario: { animalId: 9, animal: { numero: "123", nome: "Mimosa" } } },
       { ...base, id: 4, origem: "APLICACAO", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
     ]);
-    const ms = await listarMovimentos();
+    const { itens: ms } = await listarMovimentos();
     expect(ms.map((m) => m.operacaoId)).toEqual([null, null, null]);
     expect(ms[0].vinculo).toEqual({ tipo: "LOTE", id: 7, nome: "Lote A" });
     expect(ms[1].vinculo).toEqual({ tipo: "ANIMAL", id: 9, numero: "123", nome: "Mimosa" });
@@ -339,11 +340,40 @@ describe("listarMovimentos — origem para navegação", () => {
       { ...base, id: 4, origem: "APLICACAO", observacao: "Aplicação em T-05", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
     ];
     mocks.movFindMany.mockResolvedValue(linhas);
-    const soFinanceiro = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: false } });
+    const { itens: soFinanceiro } = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: false } });
     expect(soFinanceiro.map((m) => [m.vinculo, m.observacao, m.grupo])).toEqual([[null, null, null], [null, null, null], [null, null, null]]);
 
-    const soAgricultura = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: true } });
+    const { itens: soAgricultura } = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: true } });
     expect(soAgricultura.map((m) => m.vinculo?.tipo ?? null)).toEqual([null, null, "TALHAO"]);
     expect(soAgricultura[2].observacao).toBe("Aplicação em T-05");
+  });
+  it("filtra por busca (produto, fornecedor e operação), origem, centro e período, e pagina no servidor", async () => {
+    mocks.movFindMany.mockResolvedValue([]);
+    mocks.movCount.mockResolvedValue(31);
+    const r = await listarMovimentos({ propriedadeId: null, q: "OP-0011", origem: "COMPRA", centroCustoId: 0, de: "2026-09-01", ate: "2026-09-30", pagina: 3, porPagina: 15 });
+    expect(r.total).toBe(31);
+    const chamada = mocks.movFindMany.mock.calls.at(-1)![0];
+    expect(chamada.skip).toBe(30);
+    expect(chamada.take).toBe(15);
+    expect(chamada.where.origem).toBe("COMPRA");
+    expect(chamada.where.AND).toEqual(expect.arrayContaining([
+      { produto: { centrosCusto: { none: {} } } },
+      { data: { gte: new Date("2026-09-01T00:00:00.000Z"), lte: new Date("2026-09-30T23:59:59.999Z") } },
+      { OR: [
+        { produto: { nome: { contains: "OP-0011", mode: "insensitive" } } },
+        { operacao: { parceiro: { nome: { contains: "OP-0011", mode: "insensitive" } } } },
+        { operacaoId: 11 },
+      ] },
+    ]));
+    expect(mocks.movCount.mock.calls.at(-1)![0].where).toBe(chamada.where);
+  });
+
+  it("centro específico filtra pelo vínculo do produto; busca comum não procura operação", async () => {
+    mocks.movFindMany.mockResolvedValue([]);
+    await listarMovimentos({ propriedadeId: null, centroCustoId: 4, q: "Ração" });
+    const { where } = mocks.movFindMany.mock.calls.at(-1)![0];
+    expect(where.AND).toEqual(expect.arrayContaining([{ produto: { centrosCusto: { some: { centroCustoId: 4 } } } }]));
+    const busca = where.AND.find((c: any) => c.OR);
+    expect(busca.OR).toHaveLength(2);
   });
 });

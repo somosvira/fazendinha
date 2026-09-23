@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import { Prisma, type TipoMovimento } from "@prisma/client";
+import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, custoVacaDia, custoMedioDaBase, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
@@ -231,29 +231,67 @@ export type VinculoMovimento =
 /** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê animal/lote/talhão). Ausente = todos. */
 export type VinculosVisiveis = { pecuaria: boolean; agricultura: boolean };
 
-export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis }) {
+export type FiltroMovimentos = {
+  produtoId?: number; tipo?: string; q?: string; origem?: string; centroCustoId?: number;
+  de?: string; ate?: string; pagina?: number; porPagina?: number;
+  propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis;
+};
+
+// "OP-0011", "op-11" ou só "11" também procuram pela operação de origem.
+function idOperacaoDaBusca(q: string): number | null {
+  const m = /^(?:op-?)?(\d{1,9})$/i.exec(q.trim());
+  return m ? Number(m[1]) : null;
+}
+
+export async function listarMovimentos(f?: FiltroMovimentos) {
   const visiveis = f?.vinculosVisiveis ?? { pecuaria: true, agricultura: true };
-  const where: Prisma.MovimentoEstoqueWhereInput = {};
-  where.status = statusSaldoEstoque;
+  const pagina = f?.pagina ?? 1;
+  const porPagina = f?.porPagina ?? 15;
+  const and: Prisma.MovimentoEstoqueWhereInput[] = [
+    // Mesmo escopo de sítio de listarSaldos: na principal, movimento sem propriedade também aparece.
+    await filtroSitioCusto(f?.propriedadeId ?? null),
+  ];
+  const where: Prisma.MovimentoEstoqueWhereInput = { status: statusSaldoEstoque, AND: and };
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
-  // Mesmo escopo de sítio de listarSaldos: na principal, movimento sem propriedade também aparece.
-  Object.assign(where, await filtroSitioCusto(f?.propriedadeId ?? null));
-  const ms = await prisma.movimentoEstoque.findMany({
-    where,
-    orderBy: [{ data: "desc" }, { id: "desc" }],
-    take: 200,
-    include: {
-      produto: { include: { centrosCusto: { include: { centroCusto: true } } } },
-      operacao: { include: { parceiro: true } },
-      grupo: true,
-      // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
-      consumoPeriodo: { select: { grupoId: true, grupo: { select: { nome: true } } } },
-      eventoSanitario: { select: { animalId: true, animal: { select: { numero: true, nome: true } } } },
-      operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
-    },
-  });
-  return ms.map((m) => {
+  if (f?.origem) where.origem = f.origem as OrigemMovimentoEstoque;
+  // Mesma regra dos saldos: 0 = produto sem centro de custo.
+  if (f?.centroCustoId === 0) and.push({ produto: { centrosCusto: { none: {} } } });
+  else if (f?.centroCustoId) and.push({ produto: { centrosCusto: { some: { centroCustoId: f.centroCustoId } } } });
+  if (f?.de || f?.ate) {
+    and.push({ data: {
+      ...(f.de ? { gte: new Date(`${f.de}T00:00:00.000Z`) } : {}),
+      ...(f.ate ? { lte: new Date(`${f.ate}T23:59:59.999Z`) } : {}),
+    } });
+  }
+  const termo = f?.q?.trim();
+  if (termo) {
+    const operacaoId = idOperacaoDaBusca(termo);
+    and.push({ OR: [
+      { produto: { nome: { contains: termo, mode: "insensitive" } } },
+      { operacao: { parceiro: { nome: { contains: termo, mode: "insensitive" } } } },
+      ...(operacaoId != null ? [{ operacaoId }] : []),
+    ] });
+  }
+  const [total, ms] = await Promise.all([
+    prisma.movimentoEstoque.count({ where }),
+    prisma.movimentoEstoque.findMany({
+      where,
+      orderBy: [{ data: "desc" }, { id: "desc" }],
+      skip: (pagina - 1) * porPagina,
+      take: porPagina,
+      include: {
+        produto: { include: { centrosCusto: { include: { centroCusto: true } } } },
+        operacao: { include: { parceiro: true } },
+        grupo: true,
+        // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
+        consumoPeriodo: { select: { grupoId: true, grupo: { select: { nome: true } } } },
+        eventoSanitario: { select: { animalId: true, animal: { select: { numero: true, nome: true } } } },
+        operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
+      },
+    }),
+  ]);
+  const itens = ms.map((m) => {
     let vinculo: VinculoMovimento | null = null;
     // Dado de área que o leitor não tem (lote/animal → pecuária, talhão →
     // agricultura) não sai: nem o vínculo, nem a observação gerada pela saída
@@ -291,6 +329,7 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
       vinculo,
     };
   });
+  return { itens, total };
 }
 
 // Um mês está fechado quando o período financeiro da propriedade está FECHADO.

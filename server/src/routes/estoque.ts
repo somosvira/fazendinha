@@ -40,6 +40,13 @@ const saldosQuerySchema = z.object({ centroCustoId: z.coerce.number().int().nonn
 const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
+  q: z.string().trim().max(80).optional(),
+  origem: z.enum(["COMPRA", "CONSUMO_DIRETO", "TRANSFERENCIA", "PRODUCAO", "DEVOLUCAO", "BONIFICACAO", "INVENTARIO_INICIAL", "NUTRICAO", "SANIDADE", "APLICACAO", "PERDA", "AJUSTE_INVENTARIO"]).optional(),
+  centroCustoId: z.coerce.number().int().min(0).optional(),
+  de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  pagina: z.coerce.number().int().min(1).default(1),
+  porPagina: z.coerce.number().int().min(1).max(100).default(15),
 });
 const idParamSchema = z.object({ id: z.coerce.number().int().positive() });
 const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().positive().optional() });
@@ -54,12 +61,12 @@ export const estoqueRouter = new Hono()
     return c.json(await svc.listarSaldos({ centroCustoId, propriedadeId: await resolverEscopoLeitura(c) }));
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
-    const { produtoId, tipo } = c.req.valid("query");
+    const { produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
     // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
     // (animal/lote/talhão) das saídas automáticas só vai para quem tem a área.
     const u = getUsuario(c);
     const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria"), agricultura: temArea(u, "agricultura") } : undefined;
-    return c.json(await svc.listarMovimentos({ produtoId, tipo, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
+    return c.json(await svc.listarMovimentos({ produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {
     try {

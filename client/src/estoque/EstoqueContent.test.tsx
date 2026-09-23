@@ -12,10 +12,11 @@ type Dados = { saldos?: unknown[]; movimentos?: unknown[]; entradas?: unknown[] 
 // mockar o módulo — `useSaldos` chama `listarSaldos` como identificador local
 // dentro do mesmo arquivo, então mockar só o export não intercepta a chamada.
 function mockFetch(d: Dados = {}) {
+  const pagina = (itens: unknown[]) => ({ itens, total: itens.length });
   return vi.fn((url: string) => {
     const body = /\/estoque\/saldos/.test(url) ? d.saldos ?? []
-      : /\/estoque\/movimentos\?tipo=ENTRADA/.test(url) ? d.entradas ?? []
-      : /\/estoque\/movimentos/.test(url) ? d.movimentos ?? []
+      : /\/estoque\/movimentos\?tipo=ENTRADA/.test(url) ? pagina(d.entradas ?? [])
+      : /\/estoque\/movimentos/.test(url) ? pagina(d.movimentos ?? [])
       : [];
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
   });
@@ -123,7 +124,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
     render(<EstoqueContent />);
     const card = (await screen.findByText("Produtos em estoque")).closest("section")!;
     expect(within(card).getByText("1")).toBeTruthy();
-    expect(within(card).getByText("de 2 produtos com movimento")).toBeTruthy();
+    expect(within(card).queryByText(/^de \d+ produtos? com movimento/)).toBeNull();
     expect(screen.getByText("Valor em estoque")).toBeTruthy();
     expect(screen.getByText("Últimas entradas")).toBeTruthy();
     expect(screen.queryByText("Itens abaixo do mínimo")).toBeNull();
@@ -151,7 +152,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
   it("cada movimento mostra uma pill só, com a origem", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, tipo: "SAIDA", origem: "NUTRICAO" })] }));
     render(<EstoqueContent />);
-    const tabela = within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+    const tabela = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
     expect(tabela.getByText("Dieta")).toBeTruthy();
     expect(tabela.queryByText("Saída")).toBeNull();
   });
@@ -166,28 +167,100 @@ describe("EstoqueContent — saldos e custo médio", () => {
     expect(within(screen.getByRole("table", { name: "Saldos de estoque" })).getByText("Ração")).toBeTruthy();
   });
 
-  it("Últimas entradas: os 3 produtos com entrada mais recente (compra/inventário/bonificação/produção), sem estornos", async () => {
-    const saldos = [1, 2, 3, 4].map((i) => saldo({ produtoId: i, nome: `Produto ${i}` }));
+  it("Últimas entradas: os 6 produtos com entrada mais recente (compra/inventário/bonificação/produção), sem estornos", async () => {
+    const saldos = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => saldo({ produtoId: i, nome: `Produto ${i}` }));
     const entradas = [
-      mov({ id: 9, produtoId: 1, produto: "Produto 1", data: "2026-09-20", operacaoId: 90, reversaoDeId: 5, origem: "AJUSTE_INVENTARIO" }), // estorno: ignora
-      mov({ id: 8, produtoId: 2, produto: "Produto 2", data: "2026-09-19", operacaoId: 80 }),
-      mov({ id: 7, produtoId: 2, produto: "Produto 2", data: "2026-09-18", operacaoId: 70 }), // produto repetido: ignora
-      mov({ id: 6, produtoId: 3, produto: "Produto 3", data: "2026-09-17", origem: "INVENTARIO_INICIAL", operacaoId: 60, quantidade: 5 }),
-      mov({ id: 5, produtoId: 1, produto: "Produto 1", data: "2026-09-16", origem: "BONIFICACAO", operacaoId: 50 }),
-      mov({ id: 4, produtoId: 4, produto: "Produto 4", data: "2026-09-15", operacaoId: 40 }), // 4º: fora
+      mov({ id: 20, produtoId: 1, produto: "Produto 1", data: "2026-09-20", operacaoId: 90, reversaoDeId: 5, origem: "AJUSTE_INVENTARIO" }), // estorno: ignora
+      mov({ id: 19, produtoId: 2, produto: "Produto 2", data: "2026-09-19", operacaoId: 80 }),
+      mov({ id: 18, produtoId: 2, produto: "Produto 2", data: "2026-09-18", operacaoId: 70 }), // produto repetido: ignora
+      mov({ id: 17, produtoId: 3, produto: "Produto 3", data: "2026-09-17", origem: "INVENTARIO_INICIAL", operacaoId: 60, quantidade: 5 }),
+      mov({ id: 16, produtoId: 1, produto: "Produto 1", data: "2026-09-16", origem: "BONIFICACAO", operacaoId: 50 }),
+      mov({ id: 15, produtoId: 4, produto: "Produto 4", data: "2026-09-15", operacaoId: 40 }),
+      mov({ id: 14, produtoId: 5, produto: "Produto 5", data: "2026-09-14", operacaoId: 30 }),
+      mov({ id: 13, produtoId: 6, produto: "Produto 6", data: "2026-09-13", operacaoId: 20 }),
+      mov({ id: 12, produtoId: 7, produto: "Produto 7", data: "2026-09-12", operacaoId: 10 }), // 7º: fora
     ];
     vi.stubGlobal("fetch", mockFetch({ saldos, entradas }));
     render(<EstoqueContent />);
     const card = (await screen.findByText("Últimas entradas")).closest("section")!;
-    await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(3));
+    await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(6));
     const links = within(card).getAllByRole("link") as HTMLAnchorElement[];
-    expect(links.map((a) => a.textContent)).toEqual(["Produto 2", "Produto 3", "Produto 1"]);
+    expect(links.map((a) => a.textContent)).toEqual(["Produto 2", "Produto 3", "Produto 1", "Produto 4", "Produto 5", "Produto 6"]);
     expect(links[0].getAttribute("href")).toBe("/financeiro/operacoes/80");
     expect(within(card).getByText(/17\/09\/2026 · 5 kg/)).toBeTruthy();
   });
+
+  it("não mostra a contagem 'N de M produtos' acima da tabela, mesmo com filtro", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ minimoEstoque: 50, abaixoMinimo: true }), saldo({ produtoId: 2, nome: "Sal" })] }));
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    fireEvent.click(screen.getByRole("button", { name: /Só abaixo do mínimo/ }));
+    expect(screen.queryByText(/^\d+ de \d+ produtos?\.$/)).toBeNull();
+  });
+
+  it("o botão do filtro 'Só abaixo do mínimo' leva o mesmo ícone da linha", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ minimoEstoque: 50, abaixoMinimo: true })] }));
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    const botao = screen.getByRole("button", { name: /Só abaixo do mínimo/ });
+    expect(botao.querySelector('[data-testid="icone-abaixo-minimo"]')).not.toBeNull();
+  });
+
+  it("saldos são paginados de 15 em 15", async () => {
+    const saldos = Array.from({ length: 16 }, (_, i) => saldo({ produtoId: i + 1, nome: `Produto ${String(i + 1).padStart(2, "0")}` }));
+    vi.stubGlobal("fetch", mockFetch({ saldos }));
+    render(<EstoqueContent />);
+    const tabela = () => within(screen.getByRole("table", { name: "Saldos de estoque" }));
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(tabela().getByText("Produto 15")).toBeTruthy();
+    expect(tabela().queryByText("Produto 16")).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Paginação de saldos" });
+    expect(within(nav).getByText("1–15 de 16 produtos")).toBeTruthy();
+    fireEvent.click(within(nav).getByRole("button", { name: "Próxima" }));
+    expect(tabela().getByText("Produto 16")).toBeTruthy();
+    expect(tabela().queryByText("Produto 01")).toBeNull();
+  });
 });
 
-describe("EstoqueContent — movimentos recentes ligados à origem", () => {
+describe("EstoqueContent — histórico de movimentos", () => {
+  const urlsMovimentos = (f: ReturnType<typeof mockFetch>) => f.mock.calls.map(([u]) => String(u)).filter((u) => /\/estoque\/movimentos\?/.test(u) && !u.includes("tipo=ENTRADA"));
+
+  it("chama a seção de Histórico de movimentos, com título em destaque", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({})] }));
+    render(<EstoqueContent />);
+    const titulo = await screen.findByRole("heading", { name: /Histórico de movimentos/ });
+    expect(titulo.className).toContain("text-2xl");
+    expect(screen.getByRole("heading", { name: /Saldos de estoque/ }).className).toContain("text-2xl");
+    expect(screen.queryByText("Movimentos recentes")).toBeNull();
+    expect(screen.getByRole("table", { name: "Histórico de movimentos" })).toBeTruthy();
+  });
+
+  it("pede ao servidor 15 por página e envia busca, origem e centro de custo", async () => {
+    const f = mockFetch({ saldos: [saldo({})], movimentos: [mov({})] });
+    vi.stubGlobal("fetch", f);
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Histórico de movimentos" });
+    expect(urlsMovimentos(f).at(-1)).toContain("porPagina=15");
+    expect(urlsMovimentos(f).at(-1)).toContain("pagina=1");
+
+    fireEvent.change(screen.getByLabelText("Buscar movimento"), { target: { value: "OP-0011" } });
+    await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("q=OP-0011"));
+    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("origem=COMPRA"));
+    fireEvent.change(screen.getByLabelText("Filtrar histórico por centro de custo"), { target: { value: "0" } });
+    await waitFor(() => expect(urlsMovimentos(f).at(-1)).toContain("centroCustoId=0"));
+  });
+
+  it("com filtro e nenhum resultado, avisa que nada bate", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [] }));
+    render(<EstoqueContent />);
+    await screen.findByText("Nenhum movimento registrado ainda.");
+    fireEvent.change(screen.getByLabelText("Filtrar por origem"), { target: { value: "COMPRA" } });
+    expect(await screen.findByText("Nenhum movimento bate com os filtros.")).toBeTruthy();
+  });
+});
+
+describe("EstoqueContent — histórico ligado à origem", () => {
   const movimentos = [
     mov({ id: 1, origem: "COMPRA", operacaoId: 42, fornecedor: "Cooperativa" }),
     mov({ id: 2, tipo: "SAIDA", origem: "NUTRICAO", vinculo: { tipo: "LOTE", id: 7, nome: "Lote A" } }),
@@ -197,7 +270,7 @@ describe("EstoqueContent — movimentos recentes ligados à origem", () => {
   const abrir = async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos }));
     render(<EstoqueContent />);
-    return within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+    return within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
   };
 
   it("linha com operação renderiza link para o detalhe da operação", async () => {
@@ -238,7 +311,7 @@ describe("EstoqueContent — movimentos recentes ligados à origem", () => {
   it("movimento estornado/estorno é sinalizado", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, status: "REVERTIDO", operacaoId: 1 }), mov({ id: 2, tipo: "SAIDA", reversaoDeId: 1, operacaoId: 1 })] }));
     render(<EstoqueContent />);
-    const tabela = within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+    const tabela = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
     expect(tabela.getByText("Estornado")).toBeTruthy();
     expect(tabela.getByText("Estorno")).toBeTruthy();
   });

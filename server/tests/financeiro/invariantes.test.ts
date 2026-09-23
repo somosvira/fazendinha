@@ -532,9 +532,9 @@ describe("correções da revisão", () => {
     const { propriedadePrincipalId } = await import("../../src/services/propriedade.js");
     const principal = await propriedadePrincipalId();
     const legado = await db.movimentoEstoque.create({ data: { produtoId: productId, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data, quantidade: 1, custoUnitario: 1, valorTotal: 1, propriedadeId: null } });
-    expect((await stock.listarMovimentos({ propriedadeId: principal })).map((m) => m.id)).toContain(legado.id);
+    expect((await stock.listarMovimentos({ propriedadeId: principal })).itens.map((m) => m.id)).toContain(legado.id);
     const outra = await db.propriedade.create({ data: { nome: `Sítio sem legado ${serial}` } });
-    expect((await stock.listarMovimentos({ propriedadeId: outra.id })).map((m) => m.id)).not.toContain(legado.id);
+    expect((await stock.listarMovimentos({ propriedadeId: outra.id })).itens.map((m) => m.id)).not.toContain(legado.id);
   });
   it("custo médio ponderado: compras formam o médio, venda baixa pelo médio e estorno recalcula", async () => {
     const compra = (valorUnitario: number) => ({ ...schema.operacaoSchema.parse({

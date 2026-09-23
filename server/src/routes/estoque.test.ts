@@ -69,7 +69,7 @@ beforeEach(() => {
   mocks.leitura.mockResolvedValue(3);
   mocks.escrita.mockResolvedValue(3);
   mocks.listarSaldos.mockResolvedValue([]);
-  mocks.listarMovimentos.mockResolvedValue([]);
+  mocks.listarMovimentos.mockResolvedValue({ itens: [], total: 0 });
   mocks.ajustarContagem.mockResolvedValue({ id: 1, operacaoId: 2 });
   mocks.registrarMovimento.mockResolvedValue({ id: 1, operacaoId: 2 });
   mocks.listarProdutos.mockResolvedValue([]);
@@ -130,6 +130,14 @@ describe("GET /estoque/movimentos", () => {
   it("tipo inválido → 400", async () => {
     const res = await appCom(semLancar).request("/estoque/movimentos?tipo=INVALIDO");
     expect(res.status).toBe(400);
+  });
+  it.each(["pagina=0", "porPagina=101", "porPagina=0", "origem=X", "centroCustoId=-1", "de=10/09/2026", "q=" + "a".repeat(81)])("filtro inválido %s → 400", async (qs) => {
+    const res = await appCom(semLancar).request(`/estoque/movimentos?${qs}`);
+    expect(res.status).toBe(400);
+  });
+  it("repassa filtros e paginação (padrão 15) ao service", async () => {
+    await appCom(semLancar).request("/estoque/movimentos?q=OP-0011&origem=COMPRA&centroCustoId=0&de=2026-09-01&ate=2026-09-30&pagina=2");
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ q: "OP-0011", origem: "COMPRA", centroCustoId: 0, de: "2026-09-01", ate: "2026-09-30", pagina: 2, porPagina: 15 }));
   });
   it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
     await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");

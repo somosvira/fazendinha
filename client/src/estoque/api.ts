@@ -54,7 +54,13 @@ export interface MovimentoInput { produtoId: number; tipo: "AJUSTE"; data: strin
 export interface MovimentoResult { id: number; operacaoId: number; }
 
 export const listarSaldos = (f?: { centroCustoId?: number | string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
-export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/estoque/movimentos${qs(f)}`);
+export type FiltroMovimentos = {
+  produtoId?: number; tipo?: string; q?: string; origem?: string;
+  /** 0 = produtos sem centro de custo */ centroCustoId?: number | string;
+  de?: string; ate?: string; pagina?: number; porPagina?: number;
+};
+export type PaginaMovimentos = { itens: MovimentoDTO[]; total: number };
+export const listarMovimentos = (f?: FiltroMovimentos) => req<PaginaMovimentos>(`/estoque/movimentos${qs(f)}`);
 export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/estoque/movimentos`, { method: "POST", body: JSON.stringify(p) });
 
 // Descarta uma resposta que chegou depois de o filtro/parâmetro já ter mudado

@@ -80,9 +80,29 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill tone={tone}>{STATUS[status] ?? status}</Pill>;
 }
 
-export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
+export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: { label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red" }) {
   const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-[#eef1e9] text-mast";
-  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div><div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div></Panel>;
+  return <Panel className="@container p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className="mt-3 break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight text-ink">{valor}</div></div><div className={`shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className="mt-3 break-words text-xs text-ink-3">{detalhe}</div>}</Panel>;
+}
+
+/* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
+ * direto por página. `substantivo` completa "1–15 de N …" (ex.: "operações"). */
+export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, substantivo, idSelect, onPagina }: {
+  pagina: number; totalPaginas: number; total: number; porPagina: number;
+  /** aria-label da <nav> */ rotulo: string; substantivo: string; idSelect: string;
+  onPagina: (pagina: number) => void;
+}) {
+  return <nav aria-label={rotulo} className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
+    <span className="text-ink-3">{(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <div className="flex items-center gap-2">
+      <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
+      <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
+      <select id={idSelect} aria-label="Ir para a página" value={pagina} onChange={(e) => onPagina(Number(e.target.value))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
+        {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
+      </select>
+      <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
+    </div>
+  </nav>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
