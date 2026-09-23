@@ -39,12 +39,11 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
   obrigatorio?: boolean;
   children: (props: { id: string; "aria-label": string; "aria-invalid": boolean; "aria-describedby": string | undefined }) => ReactNode;
 }) {
-  const descricao = erro ? `${id}-erro` : ajuda ? `${id}-ajuda` : undefined;
+  const descricao = [erro && `${id}-erro`, ajuda && `${id}-ajuda`].filter(Boolean).join(" ") || undefined;
   return <div className="text-sm font-medium">
     <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}
     {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
-    {erro
-      ? <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>
-      : ajuda ? <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p> : null}
+    {erro && <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>}
+    {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}
   </div>;
 }

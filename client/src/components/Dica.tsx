@@ -2,7 +2,7 @@
  * ou com clique/toque; fecha ao sair, com Esc ou clicando fora. Serve para tirar
  * textos de ajuda de baixo dos campos e das tabelas sem perder a informação. */
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { CircleHelp } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ export function Dica({ conteudo, rotulo, children, className }: {
   className?: string;
 }) {
   const [aberto, setAberto] = useState(false);
+  const toque = useRef(false);
   return <Popover open={aberto} onOpenChange={setAberto}>
     <PopoverTrigger asChild>
       <button
@@ -25,8 +26,10 @@ export function Dica({ conteudo, rotulo, children, className }: {
         onMouseLeave={() => setAberto(false)}
         onFocus={() => setAberto(true)}
         onBlur={() => setAberto(false)}
-        // O clique só abre (o hover já abriu antes): sem isso o toggle do Radix fecharia a dica.
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAberto(true); }}
+        // Mouse: o hover já abriu, o clique só mantém aberta (o toggle do Radix fecharia).
+        // Toque: não há hover, então o toque alterna.
+        onPointerDown={(e) => { toque.current = e.pointerType === "touch"; }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAberto((v) => (toque.current ? !v : true)); }}
       >{children}</button>
     </PopoverTrigger>
     <PopoverContent

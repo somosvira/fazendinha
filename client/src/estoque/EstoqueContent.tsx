@@ -128,6 +128,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const saldosDaPagina = saldosVisiveis.slice((paginaSaldosAtual - 1) * ITENS_POR_PAGINA, paginaSaldosAtual * ITENS_POR_PAGINA);
   const totalPaginasMov = Math.max(1, Math.ceil(movimentos.total / ITENS_POR_PAGINA));
   const paginaMovAtual = Math.min(paginaMov, totalPaginasMov);
+  // Total encolheu (estorno, novo filtro no servidor): volta à última página existente.
+  useEffect(() => { if (!movimentos.loading && paginaMov > totalPaginasMov) setPaginaMov(totalPaginasMov); }, [movimentos.loading, paginaMov, totalPaginasMov]);
   const filtrosMovAtivos = buscaMovAplicada !== "" || origemMov !== "" || centroMov !== "" || periodoMov.inicio !== "" || periodoMov.fim !== "";
   const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor), 0), [saldos.data]);
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
