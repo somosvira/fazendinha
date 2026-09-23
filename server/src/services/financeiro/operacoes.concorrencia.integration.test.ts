@@ -5,7 +5,7 @@ import { listarContas } from "./contas.js";
 import { estornarOperacao, estornarTransacao, criarOperacao, liquidarCompromisso } from "./operacoes.js";
 import { FinanceiroError } from "./regras.js";
 import { operacaoSchema } from "./schemas.js";
-import { excluirMovimento, listarSaldos } from "../estoque/estoque.js";
+import { estornarMovimentoTx, listarSaldos } from "../estoque/estoque.js";
 
 const describeComBanco = process.env.FINANCE_DB_INTEGRATION === "1" ? describe : describe.skip;
 const propriedadesCriadas: number[] = [];
@@ -100,11 +100,16 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     expect(Number((await listarContas(f.propriedadeId, true))[0].saldoAtual)).toBe(1_000);
   });
 
-  it("serializa exclusão física com cancelamento da operação", async () => {
+  // Estorno avulso de um movimento (o que plantio/sanidade fazem) disputando o
+  // lock da Operacao com o cancelamento financeiro.
+  const estornarMovimento = (id: number, propriedadeId: number) =>
+    prisma.$transaction((tx) => estornarMovimentoTx(tx, id, { propriedadeId }), { isolationLevel: "Serializable" });
+
+  it("serializa estorno físico com cancelamento da operação", async () => {
     const f = await fixture();
     const operacao = await criarOperacao(entrada(f, "SEM_EFEITO_FINANCEIRO"));
     const resultados = await Promise.allSettled([
-      excluirMovimento(operacao.movimentosEstoque[0].id, f.propriedadeId),
+      estornarMovimento(operacao.movimentosEstoque[0].id, f.propriedadeId),
       estornarOperacao(operacao.id, "Cancelamento físico concorrente", { propriedadeId: f.propriedadeId }),
     ]);
 
@@ -121,7 +126,7 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     await estornarOperacao(operacao.id, "Gerar inverso físico", { propriedadeId: f.propriedadeId });
     const inverso = await prisma.movimentoEstoque.findUniqueOrThrow({ where: { reversaoDeId: operacao.movimentosEstoque[0].id } });
 
-    await expect(excluirMovimento(inverso.id, f.propriedadeId)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
+    await expect(estornarMovimento(inverso.id, f.propriedadeId)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
     expect(await prisma.movimentoEstoque.count({ where: { operacaoId: operacao.id } })).toBe(2);
     expect((await listarSaldos({ propriedadeId: f.propriedadeId })).find((item) => item.produtoId === f.produtoId)?.saldo).toBe(0);
   });

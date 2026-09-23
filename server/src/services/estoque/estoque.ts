@@ -70,18 +70,25 @@ async function filtroSitioCusto(propriedadeId: number | null): Promise<Prisma.Mo
 
 type DbTemEstoque = Pick<Prisma.TransactionClient, "movimentoEstoque">;
 
-// "O produto tem estoque neste sítio" = existe ao menos uma ENTRADA ou AJUSTE
-// CONFIRMADO (não estornado e que não seja ele mesmo um estorno) do produto no
-// sítio. Não é atributo do produto: quem põe um produto no estoque é a
+// "O produto tem estoque neste sítio" = existe ao menos uma ENTRADA ou um AJUSTE
+// POSITIVO CONFIRMADO (não estornado e que não seja ele mesmo um estorno) do
+// produto no sítio. AJUSTE negativo é baixa manual — não põe o produto no
+// estoque. Não é atributo do produto: quem põe um produto no estoque é a
 // operação (compra para estoque, inventário, bonificação, produção, ajuste).
 // Mesmo escopo de sítio do custo médio (movimento sem propriedade = principal;
-// propriedadeId null = consolidado, qualquer sítio).
+// propriedadeId null = consolidado, qualquer sítio). O sítio vai num AND porque
+// o escopo da principal também é um OR.
+// Atenção: isto decide só o que PODE ser baixado (dieta, sanidade, aplicação,
+// venda); a lista de saldos (listarSaldos) continua mostrando qualquer produto
+// com movimento no sítio.
 async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.MovimentoEstoqueWhereInput> {
   return {
-    tipo: { in: ["ENTRADA", "AJUSTE"] },
     status: "CONFIRMADO",
     reversaoDeId: null,
-    ...(await filtroSitioCusto(propriedadeId)),
+    AND: [
+      { OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] },
+      await filtroSitioCusto(propriedadeId),
+    ],
   };
 }
 
@@ -221,12 +228,17 @@ export type VinculoMovimento =
   | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null }
   | { tipo: "TALHAO"; id: number; codigo: string };
 
-export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
+/** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê animal/lote/talhão). Ausente = todos. */
+export type VinculosVisiveis = { pecuaria: boolean; agricultura: boolean };
+
+export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null; vinculosVisiveis?: VinculosVisiveis }) {
+  const visiveis = f?.vinculosVisiveis ?? { pecuaria: true, agricultura: true };
   const where: Prisma.MovimentoEstoqueWhereInput = {};
   where.status = statusSaldoEstoque;
   if (f?.produtoId) where.produtoId = f.produtoId;
   if (f?.tipo) where.tipo = f.tipo as TipoMovimento;
-  if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
+  // Mesmo escopo de sítio de listarSaldos: na principal, movimento sem propriedade também aparece.
+  Object.assign(where, await filtroSitioCusto(f?.propriedadeId ?? null));
   const ms = await prisma.movimentoEstoque.findMany({
     where,
     orderBy: [{ data: "desc" }, { id: "desc" }],
@@ -243,9 +255,20 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
   });
   return ms.map((m) => {
     let vinculo: VinculoMovimento | null = null;
-    if (m.consumoPeriodo) vinculo = { tipo: "LOTE", id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome };
-    else if (m.eventoSanitario) vinculo = { tipo: "ANIMAL", id: m.eventoSanitario.animalId, numero: m.eventoSanitario.animal.numero, nome: m.eventoSanitario.animal.nome };
-    else if (m.operacaoAgricola) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
+    // Dado de área que o leitor não tem (lote/animal → pecuária, talhão →
+    // agricultura) não sai: nem o vínculo, nem a observação gerada pela saída
+    // automática (que cita animal/talhão).
+    let oculto = false;
+    if (m.consumoPeriodo) {
+      if (visiveis.pecuaria) vinculo = { tipo: "LOTE", id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome };
+      else oculto = true;
+    } else if (m.eventoSanitario) {
+      if (visiveis.pecuaria) vinculo = { tipo: "ANIMAL", id: m.eventoSanitario.animalId, numero: m.eventoSanitario.animal.numero, nome: m.eventoSanitario.animal.nome };
+      else oculto = true;
+    } else if (m.operacaoAgricola) {
+      if (visiveis.agricultura) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
+      else oculto = true;
+    }
     return {
       id: m.id,
       produtoId: m.produtoId,
@@ -260,8 +283,8 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
       custoUnitario: Number(m.custoUnitario),
       valorTotal: Number(m.valorTotal),
       fornecedor: m.operacao?.parceiro?.nome ?? null,
-      grupo: m.grupo?.nome ?? null,
-      observacao: m.observacao ?? null,
+      grupo: visiveis.pecuaria ? m.grupo?.nome ?? null : null,
+      observacao: oculto ? null : m.observacao ?? null,
       /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
       operacaoId: m.operacaoId ?? null,
       /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */
@@ -305,6 +328,11 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
       throw new EstoqueError("ORIGEM_AUTOMATICA", "Entradas e saídas devem nascer de uma operação financeira ou de um evento operacional; aqui só é permitido ajuste justificado de inventário");
     }
     if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
+    // Baixa manual só de produto que já entrou no estoque do sítio — senão o
+    // saldo nasceria negativo de um produto que a fazenda nunca estocou.
+    if (new Prisma.Decimal(input.quantidade).isNegative() && !(await produtoTemEstoque(tx, produto.id, propriedadeId))) {
+      throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
+    }
     const operacao = await tx.operacao.create({ data: {
       tipo: "AJUSTE_ESTOQUE", status: "CONFIRMADA", data, descricao: input.observacao,
       valorTotal: valorTotal.abs(), propriedadeId, criadoPorId: usuarioId ?? null,
@@ -362,7 +390,7 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
  * Estorna um movimento de estoque dentro de uma transação já aberta: cria o
  * movimento inverso (reversaoDeId) copiando centro/propriedade/operação e marca
  * o original como REVERTIDO. Não decide se a origem PODE ser estornada — essa
- * checagem fica com quem chama (excluirMovimento, plantio, sanidade...).
+ * checagem fica com quem chama (plantio, sanidade...).
  */
 export async function estornarMovimentoTx(
   tx: Prisma.TransactionClient,
@@ -403,27 +431,6 @@ export async function estornarMovimentoTx(
     antes: { produtoId: mov.produtoId, tipo: mov.tipo, origem: mov.origem, quantidade: mov.quantidade.toNumber(), operacaoId: mov.operacaoId, centroCustoId: mov.centroCustoId },
     depois: { status: "REVERTIDO", movimentoInversoId: inverso.id } });
   return { original: mov, inverso };
-}
-
-// Estorno manual (tela de estoque): só movimentos de ajuste de inventário. Os
-// demais são geridos pelo domínio que os originou.
-export async function excluirMovimento(id: number, propriedadeId: number | null = null, usuarioId?: number | null) {
-  return prisma.$transaction(async (tx) => {
-    const mov = await tx.movimentoEstoque.findFirst({
-      where: { id, ...(propriedadeId != null ? { propriedadeId } : {}) },
-      select: { origem: true, operacaoId: true, consumoPeriodoId: true },
-    });
-    if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
-
-    // Saídas automáticas são geridas pelo domínio que as originou. Excluí-las
-    // avulsamente deixaria o fato de origem e o saldo de estoque divergentes.
-    if (mov.origem === "SANIDADE") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de um evento sanitário — exclua ou estorne o evento na ficha do animal");
-    if (mov.origem === "NUTRICAO" || mov.consumoPeriodoId) throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio do fechamento de consumo de dieta — estorne o período na aba Nutrição, não aqui");
-    if (mov.origem === "APLICACAO") throw new EstoqueError("ORIGEM_AUTOMATICA", "esta saída veio de uma operação agrícola — exclua a operação na timeline do talhão, não aqui");
-    if (mov.operacaoId != null && mov.origem !== "AJUSTE_INVENTARIO") throw new EstoqueError("ORIGEM_AUTOMATICA", "este movimento nasceu de uma operação financeira — estorne a operação, não o movimento");
-
-    await estornarMovimentoTx(tx, id, { usuarioId, propriedadeId });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function calcularCustoVacaDia(periodoDias = 30, propriedadeId?: number | null) {

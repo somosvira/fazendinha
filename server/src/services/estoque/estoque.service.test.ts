@@ -26,7 +26,7 @@ vi.mock("../../db.js", () => ({ prisma: {
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, excluirMovimento, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
+import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
@@ -54,6 +54,7 @@ beforeEach(() => {
   mocks.queryRaw.mockResolvedValue([]);
   mocks.propriedadePrincipalId.mockResolvedValue(1);
   mocks.movGroupBy.mockResolvedValue([]);
+  mocks.movFindFirst.mockResolvedValue({ id: 1 }); // por padrão o produto tem estoque no sítio
 });
 
 describe("ajustarContagem", () => {
@@ -119,6 +120,24 @@ describe("registrarMovimento", () => {
     expect(mocks.movFindMany).not.toHaveBeenCalled();
     expect(mocks.movGroupBy).not.toHaveBeenCalled();
   });
+  it("baixa manual (AJUSTE negativo) de produto sem estoque no sítio é recusada", async () => {
+    mocks.movFindFirst.mockResolvedValue(null); // nenhuma ENTRADA/AJUSTE positivo no sítio
+    await expect(registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: -2, observacao: "Perda no galpão", propriedadeId: 1 }))
+      .rejects.toMatchObject({ code: "VALIDACAO", message: "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa" });
+    expect(mocks.movFindFirst.mock.calls[0][0].where).toMatchObject({ produtoId: 3, status: "CONFIRMADO", reversaoDeId: null });
+    expect(mocks.opCreate).not.toHaveBeenCalled();
+    expect(mocks.movCreate).not.toHaveBeenCalled();
+  });
+  it("baixa manual de produto com estoque no sítio é aceita", async () => {
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: -2, observacao: "Perda no galpão", propriedadeId: 1 });
+    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ quantidade: -2 }) });
+  });
+  it("AJUSTE positivo não exige estoque prévio (é ele que põe o produto no estoque)", async () => {
+    mocks.movFindFirst.mockResolvedValue(null);
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 2, observacao: "Achado no galpão", propriedadeId: 1 });
+    expect(mocks.movFindFirst).not.toHaveBeenCalled();
+    expect(mocks.movCreate).toHaveBeenCalled();
+  });
   it("sem usuário grava criadoPorId null", async () => {
     await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 5, observacao: "Sobrou no galpão", propriedadeId: 1 });
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ criadoPorId: null }) });
@@ -130,42 +149,6 @@ const movBase = {
   quantidade: new Prisma.Decimal(5), custoUnitario: new Prisma.Decimal(2), valorTotal: new Prisma.Decimal(10),
   propriedadeId: 1, operacaoId: 50, reversaoDeId: null, revertidoPor: null, centroCustoId: 11, consumoPeriodoId: null,
 };
-
-describe("excluirMovimento", () => {
-  it("bloqueia movimento de COMPRA (nasceu de operação financeira)", async () => {
-    mocks.movFindFirst.mockResolvedValue({ ...movBase, origem: "COMPRA" });
-    await expect(excluirMovimento(40, 1, 7)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA", message: expect.stringContaining("estorne a operação") });
-    expect(mocks.movCreate).not.toHaveBeenCalled();
-    expect(mocks.movUpdate).not.toHaveBeenCalled();
-  });
-
-  it.each(["SANIDADE", "NUTRICAO", "APLICACAO"])("bloqueia origem %s", async (origem) => {
-    mocks.movFindFirst.mockResolvedValue({ ...movBase, origem, operacaoId: null });
-    await expect(excluirMovimento(40, 1, 7)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
-  });
-
-  it("estorna AJUSTE_INVENTARIO: cria inverso, marca REVERTIDO e audita", async () => {
-    mocks.movFindFirst.mockResolvedValue(movBase);
-    await excluirMovimento(40, 1, 7);
-    expect(mocks.queryRaw).toHaveBeenCalled(); // lock na Operacao
-    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
-      tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 40, operacaoId: 50, centroCustoId: 11, propriedadeId: 1, criadoPorId: 7,
-    }) });
-    expect(mocks.movUpdate).toHaveBeenCalledWith({ where: { id: 40 }, data: { status: "REVERTIDO" } });
-    expect(mocks.auditCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "MovimentoEstoque", entidadeId: "40", acao: "ESTORNO_MOVIMENTO", usuarioId: 7 }) });
-  });
-
-  it("recusa estornar duas vezes", async () => {
-    mocks.movFindFirst.mockResolvedValue({ ...movBase, status: "REVERTIDO" });
-    await expect(excluirMovimento(40, 1)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA", message: "movimento já estornado" });
-  });
-
-  it("recusa em período fechado", async () => {
-    mocks.movFindFirst.mockResolvedValue(movBase);
-    mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
-    await expect(excluirMovimento(40, 1)).rejects.toMatchObject({ code: "MES_FECHADO" });
-  });
-});
 
 describe("estornarMovimentoTx", () => {
   it("não checa origem — estorna APLICACAO quando chamado pelo domínio dono, invertendo SAIDA em ENTRADA", async () => {
@@ -197,7 +180,11 @@ describe("ajustarContagem — produto sem atributo de estoque", () => {
 });
 
 describe("produtoTemEstoque / produtosComEstoque", () => {
-  const where = (extra: object) => ({ tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, ...extra });
+  // ENTRADA ou AJUSTE positivo; o escopo do sítio vai num AND (a principal também é um OR).
+  const where = (sitio: object) => ({
+    status: "CONFIRMADO", reversaoDeId: null,
+    AND: [{ OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] }, sitio],
+  });
 
   it("com entrada/ajuste confirmado no sítio → true; a consulta é um findFirst enxuto", async () => {
     const findFirst = vi.fn().mockResolvedValue({ id: 10 });
@@ -216,6 +203,44 @@ describe("produtoTemEstoque / produtosComEstoque", () => {
     expect(findFirst.mock.calls[0][0].where).toEqual({ produtoId: 3, ...where({ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] }) });
     await produtoTemEstoque({ movimentoEstoque: { findFirst } } as never, 3, null);
     expect(findFirst.mock.calls[1][0].where).toEqual({ produtoId: 3, ...where({}) });
+  });
+
+  // Avaliador mínimo do `where` sobre linhas em memória — prova o filtro, não só a forma.
+  type Linha = { produtoId: number; tipo: string; quantidade: number; status: string; reversaoDeId: number | null; propriedadeId: number | null };
+  const casa = (w: any, m: Linha): boolean => Object.entries(w).every(([k, v]: [string, any]) => {
+    if (k === "AND") return v.every((x: any) => casa(x, m));
+    if (k === "OR") return v.some((x: any) => casa(x, m));
+    if (v && typeof v === "object" && "gt" in v) return (m as any)[k] > v.gt;
+    if (v && typeof v === "object" && "in" in v) return v.in.includes((m as any)[k]);
+    return (m as any)[k] === v;
+  });
+  const bancoCom = (linhas: Linha[]) => ({
+    findFirst: vi.fn(async ({ where: w }: any) => linhas.find((m) => casa(w, m)) ?? null),
+    groupBy: vi.fn(async ({ where: w }: any) => [...new Set(linhas.filter((m) => casa(w, m)).map((m) => m.produtoId))].map((produtoId) => ({ produtoId }))),
+  });
+  const linha = (tipo: string, quantidade: number, extra: Partial<Linha> = {}): Linha => ({ produtoId: 3, tipo, quantidade, status: "CONFIRMADO", reversaoDeId: null, propriedadeId: 2, ...extra });
+
+  it("AJUSTE negativo isolado (baixa manual) NÃO faz o produto ter estoque", async () => {
+    const db = bancoCom([linha("AJUSTE", -5)]);
+    expect(await produtoTemEstoque({ movimentoEstoque: db } as never, 3, 2)).toBe(false);
+    expect([...await produtosComEstoque({ movimentoEstoque: db } as never, [3], 2)]).toEqual([]);
+  });
+
+  it("AJUSTE positivo (inventário) faz o produto ter estoque", async () => {
+    const db = bancoCom([linha("AJUSTE", 5)]);
+    expect(await produtoTemEstoque({ movimentoEstoque: db } as never, 3, 2)).toBe(true);
+    expect([...await produtosComEstoque({ movimentoEstoque: db } as never, [3], 2)]).toEqual([3]);
+  });
+
+  it("ENTRADA estornada, estorno e SAIDA não contam; entrada de outro sítio também não", async () => {
+    const db = bancoCom([
+      linha("ENTRADA", 5, { status: "REVERTIDO" }),
+      linha("SAIDA", 5, { reversaoDeId: 1 }),
+      linha("ENTRADA", 5, { reversaoDeId: 2 }),
+      linha("SAIDA", 3),
+      linha("ENTRADA", 5, { propriedadeId: 9 }),
+    ]);
+    expect(await produtoTemEstoque({ movimentoEstoque: db } as never, 3, 2)).toBe(false);
   });
 
   it("em lote devolve só os produtos com entrada no sítio", async () => {
@@ -274,6 +299,16 @@ describe("listarSaldos", () => {
 describe("listarMovimentos — origem para navegação", () => {
   const base = { produtoId: 3, produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, grupo: null, observacao: null, operacaoId: null, consumoPeriodo: null, eventoSanitario: null, operacaoAgricola: null };
 
+  it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
+    mocks.movFindMany.mockResolvedValue([]);
+    await listarMovimentos({ propriedadeId: 1 });
+    expect(mocks.movFindMany.mock.calls[0][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
+    await listarMovimentos({ propriedadeId: 2, produtoId: 3 });
+    expect(mocks.movFindMany.mock.calls[1][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, produtoId: 3, propriedadeId: 2 });
+    await listarMovimentos({ propriedadeId: null });
+    expect(mocks.movFindMany.mock.calls[2][0].where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] } });
+  });
+
   it("expõe operacaoId e nenhum vínculo quando o movimento nasceu de uma operação", async () => {
     mocks.movFindMany.mockResolvedValue([{ ...base, id: 1, tipo: "ENTRADA", origem: "COMPRA", operacaoId: 42, operacao: { parceiro: { nome: "Agro" } } }]);
     const [m] = await listarMovimentos();
@@ -295,5 +330,20 @@ describe("listarMovimentos — origem para navegação", () => {
     expect(ms[2].vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
     expect(mocks.movFindMany).toHaveBeenCalledTimes(1);
     expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ consumoPeriodo: expect.anything(), eventoSanitario: expect.anything(), operacaoAgricola: expect.anything() });
+  });
+
+  it("omite vínculo e observação automática de área que o leitor não tem", async () => {
+    const linhas = [
+      { ...base, id: 2, grupo: { nome: "Lote A" }, observacao: "Consumo do lote", consumoPeriodo: { grupoId: 7, grupo: { nome: "Lote A" } } },
+      { ...base, id: 3, origem: "SANIDADE", observacao: "Consumo em aplicacao (animal 9)", eventoSanitario: { animalId: 9, animal: { numero: "123", nome: "Mimosa" } } },
+      { ...base, id: 4, origem: "APLICACAO", observacao: "Aplicação em T-05", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
+    ];
+    mocks.movFindMany.mockResolvedValue(linhas);
+    const soFinanceiro = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: false } });
+    expect(soFinanceiro.map((m) => [m.vinculo, m.observacao, m.grupo])).toEqual([[null, null, null], [null, null, null], [null, null, null]]);
+
+    const soAgricultura = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: true } });
+    expect(soAgricultura.map((m) => m.vinculo?.tipo ?? null)).toEqual([null, null, "TALHAO"]);
+    expect(soAgricultura[2].observacao).toBe("Aplicação em T-05");
   });
 });

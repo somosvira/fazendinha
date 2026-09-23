@@ -10,6 +10,7 @@ import { listarParceiros } from "../services/financeiro/parceiros.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
+import { temArea } from "../services/auth/papeis.js";
 
 type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string; code?: string } } {
@@ -40,7 +41,6 @@ const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
 });
-const custoVacaDiaQuerySchema = z.object({ dias: z.coerce.number().int().min(1).max(365).optional() });
 const idParamSchema = z.object({ id: z.coerce.number().int().positive() });
 const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().positive().optional() });
 
@@ -55,7 +55,11 @@ export const estoqueRouter = new Hono()
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { produtoId, tipo } = c.req.valid("query");
-    return c.json(await svc.listarMovimentos({ produtoId, tipo, propriedadeId: await resolverEscopoLeitura(c) }));
+    // O gate de /estoque aceita pecuária, agricultura ou financeiro; o vínculo
+    // (animal/lote/talhão) das saídas automáticas só vai para quem tem a área.
+    const u = getUsuario(c);
+    const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria"), agricultura: temArea(u, "agricultura") } : undefined;
+    return c.json(await svc.listarMovimentos({ produtoId, tipo, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {
     try {
@@ -73,19 +77,9 @@ export const estoqueRouter = new Hono()
     }
     catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
-  .delete("/estoque/movimentos/:id", exigePermissao("lancar"), zValidator("param", idParamSchema), async (c) => {
-    try {
-      const { id } = c.req.valid("param");
-      const propriedadeId = await resolverEscopoEscrita(c);
-      await svc.excluirMovimento(id, propriedadeId, usuarioId(c));
-      return c.json({ ok: true });
-    }
-    catch (e) { const { status, body } = fail(e); return c.json(body, status); }
-  })
-  .get("/estoque/custo-vaca-dia", zValidator("query", custoVacaDiaQuerySchema), async (c) => {
-    const { dias } = c.req.valid("query");
-    return c.json(await svc.calcularCustoVacaDia(dias, await resolverEscopoLeitura(c)));
-  })
+  // Sem DELETE de movimento: movimento de estoque confirmado só é desfeito pelo
+  // domínio que o originou (estorno da operação, do evento sanitário, da
+  // aplicação agrícola ou do período de consumo).
 
   // ── Produtos (cadastro) ─────────────────────────────────────────────────────
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {

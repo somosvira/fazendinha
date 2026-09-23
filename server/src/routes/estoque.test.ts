@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   listarSaldos: vi.fn(),
   ajustarContagem: vi.fn(),
+  listarMovimentos: vi.fn(),
   registrarMovimento: vi.fn(),
-  excluirMovimento: vi.fn(),
   escrita: vi.fn(),
   leitura: vi.fn(),
   listarProdutos: vi.fn(),
@@ -24,8 +24,8 @@ vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
     ...real,
     listarSaldos: mocks.listarSaldos,
     ajustarContagem: mocks.ajustarContagem,
+    listarMovimentos: mocks.listarMovimentos,
     registrarMovimento: mocks.registrarMovimento,
-    excluirMovimento: mocks.excluirMovimento,
     obterCustoMedio: mocks.obterCustoMedio,
   };
 });
@@ -62,7 +62,6 @@ const json = { "content-type": "application/json" };
 const escritas = [
   { nome: "POST /estoque/ajustes", req: () => ["/estoque/ajustes", { method: "POST", headers: json, body: JSON.stringify({ produtoId: 1, quantidadeContada: 5, saldoEsperado: 10, observacao: "Contagem física" }) }] as const, svc: mocks.ajustarContagem },
   { nome: "POST /estoque/movimentos", req: () => ["/estoque/movimentos", { method: "POST", headers: json, body: JSON.stringify({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -2, observacao: "Ajuste conferido" }) }] as const, svc: mocks.registrarMovimento },
-  { nome: "DELETE /estoque/movimentos/:id", req: () => ["/estoque/movimentos/42", { method: "DELETE" }] as const, svc: mocks.excluirMovimento },
 ];
 
 beforeEach(() => {
@@ -70,9 +69,9 @@ beforeEach(() => {
   mocks.leitura.mockResolvedValue(3);
   mocks.escrita.mockResolvedValue(3);
   mocks.listarSaldos.mockResolvedValue([]);
+  mocks.listarMovimentos.mockResolvedValue([]);
   mocks.ajustarContagem.mockResolvedValue({ id: 1, operacaoId: 2 });
   mocks.registrarMovimento.mockResolvedValue({ id: 1, operacaoId: 2 });
-  mocks.excluirMovimento.mockResolvedValue(undefined);
   mocks.listarProdutos.mockResolvedValue([]);
   mocks.criarProduto.mockResolvedValue({ id: 1 });
   mocks.atualizarProduto.mockResolvedValue({ id: 1 });
@@ -102,9 +101,6 @@ describe("escritas exigem a flag lancar", () => {
     await appCom(comLancar).request(path, init as RequestInit);
     expect(mocks.escrita).toHaveBeenCalled();
     expect(mocks.ajustarContagem).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }));
-    const [, delInit] = escritas[2].req();
-    await appCom(comLancar).request("/estoque/movimentos/42", delInit as RequestInit);
-    expect(mocks.excluirMovimento).toHaveBeenCalledWith(42, 3, 7);
   });
 });
 
@@ -135,20 +131,24 @@ describe("GET /estoque/movimentos", () => {
     const res = await appCom(semLancar).request("/estoque/movimentos?tipo=INVALIDO");
     expect(res.status).toBe(400);
   });
-});
-
-describe("GET /estoque/custo-vaca-dia", () => {
-  it.each(["0", "366", "abc", "-1"])("dias=%s → 400", async (v) => {
-    const res = await appCom(semLancar).request(`/estoque/custo-vaca-dia?dias=${v}`);
-    expect(res.status).toBe(400);
+  it("repassa ao service quais vínculos o usuário pode ver, pelas áreas", async () => {
+    await appCom({ ...base, areas: ["financeiro"], flags: [] }).request("/estoque/movimentos");
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ propriedadeId: 3, vinculosVisiveis: { pecuaria: false, agricultura: false } }));
+    await appCom(soAgricultura).request("/estoque/movimentos");
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: false, agricultura: true } }));
+    await appCom({ ...base, areas: [], dono: true, flags: [] }).request("/estoque/movimentos");
+    expect(mocks.listarMovimentos).toHaveBeenLastCalledWith(expect.objectContaining({ vinculosVisiveis: { pecuaria: true, agricultura: true } }));
   });
 });
 
-describe("DELETE /estoque/movimentos/:id", () => {
-  it.each(["abc", "-1", "1.5"])("id=%s → 400", async (v) => {
-    const res = await appCom(comLancar).request(`/estoque/movimentos/${v}`, { method: "DELETE" });
-    expect(res.status).toBe(400);
-    expect(mocks.excluirMovimento).not.toHaveBeenCalled();
+describe("rotas órfãs removidas", () => {
+  it("DELETE /estoque/movimentos/:id não existe (movimento só é desfeito pelo domínio de origem)", async () => {
+    const res = await appCom(comLancar).request("/estoque/movimentos/42", { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+  it("GET /estoque/custo-vaca-dia não existe (custo vaca/dia vem do custo de produção)", async () => {
+    const res = await appCom(semLancar).request("/estoque/custo-vaca-dia?dias=30");
+    expect(res.status).toBe(404);
   });
 });
 

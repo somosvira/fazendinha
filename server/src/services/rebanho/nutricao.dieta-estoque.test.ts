@@ -46,7 +46,10 @@ describe("substituirItensDieta — produto precisa ter estoque no sítio", () =>
     expect(mocks.dietaItemCreateMany).not.toHaveBeenCalled();
     expect(mocks.movimentoGroupBy).toHaveBeenCalledWith({
       by: ["produtoId"],
-      where: { produtoId: { in: [4] }, tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, propriedadeId: 7 },
+      where: {
+        produtoId: { in: [4] }, status: "CONFIRMADO", reversaoDeId: null,
+        AND: [{ OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] }, { propriedadeId: 7 }],
+      },
     });
   });
 

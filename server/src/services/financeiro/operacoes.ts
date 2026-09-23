@@ -2,7 +2,7 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
-import { obterBasesCusto } from "../estoque/estoque.js";
+import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
@@ -95,11 +95,22 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
     const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? 0)) : item.centroCustoId);
     // Quem decide se o item entra/sai do estoque é o TIPO da operação, não o
-    // produto: em tipo com efeito de estoque, todo item com produto (ou marcado
+    // produto: nos tipos que põem no estoque (compra para estoque, inventário,
+    // bonificação, produção) e no ajuste, todo item com produto (ou marcado
     // estocável pelo cliente) é estocável; nos demais tipos nenhum é. O snapshot
     // ItemOperacao.estocavel grava essa decisão.
+    // Venda/devolução só retiram do estoque produto que já teve entrada no sítio
+    // (mesma regra das baixas automáticas): vender leite, bezerro ou café que
+    // nunca foi estocado não gera SAIDA a custo 0 nem saldo negativo — o item
+    // vira não estocável e segue a regra de centro de custo efetivo.
     const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
-    const estocavelItens = input.itens.map((item) => temEfeitoEstoque && (item.estocavel || item.produtoId != null));
+    const retira = retiraEstoque.has(input.tipo);
+    const comEstoqueNoSitio = retira ? await produtosComEstoque(tx, produtosIds, input.propriedadeId) : null;
+    const estocavelItens = input.itens.map((item) => {
+      if (!temEfeitoEstoque) return false;
+      if (comEstoqueNoSitio && item.produtoId != null) return comEstoqueNoSitio.has(item.produtoId);
+      return item.estocavel || item.produtoId != null;
+    });
     const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
     if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
     centrosItens.forEach((id, indice) => {

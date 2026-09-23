@@ -174,7 +174,10 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
 
     // Sítio 5 é o principal (propriedade.findFirst → 5): movimento sem propriedade também conta.
     expect(mocks.movimentoTemEstoque).toHaveBeenCalledWith({
-      where: { produtoId: 3, tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 5 }, { propriedadeId: null }] },
+      where: {
+        produtoId: 3, status: "CONFIRMADO", reversaoDeId: null,
+        AND: [{ OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] }, { OR: [{ propriedadeId: 5 }, { propriedadeId: null }] }],
+      },
       select: { id: true },
     });
   });
@@ -243,4 +246,96 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
     expect(mocks.movimentoDelete).not.toHaveBeenCalled();
     expect(mocks.eventoDelete).toHaveBeenCalledWith({ where: { id: 50 } });
   });
+
+  it("registrar APLICACAO sem estoque no sítio devolve aviso; com baixa não devolve", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    mocks.movimentoTemEstoque.mockResolvedValue(null);
+    expect(await registrarSanidade(1, aplicacao(3))).toEqual(expect.objectContaining({ aviso: expect.stringMatching(/sem baixa de estoque/i) }));
+
+    mocks.movimentoTemEstoque.mockResolvedValue({ id: 1 });
+    expect(await registrarSanidade(1, aplicacao(3))).not.toHaveProperty("aviso");
+  });
+
+  it("registrar APLICACAO sem produto vinculado (texto livre) não devolve aviso", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+    expect(await registrarSanidade(1, { tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo" } as any)).not.toHaveProperty("aviso");
+  });
 });
+
+describe("editarSanidade — decisão de baixa estável (não segue o estado atual do estoque)", () => {
+  const aplicacao = (quantidadeUsada: number, extra: object = {}) => ({ tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo", produtoId: 3, quantidadeUsada, ...extra } as any);
+  const evento = (movimentoEstoqueId: number | null) => ({
+    id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05"),
+    movimentoEstoqueId, produtoId: 3, quantidadeUsada: D(2),
+    animal: { propriedadeId: 5, grupo: null },
+  });
+
+  beforeEach(() => {
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+  });
+
+  it("(A) evento com baixa, compra estornada depois: editar só a observação mantém a baixa", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(evento(77));
+    mocks.movimentoTemEstoque.mockResolvedValue(null); // hoje o produto não tem mais estoque no sítio
+
+    const r = await editarSanidade(50, aplicacao(2, { observacao: "reforço" }));
+
+    expect(mocks.movimentoTemEstoque).not.toHaveBeenCalled();
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+    expect(mocks.eventoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: 77 }) }));
+    expect(r).not.toHaveProperty("aviso");
+  });
+
+  it("(A') evento com baixa do mesmo produto: mudar a quantidade refaz a baixa mesmo sem estoque atual", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(evento(77));
+    mocks.movimentoTemEstoque.mockResolvedValue(null);
+
+    await editarSanidade(50, aplicacao(4));
+
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
+    const novo = mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === undefined);
+    expect(Number(novo.quantidade)).toBe(4);
+  });
+
+  it("(B) evento sem baixa, compra chega depois: editar só a observação NÃO cria SAIDA retroativa", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(evento(null));
+    mocks.movimentoTemEstoque.mockResolvedValue({ id: 1 }); // hoje o produto tem estoque no sítio
+
+    const r = await editarSanidade(50, aplicacao(2, { observacao: "reforço" }));
+
+    expect(mocks.movimentoTemEstoque).not.toHaveBeenCalled();
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.eventoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: null }) }));
+    expect(r).not.toHaveProperty("aviso");
+  });
+
+  it("(B') evento sem baixa: mudar a quantidade recalcula pelo estoque atual e cria a baixa", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(evento(null));
+    mocks.movimentoTemEstoque.mockResolvedValue({ id: 1 });
+
+    await editarSanidade(50, aplicacao(3));
+
+    expect(mocks.movimentoTemEstoque).toHaveBeenCalledTimes(1);
+    expect(mocks.movimentoCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", produtoId: 3 }) });
+  });
+
+  it("trocar para produto sem estoque no sítio estorna a baixa antiga e avisa", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(evento(77));
+    mocks.produtoFindUnique.mockResolvedValue({ id: 8, centrosCusto: [] });
+    mocks.movimentoTemEstoque.mockResolvedValue(null);
+
+    const r = await editarSanidade(50, aplicacao(2, { produtoId: 8 }));
+
+    expect(mocks.movimentoTemEstoque).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ produtoId: 8 }) }));
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
+    expect(mocks.movimentoCreate).toHaveBeenCalledTimes(1); // só o inverso
+    expect(r).toEqual(expect.objectContaining({ aviso: expect.stringMatching(/sem baixa de estoque/i) }));
+  });
+});
+

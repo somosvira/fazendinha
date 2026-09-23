@@ -37,13 +37,24 @@ export async function recomputarSanidade(animalId: number): Promise<void> {
 export async function listarSanidade(animalId: number): Promise<EventoTimelineDTO[]> {
   return (await prisma.eventoSanitario.findMany({ where: { animalId }, orderBy: { data: "desc" } })).map(toTimeline);
 }
+/** Aviso ao usuário quando o evento vincula produto e quantidade, mas a baixa não acontece por falta de estoque no sítio. */
+export const AVISO_SEM_ESTOQUE_SANIDADE = "Evento salvo sem baixa de estoque: este produto não tem estoque neste sítio (nenhuma compra ou inventário registrado).";
+
+function avisoSemEstoque(tipo: string, produtoId: number | null, quantidadeUsada: number | null, temEstoque: boolean): string | null {
+  if (temEstoque) return null;
+  // Teria baixado se houvesse estoque? Então a baixa foi ignorada por falta de estoque.
+  return planejarBaixaSanidade({ tipo, produtoId, temEstoque: true, quantidadeUsada, baseCusto: null }) != null ? AVISO_SEM_ESTOQUE_SANIDADE : null;
+}
+
+const mesmaQuantidade = (a: Prisma.Decimal.Value | null, b: number | null) => (a == null || b == null ? a == null && b == null : new Prisma.Decimal(a).equals(b));
+
 // Plano de baixa valorizado pelo custo médio ponderado do produto no sítio.
 async function planejarComCustoMedio(tx: Prisma.TransactionClient, tipo: string, produtoId: number | null, quantidadeUsada: number | null, propriedadeId: number) {
   const baseCusto = produtoId != null ? await obterBaseCusto(tx, produtoId, propriedadeId) : null;
   return planejarBaixaSanidade({ tipo, produtoId, temEstoque: true, quantidadeUsada, baseCusto });
 }
 
-export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO> {
+export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO & { aviso?: string }> {
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { id: true, propriedadeId: true, grupo: { select: { centroCustoId: true } } } });
   if (!animal) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
   const produtoId = (input as any).produtoId ?? null;
@@ -87,9 +98,10 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
     });
   });
   await recomputarSanidade(animalId);
-  return toTimeline(e);
+  const aviso = avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque);
+  return aviso ? { ...toTimeline(e), aviso } : toTimeline(e);
 }
-export async function editarSanidade(eventoId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO> {
+export async function editarSanidade(eventoId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO & { aviso?: string }> {
   const existente = await prisma.eventoSanitario.findFirst({
     where: { id: eventoId, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) },
     include: { animal: { select: { propriedadeId: true, grupo: { select: { centroCustoId: true } } } } },
@@ -102,7 +114,18 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
-  const temEstoque = produtoId != null && await produtoTemEstoque(prisma, produtoId, propriedadeMovimentoId);
+  // Decisão de baixa ESTÁVEL na edição: não pode mudar só porque o estoque do
+  // sítio mudou depois do registro. Já havia baixa do mesmo produto → mantém
+  // (mesmo que a compra tenha sido estornada depois); não havia baixa e produto
+  // e quantidade são os mesmos → continua sem baixa (mesmo que tenha chegado uma
+  // compra depois). Só consulta o estoque atual quando o produto ou a quantidade
+  // mudam de um evento sem baixa, ou quando o produto troca.
+  const mesmoProduto = (existente.produtoId ?? null) === produtoId;
+  const decisaoEstavel = produtoId == null ? false
+    : existente.movimentoEstoqueId != null && mesmoProduto ? true
+      : existente.movimentoEstoqueId == null && mesmoProduto && mesmaQuantidade(existente.quantidadeUsada, quantidadeUsada) ? false
+        : null;
+  const temEstoque = decisaoEstavel ?? await produtoTemEstoque(prisma, produtoId!, propriedadeMovimentoId);
   const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, temEstoque, quantidadeUsada, baseCusto: null }) != null;
   const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: existente.animal.grupo?.centroCustoId }) : null;
   const data = new Date(input.data);
@@ -151,7 +174,9 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
     });
   });
   await recomputarSanidade(existente.animalId);
-  return toTimeline(atualizado);
+  // Só avisa quando a falta de estoque foi apurada agora (produto/quantidade mudaram).
+  const aviso = decisaoEstavel == null ? avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque) : null;
+  return aviso ? { ...toTimeline(atualizado), aviso } : toTimeline(atualizado);
 }
 
 export async function excluirSanidade(eventoId: number, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<void> {

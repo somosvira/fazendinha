@@ -489,6 +489,53 @@ describe("correções da revisão", () => {
     expect(await stock.produtoTemEstoque(db, semMovimento.id, null)).toBe(false);
     expect(await stock.produtoTemEstoque(db, soNaOutra.id, null)).toBe(true);
   });
+  it("venda de produto sem entrada no sítio não movimenta estoque e cai na regra de item não estocável", async () => {
+    // O produto só teve entrada em OUTRO sítio: no sítio da venda ele nunca foi estocado.
+    const outra = await db.propriedade.create({ data: { nome: `Sítio com estoque ${serial}` } });
+    await ops.criarOperacao({ ...input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"), propriedadeId: outra.id });
+    const venda = (extra: Record<string, unknown> = {}) => ({ ...schema.operacaoSchema.parse({
+      tipo: "VENDA", data, descricao: "Venda de produto nunca estocado", parceiroId: partnerId,
+      itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 3, unidade: "kg", valorUnitario: 20, estocavel: true }],
+      financeiro: { condicao: "A_VISTA", contaId: accountId }, ...extra,
+    }), propriedadeId: pid, usuarioId: userId });
+    const before = await snapshot("antes da venda sem estoque");
+    await expect(ops.criarOperacao(venda())).rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
+    expect(await snapshot("venda sem centro recusada")).toEqual(before);
+
+    const op = await ops.criarOperacao(venda({ centroCustoId: centroConsumoId }));
+    expect(op.movimentosEstoque).toHaveLength(0);
+    expect(op.itens[0]).toMatchObject({ produtoId: productId, estocavel: false });
+    const state = await snapshot("venda sem estoque confirmada");
+    expect(state.saldoConta).toBe(1060);
+    expect((await stock.listarSaldos({ propriedadeId: pid })).map((l) => l.produtoId)).not.toContain(productId);
+    expect((await stock.listarSaldos({ propriedadeId: outra.id })).find((l) => l.produtoId === productId)?.saldo).toBe(10);
+
+    // Com entrada no sítio, a mesma venda passa a baixar o estoque.
+    await ops.criarOperacao(input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"));
+    const comEstoque = await ops.criarOperacao(venda());
+    expect(comEstoque.movimentosEstoque).toHaveLength(1);
+    expect(comEstoque.movimentosEstoque[0]).toMatchObject({ tipo: "SAIDA", propriedadeId: pid });
+    expect((await snapshot("venda com estoque")).saldoEstoque).toBe(7);
+  });
+  it("AJUSTE negativo não põe produto no estoque; baixa manual sem estoque é recusada", async () => {
+    await db.movimentoEstoque.create({ data: { produtoId: productId, tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", data, quantidade: -2, custoUnitario: 0, valorTotal: 0, propriedadeId: pid } });
+    expect(await stock.produtoTemEstoque(db, productId, pid)).toBe(false);
+    expect(await stock.produtosComEstoque(db, [productId], pid)).toEqual(new Set());
+    await expect(stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: -1, observacao: "Perda no galpão", propriedadeId: pid, usuarioId: userId }))
+      .rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("não tem estoque neste sítio") });
+    await stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: 5, observacao: "Sobra encontrada", propriedadeId: pid, usuarioId: userId });
+    expect(await stock.produtoTemEstoque(db, productId, pid)).toBe(true);
+    await stock.registrarMovimento({ produtoId: productId, tipo: "AJUSTE", data: "2026-09-01", quantidade: -1, observacao: "Perda no galpão", propriedadeId: pid, usuarioId: userId });
+    expect((await stock.listarSaldos({ propriedadeId: pid })).find((l) => l.produtoId === productId)?.saldo).toBe(2);
+  });
+  it("movimentos recentes usam o escopo de sítio dos saldos (principal inclui movimento sem propriedade)", async () => {
+    const { propriedadePrincipalId } = await import("../../src/services/propriedade.js");
+    const principal = await propriedadePrincipalId();
+    const legado = await db.movimentoEstoque.create({ data: { produtoId: productId, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data, quantidade: 1, custoUnitario: 1, valorTotal: 1, propriedadeId: null } });
+    expect((await stock.listarMovimentos({ propriedadeId: principal })).map((m) => m.id)).toContain(legado.id);
+    const outra = await db.propriedade.create({ data: { nome: `Sítio sem legado ${serial}` } });
+    expect((await stock.listarMovimentos({ propriedadeId: outra.id })).map((m) => m.id)).not.toContain(legado.id);
+  });
   it("custo médio ponderado: compras formam o médio, venda baixa pelo médio e estorno recalcula", async () => {
     const compra = (valorUnitario: number) => ({ ...schema.operacaoSchema.parse({
       tipo: "COMPRA_ESTOQUE", data, descricao: `Compra QA a ${valorUnitario}`, parceiroId: partnerId,

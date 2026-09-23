@@ -154,11 +154,35 @@ describe("criarOperacao", () => {
     await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
 
     expect(mocks.movimentoFindFirst).toHaveBeenCalledWith({
-      where: { produtoId: 3, tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 5 }, { propriedadeId: null }] },
+      where: {
+        produtoId: 3, status: "CONFIRMADO", reversaoDeId: null,
+        AND: [{ OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] }, { OR: [{ propriedadeId: 5 }, { propriedadeId: null }] }],
+      },
       select: { id: true },
     });
     expect(mocks.movimentoCreate).not.toHaveBeenCalled();
     expect(mocks.operacaoCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ produtoId: 3 }) }));
+  });
+
+  it("produto sem estoque no sítio → devolve aviso; com baixa não devolve", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+    const op = { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any;
+
+    mocks.movimentoFindFirst.mockResolvedValue(null);
+    expect(await criarOperacao(1, op)).toEqual(expect.objectContaining({ aviso: expect.stringMatching(/sem baixa de estoque/i) }));
+
+    mocks.movimentoFindFirst.mockResolvedValue(movimentoExistente);
+    expect(await criarOperacao(1, op)).not.toHaveProperty("aviso");
+  });
+
+  it("sem quantidade (dose sem unidade) não avisa falta de estoque", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.movimentoFindFirst.mockResolvedValue(null);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+    expect(await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, produtoId: 3 } as any)).not.toHaveProperty("aviso");
   });
 
   it("sem base de custo, a SAIDA sai com custo 0", async () => {
@@ -408,6 +432,97 @@ describe("editarOperacao", () => {
         data: expect.objectContaining({ movimentoEstoqueId: 300 }),
       }));
     });
+  });
+});
+
+describe("editarOperacao — decisão de baixa estável (não segue o estado atual do estoque)", () => {
+  const existente = (movimentoEstoqueId: number | null) => ({
+    id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10"), responsavel: null, produto: "Ureia", observacao: null,
+    doseValor: new Prisma.Decimal(2), doseUnidade: "kg/ha", pragaAlvo: null, produtoId: 3,
+    quantidadeTotal: movimentoEstoqueId != null ? new Prisma.Decimal(20) : null,
+    movimentoEstoqueId, talhao: talhaoBase,
+  });
+  // findFirst serve a produtoTemEstoque (where com AND) e ao estorno (where com id).
+  const estoqueAtual = (tem: boolean) => mocks.movimentoFindFirst.mockImplementation(async ({ where }: any) =>
+    where.AND ? (tem ? { id: 1 } : null) : movimentoExistente);
+  const consultasEstoque = () => mocks.movimentoFindFirst.mock.calls.filter(([args]) => args.where.AND);
+
+  beforeEach(() => {
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+  });
+
+  it("(A) operação com baixa, compra estornada depois: editar só a observação mantém a baixa", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(88));
+    estoqueAtual(false);
+
+    const r = await editarOperacao(10, { observacao: "reaplicar na bordadura" } as any);
+
+    expect(consultasEstoque()).toHaveLength(0);
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+    expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: 88 }) }));
+    expect(r).not.toHaveProperty("aviso");
+  });
+
+  it("(A') operação com baixa do mesmo produto: mudar a quantidade refaz a baixa mesmo sem estoque atual", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(88));
+    estoqueAtual(false);
+    mocks.movimentoCreate
+      .mockResolvedValueOnce({ id: 200, quantidade: new Prisma.Decimal(20) }) // inverso
+      .mockResolvedValueOnce({ id: 201, quantidade: new Prisma.Decimal(30) }); // novo
+
+    await editarOperacao(10, { quantidadeTotal: 30 } as any);
+
+    expect(consultasEstoque()).toHaveLength(0);
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+    const novo = mocks.movimentoCreate.mock.calls.map((c) => c[0].data).find((d) => d.reversaoDeId === undefined);
+    expect(Number(novo.quantidade)).toBe(30);
+  });
+
+  it("(B) operação sem baixa, compra chega depois: editar só a observação NÃO cria SAIDA retroativa", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(null));
+    estoqueAtual(true);
+
+    const r = await editarOperacao(10, { observacao: "nova obs" } as any);
+
+    expect(consultasEstoque()).toHaveLength(0);
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: null }) }));
+    expect(r).not.toHaveProperty("aviso");
+  });
+
+  it("(B) formulário completo reenviado com os mesmos valores também não cria SAIDA", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(null));
+    estoqueAtual(true);
+
+    await editarOperacao(10, { tipo: "ADUBACAO_SOLO", data: "2026-01-10", produtoId: 3, doseValor: 2, doseUnidadeMedida: "KG", dosePorHectare: true, quantidadeTotal: null, observacao: "x" } as any);
+
+    expect(consultasEstoque()).toHaveLength(0);
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+  });
+
+  it("(B') operação sem baixa: mudar a dose recalcula pelo estoque atual e cria a baixa", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(null));
+    estoqueAtual(true);
+
+    await editarOperacao(10, { doseValor: 3 } as any);
+
+    expect(consultasEstoque()).toHaveLength(1);
+    expect(mocks.movimentoCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "SAIDA", origem: "APLICACAO", produtoId: 3 }) });
+  });
+
+  it("trocar para produto sem estoque no sítio estorna a baixa antiga e avisa", async () => {
+    mocks.operacaoFindUnique.mockResolvedValue(existente(88));
+    mocks.produtoFindUnique.mockResolvedValue({ id: 7, nome: "Boro", unidade: "KG", centrosCusto: [] });
+    estoqueAtual(false);
+
+    const r = await editarOperacao(10, { produtoId: 7 } as any);
+
+    expect(consultasEstoque()).toHaveLength(1);
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 88 }, data: { status: "REVERTIDO" } });
+    expect(mocks.movimentoCreate).toHaveBeenCalledTimes(1); // só o inverso
+    expect(r).toEqual(expect.objectContaining({ aviso: expect.stringMatching(/sem baixa de estoque/i) }));
   });
 });
 

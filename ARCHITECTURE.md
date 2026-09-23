@@ -94,7 +94,7 @@ A modelagem segue uma divisão em **contextos de domínio**. Cada contexto tem s
 ```mermaid
 flowchart LR
   FIN[Financeiro<br/>Operacao · Compromisso · Transacao · Conta · Periodo]
-  EST[Estoque<br/>Produto · MovimentoEstoque · LoteProduto]
+  EST[Estoque<br/>Produto · MovimentoEstoque]
   REB[Rebanho / Pecuária leiteira<br/>Animais · Reprodução · IATF · FIV · Genética · Sanidade · Produção · Nutrição]
   COR[Corte<br/>Lotes · Piquetes · Pesagens · Comercial]
   PLA[Plantio<br/>Talhões · Safras · Operações agrícolas · Colheita]
@@ -362,7 +362,7 @@ Schema completo em `server/prisma/schema.prisma` (~120 models, ~65 enums). Resum
 | Contexto | Models principais |
 |---|---|
 | Financeiro | `Operacao`, `ItemOperacao`, `CompromissoFinanceiro`, `Liquidacao`, `TransacaoFinanceira`, `MovimentoConta`, `ContaFinanceira`, `Parceiro`, `PeriodoFinanceiro`, `RascunhoOperacao`, `DocumentoFinanceiro`, `AuditoriaFinanceira`, `Categoria` ⊂ `GrupoCategoria`, `CentroCusto` |
-| Estoque | `Produto`, `ComposicaoProdutoItem`, `LocalArmazenamento`, `LoteProduto`, `MovimentoEstoque`, `ConsumoPeriodo`, `PrincipioAtivo` |
+| Estoque | `Produto`, `MovimentoEstoque`, `ConsumoPeriodo` |
 | Propriedade | `Propriedade`, `Configuracao`, `ParametroManejo`, `RegistroChuva` |
 | Auth | `Usuario`, `Sessao`, `TokenAcesso` |
 | Rebanho | `Animal`, `ResumoAnimal`, `Raca`, `Grupo`, `Lactacao`, `Pesagem`, `MovimentacaoAnimal`, `FiltroAnimal`, `AptidaoAnimal` |

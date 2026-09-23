@@ -111,9 +111,15 @@ describe("consumo de dieta por propriedade", () => {
     beforeEach(async () => {
       const { Prisma } = await import("@prisma/client");
       mocks.grupoFindFirst.mockResolvedValue(grupo);
-      // Só a ração (4) tem entrada no sítio 7; o sal (5) nunca entrou no estoque.
-      mocks.movimentoGroupBy.mockImplementation(async ({ where }: { where: { produtoId: { in: number[] } } }) =>
-        where.produtoId.in.includes(4) ? [{ produtoId: 4, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(60) } }] : []);
+      // Duas consultas distintas no groupBy: base do custo médio (com _sum) e
+      // "tem estoque no sítio" (sem _sum). A base existe para os dois produtos
+      // (ex.: o sal só teve AJUSTE negativo valorizado ou entrada em outro
+      // contexto) — quem decide a baixa é a consulta de estoque: só a ração (4)
+      // tem ENTRADA/AJUSTE positivo no sítio 7.
+      mocks.movimentoGroupBy.mockImplementation(async ({ where, _sum }: { where: { produtoId: { in: number[] } }; _sum?: unknown }) =>
+        _sum
+          ? where.produtoId.in.map((produtoId) => ({ produtoId, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(60) } }))
+          : where.produtoId.in.filter((id) => id === 4).map((produtoId) => ({ produtoId })));
       mocks.periodoFindUnique.mockResolvedValue(null);
       mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn({
         consumoPeriodo: { create: mocks.consumoCreate, update: mocks.consumoUpdate },
@@ -121,6 +127,18 @@ describe("consumo de dieta por propriedade", () => {
       }));
       mocks.consumoCreate.mockResolvedValue({ id: 70 });
       mocks.consumoUpdate.mockImplementation(async ({ data }: { data: { custoTotal: unknown } }) => ({ id: 70, custoTotal: data.custoTotal }));
+    });
+
+    it("consulta 'tem estoque' com ENTRADA ou AJUSTE positivo, no sítio do lote", async () => {
+      await previsaoConsumo(10, "2026-07-01", "2026-07-02", 7);
+      const consulta = mocks.movimentoGroupBy.mock.calls.map(([args]) => args).find((args) => !args._sum);
+      expect(consulta).toEqual({
+        by: ["produtoId"],
+        where: {
+          produtoId: { in: [4, 5] }, status: "CONFIRMADO", reversaoDeId: null,
+          AND: [{ OR: [{ tipo: "ENTRADA" }, { tipo: "AJUSTE", quantidade: { gt: 0 } }] }, { propriedadeId: 7 }],
+        },
+      });
     });
 
     it("a prévia marca a linha sem estoque, sem custo e sem mexer no saldo", async () => {
