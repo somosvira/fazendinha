@@ -3,10 +3,11 @@
 //  - o tipo é de consumo (APLICACAO de medicamento ou VACINA);
 //  - há um produtoId (produto vinculado ao estoque, não texto livre);
 //  - a quantidade usada é positiva.
-// O valor é qtd × custo unitário (custo médio do sítio, calculado por quem chama; 0 quando
-// desconhecido — a baixa física ainda vale). Decimais via Prisma.Decimal.
+// O valor sai da base do custo médio do sítio (Σ quantidade, Σ valor — carregada por quem
+// chama), sem arredondar o custo unitário antes de multiplicar; sem base → 0 (a baixa física
+// ainda vale). Decimais via Prisma.Decimal.
 import { Prisma } from "@prisma/client";
-import { valorSaida } from "../estoque/estoque.calc.js";
+import { valorSaidaDaBase, type BaseCusto } from "../estoque/estoque.calc.js";
 
 const TIPOS_CONSOMEM_ESTOQUE = new Set(["APLICACAO", "VACINA"]);
 
@@ -14,7 +15,7 @@ export interface BaixaSanidadeIn {
   tipo: string;
   produtoId: number | null;
   quantidadeUsada: number | null;
-  custoUnitario: Prisma.Decimal | null;
+  baseCusto: BaseCusto | null;
 }
 
 export interface BaixaSanidadePlan {
@@ -30,5 +31,5 @@ export function planejarBaixaSanidade(input: BaixaSanidadeIn): BaixaSanidadePlan
   const qtd = input.quantidadeUsada;
   if (qtd == null || qtd <= 0) return null;
   const quantidade = new Prisma.Decimal(qtd);
-  return { produtoId: input.produtoId, quantidade, ...valorSaida(quantidade, input.custoUnitario) };
+  return { produtoId: input.produtoId, quantidade, ...valorSaidaDaBase(quantidade, input.baseCusto) };
 }

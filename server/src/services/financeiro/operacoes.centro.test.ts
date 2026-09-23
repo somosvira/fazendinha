@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   operacaoFindUniqueOrThrow: vi.fn(),
   movimentoEstoqueCreate: vi.fn(),
   movimentoEstoqueFindMany: vi.fn(),
+  movimentoEstoqueGroupBy: vi.fn(),
   auditoriaCreate: vi.fn(),
 }));
 
@@ -22,7 +23,7 @@ vi.mock("../../db.js", () => {
     centroCusto: { findMany: mocks.centro },
     produto: { findMany: mocks.produto },
     operacao: { create: mocks.operacaoCreate, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, findMany: mocks.movimentoEstoqueFindMany },
+    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, findMany: mocks.movimentoEstoqueFindMany, groupBy: mocks.movimentoEstoqueGroupBy },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
@@ -154,10 +155,8 @@ describe("custo da SAIDA de venda — criarOperacao", () => {
     const { Prisma } = await import("@prisma/client");
     mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
     mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
-    mocks.movimentoEstoqueFindMany.mockResolvedValue([
-      { produtoId: 42, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
-      { produtoId: 42, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
-    ]);
+    // Base agregada no banco: compras 10×5 + 10×7 → 20 / R$ 120.
+    mocks.movimentoEstoqueGroupBy.mockResolvedValue([{ produtoId: 42, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]);
     await criarOperacao({
       tipo: "VENDA", data: new Date("2026-09-10T00:00:00Z"), descricao: "Venda de ração", propriedadeId: 1,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
@@ -181,5 +180,6 @@ describe("custo da SAIDA de venda — criarOperacao", () => {
     expect(Number(dados.custoUnitario)).toBe(7);
     expect(Number(dados.valorTotal)).toBe(70);
     expect(mocks.movimentoEstoqueFindMany).not.toHaveBeenCalled();
+    expect(mocks.movimentoEstoqueGroupBy).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   centroFindFirst: vi.fn(),
   periodoFindUnique: vi.fn(),
   movFindMany: vi.fn(),
+  movGroupBy: vi.fn(),
   movFindFirst: vi.fn(),
   movCreate: vi.fn(),
   movUpdate: vi.fn(),
@@ -26,7 +27,7 @@ const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
   centroCusto: { findFirst: mocks.centroFindFirst },
   periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
-  movimentoEstoque: { findMany: mocks.movFindMany, findFirst: mocks.movFindFirst, create: mocks.movCreate, update: mocks.movUpdate },
+  movimentoEstoque: { findMany: mocks.movFindMany, groupBy: mocks.movGroupBy, findFirst: mocks.movFindFirst, create: mocks.movCreate, update: mocks.movUpdate },
   operacao: { create: mocks.opCreate },
   auditoriaFinanceira: { create: mocks.auditCreate },
   $queryRaw: mocks.queryRaw,
@@ -47,6 +48,7 @@ beforeEach(() => {
   mocks.auditCreate.mockResolvedValue({});
   mocks.queryRaw.mockResolvedValue([]);
   mocks.propriedadePrincipalId.mockResolvedValue(1);
+  mocks.movGroupBy.mockResolvedValue([]);
 });
 
 describe("ajustarContagem", () => {
@@ -66,23 +68,36 @@ describe("registrarMovimento", () => {
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ criadoPorId: 7, operacaoId: 50 }) });
     expect(mocks.auditCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "Operacao", entidadeId: "50", acao: "AJUSTE_MANUAL", usuarioId: 7 }) });
   });
-  it("sem custo informado, valoriza o ajuste pelo custo médio do sítio", async () => {
-    mocks.movFindMany.mockResolvedValue([
-      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
-      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
-    ]);
+  it("sem custo informado, valoriza o ajuste pela base do custo médio do sítio (groupBy no banco)", async () => {
+    // Duas compras 10×5 + 10×7 agregadas pelo banco → base 20 / R$ 120.
+    mocks.movGroupBy.mockResolvedValue([{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]);
     await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 5, observacao: "Sobrou no galpão", propriedadeId: 1 });
+    const args = mocks.movGroupBy.mock.calls[0][0];
+    expect(args.by).toEqual(["produtoId"]);
+    expect(args._sum).toEqual({ quantidade: true, valorTotal: true });
+    // Filtro espelha entraNoCustoMedio: confirmados, sem estorno, quantidade e valor > 0.
+    expect(args.where).toEqual(expect.objectContaining({ produtoId: { in: [3] }, status: "CONFIRMADO", reversaoDeId: null, quantidade: { gt: 0 }, valorTotal: { gt: 0 } }));
     // propriedade 1 é a principal → inclui movimentos legados sem propriedade.
-    expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ produtoId: { in: [3] }, status: "CONFIRMADO", reversaoDeId: null }) }));
+    expect(args.where.AND[0]).toEqual({ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
+    expect(args.where.AND[1]).toEqual({ OR: [{ tipo: "ENTRADA", origem: { in: ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL"] } }, { tipo: "AJUSTE" }] });
+    expect(mocks.movFindMany).not.toHaveBeenCalled();
     const data = mocks.movCreate.mock.calls[0][0].data;
     expect(Number(data.custoUnitario)).toBe(6);
     expect(Number(data.valorTotal)).toBe(30);
+  });
+  it("ajuste negativo em produto por grama não infla o valor pelo custo arredondado", async () => {
+    // 25.000 g por R$ 11,25: custo real 0,00045/g (exibido como 0,0005).
+    mocks.movGroupBy.mockResolvedValue([{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(25000), valorTotal: new Prisma.Decimal("11.25") } }]);
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: -10000, observacao: "Perda no galpão", propriedadeId: 1 });
+    const data = mocks.movCreate.mock.calls[0][0].data;
+    expect(data.valorTotal.toString()).toBe("-4.5");
   });
   it("custo informado prevalece sobre o médio", async () => {
     mocks.movFindMany.mockResolvedValue([]);
     await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 2, custoUnitario: 4, observacao: "Sobrou no galpão", propriedadeId: 1 });
     expect(Number(mocks.movCreate.mock.calls[0][0].data.valorTotal)).toBe(8);
     expect(mocks.movFindMany).not.toHaveBeenCalled();
+    expect(mocks.movGroupBy).not.toHaveBeenCalled();
   });
   it("sem usuário grava criadoPorId null", async () => {
     await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 5, observacao: "Sobrou no galpão", propriedadeId: 1 });

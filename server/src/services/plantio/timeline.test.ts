@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   movimentoFindUnique: vi.fn(),
   movimentoFindFirst: vi.fn(),
   movimentoFindMany: vi.fn(),
+  movimentoGroupBy: vi.fn(),
   auditCreate: vi.fn(),
   queryRaw: vi.fn(),
   operacaoCreate: vi.fn(),
@@ -34,7 +35,7 @@ vi.mock("../../db.js", () => ({
     produto: { findUnique: mocks.produtoFindUnique },
     centroCusto: { findFirst: mocks.centroCustoFindFirst },
     periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
-    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany },
+    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany, groupBy: mocks.movimentoGroupBy },
     propriedade: { findFirst: mocks.propriedadeFindFirst, count: vi.fn().mockResolvedValue(1) },
     inspecaoMIP: { findMany: vi.fn().mockResolvedValue([]) },
     amostraSolo: { findMany: vi.fn().mockResolvedValue([]) },
@@ -68,7 +69,7 @@ beforeEach(() => {
     fn({
       produto: { findUnique: mocks.produtoFindUnique },
       centroCusto: { findFirst: mocks.centroCustoFindFirst },
-      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany },
+      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany, groupBy: mocks.movimentoGroupBy },
       operacaoAgricola: { create: mocks.operacaoCreate, update: mocks.operacaoUpdate, delete: mocks.operacaoDelete },
       periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
       auditoriaFinanceira: { create: mocks.auditCreate },
@@ -77,9 +78,9 @@ beforeEach(() => {
   );
   mocks.movimentoFindUnique.mockResolvedValue(movimentoExistente);
   mocks.movimentoFindFirst.mockResolvedValue(movimentoExistente);
-  // Base do custo médio: uma compra de 100 kg a R$ 2,00 (custo médio 2).
-  mocks.movimentoFindMany.mockImplementation(async ({ where }: { where: { produtoId: { in: number[] } } }) => where.produtoId.in.map((produtoId) => ({
-    produtoId, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(200),
+  // Base do custo médio (agregada no banco): 100 kg por R$ 200,00 (custo médio 2).
+  mocks.movimentoGroupBy.mockImplementation(async ({ where }: { where: { produtoId: { in: number[] } } }) => where.produtoId.in.map((produtoId) => ({
+    produtoId, _sum: { quantidade: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(200) },
   })));
   mocks.movimentoCreate.mockResolvedValue({ id: 89, quantidade: new Prisma.Decimal(20) });
   mocks.queryRaw.mockResolvedValue([]);
@@ -133,10 +134,8 @@ describe("criarOperacao", () => {
   it("valoriza a SAIDA pelo custo médio das entradas do sítio do talhão", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
-    mocks.movimentoFindMany.mockResolvedValue([
-      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
-      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
-    ]);
+    // Compras 10×5 + 10×7 agregadas → base 20 kg / R$ 120.
+    mocks.movimentoGroupBy.mockResolvedValue([{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]);
     mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
 
     await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
@@ -149,7 +148,7 @@ describe("criarOperacao", () => {
   it("sem base de custo, a SAIDA sai com custo 0", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
-    mocks.movimentoFindMany.mockResolvedValue([]);
+    mocks.movimentoGroupBy.mockResolvedValue([]);
     mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
 
     await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);

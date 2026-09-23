@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   grupoFindFirst: vi.fn(),
   animalCount: vi.fn(),
   movimentoFindMany: vi.fn(),
+  movimentoGroupBy: vi.fn(),
   consumoFindFirst: vi.fn(),
   consumoFindMany: vi.fn(),
   fechamentoFindMany: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock("../../db.js", () => ({
   prisma: {
     grupo: { findFirst: mocks.grupoFindFirst },
     animal: { count: mocks.animalCount },
-    movimentoEstoque: { findMany: mocks.movimentoFindMany },
+    movimentoEstoque: { findMany: mocks.movimentoFindMany, groupBy: mocks.movimentoGroupBy },
     consumoPeriodo: {
       findFirst: mocks.consumoFindFirst,
       findMany: mocks.consumoFindMany,
@@ -37,6 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.animalCount.mockResolvedValue(3);
   mocks.movimentoFindMany.mockResolvedValue([]);
+  mocks.movimentoGroupBy.mockResolvedValue([]);
   mocks.consumoFindMany.mockResolvedValue([]);
   mocks.fechamentoFindMany.mockResolvedValue([]);
   mocks.assertMesAberto.mockResolvedValue(undefined);
@@ -79,18 +81,14 @@ describe("consumo de dieta por propriedade", () => {
       dieta: { id: 2, nome: "Lactação", itens: [{ produtoId: 4, unidade: "kg", qtdPorCabecaDia: 2, produto: { id: 4, nome: "Ração", centrosCusto: [] } }] },
     });
     const { Prisma } = await import("@prisma/client");
-    mocks.movimentoFindMany.mockImplementation(async (args: { where: { reversaoDeId?: null } }) => "reversaoDeId" in args.where
-      ? [
-        { produtoId: 4, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(20) },
-        { produtoId: 4, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(40) },
-      ]
-      : []);
+    // Compras 10×2 + 10×4 agregadas no banco → base 20 kg / R$ 60.
+    mocks.movimentoGroupBy.mockResolvedValue([{ produtoId: 4, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(60) } }]);
 
     const prev = await previsaoConsumo(10, "2026-07-01", "2026-07-02", null);
 
     // 3 cabeças × 2 kg × 2 dias = 12 kg a R$ 3,00 (médio de 2 e 4)
     expect(prev.linhas[0]).toEqual(expect.objectContaining({ quantidade: 12, custoUnitario: 3, custoTotal: 36 }));
-    expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.movimentoGroupBy).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ produtoId: { in: [4] }, status: "CONFIRMADO", AND: expect.arrayContaining([{ propriedadeId: 7 }]) }),
     }));
   });

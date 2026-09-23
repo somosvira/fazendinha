@@ -44,6 +44,12 @@ export function custoVacaDia(
 // das entradas valorizadas (compra, bonificação, produção, inventário inicial e
 // ajuste positivo com valor). Estornos (original REVERTIDO + inverso com
 // reversaoDeId) e saídas não entram na base.
+//
+// Precisão: a base é guardada como (Σ quantidade, Σ valor) e o valor de uma
+// saída é calculado direto dela (valorSaidaPreciso), com uma única divisão e um
+// único arredondamento no final. O custoMedio arredondado a 4 casas serve só
+// para exibição — multiplicá-lo pela quantidade erra muito em produtos vendidos
+// em g/mL (0,00045/g vira 0,0005/g: +11% no valor da baixa).
 export const ORIGENS_CUSTO_MEDIO = ["COMPRA", "BONIFICACAO", "PRODUCAO", "INVENTARIO_INICIAL"] as const;
 
 export interface MovCustoIn {
@@ -55,17 +61,42 @@ export interface MovCustoIn {
   valorTotal: Prisma.Decimal | number | string;
 }
 
-export interface CustoMedio {
-  custoMedio: Prisma.Decimal | null;
+/** Base do custo médio: somas das entradas valorizadas do produto no sítio. */
+export interface BaseCusto {
   quantidade: Prisma.Decimal;
   valor: Prisma.Decimal;
 }
 
+export interface CustoMedio extends BaseCusto {
+  /** Só para exibição (4 casas). Saídas usam valorSaidaPreciso sobre a base. */
+  custoMedio: Prisma.Decimal | null;
+}
+
+/**
+ * Decide se um movimento compõe a base do custo médio.
+ *
+ * ENTRADA e AJUSTE seguem a mesma regra: quantidade > 0 E valorTotal > 0.
+ * Uma entrada sem valor (ex.: inventário inicial lançado sem custo) diluiria a
+ * média silenciosamente — o saldo físico cresce, mas o preço de toda saída
+ * futura cai. Como o objetivo é não diluir por lançamento incompleto, todas as
+ * origens de ENTRADA são tratadas como o AJUSTE. Isso inclui a bonificação com
+ * valor 0: em tese é custo real zero (deveria zerar a média junto com a
+ * quantidade recebida), mas se esse for um caso real de negócio ele precisa de
+ * modelagem própria (ex.: valorizar a bonificação pelo custo médio ou lançar a
+ * contrapartida como doação), não de uma ENTRADA sem valor — fora de escopo aqui.
+ */
 export function entraNoCustoMedio(m: MovCustoIn): boolean {
   if (m.status !== "CONFIRMADO" || m.reversaoDeId != null) return false;
-  if (m.tipo === "ENTRADA") return (ORIGENS_CUSTO_MEDIO as readonly string[]).includes(m.origem);
-  if (m.tipo === "AJUSTE") return new Prisma.Decimal(m.quantidade).greaterThan(0) && new Prisma.Decimal(m.valorTotal).greaterThan(0);
+  const valorizada = () => new Prisma.Decimal(m.quantidade).greaterThan(0) && new Prisma.Decimal(m.valorTotal).greaterThan(0);
+  if (m.tipo === "ENTRADA") return (ORIGENS_CUSTO_MEDIO as readonly string[]).includes(m.origem) && valorizada();
+  if (m.tipo === "AJUSTE") return valorizada();
   return false;
+}
+
+/** custoMedio (exibição) a partir da base; null quando não há quantidade. */
+export function custoMedioDaBase(base: BaseCusto): Prisma.Decimal | null {
+  // Mesma precisão da coluna MovimentoEstoque.custoUnitario (14,4).
+  return base.quantidade.greaterThan(0) ? base.valor.div(base.quantidade).toDecimalPlaces(4) : null;
 }
 
 export function custoMedioProduto(movimentos: MovCustoIn[]): CustoMedio {
@@ -76,13 +107,33 @@ export function custoMedioProduto(movimentos: MovCustoIn[]): CustoMedio {
     quantidade = quantidade.plus(m.quantidade);
     valor = valor.plus(m.valorTotal);
   }
-  // Custo unitário na mesma precisão da coluna MovimentoEstoque.custoUnitario (14,4).
-  const custoMedio = quantidade.greaterThan(0) ? valor.div(quantidade).toDecimalPlaces(4) : null;
-  return { custoMedio, quantidade, valor };
+  return { custoMedio: custoMedioDaBase({ quantidade, valor }), quantidade, valor };
 }
 
-/** Valor de uma saída pelo custo médio: quantidade × custo, 2 casas; sem custo → 0. */
-export function valorSaida(quantidade: Prisma.Decimal | number, custoMedio: Prisma.Decimal | null): { custoUnitario: Prisma.Decimal; valorTotal: Prisma.Decimal } {
-  const custoUnitario = custoMedio ?? new Prisma.Decimal(0);
-  return { custoUnitario, valorTotal: new Prisma.Decimal(quantidade).mul(custoUnitario).toDecimalPlaces(2) };
+export interface ValorSaidaIn {
+  quantidadeSaida: Prisma.Decimal | number | string;
+  /** Σ quantidade da base; 0 (ou base ausente) → saída sem custo. */
+  quantidadeBase: Prisma.Decimal | number | string;
+  valorBase: Prisma.Decimal | number | string;
+}
+
+/**
+ * Valor de uma saída pelo custo médio, sem arredondamento intermediário:
+ * valorTotal = quantidadeSaida × valorBase ÷ quantidadeBase, 2 casas só no fim.
+ * custoUnitario = valorTotal ÷ quantidadeSaida (4 casas) — apenas para gravar/
+ * exibir no movimento; não deve alimentar nenhum outro cálculo.
+ * Sem base (quantidadeBase ≤ 0) → 0/0: a baixa física vale, o custo é desconhecido.
+ */
+export function valorSaidaPreciso({ quantidadeSaida, quantidadeBase, valorBase }: ValorSaidaIn): { custoUnitario: Prisma.Decimal; valorTotal: Prisma.Decimal } {
+  const qtdSaida = new Prisma.Decimal(quantidadeSaida);
+  const qtdBase = new Prisma.Decimal(quantidadeBase);
+  if (!qtdBase.greaterThan(0)) return { custoUnitario: new Prisma.Decimal(0), valorTotal: new Prisma.Decimal(0) };
+  const valorTotal = qtdSaida.mul(valorBase).div(qtdBase).toDecimalPlaces(2);
+  const custoUnitario = qtdSaida.isZero() ? new Prisma.Decimal(0) : valorTotal.div(qtdSaida).toDecimalPlaces(4);
+  return { custoUnitario, valorTotal };
+}
+
+/** Atalho: valor da saída a partir de uma base opcional (null → 0/0). */
+export function valorSaidaDaBase(quantidadeSaida: Prisma.Decimal | number | string, base: BaseCusto | null | undefined) {
+  return valorSaidaPreciso({ quantidadeSaida, quantidadeBase: base?.quantidade ?? 0, valorBase: base?.valor ?? 0 });
 }

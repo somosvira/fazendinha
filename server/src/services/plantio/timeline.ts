@@ -5,8 +5,8 @@ import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
 import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx, obterCustoMedio } from "../estoque/estoque.js";
-import { valorSaida } from "../estoque/estoque.calc.js";
+import { estornarMovimentoTx, obterBaseCusto } from "../estoque/estoque.js";
+import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
@@ -209,7 +209,7 @@ async function planejarMovimento(
   });
   const quantidade = new Prisma.Decimal(plano.quantidade);
   // Custo da saída = custo médio ponderado das entradas do produto no sítio.
-  const { custoUnitario, valorTotal } = valorSaida(quantidade, await obterCustoMedio(tx, produto.id, propriedadeId));
+  const { custoUnitario, valorTotal } = valorSaidaDaBase(quantidade, await obterBaseCusto(tx, produto.id, propriedadeId));
   return {
     produto,
     plano: {

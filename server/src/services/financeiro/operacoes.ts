@@ -2,8 +2,8 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
-import { obterCustosMedios } from "../estoque/estoque.js";
-import { valorSaida } from "../estoque/estoque.calc.js";
+import { obterBasesCusto } from "../estoque/estoque.js";
+import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
@@ -187,11 +187,11 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
       // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
       const custosSaida = tipoMovimento === "SAIDA"
-        ? await obterCustosMedios(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
+        ? await obterBasesCusto(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
         : null;
       for (const item of itensEstoque) {
         const valores = custosSaida
-          ? valorSaida(item.quantidade, custosSaida.get(item.produtoId!) ?? null)
+          ? valorSaidaDaBase(item.quantidade, custosSaida.get(item.produtoId!))
           : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
         await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,

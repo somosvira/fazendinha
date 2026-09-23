@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import { Prisma, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, custoVacaDia, custoMedioProduto, ORIGENS_CUSTO_MEDIO, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, custoVacaDia, custoMedioDaBase, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
@@ -66,37 +66,60 @@ async function filtroSitioCusto(propriedadeId: number | null): Promise<Prisma.Mo
 }
 
 /**
- * Custo médio ponderado por produto num sítio, em uma única query. Produtos sem
- * base valorizada ficam fora do mapa (o chamador trata como null).
+ * Base do custo médio (Σ quantidade, Σ valor das entradas valorizadas) por
+ * produto num sítio, agregada no banco em um único groupBy. Produtos sem base
+ * valorizada ficam fora do mapa (o chamador trata como sem custo).
+ *
+ * O `where` espelha `entraNoCustoMedio` (estoque.calc.ts): CONFIRMADO, sem
+ * reversaoDeId, quantidade > 0 e valorTotal > 0, e tipo ENTRADA de uma origem
+ * de ORIGENS_CUSTO_MEDIO ou tipo AJUSTE. Como ENTRADA e AJUSTE hoje exigem as
+ * mesmas condições de quantidade/valor, a diferença por tipo cabe num único OR
+ * e um groupBy basta (sem somar dois resultados em memória). Nenhuma SAIDA nem
+ * linha individual de movimento sai do banco.
  */
-export async function obterCustosMedios(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, Prisma.Decimal>> {
+export async function obterBasesCusto(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, BaseCusto>> {
   const ids = [...new Set(produtoIds)];
-  const resultado = new Map<number, Prisma.Decimal>();
+  const resultado = new Map<number, BaseCusto>();
   if (ids.length === 0) return resultado;
-  const movimentos = await db.movimentoEstoque.findMany({
+  const grupos = await db.movimentoEstoque.groupBy({
+    by: ["produtoId"],
     where: {
       produtoId: { in: ids },
       status: "CONFIRMADO",
       reversaoDeId: null,
+      quantidade: { gt: 0 },
+      valorTotal: { gt: 0 },
       AND: [
         await filtroSitioCusto(propriedadeId),
         { OR: [
           { tipo: "ENTRADA", origem: { in: [...ORIGENS_CUSTO_MEDIO] } },
-          { tipo: "AJUSTE", quantidade: { gt: 0 }, valorTotal: { gt: 0 } },
+          { tipo: "AJUSTE" },
         ] },
       ],
     },
-    select: { produtoId: true, tipo: true, origem: true, status: true, reversaoDeId: true, quantidade: true, valorTotal: true },
+    _sum: { quantidade: true, valorTotal: true },
   });
-  const porProduto = new Map<number, typeof movimentos>();
-  for (const m of movimentos) {
-    const lista = porProduto.get(m.produtoId) ?? [];
-    lista.push(m);
-    porProduto.set(m.produtoId, lista);
+  for (const g of grupos) {
+    const quantidade = g._sum.quantidade ?? new Prisma.Decimal(0);
+    const valor = g._sum.valorTotal ?? new Prisma.Decimal(0);
+    if (quantidade.greaterThan(0)) resultado.set(g.produtoId, { quantidade, valor });
   }
-  for (const [produtoId, lista] of porProduto) {
-    const { custoMedio } = custoMedioProduto(lista);
-    if (custoMedio != null) resultado.set(produtoId, custoMedio);
+  return resultado;
+}
+
+export async function obterBaseCusto(db: DbCusto, produtoId: number, propriedadeId: number | null): Promise<BaseCusto | null> {
+  return (await obterBasesCusto(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
+}
+
+/**
+ * Custo médio ponderado (4 casas) por produto num sítio — só para EXIBIÇÃO.
+ * Para valorizar uma saída use obterBasesCusto + valorSaidaPreciso.
+ */
+export async function obterCustosMedios(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, Prisma.Decimal>> {
+  const resultado = new Map<number, Prisma.Decimal>();
+  for (const [produtoId, base] of await obterBasesCusto(db, produtoIds, propriedadeId)) {
+    const custo = custoMedioDaBase(base);
+    if (custo != null) resultado.set(produtoId, custo);
   }
   return resultado;
 }
@@ -206,10 +229,12 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
     if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new EstoqueError("NAO_ENCONTRADO", "centro de custo não encontrado");
     const centroCustoId = resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: input.centroCustoId });
-    // Sem custo informado, o ajuste é valorizado pelo custo médio do sítio.
-    const custo = input.custoUnitario != null ? new Prisma.Decimal(input.custoUnitario) : (await obterCustoMedio(tx, produto.id, propriedadeId)) ?? new Prisma.Decimal(0);
-    // Valor do ajuste físico, calculado sem arredondamento intermediário em float.
-    const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
+    // Sem custo informado, o ajuste é valorizado pela base do custo médio do sítio
+    // (quantidade × Σvalor ÷ Σquantidade, arredondado só no fim). Com custo
+    // informado, valor = quantidade × custo, sem arredondamento intermediário.
+    const { custoUnitario: custo, valorTotal } = input.custoUnitario != null
+      ? { custoUnitario: new Prisma.Decimal(input.custoUnitario), valorTotal: new Prisma.Decimal(input.quantidade).mul(input.custoUnitario).toDecimalPlaces(2) }
+      : valorSaidaDaBase(input.quantidade, await obterBaseCusto(tx, produto.id, propriedadeId));
     const data = new Date(input.data);
     if (input.tipo !== "AJUSTE") {
       throw new EstoqueError("ORIGEM_AUTOMATICA", "Entradas e saídas devem nascer de uma operação financeira ou de um evento operacional; aqui só é permitido ajuste justificado de inventário");

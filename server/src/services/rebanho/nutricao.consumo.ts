@@ -1,8 +1,8 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, valorSaida, type MovIn } from "../estoque/estoque.calc.js";
-import { obterCustosMedios } from "../estoque/estoque.js";
+import { saldoProduto, valorSaidaDaBase, type MovIn } from "../estoque/estoque.calc.js";
+import { obterBasesCusto } from "../estoque/estoque.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
@@ -65,11 +65,11 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
   }
 
   // Custo das saídas = custo médio ponderado das entradas no sítio do lote.
-  const custos = await obterCustosMedios(prisma, produtoIds, grupo.propriedadeId ?? (await propriedadePrincipalId()));
+  const custos = await obterBasesCusto(prisma, produtoIds, grupo.propriedadeId ?? (await propriedadePrincipalId()));
 
   const linhas = itens.map((it, idx) => {
     const quantidade = linhasBase[idx].quantidade;
-    const { custoUnitario: custoDecimal, valorTotal } = valorSaida(quantidade, custos.get(it.produtoId) ?? null);
+    const { custoUnitario: custoDecimal, valorTotal } = valorSaidaDaBase(quantidade, custos.get(it.produtoId));
     const custoUnitario = custoDecimal.toNumber();
     const custoTotal = valorTotal.toNumber();
     const saldoAtual = saldoPorProduto.get(it.produtoId) ?? 0;
@@ -142,8 +142,11 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
       let custoTotal = new Prisma.Decimal(0);
       for (const l of prev.linhas) {
         if (l.quantidade <= 0) continue; // 0 cabeças/dias → nada a baixar
-        // l.custoUnitario veio do custo médio (≤ 4 casas) — reconverter é exato.
-        const { custoUnitario, valorTotal } = valorSaida(l.quantidade, new Prisma.Decimal(l.custoUnitario));
+        // Valores já calculados na previsão pela base do custo médio (valorSaidaPreciso):
+        // custoTotal tem 2 casas e custoUnitario 4 — reconverter de number é exato.
+        // Não recalcular valor a partir do custoUnitario arredondado.
+        const custoUnitario = new Prisma.Decimal(l.custoUnitario);
+        const valorTotal = new Prisma.Decimal(l.custoTotal);
         custoTotal = custoTotal.plus(valorTotal);
         await tx.movimentoEstoque.create({
           data: {

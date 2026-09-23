@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   movimentoUpdate: vi.fn(),
   movimentoDelete: vi.fn(),
   movimentoFindMany: vi.fn(),
+  movimentoGroupBy: vi.fn(),
   movimentoFindUnique: vi.fn(),
   movimentoFindFirst: vi.fn(),
   auditCreate: vi.fn(),
@@ -46,10 +47,8 @@ import { Prisma } from "@prisma/client";
 import { registrarSanidade, editarSanidade, excluirSanidade } from "./eventos-sanidade.js";
 
 const D = (v: number) => new Prisma.Decimal(v);
-const compras = [
-  { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(10), valorTotal: D(50) },
-  { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(10), valorTotal: D(70) },
-];
+// Base do custo médio agregada no banco: compras 10×5 + 10×7 → 20 / R$ 120 (médio 6).
+const basesCusto = [{ produtoId: 3, _sum: { quantidade: D(20), valorTotal: D(120) } }];
 const movAnterior = {
   id: 77, produtoId: 3, tipo: "SAIDA", origem: "SANIDADE", status: "CONFIRMADO", data: new Date("2026-02-05"),
   quantidade: D(2), custoUnitario: D(5), valorTotal: D(10), propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null,
@@ -61,7 +60,7 @@ beforeEach(() => {
     fn({
       movimentoEstoque: {
         create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete,
-        findMany: mocks.movimentoFindMany, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst,
+        findMany: mocks.movimentoFindMany, groupBy: mocks.movimentoGroupBy, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst,
       },
       eventoSanitario: { create: mocks.eventoCreate, update: mocks.eventoUpdate, delete: mocks.eventoDelete },
       periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
@@ -74,7 +73,8 @@ beforeEach(() => {
   mocks.exameQuartoFindMany.mockResolvedValue([]);
   mocks.eventoFindMany.mockResolvedValue([]);
   mocks.resumoUpsert.mockResolvedValue({});
-  mocks.movimentoFindMany.mockResolvedValue(compras);
+  mocks.movimentoFindMany.mockResolvedValue([]);
+  mocks.movimentoGroupBy.mockResolvedValue(basesCusto);
   mocks.movimentoFindUnique.mockResolvedValue(movAnterior);
   mocks.movimentoFindFirst.mockResolvedValue(movAnterior);
   mocks.movimentoCreate.mockResolvedValue({ id: 90 });
