@@ -45,7 +45,7 @@ beforeEach(async () => {
   pid = (await db.propriedade.create({ data: { nome: `QA propriedade ${serial}` } })).id;
   accountId = (await db.contaFinanceira.create({ data: { nome: "Banco QA", tipo: "BANCO", propriedadeId: pid, saldoAbertura: 1000, dataSaldoAbertura: data } })).id;
   partnerId = (await db.parceiro.create({ data: { nome: `Parceiro ${serial}`, papeis: { create: [{ papel: "FORNECEDOR" }, { papel: "CLIENTE" }] } } })).id;
-  productId = (await db.produto.create({ data: { nome: `Produto ${serial}`, unidade: "kg" } })).id;
+  productId = (await db.produto.create({ data: { nome: `Produto ${serial}`, unidade: "KG" } })).id;
   userId = (await db.usuario.create({ data: { nome: "QA", email: `qa${serial}@example.test`, papel: "gestor", abas: [], flags: [] } })).id;
 });
 afterAll(async () => {
@@ -295,7 +295,7 @@ describe("categorias por item e relatórios", () => {
     const vacina = await db.categoria.create({ data: { nome: `Vacinas ${serial}`, classificacao: "INVESTIMENTO" } });
     const centro = await db.centroCusto.create({ data: { nome: `Pecuária ${serial}` } });
     await db.produto.update({ where: { id: productId }, data: { categoriaId: silagem.id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
-    const outro = await db.produto.create({ data: { nome: `Vacina ${serial}`, unidade: "un", categoriaId: vacina.id } });
+    const outro = await db.produto.create({ data: { nome: `Vacina ${serial}`, unidade: "UN", categoriaId: vacina.id } });
     const op = await ops.criarOperacao({ ...input(), valorTotal: 1000, centroCustoId: centro.id,
       itens: [{ produtoId: productId, descricao: "Silagem", quantidade: 1, unidade: "kg", valorUnitario: 800, estocavel: true }, { produtoId: outro.id, descricao: "Vacina", quantidade: 1, unidade: "un", valorUnitario: 200, estocavel: true }],
       financeiro: { condicao: "A_PRAZO", parcelas: [{ valor: 500, dataVencimento: new Date("2026-10-01") }, { valor: 500, dataVencimento: new Date("2026-11-01") }] },
@@ -365,7 +365,7 @@ describe("categorias por item e relatórios", () => {
 
     // Caso positivo de centroCustoId: 0 — item estocável cujo produto tem 2 centros
     // fica sem centro efetivo (nem operação nem item definem um), então cai em "0".
-    const produtoDoisCentros = await db.produto.create({ data: { nome: `Sem centro efetivo ${serial}`, unidade: "un", centrosCusto: { create: [{ centroCustoId: x.id }, { centroCustoId: y.id }] } } });
+    const produtoDoisCentros = await db.produto.create({ data: { nome: `Sem centro efetivo ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: x.id }, { centroCustoId: y.id }] } } });
     const semCentro = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_ESTOQUE"), valorTotal: 150, centroCustoId: undefined,
       itens: [{ produtoId: produtoDoisCentros.id, descricao: "Sem centro", quantidade: 1, unidade: "un", valorUnitario: 150, estocavel: true }],
     });
@@ -396,8 +396,8 @@ describe("categorias por item e relatórios", () => {
 
   it("produto com 1 centro transmite ao item; com 2 centros o item fica sem centro; null explícito ignora o produto", async () => {
     const [a, b] = await Promise.all(["A", "B"].map((nome) => db.centroCusto.create({ data: { nome: `Centro ${nome} ${serial}` } })));
-    const umCentro = await db.produto.create({ data: { nome: `Um centro ${serial}`, unidade: "un", centrosCusto: { create: [{ centroCustoId: a.id }] } } });
-    const doisCentros = await db.produto.create({ data: { nome: `Dois centros ${serial}`, unidade: "un", centrosCusto: { create: [{ centroCustoId: a.id }, { centroCustoId: b.id }] } } });
+    const umCentro = await db.produto.create({ data: { nome: `Um centro ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: a.id }] } } });
+    const doisCentros = await db.produto.create({ data: { nome: `Dois centros ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: a.id }, { centroCustoId: b.id }] } } });
     const op = await ops.criarOperacao({ ...input("A_VISTA"), valorTotal: 400, centroCustoId: b.id, itens: [
       { produtoId: umCentro.id, descricao: "Um", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: true },
       { produtoId: doisCentros.id, descricao: "Dois", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: true },
