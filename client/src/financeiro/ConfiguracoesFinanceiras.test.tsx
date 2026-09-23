@@ -54,10 +54,10 @@ afterEach(cleanup);
 async function montar(aba: "contas" | "parceiros" | "produtos" | "categorias" | "centros" = "contas") {
   render(<ConfiguracoesFinanceiras />);
   await screen.findAllByText("Banco principal");
-  if (aba === "parceiros") fireEvent.click(screen.getByRole("button", { name: /Clientes e fornecedores/ }));
-  if (aba === "produtos") fireEvent.click(screen.getByRole("button", { name: /^Produtos$/ }));
-  if (aba === "categorias") fireEvent.click(screen.getByRole("button", { name: /^Categorias$/ }));
-  if (aba === "centros") fireEvent.click(screen.getByRole("button", { name: /Centros de custo/ }));
+  if (aba === "parceiros") fireEvent.click(screen.getByRole("tab", { name: /Clientes e fornecedores/ }));
+  if (aba === "produtos") fireEvent.click(screen.getByRole("tab", { name: /^Produtos$/ }));
+  if (aba === "categorias") fireEvent.click(screen.getByRole("tab", { name: /^Categorias$/ }));
+  if (aba === "centros") fireEvent.click(screen.getByRole("tab", { name: /Centros de custo/ }));
 }
 
 async function escolherSelect(painel: HTMLElement, rotulo: string, opcao: string) {
@@ -158,17 +158,17 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     await waitFor(() => { expect(saldo.selectionStart).toBe(0); expect(saldo.selectionEnd).toBe(saldo.value.length); });
   });
 
-  it("reordena contas pelas setas da listagem", async () => {
-    vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({
-      ...config,
-      contas: [{ ...config.contas[0], ordem: 0 }, { ...config.contas[1], ativo: true, ordem: 1 }],
-    });
+  it("ações da linha têm dica no hover e não há setas de reordenar", async () => {
     await montar();
-    fireEvent.click(primeiro("button", "Mover Gaveta para cima"));
-    await waitFor(() => {
-      expect(atualizarConta).toHaveBeenCalledWith(2, { ordem: 0 });
-      expect(atualizarConta).toHaveBeenCalledWith(1, { ordem: 1 });
-    });
+    expect((primeiro("button", "Editar Banco principal") as HTMLButtonElement).title).toBe("Editar");
+    expect((primeiro("button", "Desativar Banco principal") as HTMLButtonElement).title).toBe("Desativar");
+    expect(screen.queryByRole("button", { name: /Mover .* para (cima|baixo)/ })).toBeNull();
+  });
+
+  it("abas são um tablist com a aba ativa marcada", async () => {
+    await montar("categorias");
+    expect(screen.getByRole("tab", { name: /^Categorias$/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: /Contas financeiras/ }).getAttribute("aria-selected")).toBe("false");
   });
 
   it("editar carrega os valores atuais, trava abertura com movimentos e envia só o que mudou", async () => {
@@ -255,19 +255,19 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
   it("filtra produtos por centro de custo", async () => {
     await montar("produtos");
     expect(screen.getByRole("table", { name: "Produtos" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Filtrar por centro de custo"), { target: { value: "SEM" } });
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Sem centro");
     expect(screen.queryByText("Ração 22%")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Filtrar por centro de custo"), { target: { value: "20" } });
+    await escolherSelect(document.body, "Filtrar por centro de custo", "Atividade leiteira");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
   });
 
   it("filtra produtos pelo uso da categoria", async () => {
     await montar("produtos");
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "usoSanitario" } });
+    await escolherSelect(document.body, "Filtrar por uso", "Uso sanitário");
     expect(screen.queryByText("Ração 22%")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "usoNutricional" } });
+    await escolherSelect(document.body, "Filtrar por uso", "Uso nutricional");
     expect(screen.getAllByText("Ração 22%").length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText("Filtrar por uso"), { target: { value: "SEM" } });
+    await escolherSelect(document.body, "Filtrar por uso", "Sem uso específico");
     expect(screen.queryByText("Ração 22%")).toBeNull();
   });
 });
