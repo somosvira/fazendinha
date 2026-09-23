@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
@@ -26,9 +26,9 @@ function montar() {
 }
 
 describe("FormOperacao", () => {
-  it("não oferece ajuste de estoque como nova operação", () => {
+  it("oferece ajuste de estoque como tipo de operação", () => {
     montar();
-    expect(screen.queryByRole("option", { name: "Ajuste de estoque" })).toBeNull();
+    expect(screen.getByRole("option", { name: "Ajuste de estoque" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Compra para estoque" })).toBeTruthy();
   });
 
@@ -800,5 +800,160 @@ describe("estocável é decidido pelo tipo da operação, não pelo produto", ()
 
   it("COMPRA_CONSUMO_DIRETO com o mesmo produto → item não estocável", async () => {
     expect(await itemEnviado("COMPRA_CONSUMO_DIRETO")).toMatchObject({ produtoId: 1, estocavel: false });
+  });
+});
+
+describe("tipo Ajuste de estoque", () => {
+  const MSG_CONFLITO = "O estoque mudou desde que você abriu esta tela. Atualize o saldo e confira a diferença.";
+  const saldo = (saldoAtual: number) => [{ produtoId: 1, nome: "Ração", categoria: null, unidade: "KG", centrosCusto: [], saldo: saldoAtual, custoMedio: 2, valor: 2 * saldoAtual, minimoEstoque: null, abaixoMinimo: false }];
+  const resposta = (ok: boolean, corpo: unknown, status = ok ? 200 : 400) => ({ ok, status, json: async () => corpo });
+
+  function abrir({ saldos = [saldo(1)], ajuste = resposta(true, { id: 9, operacaoId: 33, saldoAnterior: 1, quantidadeContada: 1.005, diferenca: 0.005 }), produtoInicial }: { saldos?: ReturnType<typeof saldo>[]; ajuste?: ReturnType<typeof resposta>; produtoInicial?: number } = {}) {
+    let leitura = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === "/api/estoque/saldos") return resposta(true, saldos[Math.min(leitura++, saldos.length - 1)]);
+      if (url === "/api/estoque/ajustes") return ajuste;
+      return resposta(true, {});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const onSalvo = vi.fn();
+    render(<FormOperacao config={{ ...config, centrosCusto: [{ id: 5, nome: "Pecuária", ativo: true, ordem: 0 }], produtos: [{ ...config.produtos[0], centroCustoIds: [5] }] }} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={produtoInicial} onSalvo={onSalvo} />);
+    return { fetchMock, onSalvo };
+  }
+  // jsdom não implementa scrollIntoView (usado ao destacar o campo inválido).
+  const scrollOriginal = HTMLElement.prototype.scrollIntoView;
+  beforeEach(() => { HTMLElement.prototype.scrollIntoView = vi.fn(); });
+  afterEach(() => { HTMLElement.prototype.scrollIntoView = scrollOriginal; });
+  const chamadasAjuste = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/ajustes");
+  const confirmar = () => screen.getByRole("button", { name: "Confirmar ajuste" }) as HTMLButtonElement;
+  async function escolherProduto() {
+    const select = await screen.findByLabelText("Produto");
+    await waitFor(() => expect(screen.getByRole("option", { name: "Ração" })).toBeTruthy());
+    fireEvent.change(select, { target: { value: "1" } });
+  }
+
+  it("troca o formulário: sem parceiro, conta, parcelas, data e itens", async () => {
+    abrir();
+    await escolherProduto();
+    expect(screen.queryByLabelText("Data")).toBeNull();
+    expect(screen.queryByLabelText("Conta financeira")).toBeNull();
+    expect(screen.queryByLabelText("Condição financeira")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Produto do item 1" })).toBeNull();
+    expect(screen.getByText("Sem movimentação financeira")).toBeTruthy();
+    expect(screen.getByLabelText("Justificativa do ajuste")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Centro de custo" })).toBeTruthy();
+  });
+
+  it("mostra o saldo atual do produto e a diferença com sinal", async () => {
+    abrir();
+    await escolherProduto();
+    expect(screen.getByLabelText("Saldo atual").textContent?.replaceAll("\u00a0", " ")).toBe("1 kg");
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1.005" } });
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("+0,005 kg");
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "0" } });
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("-1 kg");
+  });
+
+  it("pré-seleciona o produto do atalho e sugere o centro único do produto", async () => {
+    abrir({ produtoInicial: 1 });
+    await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+    expect(screen.getByLabelText("Saldo atual").textContent).toContain("kg");
+    expect((screen.getByRole("combobox", { name: "Centro de custo" }) as HTMLSelectElement).value).toBe("5");
+  });
+
+  it("quantidade contada igual ao saldo: nenhum ajuste necessário e confirmar desabilitado", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    expect(screen.getAllByText(/Nenhum ajuste necessário/).length).toBeGreaterThan(0);
+    expect(confirmar().disabled).toBe(true);
+    fireEvent.click(confirmar());
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+  });
+
+  it("contada 1,005 contra saldo 1: habilita e envia o ajuste com saldoEsperado e a justificativa", async () => {
+    const { fetchMock, onSalvo } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "1.005" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "  Contagem física de setembro " } });
+    expect(confirmar().disabled).toBe(false);
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(onSalvo).toHaveBeenCalledWith({ id: 33 }));
+    const chamadas = chamadasAjuste(fetchMock);
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0][1]).toMatchObject({ method: "POST" });
+    expect(JSON.parse(String(chamadas[0][1].body))).toEqual({ produtoId: 1, quantidadeContada: 1.005, saldoEsperado: 1, observacao: "Contagem física de setembro", centroCustoId: 5 });
+    // Não passa pelo fluxo de rascunho/operação genérica.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/financeiro/operacoes"))).toBe(false);
+  });
+
+  it("justificativa com menos de 5 caracteres bloqueia o envio e destaca o campo", async () => {
+    const { fetchMock, onSalvo } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "abc" } });
+    fireEvent.click(confirmar());
+    const campo = screen.getByLabelText("Justificativa do ajuste");
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText(/pelo menos 5 caracteres/)).toBeTruthy();
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+    expect(onSalvo).not.toHaveBeenCalled();
+  });
+
+  it("recusa quantidade com mais de 3 casas ou negativa", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    for (const invalido of ["1.0004", "-1"]) {
+      fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: invalido } });
+      fireEvent.click(confirmar());
+      expect(screen.getByLabelText("Quantidade contada").getAttribute("aria-invalid")).toBe("true");
+    }
+    expect(chamadasAjuste(fetchMock)).toHaveLength(0);
+  });
+
+  it("CONFLITO: explica que o estoque mudou e recarrega o saldo para reconferir a diferença", async () => {
+    const { fetchMock, onSalvo } = abrir({ saldos: [saldo(1), saldo(4)], ajuste: resposta(false, { error: "O estoque mudou desde a consulta.", code: "CONFLITO" }, 409) });
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(screen.getByText(MSG_CONFLITO)).toBeTruthy());
+    expect(onSalvo).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByLabelText("Saldo atual").textContent).toContain("4"));
+    expect(screen.getByRole("status", { name: "Diferença do ajuste" }).textContent).toContain("+1 kg");
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/saldos")).toHaveLength(2);
+    // Reconfirmando com o saldo novo, o servidor recebe o saldoEsperado atualizado.
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(chamadasAjuste(fetchMock)).toHaveLength(2));
+    expect(JSON.parse(String(chamadasAjuste(fetchMock)[1][1].body)).saldoEsperado).toBe(4);
+  });
+
+  it("outros erros do servidor aparecem sem recarregar o saldo", async () => {
+    const { fetchMock } = abrir({ ajuste: resposta(false, { error: "período financeiro fechado", code: "MES_FECHADO" }, 409) });
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Quantidade contada"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    fireEvent.click(confirmar());
+    await waitFor(() => expect(screen.getAllByText("período financeiro fechado").length).toBeGreaterThan(0));
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/estoque/saldos")).toHaveLength(1);
+  });
+
+  it("não salva rascunho enquanto o tipo é ajuste", async () => {
+    const { fetchMock } = abrir();
+    await escolherProduto();
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/financeiro/operacoes/rascunho")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+  });
+
+  it("aberto pelo atalho, ignora o conteúdo de um rascunho existente", async () => {
+    const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "1", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
+    expect((screen.getByLabelText("Tipo de operação") as HTMLSelectElement).value).toBe("AJUSTE_ESTOQUE");
+    expect((screen.getByLabelText("Justificativa do ajuste") as HTMLTextAreaElement).value).toBe("");
   });
 });

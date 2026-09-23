@@ -2,12 +2,12 @@ import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState 
 import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
-import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
+import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
-import { obterCustoMedio, obterUltimoPreco, type UltimoPrecoDTO } from "../estoque/api";
+import { listarSaldos, obterCustoMedio, obterUltimoPreco, type SaldoDTO, type UltimoPrecoDTO } from "../estoque/api";
 import { rotuloUnidade } from "../lib/unidades";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
@@ -24,8 +24,14 @@ type EstadoFormulario = {
   geradorParcelas?: { quantidade: string; frequencia: FrequenciaParcelas; primeiroVencimento: string };
 };
 
-const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
-const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
+// AJUSTE_ESTOQUE fica de fora dos dois conjuntos de propósito: ele não tem itens
+// livres — é uma contagem de UM produto (saldo lido × quantidade contada) e vai
+// para POST /estoque/ajustes, não para o fluxo de rascunho/itens das demais.
+const TIPO_AJUSTE = "AJUSTE_ESTOQUE";
+const MSG_CONFLITO_SALDO = "O estoque mudou desde que você abriu esta tela. Atualize o saldo e confira a diferença.";
+const MAX_QTD_AJUSTE = 999999999.999; // mesmo limite do servidor (ajusteContagemSchema)
+const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
+const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
 const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO: "Contrato", RECIBO: "Recibo", COMPROVANTE: "Comprovante", JUSTIFICATIVA: "Justificativa", OUTRO: "Outro" };
@@ -52,6 +58,8 @@ const normalizarPreco = (valor: string | number) => {
 // O cadastro não guarda preço: ao escolher o produto, estas operações sugerem o
 // valor unitário da última compra (venda e produção têm outra base de valor).
 const SUGERE_ULTIMO_PRECO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO"]);
+const fmtQuantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+const fmtDiferenca = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3, signDisplay: "exceptZero" });
 const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 // brl() (financeiro-ui.tsx) sempre arredonda para 2 casas — insuficiente para
 // insumos valorizados por unidade fracionária (ex.: R$ 0,0045/mL). Mostra 2
@@ -73,11 +81,14 @@ function CampoErro({ id, className = "mt-1.5", children }: { id?: string; classN
   return <span id={id} role="alert" className={`flex items-start gap-1.5 text-xs font-semibold text-red-700 ${className}`}><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{children}</span></span>;
 }
 
-export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
-  const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: number; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void }) {
+  // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
+  // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
+  const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
+  const inicial = (!operacaoBase && !atalhoAjuste ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
-  const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? "A_VISTA" : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
+  const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? (tipoInicial && !TIPOS_FINANCEIROS.has(tipoInicial) ? "SEM_EFEITO_FINANCEIRO" : "A_VISTA") : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
   const [tipo, setTipo] = useState(inicial?.tipo ?? operacaoBase?.tipo ?? tipoInicial ?? "COMPRA_ESTOQUE");
   const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
   const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da OP-${String(operacaoBase.id).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
@@ -136,6 +147,42 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
   const [campoInvalido, setCampoInvalido] = useState<string | null>(null);
   const [simulacao, setSimulacao] = useState<{ assinatura: string; resultado: SimulacaoParcelas } | null>(null);
+  // Ajuste de estoque: o saldo lido (`saldos`) é o `saldoEsperado` enviado; se ele
+  // mudar no servidor antes da confirmação, o POST responde CONFLITO.
+  const [ajusteProdutoId, setAjusteProdutoId] = useState(produtoInicial ? String(produtoInicial) : "");
+  const [quantidadeContada, setQuantidadeContada] = useState("");
+  const [saldos, setSaldos] = useState<SaldoDTO[] | null>(null);
+  const [saldosCarregando, setSaldosCarregando] = useState(false);
+  const [saldosErro, setSaldosErro] = useState<string | null>(null);
+  const saldosPedidoRef = useRef(0);
+  const ehAjuste = tipo === TIPO_AJUSTE;
+
+  const carregarSaldos = async () => {
+    const pedido = ++saldosPedidoRef.current;
+    setSaldosCarregando(true); setSaldosErro(null);
+    try {
+      const lista = await listarSaldos();
+      if (pedido === saldosPedidoRef.current) setSaldos(lista);
+    } catch (falha) {
+      if (pedido === saldosPedidoRef.current) setSaldosErro(falha instanceof Error ? falha.message : String(falha));
+    } finally {
+      if (pedido === saldosPedidoRef.current) setSaldosCarregando(false);
+    }
+  };
+  useEffect(() => {
+    if (ehAjuste && saldos === null) void carregarSaldos();
+    // Só ao entrar no tipo Ajuste; recargas seguintes são explícitas ("Atualizar saldo").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ehAjuste]);
+  const saldoProduto = saldos?.find((saldo) => String(saldo.produtoId) === ajusteProdutoId) ?? null;
+  const contadaNumero = quantidadeContada.trim() === "" ? NaN : Number(quantidadeContada);
+  const contadaMilesimos = Math.round(contadaNumero * 1000);
+  // Até 3 casas (o servidor exige múltiplo de 0,001) e dentro do limite.
+  const contadaValida = Number.isFinite(contadaNumero) && contadaNumero >= 0 && contadaNumero <= MAX_QTD_AJUSTE && Math.abs(contadaNumero * 1000 - contadaMilesimos) < 1e-6;
+  const diferencaMilesimos = saldoProduto && contadaValida ? contadaMilesimos - Math.round(saldoProduto.saldo * 1000) : null;
+  const ajusteSemDiferenca = diferencaMilesimos !== null && Math.abs(diferencaMilesimos / 1000) < 0.0005;
+  const unidadeAjuste = saldoProduto ? rotuloUnidade(saldoProduto.unidade) : "";
+  const ajustePronto = !!saldoProduto && contadaValida && !ajusteSemDiferenca && descricao.trim().length >= 5;
 
   const comItens = TIPOS_COM_ITENS.has(tipo);
   const movimentaEstoque = TIPOS_COM_ESTOQUE.has(tipo);
@@ -231,14 +278,18 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   useEffect(() => {
     if (operacaoBase) return;
     if (!iniciouRef.current) { iniciouRef.current = true; return; }
+    // Ajuste de estoque não usa rascunho: o estado dele (produto, contagem, saldo
+    // lido) é efêmero — o saldo lido envelhece e restaurá-lo geraria um
+    // `saldoEsperado` velho. Sem autosave, o rascunho existente fica intocado.
+    if (ehAjuste) return;
     setEstadoSalvamento("ALTERADO");
     const timer = window.setTimeout(() => { void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha))); }, 800);
     return () => window.clearTimeout(timer);
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dadosRascunho, operacaoBase]);
+  }, [dadosRascunho, operacaoBase, ehAjuste]);
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
-  useEffect(() => (operacaoBase ? undefined : marcarEdicaoRascunho()), [operacaoBase]);
+  useEffect(() => (operacaoBase || ehAjuste ? undefined : marcarEdicaoRascunho()), [operacaoBase, ehAjuste]);
 
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => {
     setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
@@ -256,6 +307,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const sugestaoCentro = centrosSugeridos.length === 1 ? centrosSugeridos[0] : "";
   const produtosDivergentes = centrosSugeridos.length > 1;
   useEffect(() => { if (!centroEscolhidoManualmente && comItens) setCentroCustoId(sugestaoCentro); }, [sugestaoCentro, centroEscolhidoManualmente, comItens]);
+  // No ajuste, o produto escolhido sugere seu centro único (mesma regra dos itens).
+  useEffect(() => {
+    if (ehAjuste && !centroEscolhidoManualmente) setCentroCustoId(ajusteProdutoId ? centroUnicoDoProduto(ajusteProdutoId) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ehAjuste, ajusteProdutoId, centroEscolhidoManualmente]);
   // No modo Único, o centro de cada item é sempre ignorado (a operação inteira usa
   // um único centro); mantemos o valor limpo para não vazar no payload enviado.
   const centroEfetivoItem = (item: ItemForm) => porItem ? item.centroCustoId : "";
@@ -327,7 +383,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     setTipo(novoTipo);
     if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
       setParceiroId("");
-      setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
+      if (TIPOS_COM_PARCEIRO.has(novoTipo)) setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
     }
     if (!TIPOS_FINANCEIROS.has(novoTipo)) setCondicao("SEM_EFEITO_FINANCEIRO");
     else if (condicao === "SEM_EFEITO_FINANCEIRO") setCondicao("A_VISTA");
@@ -405,7 +461,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (estocavel) return false;
     return !(centroEfetivoItem(item) || centroCustoId);
   };
-  const podeConfirmar = (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+  const podeConfirmar = ehAjuste ? ajustePronto : (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   // No modo Único não existe select por item — o único jeito de resolver uma
   // pendência de centro de custo (local ou vinda do servidor) é preencher o
@@ -425,6 +481,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // (na ordem em que aparecem na tela) pra rolar e focar nele — em vez de
   // deixar o usuário procurando o que falta preencher.
   const encontrarPrimeiroCampoInvalido = (): { campo: string; elementId: string } | null => {
+    if (ehAjuste) {
+      if (!saldoProduto) return { campo: "ajusteProduto", elementId: "campo-ajusteProduto" };
+      if (!contadaValida) return { campo: "quantidadeContada", elementId: "campo-quantidadeContada" };
+      if (descricao.trim().length < 5) return { campo: "descricao", elementId: "campo-descricao" };
+      return null;
+    }
     if (exigeParceiro && !parceiroSelecionado) return { campo: "parceiroId", elementId: "campo-parceiroId" };
     if (descricao.trim().length < 2) return { campo: "descricao", elementId: "campo-descricao" };
     if (comItens) {
@@ -462,6 +524,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     setCampoInvalido(null);
     setSalvando(true);
     try {
+      if (ehAjuste && saldoProduto) {
+        const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId ? Number(centroCustoId) : undefined });
+        onSalvo({ id: resultado.operacaoId });
+        return;
+      }
       let operacao: Operacao;
       if (operacaoBase) operacao = await criarOperacao(operacaoRascunho);
       else {
@@ -475,6 +542,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       }
       onSalvo(operacao, falhas.length ? `A operação OP-${String(operacao.id).padStart(4, "0")} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) {
+      if (ehAjuste && falha instanceof ApiError && falha.code === "CONFLITO") {
+        // Saldo mudou: recarrega para o usuário reconferir a nova diferença antes de reconfirmar.
+        setErroConfirmacao(MSG_CONFLITO_SALDO);
+        void carregarSaldos();
+        return;
+      }
       const mensagem = falha instanceof Error ? falha.message : String(falha);
       setErroConfirmacao(mensagem);
       setErro(mensagem);
@@ -513,8 +586,21 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
   };
 
+  const campoDescricao = <label className="text-sm font-medium md:col-span-2 xl:col-span-3">{ehAjuste ? "Justificativa do ajuste *" : "Descrição *"}<textarea id="campo-descricao" aria-label={ehAjuste ? "Justificativa do ajuste" : "Descrição"} aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={ehAjuste ? 200 : 240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={ehAjuste ? "Ex.: contagem física do inventário de setembro" : tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">{ehAjuste ? "Informe a justificativa do ajuste (pelo menos 5 caracteres)." : "Descreva a operação (pelo menos 2 caracteres)."}</CampoErro>}</label>;
+  const secaoAjuste = <section>
+    <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Contagem de estoque</h3>
+    <p className="mb-4 max-w-2xl text-xs leading-5 text-ink-3">Informe a quantidade realmente contada. O sistema calcula a diferença contra o saldo atual e registra o ajuste, sem efeito financeiro, na data de hoje.</p>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <label className="text-sm font-medium">Produto *<select id="campo-ajusteProduto" aria-label="Produto" aria-invalid={campoInvalido === "ajusteProduto" || undefined} aria-describedby={campoInvalido === "ajusteProduto" ? "erro-ajusteProduto" : undefined} required disabled={saldosCarregando && saldos === null} className={SELECT + classeCampoErro("ajusteProduto")} value={ajusteProdutoId} onChange={(e) => { setAjusteProdutoId(e.target.value); limparCampoInvalido("ajusteProduto"); }}><option value="">{saldosCarregando && saldos === null ? "Carregando saldos…" : "Selecione"}</option>{saldos?.map((saldo) => <option key={saldo.produtoId} value={saldo.produtoId}>{saldo.nome}</option>)}</select>{campoInvalido === "ajusteProduto" && <CampoErro id="erro-ajusteProduto">Selecione o produto que será contado.</CampoErro>}</label>
+      <div className="text-sm font-medium">Saldo atual<div className="mt-1.5 flex items-center gap-3"><output aria-label="Saldo atual" className="inline-flex min-h-[42px] flex-1 items-center rounded-lg border border-[#e5dfd0] bg-[#f0ede4] px-3 py-2.5 font-normal text-ink">{saldoProduto ? `${fmtQuantidade(saldoProduto.saldo)} ${unidadeAjuste}` : "—"}</output><button type="button" disabled={saldosCarregando} onClick={() => { void carregarSaldos(); }} className="whitespace-nowrap text-xs font-semibold text-[#4d5a47] underline underline-offset-2 disabled:opacity-50">{saldosCarregando ? "Atualizando…" : "Atualizar saldo"}</button></div></div>
+      <label className="text-sm font-medium">Quantidade contada *<div className="mt-1.5 flex"><input id="campo-quantidadeContada" aria-label="Quantidade contada" aria-invalid={campoInvalido === "quantidadeContada" || undefined} aria-describedby={campoInvalido === "quantidadeContada" ? "erro-quantidadeContada" : undefined} required min="0" max={MAX_QTD_AJUSTE} step="0.001" type="number" className={`min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15${classeCampoErro("quantidadeContada")}`} value={quantidadeContada} onChange={(e) => { setQuantidadeContada(e.target.value); limparCampoInvalido("quantidadeContada"); }} /><span aria-hidden className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidadeAjuste || "un"}</span></div>{campoInvalido === "quantidadeContada" && <CampoErro id="erro-quantidadeContada">{quantidadeContada.trim() === "" ? "Informe a quantidade contada." : "Informe um número entre 0 e 999.999.999,999, com até 3 casas decimais."}</CampoErro>}</label>
+    </div>
+    <div role="status" aria-label="Diferença do ajuste" className={`mt-4 rounded-lg border px-4 py-3 text-sm ${ajusteSemDiferenca ? "border-amber-200 bg-amber-50 text-amber-950" : "border-[#e5dfd0] bg-[#faf9f4]"}`}>{diferencaMilesimos === null ? <span className="text-ink-3">Selecione o produto e informe a quantidade contada para ver a diferença.</span> : ajusteSemDiferenca ? <strong>Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual.</strong> : <>Diferença: <strong>{fmtDiferenca(diferencaMilesimos / 1000)} {unidadeAjuste}</strong> <span className="text-ink-3">({diferencaMilesimos > 0 ? "entrada" : "saída"} de ajuste)</span></>}</div>
+    {saldosErro && <CampoErro className="mt-3">{saldosErro}</CampoErro>}
+    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{campoDescricao}</div>
+  </section>;
   return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
@@ -528,20 +614,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{tipo === "AJUSTE_ESTOQUE" && <option value="AJUSTE_ESTOQUE" disabled>Ajuste de estoque — use Estoque</option>}{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["AJUSTE_ESTOQUE", "TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
-            <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>
+            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
+            {!ehAjuste && <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>}
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onChange={(e) => { setParceiroId(e.target.value); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
-            <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea id="campo-descricao" aria-label="Descrição" aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">Descreva a operação (pelo menos 2 caracteres).</CampoErro>}</label>
+            {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
             <label className="flex items-center gap-1.5"><input type="radio" name="modo-centro-custo" checked={!porItem} onChange={() => alterarModoCentro(false)} /> Único para a operação</label>
             <label className="flex items-center gap-1.5"><input type="radio" name="modo-centro-custo" checked={porItem} onChange={() => alterarModoCentro(true)} /> Por item</label>
           </div>}
-          <div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <CampoErro id="erro-categoriaId">Selecione uma categoria ativa.</CampoErro>}</label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">{comItens && porItem ? "Centro padrão (itens sem centro)" : "Centro de custo"}<select id="campo-centroCustoId" aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <CampoErro id="erro-centroCustoId">Selecione um centro de custo ativo.</CampoErro>}</label></div>
+          <div className="grid gap-4 md:grid-cols-2">{!comItens && !ehAjuste && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <CampoErro id="erro-categoriaId">Selecione uma categoria ativa.</CampoErro>}</label>}{!comItens && !ehAjuste && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">{comItens && porItem ? "Centro padrão (itens sem centro)" : "Centro de custo"}<select id="campo-centroCustoId" aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <CampoErro id="erro-centroCustoId">Selecione um centro de custo ativo.</CampoErro>}</label></div>
         </section>
         {comItens && !porItem && produtosDivergentes && <p className="flex flex-wrap items-center gap-3 text-sm text-amber-800">Os produtos pertencem a centros de custo diferentes.<Button type="button" secondary onClick={() => alterarModoCentro(true)}>Separar por item</Button></p>}
         {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
@@ -551,9 +637,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
-        <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
+        {!ehAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
       </div>
-      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 flex flex-wrap gap-6 text-xs"><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">{movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar.</span></p>}</div></aside>
+      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-[#aeb9aa]">Diferença de estoque</div>}{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-6 text-xs"}><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && ajusteSemDiferenca)} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog

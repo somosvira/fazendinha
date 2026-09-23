@@ -89,11 +89,15 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
   if (detalheId != null) return <OperacaoFinanceiraDetalhe operacaoId={detalheId} onVoltar={voltar} onAbrir={abrirDetalhe} onCorrigir={corrigir} podeLancar={podeLancar} />;
   if (loading && !config) return <PaginaCarregando label="Carregando operações" />;
-  const compromissoInicial = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("compromisso");
+  const parametrosUrl = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
+  const compromissoInicial = parametrosUrl.get("compromisso");
+  // Atalho do Estoque: /financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=<id>.
+  const ajusteInicial = !operacaoBase && parametrosUrl.get("tipo") === "AJUSTE_ESTOQUE";
+  const produtoAjusteInicial = ajusteInicial && /^[1-9]\d*$/.test(parametrosUrl.get("produto") ?? "") ? Number(parametrosUrl.get("produto")) : undefined;
   // A chave separa correção de rascunho: trocar de um para o outro remonta o
   // formulário, senão o autosave gravaria os dados da correção no rascunho.
   if (form && config && !podeLancar) return <PaginaFinanceira><PageHeader titulo="Nova operação" descricao="O seu perfil pode consultar operações, mas não pode criar ou corrigir lançamentos." /><ErrorBox erro="Você não tem permissão para lançar operações financeiras." /></PaginaFinanceira>;
-  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
+  if (form && config) return <FormOperacao key={operacaoBase ? `correcao-${operacaoBase.id}` : ajusteInicial ? `ajuste-${produtoAjusteInicial ?? ""}` : "rascunho"} config={config} rascunho={operacaoBase ? null : rascunho} operacaoBase={operacaoBase} condicaoInicial={compromissoInicial ? "A_PRAZO" : undefined} tipoInicial={ajusteInicial ? "AJUSTE_ESTOQUE" : compromissoInicial === "RECEBER" ? "VENDA" : compromissoInicial === "PAGAR" ? "COMPRA_CONSUMO_DIRETO" : undefined} produtoInicial={produtoAjusteInicial} onSalvo={async (operacao, aviso) => { setForm(false); setOperacaoBase(null); await carregar(); if (aviso) setErro(aviso); abrirDetalhe(operacao.id); }} />;
 
   return <PaginaFinanceira>
     <PageHeader titulo="Operações" descricao="Fatos de negócio e seus efeitos financeiros e físicos, preservados em um histórico auditável." acao={podeLancar ? <div className="flex flex-wrap gap-2">{rascunho && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined} />

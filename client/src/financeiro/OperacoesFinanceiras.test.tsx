@@ -14,8 +14,8 @@ vi.mock("./novo-api", () => ({
 }));
 
 vi.mock("./FormOperacao", () => ({
-  FormOperacao: ({ rascunho, operacaoBase }: { rascunho: { versao: number } | null; operacaoBase: unknown }) => (
-    <div data-versao={rascunho?.versao}>{operacaoBase ? "Formulário de correção" : rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>
+  FormOperacao: ({ rascunho, operacaoBase, tipoInicial, produtoInicial }: { rascunho: { versao: number } | null; operacaoBase: unknown; tipoInicial?: string; produtoInicial?: number }) => (
+    <div data-versao={rascunho?.versao}>{tipoInicial === "AJUSTE_ESTOQUE" ? `Formulário de ajuste do produto ${produtoInicial ?? "nenhum"}` : operacaoBase ? "Formulário de correção" : rascunho ? "Formulário com rascunho" : "Formulário novo"}</div>
   ),
 }));
 
@@ -76,6 +76,22 @@ describe("OperacoesFinanceiras — rascunho", () => {
     render(<OperacoesFinanceiras />);
     limparRascunhoAtivo();
     expect(await screen.findByText("Formulário com rascunho")).toBeTruthy();
+  });
+
+  it("o atalho do Estoque abre o ajuste de estoque já com o produto escolhido", async () => {
+    render(<OperacoesFinanceiras />);
+    await screen.findByRole("button", { name: "Continuar operação" });
+
+    act(() => { abrirRotaNovaOperacao({ ajusteEstoqueProdutoId: 7 }); });
+
+    expect(await screen.findByText("Formulário de ajuste do produto 7")).toBeTruthy();
+    expect(window.location.pathname + window.location.search).toBe("/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=7");
+  });
+
+  it("recarregar a URL do ajuste mantém o tipo e o produto", async () => {
+    window.history.replaceState(null, "", "/financeiro/operacoes/nova?tipo=AJUSTE_ESTOQUE&produto=12");
+    render(<OperacoesFinanceiras />);
+    expect(await screen.findByText("Formulário de ajuste do produto 12")).toBeTruthy();
   });
 
   it("o atalho da sidebar troca uma correção em curso pelo rascunho", async () => {

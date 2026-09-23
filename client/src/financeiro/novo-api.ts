@@ -116,6 +116,10 @@ export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
+export type AjusteEstoqueInput = { produtoId: number; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: number | null };
+export type AjusteEstoqueResultado = { id: number; operacaoId: number; saldoAnterior: number; quantidadeContada: number; diferenca: number };
+/** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
+export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
 export const simularParcelasOperacao = (input: unknown) => req<SimulacaoParcelas>("/financeiro/operacoes/simulacao-parcelas", { method: "POST", body: JSON.stringify(input) });
 // As quatro chamadas abaixo publicam o resultado em `rascunhoAtivo`, que alimenta
 // o atalho "Trabalho ativo" da sidebar e a própria tela de operações.
