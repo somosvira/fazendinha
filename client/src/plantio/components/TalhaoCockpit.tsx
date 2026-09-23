@@ -102,7 +102,7 @@ export function TalhaoCockpit({ talhaoId, onVoltar }: { talhaoId: string; onVolt
             <p className={REB_SEC_SUB}>Fenologia, fitossanidade, nutrição e colheita — interpretadas pelo sistema.</p>
             {eventos.length === 0
               ? <RebEmpty>Nenhum evento registrado. Use <b>+ Registrar operação</b> para começar.</RebEmpty>
-              : <Timeline eventos={eventos} />}
+              : <Timeline eventos={eventos} onExcluido={recarregar} />}
           </div>
         </div>
         <div>

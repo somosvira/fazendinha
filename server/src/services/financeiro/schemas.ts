@@ -122,6 +122,9 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 export const itemOperacaoSchema = z.object({
   categoriaId: z.number().int().positive().nullable().optional(),
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
+  // undefined = herda do produto (se ele tem exatamente 1 centro), senão null;
+  // null = explicitamente "herda o centro da operação".
+  centroCustoId: z.number().int().positive().nullable().optional(),
   produtoId: z.number().int().positive().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,

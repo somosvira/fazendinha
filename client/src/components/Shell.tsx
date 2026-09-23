@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { DateRangePicker, DateRange } from "./DateRangePicker";
 
 export type Tab =
-  | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "cadastros"
+  | "dashboard" | "gastos" | "lancar" | "caixinha" | "plano" | "ia" | "relatorio" | "acessos" | "config" | "cadastros" | "estoque"
   | "reb-dashboard" | "reb-animal" | "reb-reproducao" | "reb-acasalamento" | "reb-fiv" | "reb-relatorios" | "reb-sanidade" | "reb-nutricao" | "reb-producao" | "reb-estoque" | "reb-custo" | "reb-carteira" | "reb-sugestoes"
   | "pla-dashboard" | "pla-talhao" | "pla-fenologia" | "pla-fitossanidade" | "pla-nutricao" | "pla-colheita" | "pla-planejamento" | "pla-estoque" | "pla-custo"
   | "cor-dashboard" | "cor-lote" | "cor-pesagem" | "cor-pasto" | "cor-sanidade" | "cor-nutricao" | "cor-comercial" | "cor-custo"

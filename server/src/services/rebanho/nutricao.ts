@@ -14,6 +14,7 @@ export type DietaInput = z.infer<typeof dietaSchema>;
 export const loteSchema = z.object({
   nome: z.string().min(1).max(60),
   dietaId: z.number().int().nullable().optional(),
+  centroCustoId: z.number().int().positive().nullable().optional(),
   animalIds: z.array(z.number().int()).default([]),
 });
 export type LoteInput = z.infer<typeof loteSchema>;
@@ -111,8 +112,9 @@ export async function criarLote(input: LoteInput, propriedadeId: number) {
   return prisma.$transaction(async (tx) => {
     if (await tx.grupo.findFirst({ where: { nome: input.nome, propriedadeId } })) throw new NutricaoError("NOME_DUPLICADO", `lote ${input.nome} já existe`);
     if (input.dietaId != null && !(await tx.dieta.findUnique({ where: { id: input.dietaId } }))) throw new NutricaoError("NAO_ENCONTRADO", "dieta não encontrada");
+    if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new NutricaoError("NAO_ENCONTRADO", "centro de custo não encontrado");
     const animais = await animaisNoEscopo(ids, propriedadeId, tx);
-    const g = await tx.grupo.create({ data: { nome: input.nome, dietaId: input.dietaId ?? null, propriedadeId } });
+    const g = await tx.grupo.create({ data: { nome: input.nome, dietaId: input.dietaId ?? null, centroCustoId: input.centroCustoId ?? null, propriedadeId } });
     for (const animal of animais) await moverAnimal(tx, animal, g.id, input.nome, propriedadeId);
     return obterLoteTx(tx, g.id, propriedadeId);
   });
@@ -126,8 +128,9 @@ export async function editarLote(id: number, input: LoteInput, propriedadeId: nu
     const homonimo = await tx.grupo.findFirst({ where: { nome: input.nome, propriedadeId, id: { not: id } } });
     if (homonimo) throw new NutricaoError("NOME_DUPLICADO", `lote ${input.nome} já existe`);
     if (input.dietaId != null && !(await tx.dieta.findUnique({ where: { id: input.dietaId } }))) throw new NutricaoError("NAO_ENCONTRADO", "dieta não encontrada");
+    if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new NutricaoError("NAO_ENCONTRADO", "centro de custo não encontrado");
     const selecionados = await animaisNoEscopo(novosIds, propriedadeId, tx);
-    await tx.grupo.update({ where: { id }, data: { nome: input.nome, dietaId: input.dietaId ?? null } });
+    await tx.grupo.update({ where: { id }, data: { nome: input.nome, dietaId: input.dietaId ?? null, centroCustoId: input.centroCustoId ?? null } });
     const atuais = await tx.animal.findMany({
       where: { grupoId: id, propriedadeId },
       select: { id: true, propriedadeId: true, grupoId: true, setor: true, grupo: { select: { nome: true } } },
@@ -144,7 +147,7 @@ async function obterLoteTx(tx: Prisma.TransactionClient, id: number, propriedade
   const g = await tx.grupo.findUnique({ where: { id }, include: { dieta: true, animais: { where: { status: "ATIVO", propriedadeId }, orderBy: { numero: "asc" } } } });
   if (!g) throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
   return {
-    id: g.id, nome: g.nome, dietaId: g.dietaId ?? null, dietaNome: g.dieta?.nome ?? null,
+    id: g.id, nome: g.nome, dietaId: g.dietaId ?? null, dietaNome: g.dieta?.nome ?? null, centroCustoId: g.centroCustoId ?? null,
     animais: g.animais.map((a: any) => ({ id: a.id, numero: a.numero, nome: a.nome, categoria: a.categoria })),
   };
 }
@@ -192,7 +195,6 @@ const dietaItemDTO = (i: any) => ({
   unidade: i.unidade as string,
   qtdPorCabecaDia: Number(i.qtdPorCabecaDia),
   custoUnitario: i.produto?.custoUnitario != null ? Number(i.produto.custoUnitario) : null,
-  setor: i.produto?.setor ?? null,
   ordem: i.ordem as number,
 });
 

@@ -4,8 +4,8 @@
 
 import { prisma } from "../../db.js";
 import type { ResumoAnimal } from "@prisma/client";
-import { custoVacaDia as calcularCustoVacaDia } from "./estoque.calc.js";
-import { saidaConsumoConfirmada } from "./estoque.js";
+import { custoVacaDia as calcularCustoVacaDia } from "../estoque/estoque.calc.js";
+import { saidaConsumoConfirmada } from "../estoque/estoque.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
 import { scoreDoResumo } from "./score.calc.js";

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { criarLote, editarLote, excluirLote, obterLote, useAnimaisDisponiveis, useDietas, type LoteDetalheDTO, type LoteDTO } from "../api";
+import { criarLote, editarLote, excluirLote, obterLote, useAnimaisDisponiveis, useDietas, useCentrosCusto, type LoteDetalheDTO, type LoteDTO } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField, REB_FIELD_BOXED } from "@/components/rb/RebField";
@@ -20,10 +20,12 @@ const CAT_LABEL: Record<string, string> = {
 
 export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
   const { data: dietas } = useDietas();
+  const { data: centrosCusto } = useCentrosCusto();
   const { data: animais, loading: carregandoAnimais } = useAnimaisDisponiveis();
   const [detalhe, setDetalhe] = useState<LoteDetalheDTO | null>(null);
   const [nome, setNome] = useState(lote?.nome ?? "");
   const [dietaId, setDietaId] = useState<string>(lote?.dietaId ? String(lote.dietaId) : "");
+  const [centroCustoId, setCentroCustoId] = useState<string>(lote?.centroCustoId ? String(lote.centroCustoId) : "");
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
   const [busca, setBusca] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
       setDetalhe(d);
       setNome(d.nome);
       setDietaId(d.dietaId ? String(d.dietaId) : "");
+      setCentroCustoId(d.centroCustoId ? String(d.centroCustoId) : "");
       setSelecionados(new Set(d.animais.map((a) => a.id)));
     }).catch((e) => setErro(e.message));
   }, [lote]);
@@ -58,7 +61,7 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
     if (!nome.trim()) { setErro("Informe o nome do lote."); return; }
     setSalvando(true); setErro(null);
     try {
-      const payload = { nome: nome.trim(), dietaId: dietaId ? Number(dietaId) : null, animalIds: [...selecionados] };
+      const payload = { nome: nome.trim(), dietaId: dietaId ? Number(dietaId) : null, animalIds: [...selecionados], centroCustoId: centroCustoId ? Number(centroCustoId) : null };
       if (lote) await editarLote(lote.id, payload);
       else await criarLote(payload);
       onSalvo();
@@ -132,6 +135,14 @@ export function LoteForm({ lote, onFechar, onSalvo, onExcluido }: Props) {
             {dietas.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
           </select>
         </RebField>
+
+        <RebField label="Centro de custo">
+          <select className="rb-field-select" value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}>
+            <option value="">— sem centro de custo —</option>
+            {centrosCusto.map((cc) => <option key={cc.id} value={cc.id}>{cc.nome}</option>)}
+          </select>
+        </RebField>
+        <p className={REB_SUB} style={{ margin: "-8px 0 14px" }}>As baixas de dieta e sanidade deste lote vão para este centro.</p>
 
         <RebFieldset style={{ padding: "10px 14px 12px" }}>
           <legend>Animais do lote · {totalSelecionados} selecionado{totalSelecionados === 1 ? "" : "s"}</legend>

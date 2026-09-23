@@ -16,6 +16,13 @@ export function areaDaTab(tab: Tab): AreaId | null {
   return FINANCEIRO.has(tab) ? "financeiro" : null;
 }
 
+/** Áreas que enxergam o menu Estoque (único, filtrado por centro de custo). */
+export const AREAS_ESTOQUE: readonly AreaId[] = ["pecuaria", "agricultura", "financeiro"];
+
+export function temAcessoEstoque(areas: string[] | undefined, dono = false): boolean {
+  return AREAS_ESTOQUE.some((area) => temAcessoArea(areas, area, dono));
+}
+
 export function temAcessoArea(areas: string[] | undefined, area: AreaId, dono = false): boolean {
   // Compatibilidade com sessões gravadas antes da introdução de `areas`.
   if (dono || !areas || areas.includes(area)) return true;

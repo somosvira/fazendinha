@@ -10,11 +10,14 @@ import * as rascunhos from "../services/financeiro/rascunhos.js";
 import { analisarCategorias, analiseCategoriasSchema } from "../services/financeiro/analise-categorias.js";
 import { obterDashboard } from "../services/financeiro/dashboard.js";
 import { categoriaCadastroSchema, centroCustoSchema, contaSchema, estornoSchema, liquidacaoSchema, operacaoSchema, parceiroSchema, patchCategoriaCadastroSchema, patchCentroCustoSchema, patchContaSchema, patchParceiroSchema, rascunhoOperacaoSchema, simulacaoParcelasSchema, tipoDocumentoFinanceiroSchema, transacaoAvulsaSchema, transferenciaSchema } from "../services/financeiro/schemas.js";
+import { patchProdutoSchema, produtoSchema } from "../services/estoque/produtos.schemas.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
-import { prisma } from "../db.js";
 import { getStorage } from "../lib/storage.js";
 import * as cadastros from "../services/financeiro/cadastros-gerenciais.js";
+import * as produtos from "../services/estoque/produtos.js";
 import { exigePermissao } from "../middleware/permissao.js";
+import { prisma } from "../db.js";
+import { obterCentrosAtividade } from "../services/estoque/centros-atividade.js";
 
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
@@ -61,12 +64,26 @@ function validarCadastro<T extends z.ZodTypeAny>(schema: T) {
 export const financeiroRouter = new Hono()
   .get("/financeiro/configuracoes", async (c) => {
     const propriedadeId = await resolverEscopoLeitura(c);
-    const [contasFinanceiras, parceirosLista, gerenciais, produtos] = await Promise.all([
+    const [contasFinanceiras, parceirosLista, gerenciais, produtosCadastro, centrosAtividade] = await Promise.all([
       contas.listarContas(propriedadeId, true), parceiros.listarParceiros(true),
       cadastros.listarCadastrosGerenciais(),
-      prisma.produto.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true, unidade: true, estocavel: true, custoUnitario: true, categoriaId: true, centroCustoId: true } }),
+      produtos.listarProdutosCadastro(),
+      obterCentrosAtividade(prisma),
     ]);
-    return c.json({ contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais, produtos });
+    const produtosAtivos = produtosCadastro.filter((p) => p.ativo);
+    return c.json({
+      contas: contasFinanceiras, parceiros: parceirosLista, ...gerenciais,
+      produtos: produtosAtivos, produtosCadastro,
+      centrosAtividade,
+    });
+  })
+  .post("/financeiro/produtos", exigePermissao("lancar"), validarCadastro(produtoSchema), async (c) => {
+    try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }
+    catch (e) { return falha(c, e); }
+  })
+  .patch("/financeiro/produtos/:id", exigePermissao("lancar"), validarCadastro(patchProdutoSchema), async (c) => {
+    try { return c.json(await produtos.atualizarProduto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); }
+    catch (e) { return falha(c, e); }
   })
   .post("/financeiro/categorias", exigePermissao("lancar"), validarCadastro(categoriaCadastroSchema), async (c) => {
     try { return c.json(await cadastros.criarCategoria(c.req.valid("json"), usuarioId(c)), 201); }

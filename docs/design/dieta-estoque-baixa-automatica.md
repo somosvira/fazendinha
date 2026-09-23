@@ -12,7 +12,7 @@ Hoje a cadeia nutrição→estoque→custo está **meio conectada**:
 
 - `Dieta` (schema `Dieta`) só guarda macros: `pb` (% proteína bruta) e `edMcal` (energia). **Não existe composição** — não dá pra saber quantos kg de milho/farelo/mineral uma dieta consome.
 - `Grupo` (o "lote") já tem `dietaId?`, `animais Animal[]` e `movimentosEstoque MovimentoEstoque[]`. `Animal.grupoId?` liga a cabeça ao lote; `Animal.status` (`ATIVO`/`BAIXADO`) diz quem está ativo.
-- `MovimentoEstoque` já suporta `tipo=SAIDA` com `grupoId`, e o custo de produção **já lê essas saídas**: `calcularCustoVacaDia()` (`server/src/services/rebanho/estoque.ts`) soma `movimentoEstoque` `tipo:"SAIDA"` no período ÷ (vacas × dias), e `agregarCustoProducao()` (`server/src/services/rebanho/custo-producao.ts`) usa esse número.
+- `MovimentoEstoque` já suporta `tipo=SAIDA` com `grupoId`, e o custo de produção **já lê essas saídas**: `calcularCustoVacaDia()` (`server/src/services/estoque/estoque.ts`) soma `movimentoEstoque` `tipo:"SAIDA"` no período ÷ (vacas × dias), e `agregarCustoProducao()` (`server/src/services/rebanho/custo-producao.ts`) usa esse número.
 
 O elo que falta: **ninguém gera a SAIDA de consumo automaticamente**. Hoje ela seria digitada à mão (via `registrarMovimento`). O objetivo é: dada a composição da dieta × cabeças ativas × dias, o sistema calcula o consumo esperado e grava as SAIDAs — sem redigitação, e alimentando o custo/vaca-dia que já existe.
 

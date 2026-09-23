@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  movimentos: vi.fn(), groupBy: vi.fn(), compromissos: vi.fn(), contas: vi.fn(), periodos: vi.fn(), propriedade: vi.fn(),
+  movimentos: vi.fn(), groupBy: vi.fn(), compromissos: vi.fn(), contas: vi.fn(), periodos: vi.fn(), propriedade: vi.fn(), centros: vi.fn(),
 }));
 
 vi.mock("../db.js", () => ({ prisma: {
@@ -11,6 +11,7 @@ vi.mock("../db.js", () => ({ prisma: {
   contaFinanceira: { findMany: mocks.contas },
   periodoFinanceiro: { findMany: mocks.periodos },
   propriedade: { findUnique: mocks.propriedade },
+  centroCusto: { findMany: mocks.centros },
 } }));
 
 import { gerarRelatorioGerencial } from "./relatorio-gerencial.js";
@@ -41,6 +42,7 @@ beforeEach(() => {
   mocks.contas.mockResolvedValue([{ id: 1, nome: "Banco", instituicao: null, saldoAbertura: d("5000") }]);
   mocks.periodos.mockResolvedValue([]);
   mocks.propriedade.mockResolvedValue({ id: 7, nome: "Fazenda Rio Novo" });
+  mocks.centros.mockResolvedValue([{ id: 1, nome: "Pecuária" }, { id: 2, nome: "Agronomia" }]);
 });
 
 const query = { inicio: "2026-09-01", fim: "2026-09-30", regime: "realizado" as const };
@@ -71,6 +73,37 @@ describe("relatório gerencial com filtro de composição", () => {
     expect(porTipo.categorias?.itens.map((c) => c.categoria)).toEqual(["Nutrição", "Benfeitorias"]);
     const semCentro = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [0] });
     expect(semCentro.categorias?.itens).toEqual([{ categoria: "Sem categoria", total: 200, pct: 100 }]);
+  });
+
+  it("centro do item prevalece sobre o da operação; item sem centro herda o da operação", async () => {
+    const mistaPorCentro = {
+      ...compraMista,
+      itens: [
+        { id: 1, valorTotal: d("800"), categoriaId: 3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: 2, centroCustoNome: "Agronomia" },
+        { id: 2, valorTotal: d("500"), categoriaId: 4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+      ],
+    };
+    mocks.movimentos.mockResolvedValue([movimento(100, { id: 10, tipo: "PAGAMENTO", operacao: mistaPorCentro }, "1300")]);
+    const tudo = await gerarRelatorioGerencial(query, 7, semFiltro);
+    expect(tudo.categorias?.centros.map((c) => [c.centro, c.total])).toEqual([["Agronomia", 800], ["Pecuária", 500]]);
+    const agronomia = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [2] });
+    expect(agronomia.categorias?.itens).toEqual([{ categoria: "Nutrição", total: 800, pct: 100 }]);
+    const pecuaria = await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [1] });
+    expect(pecuaria.categorias?.itens).toEqual([{ categoria: "Benfeitorias", total: 500, pct: 100 }]);
+    expect((await gerarRelatorioGerencial(query, 7, { ...semFiltro, centroCustoIds: [0] })).categorias?.itens).toEqual([]);
+  });
+
+  it("centro renomeado depois do snapshot do item não duplica a linha em 'por centro'", async () => {
+    // O item guarda o snapshot antigo "Pecuária" (id 1); o cadastro vivo foi
+    // renomeado para "Bovinocultura" — deve agrupar por id, com o nome vivo.
+    mocks.centros.mockResolvedValue([{ id: 1, nome: "Bovinocultura" }, { id: 2, nome: "Agronomia" }]);
+    const dto = await gerarRelatorioGerencial(query, 7, semFiltro);
+    // Uma única linha para o centro renomeado (não duas: "Pecuária" e
+    // "Bovinocultura"), com o nome vivo; o avulso some centro fica à parte.
+    expect(dto.categorias?.centros).toEqual([
+      { centro: "Bovinocultura", total: 1300, pct: 86.67 },
+      { centro: "(Sem centro de custo)", total: 200, pct: 13.33 },
+    ]);
   });
 
   it("situação da operação não recorta o caixa: avulso e pagamento de operação cancelada seguem no realizado", async () => {

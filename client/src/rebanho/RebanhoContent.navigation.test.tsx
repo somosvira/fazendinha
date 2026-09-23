@@ -18,6 +18,11 @@ describe("RebanhoContent — navegação a partir do cockpit", () => {
     await waitFor(() => {
       expect(screen.queryByRole("button", { name: /Rebanho/ })).toBeNull();
     });
-    expect(screen.getByRole("heading", { name: "Saldos de estoque" })).toBeTruthy();
+    // A aba Estoque só monta o EstoqueContent depois de resolver o centro de
+    // atividade (evita a corrida descrita em EstoqueContent.test.tsx); até lá
+    // mostra o Loader.
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Saldos de estoque" })).toBeTruthy();
+    });
   });
 });

@@ -9,6 +9,7 @@
 
 import { prisma } from "../src/db.js";
 import { talhoes, resumos, lavouras, planosAdubacao, eventos } from "../src/services/plantio/mock.js";
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 // Cultivares resistentes à ferrugem (Hemileia vastatrix) — Embrapa/Procafé.
 const RESISTENTE = /Acauã|Arara|Icatu|Catucaí|Paraíso|Asa Branca/i;
@@ -225,7 +226,7 @@ async function main() {
   // 7) Camada operacional Ideagri (Fatia P3) — Safra + Tarefas (planejado×realizado)
   //    + Apontamentos hora-máquina/hora-homem. Idempotente: upsert da Safra por nome,
   //    e deleteMany das tarefas/apontamentos dessa safra antes de recriar.
-  const centroCustoCafe = await prisma.centroCusto.findFirst({ where: { nome: "Plantio Café" }, select: { id: true } });
+  const centroCustoCafe = await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.CAFE }, select: { id: true } });
   const safra = await prisma.safra.upsert({
     where: { nome: "Safra 2026" },
     update: { dataInicio: new Date("2025-07-01"), dataFim: new Date("2026-06-30"), centroCustoId: centroCustoCafe?.id ?? null },
@@ -321,7 +322,7 @@ async function main() {
   //    movimentos só dos produtos do Plantio (não toca no estoque do rebanho).
   //    Liga ao CentroCusto "Plantio Café" quando existe (mesma ponte contábil
   //    usada pelo seed do rebanho).
-  const ccCafeId = (await prisma.centroCusto.findFirst({ where: { nome: "Plantio Café" }, select: { id: true } }))?.id ?? null;
+  const ccCafeId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.CAFE }, select: { id: true } }))?.id ?? null;
 
   // Data recente fixa para a ENTRADA inicial (mês não fechado — fora do range de fechamentos).
   const dataEntradaInicial = new Date("2026-03-15");
@@ -336,12 +337,11 @@ async function main() {
       minimoEstoque: ins.minimo,
       estocavel: true,
       ativo: true,
-      centroCustoId: ccCafeId,
     };
     const row = await prisma.produto.upsert({
       where: { nome: ins.nome },
-      update: data,
-      create: { nome: ins.nome, ...data },
+      update: { ...data, ...(ccCafeId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: ccCafeId }] } } : {}) },
+      create: { nome: ins.nome, ...data, ...(ccCafeId != null ? { centrosCusto: { create: [{ centroCustoId: ccCafeId }] } } : {}) },
     });
     insumoIds.push(row.id);
   }

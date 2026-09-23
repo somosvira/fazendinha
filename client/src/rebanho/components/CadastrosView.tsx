@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader } from "../../components/Loading";
 import { useProdutos, useFornecedores, editarProduto, editarFornecedor, type ProdutoDTO, type FornecedorDTO, type TipoProduto, type TipoPessoa } from "../api";
-import { ProdutoForm } from "./ProdutoForm";
+import { FormProduto } from "../../financeiro/FormProduto";
 import { FornecedorForm } from "./FornecedorForm";
 import { RebHeader } from "./RebHeader";
 import { RebTable } from "@/components/rb/RebTable";
@@ -86,9 +86,9 @@ function Produtos() {
             <tbody>{data.map((p) => (
               <tr key={p.id}>
                 <td><RebAnm>{p.nome}</RebAnm></td>
-                <td>{LABEL_PRODUTO[p.tipo]}</td>
+                <td>{LABEL_PRODUTO[p.tipo ?? "OUTRO"]}</td>
                 <td>{p.unidade}</td>
-                <td>{p.custoUnitario != null ? money(p.custoUnitario) : "—"}</td>
+                <td>{p.custoUnitario != null ? money(Number(p.custoUnitario)) : "—"}</td>
                 <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(p)}>Editar</RebButton>{" "}
@@ -99,8 +99,8 @@ function Produtos() {
           </RebTable>
         )}
 
-      {novo && <ProdutoForm onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}
-      {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregar(); }} />}
+      {novo && <FormProduto produto={null} onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); recarregar(); }} />}
+      {editando && <FormProduto produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregar(); }} />}
     </>
   );
 }

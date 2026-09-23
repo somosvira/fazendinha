@@ -17,7 +17,7 @@ vi.mock("../../db.js", () => {
     parceiro: { findFirst: mocks.parceiro },
     contaFinanceira: { findFirst: mocks.conta },
     categoria: { findFirst: mocks.categoria },
-    centroCusto: { findFirst: mocks.centro },
+    centroCusto: { findMany: mocks.centro },
     operacao: { create: mocks.operacaoCreate },
     transacaoFinanceira: { create: mocks.transacaoCreate },
   };
@@ -34,7 +34,7 @@ describe("operações financeiras — cadastros ativos", () => {
     mocks.parceiro.mockResolvedValue(null);
     mocks.conta.mockResolvedValue(null);
     mocks.categoria.mockResolvedValue(null);
-    mocks.centro.mockResolvedValue(null);
+    mocks.centro.mockResolvedValue([]);
   });
 
   it("recusa criar operação com parceiro inativo", async () => {

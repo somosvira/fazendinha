@@ -1,6 +1,6 @@
 import { prisma } from "../../db.js";
 import { buildRebanhoDashboard } from "./dashboard-rebanho.js";
-import { listarSaldos } from "./estoque.js";
+import { listarSaldos } from "../estoque/estoque.js";
 import { obterDashboard } from "../financeiro/dashboard.js";
 import { carenciaAtiva } from "./carencia.calc.js";
 import { resumirCockpit, type AlertaResumo, type CockpitDTO } from "./cockpit.calc.js";

@@ -2,8 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ listar: vi.fn(), ajustar: vi.fn(), propriedades: vi.fn() }));
-vi.mock("../api", () => ({ listarSaldos: mocks.listar, ajustarContagem: mocks.ajustar, listarPropriedades: mocks.propriedades }));
-vi.mock("./ProdutoForm", () => ({ ProdutoForm: () => null }));
+vi.mock("../api", () => ({ listarSaldos: mocks.listar, ajustarContagem: mocks.ajustar }));
+vi.mock("../../rebanho/api", () => ({ listarPropriedades: mocks.propriedades }));
+vi.mock("../../financeiro/FormProduto", () => ({ FormProduto: () => null }));
 import { MovimentoForm } from "./MovimentoForm";
 afterEach(cleanup);
 beforeEach(() => { vi.clearAllMocks(); mocks.propriedades.mockResolvedValue([{ id: 1 }]); mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 12 }]); });

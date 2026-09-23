@@ -54,6 +54,7 @@ export interface RelatorioGerencialDTO {
 const iso = (d: Date | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 const dataUtc = (s: string) => new Date(`${s}T00:00:00Z`);
 const toNum = (d: Prisma.Decimal | number) => (typeof d === "number" ? d : d.toNumber());
+const SEM_CENTRO_GERENCIAL = "(Sem centro de custo)";
 
 /** `filtro` recorta receitas, despesas, compromissos, tipos e rastreabilidade.
  * O saldo das contas é sempre integral: saldo filtrado não corresponde a extrato.
@@ -68,7 +69,7 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   const querRealizado = regime !== "previsto";
   const querPrevisto = regime !== "realizado";
 
-  const [movimentos, compromissos, contas, anteriores, fechamentos, propriedade] = await Promise.all([
+  const [movimentos, compromissos, contas, anteriores, fechamentos, propriedade, centrosCusto] = await Promise.all([
     querRealizado ? prisma.movimentoConta.findMany({
       where: { transacao: { ...escopo, data: { gte: de, lte: ate } } },
       include: {
@@ -107,13 +108,29 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     propriedadeId != null
       ? prisma.propriedade.findUnique({ where: { id: propriedadeId }, select: { id: true, nome: true } })
       : Promise.resolve(null),
+    prisma.centroCusto.findMany({ select: { id: true, nome: true } }),
   ]);
+  // Nome vivo por id: o snapshot de um item pode estar desatualizado se o
+  // centro foi renomeado depois — agrupamento (agregarRealizado) é por id,
+  // mas o rótulo exibido precisa ser o nome atual, não o congelado no item.
+  const nomesCentro = new Map(centrosCusto.map((c) => [c.id, c.nome]));
 
-  const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => ({
-    categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
-    centroCusto: { nome: operacao?.centroCusto?.nome ?? "(Sem centro de custo)" },
-
-  });
+  // Base do extrato (por lançamento): centro da operação. As linhas analíticas
+  // abaixo substituem categoria e centro pelos da PARTE rateada (item ?? operação).
+  const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => {
+    const id = operacao?.centroCustoId ?? operacao?.centroCusto?.id ?? null;
+    return {
+      categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
+      centroCusto: { id, nome: id ? nomesCentro.get(id) ?? operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
+    };
+  };
+  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: number | null; centroCustoNome: string | null }) => {
+    const id = parte.centroCustoId ?? null;
+    return {
+      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+      centroCusto: { id, nome: id ? nomesCentro.get(id) ?? parte.centroCustoNome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
+    };
+  };
 
   const linhasRealizadas: LinhaLancamento[] = movimentos.map((movimento) => {
     const { transacao } = movimento;
@@ -163,11 +180,11 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
     return ratearTransacao(movimento.transacao.operacao, movimento.transacao.id, linha.valor * (reversao ? -1 : 1)).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({
       ...linha, valor: parte.valor.toNumber(),
       natureza: reversao ? (linha.natureza === "CREDITO" ? "DEBITO" as const : "CREDITO" as const) : linha.natureza,
-      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+      ...linhaParte(parte),
     }));
   });
   const linhasPrevistasAnaliticas = linhasPrevistas.flatMap((linha, index) => operacaoPassa(filtroCaixa, compromissos[index].operacao)
-    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao } }))
+    ? (ratearCompromissos(compromissos[index].operacao).get(compromissos[index].id) ?? []).filter((parte) => partePassa(filtroCaixa, parte)).map((parte) => ({ ...linha, valor: parte.valor.toNumber(), ...linhaParte(parte) }))
     : []);
   const linhas = [...linhasAnaliticas, ...linhasPrevistasAnaliticas];
   // A auditoria classifica a reversão como evento próprio; não usa o sinal

@@ -25,6 +25,7 @@ import { importarGeneticaLegado, type DadosGeneticaLegado } from "../src/service
 import { importarAcasalamentoLegado, type DadosAcasalamentoLegado } from "../src/services/rebanho/import-acasalamento.js";
 import { importarFivLegado, type DadosFivLegado } from "../src/services/rebanho/import-fiv.js";
 import { semearResultadosGinecologicos, type ResultadoGinecologicoSeed } from "../src/services/rebanho/exame-ginecologico.js";
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 // ---- Contrato do JSON ------------------------------------------------------
 interface ResumoJson {
@@ -448,8 +449,13 @@ async function main() {
   const produtosAplicados = new Set<string>();
   for (const e of dados.eventosSanitarios ?? [])
     if ((e.tipo === "APLICACAO" || e.tipo === "VACINA") && e.produto) produtosAplicados.add(e.produto);
+  const centroLeiteiroId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE }, select: { id: true } }))?.id ?? null;
   for (const nome of produtosAplicados) {
-    await prisma.produto.upsert({ where: { nome }, update: {}, create: { nome, tipo: "MEDICAMENTO" } });
+    await prisma.produto.upsert({
+      where: { nome },
+      update: {},
+      create: { nome, tipo: "MEDICAMENTO", ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}) },
+    });
   }
 
   const emLactacao = resumoRows.filter((r) => r.del != null).length;

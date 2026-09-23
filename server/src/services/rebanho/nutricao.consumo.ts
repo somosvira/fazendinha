@@ -1,10 +1,11 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, type MovIn } from "../estoque/estoque.calc.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
+import { resolverCentroSaida } from "../estoque/centro.calc.js";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -26,7 +27,16 @@ export type ConsumoInput = z.infer<typeof consumoSchema>;
 async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: string, propriedadeId: number | null = null) {
   const grupo = await prisma.grupo.findFirst({
     where: { id: grupoId, ...(propriedadeId != null ? { propriedadeId } : {}) },
-    include: { dieta: { include: { itens: { include: { produto: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] } } } },
+    include: {
+      dieta: {
+        include: {
+          itens: {
+            include: { produto: { include: { centrosCusto: { select: { centroCustoId: true } } } } },
+            orderBy: [{ ordem: "asc" }, { id: "asc" }],
+          },
+        },
+      },
+    },
   });
   if (!grupo) throw new NutricaoError("NAO_ENCONTRADO", "lote não encontrado");
   if (!grupo.dieta) throw new NutricaoError("SEM_DIETA", "lote não tem dieta atribuída — atribua uma dieta antes de fechar o consumo");
@@ -59,6 +69,8 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
     const custoTotal = Math.round(quantidade * custoUnitario * 100) / 100;
     const saldoAtual = saldoPorProduto.get(it.produtoId) ?? 0;
     const saldoApos = Math.round((saldoAtual - quantidade) * 100) / 100;
+    const produtoCentroIds = it.produto.centrosCusto.map((cc) => cc.centroCustoId);
+    const centroCustoId = resolverCentroSaida({ produtoCentroIds, contextoCentroId: grupo.centroCustoId });
     return {
       produtoId: it.produtoId,
       produtoNome: it.produto.nome,
@@ -70,6 +82,7 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
       saldoAtual,
       saldoApos,
       insuficiente: saldoApos < 0,
+      centroCustoId,
     };
   });
 
@@ -138,6 +151,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
             grupoId,
             propriedadeId: propriedadeMovimentoId,
             consumoPeriodoId: cp.id,
+            centroCustoId: l.centroCustoId,
             observacao: `Consumo dieta ${prev.dietaNome} — ${input.dataInicio} a ${input.dataFim}`,
           },
         });

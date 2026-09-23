@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  listarProdutos,
-  listarSaldos,
-  registrarMovimento,
-  type ProdutoDTO,
-  type SaldoDTO,
-} from "../api";
-import type { Animal } from "../types";
-import { AnimalIdentity, mencaoAnimal } from "./AnimalIdentity";
+import { listarSaldos, registrarMovimento, listarProdutos, type SaldoDTO, type ProdutoDTO } from "../api";
+import type { Animal } from "../../rebanho/types";
+import { AnimalIdentity, mencaoAnimal } from "../../rebanho/components/AnimalIdentity";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
@@ -113,12 +107,13 @@ export function BaixaEstoqueCard({
     setSalvando(true);
     setErro(null);
     try {
+      // O estoque só aceita ajuste manual justificado; a baixa vira ajuste negativo.
       await registrarMovimento({
         produtoId: produtoSel.id,
-        tipo: "SAIDA",
+        tipo: "AJUSTE",
         data,
-        quantidade: Number(quantidade),
-        observacao: observacao || undefined,
+        quantidade: -Number(quantidade),
+        observacao: `Baixa manual${observacao ? `: ${observacao}` : ""}`,
       });
       setSucesso(true);
       setTimeout(() => {
@@ -165,7 +160,7 @@ export function BaixaEstoqueCard({
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>
             {produtos.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nome} ({p.tipo.toLowerCase()} · {p.unidade})
+                {p.nome} ({(p.tipo ?? "OUTRO").toLowerCase()} · {p.unidade})
               </option>
             ))}
           </RebSelect>

@@ -88,7 +88,7 @@ describe("nutrição por propriedade", () => {
     await criarLote({ nome: "Alta produção", animalIds: [1] }, 7);
 
     expect(mocks.grupoCreate).toHaveBeenCalledWith({
-      data: { nome: "Alta produção", dietaId: null, propriedadeId: 7 },
+      data: { nome: "Alta produção", dietaId: null, centroCustoId: null, propriedadeId: 7 },
     });
     expect(mocks.animalUpdate).toHaveBeenCalledWith({ where: { id: 1 }, data: { grupoId: 30 } });
     expect(mocks.registrarMovimentacoes).toHaveBeenCalledWith(

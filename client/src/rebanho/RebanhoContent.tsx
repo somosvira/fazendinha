@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader } from "../components/Loading";
 import { AnimalCockpit } from "./components/AnimalCockpit";
 import { AnimalTab } from "./components/AnimalTab";
 import { ReproducaoTab } from "./components/ReproducaoTab";
@@ -6,7 +7,8 @@ import { FivTab } from "./components/FivTab";
 import { SanidadeTab } from "./components/SanidadeTab";
 import { NutricaoTab } from "./components/NutricaoTab";
 import { ProducaoTab } from "./components/ProducaoTab";
-import { EstoqueTab } from "./components/EstoqueTab";
+import { EstoqueContent } from "../estoque/EstoqueContent";
+import { obterCentrosAtividade } from "../estoque/api";
 import { CustoProducaoTab } from "./components/CustoProducaoTab";
 import { CarteiraTab } from "./components/CarteiraTab";
 import { SugestoesTab } from "./components/SugestoesTab";
@@ -38,6 +40,29 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
   const [flashKey, setFlashKey] = useState(0);
   const [recarga, setRecarga] = useState(0);
   const [recargaRelatorio, setRecargaRelatorio] = useState(0);
+  // `undefined` = ainda resolvendo o centro de atividade (mostra Loader em vez
+  // de montar o EstoqueContent, evitando a busca de saldos sem filtro); `null`
+  // = resolvido, mas sem centro cadastrado. O `key` no EstoqueContent remonta o
+  // componente quando o centro muda, então ele já nasce com o filtro certo.
+  const [centroCustoEstoque, setCentroCustoEstoque] = useState<number | null | undefined>(undefined);
+  const [avisoEstoque, setAvisoEstoque] = useState<string | undefined>(undefined);
+  // Filtro inicial da tela de Estoque: resolve o centro "Atividade Leiteira" (mesma
+  // constante usada em custo-producao.ts, via /estoque/centros-atividade), uma vez,
+  // quando a aba Estoque é aberta.
+  useEffect(() => {
+    if (aba !== "estoque") return;
+    let cancelado = false;
+    obterCentrosAtividade().then((centros) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(centros.leite);
+      setAvisoEstoque(centros.leite == null ? "Centro da atividade não cadastrado — mostrando todos os produtos." : undefined);
+    }).catch((e) => {
+      if (cancelado) return;
+      setCentroCustoEstoque(null);
+      setAvisoEstoque(`Não foi possível resolver o centro da atividade leiteira: ${e instanceof Error ? e.message : String(e)}`);
+    });
+    return () => { cancelado = true; };
+  }, [aba]);
   // O sítio ativo (multi-propriedade) é governado pelo shell (App): trocar lá
   // remonta este conteúdo inteiro via `key`, então aqui não há estado de escopo.
 
@@ -125,7 +150,9 @@ export function RebanhoContent({ aba, onNavReb, onAbrirWorklist, worklistChave, 
                 : aba === "producao"
                   ? <ProducaoTab />
                   : aba === "estoque"
-                    ? <EstoqueTab />
+                    ? (centroCustoEstoque === undefined
+                        ? <Loader />
+                        : <EstoqueContent key={String(centroCustoEstoque)} centroCustoIdInicial={centroCustoEstoque} titulo="Estoque" avisoFiltro={avisoEstoque} />)
                     : aba === "custo"
                       ? <CustoProducaoTab />
                       : aba === "carteira"

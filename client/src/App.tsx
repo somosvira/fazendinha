@@ -23,6 +23,7 @@ import { PlantioContent, type PlaSub } from "./plantio/PlantioContent";
 import { PlantelContent, type CorSub } from "./corte/PlantelContent";
 import { EquipeContent, type EqpSub } from "./equipe/EquipeContent";
 import { CultivoContent, type MilSub } from "./cultivo/CultivoContent";
+import { EstoqueContent } from "./estoque/EstoqueContent";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChatWidget } from "./components/ChatWidget";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
@@ -584,6 +585,8 @@ export function App() {
     ? (canSeeFolha
         ? <EquipeContent aba={EQP[tab]} onNavEqp={(s) => setTab(("eqp-" + s) as Tab)} />
         : <GatedTab user={effectiveUser} abaLabel="Equipe & Ponto" />)
+    : tab === "estoque"
+    ? <EstoqueContent />
     : (["dashboard", "gastos", "lancar", "caixinha", "cadastros", "plano", "relatorio"] as Tab[]).includes(tab)
     ? <FinanceiroContent tab={tab} onNav={setTab} podeEditarCadastros={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} />
     : (

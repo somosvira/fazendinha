@@ -10,6 +10,7 @@
 
 import { SexoAnimal, CategoriaAnimal } from "@prisma/client";
 import { prisma } from "../src/db.js";
+import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js";
 
 async function main() {
   const grupos = ["Alta Produção", "Média Produção", "Bezerreiro"];
@@ -203,9 +204,9 @@ async function main() {
   // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
   // todos no centro de custo "Atividade Leiteira". O Sêmen fica sem categoria de propósito.
   const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
-  const racaoCatId = await catId("Ração");
+  const racaoCatId = (await catId("Ração")) ?? (await catId("Alimentação animal"));
   const medCatId = await catId("Medicamento Animal");
-  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: "Atividade Leiteira" } }))?.id ?? null;
+  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE } }))?.id ?? null;
   const mapaContabil: Record<string, number | null> = {
     "Ração Lactação Alta": racaoCatId,
     "Núcleo Mineral": racaoCatId,
@@ -213,9 +214,17 @@ async function main() {
     "Antibiótico X": medCatId,
     // "Sêmen Lance 884": sem categoria (demonstra compra que não gera lançamento)
   };
-  for (const [nome, categoriaId] of Object.entries(mapaContabil)) {
-    if (categoriaId == null) continue;
-    await prisma.produto.update({ where: { nome }, data: { categoriaId, centroCustoId: leiteiraId } });
+  // Todo insumo do rebanho pertence à atividade leiteira; a categoria só é
+  // aplicada quando existe no banco (o seed financeiro pode usar outros nomes).
+  for (const p of produtos) {
+    const categoriaId = mapaContabil[p.nome] ?? null;
+    await prisma.produto.update({
+      where: { nome: p.nome },
+      data: {
+        ...(categoriaId != null ? { categoriaId } : {}),
+        ...(leiteiraId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: leiteiraId }] } } : {}),
+      },
+    });
   }
 
   // Cadastros: parceiros fornecedores. Documento é a chave estável do seed.

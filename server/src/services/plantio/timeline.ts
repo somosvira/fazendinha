@@ -1,6 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { EventoTimeline } from "./mock.js";
-import type { CriarOperacaoInput } from "./schemas.js";
+import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
+import { planejarBaixaAplicacao } from "./aplicacao-estoque.calc.js";
+import { resolverCentroSaida } from "../estoque/centro.calc.js";
+import { estornarMovimentoTx } from "../estoque/estoque.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO", message: string) {
@@ -138,34 +143,218 @@ export function passadaToTimeline(p: any): EventoTimeline {
 // Cria uma OperacaoAgricola e devolve o evento já no formato da timeline, para
 // a OperacaoForm do cliente reaproveitar direto na lista. Respeita
 // FechamentoMensal (regra do domínio): não registra em mês de caixa fechado.
-export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput): Promise<EventoTimeline> {
-  const talhao = await prisma.talhao.findUnique({ where: { id: talhaoId }, select: { id: true, propriedadeId: true } });
+async function assertPeriodoAberto(tx: Prisma.TransactionClient, propriedadeId: number, data: Date) {
+  const periodo = await tx.periodoFinanceiro.findUnique({
+    where: { propriedadeId_ano_mes: { propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } },
+  });
+  if (periodo?.status === "FECHADO") throw new PlantioEventoError("MES_FECHADO", "mês fechado — operação não pode ser registrada");
+}
+
+// Monta o payload da SAIDA de estoque (origem APLICACAO) para uma operação
+// agrícola que consome um produto do estoque, ou null quando não deve baixar.
+async function planejarMovimento(
+  tx: Prisma.TransactionClient,
+  input: CriarOperacaoInput | EditarOperacaoInput,
+  talhao: { areaHa: Prisma.Decimal | number | null; codigo?: string },
+  data: Date,
+  propriedadeId: number,
+  opts: { validarCentroAtivo?: boolean } = {},
+) {
+  if (input.produtoId == null) return null;
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, custoUnitario: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  // Só valida "ativo" quando o centro veio explícito do input (usuário
+  // escolheu); um centro herdado do movimento anterior (edição sem
+  // centroCustoId no PATCH) não é revalidado — senão uma edição trivial (ex.:
+  // só observacao) quebraria ao herdar um centro que foi desativado depois.
+  const validarCentroAtivo = opts.validarCentroAtivo ?? true;
+  if (input.centroCustoId != null && validarCentroAtivo) {
+    const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
+    if (!centro) throw new PlantioEventoError("NAO_ENCONTRADO", "centro de custo não encontrado");
+  }
+  const plano = planejarBaixaAplicacao({
+    produtoId: input.produtoId,
+    estocavel: produto.estocavel,
+    doseValor: input.doseValor ?? null,
+    doseUnidade: input.doseUnidade ?? null,
+    areaHa: talhao.areaHa != null ? Number(talhao.areaHa) : null,
+    quantidadeTotalInformada: input.quantidadeTotal ?? null,
+  });
+  if (!plano.deveBaixar) return { produto, plano: null as null };
+  const custoUnitario = produto.custoUnitario != null ? new Prisma.Decimal(produto.custoUnitario) : new Prisma.Decimal(0);
+  const centroCustoId = resolverCentroSaida({
+    produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId),
+    contextoCentroId: input.centroCustoId,
+  });
+  const quantidade = new Prisma.Decimal(plano.quantidade);
+  const valorTotal = quantidade.mul(custoUnitario).toDecimalPlaces(2);
+  return {
+    produto,
+    plano: {
+      produtoId: produto.id,
+      tipo: "SAIDA" as const,
+      origem: "APLICACAO" as const,
+      data,
+      quantidade,
+      custoUnitario,
+      valorTotal,
+      propriedadeId,
+      centroCustoId,
+      observacao: `Aplicação em ${talhao.codigo ?? "talhão"}`,
+    },
+  };
+}
+
+export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
+  const talhao = await prisma.talhao.findUnique({
+    where: { id: talhaoId },
+    select: { id: true, codigo: true, propriedadeId: true, areaHa: true },
+  });
   if (!talhao) {
     throw new PlantioEventoError("NAO_ENCONTRADO", "talhão não encontrado");
   }
+  const propriedadeId = talhao.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
-  const fechado = talhao.propriedadeId ? await prisma.periodoFinanceiro.findUnique({
-    where: { propriedadeId_ano_mes: { propriedadeId: talhao.propriedadeId, ano: data.getUTCFullYear(), mes: data.getUTCMonth() + 1 } },
-  }) : null;
-  if (fechado?.status === "FECHADO") throw new PlantioEventoError("MES_FECHADO", "mês fechado — operação não pode ser registrada");
 
-  const o = await prisma.operacaoAgricola.create({
-    data: {
-      talhaoId,
-      // Domínio é derivado do tipo (server-authoritative): nunca diverge do que a
-      // timeline reconstrói na leitura. O input.dominio do cliente é ignorado aqui.
-      dominio: dominioDaOperacao(input.tipo).toUpperCase() as CriarOperacaoInput["dominio"],
-      tipo: input.tipo,
-      data,
-      responsavel: input.responsavel ?? null,
-      produto: input.produto ?? null,
-      observacao: input.observacao ?? null,
-      doseValor: input.doseValor ?? null,
-      doseUnidade: input.doseUnidade ?? null,
-      pragaAlvo: input.pragaAlvo ?? null,
-    },
+  const o = await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, data);
+    const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
+    const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
+    return tx.operacaoAgricola.create({
+      data: {
+        talhaoId,
+        // Domínio é derivado do tipo (server-authoritative): nunca diverge do que a
+        // timeline reconstrói na leitura. O input.dominio do cliente é ignorado aqui.
+        dominio: dominioDaOperacao(input.tipo).toUpperCase() as CriarOperacaoInput["dominio"],
+        tipo: input.tipo,
+        data,
+        responsavel: input.responsavel ?? null,
+        produto: input.produto ?? (movimento?.produto.nome ?? null),
+        observacao: input.observacao ?? null,
+        doseValor: input.doseValor ?? null,
+        doseUnidade: input.doseUnidade ?? null,
+        pragaAlvo: input.pragaAlvo ?? null,
+        produtoId: input.produtoId ?? null,
+        quantidadeTotal: mov ? mov.quantidade : (input.quantidadeTotal ?? null),
+        movimentoEstoqueId: mov?.id ?? null,
+      },
+    });
   });
   return operacaoToTimeline(o);
+}
+
+export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
+  const existente = await prisma.operacaoAgricola.findUnique({
+    where: { id: operacaoId },
+    include: { talhao: { select: { id: true, codigo: true, propriedadeId: true, areaHa: true } } },
+  });
+  if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
+  const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
+
+  // PATCH parcial: campos ausentes no input mantêm o valor existente.
+  const tipoMerged = (input.tipo ?? existente.tipo) as CriarOperacaoInput["tipo"];
+  const produtoIdMerged = input.produtoId !== undefined ? input.produtoId : existente.produtoId;
+  const centroVeioDoInput = input.centroCustoId !== undefined;
+  const dataMerged = input.data ?? iso(existente.data);
+  const data = new Date(dataMerged);
+
+  const o = await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, data);
+    if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeId, existente.data);
+
+    // OperacaoAgricola não guarda o centro de custo — ele só existe no
+    // movimento de estoque gerado. Lido uma única vez, dentro da tx: se o
+    // input não manda centroCustoId E o produto não mudou, herda o centro que
+    // já estava gravado no movimento anterior; se o produto mudou, o centro
+    // deixa de fazer sentido e volta a ser resolvido do zero (centro único do
+    // produto novo, se houver — nunca o do produto antigo).
+    const anterior = existente.movimentoEstoqueId != null
+      ? await tx.movimentoEstoque.findUnique({ where: { id: existente.movimentoEstoqueId } })
+      : null;
+
+    const merged = {
+      dominio: dominioDaOperacao(tipoMerged).toUpperCase() as CriarOperacaoInput["dominio"],
+      tipo: tipoMerged,
+      data: dataMerged,
+      responsavel: input.responsavel !== undefined ? input.responsavel : existente.responsavel,
+      produto: input.produto !== undefined ? input.produto : existente.produto,
+      observacao: input.observacao !== undefined ? input.observacao : existente.observacao,
+      doseValor: input.doseValor !== undefined ? input.doseValor : num(existente.doseValor) ?? null,
+      doseUnidade: input.doseUnidade !== undefined ? input.doseUnidade : existente.doseUnidade,
+      pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
+      produtoId: produtoIdMerged,
+      quantidadeTotal: input.quantidadeTotal !== undefined ? input.quantidadeTotal : num(existente.quantidadeTotal) ?? null,
+      centroCustoId: centroVeioDoInput
+        ? input.centroCustoId
+        : (produtoIdMerged === anterior?.produtoId ? anterior?.centroCustoId ?? null : undefined),
+    } satisfies CriarOperacaoInput;
+
+    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput });
+    let movimentoEstoqueId = existente.movimentoEstoqueId;
+    let quantidadeTotal: Prisma.Decimal | null = null;
+    const plano = movimento?.plano ?? null;
+    // Movimento confirmado não é editado nem apagado: se algo relevante ao
+    // estoque mudou, estorna o antigo e cria um novo (contrato do financeiro).
+    const mudouBaixa = plano != null && (
+      anterior == null
+      || anterior.produtoId !== plano.produtoId
+      || !anterior.quantidade.equals(plano.quantidade)
+      || anterior.data.getTime() !== plano.data.getTime()
+      || (anterior.centroCustoId ?? null) !== (plano.centroCustoId ?? null)
+    );
+    if (plano && !mudouBaixa) {
+      quantidadeTotal = anterior!.quantidade;
+    } else if (plano) {
+      if (anterior) {
+        await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
+      }
+      const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId } });
+      movimentoEstoqueId = criado.id;
+      quantidadeTotal = criado.quantidade;
+    } else if (movimentoEstoqueId != null) {
+      // Edição removeu o produto/dose: estorna o movimento gerado antes.
+      await estornarMovimentoTx(tx, movimentoEstoqueId, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
+      movimentoEstoqueId = null;
+    } else {
+      quantidadeTotal = merged.quantidadeTotal != null ? new Prisma.Decimal(merged.quantidadeTotal) : null;
+    }
+    return tx.operacaoAgricola.update({
+      where: { id: operacaoId },
+      data: {
+        dominio: dominioDaOperacao(merged.tipo).toUpperCase() as CriarOperacaoInput["dominio"],
+        tipo: merged.tipo,
+        data,
+        responsavel: merged.responsavel ?? null,
+        produto: merged.produto ?? (movimento?.produto.nome ?? null),
+        observacao: merged.observacao ?? null,
+        doseValor: merged.doseValor ?? null,
+        doseUnidade: merged.doseUnidade ?? null,
+        pragaAlvo: merged.pragaAlvo ?? null,
+        produtoId: merged.produtoId ?? null,
+        quantidadeTotal,
+        movimentoEstoqueId,
+      },
+    });
+  });
+  return operacaoToTimeline(o);
+}
+
+export async function excluirOperacao(operacaoId: number, usuarioId: number | null = null): Promise<void> {
+  const existente = await prisma.operacaoAgricola.findUnique({
+    where: { id: operacaoId },
+    include: { talhao: { select: { propriedadeId: true } } },
+  });
+  if (!existente) throw new PlantioEventoError("NAO_ENCONTRADO", "operação não encontrada");
+  const propriedadeId = existente.talhao.propriedadeId ?? (await propriedadePrincipalId());
+  await prisma.$transaction(async (tx) => {
+    await assertPeriodoAberto(tx, propriedadeId, existente.data);
+    // O fato operacional é apagado; o movimento de estoque (confirmado) é
+    // estornado, nunca deletado — o original REVERTIDO e o inverso ficam no razão.
+    if (existente.movimentoEstoqueId != null) {
+      await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} excluída` });
+    }
+    await tx.operacaoAgricola.delete({ where: { id: operacaoId } });
+  });
 }
 
 export async function montarTimeline(talhaoId: number): Promise<EventoTimeline[]> {

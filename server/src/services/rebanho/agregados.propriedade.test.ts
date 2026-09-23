@@ -19,10 +19,11 @@ vi.mock("../../db.js", () => ({
     eventoSanitario: { findMany: mocks.eventoFindMany },
     transacaoFinanceira: { findMany: mocks.transacaoFindMany },
     produto: { findMany: mocks.produtoFindMany },
+    centroCusto: { findMany: vi.fn().mockResolvedValue([{ id: 1 }]) },
   },
 }));
 vi.mock("./config.js", () => ({ obterConfig: mocks.obterConfig }));
-vi.mock("./estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia }));
+vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia }));
 vi.mock("../../env.js", () => ({ env: {} }));
 
 import { agregarProducao } from "./producao.js";

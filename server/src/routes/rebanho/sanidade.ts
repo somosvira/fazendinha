@@ -6,7 +6,7 @@ import { montarTimeline } from "../../services/rebanho/timeline.js";
 import { resolverEscopoEscrita } from "../../services/propriedade.js";
 
 function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
-  if (e instanceof svc.EventoSanError) return { status: e.code === "CONFLITO" ? 409 : 404, body: { error: e.message } };
+  if (e instanceof svc.EventoSanError) return { status: e.code === "CONFLITO" || e.code === "MES_FECHADO" ? 409 : 404, body: { error: e.message } };
   console.error("[sanidade]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }
