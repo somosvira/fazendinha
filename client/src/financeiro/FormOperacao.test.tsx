@@ -163,6 +163,25 @@ describe("FormOperacao", () => {
     expect(campo.value).toBe("9");
   });
 
+  it("preenche o valor unitário sugerido com as 4 casas decimais do custo por unidade fracionária", async () => {
+    const fetchMock = vi.fn(async (url: unknown) => String(url).includes("/ultimo-preco")
+      ? { ok: true, json: async () => ({ valorUnitario: "0.1234", data: "2026-09-03", parceiro: null }) }
+      : { ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("0.1234"));
+  });
+
+  it("não trunca para zero, ao perder foco, um valor unitário digitado manualmente com 5 casas decimais", () => {
+    montar();
+    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "0.00045" } });
+    fireEvent.blur(campo);
+    expect(campo.value).not.toBe("0.00");
+    expect(Number(campo.value)).toBeGreaterThan(0);
+  });
+
   it("não expõe o saldo no seletor de conta", () => {
     montar();
     expect(screen.getByRole("option", { name: "Banco principal" })).toBeTruthy();

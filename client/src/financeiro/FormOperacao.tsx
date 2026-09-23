@@ -32,6 +32,23 @@ const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO
 const CAMPO = "mt-1.5 w-full rounded-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal text-ink outline-none transition focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15";
 const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
+// valorUnitario do item é Decimal(14,4) no server — normalizarMoeda (2 casas)
+// truncaria insumos fracionários (ex.: R$ 0,1234/un ou R$ 0,00045/g) para
+// "0.12"/"0.00", fazendo o usuário confirmar um valor errado (ou, em
+// INVENTARIO_INICIAL/BONIFICACAO, criar entrada de valor 0 fora do custo
+// médio). Preserva até 4 casas, mas nunca menos que 2.
+const normalizarPreco = (valor: string | number) => {
+  if (valor === "" || valor === null || valor === undefined) return "";
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return "";
+  let texto = numero.toFixed(4).replace(/0+$/, "");
+  if (texto.endsWith(".")) texto += "00";
+  else {
+    const casas = texto.split(".")[1]?.length ?? 0;
+    if (casas < 2) texto += "0".repeat(2 - casas);
+  }
+  return texto;
+};
 // O cadastro não guarda preço: ao escolher o produto, estas operações sugerem o
 // valor unitário da última compra (venda e produção têm outra base de valor).
 const SUGERE_ULTIMO_PRECO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO"]);
@@ -269,7 +286,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         }).catch(() => { /* apoio opcional: falha de rede não bloqueia o formulário */ });
         return;
       }
-      const valorFormatado = normalizarMoeda(ultimo.valorUnitario);
+      const valorFormatado = normalizarPreco(ultimo.valorUnitario);
       const podeSobrescrever = valorAntesDaBusca === "" || (sugestaoAnterior?.produtoId === produtoId && valorAntesDaBusca === sugestaoAnterior.valor);
       if (podeSobrescrever) {
         // Segunda checagem (contra o valor atual, não o capturado) cobre o caso
@@ -577,7 +594,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, m
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
           <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>
           <label className="text-sm font-medium">Base do valor<select aria-label={`Base do valor do item ${indice + 1}`} className={SELECT} value={item.modoValor} onChange={(e) => atualizarItem(item.id, { modoValor: e.target.value as ModoValor })}><option value="UNITARIO">Valor unitário</option><option value="TOTAL">Valor total do item</option></select></label>
-          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarMoeda(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
+          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.0001" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarPreco(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>
         </div>
       </div>;
