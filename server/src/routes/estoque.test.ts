@@ -184,9 +184,9 @@ describe("acesso de usuário só-agricultura aos cadastros do estoque", () => {
 describe("GET /estoque/fornecedores", () => {
   it("devolve só parceiros com papel FORNECEDOR", async () => {
     mocks.listarParceiros.mockResolvedValue([
-      { id: 1, nome: "Cooperativa", tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }], ativo: true },
-      { id: 2, nome: "Laticínio Comprador", tipo: "CLIENTE", papeis: [{ papel: "CLIENTE" }], ativo: true },
-      { id: 3, nome: "Agro Ambos", tipo: "AMBOS", papeis: [{ papel: "CLIENTE" }, { papel: "FORNECEDOR" }], ativo: false },
+      { id: 1, nome: "Cooperativa", tipo: "FORNECEDOR", papeis: ["FORNECEDOR"], ativo: true },
+      { id: 2, nome: "Laticínio Comprador", tipo: "CLIENTE", papeis: ["CLIENTE"], ativo: true },
+      { id: 3, nome: "Agro Ambos", tipo: "AMBOS", papeis: ["CLIENTE", "FORNECEDOR"], ativo: false },
     ]);
     const res = await appCom(semLancar).request("/estoque/fornecedores");
     expect(res.status).toBe(200);

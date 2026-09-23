@@ -12,7 +12,6 @@ import { composicaoRacaoBodySchema } from "../services/rebanho/composicao-produt
 import * as lotesSvc from "../services/rebanho/lotes.js";
 import { criarLocalSchema, criarLoteSchema } from "../services/rebanho/lotes.schemas.js";
 import { listarParceiros } from "../services/financeiro/parceiros.js";
-import { papeisDoParceiro } from "../services/financeiro/papeis.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
@@ -125,8 +124,9 @@ export const estoqueRouter = new Hono()
   .get("/estoque/categorias", async (c) => c.json(await refSvc.listarCategorias(c.req.query("incluirInativos") === "1")))
   .get("/estoque/centros-custo", async (c) => c.json(await refSvc.listarCentrosCusto(c.req.query("incluirInativos") === "1")))
   .get("/estoque/fornecedores", async (c) => {
+    // listarParceiros já devolve `papeis` resolvidos (PapelParceiro[]).
     const parceiros = await listarParceiros(true);
-    return c.json(parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")));
+    return c.json(parceiros.filter((p) => p.papeis.includes("FORNECEDOR")));
   })
 
   // ── Princípios ativos (catálogo) + composição de medicamentos ───────────────
