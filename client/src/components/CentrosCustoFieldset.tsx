@@ -1,7 +1,6 @@
 // Rio Novo — fieldset reutilizável de centros de custo (checkboxes), usado no
-// cadastro de Produto tanto do financeiro (`financeiro/FormProduto.tsx`) quanto
-// do rebanho (`rebanho/components/ProdutoForm.tsx`). `ativo` é opcional porque
-// algumas listagens (ex.: `/rebanho/centros-custo`) só trazem centros ativos.
+// cadastro de Produto (`financeiro/FormProduto.tsx`, único formulário desde a
+// unificação). `ativo` é opcional porque algumas listagens só trazem centros ativos.
 
 export interface CentroCustoOpcao {
   id: number;

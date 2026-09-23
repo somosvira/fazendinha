@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
+import { ApiError, type Categoria, type CentroCusto, type Parceiro, type Produto } from "../financeiro/novo-api";
+
+export { ApiError };
+// Tipos de referência do plano financeiro (categoria/centro de custo/parceiro) —
+// mesmo contrato de `financeiro/novo-api.ts`, reusado aqui para não duplicar.
+export type { Categoria, CentroCusto, Parceiro };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) || {}) };
@@ -10,7 +16,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     let msg = `HTTP ${res.status}`;
     if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: número duplicado)
     else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new Error(msg);
+    throw new ApiError(msg, res.status, b?.code, b?.campo);
   }
   return res.json();
 }
@@ -88,14 +94,9 @@ export function useCustoVacaDia(dias = 30) {
 // os services por trás são os mesmos de `/rebanho/*` (ver server/src/routes/estoque.ts).
 export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
 export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
-export interface ProdutoDTO {
-  id: number; nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
-  custoUnitario: string | null; carencia: number | null; percentualMS: string | null; estocavel: boolean;
-  minimoEstoque: string | null; ativo: boolean;
-  categoriaId: number | null; categoriaNome: string | null; classificacao: "CUSTEIO" | "INVESTIMENTO" | null;
-  centroCustoIds: number[]; centrosCusto: { id: number; nome: string; ativo: boolean }[];
-  fornecedores?: { id: number; nome: string; ativo: boolean }[];
-}
+// Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
+// `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
+export type ProdutoDTO = Produto;
 export interface ProdutoInput {
   nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
   custoUnitario?: number | null; carencia?: number | null; percentualMS?: number | null; estocavel?: boolean;
@@ -124,10 +125,11 @@ export function useProdutosEstoque(f?: { tipo?: string; q?: string; ativo?: bool
 }
 
 export interface RefDTO { id: number; nome: string }
-export const listarCategorias = () => req<RefDTO[]>(`/estoque/categorias`);
-export const listarCentrosCusto = () => req<RefDTO[]>(`/estoque/centros-custo`);
+export const listarCategorias = (incluirInativos = false) => req<Categoria[]>(`/estoque/categorias${incluirInativos ? "?incluirInativos=1" : ""}`);
+export const listarCentrosCusto = (incluirInativos = false) => req<CentroCusto[]>(`/estoque/centros-custo${incluirInativos ? "?incluirInativos=1" : ""}`);
+export const listarFornecedores = () => req<Parceiro[]>(`/estoque/fornecedores`);
 export function useCentrosCustoEstoque() {
-  const [data, setData] = useState<RefDTO[]>([]);
+  const [data, setData] = useState<CentroCusto[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const recarregar = useCallback(() => {
     setErro(null);

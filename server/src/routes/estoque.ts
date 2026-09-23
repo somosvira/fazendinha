@@ -12,6 +12,8 @@ import * as composicaoRacaoSvc from "../services/rebanho/composicao-produto.js";
 import { composicaoRacaoBodySchema } from "../services/rebanho/composicao-produto.schemas.js";
 import * as lotesSvc from "../services/rebanho/lotes.js";
 import { criarLocalSchema, criarLoteSchema } from "../services/rebanho/lotes.schemas.js";
+import { listarParceiros } from "../services/financeiro/parceiros.js";
+import { papeisDoParceiro } from "../services/financeiro/papeis.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
@@ -113,9 +115,13 @@ export const estoqueRouter = new Hono()
     catch (e) { const { status, body } = failCadastro(e); return c.json(body, status); }
   })
 
-  // ── Referência (categorias / centros de custo do plano financeiro) ─────────
-  .get("/estoque/categorias", async (c) => c.json(await refSvc.listarCategorias()))
-  .get("/estoque/centros-custo", async (c) => c.json(await refSvc.listarCentrosCusto()))
+  // ── Referência (categorias / centros de custo do plano financeiro / fornecedores) ─
+  .get("/estoque/categorias", async (c) => c.json(await refSvc.listarCategorias(c.req.query("incluirInativos") === "1")))
+  .get("/estoque/centros-custo", async (c) => c.json(await refSvc.listarCentrosCusto(c.req.query("incluirInativos") === "1")))
+  .get("/estoque/fornecedores", async (c) => {
+    const parceiros = await listarParceiros(true);
+    return c.json(parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")));
+  })
 
   // ── Princípios ativos (catálogo) + composição de medicamentos ───────────────
   .get("/estoque/principios-ativos", zValidator("query", principiosQuerySchema), async (c) => {

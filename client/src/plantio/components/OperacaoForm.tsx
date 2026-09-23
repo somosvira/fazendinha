@@ -126,7 +126,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
     const p = produtosEstocaveis.find((x) => String(x.id) === id);
     if (p) {
       if (!produto.trim()) setProduto(p.nome);
-      setCentroCustoId(p.centroCustoIds.length === 1 ? String(p.centroCustoIds[0]) : "");
+      setCentroCustoId((p.centroCustoIds ?? []).length === 1 ? String((p.centroCustoIds ?? [])[0]) : "");
     } else {
       setCentroCustoId("");
     }

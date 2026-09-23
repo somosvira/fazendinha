@@ -1,5 +1,5 @@
-import { type FormEvent, useRef, useState } from "react";
-import { ApiError, atualizarProduto, criarProduto, type Categoria, type CentroCusto, type Parceiro, type Produto, type ProdutoInput, type TipoInsumoPlantio, type TipoProduto } from "./novo-api";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput, type TipoInsumoPlantio, type TipoProduto } from "../estoque/api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
@@ -16,10 +16,43 @@ const SUBTIPOS_PLANTIO: [TipoInsumoPlantio, string][] = [
   ["MUDA", "Muda"], ["OUTRO", "Outro"],
 ];
 
-export function FormProduto({ produto, parceiros, categorias, centros, onSalvo, onFechar }: {
-  produto: Produto | null; parceiros: Parceiro[]; categorias: Categoria[]; centros: CentroCusto[];
-  onSalvo: () => Promise<void> | void; onFechar: () => void;
+/* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
+ * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
+ * caso contrário (cadastro rápido a partir do estoque/rebanho/plantio), o
+ * formulário carrega sozinho de `estoque/api.ts` — mesmas rotas liberadas às
+ * três áreas (pecuária/agricultura/financeiro). */
+export function FormProduto({ produto, parceiros: parceirosProp, categorias: categoriasProp, centros: centrosProp, onSalvo, onFechar }: {
+  produto: Produto | null; parceiros?: Parceiro[]; categorias?: Categoria[]; centros?: CentroCusto[];
+  onSalvo: (salvo: Produto) => Promise<void> | void; onFechar: () => void;
 }) {
+  const precisaCarregar = parceirosProp == null || categoriasProp == null || centrosProp == null;
+  const [carregando, setCarregando] = useState(precisaCarregar);
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const [parceirosCarregados, setParceirosCarregados] = useState<Parceiro[]>([]);
+  const [categoriasCarregadas, setCategoriasCarregadas] = useState<Categoria[]>([]);
+  const [centrosCarregados, setCentrosCarregados] = useState<CentroCusto[]>([]);
+  const alive = useRef(true);
+
+  useEffect(() => {
+    alive.current = true;
+    if (precisaCarregar) {
+      setCarregando(true); setErroCarga(null);
+      Promise.all([listarFornecedores(), listarCategorias(true), listarCentrosCusto(true)])
+        .then(([fornecedores, cats, centrosCusto]) => {
+          if (!alive.current) return;
+          setParceirosCarregados(fornecedores); setCategoriasCarregadas(cats); setCentrosCarregados(centrosCusto);
+        })
+        .catch((e) => { if (alive.current) setErroCarga(e instanceof Error ? e.message : String(e)); })
+        .finally(() => { if (alive.current) setCarregando(false); });
+    }
+    return () => { alive.current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [precisaCarregar]);
+
+  const parceiros = parceirosProp ?? parceirosCarregados;
+  const categorias = categoriasProp ?? categoriasCarregadas;
+  const centros = centrosProp ?? centrosCarregados;
+
   const [nome, setNome] = useState(produto?.nome ?? "");
   const [tipo, setTipo] = useState<TipoProduto>(produto?.tipo ?? "INSUMO");
   const [subtipoPlantio, setSubtipoPlantio] = useState<TipoInsumoPlantio | "">(produto?.subtipoPlantio ?? "");
@@ -65,8 +98,8 @@ export function FormProduto({ produto, parceiros, categorias, centros, onSalvo, 
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
     try {
-      if (produto) await atualizarProduto(produto.id, dados); else await criarProduto(dados);
-      await onSalvo();
+      const salvo = produto ? await editarProduto(produto.id, dados) : await criarProduto(dados);
+      await onSalvo(salvo);
     } catch (erro) {
       if (erro instanceof ApiError && erro.campo) setErros({ [erro.campo]: erro.message });
       else setErroGeral(erro instanceof Error ? erro.message : String(erro));
@@ -74,10 +107,12 @@ export function FormProduto({ produto, parceiros, categorias, centros, onSalvo, 
   };
 
   const formId = "form-produto-financeiro";
-  return <PainelCadastro aberto eyebrow="Produto de estoque" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={onFechar}
-    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button></>}>
+  return <PainelCadastro aberto eyebrow="Produto de estoque" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || carregando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
+      {erroCarga && <ErrorBox erro={`Não foi possível carregar fornecedores/categorias/centros de custo: ${erroCarga}`} />}
+      {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-tipo" rotulo="Tipo">{(p) => <select {...p} value={tipo} onChange={(e) => setTipo(e.target.value as TipoProduto)} className={classeInput}>{TIPOS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ajustarContagem, listarSaldos, type SaldoDTO } from "../api";
 import { listarPropriedades } from "../../rebanho/api";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
-import { ProdutoForm } from "../../rebanho/components/ProdutoForm";
+import { FormProduto } from "../../financeiro/FormProduto";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
@@ -91,6 +91,6 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
       </div>}
       {erro && <div role="alert" className="mt-3 text-sm text-prejuizo"><p>{erro}</p><RebButton disabled={carregando || salvando} onClick={() => { void carregar(); }}>Atualizar saldo</RebButton></div>}
     </RebModal>
-    {novoProduto && <ProdutoForm stacked onFechar={() => setNovoProduto(false)} onSalvo={p => { setNovoProduto(false); void carregar(p?.id); }} />}
+    {novoProduto && <FormProduto produto={null} onFechar={() => setNovoProduto(false)} onSalvo={(p) => { setNovoProduto(false); void carregar(p.id); }} />}
   </>;
 }

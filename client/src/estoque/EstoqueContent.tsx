@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader } from "../components/Loading";
 import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, listarProdutos, listarCentrosCusto, type MovimentoDTO, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
 import { MovimentoForm } from "./components/MovimentoForm";
-import { ProdutoForm } from "../rebanho/components/ProdutoForm";
+import { FormProduto } from "../financeiro/FormProduto";
 import { PrincipiosAtivosSection } from "./components/PrincipiosAtivosSection";
 import { ComposicaoRacaoSection } from "./components/ComposicaoRacaoSection";
 import { LotesProdutoSection } from "./components/LotesProdutoSection";
@@ -292,8 +292,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <LotesProdutoSection />
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
-      {cadastrandoProduto && <ProdutoForm onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
-      {editando && <ProdutoForm produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
+      {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
+      {editando && <FormProduto produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
       {excluindo && (
         <ConfirmarExclusao
           movimento={excluindo}

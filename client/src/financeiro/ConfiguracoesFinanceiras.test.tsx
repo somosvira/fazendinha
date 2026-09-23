@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
-import { ApiError, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, criarProduto, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { ApiError, atualizarConta, atualizarParceiro, atualizarProduto, criarCategoria, criarCentroCusto, criarConta, criarParceiro, obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras as Config } from "./novo-api";
+import { criarProduto as criarProdutoEstoque, editarProduto as editarProdutoEstoque } from "../estoque/api";
 
 /* Mantém ApiError real (o formulário usa instanceof) e substitui só as chamadas. */
 vi.mock("./novo-api", async (importOriginal) => ({
@@ -11,7 +12,14 @@ vi.mock("./novo-api", async (importOriginal) => ({
   criarConta: vi.fn(), atualizarConta: vi.fn(), criarParceiro: vi.fn(), atualizarParceiro: vi.fn(),
   criarCategoria: vi.fn(), atualizarCategoria: vi.fn(),
   criarCentroCusto: vi.fn(), atualizarCentroCusto: vi.fn(),
-  criarProduto: vi.fn(), atualizarProduto: vi.fn(),
+  atualizarProduto: vi.fn(),
+}));
+/* `FormProduto` salva sempre via `estoque/api.ts` (rota liberada às três áreas,
+ * mesmo service do server) — só o toggle ativo/inativo da tabela usa
+ * `atualizarProduto` de `novo-api.ts` diretamente (ver ConfiguracoesFinanceiras.tsx). */
+vi.mock("../estoque/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../estoque/api")>()),
+  criarProduto: vi.fn(), editarProduto: vi.fn(),
 }));
 
 const config: Config = {
@@ -192,7 +200,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
 
 describe("ConfiguracoesFinanceiras — produtos", () => {
   it("cadastra produto sem exigir fornecedor", async () => {
-    vi.mocked(criarProduto).mockResolvedValue(config.produtosCadastro![0]);
+    vi.mocked(criarProdutoEstoque).mockResolvedValue(config.produtosCadastro![0]);
     await montar("produtos");
     expect(screen.getByRole("table", { name: "Produtos" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Novo produto" }));
@@ -201,18 +209,18 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     fireEvent.change(within(painel).getByLabelText("Unidade"), { target: { value: "kg" } });
     fireEvent.change(within(painel).getByLabelText("Categoria padrão"), { target: { value: "11" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar produto" }));
-    await waitFor(() => expect(criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "kg", fornecedorIds: [], centroCustoIds: [] })));
+    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "kg", fornecedorIds: [], centroCustoIds: [] })));
   });
 
   it("edita o produto com vários fornecedores opcionais", async () => {
-    vi.mocked(atualizarProduto).mockResolvedValue(config.produtosCadastro![0]);
+    vi.mocked(editarProdutoEstoque).mockResolvedValue(config.produtosCadastro![0]);
     await montar("produtos");
     fireEvent.click(primeiro("button", "Editar Ração 22%"));
     const painel = await screen.findByRole("dialog");
     expect((within(painel).getByRole("checkbox", { name: /Cooperativa/ }) as HTMLInputElement).checked).toBe(true);
     fireEvent.click(within(painel).getByRole("checkbox", { name: /Agro Minas/ }));
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar produto" }));
-    await waitFor(() => expect(atualizarProduto).toHaveBeenCalledWith(30, expect.objectContaining({ fornecedorIds: [7, 8] })));
+    await waitFor(() => expect(editarProdutoEstoque).toHaveBeenCalledWith(30, expect.objectContaining({ fornecedorIds: [7, 8] })));
   });
 
   it("desativa produto explicando que os movimentos históricos ficam preservados", async () => {

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   atualizarProduto: vi.fn(),
   listarCategorias: vi.fn(),
   listarCentrosCusto: vi.fn(),
+  listarParceiros: vi.fn(),
 }));
 
 vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
@@ -39,6 +40,7 @@ vi.mock("../services/rebanho/financeiro-ref.js", () => ({
   listarCategorias: mocks.listarCategorias,
   listarCentrosCusto: mocks.listarCentrosCusto,
 }));
+vi.mock("../services/financeiro/parceiros.js", () => ({ listarParceiros: mocks.listarParceiros }));
 
 import { estoqueRouter } from "./estoque.js";
 
@@ -72,6 +74,7 @@ beforeEach(() => {
   mocks.atualizarProduto.mockResolvedValue({ id: 1 });
   mocks.listarCategorias.mockResolvedValue([]);
   mocks.listarCentrosCusto.mockResolvedValue([]);
+  mocks.listarParceiros.mockResolvedValue([]);
 });
 
 describe("escritas exigem a flag lancar", () => {
@@ -156,6 +159,25 @@ describe("acesso de usuário só-agricultura aos cadastros do estoque", () => {
   it("GET /estoque/centros-custo → 200", async () => {
     const res = await appCom(soAgricultura).request("/estoque/centros-custo");
     expect(res.status).toBe(200);
+  });
+  it("GET /estoque/fornecedores → 200", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/fornecedores");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("GET /estoque/fornecedores", () => {
+  it("devolve só parceiros com papel FORNECEDOR", async () => {
+    mocks.listarParceiros.mockResolvedValue([
+      { id: 1, nome: "Cooperativa", tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }], ativo: true },
+      { id: 2, nome: "Laticínio Comprador", tipo: "CLIENTE", papeis: [{ papel: "CLIENTE" }], ativo: true },
+      { id: 3, nome: "Agro Ambos", tipo: "AMBOS", papeis: [{ papel: "CLIENTE" }, { papel: "FORNECEDOR" }], ativo: false },
+    ]);
+    const res = await appCom(semLancar).request("/estoque/fornecedores");
+    expect(res.status).toBe(200);
+    expect(mocks.listarParceiros).toHaveBeenCalledWith(true);
+    const corpo = await res.json();
+    expect(corpo.map((p: { id: number }) => p.id)).toEqual([1, 3]);
   });
 });
 
