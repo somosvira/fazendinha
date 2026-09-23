@@ -1761,7 +1761,7 @@ model EventoSanitario {
   // `produto` acima continua para retrocompatibilidade/exibição.
   produtoRef         Produto?            @relation(fields: [produtoId], references: [id])
   produtoId          Int?
-  quantidadeUsada    Decimal?            @db.Decimal(12, 2)
+  quantidadeUsada    Decimal?            @db.Decimal(12, 3)
   movimentoEstoque   MovimentoEstoque?   @relation(fields: [movimentoEstoqueId], references: [id])
   movimentoEstoqueId Int?                @unique
   createdAt          DateTime            @default(now())

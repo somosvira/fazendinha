@@ -59,6 +59,21 @@ describe("ajustarContagem", () => {
     expect(mocks.opCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tipo: "AJUSTE_ESTOQUE", criadoPorId: 7 }) }));
     expect(mocks.auditCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "Operacao", entidadeId: "50", acao: "AJUSTE_CONTAGEM", usuarioId: 7 }) });
   });
+
+  it("saldo real de 1,005 (3 casas) casa com saldoEsperado: 1.005 informado pelo client — antes dava CONFLITO por arredondar a 2 casas", async () => {
+    mocks.movFindMany.mockResolvedValue([{ tipo: "ENTRADA", quantidade: new Prisma.Decimal("1.005") }]);
+    await expect(
+      ajustarContagem({ produtoId: 3, quantidadeContada: 2.005, saldoEsperado: 1.005, observacao: "Contagem física", propriedadeId: 1, usuarioId: 7 }),
+    ).resolves.toMatchObject({ saldoAnterior: 1.005, diferenca: 1 });
+    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ quantidade: 1 }) });
+  });
+
+  it("saldoEsperado divergente do saldo real (mesmo em 3 casas) continua CONFLITO", async () => {
+    mocks.movFindMany.mockResolvedValue([{ tipo: "ENTRADA", quantidade: new Prisma.Decimal("1.005") }]);
+    await expect(
+      ajustarContagem({ produtoId: 3, quantidadeContada: 2, saldoEsperado: 1.01, observacao: "Contagem física", propriedadeId: 1, usuarioId: 7 }),
+    ).rejects.toMatchObject({ code: "CONFLITO" });
+  });
 });
 
 describe("registrarMovimento", () => {

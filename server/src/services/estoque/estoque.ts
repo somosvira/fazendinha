@@ -23,8 +23,10 @@ export const saidaConsumoConfirmada = {
 } satisfies Prisma.MovimentoEstoqueWhereInput;
 const naoFutura = z.string().refine((s) => new Date(s) <= new Date(), "data não pode ser futura");
 
-// Limites compatíveis com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma
-const MAX_QTD = 9_999_999_999.99;
+// MAX_QTD compatível com MovimentoEstoque.quantidade Decimal(12,3); MAX_CUSTO com
+// custoUnitario Decimal(14,4) truncado à mesma ordem de grandeza — evita Postgres 22003
+// antes de chegar ao Prisma.
+const MAX_QTD = 999_999_999.999;
 const MAX_CUSTO = 9_999_999_999.99;
 
 export const movimentoSchema = z
@@ -48,8 +50,8 @@ export type MovimentoInput = z.infer<typeof movimentoSchema>;
 
 export const ajusteContagemSchema = z.object({
   produtoId: z.number().int().positive(),
-  quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.01),
-  saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.01),
+  quantidadeContada: z.number().finite().min(0).max(MAX_QTD).multipleOf(0.001),
+  saldoEsperado: z.number().finite().min(-MAX_QTD).max(MAX_QTD).multipleOf(0.001),
   observacao: z.string().trim().min(5, "justificativa é obrigatória").max(200),
   propriedadeId: z.number().int().positive().optional(),
   centroCustoId: z.number().int().positive().nullable().optional(),
@@ -275,8 +277,8 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
       const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true, estocavel: true } });
       if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo de estoque não encontrado");
       const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: statusSaldoEstoque }, select: { tipo: true, quantidade: true } });
-      const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(2);
-      if (!saldo.equals(input.saldoEsperado)) throw new EstoqueError("CONFLITO", "O estoque mudou desde a consulta. Atualize o saldo e confira a diferença antes de confirmar.");
+      const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(3);
+      if (!saldo.equals(new Prisma.Decimal(input.saldoEsperado).toDecimalPlaces(3))) throw new EstoqueError("CONFLITO", "O estoque mudou desde a consulta. Atualize o saldo e confira a diferença antes de confirmar.");
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);
       if (delta.isZero()) throw new EstoqueError("VALIDACAO", "A quantidade contada já corresponde ao estoque. Nenhum ajuste é necessário.");
       if (delta.abs().greaterThan(MAX_QTD)) throw new EstoqueError("VALIDACAO", "A diferença excede o limite permitido para um ajuste.");

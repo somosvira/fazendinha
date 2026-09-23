@@ -24,6 +24,20 @@ describe("saldoProduto", () => {
     ];
     expect(saldoProduto(movs)).toEqual({ saldo: 90, valor: 180 });
   });
+
+  it("saldo com 3 casas decimais é preservado (não arredonda para 2)", () => {
+    const movs: MovIn[] = [
+      { tipo: "ENTRADA", quantidade: 2.505, valorTotal: 10, data: HOJE },
+      { tipo: "SAIDA", quantidade: 1.5, valorTotal: 5, data: HOJE },
+    ];
+    // 2.505 - 1.5 = 1.005 — precisa da 3ª casa para não virar 1 ou 1.01
+    expect(saldoProduto(movs)).toEqual({ saldo: 1.005, valor: 5 });
+  });
+
+  it("valor (dinheiro) continua arredondado a 2 casas mesmo com quantidade em 3", () => {
+    const movs: MovIn[] = [{ tipo: "ENTRADA", quantidade: 1.123, valorTotal: 10.999, data: HOJE }];
+    expect(saldoProduto(movs)).toEqual({ saldo: 1.123, valor: 11 });
+  });
 });
 
 describe("custoVacaDia", () => {

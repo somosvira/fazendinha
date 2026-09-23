@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
 
-// Limite compatível com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma.
-const MAX_QTD = 9_999_999_999.99;
+// Limite compatível com colunas quantidade/dose Decimal(12,3) (quantidadeTotal) e
+// Decimal(10,3) (doseValor) — evita Postgres 22003 antes de chegar ao Prisma.
+const MAX_QTD = 999_999_999.999;
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 const estado = z.enum(["ATIVO", "RECEPADO", "FORMACAO", "BAIXADO"]);

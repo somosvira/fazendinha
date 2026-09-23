@@ -39,6 +39,20 @@ describe("movimentoSchema", () => {
 describe("ajusteContagemSchema", () => {
   const base = { produtoId: 1, saldoEsperado: 10, quantidadeContada: 0, observacao: "Contagem física" };
   it("aceita contagem zero", () => expect(ajusteContagemSchema.safeParse(base).success).toBe(true));
-  it.each([-1, 1.001, Infinity, NaN])("rejeita contagem inválida %s", quantidadeContada => expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada }).success).toBe(false));
+  it.each([-1, 1.0005, Infinity, NaN])("rejeita contagem inválida %s", quantidadeContada => expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada }).success).toBe(false));
   it("exige justificativa real", () => expect(ajusteContagemSchema.safeParse({ ...base, observacao: "     " }).success).toBe(false));
+
+  it("aceita quantidadeContada/saldoEsperado com 3 casas decimais (Decimal(12,3))", () => {
+    expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada: 1.005, saldoEsperado: 1.005 }).success).toBe(true);
+  });
+  it("rejeita quantidadeContada com 4 casas decimais", () => {
+    expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada: 1.0005 }).success).toBe(false);
+  });
+  it("rejeita saldoEsperado com 4 casas decimais", () => {
+    expect(ajusteContagemSchema.safeParse({ ...base, saldoEsperado: 1.0005 }).success).toBe(false);
+  });
+  it("aceita quantidade no limite máximo (999.999.999,999) e rejeita acima", () => {
+    expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada: 999_999_999.999 }).success).toBe(true);
+    expect(ajusteContagemSchema.safeParse({ ...base, quantidadeContada: 1_000_000_000 }).success).toBe(false);
+  });
 });

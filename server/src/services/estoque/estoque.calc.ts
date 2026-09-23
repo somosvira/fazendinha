@@ -20,7 +20,8 @@ export function saldoProduto(movs: MovIn[]): { saldo: number; valor: number } {
     saldo += sinal(m.tipo) * m.quantidade;
     valor += sinal(m.tipo) * m.valorTotal;
   }
-  return { saldo: Math.round(saldo * 100) / 100, valor: Math.round(valor * 100) / 100 };
+  // saldo é quantidade (MovimentoEstoque.quantidade Decimal(12,3)) — 3 casas; valor é dinheiro — 2 casas.
+  return { saldo: Math.round(saldo * 1000) / 1000, valor: Math.round(valor * 100) / 100 };
 }
 
 export function custoVacaDia(
