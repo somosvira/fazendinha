@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
+import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -955,5 +956,69 @@ describe("tipo Ajuste de estoque", () => {
     render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} rascunho={{ id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "SERVICO", condicao: "A_VISTA", descricao: "Manutenção", valorOperacao: "100", parceiroId: "1", contaId: "1", formaPagamento: "PIX", data: "2026-09-11" } } }} onSalvo={vi.fn()} />);
     expect((screen.getByLabelText("Tipo de operação") as HTMLSelectElement).value).toBe("AJUSTE_ESTOQUE");
     expect((screen.getByLabelText("Justificativa do ajuste") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("aberto pelo atalho, trava o tipo em Ajuste e nunca faz autosave do rascunho", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : {}));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} rascunho={{ id: 8, versao: 3, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "COMPRA_ESTOQUE", condicao: "A_VISTA", descricao: "Compra com 5 itens" } } }} onSalvo={vi.fn()} />);
+    const select = screen.getByLabelText("Tipo de operação") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    expect(screen.getByText(/para outro tipo de operação, abra Nova operação/)).toBeTruthy();
+    fireEvent.change(select, { target: { value: "COMPRA_ESTOQUE" } });
+    fireEvent.change(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
+    await vi.advanceTimersByTimeAsync(3000);
+    expect((screen.getByLabelText("Tipo de operação") as HTMLSelectElement).value).toBe("AJUSTE_ESTOQUE");
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/financeiro/operacoes/rascunho")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Limpar rascunho" })).toBeNull();
+    expect(screen.queryByLabelText("Anexar documentos")).toBeNull();
+  });
+
+  describe("modo consolidado", () => {
+    const sitios = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, nome: `Sítio ${i + 1}`, apelido: null, cidade: null, uf: null, principal: i === 0, ativo: true, ordem: i }));
+    function abrirCom(nSitios: number) {
+      const fetchMock = vi.fn(async (url: string) => resposta(true, url === "/api/estoque/saldos" ? saldo(1) : url === "/api/propriedades" ? sitios(nSitios) : {}));
+      vi.stubGlobal("fetch", fetchMock);
+      render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={1} onSalvo={vi.fn()} />);
+    }
+    afterEach(() => setPropriedadeAtiva(null));
+
+    it("vários sítios e nenhum ativo: avisa para escolher a fazenda e bloqueia o envio", async () => {
+      setPropriedadeAtiva(null);
+      abrirCom(2);
+      expect(await screen.findByText(/Selecione uma fazenda no seletor do topo para ajustar o estoque/)).toBeTruthy();
+      expect(screen.queryByLabelText("Quantidade contada")).toBeNull();
+      expect(confirmar().disabled).toBe(true);
+    });
+
+    it("um só sítio: formulário normal", async () => {
+      setPropriedadeAtiva(null);
+      abrirCom(1);
+      await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+      expect(screen.queryByText(/Selecione uma fazenda no seletor do topo/)).toBeNull();
+      expect(screen.getByLabelText("Quantidade contada")).toBeTruthy();
+    });
+
+    it("vários sítios com sítio ativo: formulário normal", async () => {
+      setPropriedadeAtiva(2);
+      abrirCom(3);
+      await waitFor(() => expect((screen.getByLabelText("Produto") as HTMLSelectElement).value).toBe("1"));
+      expect(screen.queryByText(/Selecione uma fazenda no seletor do topo/)).toBeNull();
+      expect(screen.getByLabelText("Quantidade contada")).toBeTruthy();
+    });
+  });
+});
+
+describe("painel de revisão — movimentos de estoque", () => {
+  it("VENDA e DEVOLUCAO não prometem N movimentos; a compra mantém a contagem exata", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })));
+    const { unmount } = render(<FormOperacao config={config} tipoInicial="VENDA" onSalvo={vi.fn()} />);
+    expect(screen.getByText("Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda.")).toBeTruthy();
+    expect(screen.queryByText(/Nenhum movimento físico/)).toBeNull();
+    unmount();
+    render(<FormOperacao config={config} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    expect(screen.queryByText(/Movimenta o estoque dos produtos/)).toBeNull();
+    expect(screen.getByText("Nenhum movimento físico de estoque será gerado.")).toBeTruthy();
   });
 });
