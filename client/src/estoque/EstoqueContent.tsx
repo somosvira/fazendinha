@@ -202,7 +202,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Metric label="Valor em estoque" valor={brl(valorTotal)} detalhe={`${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Boxes} />
+          <Metric label="Valor em estoque" valor={brl(valorTotal)} icon={Boxes} />
           {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-red-800 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
         </div>
         <Metric label="Produtos em estoque" valor={String(nEmEstoque)} icon={Package} />

@@ -96,7 +96,7 @@ describe("EstoqueContent — saldos e custo médio", () => {
     render(<EstoqueContent />);
     const card = (await screen.findByText("Valor em estoque")).closest("section")!;
     expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 100,50");
-    expect(within(card).getByText("2 produtos com movimento")).toBeTruthy();
+    expect(within(card).queryByText(/produtos? com movimento/)).toBeNull();
   });
 
   it("card Valor em estoque ignora valores negativos e avisa (com filtro) os produtos com saldo negativo", async () => {
