@@ -103,9 +103,9 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [kKg, setKKg] = useState("");
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
-  const { data: produtos } = useProdutosEstoque({ ativo: true });
+  const { data: produtos } = useProdutosEstoque({ ativo: true, uso: "agricola" });
   const produtosEstocaveis = useMemo(
-    () => produtos.filter((p) => p.estocavel && p.ativo && p.subtipoPlantio).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    () => produtos.filter((p) => p.estocavel && p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos],
   );
   const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
@@ -305,7 +305,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   {produtosEstocaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
-              <p className="-mt-2.5 text-xs text-ink-3">Só produtos com tipo agrícola aparecem aqui (Configurações → Produtos).</p>
+              <p className="-mt-2.5 text-xs text-ink-3">Só produtos de categorias marcadas como uso agrícola aparecem aqui (Configurações → Categorias).</p>
               {produtoSelecionado && (
                 <>
                   {baixaEstimada && (

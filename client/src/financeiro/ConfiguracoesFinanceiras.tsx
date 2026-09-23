@@ -57,10 +57,9 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
 ];
 
-const TIPO_PRODUTO: Record<string, string> = { MEDICAMENTO: "Medicamento", RACAO: "Ração", INSUMO: "Insumo", MINERAL: "Mineral", OUTRO: "Outro" };
 const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
   { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
-  { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (p) => TIPO_PRODUTO[p.tipo ?? "INSUMO"] },
+  { chave: "categoria", titulo: "Categoria", larguraMinima: 140, celula: (p) => p.categoriaNome ?? "Sem categoria" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 90, celula: (p) => p.unidade },
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },

@@ -1,4 +1,4 @@
-import type { Prisma, TipoProduto } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
@@ -17,14 +17,16 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
   return {
     id: produto.id,
     nome: produto.nome,
-    tipo: produto.tipo,
-    subtipoPlantio: produto.subtipoPlantio ?? null,
     unidade: produto.unidade,
     estocavel: produto.estocavel,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
+    // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
+    categoria: produto.categoria
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional, usoAgricola: produto.categoria.usoAgricola }
+      : null,
     ativo: produto.ativo,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
     centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
@@ -57,9 +59,11 @@ function separarRelacoes<T extends { fornecedorIds?: number[]; centroCustoIds?: 
   return { fornecedorIds, centroCustoIds, produto };
 }
 
-export async function listarProdutos(f?: { tipo?: string; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
+const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
+
+export async function listarProdutos(f?: { uso?: "sanitario" | "nutricional" | "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
-  if (f?.tipo) where.tipo = f.tipo as TipoProduto;
+  if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
   else if (!f?.incluirInativos) where.ativo = true;

@@ -1,20 +1,20 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput, type TipoInsumoPlantio, type TipoProduto } from "../estoque/api";
+import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput } from "../estoque/api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
 import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
 
-const TIPOS: [TipoProduto, string][] = [
-  ["INSUMO", "Insumo"], ["MEDICAMENTO", "Medicamento"], ["RACAO", "Ração"],
-  ["MINERAL", "Mineral"], ["OUTRO", "Outro"],
-];
-
-const SUBTIPOS_PLANTIO: [TipoInsumoPlantio, string][] = [
-  ["FERTILIZANTE", "Fertilizante"], ["DEFENSIVO", "Defensivo"], ["HERBICIDA", "Herbicida"],
-  ["CORRETIVO", "Corretivo"], ["BIOLOGICO", "Biológico"], ["FOLIAR", "Foliar"],
-  ["MUDA", "Muda"], ["OUTRO", "Outro"],
-];
+// Chips informativos das marcações de uso da categoria escolhida — o
+// comportamento (sanitário/nutricional/agrícola) é da categoria, não do produto.
+function chipsUso(categoria: Categoria | undefined) {
+  if (!categoria) return [];
+  const chips: string[] = [];
+  if (categoria.usoSanitario) chips.push("Uso sanitário");
+  if (categoria.usoNutricional) chips.push("Uso nutricional");
+  if (categoria.usoAgricola) chips.push("Uso agrícola");
+  return chips;
+}
 
 /* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
  * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
@@ -54,8 +54,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const centros = centrosProp ?? centrosCarregados;
 
   const [nome, setNome] = useState(produto?.nome ?? "");
-  const [tipo, setTipo] = useState<TipoProduto>(produto?.tipo ?? "INSUMO");
-  const [subtipoPlantio, setSubtipoPlantio] = useState<TipoInsumoPlantio | "">(produto?.subtipoPlantio ?? "");
   const [unidade, setUnidade] = useState(produto?.unidade ?? "un");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
   const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
@@ -84,7 +82,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
-      nome: nome.trim(), tipo, subtipoPlantio: subtipoPlantio || null, unidade: unidade.trim(),
+      nome: nome.trim(), unidade: unidade.trim(),
       estocavel,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
       centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
@@ -108,15 +106,23 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-tipo" rotulo="Tipo">{(p) => <select {...p} value={tipo} onChange={(e) => setTipo(e.target.value as TipoProduto)} className={classeInput}>{TIPOS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <input {...p} maxLength={12} value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="un, kg, L…" className={classeInput} />}</CampoFormulario>
-      </div>
-      <CampoFormulario id="produto-subtipo-plantio" rotulo="Tipo agrícola" ajuda="Opcional. Usado só no módulo de plantio.">{(p) => <select {...p} value={subtipoPlantio} onChange={(e) => setSubtipoPlantio(e.target.value as TipoInsumoPlantio | "")} className={classeInput}><option value="">Não se aplica</option>{SUBTIPOS_PLANTIO.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>
-      <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>
       <CampoFormulario id="produto-categoria" rotulo="Categoria padrão" erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Sem categoria</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
+      {(() => {
+        const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
+        const chips = chipsUso(categoriaSelecionada);
+        if (!categoriaId) return null;
+        return (
+          <div className="-mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
+            {chips.length > 0
+              ? chips.map((chip) => <span key={chip} className="rounded-full border border-border px-2 py-0.5">{chip}</span>)
+              : <span>Sem uso específico</span>}
+          </div>
+        );
+      })()}
       <CentrosCustoFieldset
         idBase="produto-centros"
         centros={centros}

@@ -27,18 +27,20 @@ export type ParceiroInput = DadosParceiro & { nome: string; documento?: string |
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
 export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
-export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
+// Comportamento (sanitário/nutricional/agrícola) é da categoria do produto —
+// mesmo que ela esteja inativa (situação é do produto, uso é da categoria).
+export type ProdutoCategoria = { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean };
 export type Produto = {
-  id: number; nome: string; tipo?: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null;
+  id: number; nome: string;
   unidade: string; estocavel: boolean;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
+  categoria?: ProdutoCategoria | null;
   centroCustoIds?: number[]; centrosCusto?: { id: number; nome: string; ativo: boolean }[];
   fornecedores?: { id: number; nome: string; ativo: boolean }[];
 };
 export type ProdutoInput = {
-  nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
+  nome: string; unidade: string;
   estocavel: boolean;
   minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
 };

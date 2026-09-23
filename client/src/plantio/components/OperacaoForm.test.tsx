@@ -12,15 +12,17 @@ const rebanhoApiMocks = vi.hoisted(() => ({
   listarCentrosCusto: vi.fn(),
   produtos: [
     {
-      id: 1, nome: "Calcário dolomítico", tipo: "INSUMO", subtipoPlantio: "CORRETIVO", unidade: "t",
+      id: 1, nome: "Calcário dolomítico", unidade: "t",
       estocavel: true, minimoEstoque: null, ativo: true,
-      categoriaId: null, categoriaNome: null, classificacao: null,
+      categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
+      categoria: { id: 10, nome: "Fertilizantes e corretivos", usoSanitario: false, usoNutricional: false, usoAgricola: true },
       centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
     },
     {
-      id: 2, nome: "Produto sem centro único", tipo: "INSUMO", subtipoPlantio: "FERTILIZANTE", unidade: "kg",
+      id: 2, nome: "Produto sem centro único", unidade: "kg",
       estocavel: true, minimoEstoque: null, ativo: true,
-      categoriaId: null, categoriaNome: null, classificacao: null,
+      categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
+      categoria: { id: 10, nome: "Fertilizantes e corretivos", usoSanitario: false, usoNutricional: false, usoAgricola: true },
       centroCustoIds: [7, 8], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }, { id: 8, nome: "Outro centro", ativo: true }],
     },
   ],

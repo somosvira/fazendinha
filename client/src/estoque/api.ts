@@ -37,7 +37,7 @@ export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos + custo vaca/dia ───────────────────────────
-export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
@@ -96,17 +96,16 @@ export function useCustoVacaDia(dias = 30) {
 // ── Cadastros (Produtos + referências financeiras) ─────────────────────────
 // Mesmos DTOs/rotas do `/estoque/*` (gate pecuária|agricultura|financeiro) —
 // os services por trás são os mesmos de `/rebanho/*` (ver server/src/routes/estoque.ts).
-export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
-export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
 // Mesmo tipo de `financeiro/novo-api.ts` (contrato único de Produto na API) —
 // `/estoque/produtos` e `/financeiro/produtos` são a mesma tabela e o mesmo service.
 export type ProdutoDTO = Produto;
+export type UsoProduto = "sanitario" | "nutricional" | "agricola";
 export interface ProdutoInput {
-  nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
+  nome: string; unidade: string;
   estocavel?: boolean;
   minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
 }
-export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
@@ -116,7 +115,7 @@ export interface UltimoPrecoDTO { valorUnitario: string; data: string; parceiro:
 export const obterUltimoPreco = (produtoId: number, parceiroId?: number | null) =>
   req<UltimoPrecoDTO | null>(`/estoque/produtos/${produtoId}/ultimo-preco${qs({ parceiroId })}`);
 
-export function useProdutosEstoque(f?: { tipo?: string; q?: string; ativo?: boolean }) {
+export function useProdutosEstoque(f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) {
   const [data, setData] = useState<ProdutoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);

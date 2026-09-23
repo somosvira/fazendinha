@@ -113,7 +113,7 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
 // já criada (o PUT precisa do id). Salva independente do nome/macros da dieta.
 function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   const { data: itens, loading, recarregar } = useItensDieta(dietaId);
-  const { data: produtos } = useProdutos({ ativo: true });
+  const { data: produtos } = useProdutos({ ativo: true, uso: "nutricional" });
   const estocaveis = useMemo(() => produtos.filter((p) => p.estocavel), [produtos]);
   const prodPorId = useMemo(() => new Map(estocaveis.map((p) => [p.id, p])), [estocaveis]);
 

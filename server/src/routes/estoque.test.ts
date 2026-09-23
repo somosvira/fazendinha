@@ -149,6 +149,19 @@ describe("DELETE /estoque/movimentos/:id", () => {
   });
 });
 
+describe("GET /estoque/produtos ?uso=", () => {
+  it("uso válido → 200 e repassa ao service", async () => {
+    mocks.listarProdutos.mockResolvedValue([]);
+    const res = await appCom(soAgricultura).request("/estoque/produtos?uso=agricola");
+    expect(res.status).toBe(200);
+    expect(mocks.listarProdutos).toHaveBeenCalledWith(expect.objectContaining({ uso: "agricola" }));
+  });
+  it("uso inválido → 400", async () => {
+    const res = await appCom(soAgricultura).request("/estoque/produtos?uso=invalido");
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("acesso de usuário só-agricultura aos cadastros do estoque", () => {
   it("GET /estoque/produtos → 200", async () => {
     const res = await appCom(soAgricultura).request("/estoque/produtos");
@@ -184,7 +197,7 @@ describe("GET /estoque/fornecedores", () => {
 });
 
 describe("POST /estoque/produtos", () => {
-  const body = { nome: "Ureia", tipo: "INSUMO", unidade: "kg", estocavel: true, categoriaId: 1 };
+  const body = { nome: "Ureia", unidade: "kg", estocavel: true, categoriaId: 1 };
   it("sem lancar → 403", async () => {
     const res = await appCom(soAgricultura).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
     expect(res.status).toBe(403);

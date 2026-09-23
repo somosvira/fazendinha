@@ -61,8 +61,8 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 describe("EstoqueContent — custo médio", () => {
   it("mostra custo médio e valor (saldo × médio); sem custo, '—' e aviso de produtos sem custo apurado", async () => {
     const saldos = [
-      { produtoId: 1, nome: "Ração", tipo: "RACAO", unidade: "kg", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false },
-      { produtoId: 2, nome: "Sal", tipo: "MINERAL", unidade: "kg", centrosCusto: [], saldo: 4, custoMedio: null, valor: 0, minimoEstoque: null, abaixoMinimo: false },
+      { produtoId: 1, nome: "Ração", categoria: { id: 1, nome: "Alimentação", usoSanitario: false, usoNutricional: true, usoAgricola: false }, unidade: "kg", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false },
+      { produtoId: 2, nome: "Sal", categoria: { id: 2, nome: "Mineral", usoSanitario: false, usoNutricional: true, usoAgricola: false }, unidade: "kg", centrosCusto: [], saldo: 4, custoMedio: null, valor: 0, minimoEstoque: null, abaixoMinimo: false },
     ];
     vi.stubGlobal("fetch", vi.fn((url: string) => {
       const body = /\/estoque\/saldos/.test(url) ? saldos : /\/estoque\/custo-vaca-dia/.test(url) ? { periodoDias: 30, custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 } : [];

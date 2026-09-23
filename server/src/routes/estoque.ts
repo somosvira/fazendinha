@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { TipoProduto } from "@prisma/client";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
 import { produtoSchema, patchProdutoSchema } from "../services/estoque/produtos.schemas.js";
@@ -47,6 +46,7 @@ function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { erro
 }
 
 // `0` = "sem centro de custo"; ausente = sem filtro.
+const usoQuerySchema = z.enum(["sanitario", "nutricional", "agricola"]);
 const saldosQuerySchema = z.object({ centroCustoId: z.coerce.number().int().nonnegative().optional() });
 const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
@@ -59,7 +59,7 @@ const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().po
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
 
-const produtosQuerySchema = z.object({ tipo: z.nativeEnum(TipoProduto).optional(), q: z.string().optional(), ativo: z.enum(["true", "false"]).optional() });
+const produtosQuerySchema = z.object({ uso: usoQuerySchema.optional(), q: z.string().optional(), ativo: z.enum(["true", "false"]).optional() });
 const principiosQuerySchema = z.object({ inativos: z.string().optional() });
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
@@ -104,8 +104,8 @@ export const estoqueRouter = new Hono()
 
   // ── Produtos (cadastro) ─────────────────────────────────────────────────────
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {
-    const { tipo, q, ativo } = c.req.valid("query");
-    return c.json(await produtosSvc.listarProdutos({ tipo, q, ativo: parseAtivo(ativo), incluirInativos: true }));
+    const { uso, q, ativo } = c.req.valid("query");
+    return c.json(await produtosSvc.listarProdutos({ uso, q, ativo: parseAtivo(ativo), incluirInativos: true }));
   })
   .get("/estoque/produtos/:id/ultimo-preco", zValidator("param", idParamSchema), zValidator("query", ultimoPrecoQuerySchema), async (c) => {
     const { id } = c.req.valid("param");

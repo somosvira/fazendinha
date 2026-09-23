@@ -193,34 +193,9 @@ model ContaFinanceira {
   @@index([propriedadeId, ativo])
 }
 
-enum TipoProduto {
-  MEDICAMENTO
-  RACAO
-  INSUMO
-  MINERAL
-  OUTRO
-}
-
-// Subtipo agrícola de um Produto usado no Plantio (café). Só preenchido nos
-// insumos da lavoura; null nos produtos do rebanho. O seletor de produto da
-// operação agrícola e o alerta de estoque baixo do Plantio filtram por ele.
-enum TipoInsumoPlantio {
-  FERTILIZANTE
-  DEFENSIVO
-  HERBICIDA
-  CORRETIVO
-  BIOLOGICO
-  FOLIAR
-  MUDA
-  OUTRO
-}
-
 model Produto {
   id                 Int                     @id @default(autoincrement())
   nome               String                  @unique
-  tipo               TipoProduto             @default(INSUMO)
-  // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
-  subtipoPlantio     TipoInsumoPlantio?
   unidade            String                  @default("un")
   estocavel          Boolean                 @default(true)
   minimoEstoque      Decimal?                @db.Decimal(12, 2)
@@ -245,8 +220,6 @@ model Produto {
   aplicacoes         OperacaoAgricola[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
-
-  @@index([tipo])
 }
 
 // Um ingrediente da receita de um produto (ração formulada): produto-mãe → ingrediente + proporção.

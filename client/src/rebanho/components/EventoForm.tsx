@@ -131,7 +131,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const set = (k: string, v: string) => setF((s: any) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
   // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
-  const { data: produtosEstoque } = useProdutos({ ativo: true });
+  const { data: produtosEstoque } = useProdutos({ ativo: true, uso: "sanitario" });
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {

@@ -982,9 +982,9 @@ export const listarCentrosCusto = () => req<RefDTO[]>(`/rebanho/centros-custo`);
 // DTOs compartilhados com o estoque unificado (mesmo shape do service em
 // server/src/services/estoque/produtos.ts) — reexportados para não haver dois
 // `ProdutoDTO` divergentes no client (ver client/src/estoque/api.ts).
-export type { ProdutoDTO, ProdutoInput, TipoProduto, TipoInsumoPlantio } from "../estoque/api";
-import type { ProdutoDTO, ProdutoInput } from "../estoque/api";
-export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
+export type { ProdutoDTO, ProdutoInput, UsoProduto } from "../estoque/api";
+import type { ProdutoDTO, ProdutoInput, UsoProduto } from "../estoque/api";
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
@@ -995,7 +995,7 @@ export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<For
 export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(p) });
 export const editarFornecedor = (id: number, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
-export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
+export function useProdutos(f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) {
   const [data, setData] = useState<ProdutoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);

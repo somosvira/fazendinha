@@ -114,7 +114,7 @@ function ComposicaoEditor({ principios, onMudou }: { principios: PrincipioAtivoD
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => { listarProdutos({ tipo: "MEDICAMENTO", ativo: true }).then(setProdutos).catch(() => setProdutos([])); }, []);
+  useEffect(() => { listarProdutos({ uso: "sanitario", ativo: true }).then(setProdutos).catch(() => setProdutos([])); }, []);
   useEffect(() => {
     if (!produtoId) { setComp(null); setSel(new Set()); return; }
     obterComposicaoProduto(Number(produtoId)).then((c) => { setComp(c); setSel(new Set(c.principios.map((p) => p.principioAtivoId))); }).catch(() => setComp(null));

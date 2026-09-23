@@ -65,7 +65,7 @@ async function carregarColheita(propriedadeId?: number | null): Promise<Colheita
 }
 
 async function carregarEstoqueBaixo(propriedadeId?: number | null): Promise<EstoqueBaixoCtx[]> {
-  const saldos = await listarSaldos({ propriedadeId, apenasSubtipoPlantio: true });
+  const saldos = await listarSaldos({ propriedadeId, uso: "agricola" });
   return saldos
     .filter((s) => s.abaixoMinimo)
     .map((s) => ({ nome: s.nome, saldo: s.saldo, unidade: s.unidade, minimoEstoque: s.minimoEstoque }));

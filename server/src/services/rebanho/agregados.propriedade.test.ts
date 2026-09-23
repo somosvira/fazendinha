@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   eventoFindMany: vi.fn(),
   transacaoFindMany: vi.fn(),
   produtoFindMany: vi.fn(),
+  categoriaFindMany: vi.fn(),
   obterConfig: vi.fn(),
   calcularCustoVacaDia: vi.fn(),
   obterCustosMedios: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("../../db.js", () => ({
     eventoSanitario: { findMany: mocks.eventoFindMany },
     transacaoFinanceira: { findMany: mocks.transacaoFindMany },
     produto: { findMany: mocks.produtoFindMany },
+    categoria: { findMany: mocks.categoriaFindMany },
     centroCusto: { findMany: vi.fn().mockResolvedValue([{ id: 1 }]) },
   },
 }));
@@ -41,6 +43,7 @@ beforeEach(() => {
   mocks.eventoFindMany.mockResolvedValue([]);
   mocks.transacaoFindMany.mockResolvedValue([]);
   mocks.produtoFindMany.mockResolvedValue([]);
+  mocks.categoriaFindMany.mockResolvedValue([{ id: 99 }]);
   mocks.obterCustosMedios.mockResolvedValue(new Map());
   mocks.calcularCustoVacaDia.mockResolvedValue({ custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 });
 });

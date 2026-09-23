@@ -160,7 +160,7 @@ export function BaixaEstoqueCard({
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>
             {produtos.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nome} ({(p.tipo ?? "OUTRO").toLowerCase()} · {p.unidade})
+                {p.nome} ({p.categoriaNome ? p.categoriaNome.toLowerCase() : "sem categoria"} · {p.unidade})
               </option>
             ))}
           </RebSelect>

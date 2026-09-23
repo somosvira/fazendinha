@@ -104,14 +104,17 @@ export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedad
   return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
 }
 
-export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; apenasSubtipoPlantio?: boolean }) {
+const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
+
+export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "sanitario" | "nutricional" | "agricola" }) {
   const produtos = await prisma.produto.findMany({
-    where: { estocavel: true, ativo: true, ...(f?.apenasSubtipoPlantio ? { subtipoPlantio: { not: null } } : {}) },
+    where: { estocavel: true, ativo: true, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
       movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } },
       centrosCusto: { include: { centroCusto: true } },
+      categoria: true,
     },
   });
   const custos = await obterCustosMedios(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
@@ -130,7 +133,9 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
     return {
       produtoId: p.id,
       nome: p.nome,
-      tipo: p.tipo,
+      categoria: p.categoria
+        ? { id: p.categoria.id, nome: p.categoria.nome, usoSanitario: p.categoria.usoSanitario, usoNutricional: p.categoria.usoNutricional, usoAgricola: p.categoria.usoAgricola }
+        : null,
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       saldo,

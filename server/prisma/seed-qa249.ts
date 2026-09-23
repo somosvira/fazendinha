@@ -96,7 +96,7 @@ try {
       const casos: { codigo: string; fluxo: string; conta: { id: number; nome: string; saldoInicial: number }; produto: { id: number; nome: string; estoqueInicial: number } | null; inventarioId: number | null }[] = [];
       for (const [codigo, fluxo, estoqueInicial] of scenarios) {
         const conta = contaPorFluxo[codigo];
-        const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "kg", tipo: "INSUMO", estocavel: true, categoriaId: categorias[0].id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
+        const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "kg", estocavel: true, categoriaId: categorias[0].id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
         let inventarioId: number | null = null;
         if (produto && estoqueInicial) {
           const op = await confirmarRascunhoOperacao(tx, { tipo: "INVENTARIO_INICIAL", data: date(), descricao: `SEED QA249 ${codigo} estoque inicial`, propriedadeId: principal.id, usuarioId: usuarios[0].id, categoriaId: categorias[0].id, centroCustoId: centro.id, itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: estoqueInicial, unidade: "kg", valorUnitario: 10, estocavel: true }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } });

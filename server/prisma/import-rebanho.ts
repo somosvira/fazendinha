@@ -444,7 +444,7 @@ async function main() {
   }
 
   // --- Produtos aplicados → Cadastros (upsert por nome) ---
-  // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO).
+  // Coleta os produtos distintos das aplicações e cria em Produto (categoria sanitária).
   // Sem preço: o custo médio vem das compras registradas depois. Idempotente.
   const produtosAplicados = new Set<string>();
   for (const e of dados.eventosSanitarios ?? [])
@@ -463,7 +463,7 @@ async function main() {
       where: { nome },
       update: {},
       create: {
-        nome, tipo: "MEDICAMENTO", categoriaId: medCategoriaId,
+        nome, categoriaId: medCategoriaId,
         ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}),
       },
     });

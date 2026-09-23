@@ -3,17 +3,12 @@ import { z } from "zod";
 // Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 
-const tipoProdutoSchema = z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]);
-const subtipoPlantioSchema = z.enum(["FERTILIZANTE", "DEFENSIVO", "HERBICIDA", "CORRETIVO", "BIOLOGICO"]);
-
 const idsSchema = (campo: string) =>
   z.array(z.number().int().positive()).max(200)
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
 export const produtoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
-  tipo: tipoProdutoSchema.default("INSUMO"),
-  subtipoPlantio: subtipoPlantioSchema.nullable().optional(),
   unidade: z.string().trim().min(1).max(12).default("un"),
   estocavel: z.boolean().default(true),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),

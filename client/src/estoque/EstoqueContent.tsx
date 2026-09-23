@@ -87,12 +87,12 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     const filtrados = saldos.data.filter((s) => {
       if (soAbaixoMin && !s.abaixoMinimo) return false;
       if (!termo) return true;
-      return s.nome.toLowerCase().includes(termo) || s.tipo.toLowerCase().includes(termo);
+      return s.nome.toLowerCase().includes(termo) || (s.categoria?.nome ?? "").toLowerCase().includes(termo);
     });
     const mult = sort.dir === "asc" ? 1 : -1;
     return [...filtrados].sort((a, b) => {
       switch (sort.key) {
-        case "tipo": return a.tipo.localeCompare(b.tipo, "pt-BR") * mult || a.nome.localeCompare(b.nome, "pt-BR");
+        case "tipo": return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") * mult || a.nome.localeCompare(b.nome, "pt-BR");
         case "valor": return (a.valor - b.valor) * mult;
         case "nome":
         default: return a.nome.localeCompare(b.nome, "pt-BR") * mult;
@@ -132,7 +132,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const renderRow = (s: SaldoDTO) => (
     <tr key={s.produtoId}>
       <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
-      <td>{s.tipo}</td>
+      <td>{s.categoria?.nome ?? "Sem categoria"}</td>
       <td><CentrosChips centros={s.centrosCusto} /></td>
       <td>{qtd(s.saldo)} {s.unidade}</td>
       <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.custoMedio) : "—"}</td>
@@ -234,7 +234,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           <RebTable>
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
-              <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
+              <th><SortBtn label="Categoria" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
               <th>Centros de custo</th>
               <th>Saldo</th>
               <th title="Média ponderada das entradas neste sítio">Custo médio</th>

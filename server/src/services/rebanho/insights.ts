@@ -6,7 +6,8 @@ import { prisma } from "../../db.js";
 import type { ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "../estoque/estoque.calc.js";
 import { saidaConsumoConfirmada } from "../estoque/estoque.js";
-import { precoPorAplicacao } from "./custo-sanidade.js";
+import { precoPorAplicacao, resolverIdsCategoriasSanitarias } from "./custo-sanidade.js";
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
@@ -198,12 +199,19 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
     const cu = precoDe(a);
     if (cu != null) custoSanidadeExato += cu;
   }
-  // Rateio do gasto real "Medicamento Animal" / aplicações no rebanho
-  const lancsMedic = await prisma.transacaoFinanceira.findMany({
-    where: { status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m }, operacao: { categoria: { nome: "Medicamento Animal" } } },
-    select: { valorTotal: true },
+  // Rateio do gasto real com categorias de uso sanitário / aplicações no rebanho
+  const idsSanitario = await resolverIdsCategoriasSanitarias();
+  const lancsMedic = idsSanitario.length === 0 ? [] : await prisma.transacaoFinanceira.findMany({
+    where: {
+      status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m },
+      operacao: { OR: [{ categoriaId: { in: idsSanitario } }, { itens: { some: { categoriaId: { in: idsSanitario } } } }] },
+    },
+    select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
   });
-  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valorTotal), 0);
+  const totalMedic = lancsMedic.reduce((s, l) =>
+    s + ratearTransacao(l.operacao, l.id, l.valorTotal)
+      .filter((p) => p.categoriaId != null && idsSanitario.includes(p.categoriaId))
+      .reduce((ss, p) => ss + p.valor.toNumber(), 0), 0);
   const todasAplicsGlob = await prisma.eventoSanitario.count({ where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m } } });
   const custoPorAplic = todasAplicsGlob > 0 ? totalMedic / todasAplicsGlob : 0;
   const custoSanidadeRateio = round(custoPorAplic * aplics12m.length);

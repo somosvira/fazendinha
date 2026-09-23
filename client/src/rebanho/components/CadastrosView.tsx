@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader } from "../../components/Loading";
-import { useProdutos, useFornecedores, editarProduto, editarFornecedor, type ProdutoDTO, type FornecedorDTO, type TipoProduto, type TipoPessoa } from "../api";
+import { useProdutos, useFornecedores, editarProduto, editarFornecedor, type ProdutoDTO, type FornecedorDTO, type UsoProduto, type TipoPessoa } from "../api";
 import { FormProduto } from "../../financeiro/FormProduto";
 import { FornecedorForm } from "./FornecedorForm";
 import { RebHeader } from "./RebHeader";
@@ -15,14 +15,11 @@ import { MedidasAcasalamentoSection } from "./MedidasAcasalamentoSection";
 
 type Sub = "produtos" | "fornecedores" | "indicadores" | "acasalamento";
 
-const TIPO_PRODUTO: { id: TipoProduto; label: string }[] = [
-  { id: "MEDICAMENTO", label: "Medicamento" },
-  { id: "RACAO", label: "Ração" },
-  { id: "INSUMO", label: "Insumo" },
-  { id: "MINERAL", label: "Mineral" },
-  { id: "OUTRO", label: "Outro" },
+const USO_PRODUTO: { id: UsoProduto; label: string }[] = [
+  { id: "sanitario", label: "Sanitário" },
+  { id: "nutricional", label: "Nutricional" },
+  { id: "agricola", label: "Agrícola" },
 ];
-const LABEL_PRODUTO: Record<TipoProduto, string> = Object.fromEntries(TIPO_PRODUTO.map((t) => [t.id, t.label])) as Record<TipoProduto, string>;
 
 const TIPO_PESSOA: { id: TipoPessoa; label: string }[] = [
   { id: "FORNECEDOR", label: "Fornecedor" },
@@ -49,9 +46,9 @@ export function CadastrosView() {
 }
 
 function Produtos() {
-  const [tipo, setTipo] = useState<string>("");
+  const [uso, setUso] = useState<UsoProduto | "">("");
   const [q, setQ] = useState("");
-  const { data, loading, erro, recarregar } = useProdutos({ tipo: tipo || undefined, q: q || undefined });
+  const { data, loading, erro, recarregar } = useProdutos({ uso: uso || undefined, q: q || undefined });
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   const [novo, setNovo] = useState(false);
 
@@ -64,9 +61,9 @@ function Produtos() {
         <RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo produto</RebButton>
       </div>
       <div className={REB_CHIPS} style={{ marginBottom: 12, alignItems: "center" }}>
-        <button className={REB_CHIP_Q} onClick={() => setTipo("")} style={tipo === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
-        {TIPO_PRODUTO.map((t) => (
-          <button key={t.id} className={REB_CHIP_Q} onClick={() => setTipo(t.id)} style={tipo === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
+        <button className={REB_CHIP_Q} onClick={() => setUso("")} style={uso === "" ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>Todos</button>
+        {USO_PRODUTO.map((t) => (
+          <button key={t.id} className={REB_CHIP_Q} onClick={() => setUso(t.id)} style={uso === t.id ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}>{t.label}</button>
         ))}
         <input className={REB_FIELD_BOXED} style={{ marginBottom: 0, padding: "7px 11px", fontSize: 13.5, marginLeft: "auto" }} placeholder="Buscar por nome…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
@@ -74,17 +71,17 @@ function Produtos() {
       {loading ? <Loader />
         : erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {erro}</p>
         : data.length === 0 ? (
-          (tipo || q)
-            ? <EmptyState icon={Package} variant="filtro" titulo="Nenhum produto neste filtro" descricao="Nenhum produto bate com a busca ou o tipo selecionado. Limpe o filtro para ver todos." />
+          (uso || q)
+            ? <EmptyState icon={Package} variant="filtro" titulo="Nenhum produto neste filtro" descricao="Nenhum produto bate com a busca ou o uso selecionado. Limpe o filtro para ver todos." />
             : <EmptyState icon={Package} titulo="Nenhum produto cadastrado" descricao="Produtos são os itens que você compra e lança (ração, medicamento, insumo). Cadastre o primeiro para começar." acao={<RebButton variant="pri" onClick={() => setNovo(true)}>+ Novo produto</RebButton>} />
         )
         : (
           <RebTable>
-            <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Situação</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Categoria</th><th>Unidade</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((p) => (
               <tr key={p.id}>
                 <td><RebAnm>{p.nome}</RebAnm></td>
-                <td>{LABEL_PRODUTO[p.tipo ?? "OUTRO"]}</td>
+                <td>{p.categoriaNome ?? "Sem categoria"}</td>
                 <td>{p.unidade}</td>
                 <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>

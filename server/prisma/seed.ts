@@ -47,7 +47,7 @@ async function main() {
   const laticinio = await prisma.parceiro.create({ data: { nome: "Laticínio Regional", documento: "00000000000102", tipo: "CLIENTE", papeis: { create: [{ papel: "CLIENTE" }] } } });
   const oficina = await prisma.parceiro.create({ data: { nome: "Oficina Rural", documento: "00000000000103", tipo: "FORNECEDOR", papeis: { create: [{ papel: "PRESTADOR_SERVICO" }, { papel: "FORNECEDOR" }] }, pessoaContato: "Equipe da oficina", formaPagamentoPreferida: "PIX" } });
   const produtoRacao = await prisma.produto.create({ data: {
-    nome: "Ração para lactação", tipo: "RACAO", unidade: "kg", estocavel: true,
+    nome: "Ração para lactação", unidade: "kg", estocavel: true,
     minimoEstoque: 300, categoriaId: racao.id,
     centrosCusto: { create: [{ centroCustoId: centroAtividadeLeite.id }] },
   } });

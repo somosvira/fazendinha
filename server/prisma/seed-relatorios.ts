@@ -28,8 +28,8 @@ async function main() {
   });
 
   const [alimentacao, sanidade, manutencao, receitas, investimento] = await Promise.all([
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO" } }),
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO" } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO", usoNutricional: true } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO", usoSanitario: true } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Manutenção", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Receitas", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Equipamentos", classificacao: "INVESTIMENTO" } }),
@@ -51,8 +51,8 @@ async function main() {
     prisma.parceiro.create({ data: { nome: "QA Relatórios · Comprador de gado", documento: "99000000000004", tipo: "CLIENTE", papeis: { create: { papel: "CLIENTE" } } } }),
   ]);
   const [racao, medicamento] = await Promise.all([
-    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", tipo: "RACAO", unidade: "kg", estocavel: true, categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
-    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", tipo: "MEDICAMENTO", unidade: "dose", estocavel: true, categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", unidade: "kg", estocavel: true, categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", unidade: "dose", estocavel: true, categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
   ]);
 
   const compras = [

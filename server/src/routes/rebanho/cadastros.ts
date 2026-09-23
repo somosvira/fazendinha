@@ -25,7 +25,7 @@ const usuarioId = (c: Context): number | null => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
 
 export const cadastrosRouter = new Hono()
-  .get("/rebanho/produtos", async (c) => c.json(await produtos.listarProdutos({ tipo: c.req.query("tipo"), q: c.req.query("q"), ativo: parseAtivo(c.req.query("ativo")), incluirInativos: true })))
+  .get("/rebanho/produtos", async (c) => c.json(await produtos.listarProdutos({ uso: c.req.query("uso") as "sanitario" | "nutricional" | "agricola" | undefined, q: c.req.query("q"), ativo: parseAtivo(c.req.query("ativo")), incluirInativos: true })))
   .post("/rebanho/produtos", exigePermissao("lancar"), zValidator("json", produtoSchema), async (c) => { try { return c.json(await produtos.criarProduto(c.req.valid("json"), usuarioId(c)), 201); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .patch("/rebanho/produtos/:id", exigePermissao("lancar"), zValidator("json", patchProdutoSchema), async (c) => { try { return c.json(await produtos.atualizarProduto(Number(c.req.param("id")), c.req.valid("json"), usuarioId(c))); } catch (e) { const { status, body } = fail(e); return c.json(body, status); } })
   .get("/rebanho/fornecedores", async (c) => c.json(await svc.listarFornecedores({ tipo: c.req.query("tipo"), q: c.req.query("q") })))

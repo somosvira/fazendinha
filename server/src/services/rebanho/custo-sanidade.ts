@@ -1,9 +1,16 @@
-// Custo de sanidade por RATEIO: o gasto financeiro real de "Medicamento Animal"
-// (Lancamento) é rateado pelas aplicações reais (EventoSanitario APLICACAO) por
+// Custo de sanidade por RATEIO: o gasto financeiro real com categorias de uso
+// sanitário é rateado pelas aplicações reais (EventoSanitario APLICACAO) por
 // animal. Estimativa POR VOLUME — o Ideagri não tem custo por produto preenchido
 // (PRODUTO.VRUNITARIOESTOQUE = NULL), então uma aplicação cara conta igual a uma barata.
 import { prisma } from "../../db.js";
 import { obterCustosMedios } from "../estoque/estoque.js";
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
+
+// Ids das categorias marcadas como "uso sanitário" (comportamento é da
+// categoria, mesmo que ela esteja inativa — situação é do produto/uso é dela).
+export async function resolverIdsCategoriasSanitarias(): Promise<number[]> {
+  return (await prisma.categoria.findMany({ where: { usoSanitario: true }, select: { id: true } })).map((c) => c.id);
+}
 
 export interface AnimalAplic {
   numero: string;
@@ -55,18 +62,24 @@ export async function agregarCustoSanidade(meses = 12, propriedadeId: number | n
   const desde = new Date();
   desde.setMonth(desde.getMonth() - meses);
 
-  // Gasto real "Medicamento Animal" (mesmos filtros de caixa do dashboard).
-  const lancs = await prisma.transacaoFinanceira.findMany({
+  // Gasto real com categorias de uso sanitário (mesmos filtros de caixa do
+  // dashboard). Pré-filtro Prisma: operação ou algum item na categoria; o
+  // rateio abaixo fica só com as partes cuja categoria é sanitária.
+  const idsSanitario = await resolverIdsCategoriasSanitarias();
+  const lancs = idsSanitario.length === 0 ? [] : await prisma.transacaoFinanceira.findMany({
     where: {
       status: "CONFIRMADA",
       tipo: "PAGAMENTO",
       data: { gte: desde },
-      operacao: { categoria: { nome: "Medicamento Animal" } },
+      operacao: { OR: [{ categoriaId: { in: idsSanitario } }, { itens: { some: { categoriaId: { in: idsSanitario } } } }] },
       ...(propriedadeId != null ? { propriedadeId } : {}),
     },
-    select: { valorTotal: true },
+    select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
   });
-  const totalMedicamento = Math.round(lancs.reduce((s, l) => s + toNum(l.valorTotal), 0) * 100) / 100;
+  const totalMedicamento = Math.round(lancs.reduce((s, l) =>
+    s + ratearTransacao(l.operacao, l.id, l.valorTotal)
+      .filter((p) => p.categoriaId != null && idsSanitario.includes(p.categoriaId))
+      .reduce((ss, p) => ss + p.valor.toNumber(), 0), 0) * 100) / 100;
 
   // Aplicações reais por animal + ranking de produtos (inclui VACINA — também é
   // consumo de produto veterinário; só o tipo na timeline difere).

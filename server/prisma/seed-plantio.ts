@@ -15,8 +15,10 @@ import { CENTROS_ATIVIDADE } from "../src/services/estoque/centros-atividade.js"
 const RESISTENTE = /Acauã|Arara|Icatu|Catucaí|Paraíso|Asa Branca/i;
 
 // Insumos da lavoura (café arábica, fazenda ~80 ha Sul de Minas) — viram Produto
-// com `subtipoPlantio` preenchido (null no rebanho). Espelha o SALDOS estático da
-// EstoqueTab: `saldoInicial` vira uma ENTRADA, e o valor exibido = saldo × custo.
+// com a categoria atribuída conforme o `subtipo` abaixo (usado só neste seed para
+// mapear a categoria agrícola certa; o schema não guarda mais esse subtipo).
+// Espelha o SALDOS estático da EstoqueTab: `saldoInicial` vira uma ENTRADA, e o
+// valor exibido = saldo × custo.
 // Custos atualizados Mar/2026. minimo=null → produto sem mínimo (ex.: mudas).
 const INSUMOS_PLANTIO = [
   { nome: "Sulfato de amônio 21% N",        subtipo: "FERTILIZANTE", unidade: "kg", custo: 3.0,   minimo: 2_000, saldoInicial: 4_800 },
@@ -317,7 +319,7 @@ async function main() {
 
   console.log(`Camada operacional Ideagri: 1 safra ("${safra.nome}"), ${tarefasSeed.length} tarefas, ${apontamentosSeed.length} apontamentos.`);
 
-  // 8) Estoque de insumos da lavoura — Produto (subtipoPlantio) + uma ENTRADA de
+  // 8) Estoque de insumos da lavoura — Produto (categoria de uso agrícola) + uma ENTRADA de
   //    saldo inicial por produto. Idempotente: upsert por nome; recria os
   //    movimentos só dos produtos do Plantio (não toca no estoque do rebanho).
   //    Liga ao CentroCusto "Plantio Café" quando existe (mesma ponte contábil
@@ -348,8 +350,6 @@ async function main() {
   const insumoIds: number[] = [];
   for (const ins of INSUMOS_PLANTIO) {
     const data = {
-      tipo: "INSUMO" as const,
-      subtipoPlantio: ins.subtipo,
       unidade: ins.unidade,
       minimoEstoque: ins.minimo,
       categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? null,
@@ -395,7 +395,7 @@ async function main() {
     entradasCriadas++;
   }
 
-  console.log(`Estoque Plantio: ${INSUMOS_PLANTIO.length} insumos (subtipoPlantio), ${entradasCriadas} entradas de saldo inicial.`);
+  console.log(`Estoque Plantio: ${INSUMOS_PLANTIO.length} insumos, ${entradasCriadas} entradas de saldo inicial.`);
 }
 
 main().then(() => prisma.$disconnect()).catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
