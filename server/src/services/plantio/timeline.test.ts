@@ -173,6 +173,41 @@ describe("criarOperacao", () => {
     ).rejects.toEqual(expect.objectContaining({ code: "NAO_ENCONTRADO" }));
   });
 
+  it("dose com unidade legada não reconhecida rejeita em vez de salvar sem baixa", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+
+    await expect(
+      criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "lt/ha", produtoId: 3 } as any),
+    ).rejects.toEqual(expect.objectContaining({ code: "VALIDACAO" }));
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoCreate).not.toHaveBeenCalled();
+  });
+
+  it("dose com unidade legada reconhecida continua funcionando normalmente", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
+
+    expect(mocks.movimentoCreate).toHaveBeenCalled();
+    expect(mocks.operacaoCreate).toHaveBeenCalled();
+  });
+
+  it("sem doseUnidade nenhuma continua sem baixar e sem erro", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, produtoId: 3 } as any);
+
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movimentoEstoqueId: null }),
+    }));
+  });
+
   it("preserva quantidadeTotal informado quando não há baixa de estoque", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.operacaoCreate.mockResolvedValue({ id: 4, talhaoId: 1, tipo: "IRRIGACAO", data: new Date("2026-01-10") });

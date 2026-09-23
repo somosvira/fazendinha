@@ -21,3 +21,13 @@ export type ProdutoInput = z.infer<typeof produtoSchema>;
 
 export const patchProdutoSchema = produtoSchema.partial().extend({ ativo: z.boolean().optional() });
 export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
+
+// Filtro de produtos por uso (marcações da categoria) — mesmo enum usado por
+// /estoque/produtos e /rebanho/produtos, para validar o query param `uso`.
+export const usoQuerySchema = z.enum(["sanitario", "nutricional", "agricola"]);
+export const produtosQuerySchema = z.object({
+  uso: usoQuerySchema.optional(),
+  q: z.string().optional(),
+  ativo: z.enum(["true", "false"]).optional(),
+});
+export type ProdutosQuery = z.infer<typeof produtosQuerySchema>;

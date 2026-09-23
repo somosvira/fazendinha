@@ -17,9 +17,12 @@ export class PlantioEventoError extends Error {
 
 // Resolve a dose efetiva (unidade + por hectare) do input: usa os campos
 // novos quando vierem, senão faz o parse do texto legado (doseUnidade).
+// `reconhecida: false` só acontece pelo caminho legado — sinaliza que o
+// usuário informou uma unidade em texto livre que não sabemos interpretar
+// (ex.: "lt/ha"), para diferenciar de "nenhuma unidade informada".
 function resolverDose(input: { doseUnidadeMedida?: import("@prisma/client").UnidadeMedida | null; dosePorHectare?: boolean | null; doseUnidade?: string | null }) {
   if (input.doseUnidadeMedida !== undefined && input.doseUnidadeMedida !== null) {
-    return { unidade: input.doseUnidadeMedida, porHectare: !!input.dosePorHectare };
+    return { unidade: input.doseUnidadeMedida, porHectare: !!input.dosePorHectare, reconhecida: true };
   }
   return parseDoseUnidadeLegada(input.doseUnidade ?? null);
 }
@@ -184,6 +187,15 @@ async function planejarMovimento(
     if (!centro) throw new PlantioEventoError("NAO_ENCONTRADO", "centro de custo não encontrado");
   }
   const dose = resolverDose(input);
+  // Dose com unidade informada mas não reconhecida (texto legado, ex.: "lt/ha")
+  // não pode virar baixa silenciosa: sem quantidade total explícita, avisa em
+  // vez de gravar a operação sem consumir o estoque.
+  if (!dose.reconhecida && produto.estocavel && input.doseValor != null && input.quantidadeTotal == null) {
+    throw new PlantioEventoError(
+      "VALIDACAO",
+      `Unidade de dose "${input.doseUnidade}" não reconhecida — informe a unidade do produto (${rotuloUnidade(produto.unidade)}) ou a quantidade total`,
+    );
+  }
   let plano;
   try {
     plano = planejarBaixaAplicacao({

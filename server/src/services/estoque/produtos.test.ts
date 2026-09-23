@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
+  movimentoCount: vi.fn(), dietaItemCount: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -11,6 +12,8 @@ vi.mock("../../db.js", () => {
     parceiro: { findMany: mocks.parceiroFindMany },
     centroCusto: { findMany: mocks.centroCustoFindMany },
     auditoriaFinanceira: { create: mocks.auditoria },
+    movimentoEstoque: { count: mocks.movimentoCount },
+    dietaItem: { count: mocks.dietaItemCount },
   };
   mocks.transaction.mockImplementation(async (fn: (db: unknown) => unknown) => fn(tx));
   return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };
@@ -43,6 +46,8 @@ describe("cadastro de produtos (estoque)", () => {
     }));
     mocks.parceiroFindMany.mockResolvedValue([fornecedor]);
     mocks.centroCustoFindMany.mockResolvedValue([centro]);
+    mocks.movimentoCount.mockResolvedValue(0);
+    mocks.dietaItemCount.mockResolvedValue(0);
   });
 
   it("cria produto sem exigir fornecedor nem centro de custo", async () => {
@@ -96,6 +101,51 @@ describe("cadastro de produtos (estoque)", () => {
   it("permite produto não estocável sem categoria", async () => {
     await criarProduto(input({ estocavel: false, categoriaId: null }), 9);
     expect(mocks.produtoCreate).toHaveBeenCalled();
+  });
+});
+
+describe("troca de unidade com movimento/dieta registrados", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.produtoUpdate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
+    mocks.movimentoCount.mockResolvedValue(0);
+    mocks.dietaItemCount.mockResolvedValue(0);
+  });
+
+  it("produto sem movimento nem dieta pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(1, { unidade: "SC" }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ unidade: "SC" }) }));
+  });
+
+  it("produto com movimento de estoque não pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.movimentoCount.mockResolvedValue(3);
+    await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto com item de dieta não pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.dietaItemCount.mockResolvedValue(1);
+    await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto com movimento mas SEM trocar a unidade continua passando", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.movimentoCount.mockResolvedValue(3);
+    await atualizarProduto(1, { nome: "Ração premium" }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalled();
+    expect(mocks.movimentoCount).not.toHaveBeenCalled();
+  });
+
+  it("mesma unidade enviada explicitamente não dispara a checagem", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.movimentoCount.mockResolvedValue(3);
+    await atualizarProduto(1, { unidade: "KG" }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalled();
+    expect(mocks.movimentoCount).not.toHaveBeenCalled();
   });
 });
 

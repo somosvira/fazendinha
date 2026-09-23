@@ -105,17 +105,24 @@ describe("textoDoseUnidade", () => {
 
 describe("parseDoseUnidadeLegada", () => {
   it("reconhece unidade por hectare", () => {
-    expect(parseDoseUnidadeLegada("L/ha")).toEqual({ unidade: "L", porHectare: true });
-    expect(parseDoseUnidadeLegada("kg/ha")).toEqual({ unidade: "KG", porHectare: true });
+    expect(parseDoseUnidadeLegada("L/ha")).toEqual({ unidade: "L", porHectare: true, reconhecida: true });
+    expect(parseDoseUnidadeLegada("kg/ha")).toEqual({ unidade: "KG", porHectare: true, reconhecida: true });
   });
 
   it("reconhece unidade sem /ha", () => {
-    expect(parseDoseUnidadeLegada("kg")).toEqual({ unidade: "KG", porHectare: false });
-    expect(parseDoseUnidadeLegada("mL")).toEqual({ unidade: "ML", porHectare: false });
+    expect(parseDoseUnidadeLegada("kg")).toEqual({ unidade: "KG", porHectare: false, reconhecida: true });
+    expect(parseDoseUnidadeLegada("mL")).toEqual({ unidade: "ML", porHectare: false, reconhecida: true });
   });
 
-  it("vazio/desconhecido", () => {
-    expect(parseDoseUnidadeLegada(null)).toEqual({ unidade: null, porHectare: false });
-    expect(parseDoseUnidadeLegada("xyz")).toEqual({ unidade: null, porHectare: false });
+  it("nada informado (texto vazio/nulo) não é erro", () => {
+    expect(parseDoseUnidadeLegada(null)).toEqual({ unidade: null, porHectare: false, reconhecida: true });
+    expect(parseDoseUnidadeLegada(undefined)).toEqual({ unidade: null, porHectare: false, reconhecida: true });
+    expect(parseDoseUnidadeLegada("")).toEqual({ unidade: null, porHectare: false, reconhecida: true });
+  });
+
+  it("texto informado mas não reconhecido marca reconhecida: false", () => {
+    expect(parseDoseUnidadeLegada("xyz")).toEqual({ unidade: null, porHectare: false, reconhecida: false });
+    expect(parseDoseUnidadeLegada("lt/ha")).toEqual({ unidade: null, porHectare: true, reconhecida: false });
+    expect(parseDoseUnidadeLegada("cc/ha")).toEqual({ unidade: null, porHectare: true, reconhecida: false });
   });
 });

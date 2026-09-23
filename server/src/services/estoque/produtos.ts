@@ -111,6 +111,19 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
         throw new FinanceiroError("VALIDACAO", "Produto estocável precisa de uma categoria", "categoriaId");
       }
 
+      // Trocar a unidade muda a interpretação de tudo que já foi movimentado
+      // (estoque) ou planejado (dieta) na unidade antiga — bloqueia se houver
+      // algum registro para esse produto.
+      if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
+        const [movimentos, itensDieta] = await Promise.all([
+          tx.movimentoEstoque.count({ where: { produtoId: id } }),
+          tx.dietaItem.count({ where: { produtoId: id } }),
+        ]);
+        if (movimentos > 0 || itensDieta > 0) {
+          throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque ou dietas registradas", "unidade");
+        }
+      }
+
       if (fornecedorIds !== undefined) {
         await validarFornecedores(tx, fornecedorIds, new Set(anterior.fornecedores.map((v) => v.fornecedorId)));
       }

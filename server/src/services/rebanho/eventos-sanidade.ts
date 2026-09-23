@@ -43,7 +43,7 @@ async function planejarComCustoMedio(tx: Prisma.TransactionClient, tipo: string,
   return planejarBaixaSanidade({ tipo, produtoId, quantidadeUsada, baseCusto });
 }
 
-export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null): Promise<EventoTimelineDTO> {
+export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO> {
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { id: true, propriedadeId: true, grupo: { select: { centroCustoId: true } } } });
   if (!animal) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
   const produtoId = (input as any).produtoId ?? null;
@@ -70,7 +70,8 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
           data: {
             produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
             quantidade: plano.quantidade, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal,
-            propriedadeId: propriedadeMovimentoId, centroCustoId, observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${animalId})`,
+            propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId,
+            observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${animalId})`,
           },
         })
       : null;
@@ -86,7 +87,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   await recomputarSanidade(animalId);
   return toTimeline(e);
 }
-export async function editarSanidade(eventoId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null): Promise<EventoTimelineDTO> {
+export async function editarSanidade(eventoId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO> {
   const existente = await prisma.eventoSanitario.findFirst({
     where: { id: eventoId, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) },
     include: { animal: { select: { propriedadeId: true, grupo: { select: { centroCustoId: true } } } } },
@@ -126,17 +127,17 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
       || (anterior.centroCustoId ?? null) !== (centroCustoId ?? null)
     );
     if (consome && mudouBaixa) {
-      if (anterior) await estornarMovimentoTx(tx, anterior.id, { observacao: observacaoEstorno });
+      if (anterior) await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: observacaoEstorno });
       const plano = (await planejarComCustoMedio(tx, input.tipo, produtoId, quantidadeUsada, propriedadeMovimentoId))!;
       movimentoEstoqueId = (await tx.movimentoEstoque.create({ data: {
         produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
         quantidade: plano.quantidade, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal,
-        propriedadeId: propriedadeMovimentoId, centroCustoId,
+        propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId,
         observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${existente.animalId})`,
       } })).id;
     } else if (!consome && movimentoEstoqueId != null) {
       // Edição removeu o produto/quantidade: estorna a baixa gerada antes.
-      await estornarMovimentoTx(tx, movimentoEstoqueId, { observacao: observacaoEstorno });
+      await estornarMovimentoTx(tx, movimentoEstoqueId, { usuarioId, observacao: observacaoEstorno });
       movimentoEstoqueId = null;
     }
     return tx.eventoSanitario.update({
@@ -150,7 +151,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   return toTimeline(atualizado);
 }
 
-export async function excluirSanidade(eventoId: number, propriedadeId: number | null = null): Promise<void> {
+export async function excluirSanidade(eventoId: number, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<void> {
   const e = await prisma.eventoSanitario.findFirst({ where: { id: eventoId, ...(propriedadeId != null ? { animal: { propriedadeId } } : {}) }, include: { animal: { select: { propriedadeId: true } } } });
   if (!e) throw new EventoSanError("NAO_ENCONTRADO", "evento não encontrado");
   const propriedadeMovimentoId = e.animal.propriedadeId ?? (await propriedadePrincipalId());
@@ -159,7 +160,7 @@ export async function excluirSanidade(eventoId: number, propriedadeId: number | 
       await assertPeriodoAberto(tx, propriedadeMovimentoId, e.data);
       // A baixa confirmada não é apagada: estorna (inverso + REVERTIDO) e o
       // evento sai; o par original/inverso fica no razão de estoque.
-      await estornarMovimentoTx(tx, e.movimentoEstoqueId, { observacao: `Estorno: evento sanitário #${eventoId} excluído` });
+      await estornarMovimentoTx(tx, e.movimentoEstoqueId, { usuarioId, observacao: `Estorno: evento sanitário #${eventoId} excluído` });
     }
     await tx.eventoSanitario.delete({ where: { id: eventoId } });
   });

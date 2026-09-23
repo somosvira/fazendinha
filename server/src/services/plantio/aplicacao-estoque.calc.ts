@@ -62,11 +62,14 @@ const MAPA_UNIDADE_LEGADA: Record<string, UnidadeMedida> = {
 // Compatibilidade: converte o texto livre legado de OperacaoAgricola.doseUnidade
 // (ex.: "L/ha", "kg", "mL/ha") nos campos novos, quando o input não manda
 // doseUnidadeMedida/dosePorHectare diretamente.
-export function parseDoseUnidadeLegada(texto: string | null | undefined): { unidade: UnidadeMedida | null; porHectare: boolean } {
-  if (!texto) return { unidade: null, porHectare: false };
+// `reconhecida: false` distingue "veio texto mas não sabemos interpretar" (ex.:
+// "lt/ha", "cc/ha") de "nada foi informado" (texto vazio/nulo) — quem chama
+// decide se isso é erro (ver timeline.ts).
+export function parseDoseUnidadeLegada(texto: string | null | undefined): { unidade: UnidadeMedida | null; porHectare: boolean; reconhecida: boolean } {
+  if (!texto || !texto.trim()) return { unidade: null, porHectare: false, reconhecida: true };
   const bruto = texto.trim().toLowerCase();
   const porHectare = bruto.endsWith("/ha");
   const chave = (porHectare ? bruto.slice(0, -3) : bruto).trim();
   const unidade = MAPA_UNIDADE_LEGADA[chave] ?? null;
-  return { unidade, porHectare };
+  return { unidade, porHectare, reconhecida: unidade != null };
 }
