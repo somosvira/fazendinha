@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   periodoFindUnique: vi.fn(),
   movFindMany: vi.fn(),
   movGroupBy: vi.fn(),
+  produtoFindMany: vi.fn(),
   movFindFirst: vi.fn(),
   movCreate: vi.fn(),
   movUpdate: vi.fn(),
@@ -18,10 +19,14 @@ const mocks = vi.hoisted(() => ({
   propriedadePrincipalId: vi.fn(),
 }));
 
-vi.mock("../../db.js", () => ({ prisma: { $transaction: mocks.transaction } }));
+vi.mock("../../db.js", () => ({ prisma: {
+  $transaction: mocks.transaction,
+  produto: { findMany: mocks.produtoFindMany },
+  movimentoEstoque: { groupBy: mocks.movGroupBy },
+} }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, excluirMovimento, estornarMovimentoTx, registrarMovimento } from "./estoque.js";
+import { ajustarContagem, excluirMovimento, estornarMovimentoTx, listarSaldos, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
@@ -177,5 +182,27 @@ describe("estornarMovimentoTx", () => {
     expect(data.tipo).toBe("AJUSTE");
     expect(Number(data.quantidade)).toBe(3);
     expect(Number(data.valorTotal)).toBe(6);
+  });
+});
+
+describe("listarSaldos", () => {
+  const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });
+  const produtoMl = (movimentos: unknown[]) => ({ id: 3, nome: "Ivermectina", unidade: "ML", minimoEstoque: null, categoria: null, centrosCusto: [], movimentos });
+
+  it("valor do saldo usa a base exata (Σvalor ÷ Σquantidade), não o custo médio arredondado × saldo", async () => {
+    // Base 25.000 mL por R$ 11,25 → custo real 0,00045/mL, exibido 0,0005.
+    mocks.produtoFindMany.mockResolvedValue([produtoMl([mov("ENTRADA", "25000", "11.25"), mov("AJUSTE", "995", "0")])]);
+    mocks.movGroupBy.mockResolvedValue([{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(25000), valorTotal: new Prisma.Decimal("11.25") } }]);
+    const [linha] = await listarSaldos({ propriedadeId: 1 });
+    expect(linha.saldo).toBe(25995);
+    expect(linha.custoMedio).toBe(0.0005); // só exibição
+    expect(linha.valor).toBe(11.7); // 25.995 × 11,25 ÷ 25.000 = 11,698 → 11,70 (não 13,00)
+  });
+
+  it("sem base de custo, valor 0 e custoMedio null", async () => {
+    mocks.produtoFindMany.mockResolvedValue([produtoMl([mov("AJUSTE", "10", "0")])]);
+    mocks.movGroupBy.mockResolvedValue([]);
+    const [linha] = await listarSaldos({ propriedadeId: 1 });
+    expect(linha).toMatchObject({ saldo: 10, custoMedio: null, valor: 0 });
   });
 });

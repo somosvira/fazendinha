@@ -133,7 +133,7 @@ function percentil(valores: number[], alvo: number): number {
 }
 
 // Soma o custo real das aplicações precificadas (ver precoPorAplicacao em
-// custo-sanidade.ts: movimento de estoque > quantidade × custo médio > null).
+// custo-sanidade.ts: movimento de estoque com valor > quantidade × base de custo > null).
 // Exportada para testar a regra isolada sem mockar o obterInsights inteiro.
 export function somarCustoSanidadeExato(
   aplics: { produtoId: number | null; produto: string | null }[],

@@ -31,6 +31,14 @@ describe("movimentoSchema", () => {
   it("rejeita tipo inválido", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "DEVOLUCAO", data: ontem, quantidade: 10, observacao: "Ajuste conferido" }).success).toBe(false);
   });
+  it("rejeita quantidade com mais de 3 casas (0,0004 seria gravado como 0,000)", () => {
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: 0.0004, observacao: "Ajuste conferido" }).success).toBe(false);
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -1.0005, observacao: "Ajuste conferido" }).success).toBe(false);
+  });
+  it("aceita quantidade com 3 casas (Decimal(12,3))", () => {
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: 0.001, observacao: "Ajuste conferido" }).success).toBe(true);
+    expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: -25.995, observacao: "Ajuste conferido" }).success).toBe(true);
+  });
   it("rejeita ajuste sem justificativa", () => {
     expect(movimentoSchema.safeParse({ produtoId: 1, tipo: "AJUSTE", data: ontem, quantidade: 10 }).success).toBe(false);
   });

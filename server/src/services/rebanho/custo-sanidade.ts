@@ -4,7 +4,8 @@
 // (PRODUTO.VRUNITARIOESTOQUE = NULL), então uma aplicação cara conta igual a uma barata.
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { obterCustosMedios } from "../estoque/estoque.js";
+import { obterBasesCusto } from "../estoque/estoque.js";
+import { custoMedioDaBase, valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 
 // Ids das categorias marcadas como "uso sanitário" (comportamento é da
@@ -34,9 +35,10 @@ export function ratearCustoSanidade(totalMedicamento: number, porAnimal: AnimalA
 }
 
 // Resolve o id do produto de cada aplicação (vínculo direto ou, no legado, por
-// nome) e o custo médio ponderado de cada um no sítio. Base comum para o preço
-// de referência (por produto) e para o custo real por aplicação, abaixo.
-async function resolverCustosMediosDeAplicacoes(
+// nome) e a base do custo médio (Σ quantidade, Σ valor) de cada um no sítio.
+// Base comum para o preço de referência (custo médio arredondado, só exibição)
+// e para o custo real por aplicação (quantidade × Σvalor ÷ Σquantidade), abaixo.
+async function resolverBasesCustoDeAplicacoes(
   aplics: { produtoId: number | null; produto: string | null }[],
   propriedadeId: number | null,
 ) {
@@ -48,9 +50,9 @@ async function resolverCustosMediosDeAplicacoes(
     }
   }
   const ids = [...aplics.flatMap((a) => (a.produtoId != null ? [a.produtoId] : [])), ...idPorNome.values()];
-  const custos = await obterCustosMedios(prisma, ids, propriedadeId);
+  const bases = await obterBasesCusto(prisma, ids, propriedadeId);
   const idDe = (a: { produtoId: number | null; produto: string | null }) => a.produtoId ?? (a.produto ? idPorNome.get(a.produto) : undefined);
-  return { idDe, custos };
+  return { idDe, bases };
 }
 
 export interface AplicacaoCusteavel {
@@ -61,15 +63,15 @@ export interface AplicacaoCusteavel {
 }
 
 // Monta as duas funções de precificação numa passada só (uma query de nomes +
-// uma de custos médios + uma de movimentos), evitando repetir as buscas quando
+// uma de bases de custo + uma de movimentos), evitando repetir as buscas quando
 // o chamador precisa das duas (agregarCustoSanidade usa ambas).
 async function criarMotorDeCusto(aplics: AplicacaoCusteavel[], propriedadeId: number | null) {
   const movIds = [...new Set(aplics.flatMap((a) => (a.movimentoEstoqueId != null ? [a.movimentoEstoqueId] : [])))];
   const movimentos = movIds.length > 0
     ? await prisma.movimentoEstoque.findMany({ where: { id: { in: movIds }, status: "CONFIRMADO" }, select: { id: true, valorTotal: true } })
     : [];
-  const valorPorMovimento = new Map(movimentos.map((m) => [m.id, m.valorTotal.toNumber()]));
-  const { idDe, custos } = await resolverCustosMediosDeAplicacoes(aplics, propriedadeId);
+  const valorPorMovimento = new Map(movimentos.map((m) => [m.id, m.valorTotal]));
+  const { idDe, bases } = await resolverBasesCustoDeAplicacoes(aplics, propriedadeId);
 
   // Custo médio (preço unitário) do produto de uma aplicação — cruza por
   // produtoId quando o evento tem vínculo com o estoque; eventos legados (só
@@ -77,7 +79,8 @@ async function criarMotorDeCusto(aplics: AplicacaoCusteavel[], propriedadeId: nu
   // é o custo da aplicação em si — ver custoRealDe para isso.
   const custoMedioDe = (a: { produtoId: number | null; produto: string | null }) => {
     const id = idDe(a);
-    const custo = id != null ? custos.get(id) : undefined;
+    const base = id != null ? bases.get(id) : undefined;
+    const custo = base ? custoMedioDaBase(base) : null;
     return custo != null ? custo.toNumber() : null;
   };
 
@@ -85,20 +88,23 @@ async function criarMotorDeCusto(aplics: AplicacaoCusteavel[], propriedadeId: nu
   // CONFIRMADO que baixou o consumo — já valorizado no momento da aplicação, a
   // fonte mais confiável (se o movimento foi estornado, a aplicação não teve
   // custo efetivo: null, não cai no rateio como se fosse "sem base"; ela só não
-  // soma nada de exato); (b) sem movimento mas com produtoId + quantidadeUsada
-  // → quantidade × custo médio atual do produto no sítio; (c) evento legado só
-  // com texto (sem produtoId/quantidade) → sem base de custo, null — a Fatia
-  // cai no rateio por volume.
+  // soma nada de exato). Movimento com valorTotal 0 foi baixado SEM base de
+  // custo (valorSaidaDaBase com base null): o valor é "desconhecido", não
+  // "R$ 0,00" — segue para (b), como se não houvesse movimento; (b) com
+  // produtoId + quantidadeUsada → quantidade × Σvalor ÷ Σquantidade da base do
+  // produto no sítio (valorSaidaDaBase, arredondado só no fim — nunca o custo
+  // médio de 4 casas × quantidade); (c) evento legado só com texto (sem
+  // produtoId/quantidade) → sem base de custo, null — a Fatia cai no rateio.
   const custoRealDe = (a: AplicacaoCusteavel) => {
     if (a.movimentoEstoqueId != null) {
-      const valor = valorPorMovimento.get(a.movimentoEstoqueId);
-      return valor != null ? valor : null;
+      if (!valorPorMovimento.has(a.movimentoEstoqueId)) return null; // estornado
+      const valor = valorPorMovimento.get(a.movimentoEstoqueId)!;
+      if (!valor.isZero()) return valor.toNumber();
     }
     if (a.produtoId != null && a.quantidadeUsada != null) {
-      const custoMedio = custos.get(a.produtoId);
-      if (custoMedio == null) return null;
-      const qtd = a.quantidadeUsada instanceof Prisma.Decimal ? a.quantidadeUsada.toNumber() : Number(a.quantidadeUsada);
-      return Math.round(custoMedio.toNumber() * qtd * 100) / 100;
+      const base = bases.get(a.produtoId);
+      if (base == null) return null;
+      return valorSaidaDaBase(new Prisma.Decimal(a.quantidadeUsada), base).valorTotal.toNumber();
     }
     return null;
   };
@@ -154,7 +160,7 @@ export async function agregarCustoSanidade(meses = 12, propriedadeId: number | n
   });
   // Custo médio = preço de referência por produto (exibição). Custo real = o
   // que a aplicação de fato consumiu (movimento de estoque ou quantidade ×
-  // custo médio) — os dois podem divergir por aplicação, por isso são calculados
+  // base de custo) — os dois podem divergir por aplicação, por isso são calculados
   // à parte (ver criarMotorDeCusto acima).
   const { custoMedioDe, custoRealDe } = await criarMotorDeCusto(aplics, propriedadeId);
   const custosMediosPorProduto = new Map<string, number | null>();
@@ -215,6 +221,6 @@ export async function agregarCustoSanidade(meses = 12, propriedadeId: number | n
     produtosTotais: produtos.length,
     nota:
       "Estimativa por volume: gasto real das categorias de uso sanitário ÷ nº de aplicações. " +
-      "O custo exato usa o valor do movimento de estoque da aplicação ou, sem ele, a quantidade aplicada × custo médio do produto neste sítio.",
+      "O custo exato usa o valor do movimento de estoque da aplicação ou, sem ele (ou se a baixa não teve custo), a quantidade aplicada × custo médio do produto neste sítio.",
   };
 }

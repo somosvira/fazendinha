@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   movimentoFindMany: vi.fn(),
   obterConfig: vi.fn(),
   calcularCustoVacaDia: vi.fn(),
-  obterCustosMedios: vi.fn(),
+  obterBasesCusto: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
@@ -28,7 +28,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 vi.mock("./config.js", () => ({ obterConfig: mocks.obterConfig }));
-vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia, obterCustosMedios: mocks.obterCustosMedios }));
+vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia, obterBasesCusto: mocks.obterBasesCusto }));
 vi.mock("../../env.js", () => ({ env: {} }));
 
 import { agregarProducao } from "./producao.js";
@@ -47,7 +47,7 @@ beforeEach(() => {
   mocks.produtoFindMany.mockResolvedValue([]);
   mocks.categoriaFindMany.mockResolvedValue([{ id: 99 }]);
   mocks.movimentoFindMany.mockResolvedValue([]);
-  mocks.obterCustosMedios.mockResolvedValue(new Map());
+  mocks.obterBasesCusto.mockResolvedValue(new Map());
   mocks.calcularCustoVacaDia.mockResolvedValue({ custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 });
 });
 
@@ -82,10 +82,10 @@ describe("agregados por propriedade", () => {
     expect(mocks.eventoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ animal: { propriedadeId: 7 } }),
     }));
-    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [], 7);
+    expect(mocks.obterBasesCusto).toHaveBeenCalledWith(expect.anything(), [], 7);
   });
 
-  it("custo sanitário exato segue a precedência: movimento de estoque > quantidade × custo médio > rateio", async () => {
+  it("custo sanitário exato segue a precedência: movimento de estoque > quantidade × base de custo > rateio", async () => {
     const { Prisma } = await import("@prisma/client");
     mocks.eventoFindMany.mockResolvedValue([
       // (a) movimento de estoque confirmado: valor já calculado na baixa (não é
@@ -104,15 +104,16 @@ describe("agregados por propriedade", () => {
       { id: 501, valorTotal: new Prisma.Decimal("12.40") },
       { id: 502, valorTotal: new Prisma.Decimal("6.20") },
     ]);
-    mocks.obterCustosMedios.mockResolvedValue(new Map([
-      [3, new Prisma.Decimal("0.62")],
-      [4, new Prisma.Decimal(6)],
-      [8, new Prisma.Decimal("2.5")],
+    const base = (quantidade: number, valor: string) => ({ quantidade: new Prisma.Decimal(quantidade), valor: new Prisma.Decimal(valor) });
+    mocks.obterBasesCusto.mockResolvedValue(new Map([
+      [3, base(100, "62")], // 0,62/mL
+      [4, base(10, "60")], // 6,00/un
+      [8, base(4, "10")], // 2,50/un
     ]));
 
     const r = await agregarCustoSanidade(12, 7);
 
-    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [3, 3, 4, 8], 7);
+    expect(mocks.obterBasesCusto).toHaveBeenCalledWith(expect.anything(), [3, 3, 4, 8], 7);
     expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: { in: [501, 502] }, status: "CONFIRMADO" }),
     }));

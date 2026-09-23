@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   produtoFindMany: vi.fn(),
   movimentoFindMany: vi.fn(),
-  obterCustosMedios: vi.fn(),
+  obterBasesCusto: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
@@ -12,7 +12,7 @@ vi.mock("../../db.js", () => ({
     movimentoEstoque: { findMany: mocks.movimentoFindMany },
   },
 }));
-vi.mock("../estoque/estoque.js", () => ({ obterCustosMedios: mocks.obterCustosMedios }));
+vi.mock("../estoque/estoque.js", () => ({ obterBasesCusto: mocks.obterBasesCusto }));
 
 import { Prisma } from "@prisma/client";
 import { precoPorAplicacao } from "./custo-sanidade.js";
@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.produtoFindMany.mockResolvedValue([]);
   mocks.movimentoFindMany.mockResolvedValue([]);
-  mocks.obterCustosMedios.mockResolvedValue(new Map());
+  mocks.obterBasesCusto.mockResolvedValue(new Map());
 });
 
 describe("somarCustoSanidadeExato", () => {
@@ -71,13 +71,13 @@ describe("custo de sanidade do animal usa quantidade, não só o preço unitári
   });
 
   it("sem movimento mas com produtoId + quantidadeUsada, multiplica quantidade × custo médio", async () => {
-    mocks.obterCustosMedios.mockResolvedValue(new Map([[3, new Prisma.Decimal("0.62")]]));
+    mocks.obterBasesCusto.mockResolvedValue(new Map([[3, { quantidade: new Prisma.Decimal(100), valor: new Prisma.Decimal(62) }]]));
     const aplics = [{ produtoId: 3, produto: "Antibiótico", quantidadeUsada: new Prisma.Decimal(20), movimentoEstoqueId: null }];
 
     const precoDe = await precoPorAplicacao(aplics, 7);
     const exato = somarCustoSanidadeExato(aplics, precoDe);
 
-    expect(exato).toBe(12.4); // 0,62 × 20, não 0,62
+    expect(exato).toBe(12.4); // 20 × 62 ÷ 100 (0,62/mL), não 0,62
   });
 
   it("evento legado só com texto (sem produtoId nem quantidade) cai no rateio", async () => {

@@ -35,7 +35,8 @@ export const movimentoSchema = z
     // Entradas e saídas nascem de operações financeiras ou eventos operacionais; aqui só ajuste de inventário.
     tipo: z.literal("AJUSTE"),
     data: naoFutura,
-    quantidade: z.number().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta"),
+    // 3 casas = MovimentoEstoque.quantidade Decimal(12,3); 0,0004 seria gravado como 0,000.
+    quantidade: z.number().finite().min(-MAX_QTD, "quantidade muito alta").max(MAX_QTD, "quantidade muito alta").multipleOf(0.001, "quantidade aceita no máximo 3 casas decimais"),
     custoUnitario: z.number().nonnegative().max(MAX_CUSTO, "custo unitário muito alto").optional(),
     grupoId: z.number().int().optional(),
     observacao: z.string().min(5, "justificativa é obrigatória").max(200),
@@ -143,7 +144,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       categoria: true,
     },
   });
-  const custos = await obterCustosMedios(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
+  const bases = await obterBasesCusto(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
       tipo: m.tipo,
@@ -152,9 +153,12 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       data: iso(m.data),
     }));
     const { saldo } = saldoProduto(movs);
-    const custo = custos.get(p.id) ?? null;
-    // Valor do estoque = saldo físico × custo médio das entradas do sítio.
-    const valor = custo == null ? 0 : new Prisma.Decimal(saldo).mul(custo).toDecimalPlaces(2).toNumber();
+    const base = bases.get(p.id) ?? null;
+    const custo = base ? custoMedioDaBase(base) : null; // só exibição (4 casas)
+    // Valor do estoque = saldo × Σvalor ÷ Σquantidade da base do sítio, com um
+    // único arredondamento no fim — mesma matemática das saídas. Multiplicar o
+    // saldo pelo custoMedio arredondado erraria até ~11% em produtos por g/mL.
+    const valor = base == null ? 0 : valorSaidaDaBase(saldo, base).valorTotal.toNumber();
     const minimo = p.minimoEstoque != null ? Number(p.minimoEstoque) : null;
     return {
       produtoId: p.id,
