@@ -130,6 +130,24 @@ describe("OperacaoForm — baixa de estoque", () => {
     })));
   });
 
+  it("selecionar produto inicializa a unidade da dose com a unidade do produto (antes de o usuário mexer nela)", async () => {
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+
+    selectByLabel("Produto do estoque", "3"); // Herbicida líquido, unidade L
+    await waitFor(() => expect((screen.getByLabelText("Unidade da dose") as HTMLSelectElement).value).toBe("L"));
+  });
+
+  it("depois que o usuário escolhe a unidade da dose, trocar de produto não sobrescreve mais", async () => {
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+
+    selectByLabel("Unidade da dose", "ML"); // usuário mexe na unidade antes de escolher o produto
+    selectByLabel("Produto do estoque", "1"); // Calcário dolomítico, unidade T
+    await waitFor(() => expect((screen.getByLabelText("Produto do estoque") as HTMLSelectElement).value).toBe("1"));
+    expect((screen.getByLabelText("Unidade da dose") as HTMLSelectElement).value).toBe("ML");
+  });
+
   it("dose em mL para produto em kg — bases diferentes, mostra erro e não estima baixa", async () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });

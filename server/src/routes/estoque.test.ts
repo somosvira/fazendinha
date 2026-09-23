@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   listarCentrosCusto: vi.fn(),
   listarParceiros: vi.fn(),
   obterUltimoPreco: vi.fn(),
+  obterCustoMedio: vi.fn(),
 }));
 
 vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
@@ -25,6 +26,7 @@ vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
     ajustarContagem: mocks.ajustarContagem,
     registrarMovimento: mocks.registrarMovimento,
     excluirMovimento: mocks.excluirMovimento,
+    obterCustoMedio: mocks.obterCustoMedio,
   };
 });
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
@@ -77,6 +79,7 @@ beforeEach(() => {
   mocks.listarCategorias.mockResolvedValue([]);
   mocks.listarCentrosCusto.mockResolvedValue([]);
   mocks.listarParceiros.mockResolvedValue([]);
+  mocks.obterCustoMedio.mockResolvedValue(null);
 });
 
 describe("escritas exigem a flag lancar", () => {
@@ -229,5 +232,26 @@ describe("GET /estoque/produtos/:id/ultimo-preco", () => {
     const res = await appCom(semLancar).request("/estoque/produtos/abc/ultimo-preco");
     expect(res.status).toBe(400);
     expect(mocks.obterUltimoPreco).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /estoque/produtos/:id/custo-medio", () => {
+  it("repassa produto e escopo do sítio ao service, devolvendo número", async () => {
+    mocks.obterCustoMedio.mockResolvedValue({ toNumber: () => 12.5 });
+    const res = await appCom(semLancar).request("/estoque/produtos/12/custo-medio");
+    expect(res.status).toBe(200);
+    expect(mocks.obterCustoMedio).toHaveBeenCalledWith(expect.anything(), 12, 3);
+    expect(await res.json()).toEqual({ custoMedio: 12.5 });
+  });
+  it("sem base valorizada devolve null", async () => {
+    mocks.obterCustoMedio.mockResolvedValue(null);
+    const res = await appCom(semLancar).request("/estoque/produtos/12/custo-medio");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ custoMedio: null });
+  });
+  it("id inválido → 400", async () => {
+    const res = await appCom(semLancar).request("/estoque/produtos/abc/custo-medio");
+    expect(res.status).toBe(400);
+    expect(mocks.obterCustoMedio).not.toHaveBeenCalled();
   });
 });

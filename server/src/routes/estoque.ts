@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
 import { produtoSchema, patchProdutoSchema } from "../services/estoque/produtos.schemas.js";
@@ -110,6 +111,14 @@ export const estoqueRouter = new Hono()
     const { id } = c.req.valid("param");
     const { parceiroId } = c.req.valid("query");
     return c.json(await produtosSvc.obterUltimoPreco(id, { parceiroId, propriedadeId: await resolverEscopoLeitura(c) }));
+  })
+  // Sem compra anterior, a sugestão de preço na compra recorre ao custo médio
+  // atual do produto (mesma conta de `services/estoque/estoque.ts`) — só de apoio,
+  // não preenche o campo automaticamente (ver FormOperacao.tsx).
+  .get("/estoque/produtos/:id/custo-medio", zValidator("param", idParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const custoMedio = await svc.obterCustoMedio(prisma, id, await resolverEscopoLeitura(c));
+    return c.json({ custoMedio: custoMedio ? custoMedio.toNumber() : null });
   })
   .post("/estoque/produtos", exigePermissao("lancar"), zValidator("json", produtoSchema), async (c) => {
     try { return c.json(await produtosSvc.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }

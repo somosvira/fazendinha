@@ -7,7 +7,7 @@ import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
-import { obterUltimoPreco, type UltimoPrecoDTO } from "../estoque/api";
+import { obterCustoMedio, obterUltimoPreco, type UltimoPrecoDTO } from "../estoque/api";
 import { rotuloUnidade } from "../lib/unidades";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
@@ -36,6 +36,14 @@ const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toF
 // valor unitário da última compra (venda e produção têm outra base de valor).
 const SUGERE_ULTIMO_PRECO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO"]);
 const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+// brl() (financeiro-ui.tsx) sempre arredonda para 2 casas — insuficiente para
+// insumos valorizados por unidade fracionária (ex.: R$ 0,0045/mL). Mostra 2
+// casas quando o valor "fecha" nelas e até 4 quando não fecha.
+const brlPreciso = (valor: string | number) => {
+  const numero = Number(valor);
+  const fechaEmDuasCasas = Math.abs(numero - Math.round(numero * 100) / 100) < 1e-9;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: fechaEmDuasCasas ? 2 : 4 }).format(numero);
+};
 
 let proximoId = 1;
 const novoItem = (): ItemForm => ({ id: proximoId++, categoriaId: "", classificacao: "", centroCustoId: "", produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
@@ -65,6 +73,15 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     ? inicial.itens.map((item) => ({ ...item, centroCustoId: item.centroCustoId ?? "" }))
     : (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, categoriaId: String(item.categoriaId ?? ""), classificacao: item.classificacao ?? "", centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
   const [ultimosPrecos, setUltimosPrecos] = useState<Record<number, UltimoPrecoDTO & { produtoId: string }>>({});
+  // Marca, por item, para qual (produto, fornecedor) o valor unitário atual foi
+  // sugerido — usado para saber se ainda é seguro sobrescrevê-lo quando o
+  // fornecedor da operação muda (ver efeito abaixo). Só o parceiroId muda entre
+  // buscas repetidas; o produto já dispara uma sugestão nova em `alterarProduto`.
+  const [sugestaoValor, setSugestaoValor] = useState<Record<number, { parceiroId: string; produtoId: string; valor: string }>>({});
+  // Custo médio atual do produto — apoio exibido só quando não há última compra
+  // (sem preencher o campo). Guardado por item porque cada item pode ter um
+  // produto diferente.
+  const [custosMedios, setCustosMedios] = useState<Record<number, number | null>>({});
   const [parceiroId, setParceiroId] = useState(inicial?.parceiroId ?? (operacaoBase?.parceiro?.id ? String(operacaoBase.parceiro.id) : ""));
   const [classificacao, setClassificacao] = useState(inicial?.classificacao ?? operacaoBase?.classificacao ?? "");
   const [centroEscolhidoManualmente, setCentroEscolhidoManualmente] = useState(inicial?.centroEscolhidoManualmente ?? (!!inicial?.centroCustoId || !!operacaoBase?.centroCustoId));
@@ -234,19 +251,59 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       setItens((atuais) => atuais.map((item) => ({ ...item, centroCustoId: centroUnicoDoProduto(item.produtoId) })));
     }
   };
+  // Busca a sugestão de preço (última compra do produto, preferindo o
+  // fornecedor informado); sem histórico, busca o custo médio atual só como
+  // apoio informativo. `valorAntesDaBusca`/`sugestaoAnterior` são capturados no
+  // momento da chamada: o campo só é sobrescrito se, quando a resposta chegar,
+  // ele ainda estiver vazio ou com o valor da última sugestão aplicada — nunca
+  // um valor que o usuário tenha digitado nesse meio-tempo.
+  const buscarSugestaoPreco = (itemId: number, produtoId: string, parceiroBusca: string, valorAntesDaBusca: string, sugestaoAnterior?: { produtoId: string; valor: string }) => {
+    if (!SUGERE_ULTIMO_PRECO.has(tipo)) return;
+    obterUltimoPreco(Number(produtoId), parceiroBusca ? Number(parceiroBusca) : undefined).then((ultimo) => {
+      if (!ultimo?.valorUnitario) {
+        // Sem compra anterior: sem sugestão pra preencher — mostra o custo médio
+        // atual como texto de apoio (não altera o campo).
+        setUltimosPrecos(({ [itemId]: _descartado, ...resto }) => resto);
+        obterCustoMedio(Number(produtoId)).then((resultado) => {
+          setCustosMedios((atuais) => ({ ...atuais, [itemId]: resultado?.custoMedio ?? null }));
+        }).catch(() => { /* apoio opcional: falha de rede não bloqueia o formulário */ });
+        return;
+      }
+      const valorFormatado = normalizarMoeda(ultimo.valorUnitario);
+      const podeSobrescrever = valorAntesDaBusca === "" || (sugestaoAnterior?.produtoId === produtoId && valorAntesDaBusca === sugestaoAnterior.valor);
+      if (podeSobrescrever) {
+        // Segunda checagem (contra o valor atual, não o capturado) cobre o caso
+        // raro de o usuário digitar algo entre o início e o fim desta busca.
+        setItens((atuais) => atuais.map((item) => item.id === itemId && item.produtoId === produtoId && item.valorUnitario === valorAntesDaBusca ? { ...item, valorUnitario: valorFormatado } : item));
+      }
+      setUltimosPrecos((atuais) => ({ ...atuais, [itemId]: { ...ultimo, produtoId } }));
+      setCustosMedios(({ [itemId]: _descartado, ...resto }) => resto);
+      setSugestaoValor((atuais) => ({ ...atuais, [itemId]: { parceiroId: parceiroBusca, produtoId, valor: valorFormatado } }));
+    }).catch(() => { /* sugestão é opcional: falha de rede não bloqueia o preenchimento */ });
+  };
   const alterarProduto = (id: number, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === Number(produtoId));
     const categoria = categorias.find((c) => c.id === produto?.categoriaId);
     atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "", centroCustoId: centroUnicoDoProduto(produtoId) } : { produtoId, categoriaId: "", classificacao: "", centroCustoId: "" });
     setUltimosPrecos(({ [id]: _descartado, ...resto }) => resto);
-    if (!produto || !SUGERE_ULTIMO_PRECO.has(tipo)) return;
-    obterUltimoPreco(produto.id, parceiroId ? Number(parceiroId) : undefined).then((ultimo) => {
-      if (!ultimo?.valorUnitario) return; // sem histórico: o campo fica vazio
-      // Só preenche se o item ainda aponta para o mesmo produto e o usuário não digitou um valor.
-      setItens((atuais) => atuais.map((item) => item.id === id && item.produtoId === produtoId && item.valorUnitario === "" ? { ...item, valorUnitario: normalizarMoeda(ultimo.valorUnitario) } : item));
-      setUltimosPrecos((atuais) => ({ ...atuais, [id]: { ...ultimo, produtoId } }));
-    }).catch(() => { /* sugestão é opcional: falha de rede não bloqueia o preenchimento */ });
+    setCustosMedios(({ [id]: _descartado, ...resto }) => resto);
+    setSugestaoValor(({ [id]: _descartado, ...resto }) => resto);
+    if (!produto) return;
+    buscarSugestaoPreco(id, produtoId, parceiroId, "");
   };
+  // O fornecedor da operação mudou depois que algum item já tinha uma sugestão
+  // de preço: refaz a busca para o novo fornecedor. Só reage à troca do
+  // parceiro — itens/sugestaoValor mudam como efeito colateral desta mesma
+  // busca (buscarSugestaoPreco), então incluí-los nas deps criaria um loop.
+  useEffect(() => {
+    itens.forEach((item) => {
+      if (!item.produtoId) return;
+      const sugestao = sugestaoValor[item.id];
+      if (!sugestao || sugestao.produtoId !== item.produtoId || sugestao.parceiroId === parceiroId) return;
+      buscarSugestaoPreco(item.id, item.produtoId, parceiroId, item.valorUnitario, sugestao);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parceiroId]);
   const alterarTipo = (novoTipo: string) => {
     setTipo(novoTipo);
     if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
@@ -459,7 +516,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
             <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea id="campo-descricao" aria-label="Descrição" aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">Descreva a operação (pelo menos 2 caracteres).</CampoErro>}</label>
           </div>
         </section>
-        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
@@ -494,7 +551,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, ultimosPrecos, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -502,6 +559,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, movimentaEstoqu
       const unidade = produto ? rotuloUnidade(produto.unidade) : item.unidade;
       const invalido = item.id === itemInvalidoId;
       const ultimo = ultimosPrecos[item.id]?.produtoId === item.produtoId ? ultimosPrecos[item.id] : null;
+      const custoMedio = !ultimo && item.produtoId ? custosMedios[item.id] : undefined;
       const campoCentro = `itens.${indice}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
@@ -519,7 +577,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, movimentaEstoqu
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
           <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>
           <label className="text-sm font-medium">Base do valor<select aria-label={`Base do valor do item ${indice + 1}`} className={SELECT} value={item.modoValor} onChange={(e) => atualizarItem(item.id, { modoValor: e.target.value as ModoValor })}><option value="UNITARIO">Valor unitário</option><option value="TOTAL">Valor total do item</option></select></label>
-          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarMoeda(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brl(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
+          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarMoeda(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>
         </div>
       </div>;

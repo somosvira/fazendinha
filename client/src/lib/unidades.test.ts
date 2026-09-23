@@ -1,35 +1,68 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { UNIDADES, UNIDADES_ORDENADAS, converterQuantidade, mesmaBase, rotuloUnidade } from "./unidades";
 
-// Snapshot literal da tabela do server (services/estoque/unidades.ts) — as duas
-// listas devem bater em chaves, rótulos e base. Se o server mudar, este teste
-// tem que ser atualizado junto (não há import cruzado entre os pacotes).
-const SNAPSHOT_SERVIDOR: Record<string, { rotulo: string; base: string; fator: number }> = {
-  UN: { rotulo: "un", base: "UN", fator: 1 },
-  KG: { rotulo: "kg", base: "KG", fator: 1 },
-  G: { rotulo: "g", base: "KG", fator: 0.001 },
-  T: { rotulo: "t", base: "KG", fator: 1000 },
-  L: { rotulo: "L", base: "L", fator: 1 },
-  ML: { rotulo: "mL", base: "L", fator: 0.001 },
-  SC: { rotulo: "sc", base: "SC", fator: 1 },
-  DOSE: { rotulo: "dose", base: "DOSE", fator: 1 },
-  CX: { rotulo: "cx", base: "CX", fator: 1 },
-  M: { rotulo: "m", base: "M", fator: 1 },
-  HA: { rotulo: "ha", base: "HA", fator: 1 },
-};
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Paridade com o server (services/estoque/unidades.ts) sem import cruzado entre
+// os pacotes: lê o arquivo-fonte do server em disco e extrai a tabela UNIDADES
+// via regex, comparando chave a chave com a tabela do client. Se o server mudar
+// a tabela, este teste falha (em vez de silenciosamente divergir).
+type EntradaTabela = { rotulo: string; base: string; fator: number };
+
+function extrairTabelaUnidades(conteudoArquivo: string): Record<string, EntradaTabela> {
+  const blocoUnidades = conteudoArquivo.match(/\bUNIDADES:[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!blocoUnidades) throw new Error("Não encontrou a declaração de UNIDADES no arquivo — regex do teste de paridade pode estar desatualizada.");
+  const tabela: Record<string, EntradaTabela> = {};
+  const regexEntrada = /(\w+):\s*\{([^}]*)\}/g;
+  let entrada: RegExpExecArray | null;
+  while ((entrada = regexEntrada.exec(blocoUnidades[1]))) {
+    const [, chave, campos] = entrada;
+    const rotulo = campos.match(/rotulo:\s*"([^"]*)"/)?.[1];
+    const base = campos.match(/base:\s*"([^"]*)"/)?.[1];
+    const fator = campos.match(/fator:\s*([\d.]+)/)?.[1];
+    if (rotulo === undefined || base === undefined || fator === undefined) {
+      throw new Error(`Entrada "${chave}" incompleta (rotulo/base/fator) — regex do teste de paridade pode estar desatualizada.`);
+    }
+    tabela[chave] = { rotulo, base, fator: Number(fator) };
+  }
+  if (Object.keys(tabela).length === 0) throw new Error("Nenhuma entrada extraída de UNIDADES — regex do teste de paridade pode estar desatualizada.");
+  return tabela;
+}
+
+const conteudoServidor = readFileSync(path.join(__dirname, "../../../server/src/services/estoque/unidades.ts"), "utf-8");
+const conteudoCliente = readFileSync(path.join(__dirname, "./unidades.ts"), "utf-8");
+const tabelaServidor = extrairTabelaUnidades(conteudoServidor);
+const tabelaCliente = extrairTabelaUnidades(conteudoCliente);
 
 describe("unidades (client) — paridade com o server", () => {
-  it("mesmas chaves do server", () => {
-    expect(Object.keys(UNIDADES).sort()).toEqual(Object.keys(SNAPSHOT_SERVIDOR).sort());
+  it("o arquivo do server tem pelo menos as 11 unidades esperadas", () => {
+    expect(Object.keys(tabelaServidor).sort()).toEqual(["CX", "DOSE", "G", "HA", "KG", "L", "M", "ML", "SC", "T", "UN"]);
   });
 
-  it("mesmos rótulos, base e fator do server", () => {
-    for (const chave of Object.keys(SNAPSHOT_SERVIDOR)) {
-      const esperado = SNAPSHOT_SERVIDOR[chave];
+  it("mesmas chaves do server (extraídas do arquivo-fonte)", () => {
+    expect(Object.keys(UNIDADES).sort()).toEqual(Object.keys(tabelaServidor).sort());
+  });
+
+  it("mesmos rótulos, base e fator do server (extraídos do arquivo-fonte)", () => {
+    for (const chave of Object.keys(tabelaServidor)) {
+      const esperado = tabelaServidor[chave];
       const atual = UNIDADES[chave as keyof typeof UNIDADES];
       expect(atual.rotulo).toBe(esperado.rotulo);
       expect(atual.base).toBe(esperado.base);
       expect(atual.fator).toBe(esperado.fator);
+    }
+  });
+
+  it("a tabela extraída do próprio client bate com o objeto UNIDADES importado (regex não está mentindo)", () => {
+    for (const chave of Object.keys(tabelaCliente)) {
+      const extraido = tabelaCliente[chave];
+      const importado = UNIDADES[chave as keyof typeof UNIDADES];
+      expect(importado.rotulo).toBe(extraido.rotulo);
+      expect(importado.base).toBe(extraido.base);
+      expect(importado.fator).toBe(extraido.fator);
     }
   });
 

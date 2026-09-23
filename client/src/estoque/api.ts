@@ -116,6 +116,11 @@ export interface UltimoPrecoDTO { valorUnitario: string; data: string; parceiro:
 export const obterUltimoPreco = (produtoId: number, parceiroId?: number | null) =>
   req<UltimoPrecoDTO | null>(`/estoque/produtos/${produtoId}/ultimo-preco${qs({ parceiroId })}`);
 
+// Custo médio atual do produto (mesma conta de `useSaldos`/`listarSaldos`, isolada
+// por produto) — apoio quando não há última compra para sugerir preço.
+export interface CustoMedioDTO { custoMedio: number | null }
+export const obterCustoMedio = (produtoId: number) => req<CustoMedioDTO>(`/estoque/produtos/${produtoId}/custo-medio`);
+
 export function useProdutosEstoque(f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) {
   const [data, setData] = useState<ProdutoDTO[]>([]);
   const [loading, setLoading] = useState(true);

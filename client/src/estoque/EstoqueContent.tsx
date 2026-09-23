@@ -190,7 +190,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
           <input
             type="search"
             className={REB_FIELD_BOXED}
-            placeholder="Buscar por nome ou tipo…"
+            placeholder="Buscar por nome ou categoria…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             style={{ flex: "1 1 240px", maxWidth: 360 }}

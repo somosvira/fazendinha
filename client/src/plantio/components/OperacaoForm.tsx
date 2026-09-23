@@ -75,6 +75,10 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [centroCustoId, setCentroCustoId] = useState<string>("");
   const [doseValor, setDoseValor] = useState("");
   const [doseUnidadeMedida, setDoseUnidadeMedida] = useState<UnidadeMedida>("ML");
+  // Enquanto o usuário não mexe na unidade da dose, ela segue a unidade do
+  // produto do estoque escolhido (ver `selecionarProduto`) — evita começar
+  // sempre em mL para produtos que não são líquidos (ex.: kg, sc, un).
+  const [doseUnidadeTocada, setDoseUnidadeTocada] = useState(false);
   const [dosePorHectare, setDosePorHectare] = useState(true);
   const [volumeCalda, setVolumeCalda] = useState("");
   const [incidencia, setIncidencia] = useState("");
@@ -127,6 +131,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
     if (p) {
       if (!produto.trim()) setProduto(p.nome);
       setCentroCustoId((p.centroCustoIds ?? []).length === 1 ? String((p.centroCustoIds ?? [])[0]) : "");
+      if (!doseUnidadeTocada) setDoseUnidadeMedida(p.unidade);
     } else {
       setCentroCustoId("");
     }
@@ -229,7 +234,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   <RebField label="Dose">
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       <input type="number" step="0.001" min="0" style={{ width: 100 }} value={doseValor} onChange={(e) => setDoseValor(e.target.value)} placeholder="Ex.: 600" />
-                      <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => setDoseUnidadeMedida(e.target.value as UnidadeMedida)}>
+                      <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => { setDoseUnidadeMedida(e.target.value as UnidadeMedida); setDoseUnidadeTocada(true); }}>
                         {UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidade(u)}</option>)}
                       </select>
                       <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
@@ -275,7 +280,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
               <RebField label="Dose">
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   <input type="number" step="0.001" min="0" style={{ width: 100 }} value={doseValor} onChange={(e) => setDoseValor(e.target.value)} placeholder="Ex.: 2,5" />
-                  <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => setDoseUnidadeMedida(e.target.value as UnidadeMedida)}>
+                  <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => { setDoseUnidadeMedida(e.target.value as UnidadeMedida); setDoseUnidadeTocada(true); }}>
                     {UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidade(u)}</option>)}
                   </select>
                   <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
