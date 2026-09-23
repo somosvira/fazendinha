@@ -8,7 +8,8 @@ import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
 
-const quantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+const MAX_QTD = 999_999_999.999;
+const quantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 
 export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onSalvo: () => void }) {
   const [precisaFazenda, setPrecisaFazenda] = useState(false);
@@ -46,8 +47,9 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
   useEffect(() => { alive.current = true; void carregar(); return () => { alive.current = false; }; }, []);
   const produto = saldos.find(p => String(p.produtoId) === produtoId);
   const valor = contada.trim() === "" ? NaN : Number(contada);
-  const diferenca = produto ? Math.round((valor - produto.saldo) * 100) / 100 : NaN;
-  const valido = !!produto && Number.isFinite(valor) && valor >= 0 && valor <= 9_999_999_999.99 && Math.abs(valor * 100 - Math.round(valor * 100)) < 0.00001 && diferenca !== 0 && motivo.trim().length >= 5;
+  const diferenca = produto ? Math.round((valor - produto.saldo) * 1000) / 1000 : NaN;
+  const diferencaZero = Number.isFinite(diferenca) && Math.abs(diferenca) < 0.0005;
+  const valido = !!produto && Number.isFinite(valor) && valor >= 0 && valor <= MAX_QTD && Math.abs(valor * 1000 - Math.round(valor * 1000)) < 0.00001 && !diferencaZero && motivo.trim().length >= 5;
   async function salvar() {
     if (!valido || !produto || enviando.current || carregando) return;
     if (getPropriedadeAtiva() !== escopoConsultado.current) { setErro("A propriedade mudou. Atualize o saldo antes de confirmar."); return; }
@@ -81,13 +83,13 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
       <RebButton disabled={salvando} onClick={() => setNovoProduto(true)}>Novo produto</RebButton>
       {produto && <p className="my-4">Quantidade no sistema: <strong>{quantidade(produto.saldo)} {rotuloUnidade(produto.unidade)}</strong></p>}
       <RebField label="Quantidade encontrada na contagem">
-        <input aria-label="Quantidade encontrada na contagem" type="number" min="0" max="9999999999.99" step="0.01" disabled={salvando} value={contada} onChange={e => setContada(e.target.value)} />
+        <input aria-label="Quantidade encontrada na contagem" type="number" min="0" max="999999999.999" step="0.001" disabled={salvando} value={contada} onChange={e => setContada(e.target.value)} />
       </RebField>
       <RebField label="Justificativa">
         <textarea aria-label="Justificativa" minLength={5} maxLength={200} disabled={salvando} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Explique o motivo da correção de contagem" />
       </RebField>
       {produto && Number.isFinite(diferenca) && valor >= 0 && <div className="my-4 rounded-lg bg-stone-100 p-4" aria-live="polite">
-        <strong>{diferenca === 0 ? "Nenhum ajuste necessário" : `Diferença: ${diferenca > 0 ? "+" : ""}${quantidade(diferenca)} ${rotuloUnidade(produto.unidade)}`}</strong>
+        <strong>{diferencaZero ? "Nenhum ajuste necessário" : `Diferença: ${diferenca > 0 ? "+" : ""}${quantidade(diferenca)} ${rotuloUnidade(produto.unidade)}`}</strong>
         <p>Estoque após confirmar: {quantidade(valor)} {rotuloUnidade(produto.unidade)}.</p>
       </div>}
       {erro && <div role="alert" className="mt-3 text-sm text-prejuizo"><p>{erro}</p><RebButton disabled={carregando || salvando} onClick={() => { void carregar(); }}>Atualizar saldo</RebButton></div>}

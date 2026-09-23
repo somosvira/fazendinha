@@ -18,7 +18,7 @@ import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/compone
 import { fmtMoneyExact } from "@/components/charts";
 
 const money = fmtMoneyExact;
-const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
 const SEM_CENTRO = "__sem_centro__";
 function CentrosChips({ centros }: { centros: { id: number; nome: string }[] }) {

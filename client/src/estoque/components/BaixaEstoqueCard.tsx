@@ -36,7 +36,7 @@ function acharProduto(produtos: ProdutoDTO[], digitado: string): ProdutoDTO | nu
 }
 
 function fmtQtd(v: number): string {
-  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/\.?0+$/, "");
+  return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
 }
 
 function fmtDataBR(iso: string): string {
@@ -192,7 +192,7 @@ export function BaixaEstoqueCard({
           <input
             type="number"
             min={0}
-            step="0.01"
+            step="0.001"
             value={quantidade}
             onChange={(e) => setQuantidade(e.target.value)}
             disabled={!produtoSel || !!naoEstocavel}

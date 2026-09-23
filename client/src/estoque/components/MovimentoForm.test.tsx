@@ -36,6 +36,18 @@ describe("ajustar quantidade pelo estoque", () => {
     expect(screen.getByText("Nenhum ajuste necessário")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Confirmar ajuste" }) as HTMLButtonElement).disabled).toBe(true);
   });
+  it("aceita saldo e diferença com 3 casas decimais (0,005) sem travar em 'nenhum ajuste'", async () => {
+    mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 1.005 }]);
+    await preencher("1.01");
+    expect(screen.getByText("Diferença: +0,005 kg")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Confirmar ajuste" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+  it("trava em 'nenhum ajuste' quando a diferença de 3 casas é efetivamente zero", async () => {
+    mocks.listar.mockResolvedValue([{ produtoId: 1, nome: "Ração", unidade: "kg", saldo: 1.005 }]);
+    await preencher("1.005");
+    expect(screen.getByText("Nenhum ajuste necessário")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Confirmar ajuste" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("preserva contagem e motivo após conflito e permite revisar saldo atualizado", async () => {
     mocks.ajustar.mockRejectedValue(new Error("O estoque mudou. Atualize o saldo."));
     await preencher(); fireEvent.click(screen.getByRole("button", { name: "Confirmar ajuste" }));
