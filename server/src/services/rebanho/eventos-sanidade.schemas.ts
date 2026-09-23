@@ -2,7 +2,8 @@ import { z } from "zod";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "data deve ser YYYY-MM-DD");
 const comum = { data: isoDate, observacao: z.string().max(200).optional() };
 // Aplicações e vacinas sempre representam consumo: produto e quantidade são obrigatórios.
-const estoque = { produtoId: z.number().int().positive(), quantidadeUsada: z.number().positive() };
+// Limite e granularidade compatíveis com EventoSanitario.quantidadeUsada / MovimentoEstoque.quantidade, Decimal(12,3).
+const estoque = { produtoId: z.number().int().positive(), quantidadeUsada: z.number().positive().max(999_999_999.999).multipleOf(0.001) };
 export const criarEventoSanitarioSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("OCORRENCIA"), ...comum, doenca: z.string().min(1).max(60), dtFim: isoDate.optional(), diasTratamento: z.number().int().min(0).optional() }),
   z.object({ tipo: z.literal("APLICACAO"), ...comum, ...estoque, produto: z.string().min(1).max(60), dose: z.string().max(20).optional(), carencia: z.number().int().min(0).optional(), loteProduto: z.string().max(40).optional() }),

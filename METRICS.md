@@ -402,9 +402,9 @@ Motor puro: `quebrarPorCategoria(ItemCusto[])` em `services/rebanho/custo-produc
 | **Gasto financeiro** | `Σ TransacaoFinanceira.valorTotal` com `status = CONFIRMADA`, `tipo = PAGAMENTO`, `data ≥ hoje − N meses` e `operacao.categoria.nome = "Medicamento Animal"` |
 | **Aplicações** | `EventoSanitario` com `tipo ∈ (APLICACAO, VACINA)` na mesma janela |
 | **Rateio por volume** | `custoPorAplicacao = gastoFinanceiro ÷ totalAplicações`; custo do animal = `nºAplicações × custoPorAplicacao` |
-| **Custo exato** | `Σ Produto.custoUnitario` dos produtos **precificados** aplicados no animal (`null` quando não precificado) |
+| **Custo exato** | Por aplicação: `quantidadeUsada × custo médio` do produto no sítio (ou o valor do `MovimentoEstoque` CONFIRMADO da baixa quando disponível — mais confiável, tem prioridade); `null` sem produto/quantidade — cai no rateio por volume |
 | **Implementação** | `services/rebanho/custo-sanidade.ts` — motor puro `ratearCustoSanidade(total, porAnimal[])` |
-| **Marca** | Estimativa por **volume**: uma aplicação cara conta igual a uma barata enquanto os produtos não tiverem custo unitário no Cadastro |
+| **Marca** | Estimativa por **volume**: uma aplicação cara conta igual a uma barata enquanto os produtos não tiverem custo apurado pelas compras |
 
 ### 7.5 Margem (animal)
 
@@ -417,7 +417,7 @@ Motor puro: `quebrarPorCategoria(ItemCusto[])` em `services/rebanho/custo-produc
 | **Tom** | `--pos` ≥ 20% · `--warn` 0–20% · `--neg` < 0% |
 | **Implementação** | `services/rebanho/insights.ts:221–225` |
 
-`custoSanidadeAnimal` = custo **exato** (soma dos `Produto.custoUnitario` aplicados nos últimos 12 meses) quando > 0; senão o **rateio** do gasto real de "Medicamento Animal" — mesma consulta de 7.4, sobre `TransacaoFinanceira` `CONFIRMADA`/`PAGAMENTO` (`insights.ts:198–209`).
+`custoSanidadeAnimal` = custo **exato** (soma do custo real de cada aplicação dos últimos 12 meses — quantidade × custo médio, ou valor do movimento de estoque quando disponível) quando > 0; senão o **rateio** do gasto real das categorias de uso sanitário — mesma consulta de 7.4, sobre `TransacaoFinanceira` `CONFIRMADA`/`PAGAMENTO` (`insights.ts:224–238`).
 
 `precoLeite` = `Configuracao.precoLeite` ou fallback **R$ 2,40/L** (`insights.ts:13`).
 

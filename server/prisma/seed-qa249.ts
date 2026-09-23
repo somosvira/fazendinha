@@ -57,12 +57,13 @@ try {
       for (const [ordem, nome] of ["Pecuária", "Agronomia", "Equipe", "Gestão"].entries()) centros.push(await tx.centroCusto.create({ data: { nome, ordem } }));
       const centro = centros[0];
       const produtosClassificacao = [];
-      for (const [nome, categoriaId, centroCustoId, custoUnitario, unidade] of [
-        ["QA249 Silagem de milho", categorias[3].id, centro.id, 800, "kg"],
-        ["QA249 Vacina contra brucelose", categorias[4].id, centro.id, 200, "un"],
-        ["QA249 Adubo", categorias[0].id, centros[1].id, 100, "kg"],
-        ["QA249 Equipamento", investimento.id, centro.id, 1000, "un"],
-      ] as const) produtosClassificacao.push(await tx.produto.create({ data: { nome, categoriaId, custoUnitario, unidade, estocavel: true, centrosCusto: { create: [{ centroCustoId }] } } }));
+      // Sem preço no cadastro: custo médio nasce das compras/inventários.
+      for (const [nome, categoriaId, centroCustoId, unidade] of [
+        ["QA249 Silagem de milho", categorias[3].id, centro.id, "KG"],
+        ["QA249 Vacina contra brucelose", categorias[4].id, centro.id, "UN"],
+        ["QA249 Adubo", categorias[0].id, centros[1].id, "KG"],
+        ["QA249 Equipamento", investimento.id, centro.id, "UN"],
+      ] as const) produtosClassificacao.push(await tx.produto.create({ data: { nome, categoriaId, unidade, centrosCusto: { create: [{ centroCustoId }] } } }));
       const parceiros = [];
       for (const [nome, papeis, ativo] of [
         ["QA249 Fornecedor", ["FORNECEDOR"], true], ["QA249 Cliente", ["CLIENTE"], true],
@@ -95,7 +96,7 @@ try {
       const casos: { codigo: string; fluxo: string; conta: { id: number; nome: string; saldoInicial: number }; produto: { id: number; nome: string; estoqueInicial: number } | null; inventarioId: number | null }[] = [];
       for (const [codigo, fluxo, estoqueInicial] of scenarios) {
         const conta = contaPorFluxo[codigo];
-        const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "kg", tipo: "INSUMO", estocavel: true, custoUnitario: 10, categoriaId: categorias[0].id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
+        const produto = estoqueInicial === null ? null : await tx.produto.create({ data: { nome: `QA249 ${codigo} Produto`, unidade: "KG", categoriaId: categorias[0].id, centrosCusto: { create: [{ centroCustoId: centro.id }] } } });
         let inventarioId: number | null = null;
         if (produto && estoqueInicial) {
           const op = await confirmarRascunhoOperacao(tx, { tipo: "INVENTARIO_INICIAL", data: date(), descricao: `SEED QA249 ${codigo} estoque inicial`, propriedadeId: principal.id, usuarioId: usuarios[0].id, categoriaId: categorias[0].id, centroCustoId: centro.id, itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade: estoqueInicial, unidade: "kg", valorUnitario: 10, estocavel: true }], financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } });
@@ -103,8 +104,8 @@ try {
         }
         casos.push({ codigo, fluxo, conta: { id: conta.id, nome: conta.nome, saldoInicial: Number(conta.saldoAbertura) }, produto: produto ? { id: produto.id, nome: produto.nome, estoqueInicial: estoqueInicial ?? 0 } : null, inventarioId });
       }
-      const extra = await tx.produto.create({ data: { nome: "QA249 U16 Produto adicional", unidade: "un", custoUnitario: 10, estocavel: true } });
-      const inativo = await tx.produto.create({ data: { nome: "QA249 Produto inativo", unidade: "kg", ativo: false, custoUnitario: 10 } });
+      const extra = await tx.produto.create({ data: { nome: "QA249 U16 Produto adicional", unidade: "UN", categoriaId: categorias[0].id } });
+      const inativo = await tx.produto.create({ data: { nome: "QA249 Produto inativo", unidade: "KG", categoriaId: categorias[0].id, ativo: false } });
       const fechado = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 15));
       await tx.periodoFinanceiro.create({ data: { propriedadeId: principal.id, ano: fechado.getUTCFullYear(), mes: fechado.getUTCMonth() + 1, status: "FECHADO", fechadoPorId: usuarios[0].id, fechadoEm: new Date() } });
       return { database, criadoEm: new Date().toISOString(), dataOperacao: date().toISOString().slice(0, 10), vencimento30: date(30).toISOString().slice(0, 10), vencimento60: date(60).toISOString().slice(0, 10), dataPeriodoFechado: fechado.toISOString().slice(0, 10), propriedades: [principal, secundaria], usuarios, parceiros, categorias, centro, centros, produtosClassificacao, casos, contas: [...contasPrincipais, secundariaBanco], produtosExtras: [extra, inativo], saldoPrincipalInicial: 18200, saldoSecundariaInicial: 500 };

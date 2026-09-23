@@ -8,18 +8,23 @@ const base = {
 };
 
 describe("criarOperacaoSchema — limites de quantidadeTotal e doseValor", () => {
-  it("aceita valores dentro do limite compatível com Decimal(12,2)", () => {
-    const r = criarOperacaoSchema.safeParse({ ...base, quantidadeTotal: 9_999_999_999.99, doseValor: 9_999_999_999.99 });
+  it("aceita quantidadeTotal no limite máximo, compatível com Decimal(12,3)", () => {
+    const r = criarOperacaoSchema.safeParse({ ...base, quantidadeTotal: 999_999_999.999 });
+    expect(r.success).toBe(true);
+  });
+
+  it("aceita doseValor no limite máximo, compatível com Decimal(10,3)", () => {
+    const r = criarOperacaoSchema.safeParse({ ...base, doseValor: 9_999_999.999 });
     expect(r.success).toBe(true);
   });
 
   it("rejeita quantidadeTotal acima do limite", () => {
-    const r = criarOperacaoSchema.safeParse({ ...base, quantidadeTotal: 10_000_000_000 });
+    const r = criarOperacaoSchema.safeParse({ ...base, quantidadeTotal: 1_000_000_000 });
     expect(r.success).toBe(false);
   });
 
-  it("rejeita doseValor acima do limite", () => {
-    const r = criarOperacaoSchema.safeParse({ ...base, doseValor: 10_000_000_000 });
+  it("rejeita doseValor acima do limite da coluna Decimal(10,3), mesmo dentro do limite de quantidadeTotal", () => {
+    const r = criarOperacaoSchema.safeParse({ ...base, doseValor: 10_000_000 });
     expect(r.success).toBe(false);
   });
 

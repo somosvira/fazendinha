@@ -91,7 +91,7 @@ export async function montarRelatorioEmbrapa(propriedadeId: number | null = null
     prisma.movimentoEstoque.findMany({
       where: {
         tipo: "SAIDA",
-        produto: { tipo: "RACAO" },
+        produto: { categoria: { usoNutricional: true } },
         data: { gte: new Date(Date.now() - 365 * 86_400_000) },
         ...whereMov,
       },

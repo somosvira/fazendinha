@@ -8,6 +8,8 @@ import { prisma } from "../../db.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { calcularCustoVacaDia } from "../estoque/estoque.js";
 import { scoreDoResumo } from "./score.calc.js";
+import { resolverIdsCategoriasSanitarias } from "./custo-sanidade.js";
+import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import {
   agregarCarteira, simularDescarte as simularDescartePuro,
   type AnimalCarteira, type AgregadoCarteira, type SimulacaoDescarte,
@@ -97,10 +99,15 @@ async function montarPool(propriedadeId: number | null): Promise<{
   //    12m = custo por aplicação; por animal = custoPorAplic × nº aplicações ÷ 365.
   const desde12m = new Date(hoje); desde12m.setMonth(hoje.getMonth() - 12);
   const escopoSanidade = propriedadeId == null ? {} : { animal: { propriedadeId } };
+  const idsSanitario = await resolverIdsCategoriasSanitarias();
   const [lancsMedic, totalAplicsGlob, aplicsPorAnimal] = await Promise.all([
-    prisma.transacaoFinanceira.findMany({
-      where: { status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m }, operacao: { categoria: { nome: "Medicamento Animal" } }, ...(propriedadeId != null ? { propriedadeId } : {}) },
-      select: { valorTotal: true },
+    idsSanitario.length === 0 ? [] : prisma.transacaoFinanceira.findMany({
+      where: {
+        status: "CONFIRMADA", tipo: "PAGAMENTO", data: { gte: desde12m },
+        operacao: { OR: [{ categoriaId: { in: idsSanitario } }, { itens: { some: { categoriaId: { in: idsSanitario } } } }] },
+        ...(propriedadeId != null ? { propriedadeId } : {}),
+      },
+      select: { id: true, valorTotal: true, operacao: { include: incluirClassificacao } },
     }),
     prisma.eventoSanitario.count({ where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m }, ...escopoSanidade } }),
     prisma.eventoSanitario.groupBy({
@@ -109,7 +116,10 @@ async function montarPool(propriedadeId: number | null): Promise<{
       _count: { _all: true },
     }),
   ]);
-  const totalMedic = lancsMedic.reduce((s, l) => s + toNum(l.valorTotal), 0);
+  const totalMedic = lancsMedic.reduce((s, l) =>
+    s + ratearTransacao(l.operacao, l.id, l.valorTotal)
+      .filter((p) => p.categoriaId != null && idsSanitario.includes(p.categoriaId))
+      .reduce((ss, p) => ss + p.valor.toNumber(), 0), 0);
   const custoPorAplic = totalAplicsGlob > 0 ? totalMedic / totalAplicsGlob : 0;
   const aplicsMap = new Map<number, number>();
   for (const g of aplicsPorAnimal) if (g.animalId != null) aplicsMap.set(g.animalId, g._count._all);

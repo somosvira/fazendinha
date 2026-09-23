@@ -1,7 +1,8 @@
 import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, type MovIn } from "../estoque/estoque.calc.js";
+import { saldoProduto, valorSaidaDaBase, type MovIn } from "../estoque/estoque.calc.js";
+import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
@@ -63,12 +64,23 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
     saldoPorProduto.set(pid, saldoProduto(doProduto).saldo);
   }
 
+  // Custo das saídas = custo médio ponderado das entradas no sítio do lote.
+  const sitioLote = grupo.propriedadeId ?? (await propriedadePrincipalId());
+  const custos = await obterBasesCusto(prisma, produtoIds, sitioLote);
+  // Só baixa produto que tem estoque (alguma entrada/ajuste) no sítio do lote;
+  // sem isso a linha aparece na prévia mas não gera SAIDA.
+  const comEstoque = await produtosComEstoque(prisma, produtoIds, sitioLote);
+
   const linhas = itens.map((it, idx) => {
+    const semEstoque = !comEstoque.has(it.produtoId);
     const quantidade = linhasBase[idx].quantidade;
-    const custoUnitario = it.produto.custoUnitario != null ? Number(it.produto.custoUnitario) : 0;
-    const custoTotal = Math.round(quantidade * custoUnitario * 100) / 100;
+    const { custoUnitario: custoDecimal, valorTotal } = semEstoque
+      ? { custoUnitario: new Prisma.Decimal(0), valorTotal: new Prisma.Decimal(0) }
+      : valorSaidaDaBase(quantidade, custos.get(it.produtoId));
+    const custoUnitario = custoDecimal.toNumber();
+    const custoTotal = valorTotal.toNumber();
     const saldoAtual = saldoPorProduto.get(it.produtoId) ?? 0;
-    const saldoApos = Math.round((saldoAtual - quantidade) * 100) / 100;
+    const saldoApos = semEstoque ? saldoAtual : Math.round((saldoAtual - quantidade) * 100) / 100;
     const produtoCentroIds = it.produto.centrosCusto.map((cc) => cc.centroCustoId);
     const centroCustoId = resolverCentroSaida({ produtoCentroIds, contextoCentroId: grupo.centroCustoId });
     return {
@@ -81,7 +93,8 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
       custoTotal,
       saldoAtual,
       saldoApos,
-      insuficiente: saldoApos < 0,
+      insuficiente: !semEstoque && saldoApos < 0,
+      semEstoque,
       centroCustoId,
     };
   });
@@ -136,8 +149,12 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
 
       let custoTotal = new Prisma.Decimal(0);
       for (const l of prev.linhas) {
-        if (l.quantidade <= 0) continue; // 0 cabeças/dias → nada a baixar
-        const valorTotal = new Prisma.Decimal(l.quantidade).mul(l.custoUnitario).toDecimalPlaces(2);
+        if (l.quantidade <= 0 || l.semEstoque) continue; // 0 cabeças/dias ou produto sem estoque no sítio → nada a baixar
+        // Valores já calculados na previsão pela base do custo médio (valorSaidaPreciso):
+        // custoTotal tem 2 casas e custoUnitario 4 — reconverter de number é exato.
+        // Não recalcular valor a partir do custoUnitario arredondado.
+        const custoUnitario = new Prisma.Decimal(l.custoUnitario);
+        const valorTotal = new Prisma.Decimal(l.custoTotal);
         custoTotal = custoTotal.plus(valorTotal);
         await tx.movimentoEstoque.create({
           data: {
@@ -146,7 +163,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
             origem: "NUTRICAO",
             data: dataMov,
             quantidade: l.quantidade,
-            custoUnitario: l.custoUnitario,
+            custoUnitario,
             valorTotal,
             grupoId,
             propriedadeId: propriedadeMovimentoId,
@@ -160,7 +177,7 @@ export async function fecharConsumoPeriodo(grupoId: number, input: ConsumoInput,
       return tx.consumoPeriodo.update({ where: { id: cp.id }, data: { custoTotal } });
     });
 
-    return { id: periodo.id, grupoId, dataInicio: input.dataInicio, dataFim: input.dataFim, numCabecas: prev.numCabecas, dias: prev.dias, custoTotal: Number(periodo.custoTotal), movimentos: prev.linhas.filter((l) => l.quantidade > 0).length, temInsuficiencia: prev.temInsuficiencia };
+    return { id: periodo.id, grupoId, dataInicio: input.dataInicio, dataFim: input.dataFim, numCabecas: prev.numCabecas, dias: prev.dias, custoTotal: Number(periodo.custoTotal), movimentos: prev.linhas.filter((l) => l.quantidade > 0 && !l.semEstoque).length, temInsuficiencia: prev.temInsuficiencia };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       throw new NutricaoError("JA_FECHADO", "o consumo deste lote para este período já foi fechado");

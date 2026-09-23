@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { registrarEvento, registrarEventoSanidade, editarEventoSanidade, listarRacas, listarAnimais, listarEmbrioesDisponiveis, listarParametros, obterAnimal, useProdutos, useResultadosGinecologicos, type EventoPayload, type EventoRegistrado, type EventoSanidadePayload, type RacaDTO, type EmbriaoDisponivelDTO } from "../api";
 import { camposExameGinecologico, camposInseminacao, camposParto, camposTransferenciaEmbriao } from "./EventoForm.payload";
 import { ESPECIE_POR_CATEGORIA, type Animal, type EventoTimeline } from "../types";
+import { rotuloUnidade } from "../../lib/unidades";
 import { FRACOES, complementoLabel, montarRacaDisplay } from "../lib/sangue";
 import { BaixaEstoqueCard } from "../../estoque/components/BaixaEstoqueCard";
 import { RebModal } from "@/components/rb/RebModal";
@@ -131,7 +132,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
   const set = (k: string, v: string) => setF((s: any) => ({ ...s, [k]: v }));
   const num = (v: string) => (v.trim() !== "" ? Number(v) : undefined);
   // Produtos do estoque para o vínculo opcional de baixa automática (só medicamentos/insumos).
-  const { data: produtosEstoque } = useProdutos({ ativo: true });
+  const { data: produtosEstoque } = useProdutos({ ativo: true, uso: "sanitario" });
 
   useEffect(() => { listarRacas().then(setRacas).catch(() => {}); }, []);
   useEffect(() => {
@@ -525,7 +526,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             <RebField label="Produto do estoque*">
               <RebSelect value={f.estoqueProdutoId} onChange={(id) => { setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
                 <option value="">— selecione —</option>
-                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
+                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({rotuloUnidade(pr.unidade)})</option>)}
               </RebSelect>
             </RebField>
             {f.estoqueProdutoId && <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}
@@ -552,7 +553,7 @@ export function EventoForm({ animalId, animal, dominioFixo, tipoInicial, dataIni
             <RebField label="Produto do estoque*">
               <RebSelect value={f.estoqueProdutoId} onChange={(id) => { setF((s: any) => ({ ...s, estoqueProdutoId: id, ...(id ? { produto: produtosEstoque.find((p) => String(p.id) === id)?.nome ?? s.produto } : {}) })); }}>
                 <option value="">— selecione —</option>
-                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({pr.unidade})</option>)}
+                {produtosEstoque.map((pr) => <option key={pr.id} value={pr.id}>{pr.nome} ({rotuloUnidade(pr.unidade)})</option>)}
               </RebSelect>
             </RebField>
             {f.estoqueProdutoId && <RebField label="Qtd. usada*"><input type="number" min={0.01} step="0.01" value={f.estoqueQtd} onChange={(e) => set("estoqueQtd", e.target.value)} placeholder="1" /></RebField>}

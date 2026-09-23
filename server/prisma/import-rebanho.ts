@@ -443,18 +443,29 @@ async function main() {
     pesagensInseridas += r.count;
   }
 
-  // --- Produtos aplicados → Cadastros (upsert por nome, p/ o usuário precificar) ---
-  // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO)
-  // SEM tocar no custoUnitario (preserva o que o usuário preencher). Idempotente.
+  // --- Produtos aplicados → Cadastros (upsert por nome) ---
+  // Coleta os produtos distintos das aplicações e cria em Produto (categoria sanitária).
+  // Sem preço: o custo médio vem das compras registradas depois. Idempotente.
   const produtosAplicados = new Set<string>();
   for (const e of dados.eventosSanitarios ?? [])
     if ((e.tipo === "APLICACAO" || e.tipo === "VACINA") && e.produto) produtosAplicados.add(e.produto);
   const centroLeiteiroId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE }, select: { id: true } }))?.id ?? null;
+  // Categoria "Medicamento Animal" (ponte com o financeiro) — cria se não existir
+  // (o seed financeiro pode rodar depois deste import).
+  const medCategoriaId = (await prisma.categoria.upsert({
+    where: { nome: "Medicamento Animal" },
+    update: {},
+    create: { nome: "Medicamento Animal", classificacao: "CUSTEIO", usoSanitario: true },
+    select: { id: true },
+  })).id;
   for (const nome of produtosAplicados) {
     await prisma.produto.upsert({
       where: { nome },
       update: {},
-      create: { nome, tipo: "MEDICAMENTO", ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}) },
+      create: {
+        nome, categoriaId: medCategoriaId,
+        ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}),
+      },
     });
   }
 

@@ -6,9 +6,9 @@ import { prisma } from "../../db.js";
 import { resolverEscopoEscrita } from "../../services/propriedade.js";
 import { getUsuario } from "../../middleware/permissao.js";
 
-function handle(err: unknown): { status: 404 | 409 | 500; body: { error: string } } {
+function handle(err: unknown): { status: 404 | 409 | 422 | 500; body: { error: string } } {
   if (err instanceof PlantioEventoError) {
-    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409 } as const;
+    const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, VALIDACAO: 422 } as const;
     return { status: map[err.code], body: { error: err.message } };
   }
   console.error("[plantio/eventos]", err);

@@ -2,15 +2,29 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { EventoTimeline } from "./mock.js";
 import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
-import { planejarBaixaAplicacao } from "./aplicacao-estoque.calc.js";
+import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
+import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO", message: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "VALIDACAO", message: string) {
     super(message);
   }
+}
+
+// Resolve a dose efetiva (unidade + por hectare) do input: usa os campos
+// novos quando vierem, senão faz o parse do texto legado (doseUnidade).
+// `reconhecida: false` só acontece pelo caminho legado — sinaliza que o
+// usuário informou uma unidade em texto livre que não sabemos interpretar
+// (ex.: "lt/ha"), para diferenciar de "nenhuma unidade informada".
+function resolverDose(input: { doseUnidadeMedida?: import("@prisma/client").UnidadeMedida | null; dosePorHectare?: boolean | null; doseUnidade?: string | null }) {
+  if (input.doseUnidadeMedida !== undefined && input.doseUnidadeMedida !== null) {
+    return { unidade: input.doseUnidadeMedida, porHectare: !!input.dosePorHectare, reconhecida: true };
+  }
+  return parseDoseUnidadeLegada(input.doseUnidade ?? null);
 }
 
 // ── Builder da timeline tecida do talhão ─────────────────────────────────────
@@ -158,11 +172,14 @@ async function planejarMovimento(
   talhao: { areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
-  opts: { validarCentroAtivo?: boolean } = {},
+  opts: { validarCentroAtivo?: boolean; temEstoque?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, custoUnitario: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  // Só baixa produto com estoque (entrada/ajuste positivo confirmado) no sítio
+  // do talhão. Na edição, quem chama pode fixar a decisão (baixa estável).
+  const temEstoque = opts.temEstoque ?? await produtoTemEstoque(tx, produto.id, propriedadeId);
   // Só valida "ativo" quando o centro veio explícito do input (usuário
   // escolheu); um centro herdado do movimento anterior (edição sem
   // centroCustoId no PATCH) não é revalidado — senão uma edição trivial (ex.:
@@ -172,24 +189,46 @@ async function planejarMovimento(
     const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
     if (!centro) throw new PlantioEventoError("NAO_ENCONTRADO", "centro de custo não encontrado");
   }
-  const plano = planejarBaixaAplicacao({
-    produtoId: input.produtoId,
-    estocavel: produto.estocavel,
-    doseValor: input.doseValor ?? null,
-    doseUnidade: input.doseUnidade ?? null,
-    areaHa: talhao.areaHa != null ? Number(talhao.areaHa) : null,
-    quantidadeTotalInformada: input.quantidadeTotal ?? null,
-  });
-  if (!plano.deveBaixar) return { produto, plano: null as null };
-  const custoUnitario = produto.custoUnitario != null ? new Prisma.Decimal(produto.custoUnitario) : new Prisma.Decimal(0);
+  const dose = resolverDose(input);
+  // Dose com unidade informada mas não reconhecida (texto legado, ex.: "lt/ha")
+  // não pode virar baixa silenciosa: sem quantidade total explícita, avisa em
+  // vez de gravar a operação sem consumir o estoque.
+  if (!dose.reconhecida && temEstoque && input.doseValor != null && input.quantidadeTotal == null) {
+    throw new PlantioEventoError(
+      "VALIDACAO",
+      `Unidade de dose "${input.doseUnidade}" não reconhecida — informe a unidade do produto (${rotuloUnidade(produto.unidade)}) ou a quantidade total`,
+    );
+  }
+  let plano;
+  try {
+    plano = planejarBaixaAplicacao({
+      produtoId: input.produtoId,
+      temEstoque,
+      produtoUnidade: produto.unidade,
+      doseValor: input.doseValor ?? null,
+      doseUnidadeMedida: dose.unidade,
+      dosePorHectare: dose.porHectare,
+      areaHa: talhao.areaHa != null ? Number(talhao.areaHa) : null,
+      quantidadeTotalInformada: input.quantidadeTotal ?? null,
+    });
+  } catch {
+    throw new PlantioEventoError(
+      "VALIDACAO",
+      `A dose em ${dose.unidade ? rotuloUnidade(dose.unidade) : "unidade informada"} não pode ser convertida para ${rotuloUnidade(produto.unidade)} — escolha a unidade do produto ou informe a quantidade total`,
+    );
+  }
+  // semEstoque: teria baixado (produto + quantidade), mas o sítio não tem estoque dele.
+  if (!plano.deveBaixar) return { produto, plano: null as null, semEstoque: !temEstoque && plano.quantidade > 0 };
   const centroCustoId = resolverCentroSaida({
     produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId),
     contextoCentroId: input.centroCustoId,
   });
   const quantidade = new Prisma.Decimal(plano.quantidade);
-  const valorTotal = quantidade.mul(custoUnitario).toDecimalPlaces(2);
+  // Custo da saída = custo médio ponderado das entradas do produto no sítio.
+  const { custoUnitario, valorTotal } = valorSaidaDaBase(quantidade, await obterBaseCusto(tx, produto.id, propriedadeId));
   return {
     produto,
+    semEstoque: false,
     plano: {
       produtoId: produto.id,
       tipo: "SAIDA" as const,
@@ -205,7 +244,14 @@ async function planejarMovimento(
   };
 }
 
-export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
+/** Aviso ao usuário quando a operação vincula produto e quantidade, mas a baixa não acontece por falta de estoque no sítio. */
+export const AVISO_SEM_ESTOQUE_APLICACAO = "Operação salva sem baixa de estoque: este produto não tem estoque neste sítio (nenhuma compra ou inventário registrado).";
+
+type EventoComAviso = EventoTimeline & { aviso?: string };
+const comAviso = (evento: EventoTimeline, semEstoque: boolean | undefined): EventoComAviso =>
+  semEstoque ? { ...evento, aviso: AVISO_SEM_ESTOQUE_APLICACAO } : evento;
+
+export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput, usuarioId: number | null = null): Promise<EventoComAviso> {
   const talhao = await prisma.talhao.findUnique({
     where: { id: talhaoId },
     select: { id: true, codigo: true, propriedadeId: true, areaHa: true },
@@ -216,9 +262,11 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
   const propriedadeId = talhao.propriedadeId ?? (await propriedadePrincipalId());
   const data = new Date(input.data);
 
+  let semEstoque = false;
   const o = await prisma.$transaction(async (tx) => {
     await assertPeriodoAberto(tx, propriedadeId, data);
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
+    semEstoque = movimento?.semEstoque ?? false;
     const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
     return tx.operacaoAgricola.create({
       data: {
@@ -232,7 +280,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
         produto: input.produto ?? (movimento?.produto.nome ?? null),
         observacao: input.observacao ?? null,
         doseValor: input.doseValor ?? null,
-        doseUnidade: input.doseUnidade ?? null,
+        doseUnidade: textoDoseUnidade(resolverDose(input).unidade, resolverDose(input).porHectare) ?? input.doseUnidade ?? null,
         pragaAlvo: input.pragaAlvo ?? null,
         produtoId: input.produtoId ?? null,
         quantidadeTotal: mov ? mov.quantidade : (input.quantidadeTotal ?? null),
@@ -240,10 +288,10 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
       },
     });
   });
-  return operacaoToTimeline(o);
+  return comAviso(operacaoToTimeline(o), semEstoque);
 }
 
-export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput, usuarioId: number | null = null): Promise<EventoTimeline> {
+export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput, usuarioId: number | null = null): Promise<EventoComAviso> {
   const existente = await prisma.operacaoAgricola.findUnique({
     where: { id: operacaoId },
     include: { talhao: { select: { id: true, codigo: true, propriedadeId: true, areaHa: true } } },
@@ -258,6 +306,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
   const dataMerged = input.data ?? iso(existente.data);
   const data = new Date(dataMerged);
 
+  let semEstoque = false;
   const o = await prisma.$transaction(async (tx) => {
     await assertPeriodoAberto(tx, propriedadeId, data);
     if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeId, existente.data);
@@ -280,6 +329,15 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       produto: input.produto !== undefined ? input.produto : existente.produto,
       observacao: input.observacao !== undefined ? input.observacao : existente.observacao,
       doseValor: input.doseValor !== undefined ? input.doseValor : num(existente.doseValor) ?? null,
+      // doseUnidadeMedida/dosePorHectare não são persistidos (só o texto
+      // doseUnidade é); um PATCH que não manda dose nova reconstrói os campos
+      // novos a partir do texto legado já gravado.
+      doseUnidadeMedida: input.doseUnidadeMedida !== undefined
+        ? input.doseUnidadeMedida
+        : parseDoseUnidadeLegada(existente.doseUnidade).unidade,
+      dosePorHectare: input.dosePorHectare !== undefined
+        ? input.dosePorHectare
+        : parseDoseUnidadeLegada(existente.doseUnidade).porHectare,
       doseUnidade: input.doseUnidade !== undefined ? input.doseUnidade : existente.doseUnidade,
       pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
       produtoId: produtoIdMerged,
@@ -289,7 +347,21 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
         : (produtoIdMerged === anterior?.produtoId ? anterior?.centroCustoId ?? null : undefined),
     } satisfies CriarOperacaoInput;
 
-    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput });
+    // Decisão de baixa ESTÁVEL: a edição não pode mudar a baixa só porque o
+    // estoque do sítio mudou depois do registro. Já havia baixa do mesmo
+    // produto → mantém (mesmo que a compra tenha sido estornada depois); não
+    // havia baixa e produto e quantidade (dose/unidade/quantidade total) são os
+    // mesmos → continua sem baixa (mesmo que uma compra tenha chegado depois).
+    // Só consulta o estoque atual quando o produto ou a quantidade mudam.
+    const quantidadeInalterada = (merged.doseValor ?? null) === (num(existente.doseValor) ?? null)
+      && (textoDoseUnidade(merged.doseUnidadeMedida, merged.dosePorHectare) ?? merged.doseUnidade ?? null) === (existente.doseUnidade ?? null)
+      && (merged.quantidadeTotal ?? null) === (num(existente.quantidadeTotal) ?? null);
+    const decisaoEstavel = anterior != null && anterior.produtoId === produtoIdMerged ? true
+      : anterior == null && existente.movimentoEstoqueId == null && existente.produtoId === produtoIdMerged && quantidadeInalterada ? false
+        : undefined;
+    const movimento = await planejarMovimento(tx, merged, existente.talhao, data, propriedadeId, { validarCentroAtivo: centroVeioDoInput, temEstoque: decisaoEstavel });
+    // Só avisa quando a falta de estoque foi apurada agora (produto/quantidade mudaram).
+    semEstoque = decisaoEstavel === undefined && (movimento?.semEstoque ?? false);
     let movimentoEstoqueId = existente.movimentoEstoqueId;
     let quantidadeTotal: Prisma.Decimal | null = null;
     const plano = movimento?.plano ?? null;
@@ -328,7 +400,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
         produto: merged.produto ?? (movimento?.produto.nome ?? null),
         observacao: merged.observacao ?? null,
         doseValor: merged.doseValor ?? null,
-        doseUnidade: merged.doseUnidade ?? null,
+        doseUnidade: textoDoseUnidade(merged.doseUnidadeMedida, merged.dosePorHectare) ?? merged.doseUnidade ?? null,
         pragaAlvo: merged.pragaAlvo ?? null,
         produtoId: merged.produtoId ?? null,
         quantidadeTotal,
@@ -336,7 +408,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       },
     });
   });
-  return operacaoToTimeline(o);
+  return comAviso(operacaoToTimeline(o), semEstoque);
 }
 
 export async function excluirOperacao(operacaoId: number, usuarioId: number | null = null): Promise<void> {

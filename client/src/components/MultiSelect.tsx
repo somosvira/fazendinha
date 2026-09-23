@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { AjudaCampo } from "@/components/Dica";
 
 export type MultiSelectValue = string | number;
 export type MultiSelectOption<T extends MultiSelectValue = MultiSelectValue> = {
@@ -14,6 +15,9 @@ export type MultiSelectOption<T extends MultiSelectValue = MultiSelectValue> = {
 export function MultiSelect<T extends MultiSelectValue>({
   label,
   helpText,
+  ajuda,
+  error,
+  contentClassName,
   placeholder = "Todas as opções",
   searchPlaceholder = "Buscar opção…",
   emptyText = "Nenhuma opção encontrada.",
@@ -24,6 +28,12 @@ export function MultiSelect<T extends MultiSelectValue>({
 }: {
   label: string;
   helpText?: string;
+  /** Ajuda em dica (ícone ao lado do rótulo) — alternativa compacta ao `helpText`. */
+  ajuda?: string;
+  /** Mensagem de erro do campo — anunciada com role="alert" logo abaixo do controle. */
+  error?: string;
+  /** Classes extras do PopoverContent (ex.: `z-[1200]` quando o campo vive dentro de um painel/modal). */
+  contentClassName?: string;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -35,6 +45,7 @@ export function MultiSelect<T extends MultiSelectValue>({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const helpId = useId();
+  const errorId = useId();
   const selected = useMemo(() => new Set(value), [value]);
   const optionByValue = useMemo(() => new Map(options.map((option) => [option.value, option])), [options]);
   const selectedOptions = value.flatMap((item) => {
@@ -53,7 +64,7 @@ export function MultiSelect<T extends MultiSelectValue>({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div>
+        <div className="flex items-center text-xs font-semibold uppercase tracking-[.12em] text-ink-3">{label}{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${label}`} />}</div>
         {value.length > 0 ? (
           <button type="button" onClick={() => onValueChange([])} className="text-xs font-semibold text-green-800 hover:underline">
             Limpar ({value.length})
@@ -65,7 +76,8 @@ export function MultiSelect<T extends MultiSelectValue>({
         <div
           data-slot="multi-select-control"
           className={cn(
-            "relative flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border border-border bg-white p-1.5 pl-2.5 pr-10 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring",
+            "relative flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-white p-1.5 pl-2.5 pr-10 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring",
+            error ? "border-red-700" : "border-border",
             disabled && "cursor-not-allowed opacity-50",
           )}
         >
@@ -87,7 +99,8 @@ export function MultiSelect<T extends MultiSelectValue>({
             <button
               type="button"
               aria-label={label}
-              aria-describedby={helpText ? helpId : undefined}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? errorId : helpText ? helpId : undefined}
               aria-expanded={open}
               disabled={disabled}
               className="absolute inset-0 z-0 flex w-full items-center justify-between gap-3 rounded-md px-3 text-left outline-none disabled:cursor-not-allowed"
@@ -97,7 +110,7 @@ export function MultiSelect<T extends MultiSelectValue>({
             </button>
           </PopoverTrigger>
         </div>
-        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0">
+        <PopoverContent align="start" className={cn("w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0", contentClassName)}>
           <Command>
             <CommandInput value={search} onValueChange={setSearch} placeholder={searchPlaceholder} />
             <CommandList className="max-h-64">
@@ -128,6 +141,7 @@ export function MultiSelect<T extends MultiSelectValue>({
         </PopoverContent>
       </Popover>
 
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs text-red-700">{error}</p> : null}
       {helpText ? <p id={helpId} className="mt-1.5 text-xs leading-5 text-ink-3">{helpText}</p> : null}
     </div>
   );

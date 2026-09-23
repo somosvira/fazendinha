@@ -4,12 +4,12 @@
  * confirmar — os formulários são curtos e não há rascunho aqui. */
 
 import type { ReactNode } from "react";
+import { AjudaCampo } from "@/components/Dica";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, rodape }: {
+export function PainelCadastro({ aberto, titulo, onFechar, children, rodape }: {
   aberto: boolean;
   titulo: string;
-  eyebrow: string;
   onFechar: () => void;
   children: ReactNode;
   rodape: ReactNode;
@@ -17,8 +17,7 @@ export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, ro
   return <Sheet open={aberto} onOpenChange={(v) => { if (!v) onFechar(); }}>
     <SheetContent side="right" overlayClassName="z-[1100]" className="z-[1100] flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg">
       <SheetHeader className="border-b border-border p-5 text-left">
-        <div className="eyebrow">{eyebrow}</div>
-        <SheetTitle className="mt-1 font-serif text-2xl font-normal">{titulo}</SheetTitle>
+        <SheetTitle className="font-serif text-2xl font-normal">{titulo}</SheetTitle>
         <SheetDescription className="sr-only">{titulo}</SheetDescription>
       </SheetHeader>
       <div className="flex-1 p-5">{children}</div>
@@ -40,12 +39,11 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
   obrigatorio?: boolean;
   children: (props: { id: string; "aria-label": string; "aria-invalid": boolean; "aria-describedby": string | undefined }) => ReactNode;
 }) {
-  const descricao = erro ? `${id}-erro` : ajuda ? `${id}-ajuda` : undefined;
+  const descricao = [erro && `${id}-erro`, ajuda && `${id}-ajuda`].filter(Boolean).join(" ") || undefined;
   return <div className="text-sm font-medium">
-    <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>
+    <label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}
     {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
-    {erro
-      ? <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>
-      : ajuda ? <p id={`${id}-ajuda`} className="mt-1 text-xs font-normal text-ink-3">{ajuda}</p> : null}
+    {erro && <p id={`${id}-erro`} role="alert" className="mt-1 text-xs font-normal text-red-700">{erro}</p>}
+    {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}
   </div>;
 }

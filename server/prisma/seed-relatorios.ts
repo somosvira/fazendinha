@@ -1,5 +1,6 @@
 import { prisma } from "../src/db.js";
 import { criarOperacao, transferir } from "../src/services/financeiro/operacoes.js";
+import { rotuloUnidade } from "../src/services/estoque/unidades.js";
 
 /* Massa local, aditiva e idempotente para exercitar relatórios financeiros.
  * Não apaga dados e fica inteiramente separada na propriedade QA abaixo. */
@@ -28,8 +29,8 @@ async function main() {
   });
 
   const [alimentacao, sanidade, manutencao, receitas, investimento] = await Promise.all([
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO" } }),
-    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO" } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Alimentação", classificacao: "CUSTEIO", usoNutricional: true } }),
+    prisma.categoria.create({ data: { nome: "QA Relatórios · Sanidade", classificacao: "CUSTEIO", usoSanitario: true } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Manutenção", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Receitas", classificacao: "CUSTEIO" } }),
     prisma.categoria.create({ data: { nome: "QA Relatórios · Equipamentos", classificacao: "INVESTIMENTO" } }),
@@ -51,8 +52,8 @@ async function main() {
     prisma.parceiro.create({ data: { nome: "QA Relatórios · Comprador de gado", documento: "99000000000004", tipo: "CLIENTE", papeis: { create: { papel: "CLIENTE" } } } }),
   ]);
   const [racao, medicamento] = await Promise.all([
-    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", tipo: "RACAO", unidade: "kg", estocavel: true, custoUnitario: 2.8, categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
-    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", tipo: "MEDICAMENTO", unidade: "dose", estocavel: true, custoUnitario: 18, categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", unidade: "KG", categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", unidade: "DOSE", categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
   ]);
 
   const compras = [
@@ -67,7 +68,7 @@ async function main() {
     await criarOperacao({
       tipo: "COMPRA_ESTOQUE", data: data(dias), descricao, propriedadeId: propriedade.id, parceiroId: parceiro.id,
       categoriaId: categoria.id, centroCustoId: centro.id,
-      itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade, unidade: produto.unidade, valorUnitario, estocavel: true }],
+      itens: [{ produtoId: produto.id, descricao: produto.nome, quantidade, unidade: rotuloUnidade(produto.unidade), valorUnitario, estocavel: true }],
       financeiro: { condicao: "A_VISTA", contaId: conta.id, formaPagamento: "PIX" },
     });
   }

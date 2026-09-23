@@ -1,20 +1,21 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput, type TipoInsumoPlantio, type TipoProduto } from "../estoque/api";
+import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput } from "../estoque/api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
-import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
+import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
+import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 
-const TIPOS: [TipoProduto, string][] = [
-  ["INSUMO", "Insumo"], ["MEDICAMENTO", "Medicamento"], ["RACAO", "Ração"],
-  ["MINERAL", "Mineral"], ["OUTRO", "Outro"],
-];
-
-const SUBTIPOS_PLANTIO: [TipoInsumoPlantio, string][] = [
-  ["FERTILIZANTE", "Fertilizante"], ["DEFENSIVO", "Defensivo"], ["HERBICIDA", "Herbicida"],
-  ["CORRETIVO", "Corretivo"], ["BIOLOGICO", "Biológico"], ["FOLIAR", "Foliar"],
-  ["MUDA", "Muda"], ["OUTRO", "Outro"],
-];
+// Chips informativos das marcações de uso da categoria escolhida — o
+// comportamento (sanitário/nutricional/agrícola) é da categoria, não do produto.
+function chipsUso(categoria: Categoria | undefined) {
+  if (!categoria) return [];
+  const chips: string[] = [];
+  if (categoria.usoSanitario) chips.push("Uso sanitário");
+  if (categoria.usoNutricional) chips.push("Uso nutricional");
+  if (categoria.usoAgricola) chips.push("Uso agrícola");
+  return chips;
+}
 
 /* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
  * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
@@ -54,47 +55,35 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const centros = centrosProp ?? centrosCarregados;
 
   const [nome, setNome] = useState(produto?.nome ?? "");
-  const [tipo, setTipo] = useState<TipoProduto>(produto?.tipo ?? "INSUMO");
-  const [subtipoPlantio, setSubtipoPlantio] = useState<TipoInsumoPlantio | "">(produto?.subtipoPlantio ?? "");
-  const [unidade, setUnidade] = useState(produto?.unidade ?? "un");
-  const [custo, setCusto] = useState(produto?.custoUnitario ?? "");
+  const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
-  const [carencia, setCarencia] = useState(produto?.carencia != null ? String(produto.carencia) : "");
-  const [percentualMS, setPercentualMS] = useState(produto?.percentualMS ?? "");
-  const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
-  const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
-  const [fornecedorIds, setFornecedorIds] = useState(() => new Set(produto?.fornecedores?.map((f) => f.id) ?? []));
+  const [centroCustoIds, setCentroCustoIds] = useState<number[]>(() => produto?.centroCustoIds ?? []);
+  const [fornecedorIds, setFornecedorIds] = useState<number[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
-  const fornecedores = parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR") && (p.ativo || fornecedorIds.has(p.id)));
-
-  const alternarFornecedor = (id: number) => setFornecedorIds((atuais) => {
-    const proximos = new Set(atuais); if (proximos.has(id)) proximos.delete(id); else proximos.add(id); return proximos;
-  });
-  const alternarCentro = (id: number) => setCentroCustoIds((atuais) => {
-    const proximos = new Set(atuais); if (proximos.has(id)) proximos.delete(id); else proximos.add(id); return proximos;
-  });
+  // Só ativos entram como opção nova; os já vinculados continuam visíveis (desabilitados
+  // e rotulados) para o usuário enxergar e poder remover o vínculo.
+  const opcoesFornecedores: MultiSelectOption<number>[] = parceiros
+    .filter((p) => papeisDoParceiro(p).includes("FORNECEDOR") && (p.ativo || fornecedorIds.includes(p.id)))
+    .map((p) => ({ value: p.id, label: p.ativo ? p.nome : `${p.nome} (inativo)`, disabled: !p.ativo }));
+  const opcoesCentros: MultiSelectOption<number>[] = centros
+    .filter((c) => c.ativo !== false || centroCustoIds.includes(c.id))
+    .map((c) => ({ value: c.id, label: c.ativo === false ? `${c.nome} (inativo)` : c.nome, disabled: c.ativo === false }));
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
     const novosErros: Record<string, string> = {};
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
-    if (!unidade.trim()) novosErros.unidade = "Informe a unidade";
-    if (custo && Number(custo) < 0) novosErros.custoUnitario = "O custo não pode ser negativo";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
-    if (carencia && Number(carencia) < 0) novosErros.carencia = "A carência não pode ser negativa";
-    if (percentualMS && Number(percentualMS) < 0) novosErros.percentualMS = "O percentual não pode ser negativo";
-    if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
+    if (!categoriaId) novosErros.categoriaId = "Produto precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
-      nome: nome.trim(), tipo, subtipoPlantio: subtipoPlantio || null, unidade: unidade.trim(),
-      custoUnitario: custo === "" ? null : Number(custo), estocavel,
-      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
-      carencia: carencia === "" ? null : Number(carencia), percentualMS: percentualMS === "" ? null : Number(percentualMS),
-      centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
+      nome: nome.trim(), unidade,
+      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: Number(categoriaId),
+      centroCustoIds, fornecedorIds,
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
     try {
@@ -107,43 +96,55 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   };
 
   const formId = "form-produto-financeiro";
-  return <PainelCadastro aberto eyebrow="Produto de estoque" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || carregando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+      <p className="text-sm text-ink-3">O preço vem das compras (custo médio no estoque) e o uso do produto vem da categoria. Quem põe o produto no estoque é a operação (compra para estoque, inventário, produção…).</p>
       <ErrorBox erro={erroGeral || null} />
       {erroCarga && <ErrorBox erro={`Não foi possível carregar fornecedores/categorias/centros de custo: ${erroCarga}`} />}
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-tipo" rotulo="Tipo">{(p) => <select {...p} value={tipo} onChange={(e) => setTipo(e.target.value as TipoProduto)} className={classeInput}>{TIPOS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>
-        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <input {...p} maxLength={12} value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="un, kg, L…" className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
+        <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <CampoFormulario id="produto-subtipo-plantio" rotulo="Tipo agrícola" ajuda="Opcional. Usado só no módulo de plantio.">{(p) => <select {...p} value={subtipoPlantio} onChange={(e) => setSubtipoPlantio(e.target.value as TipoInsumoPlantio | "")} className={classeInput}><option value="">Não se aplica</option>{SUBTIPOS_PLANTIO.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-custo" rotulo="Custo de referência" erro={erros.custoUnitario} ajuda="Usado para sugerir novas operações; não altera o histórico.">{(p) => <input {...p} type="number" min="0" step="0.01" value={custo} onChange={(e) => setCusto(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-carencia" rotulo="Carência (dias)" erro={erros.carencia}>{(p) => <input {...p} type="number" min="0" step="1" value={carencia} onChange={(e) => setCarencia(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="produto-percentual-ms" rotulo="% de matéria seca" erro={erros.percentualMS}>{(p) => <input {...p} type="number" min="0" step="0.01" value={percentualMS} onChange={(e) => setPercentualMS(e.target.value)} className={classeInput} />}</CampoFormulario>
-      </div>
-      <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria padrão" erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Sem categoria</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
-      <CentrosCustoFieldset
-        idBase="produto-centros"
-        centros={centros}
-        selecionados={centroCustoIds}
-        onToggle={alternarCentro}
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="O uso do produto (sanitário, nutricional, agrícola) vem da categoria." erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
+      {(() => {
+        const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
+        const chips = chipsUso(categoriaSelecionada);
+        if (!categoriaId) return null;
+        return (
+          <div className="-mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-3">
+            {chips.length > 0
+              ? chips.map((chip) => <span key={chip} className="rounded-full border border-border px-2 py-0.5">{chip}</span>)
+              : <span>Sem uso específico</span>}
+          </div>
+        );
+      })()}
+      <MultiSelect
+        label="Centros de custo"
+        placeholder="Nenhum centro de custo"
+        searchPlaceholder="Buscar centro de custo…"
+        emptyText="Nenhum centro de custo cadastrado."
         ajuda="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
+        error={erros.centroCustoIds}
+        contentClassName="z-[1200]"
+        options={opcoesCentros}
+        value={centroCustoIds}
+        onValueChange={setCentroCustoIds}
       />
-      <fieldset className="rounded-lg border border-border p-3" aria-describedby={erros.fornecedorIds ? "produto-fornecedores-erro" : "produto-fornecedores-ajuda"}>
-        <legend className="px-1 text-sm font-medium">Fornecedores do produto</legend>
-        <p id="produto-fornecedores-ajuda" className="mb-3 text-xs text-ink-3">Opcional. A compra continua podendo usar outro fornecedor.</p>
-        <div className="grid max-h-48 gap-2 overflow-y-auto">
-          {fornecedores.length === 0 ? <p className="text-sm text-ink-3">Nenhum parceiro com papel de fornecedor.</p> : fornecedores.map((fornecedor) => <label key={fornecedor.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fornecedorIds.has(fornecedor.id)} disabled={!fornecedor.ativo} onChange={() => alternarFornecedor(fornecedor.id)} /> <span>{fornecedor.nome}{fornecedor.ativo ? "" : " (inativo)"}</span></label>)}
-        </div>
-        {erros.fornecedorIds && <p id="produto-fornecedores-erro" role="alert" className="mt-2 text-xs text-red-700">{erros.fornecedorIds}</p>}
-      </fieldset>
+      <MultiSelect
+        label="Fornecedores do produto"
+        placeholder="Nenhum fornecedor"
+        searchPlaceholder="Buscar fornecedor…"
+        emptyText="Nenhum parceiro com papel de fornecedor."
+        ajuda="Opcional. A compra continua podendo usar outro fornecedor."
+        error={erros.fornecedorIds}
+        contentClassName="z-[1200]"
+        options={opcoesFornecedores}
+        value={fornecedorIds}
+        onValueChange={setFornecedorIds}
+      />
     </form>
   </PainelCadastro>;
 }

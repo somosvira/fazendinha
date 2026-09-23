@@ -8,6 +8,7 @@ import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
 import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
+import { rotuloUnidade } from "../lib/unidades";
 import { FormProduto } from "./FormProduto";
 
 type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
@@ -57,12 +58,10 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (p) => <AcoesLinha nome={p.nome} ativo={p.ativo} onEditar={() => editar(p)} onAlternar={() => alternar(p)} /> },
 ];
 
-const TIPO_PRODUTO: Record<string, string> = { MEDICAMENTO: "Medicamento", RACAO: "Ração", INSUMO: "Insumo", MINERAL: "Mineral", OUTRO: "Outro" };
 const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
   { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
-  { chave: "tipo", titulo: "Tipo", larguraMinima: 110, celula: (p) => TIPO_PRODUTO[p.tipo ?? "INSUMO"] },
-  { chave: "unidade", titulo: "Unidade", larguraMinima: 90, celula: (p) => p.unidade },
-  { chave: "custo", titulo: "Custo ref.", alinhamento: "direita", larguraMinima: 120, celula: (p) => p.custoUnitario == null ? "—" : brl(p.custoUnitario) },
+  { chave: "categoria", titulo: "Categoria", larguraMinima: 140, celula: (p) => p.categoriaNome ?? "Sem categoria" },
+  { chave: "unidade", titulo: "Unidade", larguraMinima: 90, celula: (p) => rotuloUnidade(p.unidade) },
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },
@@ -72,6 +71,10 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
+  { chave: "uso", titulo: "Uso", alinhamento: "centro", larguraMinima: 150, celula: (c) => {
+    const chips = [c.usoSanitario && "Sanitário", c.usoNutricional && "Nutricional", c.usoAgricola && "Agrícola"].filter(Boolean) as string[];
+    return chips.length ? <span className="flex flex-wrap justify-center gap-1">{chips.map((chip) => <Pill key={chip} tone="neutral">{chip}</Pill>)}</span> : "—";
+  } },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
@@ -105,6 +108,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
   const [buscaProduto, setBuscaProduto] = useState("");
   const [filtroFornecedor, setFiltroFornecedor] = useState("");
   const [filtroCentro, setFiltroCentro] = useState("");
+  const [filtroUso, setFiltroUso] = useState("");
   const [filtroSituacao, setFiltroSituacao] = useState("TODOS");
   const emCurso = useRef(false);
   const executar = async (acao: () => Promise<unknown>) => {
@@ -184,7 +188,10 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     const fornecedorOk = filtroFornecedor === "SEM" ? !produto.fornecedores?.length : !filtroFornecedor || produto.fornecedores?.some((f) => f.id === Number(filtroFornecedor));
     const centroOk = filtroCentro === "SEM" ? !produto.centrosCusto?.length : !filtroCentro || produto.centrosCusto?.some((c) => c.id === Number(filtroCentro));
     const situacaoOk = filtroSituacao === "TODOS" || (filtroSituacao === "ATIVOS" ? produto.ativo !== false : produto.ativo === false);
-    return buscaOk && fornecedorOk && centroOk && situacaoOk;
+    const usoOk = !filtroUso || (filtroUso === "SEM"
+      ? !produto.categoria?.usoSanitario && !produto.categoria?.usoNutricional && !produto.categoria?.usoAgricola
+      : !!produto.categoria?.[filtroUso as "usoSanitario" | "usoNutricional" | "usoAgricola"]);
+    return buscaOk && fornecedorOk && centroOk && situacaoOk && usoOk;
   });
   const acao = aba === "categorias"
     ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
@@ -198,7 +205,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar = t
     <fieldset disabled={processando || !podeEditar} aria-busy={processando} className="min-w-0">
       {aba === "contas" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas(config.contas, (c) => editar("conta", c), alternarConta, moverConta)} chaveDe={(c) => c.id} onAbrir={(c) => editar("conta", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "parceiros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Clientes e fornecedores" itens={config.parceiros} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro)} chaveDe={(p) => p.id} onAbrir={(p) => editar("parceiro", p)} classeLinha={(p) => !p.ativo ? "opacity-55" : ""} /></Panel>}
-      {aba === "produtos" && <><div className="mt-5 grid gap-3 md:grid-cols-4"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="rounded-lg border border-border bg-white px-3 py-2 text-sm" /><select aria-label="Filtrar por fornecedor" value={filtroFornecedor} onChange={(e) => setFiltroFornecedor(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="">Todos os fornecedores</option><option value="SEM">Sem fornecedor</option>{config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select><select aria-label="Filtrar por centro de custo" value={filtroCentro} onChange={(e) => setFiltroCentro(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="">Todos os centros</option><option value="SEM">Sem centro</option>{config.centrosCusto.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select><select aria-label="Filtrar por situação" value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="TODOS">Ativos e inativos</option><option value="ATIVOS">Ativos</option><option value="INATIVOS">Inativos</option></select></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
+      {aba === "produtos" && <><div className="mt-5 grid gap-3 md:grid-cols-5"><input aria-label="Buscar produto" value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} placeholder="Buscar por nome…" className="rounded-lg border border-border bg-white px-3 py-2 text-sm" /><select aria-label="Filtrar por fornecedor" value={filtroFornecedor} onChange={(e) => setFiltroFornecedor(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="">Todos os fornecedores</option><option value="SEM">Sem fornecedor</option>{config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select><select aria-label="Filtrar por centro de custo" value={filtroCentro} onChange={(e) => setFiltroCentro(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="">Todos os centros</option><option value="SEM">Sem centro</option>{config.centrosCusto.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select><select aria-label="Filtrar por uso" value={filtroUso} onChange={(e) => setFiltroUso(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="">Todos os usos</option><option value="usoSanitario">Uso sanitário</option><option value="usoNutricional">Uso nutricional</option><option value="usoAgricola">Uso agrícola</option><option value="SEM">Sem uso específico</option></select><select aria-label="Filtrar por situação" value={filtroSituacao} onChange={(e) => setFiltroSituacao(e.target.value)} className="rounded-lg border border-border bg-white px-3 py-2 text-sm"><option value="TODOS">Ativos e inativos</option><option value="ATIVOS">Ativos</option><option value="INATIVOS">Inativos</option></select></div><Panel className="mt-3 overflow-hidden"><TabelaFinanceira rotulo="Produtos" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto)} chaveDe={(p) => p.id} onAbrir={(p) => editar("produto", p)} classeLinha={(p) => p.ativo === false ? "opacity-55" : ""} /></Panel></>}
       {aba === "categorias" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Categorias financeiras" itens={categorias} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria)} chaveDe={(c) => c.id} onAbrir={(c) => editar("categoria", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
       {aba === "centros" && <Panel className="mt-5 overflow-hidden"><TabelaFinanceira rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro)} chaveDe={(c) => c.id} onAbrir={(c) => editar("centro", c)} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} /></Panel>}
     </fieldset>

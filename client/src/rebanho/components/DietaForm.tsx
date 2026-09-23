@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
+import { rotuloUnidade } from "../../lib/unidades";
 import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta, useProdutos, type DietaDTO, type DietaItemInput } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -113,9 +114,10 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
 // já criada (o PUT precisa do id). Salva independente do nome/macros da dieta.
 function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   const { data: itens, loading, recarregar } = useItensDieta(dietaId);
-  const { data: produtos } = useProdutos({ ativo: true });
-  const estocaveis = useMemo(() => produtos.filter((p) => p.estocavel), [produtos]);
-  const prodPorId = useMemo(() => new Map(estocaveis.map((p) => [p.id, p])), [estocaveis]);
+  // Produtos de uso nutricional (categoria). Se o produto tem estoque no sítio
+  // quem valida é o servidor ao salvar — o cadastro não diz se é estocado.
+  const { data: produtos } = useProdutos({ ativo: true, uso: "nutricional" });
+  const prodPorId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
   const [linhas, setLinhas] = useState<{ produtoId: number; qtd: string }[]>([]);
   const [novoProduto, setNovoProduto] = useState("");
@@ -130,11 +132,13 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itensKey]);
 
-  const disponiveis = estocaveis.filter((p) => !linhas.some((l) => l.produtoId === p.id));
+  const disponiveis = produtos.filter((p) => !linhas.some((l) => l.produtoId === p.id));
+  // Custo médio ponderado das entradas no sítio, vindo da composição salva
+  // (produto recém-adicionado só ganha custo depois de salvar).
+  const custoMedioPorProduto = useMemo(() => new Map(itens.map((i) => [i.produtoId, i.custoMedio])), [itens]);
   const totalCusto = linhas.reduce((acc, l) => {
-    const p = prodPorId.get(l.produtoId);
     const q = Number(l.qtd);
-    const custo = p?.custoUnitario != null ? Number(p.custoUnitario) : null;
+    const custo = custoMedioPorProduto.get(l.produtoId) ?? null;
     return custo != null && Number.isFinite(q) ? acc + q * custo : acc;
   }, 0);
 
@@ -174,7 +178,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
                     <span style={{ fontSize: 13.5 }}>{p?.nome ?? `#${l.produtoId}`}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <input type="number" step="0.0001" min={0} value={l.qtd} onChange={(e) => setQtd(l.produtoId, e.target.value)} style={{ width: 66 }} placeholder="qtd" />
-                      <span style={{ fontSize: 12, color: "var(--ink-3)", minWidth: 22 }}>{p?.unidade}</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-3)", minWidth: 22 }}>{p ? rotuloUnidade(p.unidade) : ""}</span>
                     </span>
                     <RebButton type="button" onClick={() => remover(l.produtoId)} title="Remover">✕</RebButton>
                   </div>
@@ -187,7 +191,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
               <RebSelect value={novoProduto} onChange={(v) => setNovoProduto(v)} className="flex-1">
                 <option value="">+ Adicionar produto…</option>
-                {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
+                {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({rotuloUnidade(p.unidade)})</option>)}
               </RebSelect>
               <RebButton type="button" disabled={!novoProduto} onClick={adicionar}>Adicionar</RebButton>
             </div>

@@ -1,23 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
+import { useToast } from "@/components/Toast";
 import { useProdutosEstoque, listarCentrosCusto, type RefDTO } from "../../estoque/api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
 import { RebField } from "@/components/rb/RebField";
-
-// Quebra "600 mL/ha" → { valor: 600, unidade: "mL/ha" }. Tolera "2,5 t/ha" (vírgula
-// decimal pt-BR) e campos vazios. Retorna {} quando não há número parseável.
-function parseDose(s: string): { doseValor?: number; doseUnidade?: string } {
-  const txt = s.trim();
-  if (!txt) return {};
-  const m = txt.match(/^(-?\d+(?:[.,]\d+)?)\s*(.*)$/);
-  if (!m) return { doseUnidade: txt };
-  const valor = Number(m[1].replace(",", "."));
-  const unidade = m[2].trim();
-  return { doseValor: Number.isFinite(valor) ? valor : undefined, doseUnidade: unidade || undefined };
-}
+import { UNIDADES_ORDENADAS, converterQuantidade, rotuloUnidade, type UnidadeMedida } from "../../lib/unidades";
 
 const DOMINIOS: { v: "fenologia" | "fitossanidade" | "nutricao" | "colheita"; label: string }[] = [
   { v: "fitossanidade", label: "Fitossanidade" },
@@ -84,12 +74,19 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [produtoId, setProdutoId] = useState<string>("");
   const [quantidadeTotal, setQuantidadeTotal] = useState("");
   const [centroCustoId, setCentroCustoId] = useState<string>("");
-  const [dose, setDose] = useState("");
+  const [doseValor, setDoseValor] = useState("");
+  const [doseUnidadeMedida, setDoseUnidadeMedida] = useState<UnidadeMedida>("ML");
+  // Enquanto o usuário não mexe na unidade da dose, ela segue a unidade do
+  // produto do estoque escolhido (ver `selecionarProduto`) — evita começar
+  // sempre em mL para produtos que não são líquidos (ex.: kg, sc, un).
+  const [doseUnidadeTocada, setDoseUnidadeTocada] = useState(false);
+  const [dosePorHectare, setDosePorHectare] = useState(true);
   const [volumeCalda, setVolumeCalda] = useState("");
   const [incidencia, setIncidencia] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const toast = useToast();
   const [erro, setErro] = useState<string | null>(null);
 
   // Litros de cereja (colheita)
@@ -103,30 +100,42 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [kKg, setKKg] = useState("");
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
-  const { data: produtos } = useProdutosEstoque({ ativo: true });
-  const produtosEstocaveis = useMemo(
-    () => produtos.filter((p) => p.estocavel && p.ativo && p.subtipoPlantio).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+  const { data: produtos } = useProdutosEstoque({ ativo: true, uso: "agricola" });
+  // Produtos de uso agrícola (categoria). A baixa só acontece se o produto tiver
+  // estoque no sítio do talhão — decisão do servidor, não do cadastro.
+  const produtosAgricolas = useMemo(
+    () => produtos.filter((p) => p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos],
   );
   const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
   const [erroCentrosCusto, setErroCentrosCusto] = useState<string | null>(null);
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentrosCusto(cs); setErroCentrosCusto(null); }).catch((e) => setErroCentrosCusto(e instanceof Error ? e.message : String(e))); }, []);
-  const produtoSelecionado = produtosEstocaveis.find((p) => String(p.id) === produtoId);
+  const produtoSelecionado = produtosAgricolas.find((p) => String(p.id) === produtoId);
 
   const baixaEstimada = (() => {
     if (!produtoSelecionado) return null;
-    const { doseValor, doseUnidade } = parseDose(dose);
-    if (doseValor == null) return null;
-    const valor = doseUnidade && /\/ha$/i.test(doseUnidade) && talhao?.areaHa ? doseValor * talhao.areaHa : doseValor;
-    return { valor, unidade: produtoSelecionado.unidade };
+    const valorNumerico = Number(doseValor.replace(",", "."));
+    if (!doseValor.trim() || !Number.isFinite(valorNumerico)) return null;
+    const bruta = dosePorHectare ? valorNumerico * (talhao?.areaHa ?? 0) : valorNumerico;
+    try {
+      const valor = converterQuantidade(bruta, doseUnidadeMedida, produtoSelecionado.unidade);
+      return { valor, unidade: rotuloUnidade(produtoSelecionado.unidade), erro: null as string | null };
+    } catch {
+      return {
+        valor: null as number | null,
+        unidade: rotuloUnidade(produtoSelecionado.unidade),
+        erro: `A dose em ${rotuloUnidade(doseUnidadeMedida)} não pode ser convertida para ${rotuloUnidade(produtoSelecionado.unidade)} — escolha a unidade do produto ou informe a quantidade total`,
+      };
+    }
   })();
 
   function selecionarProduto(id: string) {
     setProdutoId(id);
-    const p = produtosEstocaveis.find((x) => String(x.id) === id);
+    const p = produtosAgricolas.find((x) => String(x.id) === id);
     if (p) {
       if (!produto.trim()) setProduto(p.nome);
       setCentroCustoId((p.centroCustoIds ?? []).length === 1 ? String((p.centroCustoIds ?? [])[0]) : "");
+      if (!doseUnidadeTocada) setDoseUnidadeMedida(p.unidade);
     } else {
       setCentroCustoId("");
     }
@@ -158,20 +167,22 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
       }
       const obs = [observacao.trim(), ...extras].filter(Boolean).join(" — ") || undefined;
 
-      const { doseValor, doseUnidade } = parseDose(dose);
-      await registrarOperacao(talhaoId, {
+      const doseValorNumerico = doseValor.trim() ? Number(doseValor.replace(",", ".")) : undefined;
+      const salvo = await registrarOperacao(talhaoId, {
         // backend espera o enum em maiúsculas (FENOLOGIA/FITOSSANIDADE/NUTRICAO/COLHEITA)
         dominio: dominio.toUpperCase() as OperacaoInput["dominio"], tipo, data,
         responsavel: responsavel.trim() || undefined,
         produto: produto.trim() || undefined,
         observacao: obs,
-        doseValor,
-        doseUnidade,
+        doseValor: doseValorNumerico != null && Number.isFinite(doseValorNumerico) ? doseValorNumerico : undefined,
+        doseUnidadeMedida: doseValorNumerico != null ? doseUnidadeMedida : undefined,
+        dosePorHectare: doseValorNumerico != null ? dosePorHectare : undefined,
         pragaAlvo: dominio === "fitossanidade" ? praga : undefined,
         produtoId: produtoId ? Number(produtoId) : null,
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
         centroCustoId: centroCustoId ? Number(centroCustoId) : null,
       });
+      if (salvo?.aviso) toast.warn("Aplicação registrada sem baixa de estoque", salvo.aviso);
       onSalvo();
     } catch (e: any) {
       setErro(e?.message ?? "Erro ao salvar.");
@@ -225,8 +236,16 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
                   <RebField label="Produto / princípio ativo">
                     <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder="Ex.: Ciproconazol + Trifloxistrobina" />
                   </RebField>
-                  <RebField label="Dose (g ou mL / ha)">
-                    <input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex.: 600 mL/ha" />
+                  <RebField label="Dose">
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <input type="number" step="0.001" min="0" style={{ width: 100 }} value={doseValor} onChange={(e) => setDoseValor(e.target.value)} placeholder="Ex.: 600" />
+                      <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => { setDoseUnidadeMedida(e.target.value as UnidadeMedida); setDoseUnidadeTocada(true); }}>
+                        {UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidade(u)}</option>)}
+                      </select>
+                      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                        <input type="checkbox" checked={dosePorHectare} onChange={(e) => setDosePorHectare(e.target.checked)} /> por hectare
+                      </label>
+                    </div>
                   </RebField>
                   <RebField label="Volume de calda (L/ha)">
                     <input type="number" value={volumeCalda} onChange={(e) => setVolumeCalda(e.target.value)} placeholder="Ex.: 500" />
@@ -263,8 +282,16 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
               <RebField label="Produto">
                 <input value={produto} onChange={(e) => setProduto(e.target.value)} placeholder={tipo === "CALAGEM" ? "Ex.: Calcário dolomítico PRNT 85%" : "Ex.: Gesso agrícola"} />
               </RebField>
-              <RebField label="Dose (t/ha)">
-                <input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex.: 2,5" />
+              <RebField label="Dose">
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <input type="number" step="0.001" min="0" style={{ width: 100 }} value={doseValor} onChange={(e) => setDoseValor(e.target.value)} placeholder="Ex.: 2,5" />
+                  <select aria-label="Unidade da dose" className="rb-field-select" value={doseUnidadeMedida} onChange={(e) => { setDoseUnidadeMedida(e.target.value as UnidadeMedida); setDoseUnidadeTocada(true); }}>
+                    {UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidade(u)}</option>)}
+                  </select>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                    <input type="checkbox" checked={dosePorHectare} onChange={(e) => setDosePorHectare(e.target.checked)} /> por hectare
+                  </label>
+                </div>
               </RebField>
             </>
           )}
@@ -295,26 +322,29 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
           )}
 
           {/* Baixa de estoque — opcional; liga o texto livre "produto" a um produto
-              cadastrado e estocável, para gerar a saída de estoque automática. */}
+              cadastrado; a saída de estoque só é gerada se ele tiver estoque no sítio. */}
           {(dominio === "fitossanidade" && tipo !== "MONITORAMENTO_MIP") ||
           (dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR" || tipo === "CALAGEM" || tipo === "GESSAGEM")) ? (
             <>
               <RebField label="Produto do estoque">
                 <select className="rb-field-select" value={produtoId} onChange={(e) => selecionarProduto(e.target.value)}>
                   <option value="">— sem baixa de estoque —</option>
-                  {produtosEstocaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {produtosAgricolas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
-              <p className="-mt-2.5 text-xs text-ink-3">Só produtos com tipo agrícola aparecem aqui (Configurações → Produtos).</p>
+              <p className="-mt-2.5 text-xs text-ink-3">Só produtos de categorias marcadas como uso agrícola aparecem aqui (Configurações → Categorias).</p>
               {produtoSelecionado && (
                 <>
-                  {baixaEstimada && (
+                  {baixaEstimada && baixaEstimada.erro && (
+                    <p className="text-sm text-prejuizo">{baixaEstimada.erro}</p>
+                  )}
+                  {baixaEstimada && baixaEstimada.valor != null && (
                     <p className="text-sm text-ink-3">
                       Baixa estimada: <b>{baixaEstimada.valor.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {baixaEstimada.unidade}</b>
                     </p>
                   )}
                   <RebField label="Quantidade total (sobrescreve a estimativa)">
-                    <input type="number" value={quantidadeTotal} onChange={(e) => setQuantidadeTotal(e.target.value)} placeholder={baixaEstimada ? String(baixaEstimada.valor) : "Ex.: 120"} />
+                    <input type="number" value={quantidadeTotal} onChange={(e) => setQuantidadeTotal(e.target.value)} placeholder={baixaEstimada?.valor != null ? String(baixaEstimada.valor) : "Ex.: 120"} />
                   </RebField>
                   <RebField label="Centro de custo">
                     <select className="rb-field-select" value={centroCustoId} onChange={(e) => setCentroCustoId(e.target.value)}>

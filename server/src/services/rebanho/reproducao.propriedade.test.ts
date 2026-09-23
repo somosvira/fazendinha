@@ -88,7 +88,7 @@ describe("escopo multi-propriedade da reprodução", () => {
     expect(mocks.movimentoFindMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
         tipo: "SAIDA",
-        produto: { tipo: "RACAO" },
+        produto: { categoria: { usoNutricional: true } },
         propriedadeId: 7,
       }),
     });

@@ -14,6 +14,7 @@ export interface AnimalForm {
 // (mesma fonte usada pelo financeiro/dashboard). Reexporta set/get p/ compat com
 // quem importava daqui (RebanhoContent, App).
 import { comPropriedade, setPropriedadeAtiva, getPropriedadeAtiva } from "../propriedadeScope";
+import type { UnidadeMedida } from "../lib/unidades";
 export { setPropriedadeAtiva, getPropriedadeAtiva };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -421,7 +422,7 @@ export function useAnimaisDisponiveis() {
 }
 
 // ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
-export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; ordem: number; }
+export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: UnidadeMedida; qtdPorCabecaDia: number; custoMedio: number | null; ordem: number; }
 export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
 export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
 export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
@@ -440,7 +441,7 @@ export function useItensDieta(dietaId: number | null) {
 }
 
 // ── Consumo de dieta → baixa de estoque (Fatia 2) ───────────────────────────
-export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: string; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
+export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: UnidadeMedida; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; semEstoque?: boolean; }
 export interface PrevisaoConsumoDTO { grupoId: number; grupoNome: string; dietaId: number; dietaNome: string; dataInicio: string; dataFim: string; dias: number; numCabecas: number; linhas: PrevisaoLinhaDTO[]; custoTotal: number; temInsuficiencia: boolean; }
 export interface ConsumoPeriodoDTO { id: number; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
 export interface FecharConsumoResult { id: number; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }
@@ -982,9 +983,9 @@ export const listarCentrosCusto = () => req<RefDTO[]>(`/rebanho/centros-custo`);
 // DTOs compartilhados com o estoque unificado (mesmo shape do service em
 // server/src/services/estoque/produtos.ts) — reexportados para não haver dois
 // `ProdutoDTO` divergentes no client (ver client/src/estoque/api.ts).
-export type { ProdutoDTO, ProdutoInput, TipoProduto, TipoInsumoPlantio } from "../estoque/api";
-import type { ProdutoDTO, ProdutoInput } from "../estoque/api";
-export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
+export type { ProdutoDTO, ProdutoInput, UsoProduto } from "../estoque/api";
+import type { ProdutoDTO, ProdutoInput, UsoProduto } from "../estoque/api";
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/rebanho/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/rebanho/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/rebanho/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
@@ -995,7 +996,7 @@ export const listarFornecedores = (f?: { tipo?: string; q?: string }) => req<For
 export const criarFornecedor = (p: FornecedorInput) => req<FornecedorDTO>(`/rebanho/fornecedores`, { method: "POST", body: JSON.stringify(p) });
 export const editarFornecedor = (id: number, p: Partial<FornecedorInput>) => req<FornecedorDTO>(`/rebanho/fornecedores/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
-export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) {
+export function useProdutos(f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) {
   const [data, setData] = useState<ProdutoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -1008,9 +1009,6 @@ export function useProdutos(f?: { tipo?: string; q?: string; ativo?: boolean }) 
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
 }
-
-// ── Princípios ativos, composição de ração e lotes de produto: movidos para
-// client/src/estoque/api.ts (rota /api/estoque/*) — sem uso duplicado aqui.
 
 export function useFornecedores(f?: { tipo?: string; q?: string }) {
   const [data, setData] = useState<FornecedorDTO[]>([]);
@@ -1035,7 +1033,7 @@ export interface CustoSanidade {
   totalAplicacoes: number;
   custoPorAplicacao: number;
   topAnimais: { numero: string; nome: string | null; n: number; custoEstimado: number; custoExato: number }[];
-  produtos: { produto: string; n: number; custoUnitario: number | null; custoExato: number | null }[];
+  produtos: { produto: string; n: number; custoMedio: number | null; custoExato: number | null }[];
   custoExatoTotal: number;
   produtosPrecificados: number;
   produtosTotais: number;

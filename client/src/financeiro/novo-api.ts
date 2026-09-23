@@ -2,6 +2,7 @@ import { comPropriedade } from "../propriedadeScope";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
+import type { UnidadeMedida } from "../lib/unidades";
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -25,22 +26,24 @@ export type ContaInput = { nome: string; tipo: TipoConta; instituicao?: string |
 export type ContaPatch = Partial<ContaInput> & DadosConta & { ativo?: boolean };
 export type ParceiroInput = DadosParceiro & { nome: string; documento?: string | null; tipo?: TipoParceiro; telefone?: string | null; email?: string | null };
 export type ParceiroPatch = Partial<ParceiroInput> & { ativo?: boolean };
-export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; itens?: number } };
+export type Categoria = { id: number; nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; ativo: boolean; ordem: number; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean; _count?: { operacoes: number; produtos: number; itens?: number } };
 export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: number; _count?: { operacoes: number; produtos: number; safras: number } };
-export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTRO";
-export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
+// Comportamento (sanitário/nutricional/agrícola) é da categoria do produto —
+// mesmo que ela esteja inativa (situação é do produto, uso é da categoria).
+export type ProdutoCategoria = { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean };
 export type Produto = {
-  id: number; nome: string; tipo?: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null;
-  unidade: string; estocavel: boolean; custoUnitario: string | null; carencia?: number | null; percentualMS?: string | null;
+  id: number; nome: string;
+  unidade: UnidadeMedida;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
+  categoria?: ProdutoCategoria | null;
   centroCustoIds?: number[]; centrosCusto?: { id: number; nome: string; ativo: boolean }[];
   fornecedores?: { id: number; nome: string; ativo: boolean }[];
 };
 export type ProdutoInput = {
-  nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
-  custoUnitario: number | null; carencia?: number | null; percentualMS?: number | null; estocavel: boolean;
-  minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
+  nome: string; unidade: UnidadeMedida;
+  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  minimoEstoque: number | null; categoriaId: number; centroCustoIds: number[]; fornecedorIds: number[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { leite: number | null; cafe: number | null } };
 export type ContaHistorico = { id: number; nome: string };
@@ -113,6 +116,10 @@ export const obterOperacao = (id: number) => req<Operacao>(`/financeiro/operacoe
 export const listarCompromissos = (periodo?: { inicio: string; fim: string }) => req<Compromisso[]>(`/financeiro/compromissos${periodo?.inicio && periodo.fim ? `?${new URLSearchParams(periodo)}` : ""}`);
 export const obterExtratoConta = (id: number) => req<MovimentoConta[]>(`/financeiro/contas/${id}/extrato`);
 export const criarOperacao = (input: unknown) => req<Operacao>("/financeiro/operacoes", { method: "POST", body: JSON.stringify(input) });
+export type AjusteEstoqueInput = { produtoId: number; quantidadeContada: number; saldoEsperado: number; observacao: string; centroCustoId?: number | null };
+export type AjusteEstoqueResultado = { id: number; operacaoId: number; saldoAnterior: number; quantidadeContada: number; diferenca: number };
+/** Ajuste por contagem de estoque: o servidor recalcula o saldo, recusa (CONFLITO/409) se ele mudou desde `saldoEsperado` e cria a Operacao AJUSTE_ESTOQUE + movimento físico. */
+export const registrarAjusteEstoque = (input: AjusteEstoqueInput) => req<AjusteEstoqueResultado>("/estoque/ajustes", { method: "POST", body: JSON.stringify(input) });
 export const simularParcelasOperacao = (input: unknown) => req<SimulacaoParcelas>("/financeiro/operacoes/simulacao-parcelas", { method: "POST", body: JSON.stringify(input) });
 // As quatro chamadas abaixo publicam o resultado em `rascunhoAtivo`, que alimenta
 // o atalho "Trabalho ativo" da sidebar e a própria tela de operações.
@@ -200,7 +207,7 @@ export const criarConta = (input: ContaInput & DadosConta) => req<Conta>("/finan
 export const atualizarConta = (id: number, input: ContaPatch) => req<Conta>(`/financeiro/contas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const criarParceiro = (input: ParceiroInput) => req<Parceiro>("/financeiro/parceiros", { method: "POST", body: JSON.stringify(input) });
 export const atualizarParceiro = (id: number, input: ParceiroPatch) => req<Parceiro>(`/financeiro/parceiros/${id}`, { method: "PATCH", body: JSON.stringify(input) });
-export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number };
+export type CategoriaInput = { nome: string; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null; ordem?: number; usoSanitario?: boolean; usoNutricional?: boolean; usoAgricola?: boolean };
 export type CentroCustoInput = { nome: string; ordem?: number };
 export const criarCategoria = (input: CategoriaInput) => req<Categoria>("/financeiro/categorias", { method: "POST", body: JSON.stringify(input) });
 export const atualizarCategoria = (id: number, input: Partial<CategoriaInput> & { ativo?: boolean }) => req<Categoria>(`/financeiro/categorias/${id}`, { method: "PATCH", body: JSON.stringify(input) });

@@ -421,6 +421,14 @@ export function App() {
       setWorklistSnapshot(null);
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
+      // `?id=` numa aba de cockpit (reb-/pla-/cor-) abre a ficha direto, como o ⌘K e os
+      // links da IA (ex.: movimentos do Estoque levando ao animal/talhão de origem).
+      const cockpitId = t && /^(reb|pla|cor)-/.test(String(t)) ? sp.get("id") : null;
+      if (t && cockpitId) {
+        setDeepLink({ tab: t, id: cockpitId });
+        setDeepLinkFiltros(null);
+        return;
+      }
       setDeepLinkFiltros(t && [...sp.keys()].length && !sp.has("worklist") && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
     };
     window.addEventListener("popstate", onPop);

@@ -1,8 +1,8 @@
-import type { Prisma, TipoProduto } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
-import type { ProdutoInput, ProdutoPatchInput } from "./produtos.schemas.js";
+import { CATEGORIA_OBRIGATORIA, type ProdutoInput, type ProdutoPatchInput } from "./produtos.schemas.js";
 
 export const includeProduto = {
   fornecedores: {
@@ -17,17 +17,15 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
   return {
     id: produto.id,
     nome: produto.nome,
-    tipo: produto.tipo,
-    subtipoPlantio: produto.subtipoPlantio ?? null,
     unidade: produto.unidade,
-    custoUnitario: produto.custoUnitario != null ? produto.custoUnitario.toString() : null,
-    carencia: produto.carencia ?? null,
-    percentualMS: produto.percentualMS != null ? produto.percentualMS.toString() : null,
-    estocavel: produto.estocavel,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
     classificacao: produto.categoria?.classificacao ?? null,
+    // Comportamento é da categoria, mesmo que ela esteja inativa (situação é do produto).
+    categoria: produto.categoria
+      ? { id: produto.categoria.id, nome: produto.categoria.nome, usoSanitario: produto.categoria.usoSanitario, usoNutricional: produto.categoria.usoNutricional, usoAgricola: produto.categoria.usoAgricola }
+      : null,
     ativo: produto.ativo,
     centroCustoIds: produto.centrosCusto.map(({ centroCustoId }) => centroCustoId),
     centrosCusto: produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome, ativo: centroCusto.ativo })),
@@ -60,9 +58,11 @@ function separarRelacoes<T extends { fornecedorIds?: number[]; centroCustoIds?: 
   return { fornecedorIds, centroCustoIds, produto };
 }
 
-export async function listarProdutos(f?: { tipo?: string; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
+const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
+
+export async function listarProdutos(f?: { uso?: "sanitario" | "nutricional" | "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
   const where: Prisma.ProdutoWhereInput = {};
-  if (f?.tipo) where.tipo = f.tipo as TipoProduto;
+  if (f?.uso) where.categoria = { [USO_CAMPO[f.uso]]: true };
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
   else if (!f?.incluirInativos) where.ativo = true;
@@ -77,8 +77,8 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
   try {
     return await prisma.$transaction(async (tx) => {
       const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
-      if (produto.estocavel && produto.categoriaId == null) {
-        throw new FinanceiroError("VALIDACAO", "Produto estocável precisa de uma categoria", "categoriaId");
+      if (produto.categoriaId == null) {
+        throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
       await validarFornecedores(tx, fornecedorIds, new Set());
       await validarCentrosCusto(tx, centroCustoIds, new Set());
@@ -104,10 +104,29 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
       const { fornecedorIds, centroCustoIds, produto } = separarRelacoes(input);
 
-      const estocavel = produto.estocavel ?? anterior.estocavel;
+      // Todo produto precisa de categoria. Um produto legado sem categoria só
+      // pode ser ativado/desativado sem informá-la; qualquer outra edição exige.
       const categoriaId = produto.categoriaId !== undefined ? produto.categoriaId : anterior.categoriaId;
-      if (estocavel && categoriaId == null) {
-        throw new FinanceiroError("VALIDACAO", "Produto estocável precisa de uma categoria", "categoriaId");
+      const soSituacao = Object.entries(input).every(([campo, valor]) => campo === "ativo" || valor === undefined);
+      if (categoriaId == null && !soSituacao) {
+        throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
+      }
+
+      // Trocar a unidade muda a interpretação de tudo que já foi movimentado
+      // (estoque), planejado (dieta) ou registrado em histórico (compra/venda,
+      // aplicação sanitária, aplicação agrícola) na unidade antiga — bloqueia se
+      // houver algum registro para esse produto.
+      if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
+        const [movimentos, itensDieta, itensOperacao, eventosSanitarios, operacoesAgricolas] = await Promise.all([
+          tx.movimentoEstoque.count({ where: { produtoId: id } }),
+          tx.dietaItem.count({ where: { produtoId: id } }),
+          tx.itemOperacao.count({ where: { produtoId: id } }),
+          tx.eventoSanitario.count({ where: { produtoId: id, quantidadeUsada: { not: null } } }),
+          tx.operacaoAgricola.count({ where: { produtoId: id, doseValor: { not: null } } }),
+        ]);
+        if (movimentos > 0 || itensDieta > 0 || itensOperacao > 0 || eventosSanitarios > 0 || operacoesAgricolas > 0) {
+          throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque ou dietas registradas", "unidade");
+        }
       }
 
       if (fornecedorIds !== undefined) {
@@ -136,4 +155,38 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       return depois;
     });
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+}
+
+// ── Sugestão de preço na compra ─────────────────────────────────────────────
+// O cadastro não guarda preço: a sugestão vem do último item comprado do
+// produto em operação confirmada, preferindo o fornecedor informado.
+export interface UltimoPrecoDTO {
+  valorUnitario: string;
+  data: string;
+  parceiro: { id: number; nome: string } | null;
+}
+
+const TIPOS_COMPRA = ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"] as const;
+
+export async function obterUltimoPreco(produtoId: number, f: { parceiroId?: number | null; propriedadeId?: number | null } = {}): Promise<UltimoPrecoDTO | null> {
+  const buscar = (parceiroId?: number) => prisma.itemOperacao.findFirst({
+    where: {
+      produtoId,
+      operacao: {
+        tipo: { in: [...TIPOS_COMPRA] },
+        status: "CONFIRMADA",
+        ...(f.propriedadeId != null ? { propriedadeId: f.propriedadeId } : {}),
+        ...(parceiroId != null ? { parceiroId } : {}),
+      },
+    },
+    orderBy: [{ operacao: { data: "desc" } }, { id: "desc" }],
+    select: { valorUnitario: true, operacao: { select: { data: true, parceiro: { select: { id: true, nome: true } } } } },
+  });
+  const item = (f.parceiroId != null ? await buscar(f.parceiroId) : null) ?? await buscar();
+  if (!item) return null;
+  return {
+    valorUnitario: item.valorUnitario.toString(),
+    data: item.operacao.data.toISOString().slice(0, 10),
+    parceiro: item.operacao.parceiro ? { id: item.operacao.parceiro.id, nome: item.operacao.parceiro.nome } : null,
+  };
 }

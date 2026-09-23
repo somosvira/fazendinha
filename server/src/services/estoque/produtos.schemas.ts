@@ -1,10 +1,10 @@
 import { z } from "zod";
+import { UnidadeMedida } from "@prisma/client";
 
-// Limites compatíveis com Produto.custoUnitario / minimoEstoque (Decimal(12,2))
+// Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 
-const tipoProdutoSchema = z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]);
-const subtipoPlantioSchema = z.enum(["FERTILIZANTE", "DEFENSIVO", "HERBICIDA", "CORRETIVO", "BIOLOGICO"]);
+export const CATEGORIA_OBRIGATORIA = "Produto precisa de uma categoria";
 
 const idsSchema = (campo: string) =>
   z.array(z.number().int().positive()).max(200)
@@ -12,15 +12,12 @@ const idsSchema = (campo: string) =>
 
 export const produtoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
-  tipo: tipoProdutoSchema.default("INSUMO"),
-  subtipoPlantio: subtipoPlantioSchema.nullable().optional(),
-  unidade: z.string().trim().min(1).max(12).default("un"),
-  custoUnitario: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "custo muito alto").nullable().optional(),
-  carencia: z.number().int().nonnegative().max(9999, "carência muito alta").nullable().optional(),
-  percentualMS: z.number().min(0).max(100).nullable().optional(),
-  estocavel: z.boolean().default(true),
+  unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),
-  categoriaId: z.number().int().positive().nullable().optional(),
+  // Categoria é obrigatória: é ela que define o uso do produto (sanitário,
+  // nutricional, agrícola) e a classificação herdada pelo item da operação.
+  // Se o produto tem estoque não é do cadastro — quem decide é a operação.
+  categoriaId: z.number({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).int().positive(CATEGORIA_OBRIGATORIA),
   centroCustoIds: idsSchema("Centros de custo").default([]),
   fornecedorIds: idsSchema("Fornecedores").default([]),
 });
@@ -28,3 +25,13 @@ export type ProdutoInput = z.infer<typeof produtoSchema>;
 
 export const patchProdutoSchema = produtoSchema.partial().extend({ ativo: z.boolean().optional() });
 export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
+
+// Filtro de produtos por uso (marcações da categoria) — mesmo enum usado por
+// /estoque/produtos e /rebanho/produtos, para validar o query param `uso`.
+export const usoQuerySchema = z.enum(["sanitario", "nutricional", "agricola"]);
+export const produtosQuerySchema = z.object({
+  uso: usoQuerySchema.optional(),
+  q: z.string().optional(),
+  ativo: z.enum(["true", "false"]).optional(),
+});
+export type ProdutosQuery = z.infer<typeof produtosQuerySchema>;

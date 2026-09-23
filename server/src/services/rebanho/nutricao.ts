@@ -1,6 +1,7 @@
 import { prisma } from "../../db.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, UnidadeMedida } from "@prisma/client";
 import { z } from "zod";
+import { obterCustosMedios, produtosComEstoque } from "../estoque/estoque.js";
 import { registrarMovimentacoes } from "./movimentacao.js";
 
 export const dietaSchema = z.object({
@@ -188,25 +189,27 @@ export const dietaItensSchema = z.object({
 });
 export type DietaItensInput = z.infer<typeof dietaItensSchema>;
 
-const dietaItemDTO = (i: any) => ({
+const dietaItemDTO = (i: any, custoMedio: Prisma.Decimal | null) => ({
   id: i.id,
   produtoId: i.produtoId,
   produtoNome: i.produto?.nome ?? null,
-  unidade: i.unidade as string,
+  unidade: i.unidade as UnidadeMedida,
   qtdPorCabecaDia: Number(i.qtdPorCabecaDia),
-  custoUnitario: i.produto?.custoUnitario != null ? Number(i.produto.custoUnitario) : null,
+  // Custo médio ponderado das entradas do produto no sítio (null sem base).
+  custoMedio: custoMedio != null ? custoMedio.toNumber() : null,
   ordem: i.ordem as number,
 });
 
-export async function listarItensDieta(dietaId: number) {
+export async function listarItensDieta(dietaId: number, propriedadeId: number | null = null) {
   if (!(await prisma.dieta.findUnique({ where: { id: dietaId } }))) throw new NutricaoError("NAO_ENCONTRADO", "dieta não encontrada");
   const itens = await prisma.dietaItem.findMany({ where: { dietaId }, orderBy: [{ ordem: "asc" }, { id: "asc" }], include: { produto: true } });
-  return itens.map(dietaItemDTO);
+  const custos = await obterCustosMedios(prisma, itens.map((i) => i.produtoId), propriedadeId);
+  return itens.map((i) => dietaItemDTO(i, custos.get(i.produtoId) ?? null));
 }
 
 // Substitui a composição inteira (delete + recreate numa transação). Em v1 a
 // unidade do item é sempre a do produto (decisão: dieta e estoque na mesma unidade).
-export async function substituirItensDieta(dietaId: number, input: DietaItensInput) {
+export async function substituirItensDieta(dietaId: number, input: DietaItensInput, propriedadeId: number | null = null) {
   if (!(await prisma.dieta.findUnique({ where: { id: dietaId } }))) throw new NutricaoError("NAO_ENCONTRADO", "dieta não encontrada");
 
   const ids = input.itens.map((i) => i.produtoId);
@@ -214,10 +217,13 @@ export async function substituirItensDieta(dietaId: number, input: DietaItensInp
 
   const produtos = ids.length ? await prisma.produto.findMany({ where: { id: { in: ids } } }) : [];
   const porId = new Map(produtos.map((p) => [p.id, p]));
+  // A dieta consome do estoque: só entra produto que já tem entrada no sítio
+  // (null = consolidado, qualquer sítio). O cadastro não diz se é estocado.
+  const comEstoque = await produtosComEstoque(prisma, ids, propriedadeId);
   for (const it of input.itens) {
     const p = porId.get(it.produtoId);
     if (!p) throw new NutricaoError("NAO_ENCONTRADO", `produto ${it.produtoId} não encontrado`);
-    if (!p.estocavel) throw new NutricaoError("EM_USO", `produto "${p.nome}" não é estocável — não pode compor uma dieta`);
+    if (!comEstoque.has(p.id)) throw new NutricaoError("EM_USO", `produto "${p.nome}" sem estoque neste sítio — registre uma compra para estoque antes de usar na dieta`);
   }
 
   await prisma.$transaction(async (tx) => {
@@ -234,5 +240,5 @@ export async function substituirItensDieta(dietaId: number, input: DietaItensInp
       });
     }
   });
-  return listarItensDieta(dietaId);
+  return listarItensDieta(dietaId, propriedadeId);
 }

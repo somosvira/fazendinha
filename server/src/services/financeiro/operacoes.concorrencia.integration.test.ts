@@ -5,7 +5,7 @@ import { listarContas } from "./contas.js";
 import { estornarOperacao, estornarTransacao, criarOperacao, liquidarCompromisso } from "./operacoes.js";
 import { FinanceiroError } from "./regras.js";
 import { operacaoSchema } from "./schemas.js";
-import { excluirMovimento, listarSaldos } from "../estoque/estoque.js";
+import { estornarMovimentoTx, listarSaldos } from "../estoque/estoque.js";
 
 const describeComBanco = process.env.FINANCE_DB_INTEGRATION === "1" ? describe : describe.skip;
 const propriedadesCriadas: number[] = [];
@@ -24,7 +24,7 @@ async function fixture() {
     nome: `Fornecedor ${sufixo}`, tipo: "FORNECEDOR", papeis: { create: { papel: "FORNECEDOR" } },
   } })).id;
   parceirosCriados.push(parceiroId);
-  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "kg", estocavel: true } })).id;
+  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", categoria: { create: { nome: `Categoria concorrência ${sufixo}` } } } })).id;
   produtosCriados.push(produtoId);
   return { propriedadeId, outraPropriedadeId, contaId, parceiroId, produtoId };
 }
@@ -63,6 +63,7 @@ afterAll(async () => {
   await prisma.parceiroPapel.deleteMany({ where: { parceiroId: { in: parceirosCriados } } });
   await prisma.parceiro.deleteMany({ where: { id: { in: parceirosCriados } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtosCriados } } });
+  await prisma.categoria.deleteMany({ where: { nome: { startsWith: "Categoria concorrência " }, produtos: { none: {} } } });
 });
 
 describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
@@ -99,11 +100,16 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     expect(Number((await listarContas(f.propriedadeId, true))[0].saldoAtual)).toBe(1_000);
   });
 
-  it("serializa exclusão física com cancelamento da operação", async () => {
+  // Estorno avulso de um movimento (o que plantio/sanidade fazem) disputando o
+  // lock da Operacao com o cancelamento financeiro.
+  const estornarMovimento = (id: number, propriedadeId: number) =>
+    prisma.$transaction((tx) => estornarMovimentoTx(tx, id, { propriedadeId }), { isolationLevel: "Serializable" });
+
+  it("serializa estorno físico com cancelamento da operação", async () => {
     const f = await fixture();
     const operacao = await criarOperacao(entrada(f, "SEM_EFEITO_FINANCEIRO"));
     const resultados = await Promise.allSettled([
-      excluirMovimento(operacao.movimentosEstoque[0].id, f.propriedadeId),
+      estornarMovimento(operacao.movimentosEstoque[0].id, f.propriedadeId),
       estornarOperacao(operacao.id, "Cancelamento físico concorrente", { propriedadeId: f.propriedadeId }),
     ]);
 
@@ -120,7 +126,7 @@ describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {
     await estornarOperacao(operacao.id, "Gerar inverso físico", { propriedadeId: f.propriedadeId });
     const inverso = await prisma.movimentoEstoque.findUniqueOrThrow({ where: { reversaoDeId: operacao.movimentosEstoque[0].id } });
 
-    await expect(excluirMovimento(inverso.id, f.propriedadeId)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
+    await expect(estornarMovimento(inverso.id, f.propriedadeId)).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
     expect(await prisma.movimentoEstoque.count({ where: { operacaoId: operacao.id } })).toBe(2);
     expect((await listarSaldos({ propriedadeId: f.propriedadeId })).find((item) => item.produtoId === f.produtoId)?.saldo).toBe(0);
   });

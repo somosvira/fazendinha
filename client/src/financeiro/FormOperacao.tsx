@@ -2,11 +2,15 @@ import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState 
 import { CircleAlert, FileText, Loader2, Paperclip, Plus, Trash2, Wand2 } from "lucide-react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
-import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
+import { getPropriedadeAtiva } from "../propriedadeScope";
+import { listarPropriedades } from "../rebanho/api";
+import { anexarDocumentoOperacao, anexarDocumentoRascunho, ApiError, atualizarDocumentoRascunho, confirmarRascunhoOperacao, criarOperacao, descartarRascunhoOperacao, registrarAjusteEstoque, removerDocumentoRascunho, salvarRascunhoOperacao, simularParcelasOperacao, type ConfiguracoesFinanceiras, type DocumentoFinanceiro, type Operacao, type RascunhoOperacao, type SimulacaoParcelas } from "./novo-api";
 import { brl, Button, emDias, ErrorBox, hoje, ReviewLine, TIPO_OPERACAO } from "./financeiro-ui";
 import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/parceiros";
 import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { marcarEdicaoRascunho } from "./rascunhoAtivo";
+import { listarSaldos, obterCustoMedio, obterUltimoPreco, type SaldoDTO, type UltimoPrecoDTO } from "../estoque/api";
+import { rotuloUnidade } from "../lib/unidades";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
@@ -22,14 +26,51 @@ type EstadoFormulario = {
   geradorParcelas?: { quantidade: string; frequencia: FrequenciaParcelas; primeiroVencimento: string };
 };
 
-const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
-const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
+// AJUSTE_ESTOQUE fica de fora dos dois conjuntos de propósito: ele não tem itens
+// livres — é uma contagem de UM produto (saldo lido × quantidade contada) e vai
+// para POST /estoque/ajustes, não para o fluxo de rascunho/itens das demais.
+const TIPO_AJUSTE = "AJUSTE_ESTOQUE";
+const MSG_CONFLITO_SALDO = "O estoque mudou desde que você abriu esta tela. Atualize o saldo e confira a diferença.";
+const MAX_QTD_AJUSTE = 999999999.999; // mesmo limite do servidor (ajusteContagemSchema)
+const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
+const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
 const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO: "Contrato", RECIBO: "Recibo", COMPROVANTE: "Comprovante", JUSTIFICATIVA: "Justificativa", OUTRO: "Outro" };
 const CAMPO = "mt-1.5 w-full rounded-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal text-ink outline-none transition focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15";
 const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
+// valorUnitario do item é Decimal(14,4) no server — normalizarMoeda (2 casas)
+// truncaria insumos fracionários (ex.: R$ 0,1234/un ou R$ 0,00045/g) para
+// "0.12"/"0.00", fazendo o usuário confirmar um valor errado (ou, em
+// INVENTARIO_INICIAL/BONIFICACAO, criar entrada de valor 0 fora do custo
+// médio). Preserva até 4 casas, mas nunca menos que 2.
+const normalizarPreco = (valor: string | number) => {
+  if (valor === "" || valor === null || valor === undefined) return "";
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return "";
+  let texto = numero.toFixed(4).replace(/0+$/, "");
+  if (texto.endsWith(".")) texto += "00";
+  else {
+    const casas = texto.split(".")[1]?.length ?? 0;
+    if (casas < 2) texto += "0".repeat(2 - casas);
+  }
+  return texto;
+};
+// O cadastro não guarda preço: ao escolher o produto, estas operações sugerem o
+// valor unitário da última compra (venda e produção têm outra base de valor).
+const SUGERE_ULTIMO_PRECO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO"]);
+const fmtQuantidade = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+const fmtDiferenca = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3, signDisplay: "exceptZero" });
+const dataCurta = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+// brl() (financeiro-ui.tsx) sempre arredonda para 2 casas — insuficiente para
+// insumos valorizados por unidade fracionária (ex.: R$ 0,0045/mL). Mostra 2
+// casas quando o valor "fecha" nelas e até 4 quando não fecha.
+const brlPreciso = (valor: string | number) => {
+  const numero = Number(valor);
+  const fechaEmDuasCasas = Math.abs(numero - Math.round(numero * 100) / 100) < 1e-9;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: fechaEmDuasCasas ? 2 : 4 }).format(numero);
+};
 
 let proximoId = 1;
 const novoItem = (): ItemForm => ({ id: proximoId++, categoriaId: "", classificacao: "", centroCustoId: "", produtoId: "", descricao: "", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "", valorTotal: "" });
@@ -42,11 +83,14 @@ function CampoErro({ id, className = "mt-1.5", children }: { id?: string; classN
   return <span id={id} role="alert" className={`flex items-start gap-1.5 text-xs font-semibold text-red-700 ${className}`}><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{children}</span></span>;
 }
 
-export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Operacao, aviso?: string) => void }) {
-  const inicial = (!operacaoBase ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
+export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: number; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void }) {
+  // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
+  // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
+  const atalhoAjuste = !operacaoBase && tipoInicial === TIPO_AJUSTE;
+  const inicial = (!operacaoBase && !atalhoAjuste ? rascunho?.dados.formulario : null) as Partial<EstadoFormulario> | null;
   const transacaoBase = operacaoBase?.transacoes.find((item) => item.tipo !== "REVERSAO");
   const temCompromissos = !!operacaoBase?.compromissos.length;
-  const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? "A_VISTA" : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
+  const condicaoBase: Condicao = inicial?.condicao ?? (!operacaoBase ? condicaoInicial ?? (tipoInicial && !TIPOS_FINANCEIROS.has(tipoInicial) ? "SEM_EFEITO_FINANCEIRO" : "A_VISTA") : transacaoBase && temCompromissos ? "PARCIAL" : temCompromissos ? "A_PRAZO" : transacaoBase ? "A_VISTA" : "SEM_EFEITO_FINANCEIRO");
   const [tipo, setTipo] = useState(inicial?.tipo ?? operacaoBase?.tipo ?? tipoInicial ?? "COMPRA_ESTOQUE");
   const [condicao, setCondicao] = useState<Condicao>(condicaoBase);
   const [descricao, setDescricao] = useState(inicial?.descricao ?? (operacaoBase ? `Correção da OP-${String(operacaoBase.id).padStart(4, "0")} — ${operacaoBase.descricao ?? TIPO_OPERACAO[operacaoBase.tipo]}` : ""));
@@ -58,6 +102,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens
     ? inicial.itens.map((item) => ({ ...item, centroCustoId: item.centroCustoId ?? "" }))
     : (operacaoBase?.itens.length ? operacaoBase.itens.map((item) => ({ id: proximoId++, categoriaId: String(item.categoriaId ?? ""), classificacao: item.classificacao ?? "", centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: "UNITARIO", valorUnitario: item.valorUnitario, valorTotal: item.valorTotal })) : [novoItem()]));
+  const [ultimosPrecos, setUltimosPrecos] = useState<Record<number, UltimoPrecoDTO & { produtoId: string }>>({});
+  // Marca, por item, para qual (produto, fornecedor) o valor unitário atual foi
+  // sugerido — usado para saber se ainda é seguro sobrescrevê-lo quando o
+  // fornecedor da operação muda (ver efeito abaixo). Só o parceiroId muda entre
+  // buscas repetidas; o produto já dispara uma sugestão nova em `alterarProduto`.
+  const [sugestaoValor, setSugestaoValor] = useState<Record<number, { parceiroId: string; produtoId: string; valor: string }>>({});
+  // Custo médio atual do produto — apoio exibido só quando não há última compra
+  // (sem preencher o campo). Guardado por item porque cada item pode ter um
+  // produto diferente.
+  const [custosMedios, setCustosMedios] = useState<Record<number, number | null>>({});
   const [parceiroId, setParceiroId] = useState(inicial?.parceiroId ?? (operacaoBase?.parceiro?.id ? String(operacaoBase.parceiro.id) : ""));
   const [classificacao, setClassificacao] = useState(inicial?.classificacao ?? operacaoBase?.classificacao ?? "");
   const [centroEscolhidoManualmente, setCentroEscolhidoManualmente] = useState(inicial?.centroEscolhidoManualmente ?? (!!inicial?.centroCustoId || !!operacaoBase?.centroCustoId));
@@ -95,6 +149,52 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
   const [campoInvalido, setCampoInvalido] = useState<string | null>(null);
   const [simulacao, setSimulacao] = useState<{ assinatura: string; resultado: SimulacaoParcelas } | null>(null);
+  // Ajuste de estoque: o saldo lido (`saldos`) é o `saldoEsperado` enviado; se ele
+  // mudar no servidor antes da confirmação, o POST responde CONFLITO.
+  const [ajusteProdutoId, setAjusteProdutoId] = useState(produtoInicial ? String(produtoInicial) : "");
+  const [quantidadeContada, setQuantidadeContada] = useState("");
+  const [saldos, setSaldos] = useState<SaldoDTO[] | null>(null);
+  const [saldosCarregando, setSaldosCarregando] = useState(false);
+  const [saldosErro, setSaldosErro] = useState<string | null>(null);
+  const saldosPedidoRef = useRef(0);
+  const ehAjuste = tipo === TIPO_AJUSTE;
+  // Sem sítio ativo e com mais de um sítio, o saldo lido soma todos os sítios mas o
+  // ajuste é gravado em um só: o `saldoEsperado` nunca bateria (loop de CONFLITO).
+  const [totalSitios, setTotalSitios] = useState<number | null>(null);
+  useEffect(() => {
+    if (!ehAjuste || getPropriedadeAtiva() != null || totalSitios !== null) return;
+    let ativo = true;
+    listarPropriedades().then((lista) => { if (ativo) setTotalSitios(Array.isArray(lista) ? lista.filter((p) => p.ativo).length : 0); }).catch(() => undefined);
+    return () => { ativo = false; };
+  }, [ehAjuste, totalSitios]);
+  const ajusteConsolidado = ehAjuste && getPropriedadeAtiva() == null && (totalSitios ?? 0) >= 2;
+
+  const carregarSaldos = async () => {
+    const pedido = ++saldosPedidoRef.current;
+    setSaldosCarregando(true); setSaldosErro(null);
+    try {
+      const lista = await listarSaldos();
+      if (pedido === saldosPedidoRef.current) setSaldos(lista);
+    } catch (falha) {
+      if (pedido === saldosPedidoRef.current) setSaldosErro(falha instanceof Error ? falha.message : String(falha));
+    } finally {
+      if (pedido === saldosPedidoRef.current) setSaldosCarregando(false);
+    }
+  };
+  useEffect(() => {
+    if (ehAjuste && saldos === null) void carregarSaldos();
+    // Só ao entrar no tipo Ajuste; recargas seguintes são explícitas ("Atualizar saldo").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ehAjuste]);
+  const saldoProduto = saldos?.find((saldo) => String(saldo.produtoId) === ajusteProdutoId) ?? null;
+  const contadaNumero = quantidadeContada.trim() === "" ? NaN : Number(quantidadeContada);
+  const contadaMilesimos = Math.round(contadaNumero * 1000);
+  // Até 3 casas (o servidor exige múltiplo de 0,001) e dentro do limite.
+  const contadaValida = Number.isFinite(contadaNumero) && contadaNumero >= 0 && contadaNumero <= MAX_QTD_AJUSTE && Math.abs(contadaNumero * 1000 - contadaMilesimos) < 1e-6;
+  const diferencaMilesimos = saldoProduto && contadaValida ? contadaMilesimos - Math.round(saldoProduto.saldo * 1000) : null;
+  const ajusteSemDiferenca = diferencaMilesimos !== null && Math.abs(diferencaMilesimos / 1000) < 0.0005;
+  const unidadeAjuste = saldoProduto ? rotuloUnidade(saldoProduto.unidade) : "";
+  const ajustePronto = !!saldoProduto && contadaValida && !ajusteSemDiferenca && descricao.trim().length >= 5;
 
   const comItens = TIPOS_COM_ITENS.has(tipo);
   const movimentaEstoque = TIPOS_COM_ESTOQUE.has(tipo);
@@ -110,7 +210,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const realizadoAgora = condicao === "A_VISTA" ? total : Number(valorAgora || 0);
   const centavosParcelas = parcelas.reduce((soma, parcela) => soma + Math.round(Number(parcela.valor || 0) * 100), 0);
   const totalParcelas = centavosParcelas / 100;
-  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => config.produtos.some((produto) => produto.id === Number(item.produtoId) && produto.estocavel)).length : 0;
+  // Quem decide se o item mexe no estoque é o tipo da operação: em tipo com
+  // estoque, todo item com produto gera movimento físico.
+  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => !!item.produtoId).length : 0;
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const entradaSimulacao = useMemo(() => ({
     itens: comItens ? itens.map((item) => item.modoValor === "TOTAL"
@@ -159,7 +261,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
         const centroEfetivo = porItem ? item.centroCustoId : "";
-        return { categoriaId: item.categoriaId ? Number(item.categoriaId) : null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo ? Number(centroEfetivo) : null, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || produto?.unidade || "un", ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), estocavel: movimentaEstoque && !!produto?.estocavel };
+        return { categoriaId: item.categoriaId ? Number(item.categoriaId) : null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo ? Number(centroEfetivo) : null, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), estocavel: movimentaEstoque && !!item.produtoId };
       }) : [], financeiro,
     };
   }, [classificacao, categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao]);
@@ -188,14 +290,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   useEffect(() => {
     if (operacaoBase) return;
     if (!iniciouRef.current) { iniciouRef.current = true; return; }
+    // Ajuste de estoque não usa rascunho: o estado dele (produto, contagem, saldo
+    // lido) é efêmero — o saldo lido envelhece e restaurá-lo geraria um
+    // `saldoEsperado` velho. Sem autosave, o rascunho existente fica intocado.
+    // Instância aberta pelo atalho do Estoque também nunca salva: `versaoRef` vem do
+    // rascunho real e um autosave com o form quase vazio o sobrescreveria.
+    if (ehAjuste || atalhoAjuste) return;
     setEstadoSalvamento("ALTERADO");
     const timer = window.setTimeout(() => { void persistirRascunho().catch((falha) => setErro(falha instanceof Error ? falha.message : String(falha))); }, 800);
     return () => window.clearTimeout(timer);
     // O payload memorizado representa integralmente o estado editavel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dadosRascunho, operacaoBase]);
+  }, [dadosRascunho, operacaoBase, ehAjuste, atalhoAjuste]);
   // Acende o atalho "Trabalho ativo" da sidebar enquanto o rascunho está na tela.
-  useEffect(() => (operacaoBase ? undefined : marcarEdicaoRascunho()), [operacaoBase]);
+  useEffect(() => (operacaoBase || ehAjuste || atalhoAjuste ? undefined : marcarEdicaoRascunho()), [operacaoBase, ehAjuste, atalhoAjuste]);
 
   const atualizarItem = (id: number, patch: Partial<ItemForm>) => {
     setItens((atuais) => atuais.map((item) => item.id === id ? { ...item, ...patch } : item));
@@ -213,6 +321,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const sugestaoCentro = centrosSugeridos.length === 1 ? centrosSugeridos[0] : "";
   const produtosDivergentes = centrosSugeridos.length > 1;
   useEffect(() => { if (!centroEscolhidoManualmente && comItens) setCentroCustoId(sugestaoCentro); }, [sugestaoCentro, centroEscolhidoManualmente, comItens]);
+  // No ajuste, o produto escolhido sugere seu centro único (mesma regra dos itens).
+  useEffect(() => {
+    if (ehAjuste && !centroEscolhidoManualmente) setCentroCustoId(ajusteProdutoId ? centroUnicoDoProduto(ajusteProdutoId) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ehAjuste, ajusteProdutoId, centroEscolhidoManualmente]);
   // No modo Único, o centro de cada item é sempre ignorado (a operação inteira usa
   // um único centro); mantemos o valor limpo para não vazar no payload enviado.
   const centroEfetivoItem = (item: ItemForm) => porItem ? item.centroCustoId : "";
@@ -227,16 +340,65 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       setItens((atuais) => atuais.map((item) => ({ ...item, centroCustoId: centroUnicoDoProduto(item.produtoId) })));
     }
   };
+  // Busca a sugestão de preço (última compra do produto, preferindo o
+  // fornecedor informado); sem histórico, busca o custo médio atual só como
+  // apoio informativo. `valorAntesDaBusca`/`sugestaoAnterior` são capturados no
+  // momento da chamada: o campo só é sobrescrito se, quando a resposta chegar,
+  // ele ainda estiver vazio ou com o valor da última sugestão aplicada — nunca
+  // um valor que o usuário tenha digitado nesse meio-tempo.
+  const buscarSugestaoPreco = (itemId: number, produtoId: string, parceiroBusca: string, valorAntesDaBusca: string, sugestaoAnterior?: { produtoId: string; valor: string }) => {
+    if (!SUGERE_ULTIMO_PRECO.has(tipo)) return;
+    obterUltimoPreco(Number(produtoId), parceiroBusca ? Number(parceiroBusca) : undefined).then((ultimo) => {
+      if (!ultimo?.valorUnitario) {
+        // Sem compra anterior: sem sugestão pra preencher — mostra o custo médio
+        // atual como texto de apoio (não altera o campo).
+        setUltimosPrecos(({ [itemId]: _descartado, ...resto }) => resto);
+        obterCustoMedio(Number(produtoId)).then((resultado) => {
+          setCustosMedios((atuais) => ({ ...atuais, [itemId]: resultado?.custoMedio ?? null }));
+        }).catch(() => { /* apoio opcional: falha de rede não bloqueia o formulário */ });
+        return;
+      }
+      const valorFormatado = normalizarPreco(ultimo.valorUnitario);
+      const podeSobrescrever = valorAntesDaBusca === "" || (sugestaoAnterior?.produtoId === produtoId && valorAntesDaBusca === sugestaoAnterior.valor);
+      if (podeSobrescrever) {
+        // Segunda checagem (contra o valor atual, não o capturado) cobre o caso
+        // raro de o usuário digitar algo entre o início e o fim desta busca.
+        setItens((atuais) => atuais.map((item) => item.id === itemId && item.produtoId === produtoId && item.valorUnitario === valorAntesDaBusca ? { ...item, valorUnitario: valorFormatado } : item));
+      }
+      setUltimosPrecos((atuais) => ({ ...atuais, [itemId]: { ...ultimo, produtoId } }));
+      setCustosMedios(({ [itemId]: _descartado, ...resto }) => resto);
+      setSugestaoValor((atuais) => ({ ...atuais, [itemId]: { parceiroId: parceiroBusca, produtoId, valor: valorFormatado } }));
+    }).catch(() => { /* sugestão é opcional: falha de rede não bloqueia o preenchimento */ });
+  };
   const alterarProduto = (id: number, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === Number(produtoId));
     const categoria = categorias.find((c) => c.id === produto?.categoriaId);
-    atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: produto.unidade, valorUnitario: produto.custoUnitario ?? "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "", centroCustoId: centroUnicoDoProduto(produtoId) } : { produtoId, categoriaId: "", classificacao: "", centroCustoId: "" });
+    atualizarItem(id, produto ? { produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), classificacao: categoria?.classificacao ?? "", centroCustoId: centroUnicoDoProduto(produtoId) } : { produtoId, categoriaId: "", classificacao: "", centroCustoId: "" });
+    setUltimosPrecos(({ [id]: _descartado, ...resto }) => resto);
+    setCustosMedios(({ [id]: _descartado, ...resto }) => resto);
+    setSugestaoValor(({ [id]: _descartado, ...resto }) => resto);
+    if (!produto) return;
+    buscarSugestaoPreco(id, produtoId, parceiroId, "");
   };
+  // O fornecedor da operação mudou depois que algum item já tinha uma sugestão
+  // de preço: refaz a busca para o novo fornecedor. Só reage à troca do
+  // parceiro — itens/sugestaoValor mudam como efeito colateral desta mesma
+  // busca (buscarSugestaoPreco), então incluí-los nas deps criaria um loop.
+  useEffect(() => {
+    itens.forEach((item) => {
+      if (!item.produtoId) return;
+      const sugestao = sugestaoValor[item.id];
+      if (!sugestao || sugestao.produtoId !== item.produtoId || sugestao.parceiroId === parceiroId) return;
+      buscarSugestaoPreco(item.id, item.produtoId, parceiroId, item.valorUnitario, sugestao);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parceiroId]);
   const alterarTipo = (novoTipo: string) => {
+    if (atalhoAjuste) return;
     setTipo(novoTipo);
     if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
       setParceiroId("");
-      setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
+      if (TIPOS_COM_PARCEIRO.has(novoTipo)) setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
     }
     if (!TIPOS_FINANCEIROS.has(novoTipo)) setCondicao("SEM_EFEITO_FINANCEIRO");
     else if (condicao === "SEM_EFEITO_FINANCEIRO") setCondicao("A_VISTA");
@@ -310,12 +472,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // centro do item é sempre "").
   const itemCentroInvalido = (index: number, item: ItemForm) => {
     if (!comItens) return false;
-    const produto = config.produtos.find((p) => p.id === Number(item.produtoId));
-    const estocavel = movimentaEstoque && !!produto?.estocavel;
+    const estocavel = movimentaEstoque && !!item.produtoId;
     if (estocavel) return false;
     return !(centroEfetivoItem(item) || centroCustoId);
   };
-  const podeConfirmar = (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && tipo !== "AJUSTE_ESTOQUE" && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
+  const podeConfirmar = ehAjuste ? ajustePronto : (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   // No modo Único não existe select por item — o único jeito de resolver uma
   // pendência de centro de custo (local ou vinda do servidor) é preencher o
@@ -335,6 +496,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // (na ordem em que aparecem na tela) pra rolar e focar nele — em vez de
   // deixar o usuário procurando o que falta preencher.
   const encontrarPrimeiroCampoInvalido = (): { campo: string; elementId: string } | null => {
+    if (ehAjuste) {
+      if (!saldoProduto) return { campo: "ajusteProduto", elementId: "campo-ajusteProduto" };
+      if (!contadaValida) return { campo: "quantidadeContada", elementId: "campo-quantidadeContada" };
+      if (descricao.trim().length < 5) return { campo: "descricao", elementId: "campo-descricao" };
+      return null;
+    }
     if (exigeParceiro && !parceiroSelecionado) return { campo: "parceiroId", elementId: "campo-parceiroId" };
     if (descricao.trim().length < 2) return { campo: "descricao", elementId: "campo-descricao" };
     if (comItens) {
@@ -357,7 +524,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
 
   const submit = async (evento: FormEvent) => {
     evento.preventDefault();
-    if (anexosEnviando.length) return;
+    if (anexosEnviando.length || ajusteConsolidado) return;
     if (!podeConfirmar) {
       const invalido = encontrarPrimeiroCampoInvalido();
       if (invalido) {
@@ -372,6 +539,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     setCampoInvalido(null);
     setSalvando(true);
     try {
+      if (ehAjuste && saldoProduto) {
+        const resultado = await registrarAjusteEstoque({ produtoId: saldoProduto.produtoId, quantidadeContada: contadaMilesimos / 1000, saldoEsperado: Math.round(saldoProduto.saldo * 1000) / 1000, observacao: descricao.trim(), centroCustoId: centroCustoId ? Number(centroCustoId) : undefined });
+        onSalvo({ id: resultado.operacaoId });
+        return;
+      }
       let operacao: Operacao;
       if (operacaoBase) operacao = await criarOperacao(operacaoRascunho);
       else {
@@ -385,6 +557,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       }
       onSalvo(operacao, falhas.length ? `A operação OP-${String(operacao.id).padStart(4, "0")} foi criada, mas alguns anexos falharam: ${falhas.join("; ")}` : undefined);
     } catch (falha) {
+      if (ehAjuste && falha instanceof ApiError && falha.code === "CONFLITO") {
+        // Saldo mudou: recarrega para o usuário reconferir a nova diferença antes de reconfirmar.
+        setErroConfirmacao(MSG_CONFLITO_SALDO);
+        void carregarSaldos();
+        return;
+      }
       const mensagem = falha instanceof Error ? falha.message : String(falha);
       setErroConfirmacao(mensagem);
       setErro(mensagem);
@@ -423,8 +601,23 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     catch (falha) { setErro(falha instanceof Error ? falha.message : String(falha)); }
   };
 
+  const campoDescricao = <label className="text-sm font-medium md:col-span-2 xl:col-span-3">{ehAjuste ? "Justificativa do ajuste *" : "Descrição *"}<textarea id="campo-descricao" aria-label={ehAjuste ? "Justificativa do ajuste" : "Descrição"} aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={ehAjuste ? 200 : 240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={ehAjuste ? "Ex.: contagem física do inventário de setembro" : tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">{ehAjuste ? "Informe a justificativa do ajuste (pelo menos 5 caracteres)." : "Descreva a operação (pelo menos 2 caracteres)."}</CampoErro>}</label>;
+  const secaoAjuste = <section>
+    <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Contagem de estoque</h3>
+    {ajusteConsolidado ? <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-5 text-amber-950">Selecione uma fazenda no seletor do topo para ajustar o estoque — o ajuste é feito em uma fazenda por vez.</p> : <>
+    <p className="mb-4 max-w-2xl text-xs leading-5 text-ink-3">Informe a quantidade realmente contada. O sistema calcula a diferença contra o saldo atual e registra o ajuste, sem efeito financeiro, na data de hoje.</p>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <label className="text-sm font-medium">Produto *<select id="campo-ajusteProduto" aria-label="Produto" aria-invalid={campoInvalido === "ajusteProduto" || undefined} aria-describedby={campoInvalido === "ajusteProduto" ? "erro-ajusteProduto" : undefined} required disabled={saldosCarregando && saldos === null} className={SELECT + classeCampoErro("ajusteProduto")} value={ajusteProdutoId} onChange={(e) => { setAjusteProdutoId(e.target.value); limparCampoInvalido("ajusteProduto"); }}><option value="">{saldosCarregando && saldos === null ? "Carregando saldos…" : "Selecione"}</option>{saldos?.map((saldo) => <option key={saldo.produtoId} value={saldo.produtoId}>{saldo.nome}</option>)}</select>{campoInvalido === "ajusteProduto" && <CampoErro id="erro-ajusteProduto">Selecione o produto que será contado.</CampoErro>}</label>
+      <div className="text-sm font-medium">Saldo atual<div className="mt-1.5 flex items-center gap-3"><output aria-label="Saldo atual" className="inline-flex min-h-[42px] flex-1 items-center rounded-lg border border-[#e5dfd0] bg-[#f0ede4] px-3 py-2.5 font-normal text-ink">{saldoProduto ? `${fmtQuantidade(saldoProduto.saldo)} ${unidadeAjuste}` : "—"}</output><button type="button" disabled={saldosCarregando} onClick={() => { void carregarSaldos(); }} className="whitespace-nowrap text-xs font-semibold text-[#4d5a47] underline underline-offset-2 disabled:opacity-50">{saldosCarregando ? "Atualizando…" : "Atualizar saldo"}</button></div></div>
+      <label className="text-sm font-medium">Quantidade contada *<div className="mt-1.5 flex"><input id="campo-quantidadeContada" aria-label="Quantidade contada" aria-invalid={campoInvalido === "quantidadeContada" || undefined} aria-describedby={campoInvalido === "quantidadeContada" ? "erro-quantidadeContada" : undefined} required min="0" max={MAX_QTD_AJUSTE} step="0.001" type="number" className={`min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15${classeCampoErro("quantidadeContada")}`} value={quantidadeContada} onChange={(e) => { setQuantidadeContada(e.target.value); limparCampoInvalido("quantidadeContada"); }} /><span aria-hidden className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidadeAjuste || "un"}</span></div>{campoInvalido === "quantidadeContada" && <CampoErro id="erro-quantidadeContada">{quantidadeContada.trim() === "" ? "Informe a quantidade contada." : "Informe um número entre 0 e 999.999.999,999, com até 3 casas decimais."}</CampoErro>}</label>
+    </div>
+    <div role="status" aria-label="Diferença do ajuste" className={`mt-4 rounded-lg border px-4 py-3 text-sm ${ajusteSemDiferenca ? "border-amber-200 bg-amber-50 text-amber-950" : "border-[#e5dfd0] bg-[#faf9f4]"}`}>{diferencaMilesimos === null ? <span className="text-ink-3">Selecione o produto e informe a quantidade contada para ver a diferença.</span> : ajusteSemDiferenca ? <strong>Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual.</strong> : <>Diferença: <strong>{fmtDiferenca(diferencaMilesimos / 1000)} {unidadeAjuste}</strong> <span className="text-ink-3">({diferencaMilesimos > 0 ? "entrada" : "saída"} de ajuste)</span></>}</div>
+    {saldosErro && <CampoErro className="mt-3">{saldosErro}</CampoErro>}
+    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{campoDescricao}</div>
+    </>}
+  </section>;
   return <div className="shell-wide pb-10">
-    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
+    <div className="mb-5 flex min-h-[82px] flex-wrap items-center justify-between gap-4 border-b border-border pb-5 pt-3"><div><div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Registro orientado</div><h1 className="mt-1 font-serif text-3xl text-ink md:text-4xl">{operacaoBase ? "Criar operação de correção" : "Nova operação"}</h1></div>{!operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <div className="flex items-center gap-3"><span aria-live="polite" className={`text-xs font-medium ${estadoSalvamento === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estadoSalvamento === "SALVANDO" ? "Salvando…" : estadoSalvamento === "SALVO" ? "Rascunho salvo" : estadoSalvamento === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</span><Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button></div>}</div>
     {/* noValidate: a validação é 100% nossa (encontrarPrimeiroCampoInvalido) —
      * sem isso, a validação nativa do navegador bloqueia o evento de submit
      * antes do nosso onSubmit rodar sempre que um campo `required` estiver
@@ -438,20 +631,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <section>
           <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{tipo === "AJUSTE_ESTOQUE" && <option value="AJUSTE_ESTOQUE" disabled>Ajuste de estoque — use Estoque</option>}{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["AJUSTE_ESTOQUE", "TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select></label>
-            <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>
+            <label className="text-sm font-medium">Tipo de operação<select aria-label="Tipo de operação" disabled={atalhoAjuste} className={SELECT} value={tipo} onChange={(e) => alterarTipo(e.target.value)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</select>{atalhoAjuste && <span className="mt-1 block text-xs font-normal text-ink-3">Ajuste de estoque — para outro tipo de operação, abra Nova operação.</span>}</label>
+            {!ehAjuste && <label className="text-sm font-medium">Data<input aria-label="Data" required type="date" className={CAMPO} value={data} onChange={(e) => setData(e.target.value)} /></label>}
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<select id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onChange={(e) => { setParceiroId(e.target.value); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</select>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
-            <label className="text-sm font-medium md:col-span-2 xl:col-span-3">Descrição *<textarea id="campo-descricao" aria-label="Descrição" aria-invalid={campoInvalido === "descricao" || undefined} aria-describedby={campoInvalido === "descricao" ? "erro-descricao" : undefined} required maxLength={240} className={`${CAMPO} min-h-20${classeCampoErro("descricao")}`} placeholder={tipo === "SERVICO" ? "Ex.: manutenção preventiva do trator" : "Descreva o objetivo da operação"} value={descricao} onChange={(e) => { setDescricao(e.target.value); limparCampoInvalido("descricao"); }} />{campoInvalido === "descricao" && <CampoErro id="erro-descricao">Descreva a operação (pelo menos 2 caracteres).</CampoErro>}</label>
+            {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> : <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
             <label className="flex items-center gap-1.5"><input type="radio" name="modo-centro-custo" checked={!porItem} onChange={() => alterarModoCentro(false)} /> Único para a operação</label>
             <label className="flex items-center gap-1.5"><input type="radio" name="modo-centro-custo" checked={porItem} onChange={() => alterarModoCentro(true)} /> Por item</label>
           </div>}
-          <div className="grid gap-4 md:grid-cols-2">{!comItens && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <CampoErro id="erro-categoriaId">Selecione uma categoria ativa.</CampoErro>}</label>}{!comItens && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">{comItens && porItem ? "Centro padrão (itens sem centro)" : "Centro de custo"}<select id="campo-centroCustoId" aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <CampoErro id="erro-centroCustoId">Selecione um centro de custo ativo.</CampoErro>}</label></div>
+          <div className="grid gap-4 md:grid-cols-2">{!comItens && !ehAjuste && <label className="text-sm font-medium">Categoria<select aria-label="Categoria" aria-invalid={campoInvalido === "categoriaId" || undefined} aria-describedby={campoInvalido === "categoriaId" ? "erro-categoriaId" : undefined} className={SELECT + classeCampoErro("categoriaId")} value={categoriaId} onChange={(e) => { setCategoriaId(e.target.value); setClassificacao(categorias.find((c) => c.id === Number(e.target.value))?.classificacao ?? ""); limparCampoInvalido("categoriaId"); }}><option value="">Sem categoria</option>{categorias.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nome}</option>)}</select>{campoInvalido === "categoriaId" && <CampoErro id="erro-categoriaId">Selecione uma categoria ativa.</CampoErro>}</label>}{!comItens && !ehAjuste && <label className="text-sm font-medium">Classificação<select aria-label="Classificação" className={SELECT} value={classificacao} onChange={(e) => setClassificacao(e.target.value)}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></select></label>}<label className="text-sm font-medium">{comItens && porItem ? "Centro padrão (itens sem centro)" : "Centro de custo"}<select id="campo-centroCustoId" aria-label="Centro de custo" aria-invalid={campoInvalido === "centroCustoId" || undefined} aria-describedby={campoInvalido === "centroCustoId" ? "erro-centroCustoId" : undefined} className={SELECT + classeCampoErro("centroCustoId")} value={centroCustoId} onChange={(e) => { setCentroEscolhidoManualmente(true); setCentroCustoId(e.target.value); limparCampoInvalido("centroCustoId"); }}><option value="">Sem centro de custo</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{campoInvalido === "centroCustoId" && <CampoErro id="erro-centroCustoId">Selecione um centro de custo ativo.</CampoErro>}</label></div>
         </section>
         {comItens && !porItem && produtosDivergentes && <p className="flex flex-wrap items-center gap-3 text-sm text-amber-800">Os produtos pertencem a centros de custo diferentes.<Button type="button" secondary onClick={() => alterarModoCentro(true)}>Separar por item</Button></p>}
         {parceiroInvalido && <p role="alert" className="text-sm text-red-700">O parceiro deste rascunho está inativo ou não tem um papel compatível. Selecione outro parceiro antes de confirmar.</p>}
@@ -461,9 +654,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
           <Button type="button" secondary disabled={salvando || (parceiroSelecionado.condicaoPagamentoPreferida === "A_PRAZO" && !sugestaoParcelas.length)} onClick={() => setConfirmarSugestao(true)}>Usar sugestão</Button>
         </div>}
         <EfeitoFinanceiro permite={permiteFinanceiro} condicao={condicao} alterarCondicao={alterarCondicao} contaId={contaId} setContaId={setContaId} formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento} config={config} valorAgora={valorAgora} setValorAgora={setValorAgora} total={totalFinanceiro} parcelas={parcelas} setParcelas={setParcelas} somaParcelasConfere={somaParcelasConfere} saldoFuturo={saldoFuturoFinanceiro} entradaSimulacao={entradaSimulacao} assinaturaSimulacao={assinaturaSimulacao} onSimulacao={(resultado) => setSimulacao({ assinatura: assinaturaSimulacao, resultado })} geradorParcelas={geradorParcelas} setGeradorParcelas={setGeradorParcelas} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} />
-        <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />
+        {!ehAjuste && !atalhoAjuste && <Documentos anexos={anexos} setAnexos={setAnexos} anexosEnviando={anexosEnviando} documentosSalvos={documentosSalvos}atualizarDocumentoSalvo={atualizarDocumentoSalvo} removerDocumentoSalvo={removerDocumentoSalvo} selecionarAnexos={selecionarAnexos} />}
       </div>
-      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{brl(total)}</div>{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto?.unidade || item.unidade || "un"}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className="mt-4 flex flex-wrap gap-6 text-xs"><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{movimentaEstoque && <ReviewLine tone="brown">{movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{(anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar.</span></p>}</div></aside>
+      <aside className="flex h-full flex-col border-t border-border bg-[#1f2b21] p-6 text-white xl:border-l xl:border-t-0"><div><div className="text-[11px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Revisão dos efeitos</div><div className="mt-3 font-serif text-3xl">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-[#aeb9aa]">Diferença de estoque</div>}{comItens && <div className="mt-5 border-y border-white/10 py-4"><div className="mb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-[#aeb9aa]">Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId)); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-white">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-[#aeb9aa]">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-white">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-6 text-xs"}><div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-[#aeb9aa]">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-5 space-y-3 text-sm leading-5"><ReviewLine>Registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div><div className="mt-auto border-t border-white/10 pt-5">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-red-300/50 bg-red-950/50 p-3 text-sm text-red-100">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-[#aeb9aa]">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full !bg-[#e9e3d2] !text-[#1f2b21]">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start justify-center gap-1.5 text-center text-xs leading-5 text-[#e3c66f]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
     <ConfirmDialog
@@ -479,13 +672,15 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
       const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
-      const unidade = produto?.unidade ?? item.unidade;
+      const unidade = produto ? rotuloUnidade(produto.unidade) : item.unidade;
       const invalido = item.id === itemInvalidoId;
+      const ultimo = ultimosPrecos[item.id]?.produtoId === item.produtoId ? ultimosPrecos[item.id] : null;
+      const custoMedio = !ultimo && item.produtoId ? custosMedios[item.id] : undefined;
       const campoCentro = `itens.${indice}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
@@ -503,7 +698,7 @@ function ItensOperacao({ itens, setItens, config, movimentaEstoque, atualizarIte
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
           <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>
           <label className="text-sm font-medium">Base do valor<select aria-label={`Base do valor do item ${indice + 1}`} className={SELECT} value={item.modoValor} onChange={(e) => atualizarItem(item.id, { modoValor: e.target.value as ModoValor })}><option value="UNITARIO">Valor unitário</option><option value="TOTAL">Valor total do item</option></select></label>
-          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarMoeda(e.target.value) })} /></label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
+          {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.0001" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarPreco(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>
         </div>
       </div>;
