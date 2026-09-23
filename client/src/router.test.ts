@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   entradaDeNovaOperacao,
+  isCadastrosRebanho,
+  isListaAnimaisRebanho,
   isNovaOperacaoFinanceira,
+  isNovoAnimalRebanho,
   isNovoRelatorioFinanceiro,
   isSubrotaFinanceira,
+  isSubrotaRebanho,
   URL_NOVA_OPERACAO,
+  parseAnimalId,
   parseOperacaoFinanceiraId,
   parseContaFinanceiraId,
   parseRelatorioFinanceiroId,
@@ -76,6 +81,45 @@ describe("roteamento da pecuária", () => {
 
   it("mantém filtros financeiros na aba financeira", () => {
     expect(pathToTab("/gastos")).toBe("gastos");
+  });
+});
+
+describe("subrotas do Rebanho v1", () => {
+  const uuid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+
+  it("reconhece a lista de animais", () => {
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho/animais")).toBe(true);
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho/animais/")).toBe(true);
+    expect(isListaAnimaisRebanho("/pecuaria/rebanho")).toBe(false);
+    expect(isListaAnimaisRebanho(`/pecuaria/rebanho/animais/${uuid}`)).toBe(false);
+  });
+
+  it("reconhece o cadastro de novo animal", () => {
+    expect(isNovoAnimalRebanho("/pecuaria/rebanho/animais/novo")).toBe(true);
+    expect(isNovoAnimalRebanho("/pecuaria/rebanho/animais/novo/")).toBe(true);
+    expect(isNovoAnimalRebanho(`/pecuaria/rebanho/animais/${uuid}`)).toBe(false);
+  });
+
+  it("reconhece os cadastros (lotes/raças/motivos/sítios)", () => {
+    expect(isCadastrosRebanho("/pecuaria/rebanho/cadastros")).toBe(true);
+    expect(isCadastrosRebanho("/pecuaria/rebanho")).toBe(false);
+  });
+
+  it("extrai o id do animal e rejeita 'novo' e ids inválidos", () => {
+    expect(parseAnimalId(`/pecuaria/rebanho/animais/${uuid}`)).toBe(uuid);
+    expect(parseAnimalId(`/pecuaria/rebanho/animais/${uuid}/`)).toBe(uuid);
+    expect(parseAnimalId("/pecuaria/rebanho/animais/novo")).toBeNull();
+    expect(parseAnimalId("/pecuaria/rebanho/animais/abc")).toBeNull();
+    expect(parseAnimalId("/pecuaria/rebanho/animais")).toBeNull();
+  });
+
+  it("preserva as subrotas do rebanho só na aba pec-rebanho", () => {
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/animais")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/animais/novo")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", `/pecuaria/rebanho/animais/${uuid}`)).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho/cadastros")).toBe(true);
+    expect(isSubrotaRebanho("pec-rebanho", "/pecuaria/rebanho")).toBe(false);
+    expect(isSubrotaRebanho("dashboard", "/pecuaria/rebanho/animais")).toBe(false);
   });
 });
 

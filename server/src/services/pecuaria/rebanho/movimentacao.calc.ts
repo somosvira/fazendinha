@@ -70,6 +70,40 @@ export type PlanoDestino =
     abrir: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: Date | string };
   };
 
+// ---------- desfazer (localização ou destino, mesma forma) ----------
+
+export interface LinhaHistorico {
+  id: string;
+  desde: Date | string;
+  ate: Date | string | null;
+}
+
+export interface PlanoDesfazer {
+  remover: { id: string };
+  reabrir: { id: string };
+}
+
+/**
+ * Remove a linha aberta mais recente e reabre a linha imediatamente anterior (por `desde`).
+ * Exige ao menos duas linhas e uma delas aberta — quem chama garante o resto (animal ativo,
+ * a linha removida não referenciada por uma saída).
+ */
+export function planejarDesfazer(linhas: LinhaHistorico[]): PlanoDesfazer {
+  if (linhas.length < 2) {
+    throw new MovimentacaoError("É preciso ter ao menos duas linhas de histórico para desfazer");
+  }
+
+  const ordenadas = [...linhas].sort((a, b) => paraTempo(b.desde) - paraTempo(a.desde));
+  const aberta = ordenadas.find((l) => l.ate == null);
+  if (!aberta) throw new MovimentacaoError("Não há linha aberta para desfazer");
+
+  const indice = ordenadas.indexOf(aberta);
+  const anterior = ordenadas[indice + 1];
+  if (!anterior) throw new MovimentacaoError("Não há linha anterior para reabrir");
+
+  return { remover: { id: aberta.id }, reabrir: { id: anterior.id } };
+}
+
 export function planejarDestino(input: {
   atual: DestinoAtual | null;
   novo: DestinoNovo;

@@ -14,12 +14,33 @@ export class RebanhoError extends Error {
 }
 
 /** Traduz violação de unicidade do Prisma (P2002) em RebanhoError apontando o campo. Relança o resto. */
+// Campos (ou nome do índice) violados num P2002. O formato varia: `meta.target` vem como
+// lista de campos no engine clássico e como nome do índice (string) ou dentro de
+// `meta.driverAdapterError` quando o Prisma roda com driver adapter (pg/neon).
+export function alvosConflitoUnico(meta: Record<string, unknown> | undefined): string[] {
+  const alvos: string[] = [];
+  const adicionar = (v: unknown) => {
+    if (Array.isArray(v)) v.forEach((x) => typeof x === "string" && alvos.push(x));
+    else if (typeof v === "string") alvos.push(v);
+  };
+  adicionar(meta?.target);
+  const causa = (meta?.driverAdapterError as { cause?: { constraint?: { fields?: unknown; index?: unknown } } } | undefined)?.cause;
+  adicionar(causa?.constraint?.fields);
+  adicionar(causa?.constraint?.index);
+  return alvos;
+}
+
 export function traduzirConflitoUnico(erro: unknown, mensagens: Record<string, string>): never {
   if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") {
-    const alvos = (erro.meta?.target as string[] | undefined) ?? [];
+    const alvos = alvosConflitoUnico(erro.meta);
     for (const [campo, mensagem] of Object.entries(mensagens)) {
-      if (alvos.includes(campo)) throw new RebanhoError("CONFLITO", mensagem, campo);
+      // Campo listado diretamente, ou citado no nome do índice (`Lote_propriedadeId_nome_key`).
+      if (alvos.some((a) => a === campo || a.split(/[_,\s"]+/).includes(campo))) {
+        throw new RebanhoError("CONFLITO", mensagem, campo);
+      }
     }
+    // P2002 sem campo mapeado ainda é conflito de unicidade, não erro interno.
+    throw new RebanhoError("CONFLITO", "Já existe um registro com esses dados");
   }
   throw erro;
 }

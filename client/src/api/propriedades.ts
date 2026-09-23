@@ -20,14 +20,19 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const listarPropriedades = () => req<PropriedadeDTO[]>(`/propriedades`);
+export const listarPropriedades = (opts?: { incluirInativos?: boolean }) =>
+  req<PropriedadeDTO[]>(`/propriedades${opts?.incluirInativos ? "?incluirInativos=true" : ""}`);
 export const criarPropriedade = (p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades`, { method: "POST", body: JSON.stringify(p) });
 export const editarPropriedade = (id: number, p: PropriedadeInput) => req<PropriedadeDTO>(`/propriedades/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 
-export function usePropriedades() {
+/** `incluirInativos`: usado pela tela de Cadastros > Sítios, que precisa listar e
+ *  reativar sítios desativados. O seletor global (FarmPicker) chama sem opções e
+ *  continua vendo só os ativos. */
+export function usePropriedades(opts?: { incluirInativos?: boolean }) {
+  const incluirInativos = opts?.incluirInativos ?? false;
   const [data, setData] = useState<PropriedadeDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const recarregar = useCallback(() => { setLoading(true); listarPropriedades().then(setData).catch(() => setData([])).finally(() => setLoading(false)); }, []);
+  const recarregar = useCallback(() => { setLoading(true); listarPropriedades({ incluirInativos }).then(setData).catch(() => setData([])).finally(() => setLoading(false)); }, [incluirInativos]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, recarregar };
 }

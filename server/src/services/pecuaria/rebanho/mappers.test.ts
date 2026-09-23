@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agregarPainel, mapearAnimalResumo, type AnimalResumo } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo } from "./mappers.js";
 
 const animalBase = {
   id: "a1",
@@ -75,5 +75,18 @@ describe("agregarPainel", () => {
     expect(p.porSitio).toEqual([{ propriedadeId: 1, nome: "Principal", total: 2 }, { propriedadeId: 2, nome: "Mexicana", total: 1 }]);
     expect(p.femeasAtivas).toBe(2);
     expect(p.receptorasAtivas).toBe(1);
+  });
+});
+
+describe("resumoAuditoria", () => {
+  it("traduz combinações conhecidas de entidade + ação", () => {
+    expect(resumoAuditoria("Animal", "CADASTRO")).toBe("Cadastro do animal");
+    expect(resumoAuditoria("SaidaAnimal", "SAIDA")).toBe("Saída registrada");
+    expect(resumoAuditoria("SaidaAnimal", "ESTORNO")).toBe("Saída estornada");
+    expect(resumoAuditoria("Pesagem", "EXCLUSAO")).toBe("Pesagem excluída");
+  });
+
+  it("cai num rótulo genérico para combinações não mapeadas", () => {
+    expect(resumoAuditoria("Raca", "CADASTRO")).toBe("Raca — CADASTRO");
   });
 });

@@ -1,4 +1,4 @@
-// Tipos que espelham os DTOs de server/src/services/pecuaria/rebanho/{mappers,schemas}.ts.
+// Tipos que espelham os DTOs de server/src/services/pecuaria/rebanho/{mappers,schemas,animais,lotes,racas,motivos,painel}.ts.
 // Não inventar campos aqui sem conferir o contrato do backend primeiro.
 
 export type Sexo = "F" | "M";
@@ -35,6 +35,38 @@ export type AnimalResumo = {
 
 export type FracaoRaca = { sigla: string; fracao64: number };
 
+export type HistoricoLocalizacao = {
+  id: string;
+  propriedade: PropriedadeRef | null;
+  lote: LoteRef | null;
+  desde: string;
+  ate: string | null;
+  motivo: string | null;
+};
+
+export type HistoricoDestino = {
+  id: string;
+  aptidao: Aptidao;
+  papelReprodutivo: PapelReprodutivo;
+  desde: string;
+  ate: string | null;
+};
+
+export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string };
+
+export type SaidaAnimalResumo = {
+  id: string;
+  data: string;
+  tipo: string;
+  motivo: string | null;
+  observacao: string | null;
+  estornadaEm: string | null;
+  estornoMotivo: string | null;
+};
+
+/** Ficha completa do animal — é o que a API devolve em toda escrita sobre um
+ *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, saída,
+ *  estorno), não só em GET /animais/:id. */
 export type AnimalFicha = AnimalResumo & {
   brincoEletronico: string | null;
   sisbov: string | null;
@@ -42,34 +74,14 @@ export type AnimalFicha = AnimalResumo & {
   partosAntesDaEntrada: number;
   observacao: string | null;
   composicao: FracaoRaca[];
-  historicoLocalizacoes: Array<{
-    id: string;
-    propriedade: PropriedadeRef | null;
-    lote: LoteRef | null;
-    desde: string;
-    ate: string | null;
-    motivo: string | null;
-  }>;
-  historicoDestinos: Array<{
-    id: string;
-    aptidao: Aptidao;
-    papelReprodutivo: PapelReprodutivo;
-    desde: string;
-    ate: string | null;
-  }>;
-  historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
-  saida: {
-    id: string;
-    data: string;
-    tipo: string;
-    motivo: string | null;
-    observacao: string | null;
-    estornadaEm: string | null;
-    estornoMotivo: string | null;
-  } | null;
+  historicoLocalizacoes: HistoricoLocalizacao[];
+  historicoDestinos: HistoricoDestino[];
+  historicoPesagens: HistoricoPesagem[];
+  saida: SaidaAnimalResumo | null;
 };
 
 export type ComposicaoItemInput = { racaId: string; fracao64: number };
+export type ItemComposicao = { racaId: string; sigla: string; nome: string; fracao64: number };
 
 export type CadastrarAnimalInput = {
   brinco: string;
@@ -91,14 +103,23 @@ export type CadastrarAnimalInput = {
   pesoEntradaKg?: number | null;
 };
 
+/** PATCH /animais/:id — além dos dados fixos, aceita os campos de nascimento/
+ *  entrada validados contra o histórico já existente (ver datas.calc.ts). */
 export type EditarAnimalInput = Partial<{
   brinco: string;
   nome: string | null;
   brincoEletronico: string | null;
   sisbov: string | null;
+  sexo: Sexo;
+  dataNascimento: string;
   nascimentoEstimado: boolean;
+  origem: Origem;
+  dataEntrada: string;
+  partosAntesDaEntrada: number;
   observacao: string | null;
 }>;
+
+export type SubstituirComposicaoInput = { itens: ComposicaoItemInput[] };
 
 export type MovimentarInput = {
   animalIds: string[];
@@ -131,6 +152,26 @@ export type PesagemInput = {
   observacao?: string | null;
 };
 
+export type EditarPesagemInput = Partial<{
+  data: string;
+  pesoKg: number;
+  tipo: TipoPesagem;
+  origem: OrigemPesagem;
+  observacao: string | null;
+}>;
+
+/** DTO devolvido por POST /animais/:id/pesagens e PATCH /pesagens/:id — o
+ *  registro não traz `observacao` (a rota de registro não a devolve). */
+export type Pesagem = {
+  id: string;
+  animalId: string;
+  data: string;
+  pesoKg: number;
+  tipo: TipoPesagem;
+  origem: OrigemPesagem;
+  observacao?: string | null;
+};
+
 export type ListarFiltros = {
   propriedadeId?: number;
   loteId?: string;
@@ -154,21 +195,68 @@ export type PainelServidor = {
 
 export type ListarResultado = { itens: AnimalResumo[]; total: number; painel: PainelServidor };
 
-export type Lote = { id: string; nome: string; propriedadeId: number; ativo: boolean; observacao: string | null };
+/** Entrada de GET /animais/:id/auditoria. */
+export type EntradaAuditoria = {
+  em: string;
+  acao: string;
+  entidade: string;
+  usuarioNome: string | null;
+  resumo: string;
+};
+
+export type Lote = {
+  id: string;
+  nome: string;
+  propriedadeId: number;
+  propriedade: PropriedadeRef;
+  ativo: boolean;
+  observacao: string | null;
+  animaisAtivos: number;
+};
 export type CriarLoteInput = { nome: string; propriedadeId: number; observacao?: string | null };
 export type EditarLoteInput = Partial<{ nome: string; ativo: boolean; observacao: string | null }>;
 
-export type Raca = { id: string; nome: string; sigla: string; base: boolean };
-export type MotivoSaida = { id: string; nome: string; tipo: string };
-export type Propriedade = { id: number; nome: string; apelido: string | null };
-export type Catalogos = { racas: Raca[]; motivosSaida: MotivoSaida[]; propriedades: Propriedade[] };
+export type Raca = { id: string; nome: string; sigla: string; base: boolean; ativo: boolean };
+export type CriarRacaInput = { nome: string; sigla: string; base?: boolean };
+export type EditarRacaInput = Partial<{ nome: string; sigla: string; base: boolean; ativo: boolean }>;
 
+export type MotivoSaida = { id: string; nome: string; tipo: TipoSaida; ativo: boolean };
+export type CriarMotivoSaidaInput = { nome: string; tipo: TipoSaida };
+export type EditarMotivoSaidaInput = Partial<{ nome: string; tipo: TipoSaida; ativo: boolean }>;
+
+export type Propriedade = { id: number; nome: string; apelido: string | null };
+
+/** GET /pecuaria/rebanho/catalogos — listas leves (só ativos) para preencher
+ *  selects; não confundir com as listagens de cadastro (Raca/MotivoSaida/Lote
+ *  acima), que trazem `ativo` e servem à tela de Cadastros. */
+export type CatalogoRaca = { id: string; nome: string; sigla: string; base: boolean };
+export type CatalogoMotivoSaida = { id: string; nome: string; tipo: TipoSaida };
+export type CatalogoLote = { id: string; nome: string; propriedadeId: number };
+export type Catalogos = {
+  racas: CatalogoRaca[];
+  motivosSaida: CatalogoMotivoSaida[];
+  propriedades: Propriedade[];
+  lotes: CatalogoLote[];
+};
+
+/** GET /pecuaria/rebanho/painel — números da Visão geral. */
+export type EventoPainel = { tipo: "CADASTRO" | "SAIDA" | "ESTORNO"; animalId: string; brinco: string; data: string };
+export type PainelGeral = {
+  ativos: number;
+  porCategoria: Array<{ categoria: Categoria; qtd: number }>;
+  porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
+  receptorasPct: number;
+  saidas30d: number;
+  ultimosEventos: EventoPainel[];
+};
+
+/** Mensagens PT-BR para os códigos de `RebanhoError` (server/src/services/pecuaria/rebanho/regras.ts).
+ *  A API já devolve `message` em PT-BR — isto é só o fallback quando só o código é útil. */
 export const CODIGOS_ERRO_AMIGAVEIS: Record<string, string> = {
-  BRINCO_DUPLICADO: "Já existe um animal ativo com esse brinco neste sítio.",
-  BRINCO_ELETRONICO_DUPLICADO: "Já existe um animal com esse brinco eletrônico.",
-  SISBOV_DUPLICADO: "Já existe um animal com esse SISBOV.",
-  JA_SAIU: "Este animal já teve saída registrada.",
-  JA_REVERTIDO: "Esta saída já foi estornada.",
   NAO_ENCONTRADO: "Registro não encontrado.",
   VALIDACAO: "Confira os dados informados.",
+  BRINCO_DUPLICADO: "Já existe um animal ativo com esse brinco nesse sítio.",
+  ANIMAL_INATIVO: "Este animal já teve saída registrada e está inativo.",
+  JA_ESTORNADA: "Não há saída ativa para estornar (ou ela já foi estornada).",
+  CONFLITO: "Não foi possível concluir: há um conflito com outro registro.",
 };

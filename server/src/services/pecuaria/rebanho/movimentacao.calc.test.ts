@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MovimentacaoError, planejarDestino, planejarMovimentacao } from "./movimentacao.calc.js";
+import { MovimentacaoError, planejarDesfazer, planejarDestino, planejarMovimentacao } from "./movimentacao.calc.js";
 
 describe("planejarMovimentacao", () => {
   it("sem localização atual: abre a primeira", () => {
@@ -87,6 +87,39 @@ describe("planejarDestino", () => {
         novo: { aptidao: "CORTE", papelReprodutivo: "NENHUM" },
         data: "2026-01-01",
       }),
+    ).toThrow(MovimentacaoError);
+  });
+});
+
+describe("planejarDesfazer", () => {
+  it("remove a linha aberta e reabre a anterior", () => {
+    const plano = planejarDesfazer([
+      { id: "l1", desde: "2026-01-01", ate: "2026-02-01" },
+      { id: "l2", desde: "2026-02-01", ate: null },
+    ]);
+    expect(plano).toEqual({ remover: { id: "l2" }, reabrir: { id: "l1" } });
+  });
+
+  it("com mais de duas linhas, reabre a imediatamente anterior por desde", () => {
+    const plano = planejarDesfazer([
+      { id: "l1", desde: "2026-01-01", ate: "2026-02-01" },
+      { id: "l2", desde: "2026-02-01", ate: "2026-03-01" },
+      { id: "l3", desde: "2026-03-01", ate: null },
+    ]);
+    expect(plano).toEqual({ remover: { id: "l3" }, reabrir: { id: "l2" } });
+  });
+
+  it("lança erro com menos de duas linhas", () => {
+    expect(() => planejarDesfazer([{ id: "l1", desde: "2026-01-01", ate: null }])).toThrow(MovimentacaoError);
+    expect(() => planejarDesfazer([])).toThrow(MovimentacaoError);
+  });
+
+  it("lança erro se não houver linha aberta", () => {
+    expect(() =>
+      planejarDesfazer([
+        { id: "l1", desde: "2026-01-01", ate: "2026-02-01" },
+        { id: "l2", desde: "2026-02-01", ate: "2026-03-01" },
+      ]),
     ).toThrow(MovimentacaoError);
   });
 });

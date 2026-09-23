@@ -110,3 +110,25 @@ export function agregarPainel(resumos: AnimalResumo[]): PainelRebanho {
     receptorasAtivas: receptoras,
   };
 }
+
+// ---------- auditoria (resumo legível em PT-BR por entidade + ação) ----------
+
+const RESUMOS_AUDITORIA: Record<string, string> = {
+  "Animal:CADASTRO": "Cadastro do animal",
+  "Animal:EDICAO": "Edição dos dados do animal",
+  "ComposicaoRacial:EDICAO": "Composição racial alterada",
+  "LocalizacaoAnimal:MOVIMENTACAO": "Movimentação de localização/lote",
+  "LocalizacaoAnimal:DESFAZER": "Movimentação de localização desfeita",
+  "DestinoAnimal:MUDANCA_DESTINO": "Mudança de destino/aptidão",
+  "DestinoAnimal:DESFAZER": "Mudança de destino desfeita",
+  "SaidaAnimal:SAIDA": "Saída registrada",
+  "SaidaAnimal:ESTORNO": "Saída estornada",
+  "Pesagem:REGISTRO": "Pesagem registrada",
+  "Pesagem:EDICAO": "Pesagem editada",
+  "Pesagem:EXCLUSAO": "Pesagem excluída",
+};
+
+/** Resumo legível em PT-BR de uma entrada de auditoria; cai num rótulo genérico para combinações não mapeadas. */
+export function resumoAuditoria(entidade: string, acao: string): string {
+  return RESUMOS_AUDITORIA[`${entidade}:${acao}`] ?? `${entidade} — ${acao}`;
+}

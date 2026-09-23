@@ -23,3 +23,11 @@ export function composicaoValida(itens: ComposicaoItemInput[]): boolean {
   }
   return true;
 }
+
+// Fração em 64 avos como fração reduzida ("48" → "3/4", "64" → "1/1").
+export function fracaoReduzida(fracao64: number): string {
+  let a = fracao64, b = 64;
+  while (b) [a, b] = [b, a % b];
+  const mdc = a || 1;
+  return `${fracao64 / mdc}/${64 / mdc}`;
+}

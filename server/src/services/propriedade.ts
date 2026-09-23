@@ -20,8 +20,8 @@ const dto = (p: {
   id: number; nome: string; apelido: string | null; cidade: string | null; uf: string | null; principal: boolean; ativo: boolean; ordem: number;
 }): PropriedadeDTO => ({ id: p.id, nome: p.nome, apelido: p.apelido, cidade: p.cidade, uf: p.uf, principal: p.principal, ativo: p.ativo, ordem: p.ordem });
 
-export async function listarPropriedades(): Promise<PropriedadeDTO[]> {
-  const ps = await prisma.propriedade.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] });
+export async function listarPropriedades(incluirInativos = false): Promise<PropriedadeDTO[]> {
+  const ps = await prisma.propriedade.findMany({ where: incluirInativos ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { id: "asc" }] });
   return ps.map(dto);
 }
 

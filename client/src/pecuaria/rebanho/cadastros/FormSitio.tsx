@@ -1,0 +1,49 @@
+// Cadastro de sítio (propriedade) — reusa client/src/api/propriedades.ts, sem
+// reusar a UI do RebModal de PropriedadeSelector.tsx (o padrão visual aqui é o
+// do Financeiro). PATCH /propriedades exige nome sempre; ativo/principal só
+// mudam quando enviados — omitir preserva o valor atual no servidor.
+
+import { FormEvent, useRef, useState } from "react";
+import { criarPropriedade, editarPropriedade, type PropriedadeDTO } from "../../../api/propriedades";
+import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
+
+export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO | null; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
+  const [nome, setNome] = useState(sitio?.nome ?? "");
+  const [apelido, setApelido] = useState(sitio?.apelido ?? "");
+  const [principal, setPrincipal] = useState(sitio?.principal ?? false);
+  const [erroNome, setErroNome] = useState<string | undefined>(undefined);
+  const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const emCurso = useRef(false);
+
+  const submeter = async (e: FormEvent) => {
+    e.preventDefault();
+    if (emCurso.current) return;
+    if (nome.trim().length < 2) { setErroNome("Informe um nome com pelo menos 2 caracteres"); return; }
+    setErroNome(undefined); setErroGeral(null);
+    emCurso.current = true; setSalvando(true);
+    const dados = { nome: nome.trim(), apelido: apelido.trim() || undefined, principal, ativo: sitio?.ativo ?? true };
+    try {
+      if (!sitio) await criarPropriedade(dados);
+      else await editarPropriedade(sitio.id, dados);
+      await onSalvo();
+    } catch (erro) {
+      setErroGeral(erro instanceof Error ? erro.message : String(erro));
+    } finally { emCurso.current = false; setSalvando(false); }
+  };
+
+  const formId = "form-sitio";
+  return <PainelCadastro aberto eyebrow="Sítio" titulo={sitio ? `Editar ${sitio.nome}` : "Novo sítio"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+    rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : sitio ? "Salvar sítio" : "Criar sítio"}</Button></>}>
+    <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
+      <ErrorBox erro={erroGeral} />
+      <CampoFormulario id="sitio-nome" rotulo="Nome do sítio" obrigatorio erro={erroNome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fazenda Recria" className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="sitio-apelido" rotulo="Apelido" ajuda="Rótulo curto usado no seletor de sítio.">{(p) => <input {...p} maxLength={40} value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder="Ex.: Recria" className={classeInput} />}</CampoFormulario>
+      <label className="flex items-start gap-3 text-sm font-medium">
+        <input type="checkbox" aria-label="Principal — sítio padrão quando não há filtro" checked={principal} onChange={(e) => setPrincipal(e.target.checked)} className="mt-1" />
+        <span>Principal<span className="block text-xs font-normal text-ink-3">Sítio padrão quando não há filtro selecionado. Só um sítio pode ser principal.</span></span>
+      </label>
+    </form>
+  </PainelCadastro>;
+}

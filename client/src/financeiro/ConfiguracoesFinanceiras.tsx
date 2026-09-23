@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Building2, Pencil, Plus, Power, PowerOff, Tags, Target, Users } from "lucide-react";
+import { Building2, Plus, Tags, Target, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { atualizarCategoria, atualizarCentroCusto, atualizarConta, atualizarParceiro, obterConfiguracoesFinanceiras, type Categoria, type CentroCusto, type Conta, type ConfiguracoesFinanceiras as Config, type Parceiro } from "./novo-api";
-import { brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
+import { AcoesLinha, brl, Button, type ColunaTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, PaginaSemDados, Panel, Pill, TabelaFinanceira } from "./financeiro-ui";
 import { FormConta, TIPO_CONTA } from "./FormConta";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
@@ -18,19 +18,6 @@ type Confirmacao =
   | { tipo: "categoria"; item: Categoria }
   | { tipo: "centro"; item: CentroCusto }
   | null;
-
-/* Coluna de ações: editar e desativar/reativar. Os botões param a propagação
- * para não disparar o `onAbrir` da linha (que também abre a edição). */
-function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
-  const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
-  const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";
-  return <div className="flex items-center justify-end gap-1">
-    {onSubir && <button type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></button>}
-    {onDescer && <button type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></button>}
-    <button type="button" onClick={parar(onEditar)} aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></button>
-    <button type="button" onClick={parar(onAlternar)} aria-label={`${ativo ? "Desativar" : "Reativar"} ${nome}`} className={cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</button>
-  </div>;
-}
 
 const colunasContas = (contas: Conta[], editar: (c: Conta) => void, alternar: (c: Conta) => void, mover: (c: Conta, direcao: -1 | 1) => void): ColunaTabela<Conta>[] => [
   { chave: "conta", titulo: "Conta", larguraMinima: 210, principal: true, celula: (c) => <strong className="break-words">{c.nome}</strong> },

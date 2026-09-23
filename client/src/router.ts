@@ -108,6 +108,35 @@ export function isSubrotaFinanceira(tab: Tab, pathname: string): boolean {
   return false;
 }
 
+// ---------- Pecuária · Rebanho ----------
+// A aba "pec-rebanho" é única (não há uma aba por seção como no financeiro),
+// então as subpáginas abaixo vivem todas sob o mesmo path canônico
+// /pecuaria/rebanho — RebanhoContent decide a tela a partir do pathname.
+
+export function isListaAnimaisRebanho(pathname: string): boolean {
+  return /^\/pecuaria\/rebanho\/animais\/?$/i.test(pathname);
+}
+
+export function isNovoAnimalRebanho(pathname: string): boolean {
+  return /^\/pecuaria\/rebanho\/animais\/novo\/?$/i.test(pathname);
+}
+
+export function isCadastrosRebanho(pathname: string): boolean {
+  return /^\/pecuaria\/rebanho\/cadastros\/?$/i.test(pathname);
+}
+
+/** Extrai o id (uuid) de `/pecuaria/rebanho/animais/:id` — null para a lista, "novo" ou qualquer outra subrota. */
+export function parseAnimalId(pathname: string): string | null {
+  const match = /^\/pecuaria\/rebanho\/animais\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i.exec(pathname);
+  return match ? match[1] : null;
+}
+
+/** Subpáginas do Rebanho que a aba "pec-rebanho" precisa manter na barra de endereço. */
+export function isSubrotaRebanho(tab: Tab, pathname: string): boolean {
+  if (tab !== "pec-rebanho") return false;
+  return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname) || parseAnimalId(pathname) != null;
+}
+
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";
 const ESTADO_NOVA_OPERACAO = { novaOperacao: true } as const;
 

@@ -33,10 +33,20 @@ export const editarAnimalSchema = z.object({
   nome: z.string().trim().max(120).nullable().optional(),
   brincoEletronico: z.string().trim().max(40).nullable().optional(),
   sisbov: z.string().trim().max(40).nullable().optional(),
+  sexo: z.enum(["F", "M"]).optional(),
+  dataNascimento: dataISO.optional(),
   nascimentoEstimado: z.boolean().optional(),
+  origem: z.enum(["NASCIDO", "COMPRADO"]).optional(),
+  dataEntrada: dataISO.optional(),
+  partosAntesDaEntrada: z.number().int().min(0).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type EditarAnimalInput = z.infer<typeof editarAnimalSchema>;
+
+export const substituirComposicaoSchema = z.object({
+  itens: z.array(composicaoItemSchema),
+});
+export type SubstituirComposicaoInput = z.infer<typeof substituirComposicaoSchema>;
 
 export const movimentarSchema = z.object({
   animalIds: z.array(z.string().uuid()).min(1),
@@ -79,6 +89,15 @@ export const pesagemSchema = z.object({
 });
 export type PesagemInput = z.infer<typeof pesagemSchema>;
 
+export const editarPesagemSchema = z.object({
+  data: dataISO.optional(),
+  pesoKg: z.number().positive().max(9999.99).optional(),
+  tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA"]).optional(),
+  origem: z.enum(["MANUAL", "BALANCA"]).optional(),
+  observacao: z.string().trim().max(500).nullable().optional(),
+});
+export type EditarPesagemInput = z.infer<typeof editarPesagemSchema>;
+
 export const listarFiltrosSchema = z.object({
   propriedadeId: z.coerce.number().int().positive().optional(),
   loteId: z.string().uuid().optional(),
@@ -105,3 +124,45 @@ export const editarLoteSchema = z.object({
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type EditarLoteInput = z.infer<typeof editarLoteSchema>;
+
+/** Query comum a listagens de cadastro (lotes, raças, motivos de saída) com "mostrar inativos". */
+export const incluirInativosQuerySchema = z.object({
+  incluirInativos: z.coerce.boolean().optional().default(false),
+});
+export type IncluirInativosQuery = z.infer<typeof incluirInativosQuerySchema>;
+
+const siglaRaca = z
+  .string()
+  .trim()
+  .transform((v) => v.toUpperCase())
+  .refine((v) => /^[A-Z]{2,3}$/.test(v), "Sigla deve ter 2 ou 3 letras maiúsculas");
+
+export const criarRacaSchema = z.object({
+  nome: z.string().trim().min(1).max(80),
+  sigla: siglaRaca,
+  base: z.boolean().optional().default(true),
+});
+export type CriarRacaInput = z.infer<typeof criarRacaSchema>;
+
+export const editarRacaSchema = z.object({
+  nome: z.string().trim().min(1).max(80).optional(),
+  sigla: siglaRaca.optional(),
+  base: z.boolean().optional(),
+  ativo: z.boolean().optional(),
+});
+export type EditarRacaInput = z.infer<typeof editarRacaSchema>;
+
+const tipoSaidaAnimal = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "CADASTRO_INDEVIDO", "OUTRO"]);
+
+export const criarMotivoSaidaSchema = z.object({
+  nome: z.string().trim().min(1).max(80),
+  tipo: tipoSaidaAnimal,
+});
+export type CriarMotivoSaidaInput = z.infer<typeof criarMotivoSaidaSchema>;
+
+export const editarMotivoSaidaSchema = z.object({
+  nome: z.string().trim().min(1).max(80).optional(),
+  tipo: tipoSaidaAnimal.optional(),
+  ativo: z.boolean().optional(),
+});
+export type EditarMotivoSaidaInput = z.infer<typeof editarMotivoSaidaSchema>;
