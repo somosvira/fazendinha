@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   transacaoFindMany: vi.fn(),
   produtoFindMany: vi.fn(),
   categoriaFindMany: vi.fn(),
+  movimentoFindMany: vi.fn(),
   obterConfig: vi.fn(),
   calcularCustoVacaDia: vi.fn(),
   obterCustosMedios: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("../../db.js", () => ({
     transacaoFinanceira: { findMany: mocks.transacaoFindMany },
     produto: { findMany: mocks.produtoFindMany },
     categoria: { findMany: mocks.categoriaFindMany },
+    movimentoEstoque: { findMany: mocks.movimentoFindMany },
     centroCusto: { findMany: vi.fn().mockResolvedValue([{ id: 1 }]) },
   },
 }));
@@ -44,6 +46,7 @@ beforeEach(() => {
   mocks.transacaoFindMany.mockResolvedValue([]);
   mocks.produtoFindMany.mockResolvedValue([]);
   mocks.categoriaFindMany.mockResolvedValue([{ id: 99 }]);
+  mocks.movimentoFindMany.mockResolvedValue([]);
   mocks.obterCustosMedios.mockResolvedValue(new Map());
   mocks.calcularCustoVacaDia.mockResolvedValue({ custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 });
 });
@@ -82,27 +85,47 @@ describe("agregados por propriedade", () => {
     expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [], 7);
   });
 
-  it("custo sanitário exato usa o custo médio do sítio, cruzando por produtoId e, no legado, pelo nome", async () => {
+  it("custo sanitário exato segue a precedência: movimento de estoque > quantidade × custo médio > rateio", async () => {
     const { Prisma } = await import("@prisma/client");
     mocks.eventoFindMany.mockResolvedValue([
-      { produto: "Vermífugo", produtoId: 3, animal: { numero: "10", nome: null } },
-      { produto: "Vermífugo", produtoId: 3, animal: { numero: "11", nome: null } },
-      { produto: "Vacina antiga", produtoId: null, animal: { numero: "10", nome: null } },
-      { produto: "Sem cadastro", produtoId: null, animal: { numero: "10", nome: null } },
+      // (a) movimento de estoque confirmado: valor já calculado na baixa (não é
+      // só o preço unitário — 20mL e 10mL a R$0,62/mL, não R$0,62 cada aplicação).
+      { produto: "Antibiótico", produtoId: 3, quantidadeUsada: new Prisma.Decimal(20), movimentoEstoqueId: 501, animal: { numero: "10", nome: null } },
+      { produto: "Antibiótico", produtoId: 3, quantidadeUsada: new Prisma.Decimal(10), movimentoEstoqueId: 502, animal: { numero: "11", nome: null } },
+      // (b) sem movimento (evento editado à mão) mas com produtoId + quantidadeUsada.
+      { produto: "Vermífugo", produtoId: 4, quantidadeUsada: new Prisma.Decimal(5), movimentoEstoqueId: null, animal: { numero: "10", nome: null } },
+      // (c) legado: só texto, sem produtoId nem quantidade → sem custo exato, cai no rateio
+      // (o custo médio ainda é resolvido pelo nome, mas só para exibição/referência).
+      { produto: "Vacina antiga", produtoId: null, quantidadeUsada: null, movimentoEstoqueId: null, animal: { numero: "10", nome: null } },
+      { produto: "Sem cadastro", produtoId: null, quantidadeUsada: null, movimentoEstoqueId: null, animal: { numero: "10", nome: null } },
     ]);
     mocks.produtoFindMany.mockResolvedValue([{ id: 8, nome: "Vacina antiga" }]);
-    mocks.obterCustosMedios.mockResolvedValue(new Map([[3, new Prisma.Decimal(6)], [8, new Prisma.Decimal("2.5")]]));
+    mocks.movimentoFindMany.mockResolvedValue([
+      { id: 501, valorTotal: new Prisma.Decimal("12.40") },
+      { id: 502, valorTotal: new Prisma.Decimal("6.20") },
+    ]);
+    mocks.obterCustosMedios.mockResolvedValue(new Map([
+      [3, new Prisma.Decimal("0.62")],
+      [4, new Prisma.Decimal(6)],
+      [8, new Prisma.Decimal("2.5")],
+    ]));
 
     const r = await agregarCustoSanidade(12, 7);
 
-    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [3, 3, 8], 7);
+    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [3, 3, 4, 8], 7);
+    expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: { in: [501, 502] }, status: "CONFIRMADO" }),
+    }));
     expect(r.produtos).toEqual(expect.arrayContaining([
-      { produto: "Vermífugo", n: 2, custoMedio: 6, custoExato: 12 },
-      { produto: "Vacina antiga", n: 1, custoMedio: 2.5, custoExato: 2.5 },
+      { produto: "Antibiótico", n: 2, custoMedio: 0.62, custoExato: 18.6 },
+      { produto: "Vermífugo", n: 1, custoMedio: 6, custoExato: 30 },
+      { produto: "Vacina antiga", n: 1, custoMedio: 2.5, custoExato: null },
       { produto: "Sem cadastro", n: 1, custoMedio: null, custoExato: null },
     ]));
-    expect(r.custoExatoTotal).toBe(14.5);
+    expect(r.custoExatoTotal).toBe(48.6);
     expect(r.produtosPrecificados).toBe(2);
+    expect(r.topAnimais.find((a) => a.numero === "10")?.custoExato).toBe(42.4);
+    expect(r.topAnimais.find((a) => a.numero === "11")?.custoExato).toBe(6.2);
   });
 
   it("monta insights da IA somente com animais e grupos do sítio", async () => {

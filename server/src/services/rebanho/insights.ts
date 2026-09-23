@@ -132,6 +132,28 @@ function percentil(valores: number[], alvo: number): number {
   return Math.round((menores / valores.length) * 100);
 }
 
+// Soma o custo real das aplicações precificadas (ver precoPorAplicacao em
+// custo-sanidade.ts: movimento de estoque > quantidade × custo médio > null).
+// Exportada para testar a regra isolada sem mockar o obterInsights inteiro.
+export function somarCustoSanidadeExato(
+  aplics: { produtoId: number | null; produto: string | null }[],
+  precoDe: (a: { produtoId: number | null; produto: string | null }) => number | null,
+): number {
+  let total = 0;
+  for (const a of aplics) {
+    const cu = precoDe(a);
+    if (cu != null) total += cu;
+  }
+  return total;
+}
+
+// Custo de sanidade do animal (12m): o exato (soma acima) quando há aplicações
+// precificadas; senão o rateio do gasto real das categorias de uso sanitário
+// pelo nº de aplicações do rebanho.
+export function escolherCustoSanidadeAnimal(custoExato: number, custoRateio: number): number {
+  return round(custoExato > 0 ? custoExato : custoRateio);
+}
+
 // ── Service ────────────────────────────────────────────────────────────────
 
 export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO | null> {
@@ -190,15 +212,13 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   const desde12m = new Date(hoje); desde12m.setMonth(hoje.getMonth() - 12);
   const aplics12m = await prisma.eventoSanitario.findMany({
     where: { animalId, tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m } },
-    select: { produto: true, produtoId: true, data: true },
+    select: { produto: true, produtoId: true, quantidadeUsada: true, movimentoEstoqueId: true, data: true },
   });
-  // Preço = custo médio do produto no sítio do animal (sem sítio = principal).
+  // Custo real de cada aplicação: valor do movimento de estoque que baixou o
+  // consumo ou, sem ele, quantidade usada × custo médio do produto no sítio do
+  // animal (sem sítio = principal) — ver precoPorAplicacao em custo-sanidade.ts.
   const precoDe = await precoPorAplicacao(aplics12m, animal.propriedadeId ?? (await propriedadePrincipalId()));
-  let custoSanidadeExato = 0;
-  for (const a of aplics12m) {
-    const cu = precoDe(a);
-    if (cu != null) custoSanidadeExato += cu;
-  }
+  const custoSanidadeExato = somarCustoSanidadeExato(aplics12m, precoDe);
   // Rateio do gasto real com categorias de uso sanitário / aplicações no rebanho
   const idsSanitario = await resolverIdsCategoriasSanitarias();
   const lancsMedic = idsSanitario.length === 0 ? [] : await prisma.transacaoFinanceira.findMany({
@@ -215,7 +235,7 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   const todasAplicsGlob = await prisma.eventoSanitario.count({ where: { tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m } } });
   const custoPorAplic = todasAplicsGlob > 0 ? totalMedic / todasAplicsGlob : 0;
   const custoSanidadeRateio = round(custoPorAplic * aplics12m.length);
-  const custoSanidadeAnimal = round(custoSanidadeExato > 0 ? custoSanidadeExato : custoSanidadeRateio);
+  const custoSanidadeAnimal = escolherCustoSanidadeAnimal(custoSanidadeExato, custoSanidadeRateio);
 
   // ── Ocorrências e mastites recentes (6m) ───────────────────────────────
   const desde6m = new Date(hoje); desde6m.setMonth(hoje.getMonth() - 6);
