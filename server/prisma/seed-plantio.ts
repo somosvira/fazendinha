@@ -351,7 +351,6 @@ async function main() {
       tipo: "INSUMO" as const,
       subtipoPlantio: ins.subtipo,
       unidade: ins.unidade,
-      custoUnitario: ins.custo,
       minimoEstoque: ins.minimo,
       categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? null,
       estocavel: true,
@@ -378,6 +377,8 @@ async function main() {
     if (ins.saldoInicial <= 0) continue; // sem saldo inicial (ex.: Endossulfan zerado) → sem ENTRADA
     const produto = await prisma.produto.findUnique({ where: { nome: ins.nome }, select: { id: true } });
     if (!produto) continue;
+    // O cadastro não guarda preço: ins.custo valoriza o saldo inicial, que é a
+    // base do custo médio das saídas (aplicações) deste insumo.
     const valorTotal = Math.round(ins.saldoInicial * ins.custo * 100) / 100;
     await prisma.movimentoEstoque.create({
       data: {

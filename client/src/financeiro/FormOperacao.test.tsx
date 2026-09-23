@@ -18,7 +18,7 @@ const config: ConfiguracoesFinanceiras = {
   ],
   categorias: [],
   centrosCusto: [],
-  produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true, custoUnitario: "5" }],
+  produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true }],
 };
 
 function montar() {
@@ -126,6 +126,41 @@ describe("FormOperacao", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
     expect(screen.getByLabelText("Unidade do item 1").textContent).toBe("kg");
     expect(screen.queryByRole("textbox", { name: "Unidade do item 1" })).toBeNull();
+  });
+
+  it("sugere o valor unitário da última compra do fornecedor selecionado", async () => {
+    const fetchMock = vi.fn(async (url: unknown) => String(url).includes("/ultimo-preco")
+      ? { ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: { id: 1, nome: "Fornecedor Rural" } }) }
+      : { ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("7.50"));
+    expect(fetchMock).toHaveBeenCalledWith("/api/estoque/produtos/1/ultimo-preco?parceiroId=1", expect.anything());
+    expect(screen.getByText(/Última compra:/).textContent?.replaceAll("\u00a0", " ")).toBe("Última compra: R$ 7,50 em 03/09 (Fornecedor Rural)");
+  });
+
+  it("sem histórico de compra, deixa o valor unitário vazio e sem linha de ajuda", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => null }));
+    vi.stubGlobal("fetch", fetchMock);
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/estoque/produtos/1/ultimo-preco", expect.anything()));
+    expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/Última compra:/)).toBeNull();
+  });
+
+  it("não sobrescreve um valor digitado antes da sugestão chegar", async () => {
+    let responder: (v: unknown) => void = () => {};
+    vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { responder = resolve; })));
+    montar();
+    fireEvent.change(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: "1" } });
+    const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "9" } });
+    responder({ ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: null }) });
+    await waitFor(() => expect(screen.queryByText(/Última compra:/)).toBeTruthy());
+    expect(campo.value).toBe("9");
   });
 
   it("não expõe o saldo no seletor de conta", () => {

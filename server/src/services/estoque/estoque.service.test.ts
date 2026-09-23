@@ -32,7 +32,7 @@ const tx = () => ({
   $queryRaw: mocks.queryRaw,
 });
 
-const produto = { id: 3, nome: "Ureia", unidade: "kg", custoUnitario: new Prisma.Decimal(2), ativo: true, estocavel: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
+const produto = { id: 3, nome: "Ureia", unidade: "kg", ativo: true, estocavel: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -65,6 +65,24 @@ describe("registrarMovimento", () => {
     expect(mocks.opCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ criadoPorId: 7 }) }));
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ criadoPorId: 7, operacaoId: 50 }) });
     expect(mocks.auditCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "Operacao", entidadeId: "50", acao: "AJUSTE_MANUAL", usuarioId: 7 }) });
+  });
+  it("sem custo informado, valoriza o ajuste pelo custo médio do sítio", async () => {
+    mocks.movFindMany.mockResolvedValue([
+      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
+      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
+    ]);
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 5, observacao: "Sobrou no galpão", propriedadeId: 1 });
+    // propriedade 1 é a principal → inclui movimentos legados sem propriedade.
+    expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ produtoId: { in: [3] }, status: "CONFIRMADO", reversaoDeId: null }) }));
+    const data = mocks.movCreate.mock.calls[0][0].data;
+    expect(Number(data.custoUnitario)).toBe(6);
+    expect(Number(data.valorTotal)).toBe(30);
+  });
+  it("custo informado prevalece sobre o médio", async () => {
+    mocks.movFindMany.mockResolvedValue([]);
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 2, custoUnitario: 4, observacao: "Sobrou no galpão", propriedadeId: 1 });
+    expect(Number(mocks.movCreate.mock.calls[0][0].data.valorTotal)).toBe(8);
+    expect(mocks.movFindMany).not.toHaveBeenCalled();
   });
   it("sem usuário grava criadoPorId null", async () => {
     await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: 5, observacao: "Sobrou no galpão", propriedadeId: 1 });

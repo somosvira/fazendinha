@@ -18,7 +18,7 @@ describe("produtoSchema", () => {
   });
 
   it("aceita um produto válido de medicamento", () => {
-    const r = produtoSchema.safeParse({ nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 12.5 });
+    const r = produtoSchema.safeParse({ nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un" });
     expect(r.success).toBe(true);
   });
 

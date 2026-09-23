@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   operacaoCreate: vi.fn(),
   operacaoFindUniqueOrThrow: vi.fn(),
   movimentoEstoqueCreate: vi.fn(),
+  movimentoEstoqueFindMany: vi.fn(),
   auditoriaCreate: vi.fn(),
 }));
 
@@ -21,11 +22,11 @@ vi.mock("../../db.js", () => {
     centroCusto: { findMany: mocks.centro },
     produto: { findMany: mocks.produto },
     operacao: { create: mocks.operacaoCreate, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate },
+    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, findMany: mocks.movimentoEstoqueFindMany },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
-  return { prisma: { $transaction: mocks.transaction } };
+  return { prisma: { $transaction: mocks.transaction, propriedade: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) } } };
 });
 
 import { criarOperacao } from "./operacoes.js";
@@ -145,5 +146,40 @@ describe("centro de custo efetivo do item — criarOperacao", () => {
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(2);
     const centrosUsados = mocks.movimentoEstoqueCreate.mock.calls.map((call) => call[0].data.centroCustoId);
     expect(centrosUsados).toEqual([3, 7]);
+  });
+});
+
+describe("custo da SAIDA de venda — criarOperacao", () => {
+  it("VENDA baixa o estoque pelo custo médio do sítio, não pelo preço de venda", async () => {
+    const { Prisma } = await import("@prisma/client");
+    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
+    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    mocks.movimentoEstoqueFindMany.mockResolvedValue([
+      { produtoId: 42, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
+      { produtoId: 42, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
+    ]);
+    await criarOperacao({
+      tipo: "VENDA", data: new Date("2026-09-10T00:00:00Z"), descricao: "Venda de ração", propriedadeId: 1,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+      itens: [{ descricao: "Ração", quantidade: 5, unidade: "sc", valorTotal: 100, estocavel: true, produtoId: 42 }],
+    });
+    const dados = mocks.movimentoEstoqueCreate.mock.calls[0][0].data;
+    expect(dados.tipo).toBe("SAIDA");
+    expect(Number(dados.custoUnitario)).toBe(6);
+    expect(Number(dados.valorTotal)).toBe(30);
+  });
+
+  it("COMPRA_ESTOQUE segue valorizando a ENTRADA pelo item", async () => {
+    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [{ centroCustoId: 3 }] }]);
+    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    await criarOperacao({
+      tipo: "COMPRA_ESTOQUE", data: new Date("2026-09-10T00:00:00Z"), descricao: "Compra", propriedadeId: 1,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+      itens: [{ descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 70, estocavel: true, produtoId: 42 }],
+    });
+    const dados = mocks.movimentoEstoqueCreate.mock.calls[0][0].data;
+    expect(Number(dados.custoUnitario)).toBe(7);
+    expect(Number(dados.valorTotal)).toBe(70);
+    expect(mocks.movimentoEstoqueFindMany).not.toHaveBeenCalled();
   });
 });

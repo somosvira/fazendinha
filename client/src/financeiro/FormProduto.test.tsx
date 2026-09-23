@@ -26,7 +26,7 @@ const categorias = [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO" as const
 const centros = [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: 7, nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
-  id: 99, nome: "Sal mineral", tipo: "MINERAL" as const, unidade: "kg", estocavel: true, custoUnitario: null,
+  id: 99, nome: "Sal mineral", tipo: "MINERAL" as const, unidade: "kg", estocavel: true,
   categoriaId: 11, categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };

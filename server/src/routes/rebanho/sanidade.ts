@@ -4,9 +4,12 @@ import { criarEventoSanitarioSchema } from "../../services/rebanho/eventos-sanid
 import * as svc from "../../services/rebanho/eventos-sanidade.js";
 import { montarTimeline } from "../../services/rebanho/timeline.js";
 import { resolverEscopoEscrita } from "../../services/propriedade.js";
+import { EstoqueError } from "../../services/estoque/estoque.js";
 
 function fail(e: unknown): { status: 404 | 409 | 500; body: { error: string } } {
   if (e instanceof svc.EventoSanError) return { status: e.code === "CONFLITO" || e.code === "MES_FECHADO" ? 409 : 404, body: { error: e.message } };
+  // Estorno da baixa de estoque (edição/exclusão) pode esbarrar em mês fechado ou movimento já estornado.
+  if (e instanceof EstoqueError) return { status: e.code === "NAO_ENCONTRADO" ? 404 : 409, body: { error: e.message } };
   console.error("[sanidade]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
 }

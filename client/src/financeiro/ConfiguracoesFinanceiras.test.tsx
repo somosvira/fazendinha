@@ -34,7 +34,7 @@ const config: Config = {
   categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoSanitario: false, usoNutricional: false, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: 30, nome: "Ração 22%", tipo: "RACAO", unidade: "kg", estocavel: true, custoUnitario: "2.45", minimoEstoque: "500", categoriaId: 11, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: 30, nome: "Ração 22%", tipo: "RACAO", unidade: "kg", estocavel: true, minimoEstoque: "500", categoriaId: 11, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);

@@ -193,13 +193,16 @@ async function main() {
   await prisma.movimentoEstoque.deleteMany({});
   await prisma.produto.deleteMany({});
   const produtos = [
-    { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, estocavel: true, minimoEstoque: 4 },
-    { nome: "Ração Lactação Alta", tipo: "RACAO", unidade: "kg", custoUnitario: 2.1, estocavel: true, minimoEstoque: 500 },
-    { nome: "Núcleo Mineral", tipo: "MINERAL", unidade: "kg", custoUnitario: 5.4, estocavel: true, minimoEstoque: 100 },
-    { nome: "Sêmen Lance 884", tipo: "INSUMO", unidade: "dose", custoUnitario: 45, estocavel: true, minimoEstoque: 10 },
-    { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", custoUnitario: 62, estocavel: true, minimoEstoque: 2 },
+    { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", estocavel: true, minimoEstoque: 4 },
+    { nome: "Ração Lactação Alta", tipo: "RACAO", unidade: "kg", estocavel: true, minimoEstoque: 500 },
+    { nome: "Núcleo Mineral", tipo: "MINERAL", unidade: "kg", estocavel: true, minimoEstoque: 100 },
+    { nome: "Sêmen Lance 884", tipo: "INSUMO", unidade: "dose", estocavel: true, minimoEstoque: 10 },
+    { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", estocavel: true, minimoEstoque: 2 },
   ] as const;
   for (const p of produtos) await prisma.produto.create({ data: p as any });
+  // O cadastro não guarda preço: o custo médio nasce das entradas. Custo do
+  // saldo inicial (INVENTARIO_INICIAL) dos produtos que recebem estoque abaixo.
+  const custoInicial: Record<string, number> = { "Ração Lactação Alta": 2.1, "Núcleo Mineral": 5.4 };
 
   // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
   // todos no centro de custo "Atividade Leiteira". O Sêmen fica sem categoria de propósito.
@@ -245,9 +248,11 @@ async function main() {
   // Estoque: movimentos (entradas de compra + saídas de consumo recente). Idempotente
   // (a tabela já foi limpa acima, antes do produto.deleteMany, por causa da FK).
   // Saldo é computado (entradas − saídas); custo vaca/dia = Σ saídas valorizadas ÷ (vacas×dias).
+  // O INVENTARIO_INICIAL carrega custoUnitario/valorTotal → é a base do custo médio;
+  // as saídas saem pelo mesmo custo (único lote de entrada = médio).
   const prodByName: Record<string, { id: number; custo: number }> = {};
   for (const p of await prisma.produto.findMany({ where: { nome: { in: ["Ração Lactação Alta", "Núcleo Mineral"] } } })) {
-    prodByName[p.nome] = { id: p.id, custo: p.custoUnitario != null ? Number(p.custoUnitario) : 0 };
+    prodByName[p.nome] = { id: p.id, custo: custoInicial[p.nome] ?? 0 };
   }
   const racao = prodByName["Ração Lactação Alta"];
   const nucleo = prodByName["Núcleo Mineral"];

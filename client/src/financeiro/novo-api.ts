@@ -31,7 +31,7 @@ export type TipoProduto = "MEDICAMENTO" | "RACAO" | "INSUMO" | "MINERAL" | "OUTR
 export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CORRETIVO" | "BIOLOGICO" | "FOLIAR" | "MUDA" | "OUTRO";
 export type Produto = {
   id: number; nome: string; tipo?: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null;
-  unidade: string; estocavel: boolean; custoUnitario: string | null;
+  unidade: string; estocavel: boolean;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
   centroCustoIds?: number[]; centrosCusto?: { id: number; nome: string; ativo: boolean }[];
@@ -39,7 +39,7 @@ export type Produto = {
 };
 export type ProdutoInput = {
   nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
-  custoUnitario: number | null; estocavel: boolean;
+  estocavel: boolean;
   minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { leite: number | null; cafe: number | null } };

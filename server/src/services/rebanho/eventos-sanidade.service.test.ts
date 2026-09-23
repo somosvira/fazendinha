@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => ({
   movimentoCreate: vi.fn(),
   movimentoUpdate: vi.fn(),
   movimentoDelete: vi.fn(),
+  movimentoFindMany: vi.fn(),
+  movimentoFindUnique: vi.fn(),
+  movimentoFindFirst: vi.fn(),
+  auditCreate: vi.fn(),
+  queryRaw: vi.fn(),
+  eventoDelete: vi.fn(),
   eventoCreate: vi.fn(),
   eventoUpdate: vi.fn(),
   transaction: vi.fn(),
@@ -36,15 +42,31 @@ vi.mock("../../db.js", () => ({
   },
 }));
 
-import { registrarSanidade, editarSanidade } from "./eventos-sanidade.js";
+import { Prisma } from "@prisma/client";
+import { registrarSanidade, editarSanidade, excluirSanidade } from "./eventos-sanidade.js";
+
+const D = (v: number) => new Prisma.Decimal(v);
+const compras = [
+  { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(10), valorTotal: D(50) },
+  { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: D(10), valorTotal: D(70) },
+];
+const movAnterior = {
+  id: 77, produtoId: 3, tipo: "SAIDA", origem: "SANIDADE", status: "CONFIRMADO", data: new Date("2026-02-05"),
+  quantidade: D(2), custoUnitario: D(5), valorTotal: D(10), propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     fn({
-      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete },
-      eventoSanitario: { create: mocks.eventoCreate, update: mocks.eventoUpdate },
+      movimentoEstoque: {
+        create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete,
+        findMany: mocks.movimentoFindMany, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst,
+      },
+      eventoSanitario: { create: mocks.eventoCreate, update: mocks.eventoUpdate, delete: mocks.eventoDelete },
       periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
+      auditoriaFinanceira: { create: mocks.auditCreate },
+      $queryRaw: mocks.queryRaw,
     }),
   );
   mocks.periodoFindUnique.mockResolvedValue(null);
@@ -52,6 +74,13 @@ beforeEach(() => {
   mocks.exameQuartoFindMany.mockResolvedValue([]);
   mocks.eventoFindMany.mockResolvedValue([]);
   mocks.resumoUpsert.mockResolvedValue({});
+  mocks.movimentoFindMany.mockResolvedValue(compras);
+  mocks.movimentoFindUnique.mockResolvedValue(movAnterior);
+  mocks.movimentoFindFirst.mockResolvedValue(movAnterior);
+  mocks.movimentoCreate.mockResolvedValue({ id: 90 });
+  mocks.movimentoUpdate.mockResolvedValue({});
+  mocks.queryRaw.mockResolvedValue([]);
+  mocks.auditCreate.mockResolvedValue({});
 });
 
 describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de estoque", () => {
@@ -68,7 +97,7 @@ describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de
 
   it("rejeita uma APLICACAO (com produto) em mês fechado", async () => {
     mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, custoUnitario: null, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
     mocks.periodoFindUnique.mockResolvedValue({ status: "FECHADO" });
 
     await expect(
@@ -84,7 +113,7 @@ describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de
       movimentoEstoqueId: 77, produtoId: 3, quantidadeUsada: 2,
       animal: { propriedadeId: 5, grupo: null },
     });
-    mocks.produtoFindUnique.mockResolvedValue({ id: 3, custoUnitario: null, centrosCusto: [] });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
     // Mês novo (fevereiro) aberto, mas mês antigo (janeiro) fechado.
     mocks.periodoFindUnique.mockImplementation(async ({ where }: any) => {
       return where.propriedadeId_ano_mes.mes === 1 ? { status: "FECHADO" } : null;
@@ -109,5 +138,80 @@ describe("eventos de sanidade — mês fechado só bloqueia quando há efeito de
     await editarSanidade(51, { tipo: "EXAME", data: "2026-02-05", ccs: 250 } as any);
 
     expect(mocks.eventoUpdate).toHaveBeenCalled();
+  });
+});
+
+describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de edição/apagamento", () => {
+  const aplicacao = (quantidadeUsada: number) => ({ tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo", produtoId: 3, quantidadeUsada } as any);
+  const eventoComBaixa = {
+    id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05"),
+    movimentoEstoqueId: 77, produtoId: 3, quantidadeUsada: D(2),
+    animal: { propriedadeId: 5, grupo: null },
+  };
+
+  it("registrar APLICACAO grava SAIDA com o custo médio do sítio", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await registrarSanidade(1, aplicacao(3));
+
+    const dados = mocks.movimentoCreate.mock.calls[0][0].data;
+    expect(dados).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", propriedadeId: 5 }));
+    expect(Number(dados.custoUnitario)).toBe(6);
+    expect(Number(dados.valorTotal)).toBe(18);
+  });
+
+  it("editar quantidade estorna o movimento antigo e cria outro — nunca update in-place", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await editarSanidade(50, aplicacao(4));
+
+    expect(mocks.movimentoUpdate).toHaveBeenCalledTimes(1);
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
+    const [inverso, novo] = mocks.movimentoCreate.mock.calls.map((c) => c[0].data);
+    expect(inverso).toEqual(expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: 77 }));
+    expect(novo).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE" }));
+    expect(Number(novo.quantidade)).toBe(4);
+    expect(Number(novo.valorTotal)).toBe(24);
+    expect(mocks.movimentoDelete).not.toHaveBeenCalled();
+    expect(mocks.eventoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: 90 }) }));
+  });
+
+  it("editar sem mudar a baixa mantém o movimento existente", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await editarSanidade(50, { ...aplicacao(2), observacao: "reforço" });
+
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoUpdate).not.toHaveBeenCalled();
+    expect(mocks.eventoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: 77 }) }));
+  });
+
+  it("editar removendo o produto estorna a baixa", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
+    mocks.eventoUpdate.mockResolvedValue({ id: 50, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await editarSanidade(50, { tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo" } as any);
+
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
+    expect(mocks.movimentoCreate).toHaveBeenCalledTimes(1); // só o inverso
+    expect(mocks.eventoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ movimentoEstoqueId: null }) }));
+  });
+
+  it("excluir estorna a baixa em vez de apagar o movimento", async () => {
+    mocks.eventoFindFirst.mockResolvedValue(eventoComBaixa);
+    mocks.eventoDelete.mockResolvedValue({});
+
+    await excluirSanidade(50);
+
+    expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
+    expect(mocks.movimentoCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ reversaoDeId: 77 }) });
+    expect(mocks.movimentoDelete).not.toHaveBeenCalled();
+    expect(mocks.eventoDelete).toHaveBeenCalledWith({ where: { id: 50 } });
   });
 });

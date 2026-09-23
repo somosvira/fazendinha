@@ -222,7 +222,6 @@ model Produto {
   // Subtipo agrícola (só nos insumos do Plantio; null no rebanho).
   subtipoPlantio     TipoInsumoPlantio?
   unidade            String                  @default("un")
-  custoUnitario      Decimal?                @db.Decimal(12, 2)
   estocavel          Boolean                 @default(true)
   minimoEstoque      Decimal?                @db.Decimal(12, 2)
   ativo              Boolean                 @default(true)

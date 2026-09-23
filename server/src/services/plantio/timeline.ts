@@ -4,7 +4,8 @@ import type { EventoTimeline } from "./mock.js";
 import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
 import { planejarBaixaAplicacao } from "./aplicacao-estoque.calc.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterCustoMedio } from "../estoque/estoque.js";
+import { valorSaida } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
@@ -161,7 +162,7 @@ async function planejarMovimento(
   opts: { validarCentroAtivo?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, custoUnitario: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
   // Só valida "ativo" quando o centro veio explícito do input (usuário
   // escolheu); um centro herdado do movimento anterior (edição sem
@@ -181,13 +182,13 @@ async function planejarMovimento(
     quantidadeTotalInformada: input.quantidadeTotal ?? null,
   });
   if (!plano.deveBaixar) return { produto, plano: null as null };
-  const custoUnitario = produto.custoUnitario != null ? new Prisma.Decimal(produto.custoUnitario) : new Prisma.Decimal(0);
   const centroCustoId = resolverCentroSaida({
     produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId),
     contextoCentroId: input.centroCustoId,
   });
   const quantidade = new Prisma.Decimal(plano.quantidade);
-  const valorTotal = quantidade.mul(custoUnitario).toDecimalPlaces(2);
+  // Custo da saída = custo médio ponderado das entradas do produto no sítio.
+  const { custoUnitario, valorTotal } = valorSaida(quantidade, await obterCustoMedio(tx, produto.id, propriedadeId));
   return {
     produto,
     plano: {

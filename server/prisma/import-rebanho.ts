@@ -443,9 +443,9 @@ async function main() {
     pesagensInseridas += r.count;
   }
 
-  // --- Produtos aplicados → Cadastros (upsert por nome, p/ o usuário precificar) ---
-  // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO)
-  // SEM tocar no custoUnitario (preserva o que o usuário preencher). Idempotente.
+  // --- Produtos aplicados → Cadastros (upsert por nome) ---
+  // Coleta os produtos distintos das aplicações e cria em Produto (tipo MEDICAMENTO).
+  // Sem preço: o custo médio vem das compras registradas depois. Idempotente.
   const produtosAplicados = new Set<string>();
   for (const e of dados.eventosSanitarios ?? [])
     if ((e.tipo === "APLICACAO" || e.tipo === "VACINA") && e.produto) produtosAplicados.add(e.produto);

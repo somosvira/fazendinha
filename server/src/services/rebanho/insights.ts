@@ -6,6 +6,8 @@ import { prisma } from "../../db.js";
 import type { ResumoAnimal } from "@prisma/client";
 import { custoVacaDia as calcularCustoVacaDia } from "../estoque/estoque.calc.js";
 import { saidaConsumoConfirmada } from "../estoque/estoque.js";
+import { precoPorAplicacao } from "./custo-sanidade.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 import { getNumero, type ChaveParametro } from "./parametros.js";
 import { carenciaAtiva as calcCarenciaAtiva } from "./carencia.calc.js";
 import { scoreDoResumo } from "./score.calc.js";
@@ -187,15 +189,13 @@ export async function obterInsights(animalId: number): Promise<AnimalInsightsDTO
   const desde12m = new Date(hoje); desde12m.setMonth(hoje.getMonth() - 12);
   const aplics12m = await prisma.eventoSanitario.findMany({
     where: { animalId, tipo: { in: ["APLICACAO", "VACINA"] }, data: { gte: desde12m } },
-    select: { produto: true, data: true },
+    select: { produto: true, produtoId: true, data: true },
   });
-  const precos = new Map<string, number | null>();
-  for (const p of await prisma.produto.findMany({ select: { nome: true, custoUnitario: true } })) {
-    precos.set(p.nome, p.custoUnitario != null ? toNum(p.custoUnitario) : null);
-  }
+  // Preço = custo médio do produto no sítio do animal (sem sítio = principal).
+  const precoDe = await precoPorAplicacao(aplics12m, animal.propriedadeId ?? (await propriedadePrincipalId()));
   let custoSanidadeExato = 0;
-  for (const a of aplics12m) if (a.produto) {
-    const cu = precos.get(a.produto);
+  for (const a of aplics12m) {
+    const cu = precoDe(a);
     if (cu != null) custoSanidadeExato += cu;
   }
   // Rateio do gasto real "Medicamento Animal" / aplicações no rebanho

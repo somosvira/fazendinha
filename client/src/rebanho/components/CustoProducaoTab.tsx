@@ -145,7 +145,7 @@ export function CustoProducaoTab() {
                   <tr>
                     <th>Produto</th>
                     <th>Nº</th>
-                    <th>Custo unit.</th>
+                    <th title="Média ponderada das entradas neste sítio">Custo médio</th>
                     <th>Custo total</th>
                   </tr>
                 </thead>
@@ -154,14 +154,14 @@ export function CustoProducaoTab() {
                     <tr key={p.produto}>
                       <td>{p.produto}</td>
                       <td>{p.n.toLocaleString("pt-BR")}</td>
-                      <td>{p.custoUnitario != null ? money(p.custoUnitario) : "—"}</td>
+                      <td>{p.custoMedio != null ? money(p.custoMedio) : "—"}</td>
                       <td>{p.custoExato != null ? money(p.custoExato) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </RebTable>
               <p className="mt-[7px] text-sm text-ink-3">
-                Custo exato: {money(san.custoExatoTotal)} · {san.produtosPrecificados} de {san.produtosTotais} produtos precificados — defina o custo unitário no Cadastros.
+                Custo exato: {money(san.custoExatoTotal)} · {san.produtosPrecificados} de {san.produtosTotais} produtos com custo apurado — o custo médio vem das compras registradas neste sítio.
               </p>
             </>
           )}

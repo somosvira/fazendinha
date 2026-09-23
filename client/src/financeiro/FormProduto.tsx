@@ -57,7 +57,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [tipo, setTipo] = useState<TipoProduto>(produto?.tipo ?? "INSUMO");
   const [subtipoPlantio, setSubtipoPlantio] = useState<TipoInsumoPlantio | "">(produto?.subtipoPlantio ?? "");
   const [unidade, setUnidade] = useState(produto?.unidade ?? "un");
-  const [custo, setCusto] = useState(produto?.custoUnitario ?? "");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
   const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
@@ -81,13 +80,12 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     const novosErros: Record<string, string> = {};
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     if (!unidade.trim()) novosErros.unidade = "Informe a unidade";
-    if (custo && Number(custo) < 0) novosErros.custoUnitario = "O custo não pode ser negativo";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
     if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
       nome: nome.trim(), tipo, subtipoPlantio: subtipoPlantio || null, unidade: unidade.trim(),
-      custoUnitario: custo === "" ? null : Number(custo), estocavel,
+      estocavel,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
       centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
     };
@@ -115,7 +113,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       </div>
       <CampoFormulario id="produto-subtipo-plantio" rotulo="Tipo agrícola" ajuda="Opcional. Usado só no módulo de plantio.">{(p) => <select {...p} value={subtipoPlantio} onChange={(e) => setSubtipoPlantio(e.target.value as TipoInsumoPlantio | "")} className={classeInput}><option value="">Não se aplica</option>{SUBTIPOS_PLANTIO.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-custo" rotulo="Custo de referência" erro={erros.custoUnitario} ajuda="Usado para sugerir novas operações; não altera o histórico.">{(p) => <input {...p} type="number" min="0" step="0.01" value={custo} onChange={(e) => setCusto(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>

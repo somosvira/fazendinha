@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import { Prisma, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, custoVacaDia, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, custoVacaDia, custoMedioProduto, ORIGENS_CUSTO_MEDIO, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
@@ -54,6 +54,56 @@ export const ajusteContagemSchema = z.object({
   centroCustoId: z.number().int().positive().nullable().optional(),
 });
 
+type DbCusto = Pick<Prisma.TransactionClient, "movimentoEstoque">;
+
+// Escopo de sítio do custo médio: movimento sem propriedade pertence à principal
+// (mesma convenção do resto do estoque). null = consolidado (todas as propriedades).
+async function filtroSitioCusto(propriedadeId: number | null): Promise<Prisma.MovimentoEstoqueWhereInput> {
+  if (propriedadeId == null) return {};
+  const principal = await propriedadePrincipalId();
+  return propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId };
+}
+
+/**
+ * Custo médio ponderado por produto num sítio, em uma única query. Produtos sem
+ * base valorizada ficam fora do mapa (o chamador trata como null).
+ */
+export async function obterCustosMedios(db: DbCusto, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, Prisma.Decimal>> {
+  const ids = [...new Set(produtoIds)];
+  const resultado = new Map<number, Prisma.Decimal>();
+  if (ids.length === 0) return resultado;
+  const movimentos = await db.movimentoEstoque.findMany({
+    where: {
+      produtoId: { in: ids },
+      status: "CONFIRMADO",
+      reversaoDeId: null,
+      AND: [
+        await filtroSitioCusto(propriedadeId),
+        { OR: [
+          { tipo: "ENTRADA", origem: { in: [...ORIGENS_CUSTO_MEDIO] } },
+          { tipo: "AJUSTE", quantidade: { gt: 0 }, valorTotal: { gt: 0 } },
+        ] },
+      ],
+    },
+    select: { produtoId: true, tipo: true, origem: true, status: true, reversaoDeId: true, quantidade: true, valorTotal: true },
+  });
+  const porProduto = new Map<number, typeof movimentos>();
+  for (const m of movimentos) {
+    const lista = porProduto.get(m.produtoId) ?? [];
+    lista.push(m);
+    porProduto.set(m.produtoId, lista);
+  }
+  for (const [produtoId, lista] of porProduto) {
+    const { custoMedio } = custoMedioProduto(lista);
+    if (custoMedio != null) resultado.set(produtoId, custoMedio);
+  }
+  return resultado;
+}
+
+export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedadeId: number | null): Promise<Prisma.Decimal | null> {
+  return (await obterCustosMedios(db, [produtoId], propriedadeId)).get(produtoId) ?? null;
+}
+
 export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; apenasSubtipoPlantio?: boolean }) {
   const produtos = await prisma.produto.findMany({
     where: { estocavel: true, ativo: true, ...(f?.apenasSubtipoPlantio ? { subtipoPlantio: { not: null } } : {}) },
@@ -64,6 +114,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       centrosCusto: { include: { centroCusto: true } },
     },
   });
+  const custos = await obterCustosMedios(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
       tipo: m.tipo,
@@ -71,7 +122,10 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       valorTotal: Number(m.valorTotal),
       data: iso(m.data),
     }));
-    const { saldo, valor } = saldoProduto(movs);
+    const { saldo } = saldoProduto(movs);
+    const custo = custos.get(p.id) ?? null;
+    // Valor do estoque = saldo físico × custo médio das entradas do sítio.
+    const valor = custo == null ? 0 : new Prisma.Decimal(saldo).mul(custo).toDecimalPlaces(2).toNumber();
     const minimo = p.minimoEstoque != null ? Number(p.minimoEstoque) : null;
     return {
       produtoId: p.id,
@@ -80,6 +134,7 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       saldo,
+      custoMedio: custo == null ? null : custo.toNumber(),
       valor,
       minimoEstoque: minimo,
       abaixoMinimo: minimo != null && saldo < minimo,
@@ -145,7 +200,8 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");
     if (input.centroCustoId != null && !(await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } }))) throw new EstoqueError("NAO_ENCONTRADO", "centro de custo não encontrado");
     const centroCustoId = resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: input.centroCustoId });
-    const custo = input.custoUnitario ?? (produto.custoUnitario != null ? Number(produto.custoUnitario) : 0);
+    // Sem custo informado, o ajuste é valorizado pelo custo médio do sítio.
+    const custo = input.custoUnitario != null ? new Prisma.Decimal(input.custoUnitario) : (await obterCustoMedio(tx, produto.id, propriedadeId)) ?? new Prisma.Decimal(0);
     // Valor do ajuste físico, calculado sem arredondamento intermediário em float.
     const valorTotal = new Prisma.Decimal(input.quantidade).mul(custo).toDecimalPlaces(2);
     const data = new Date(input.data);

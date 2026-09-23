@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Limites compatíveis com Produto.custoUnitario / minimoEstoque (Decimal(12,2))
+// Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 
 const tipoProdutoSchema = z.enum(["MEDICAMENTO", "RACAO", "INSUMO", "MINERAL", "OUTRO"]);
@@ -15,7 +15,6 @@ export const produtoSchema = z.object({
   tipo: tipoProdutoSchema.default("INSUMO"),
   subtipoPlantio: subtipoPlantioSchema.nullable().optional(),
   unidade: z.string().trim().min(1).max(12).default("un"),
-  custoUnitario: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "custo muito alto").nullable().optional(),
   estocavel: z.boolean().default(true),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),
   categoriaId: z.number().int().positive().nullable().optional(),

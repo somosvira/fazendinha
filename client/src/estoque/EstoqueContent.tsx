@@ -101,6 +101,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   }, [saldos.data, busca, soAbaixoMin, sort]);
 
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
+  // Sem preço no cadastro: o custo só existe depois de uma entrada valorizada no sítio.
+  const nSemCusto = useMemo(() => saldos.data.filter((s) => s.custoMedio == null).length, [saldos.data]);
 
   // Agrupamento por centro de custo para a visão "Agrupar". Produto com vários
   // centros aparece em cada grupo; sem centro cai no grupo "Sem centro".
@@ -133,7 +135,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <td>{s.tipo}</td>
       <td><CentrosChips centros={s.centrosCusto} /></td>
       <td>{qtd(s.saldo)} {s.unidade}</td>
-      <td>{money(s.valor)}</td>
+      <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.custoMedio) : "—"}</td>
+      <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.valor) : "—"}</td>
       <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
         <RebButton onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</RebButton>
@@ -226,13 +229,16 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         : saldos.data.length === 0 ? <RebEmpty>Nenhum produto estocável cadastrado.</RebEmpty>
         : saldosVisiveis.length === 0 ? <RebEmpty>Nenhum produto bate com a busca.</RebEmpty>
         : (
+          <>
+          {nSemCusto > 0 && <p className="mb-2 text-sm text-ink-3">{nSemCusto} {nSemCusto === 1 ? "produto sem custo apurado" : "produtos sem custo apurado"} — registre uma compra ou um inventário inicial com valor.</p>}
           <RebTable>
             <thead><tr>
               <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
               <th><SortBtn label="Tipo" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
               <th>Centros de custo</th>
               <th>Saldo</th>
-              <th><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
+              <th title="Média ponderada das entradas neste sítio">Custo médio</th>
+              <th title="Saldo × custo médio"><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
               <th>Mínimo</th>
               <th></th>
             </tr></thead>
@@ -240,7 +246,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
               ? gruposPorCentro.map((g) => (
                   <tbody key={g.chave}>
                     <tr className="rb-tbl-group">
-                      <td colSpan={7} style={{ background: "var(--surface-2, #f4f1ea)", fontWeight: 600 }}>
+                      <td colSpan={8} style={{ background: "var(--surface-2, #f4f1ea)", fontWeight: 600 }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <span style={{ width: 9, height: 9, borderRadius: "50%", background: g.chave === SEM_CENTRO ? "var(--ink-mute)" : "var(--outros)", flex: "0 0 auto" }} />
                           {g.nome}
@@ -253,6 +259,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
                 ))
               : <tbody>{saldosVisiveis.map(renderRow)}</tbody>}
           </RebTable>
+          </>
         )}
 
       {/* Movimentos */}

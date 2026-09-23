@@ -131,10 +131,12 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   }, [itensKey]);
 
   const disponiveis = estocaveis.filter((p) => !linhas.some((l) => l.produtoId === p.id));
+  // Custo médio ponderado das entradas no sítio, vindo da composição salva
+  // (produto recém-adicionado só ganha custo depois de salvar).
+  const custoMedioPorProduto = useMemo(() => new Map(itens.map((i) => [i.produtoId, i.custoMedio])), [itens]);
   const totalCusto = linhas.reduce((acc, l) => {
-    const p = prodPorId.get(l.produtoId);
     const q = Number(l.qtd);
-    const custo = p?.custoUnitario != null ? Number(p.custoUnitario) : null;
+    const custo = custoMedioPorProduto.get(l.produtoId) ?? null;
     return custo != null && Number.isFinite(q) ? acc + q * custo : acc;
   }, 0);
 

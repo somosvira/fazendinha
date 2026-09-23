@@ -54,6 +54,7 @@ const movimentosQuerySchema = z.object({
 });
 const custoVacaDiaQuerySchema = z.object({ dias: z.coerce.number().int().min(1).max(365).optional() });
 const idParamSchema = z.object({ id: z.coerce.number().int().positive() });
+const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().positive().optional() });
 
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
@@ -105,6 +106,11 @@ export const estoqueRouter = new Hono()
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {
     const { tipo, q, ativo } = c.req.valid("query");
     return c.json(await produtosSvc.listarProdutos({ tipo, q, ativo: parseAtivo(ativo), incluirInativos: true }));
+  })
+  .get("/estoque/produtos/:id/ultimo-preco", zValidator("param", idParamSchema), zValidator("query", ultimoPrecoQuerySchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const { parceiroId } = c.req.valid("query");
+    return c.json(await produtosSvc.obterUltimoPreco(id, { parceiroId, propriedadeId: await resolverEscopoLeitura(c) }));
   })
   .post("/estoque/produtos", exigePermissao("lancar"), zValidator("json", produtoSchema), async (c) => {
     try { return c.json(await produtosSvc.criarProduto(c.req.valid("json"), usuarioId(c)), 201); }

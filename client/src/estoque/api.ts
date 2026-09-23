@@ -37,7 +37,11 @@ export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos + custo vaca/dia ───────────────────────────
-export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number; valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export interface SaldoDTO { produtoId: number; nome: string; tipo: string; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number;
+  /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
+  custoMedio: number | null;
+  /** saldo × custoMedio (0 quando custoMedio é null). */
+  valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
 export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
 export interface MovimentoInput { produtoId: number; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; observacao?: string; centroCustoId?: number; }
@@ -99,12 +103,18 @@ export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CO
 export type ProdutoDTO = Produto;
 export interface ProdutoInput {
   nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
-  custoUnitario?: number | null; estocavel?: boolean;
+  estocavel?: boolean;
   minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
 }
 export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: number, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
+
+// Sugestão de preço na compra: último item comprado (operação confirmada) do
+// produto, preferindo o fornecedor informado. null quando não há histórico.
+export interface UltimoPrecoDTO { valorUnitario: string; data: string; parceiro: { id: number; nome: string } | null }
+export const obterUltimoPreco = (produtoId: number, parceiroId?: number | null) =>
+  req<UltimoPrecoDTO | null>(`/estoque/produtos/${produtoId}/ultimo-preco${qs({ parceiroId })}`);
 
 export function useProdutosEstoque(f?: { tipo?: string; q?: string; ativo?: boolean }) {
   const [data, setData] = useState<ProdutoDTO[]>([]);

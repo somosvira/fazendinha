@@ -55,7 +55,7 @@ describe("consumo de dieta por propriedade", () => {
           produtoId: 4,
           unidade: "kg",
           qtdPorCabecaDia: 2,
-          produto: { id: 4, nome: "Ração", custoUnitario: 3, centrosCusto: [] },
+          produto: { id: 4, nome: "Ração", centrosCusto: [] },
         }],
       },
     });
@@ -70,6 +70,28 @@ describe("consumo de dieta por propriedade", () => {
     });
     expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { produtoId: { in: [4] }, propriedadeId: 7 },
+    }));
+  });
+
+  it("valoriza a prévia pelo custo médio das entradas do sítio do lote", async () => {
+    mocks.grupoFindFirst.mockResolvedValue({
+      id: 10, nome: "Alta", propriedadeId: 7,
+      dieta: { id: 2, nome: "Lactação", itens: [{ produtoId: 4, unidade: "kg", qtdPorCabecaDia: 2, produto: { id: 4, nome: "Ração", centrosCusto: [] } }] },
+    });
+    const { Prisma } = await import("@prisma/client");
+    mocks.movimentoFindMany.mockImplementation(async (args: { where: { reversaoDeId?: null } }) => "reversaoDeId" in args.where
+      ? [
+        { produtoId: 4, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(20) },
+        { produtoId: 4, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(40) },
+      ]
+      : []);
+
+    const prev = await previsaoConsumo(10, "2026-07-01", "2026-07-02", null);
+
+    // 3 cabeças × 2 kg × 2 dias = 12 kg a R$ 3,00 (médio de 2 e 4)
+    expect(prev.linhas[0]).toEqual(expect.objectContaining({ quantidade: 12, custoUnitario: 3, custoTotal: 36 }));
+    expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ produtoId: { in: [4] }, status: "CONFIRMADO", AND: expect.arrayContaining([{ propriedadeId: 7 }]) }),
     }));
   });
 

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   produtoFindMany: vi.fn(),
   obterConfig: vi.fn(),
   calcularCustoVacaDia: vi.fn(),
+  obterCustosMedios: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({
@@ -23,7 +24,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 vi.mock("./config.js", () => ({ obterConfig: mocks.obterConfig }));
-vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia }));
+vi.mock("../estoque/estoque.js", () => ({ calcularCustoVacaDia: mocks.calcularCustoVacaDia, obterCustosMedios: mocks.obterCustosMedios }));
 vi.mock("../../env.js", () => ({ env: {} }));
 
 import { agregarProducao } from "./producao.js";
@@ -40,6 +41,7 @@ beforeEach(() => {
   mocks.eventoFindMany.mockResolvedValue([]);
   mocks.transacaoFindMany.mockResolvedValue([]);
   mocks.produtoFindMany.mockResolvedValue([]);
+  mocks.obterCustosMedios.mockResolvedValue(new Map());
   mocks.calcularCustoVacaDia.mockResolvedValue({ custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 });
 });
 
@@ -74,6 +76,30 @@ describe("agregados por propriedade", () => {
     expect(mocks.eventoFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ animal: { propriedadeId: 7 } }),
     }));
+    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [], 7);
+  });
+
+  it("custo sanitário exato usa o custo médio do sítio, cruzando por produtoId e, no legado, pelo nome", async () => {
+    const { Prisma } = await import("@prisma/client");
+    mocks.eventoFindMany.mockResolvedValue([
+      { produto: "Vermífugo", produtoId: 3, animal: { numero: "10", nome: null } },
+      { produto: "Vermífugo", produtoId: 3, animal: { numero: "11", nome: null } },
+      { produto: "Vacina antiga", produtoId: null, animal: { numero: "10", nome: null } },
+      { produto: "Sem cadastro", produtoId: null, animal: { numero: "10", nome: null } },
+    ]);
+    mocks.produtoFindMany.mockResolvedValue([{ id: 8, nome: "Vacina antiga" }]);
+    mocks.obterCustosMedios.mockResolvedValue(new Map([[3, new Prisma.Decimal(6)], [8, new Prisma.Decimal("2.5")]]));
+
+    const r = await agregarCustoSanidade(12, 7);
+
+    expect(mocks.obterCustosMedios).toHaveBeenCalledWith(expect.anything(), [3, 3, 8], 7);
+    expect(r.produtos).toEqual(expect.arrayContaining([
+      { produto: "Vermífugo", n: 2, custoMedio: 6, custoExato: 12 },
+      { produto: "Vacina antiga", n: 1, custoMedio: 2.5, custoExato: 2.5 },
+      { produto: "Sem cadastro", n: 1, custoMedio: null, custoExato: null },
+    ]));
+    expect(r.custoExatoTotal).toBe(14.5);
+    expect(r.produtosPrecificados).toBe(2);
   });
 
   it("monta insights da IA somente com animais e grupos do sítio", async () => {

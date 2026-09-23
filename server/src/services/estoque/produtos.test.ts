@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
-  parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(),
+  parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -13,19 +13,20 @@ vi.mock("../../db.js", () => {
     auditoriaFinanceira: { create: mocks.auditoria },
   };
   mocks.transaction.mockImplementation(async (fn: (db: unknown) => unknown) => fn(tx));
-  return { prisma: { produto: { findMany: mocks.produtoFindMany }, $transaction: mocks.transaction } };
+  return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };
 });
 
-import { atualizarProduto, criarProduto } from "./produtos.js";
+import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js";
+import { Prisma } from "@prisma/client";
 
-const base = { id: 1, nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null, estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { nome: "Alimentação", classificacao: "CUSTEIO" } };
+const base = { id: 1, nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { nome: "Alimentação", classificacao: "CUSTEIO" } };
 const fornecedor = { id: 7, nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: 4, nome: "Pecuária", ativo: true };
 
 import type { ProdutoInput } from "./produtos.schemas.js";
 
 const input = (over: Partial<ProdutoInput> = {}): ProdutoInput => ({
-  nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null,
+  nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg",
   estocavel: true, minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
   ...over,
 });
@@ -95,5 +96,32 @@ describe("cadastro de produtos (estoque)", () => {
   it("permite produto não estocável sem categoria", async () => {
     await criarProduto(input({ estocavel: false, categoriaId: null }), 9);
     expect(mocks.produtoCreate).toHaveBeenCalled();
+  });
+});
+
+describe("obterUltimoPreco", () => {
+  const item = (valor: string, parceiro: { id: number; nome: string } | null) => ({ valorUnitario: new Prisma.Decimal(valor), operacao: { data: new Date("2026-09-01T00:00:00Z"), parceiro } });
+  beforeEach(() => vi.clearAllMocks());
+
+  it("prefere a última compra confirmada do fornecedor informado", async () => {
+    mocks.itemFindFirst.mockResolvedValueOnce(item("7.5", { id: 4, nome: "Cooperativa" }));
+    expect(await obterUltimoPreco(12, { parceiroId: 4, propriedadeId: 3 })).toEqual({ valorUnitario: "7.5", data: "2026-09-01", parceiro: { id: 4, nome: "Cooperativa" } });
+    expect(mocks.itemFindFirst).toHaveBeenCalledTimes(1);
+    expect(mocks.itemFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { produtoId: 12, operacao: { tipo: { in: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"] }, status: "CONFIRMADA", propriedadeId: 3, parceiroId: 4 } },
+      orderBy: [{ operacao: { data: "desc" } }, { id: "desc" }],
+    }));
+  });
+
+  it("sem compra do fornecedor, cai na última compra de qualquer fornecedor", async () => {
+    mocks.itemFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(item("6", { id: 9, nome: "Agro Sul" }));
+    expect(await obterUltimoPreco(12, { parceiroId: 4 })).toEqual({ valorUnitario: "6", data: "2026-09-01", parceiro: { id: 9, nome: "Agro Sul" } });
+    expect(mocks.itemFindFirst.mock.calls[1][0].where.operacao).not.toHaveProperty("parceiroId");
+  });
+
+  it("sem histórico devolve null", async () => {
+    mocks.itemFindFirst.mockResolvedValue(null);
+    expect(await obterUltimoPreco(12)).toBeNull();
+    expect(mocks.itemFindFirst).toHaveBeenCalledTimes(1);
   });
 });

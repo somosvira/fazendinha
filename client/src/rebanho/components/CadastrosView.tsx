@@ -10,7 +10,6 @@ import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebMain, RebAnm, RebPill, REB_CHIPS, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { EmptyState } from "@/components/EmptyState";
 import { Package, Users } from "lucide-react";
-import { fmtMoneyExact } from "@/components/charts";
 import { IndicadoresGeneticosSection } from "./IndicadoresGeneticosSection";
 import { MedidasAcasalamentoSection } from "./MedidasAcasalamentoSection";
 
@@ -32,7 +31,6 @@ const TIPO_PESSOA: { id: TipoPessoa; label: string }[] = [
 ];
 const LABEL_PESSOA: Record<TipoPessoa, string> = Object.fromEntries(TIPO_PESSOA.map((t) => [t.id, t.label])) as Record<TipoPessoa, string>;
 
-const money = fmtMoneyExact;
 
 export function CadastrosView() {
   const [sub, setSub] = useState<Sub>("produtos");
@@ -82,13 +80,12 @@ function Produtos() {
         )
         : (
           <RebTable>
-            <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Custo</th><th>Situação</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Unidade</th><th>Situação</th><th></th></tr></thead>
             <tbody>{data.map((p) => (
               <tr key={p.id}>
                 <td><RebAnm>{p.nome}</RebAnm></td>
                 <td>{LABEL_PRODUTO[p.tipo ?? "OUTRO"]}</td>
                 <td>{p.unidade}</td>
-                <td>{p.custoUnitario != null ? money(Number(p.custoUnitario)) : "—"}</td>
                 <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(p)}>Editar</RebButton>{" "}

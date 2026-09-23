@@ -450,4 +450,30 @@ describe("correções da revisão", () => {
     expect((await stock.listarSaldos({ propriedadeId: pid })).find((p) => p.produtoId === productId)?.saldo).toBe(10);
     expect((await stock.listarSaldos({ propriedadeId: outra.id })).find((p) => p.produtoId === productId)?.saldo).toBe(25);
   });
+  it("custo médio ponderado: compras formam o médio, venda baixa pelo médio e estorno recalcula", async () => {
+    const compra = (valorUnitario: number) => ({ ...schema.operacaoSchema.parse({
+      tipo: "COMPRA_ESTOQUE", data, descricao: `Compra QA a ${valorUnitario}`, parceiroId: partnerId,
+      itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 10, unidade: "kg", valorUnitario, estocavel: true }],
+      financeiro: { condicao: "A_VISTA", contaId: accountId },
+    }), propriedadeId: pid, usuarioId: userId });
+    await ops.criarOperacao(compra(5));
+    const segunda = await ops.criarOperacao(compra(7));
+    const linha = async () => (await stock.listarSaldos({ propriedadeId: pid })).find((p) => p.produtoId === productId)!;
+    expect(await linha()).toMatchObject({ saldo: 20, custoMedio: 6, valor: 120 });
+
+    const venda = await ops.criarOperacao({ ...schema.operacaoSchema.parse({
+      tipo: "VENDA", data, descricao: "Venda QA 5 kg", parceiroId: partnerId,
+      itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 5, unidade: "kg", valorUnitario: 20, estocavel: true }],
+      financeiro: { condicao: "A_VISTA", contaId: accountId },
+    }), propriedadeId: pid, usuarioId: userId });
+    expect(venda.movimentosEstoque).toHaveLength(1);
+    expect(venda.movimentosEstoque[0].tipo).toBe("SAIDA");
+    expect(Number(venda.movimentosEstoque[0].custoUnitario)).toBe(6); // custo, não o preço de venda (20)
+    expect(Number(venda.movimentosEstoque[0].valorTotal)).toBe(30);
+    expect(await linha()).toMatchObject({ saldo: 15, custoMedio: 6, valor: 90 });
+
+    await ops.estornarOperacao(segunda.id, "Compra lançada em duplicidade", { propriedadeId: pid, usuarioId: userId });
+    expect(await linha()).toMatchObject({ saldo: 5, custoMedio: 5, valor: 25 });
+    await snapshot("custo médio após estorno");
+  });
 });

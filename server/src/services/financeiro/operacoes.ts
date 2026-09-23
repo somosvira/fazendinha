@@ -2,6 +2,8 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
+import { obterCustosMedios } from "../estoque/estoque.js";
+import { valorSaida } from "../estoque/estoque.calc.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
@@ -180,10 +182,19 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
           : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
-      for (const item of operacao.itens.filter((item) => item.estocavel && item.produtoId)) {
+      const itensEstoque = operacao.itens.filter((item) => item.estocavel && item.produtoId);
+      // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
+      // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
+      const custosSaida = tipoMovimento === "SAIDA"
+        ? await obterCustosMedios(tx, itensEstoque.map((item) => item.produtoId!), input.propriedadeId)
+        : null;
+      for (const item of itensEstoque) {
+        const valores = custosSaida
+          ? valorSaida(item.quantidade, custosSaida.get(item.produtoId!) ?? null)
+          : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
         await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
-          custoUnitario: item.valorUnitario, valorTotal: item.valorTotal, operacaoId: operacao.id, itemOperacaoId: item.id,
+          ...valores, operacaoId: operacao.id, itemOperacaoId: item.id,
           centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,

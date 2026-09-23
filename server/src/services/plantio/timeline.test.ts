@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   movimentoUpdate: vi.fn(),
   movimentoFindUnique: vi.fn(),
   movimentoFindFirst: vi.fn(),
+  movimentoFindMany: vi.fn(),
   auditCreate: vi.fn(),
   queryRaw: vi.fn(),
   operacaoCreate: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock("../../db.js", () => ({
     produto: { findUnique: mocks.produtoFindUnique },
     centroCusto: { findFirst: mocks.centroCustoFindFirst },
     periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
-    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst },
+    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany },
     propriedade: { findFirst: mocks.propriedadeFindFirst, count: vi.fn().mockResolvedValue(1) },
     inspecaoMIP: { findMany: vi.fn().mockResolvedValue([]) },
     amostraSolo: { findMany: vi.fn().mockResolvedValue([]) },
@@ -59,7 +60,7 @@ const movimentoExistente = {
   propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
 };
 
-const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg", centrosCusto: [] };
+const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -67,7 +68,7 @@ beforeEach(() => {
     fn({
       produto: { findUnique: mocks.produtoFindUnique },
       centroCusto: { findFirst: mocks.centroCustoFindFirst },
-      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst },
+      movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, findUnique: mocks.movimentoFindUnique, findFirst: mocks.movimentoFindFirst, findMany: mocks.movimentoFindMany },
       operacaoAgricola: { create: mocks.operacaoCreate, update: mocks.operacaoUpdate, delete: mocks.operacaoDelete },
       periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
       auditoriaFinanceira: { create: mocks.auditCreate },
@@ -76,6 +77,10 @@ beforeEach(() => {
   );
   mocks.movimentoFindUnique.mockResolvedValue(movimentoExistente);
   mocks.movimentoFindFirst.mockResolvedValue(movimentoExistente);
+  // Base do custo médio: uma compra de 100 kg a R$ 2,00 (custo médio 2).
+  mocks.movimentoFindMany.mockImplementation(async ({ where }: { where: { produtoId: { in: number[] } } }) => where.produtoId.in.map((produtoId) => ({
+    produtoId, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(200),
+  })));
   mocks.movimentoCreate.mockResolvedValue({ id: 89, quantidade: new Prisma.Decimal(20) });
   mocks.queryRaw.mockResolvedValue([]);
   mocks.periodoFindUnique.mockResolvedValue(null);
@@ -87,7 +92,7 @@ describe("criarOperacao", () => {
   it("cria SAIDA de estoque com quantidade = dose × área e grava movimentoEstoqueId", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg", centrosCusto: [],
+      id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [],
     });
     mocks.movimentoCreate.mockResolvedValue({ id: 88, quantidade: new Prisma.Decimal(20) });
     mocks.operacaoCreate.mockResolvedValue({
@@ -119,16 +124,45 @@ describe("criarOperacao", () => {
 
     await criarOperacao(1, { dominio: "FENOLOGIA", tipo: "PODA_DECOTE", data: "2026-01-10" } as any);
 
-    expect(mocks.propriedadeFindFirst).toHaveBeenCalled();
+    // Principal (id 5, possivelmente já em cache) resolve o sítio do talhão sem propriedade.
     expect(mocks.periodoFindUnique).toHaveBeenCalledWith(expect.objectContaining({
       where: { propriedadeId_ano_mes: expect.objectContaining({ propriedadeId: 5 }) },
     }));
   });
 
+  it("valoriza a SAIDA pelo custo médio das entradas do sítio do talhão", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.movimentoFindMany.mockResolvedValue([
+      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(50) },
+      { produtoId: 3, tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, quantidade: new Prisma.Decimal(10), valorTotal: new Prisma.Decimal(70) },
+    ]);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
+
+    const criado = mocks.movimentoCreate.mock.calls[0][0].data;
+    expect(Number(criado.custoUnitario)).toBe(6);
+    expect(Number(criado.valorTotal)).toBe(120); // 20 kg × 6
+  });
+
+  it("sem base de custo, a SAIDA sai com custo 0", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.movimentoFindMany.mockResolvedValue([]);
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
+
+    const criado = mocks.movimentoCreate.mock.calls[0][0].data;
+    expect(Number(criado.custoUnitario)).toBe(0);
+    expect(Number(criado.valorTotal)).toBe(0);
+  });
+
   it("rejeita centroCustoId inexistente", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg", centrosCusto: [],
+      id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [],
     });
     mocks.centroCustoFindFirst.mockResolvedValue(null);
 
@@ -254,7 +288,7 @@ describe("editarOperacao", () => {
       operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
     };
     const produtoDoisCentros = {
-      id: 3, nome: "Ureia", estocavel: true, custoUnitario: new Prisma.Decimal(2), unidade: "kg",
+      id: 3, nome: "Ureia", estocavel: true, unidade: "kg",
       centrosCusto: [{ centroCustoId: 10 }, { centroCustoId: 20 }],
     };
 
@@ -293,7 +327,7 @@ describe("editarOperacao", () => {
     });
 
     it("PATCH { produtoId: B } sem centroCustoId não herda o centro do produto A — resolve o centro único de B", async () => {
-      const produtoB = { id: 7, nome: "Boro", estocavel: true, custoUnitario: new Prisma.Decimal(3), unidade: "kg", centrosCusto: [{ centroCustoId: 42 }] };
+      const produtoB = { id: 7, nome: "Boro", estocavel: true, unidade: "kg", centrosCusto: [{ centroCustoId: 42 }] };
       mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
       mocks.produtoFindUnique.mockResolvedValue(produtoB);
       mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });

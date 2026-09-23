@@ -57,3 +57,25 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
     expect(String(chamadasSaldos[0][0])).not.toContain("centroCustoId");
   });
 });
+
+describe("EstoqueContent — custo médio", () => {
+  it("mostra custo médio e valor (saldo × médio); sem custo, '—' e aviso de produtos sem custo apurado", async () => {
+    const saldos = [
+      { produtoId: 1, nome: "Ração", tipo: "RACAO", unidade: "kg", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false },
+      { produtoId: 2, nome: "Sal", tipo: "MINERAL", unidade: "kg", centrosCusto: [], saldo: 4, custoMedio: null, valor: 0, minimoEstoque: null, abaixoMinimo: false },
+    ];
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      const body = /\/estoque\/saldos/.test(url) ? saldos : /\/estoque\/custo-vaca-dia/.test(url) ? { periodoDias: 30, custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 } : [];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+    }));
+    render(<EstoqueContent />);
+    const racao = (await screen.findByText("Ração")).closest("tr")!;
+    const celulas = [...racao.querySelectorAll("td")].map((td) => td.textContent?.replaceAll(" ", " "));
+    expect(celulas).toContain("R$ 6,00");
+    expect(celulas).toContain("R$ 90,00");
+    const sal = screen.getByText("Sal").closest("tr")!;
+    expect([...sal.querySelectorAll("td")].filter((td) => td.textContent === "—").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("1 produto sem custo apurado — registre uma compra ou um inventário inicial com valor.")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Custo médio" }).getAttribute("title")).toBe("Média ponderada das entradas neste sítio");
+  });
+});

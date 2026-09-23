@@ -20,7 +20,6 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     tipo: produto.tipo,
     subtipoPlantio: produto.subtipoPlantio ?? null,
     unidade: produto.unidade,
-    custoUnitario: produto.custoUnitario != null ? produto.custoUnitario.toString() : null,
     estocavel: produto.estocavel,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,
@@ -134,4 +133,38 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       return depois;
     });
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+}
+
+// ── Sugestão de preço na compra ─────────────────────────────────────────────
+// O cadastro não guarda preço: a sugestão vem do último item comprado do
+// produto em operação confirmada, preferindo o fornecedor informado.
+export interface UltimoPrecoDTO {
+  valorUnitario: string;
+  data: string;
+  parceiro: { id: number; nome: string } | null;
+}
+
+const TIPOS_COMPRA = ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"] as const;
+
+export async function obterUltimoPreco(produtoId: number, f: { parceiroId?: number | null; propriedadeId?: number | null } = {}): Promise<UltimoPrecoDTO | null> {
+  const buscar = (parceiroId?: number) => prisma.itemOperacao.findFirst({
+    where: {
+      produtoId,
+      operacao: {
+        tipo: { in: [...TIPOS_COMPRA] },
+        status: "CONFIRMADA",
+        ...(f.propriedadeId != null ? { propriedadeId: f.propriedadeId } : {}),
+        ...(parceiroId != null ? { parceiroId } : {}),
+      },
+    },
+    orderBy: [{ operacao: { data: "desc" } }, { id: "desc" }],
+    select: { valorUnitario: true, operacao: { select: { data: true, parceiro: { select: { id: true, nome: true } } } } },
+  });
+  const item = (f.parceiroId != null ? await buscar(f.parceiroId) : null) ?? await buscar();
+  if (!item) return null;
+  return {
+    valorUnitario: item.valorUnitario.toString(),
+    data: item.operacao.data.toISOString().slice(0, 10),
+    parceiro: item.operacao.parceiro ? { id: item.operacao.parceiro.id, nome: item.operacao.parceiro.nome } : null,
+  };
 }

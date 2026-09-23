@@ -421,7 +421,7 @@ export function useAnimaisDisponiveis() {
 }
 
 // ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
-export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoUnitario: number | null; ordem: number; }
+export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoMedio: number | null; ordem: number; }
 export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
 export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
 export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
@@ -1035,7 +1035,7 @@ export interface CustoSanidade {
   totalAplicacoes: number;
   custoPorAplicacao: number;
   topAnimais: { numero: string; nome: string | null; n: number; custoEstimado: number; custoExato: number }[];
-  produtos: { produto: string; n: number; custoUnitario: number | null; custoExato: number | null }[];
+  produtos: { produto: string; n: number; custoMedio: number | null; custoExato: number | null }[];
   custoExatoTotal: number;
   produtosPrecificados: number;
   produtosTotais: number;

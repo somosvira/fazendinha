@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   listarCategorias: vi.fn(),
   listarCentrosCusto: vi.fn(),
   listarParceiros: vi.fn(),
+  obterUltimoPreco: vi.fn(),
 }));
 
 vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
@@ -34,6 +35,7 @@ vi.mock("../services/estoque/produtos.js", async (importOriginal) => {
     listarProdutos: mocks.listarProdutos,
     criarProduto: mocks.criarProduto,
     atualizarProduto: mocks.atualizarProduto,
+    obterUltimoPreco: mocks.obterUltimoPreco,
   };
 });
 vi.mock("../services/rebanho/financeiro-ref.js", () => ({
@@ -192,5 +194,27 @@ describe("POST /estoque/produtos", () => {
     const res = await appCom(comLancar).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
     expect(res.status).toBe(201);
     expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Ureia" }), 7);
+  });
+});
+
+describe("GET /estoque/produtos/:id/ultimo-preco", () => {
+  it("repassa produto, fornecedor preferido e escopo do sítio ao service", async () => {
+    mocks.obterUltimoPreco.mockResolvedValue({ valorUnitario: "7.5", data: "2026-09-01", parceiro: { id: 4, nome: "Cooperativa" } });
+    const res = await appCom(semLancar).request("/estoque/produtos/12/ultimo-preco?parceiroId=4");
+    expect(res.status).toBe(200);
+    expect(mocks.obterUltimoPreco).toHaveBeenCalledWith(12, { parceiroId: 4, propriedadeId: 3 });
+    expect(await res.json()).toEqual({ valorUnitario: "7.5", data: "2026-09-01", parceiro: { id: 4, nome: "Cooperativa" } });
+  });
+  it("sem parceiro e sem histórico devolve null", async () => {
+    mocks.obterUltimoPreco.mockResolvedValue(null);
+    const res = await appCom(semLancar).request("/estoque/produtos/12/ultimo-preco");
+    expect(res.status).toBe(200);
+    expect(mocks.obterUltimoPreco).toHaveBeenCalledWith(12, { parceiroId: undefined, propriedadeId: 3 });
+    expect(await res.json()).toBeNull();
+  });
+  it("id inválido → 400", async () => {
+    const res = await appCom(semLancar).request("/estoque/produtos/abc/ultimo-preco");
+    expect(res.status).toBe(400);
+    expect(mocks.obterUltimoPreco).not.toHaveBeenCalled();
   });
 });
