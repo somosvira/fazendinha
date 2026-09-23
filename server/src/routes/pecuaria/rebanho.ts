@@ -1,9 +1,9 @@
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { prisma } from "../../db.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
-import { getUsuario } from "../../middleware/permissao.js";
+import { getUsuario, exigePermissao } from "../../middleware/permissao.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import * as animais from "../../services/pecuaria/rebanho/animais.js";
 import * as lotes from "../../services/pecuaria/rebanho/lotes.js";
@@ -54,7 +54,18 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
   });
 }
 
+/**
+ * Toda escrita no rebanho (qualquer método != GET — cadastro, edição, movimentação,
+ * saída, pesagem, lotes, raças, motivos de saída) exige a flag `lancar`. Leitura só
+ * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
+ */
+const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
+  if (c.req.method === "GET") return next();
+  return exigePermissao("lancar")(c, next);
+};
+
 export const rebanhoRouter = new Hono()
+  .use("*", exigirLancarParaEscrita)
   .get("/animais", zValidator("query", listarFiltrosSchema, (resultado, c) => {
     if (!resultado.success) {
       const erro = resultado.error.issues[0];

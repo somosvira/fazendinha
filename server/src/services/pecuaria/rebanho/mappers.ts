@@ -62,13 +62,20 @@ export function mapearAnimalResumo(input: {
   };
 }
 
+/** Composição na ficha: com o id e a situação da raça, para editar sem reconstruir pela sigla. */
+export interface ItemComposicaoFicha extends FracaoRaca {
+  racaId: string;
+  nome: string;
+  racaAtiva: boolean;
+}
+
 export interface AnimalFicha extends AnimalResumo {
   brincoEletronico: string | null;
   sisbov: string | null;
   nascimentoEstimado: boolean;
   partosAntesDaEntrada: number;
   observacao: string | null;
-  composicao: FracaoRaca[];
+  composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null }>;
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
@@ -115,6 +122,7 @@ export function agregarPainel(resumos: AnimalResumo[]): PainelRebanho {
 
 const RESUMOS_AUDITORIA: Record<string, string> = {
   "Animal:CADASTRO": "Cadastro do animal",
+  "Animal:IMPORTACAO": "Importado do IDEAGRI",
   "Animal:EDICAO": "Edição dos dados do animal",
   "ComposicaoRacial:EDICAO": "Composição racial alterada",
   "LocalizacaoAnimal:MOVIMENTACAO": "Movimentação de localização/lote",

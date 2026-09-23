@@ -1,12 +1,13 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { auditar, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
+import { auditar, dadosAuditoria, traduzirConflitoUnico, travarBrinco, RebanhoError, type DbPecuaria } from "./regras.js";
 import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
-import { validarDatasAnimal, validarDataSaida, validarDataPesagem, validarDataLocalizacao, validarDataDestino, validarEdicaoAnimal } from "./datas.calc.js";
-import { validarComposicao, type FracaoRaca } from "./composicao.calc.js";
-import { planejarMovimentacao, planejarDestino, planejarDesfazer, MovimentacaoError } from "./movimentacao.calc.js";
+import { validarDatasAnimal, validarDataSaida, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
+import { validarComposicao } from "./composicao.calc.js";
+import { planejarDestino, planejarDesfazer, planejarMovimentacaoEmMassa, ordenarHistoricoDesc, MovimentacaoError } from "./movimentacao.calc.js";
+import { filtroCategoria } from "./categoria.calc.js";
 import { planejarSaida, planejarEstornoSaida, SaidaError } from "./saida.calc.js";
-import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type PainelRebanho } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho } from "./mappers.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   SaidaInput, EstornoSaidaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
@@ -81,15 +82,18 @@ async function exigirNoEscopo(db: DbPecuaria, animalId: string, escopo: number |
 }
 
 async function exigirBrincoLivre(db: DbPecuaria, brinco: string, propriedadeId: number, ignorarAnimalId?: string, sufixo = "nesse sítio") {
+  await travarBrinco(db, propriedadeId, normalizarBrinco(brinco));
   const ativos = await ativosNoSitioParaBrinco(db, propriedadeId);
   if (!brincoDisponivel({ brinco, propriedadeId, ativosNoSitio: ativos, ignorarAnimalId })) {
     throw new RebanhoError("BRINCO_DUPLICADO", `Já existe um animal ativo com o brinco ${normalizarBrinco(brinco)} ${sufixo}`, "brinco");
   }
 }
 
-async function frasaoComposicaoAnimal(db: DbPecuaria, animalId: string): Promise<FracaoRaca[]> {
+async function composicaoDaFicha(db: DbPecuaria, animalId: string): Promise<ItemComposicaoFicha[]> {
   const itens = await db.composicaoRacial.findMany({ where: { animalId }, include: { raca: true } });
-  return itens.map((i) => ({ sigla: i.raca.sigla, fracao64: i.fracao64 }));
+  return itens
+    .map((i) => ({ racaId: i.racaId, sigla: i.raca.sigla, nome: i.raca.nome, racaAtiva: i.raca.ativo, fracao64: i.fracao64 }))
+    .sort((a, b) => b.fracao64 - a.fracao64);
 }
 
 // ---------- cadastrar ----------
@@ -162,7 +166,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
       });
     }
 
-    await auditar(tx, { entidade: "Animal", entidadeId: animal.id, acao: "CADASTRO", usuarioId, depois: { ...animal, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null } });
+    await auditar(tx, { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "CADASTRO", usuarioId, depois: { ...animal, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null } });
 
     return animal;
   });
@@ -175,32 +179,33 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
 export async function editar(id: string, input: EditarAnimalInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   const animal = await exigirNoEscopo(prisma, id, escopo);
 
-  const mudaDatas = input.sexo !== undefined || input.dataNascimento !== undefined || input.origem !== undefined
-    || input.dataEntrada !== undefined || input.partosAntesDaEntrada !== undefined;
-
-  if (mudaDatas) {
-    const [primeiraLocalizacao, primeiroDestino, primeiraPesagem, primeiraSaida] = await Promise.all([
-      prisma.localizacaoAnimal.findFirst({ where: { animalId: id }, orderBy: { desde: "asc" } }),
-      prisma.destinoAnimal.findFirst({ where: { animalId: id }, orderBy: { desde: "asc" } }),
-      prisma.pesagem.findFirst({ where: { animalId: id }, orderBy: { data: "asc" } }),
-      prisma.saidaAnimal.findFirst({ where: { animalId: id }, orderBy: { data: "asc" } }),
-    ]);
-
-    const erros = validarEdicaoAnimal({
-      sexo: input.sexo ?? animal.sexo,
-      dataNascimento: input.dataNascimento ?? animal.dataNascimento,
-      origem: input.origem ?? animal.origem,
-      dataEntrada: input.dataEntrada ?? animal.dataEntrada,
-      partosAntesDaEntrada: input.partosAntesDaEntrada ?? animal.partosAntesDaEntrada,
-      primeiraLocalizacaoDesde: primeiraLocalizacao?.desde ?? null,
-      primeiroDestinoDesde: primeiroDestino?.desde ?? null,
-      primeiraPesagemData: primeiraPesagem?.data ?? null,
-      primeiraSaidaData: primeiraSaida?.data ?? null,
-    });
-    if (erros.length) throw new RebanhoError("VALIDACAO", erros[0].mensagem, erros[0].campo);
-  }
+  const nascimentoNovo = input.dataNascimento != null ? new Date(input.dataNascimento) : animal.dataNascimento;
+  const entradaNova = input.dataEntrada != null ? new Date(input.dataEntrada) : animal.dataEntrada;
+  const origemNova = input.origem ?? animal.origem;
+  const mudaDatas = nascimentoNovo.getTime() !== animal.dataNascimento.getTime()
+    || entradaNova.getTime() !== animal.dataEntrada.getTime() || origemNova !== animal.origem;
 
   const atualizado = await prisma.$transaction(async (tx) => {
+    let ajuste: ReturnType<typeof planejarAjusteEntrada> | null = null;
+    if (mudaDatas) {
+      const errosBase = validarDatasAnimal({ dataNascimento: nascimentoNovo, dataEntrada: entradaNova, origem: origemNova });
+      if (errosBase.length) throw new RebanhoError("VALIDACAO", errosBase[0].mensagem, errosBase[0].campo);
+
+      const [localizacoes, destinos, pesagens, primeiraSaida] = await Promise.all([
+        tx.localizacaoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
+        tx.destinoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
+        tx.pesagem.findMany({ where: { animalId: id }, select: { id: true, data: true, tipo: true } }),
+        tx.saidaAnimal.findFirst({ where: { animalId: id, estornadaEm: null }, orderBy: { data: "asc" } }),
+      ]);
+      ajuste = planejarAjusteEntrada({
+        entradaAntiga: animal.dataEntrada, entradaNova,
+        nascimentoAntigo: animal.dataNascimento, nascimentoNovo,
+        localizacoes, destinos, pesagens,
+        primeiraSaidaData: primeiraSaida?.data ?? null,
+      });
+      if (ajuste.erros.length) throw new RebanhoError("VALIDACAO", ajuste.erros[0].mensagem, ajuste.erros[0].campo);
+    }
+
     if (input.brinco != null && normalizarBrinco(input.brinco) !== normalizarBrinco(animal.brinco)) {
       const loc = await localizacaoAberta(tx, id);
       if (loc) await exigirBrincoLivre(tx, input.brinco, loc.propriedadeId, id);
@@ -214,10 +219,10 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
         brincoEletronico: input.brincoEletronico === undefined ? undefined : input.brincoEletronico,
         sisbov: input.sisbov === undefined ? undefined : input.sisbov,
         sexo: input.sexo ?? undefined,
-        dataNascimento: input.dataNascimento != null ? new Date(input.dataNascimento) : undefined,
+        dataNascimento: input.dataNascimento != null ? nascimentoNovo : undefined,
         nascimentoEstimado: input.nascimentoEstimado ?? undefined,
         origem: input.origem ?? undefined,
-        dataEntrada: input.dataEntrada != null ? new Date(input.dataEntrada) : undefined,
+        dataEntrada: input.dataEntrada != null ? entradaNova : undefined,
         partosAntesDaEntrada: input.partosAntesDaEntrada ?? undefined,
         observacao: input.observacao === undefined ? undefined : input.observacao,
       },
@@ -226,7 +231,18 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       sisbov: "Já existe um animal com esse SISBOV",
     }));
 
-    await auditar(tx, { entidade: "Animal", entidadeId: id, acao: "EDICAO", usuarioId, antes: animal, depois: salvo });
+    // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
+    if (ajuste) {
+      if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
+      if (ajuste.moverDestino) await tx.destinoAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+      if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
+      if (ajuste.moverPesagensNascimento.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensNascimento } }, data: { data: nascimentoNovo } });
+    }
+
+    await auditar(tx, {
+      entidade: "Animal", entidadeId: id, animalId: id, acao: "EDICAO", usuarioId, antes: animal,
+      depois: ajuste ? { ...salvo, historicoAjustado: { localizacao: ajuste.moverLocalizacao, destino: ajuste.moverDestino, pesagens: [...ajuste.moverPesagensEntrada, ...ajuste.moverPesagensNascimento] } } : salvo,
+    });
     return salvo;
   });
 
@@ -235,28 +251,27 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
 
 // ---------- composição racial (substituição integral) ----------
 
-export interface ItemComposicaoDTO {
-  racaId: string;
-  sigla: string;
-  nome: string;
-  fracao64: number;
-}
-
 export async function substituirComposicao(
   animalId: string,
   input: SubstituirComposicaoInput,
   usuarioId: number | null,
   escopo: number | null = null,
-): Promise<ItemComposicaoDTO[]> {
+): Promise<ItemComposicaoFicha[]> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
   const errosComposicao = validarComposicao(input.itens.map((c) => ({ sigla: c.racaId, fracao64: c.fracao64 })));
   if (errosComposicao.length) throw new RebanhoError("VALIDACAO", errosComposicao[0].mensagem, errosComposicao[0].campo);
 
   if (input.itens.length) {
+    // raça inativa só é aceita se já estiver na composição atual (desativar não trava a edição)
     const racaIds = [...new Set(input.itens.map((c) => c.racaId))];
-    const encontradas = await prisma.raca.count({ where: { id: { in: racaIds }, ativo: true } });
-    if (encontradas !== racaIds.length) throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "itens");
+    const [racas, atuais] = await Promise.all([
+      prisma.raca.findMany({ where: { id: { in: racaIds } }, select: { id: true, ativo: true } }),
+      prisma.composicaoRacial.findMany({ where: { animalId }, select: { racaId: true } }),
+    ]);
+    const jaPresentes = new Set(atuais.map((a) => a.racaId));
+    const aceitas = racas.filter((r) => r.ativo || jaPresentes.has(r.id));
+    if (aceitas.length !== racaIds.length) throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "itens");
   }
 
   const composicao = await prisma.$transaction(async (tx) => {
@@ -268,11 +283,13 @@ export async function substituirComposicao(
       });
     }
     const depois = await tx.composicaoRacial.findMany({ where: { animalId }, include: { raca: true } });
-    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, acao: "EDICAO", usuarioId, antes, depois });
+    await auditar(tx, { entidade: "ComposicaoRacial", entidadeId: animalId, animalId, acao: "EDICAO", usuarioId, antes, depois });
     return depois;
   });
 
-  return composicao.map((c) => ({ racaId: c.racaId, sigla: c.raca.sigla, nome: c.raca.nome, fracao64: c.fracao64 }));
+  return composicao
+    .map((c) => ({ racaId: c.racaId, sigla: c.raca.sigla, nome: c.raca.nome, racaAtiva: c.raca.ativo, fracao64: c.fracao64 }))
+    .sort((a, b) => b.fracao64 - a.fracao64);
 }
 
 // ---------- ficha ----------
@@ -282,11 +299,11 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
   const [localizacoes, destinos, pesagens, saidas, composicao] = await Promise.all([
-    prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true }, orderBy: { desde: "desc" } }),
-    prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: { desde: "desc" } }),
+    prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
+    prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
     prisma.saidaAnimal.findMany({ where: { animalId: id }, include: { motivo: true }, orderBy: { data: "desc" } }),
-    frasaoComposicaoAnimal(prisma, id),
+    composicaoDaFicha(prisma, id),
   ]);
 
   const locAtual = localizacoes.find((l) => l.ate == null) ?? null;
@@ -348,112 +365,142 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
 
 // ---------- listar ----------
 
+/**
+ * Onde o animal "está" para fins de escopo e filtro: o ativo, na localização aberta; o que saiu,
+ * na localização (e no destino) que a saída fechou. Assim a lista, o detalhe e o painel usam o
+ * mesmo critério — um animal que só passou por um sítio não aparece nele.
+ */
+export function whereSituacao(input: {
+  situacao: "ATIVO" | "SAIU" | "TODOS";
+  propriedadeId?: number | null;
+  loteId?: string | null;
+  aptidao?: "LEITE" | "CORTE" | null;
+  papelReprodutivo?: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
+}): Prisma.AnimalWhereInput {
+  const lugar = {
+    ...(input.propriedadeId != null ? { propriedadeId: input.propriedadeId } : {}),
+    ...(input.loteId ? { loteId: input.loteId } : {}),
+  };
+  const destino = {
+    ...(input.aptidao ? { aptidao: input.aptidao } : {}),
+    ...(input.papelReprodutivo ? { papelReprodutivo: input.papelReprodutivo } : {}),
+  };
+  const temDestino = Object.keys(destino).length > 0;
+
+  const ativo: Prisma.AnimalWhereInput = {
+    localizacoes: { some: { ate: null, ...lugar } },
+    saidas: { none: { estornadaEm: null } },
+    ...(temDestino ? { destinos: { some: { ate: null, ...destino } } } : {}),
+  };
+  const saiu: Prisma.AnimalWhereInput = {
+    saidas: {
+      some: {
+        estornadaEm: null,
+        ...(Object.keys(lugar).length ? { localizacaoFechada: lugar } : {}),
+        ...(temDestino ? { destinoFechado: destino } : {}),
+      },
+    },
+  };
+  if (input.situacao === "ATIVO") return ativo;
+  if (input.situacao === "SAIU") return saiu;
+  return { OR: [ativo, saiu] };
+}
+
+function whereCategoria(categoria: ListarFiltrosInput["categoria"], hoje: Date): Prisma.AnimalWhereInput {
+  if (!categoria) return {};
+  const f = filtroCategoria(categoria, hoje);
+  return {
+    sexo: f.sexo,
+    ...(f.semPartos === undefined ? {} : { partosAntesDaEntrada: f.semPartos ? 0 : { gt: 0 } }),
+    ...(f.nascidoAte || f.nascidoApos ? { dataNascimento: { ...(f.nascidoAte ? { lte: f.nascidoAte } : {}), ...(f.nascidoApos ? { gt: f.nascidoApos } : {}) } } : {}),
+  };
+}
+
+const ORDEM_HISTORICO = [{ desde: "desc" as const }, { criadoEm: "desc" as const }];
+
+const INCLUDE_RESUMO = {
+  localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, include: { propriedade: true, lote: true } },
+  destinos: { orderBy: ORDEM_HISTORICO, take: 1 },
+  saidas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
+  composicao: { include: { raca: true } },
+  pesagens: { orderBy: { data: "desc" as const }, take: 1 },
+} satisfies Prisma.AnimalInclude;
+
+type AnimalComResumo = Prisma.AnimalGetPayload<{ include: typeof INCLUDE_RESUMO }>;
+
+function resumoDe(animal: AnimalComResumo, hoje: Date): AnimalResumo {
+  const loc = animal.localizacoes[0] ?? null;
+  const destino = animal.destinos[0] ?? null;
+  return mapearAnimalResumo({
+    animal,
+    partos: animal.partosAntesDaEntrada,
+    hoje,
+    propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
+    lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
+    destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
+    composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
+    ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
+    situacao: animal.saidas.length ? "SAIU" : "ATIVO",
+  });
+}
+
 export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: number | null): Promise<{ itens: AnimalResumo[]; total: number; painel: PainelRebanho }> {
   // o escopo do request (seletor global de sítio) prevalece; o filtro só refina dentro dele
   if (propriedadeEscopo != null && filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) {
     return { itens: [], total: 0, painel: agregarPainel([]) };
   }
-  const propriedadeId = propriedadeEscopo ?? filtros.propriedadeId ?? undefined;
-
-  const localizacaoWhere: Prisma.LocalizacaoAnimalWhereInput = { ate: null };
-  if (propriedadeId != null) localizacaoWhere.propriedadeId = propriedadeId;
-  if (filtros.loteId) localizacaoWhere.loteId = filtros.loteId;
-
-  const animalWhere: Prisma.AnimalWhereInput = {
-    localizacoes: { some: localizacaoWhere },
-  };
-  if (filtros.busca) {
-    animalWhere.OR = [
-      { brinco: { contains: filtros.busca, mode: "insensitive" } },
-      { nome: { contains: filtros.busca, mode: "insensitive" } },
-    ];
-  }
-
-  const todosCandidatos = await prisma.animal.findMany({
-    where: animalWhere,
-    include: {
-      localizacoes: { where: localizacaoWhere, include: { propriedade: true, lote: true }, take: 1 },
-      destinos: { where: { ate: null }, take: 1 },
-      saidas: { where: { estornadaEm: null }, take: 1 },
-      composicao: { include: { raca: true } },
-      pesagens: { orderBy: { data: "desc" }, take: 1 },
-    },
-    orderBy: { brinco: "asc" },
-  });
-
   const hoje = new Date();
-  let resumos: AnimalResumo[] = todosCandidatos.map((animal) => {
-    const loc = animal.localizacoes[0] ?? null;
-    const destino = animal.destinos[0] ?? null;
-    const saida = animal.saidas[0] ?? null;
-    return mapearAnimalResumo({
-      animal,
-      partos: animal.partosAntesDaEntrada,
-      hoje,
-      propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
-      lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
-      destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
-      composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
-      ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
-      situacao: saida ? "SAIU" : "ATIVO",
-    });
-  });
-
-  // filtro de situação: por padrão só a localização ATUAL entra no where; para SAIU/TODOS
-  // buscamos também os que já saíram (sem localização aberta no filtro de sítio/lote).
-  if (filtros.situacao !== "ATIVO") {
-    const whereBase: Prisma.AnimalWhereInput = {};
-    if (propriedadeId != null || filtros.loteId) {
-      whereBase.localizacoes = { some: { ...(propriedadeId != null ? { propriedadeId } : {}), ...(filtros.loteId ? { loteId: filtros.loteId } : {}) } };
-    }
-    if (filtros.busca) {
-      whereBase.OR = [
+  const where: Prisma.AnimalWhereInput = {
+    AND: [
+      whereSituacao({
+        situacao: filtros.situacao,
+        propriedadeId: propriedadeEscopo ?? filtros.propriedadeId ?? null,
+        loteId: filtros.loteId ?? null,
+        aptidao: filtros.aptidao ?? null,
+        papelReprodutivo: filtros.papelReprodutivo ?? null,
+      }),
+      whereCategoria(filtros.categoria, hoje),
+      filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },
-      ];
-    }
-    whereBase.saidas = { some: { estornadaEm: null } };
+      ] } : {},
+    ],
+  };
 
-    const saidosCandidatos = await prisma.animal.findMany({
-      where: whereBase,
-      include: {
-        localizacoes: { orderBy: { desde: "desc" }, take: 1, include: { propriedade: true, lote: true } },
-        destinos: { orderBy: { desde: "desc" }, take: 1 },
-        saidas: { where: { estornadaEm: null }, take: 1 },
-        composicao: { include: { raca: true } },
-        pesagens: { orderBy: { data: "desc" }, take: 1 },
+  const [total, pagina, paraPainel] = await Promise.all([
+    prisma.animal.count({ where }),
+    prisma.animal.findMany({
+      where,
+      include: INCLUDE_RESUMO,
+      orderBy: [{ brinco: "asc" }, { id: "asc" }],
+      skip: (filtros.page - 1) * filtros.pageSize,
+      take: filtros.pageSize,
+    }),
+    // painel sobre TODO o conjunto filtrado, com o mínimo de colunas
+    prisma.animal.findMany({
+      where,
+      select: {
+        id: true, brinco: true, nome: true, sexo: true, dataNascimento: true, dataEntrada: true, origem: true, partosAntesDaEntrada: true,
+        localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, select: { propriedade: { select: { id: true, nome: true } } } },
+        destinos: { orderBy: ORDEM_HISTORICO, take: 1, select: { aptidao: true, papelReprodutivo: true } },
+        saidas: { where: { estornadaEm: null }, take: 1, select: { id: true } },
       },
-      orderBy: { brinco: "asc" },
-    });
+    }),
+  ]);
 
-    const saidosResumos: AnimalResumo[] = saidosCandidatos.map((animal) => {
-      const loc = animal.localizacoes[0] ?? null;
-      const destino = animal.destinos[0] ?? null;
-      return mapearAnimalResumo({
-        animal,
-        partos: animal.partosAntesDaEntrada,
-        hoje,
-        propriedade: loc ? { id: loc.propriedade.id, nome: loc.propriedade.nome } : null,
-        lote: loc?.lote ? { id: loc.lote.id, nome: loc.lote.nome } : null,
-        destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
-        composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
-        ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
-        situacao: "SAIU",
-      });
-    });
+  const leves = paraPainel.map((a) => mapearAnimalResumo({
+    animal: a,
+    partos: a.partosAntesDaEntrada,
+    hoje,
+    propriedade: a.localizacoes[0]?.propriedade ?? null,
+    lote: null,
+    destino: a.destinos[0] ?? null,
+    composicao: [],
+    ultimoPeso: null,
+    situacao: a.saidas.length ? "SAIU" : "ATIVO",
+  }));
 
-    resumos = filtros.situacao === "SAIU" ? saidosResumos : [...resumos, ...saidosResumos];
-  }
-
-  if (filtros.categoria) resumos = resumos.filter((r) => r.categoria === filtros.categoria);
-  if (filtros.aptidao) resumos = resumos.filter((r) => r.aptidao === filtros.aptidao);
-  if (filtros.papelReprodutivo) resumos = resumos.filter((r) => r.papelReprodutivo === filtros.papelReprodutivo);
-
-  const total = resumos.length;
-  const inicio = (filtros.page - 1) * filtros.pageSize;
-  const itens = resumos.slice(inicio, inicio + filtros.pageSize);
-
-  return { itens, total, painel: agregarPainel(resumos) };
+  return { itens: pagina.map((a) => resumoDe(a, hoje)), total, painel: agregarPainel(leves) };
 }
 
 // ---------- movimentar (individual ou em massa) ----------
@@ -467,46 +514,80 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
     if (!lote) throw new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado nesse sítio ou inativo", "loteId");
   }
 
+  const ids = [...new Set(input.animalIds)];
   const movimentacaoId = crypto.randomUUID();
-  let movidos = 0;
+  const data = new Date(input.data);
 
-  await prisma.$transaction(async (tx) => {
-    for (const animalId of input.animalIds) {
-      const animal = await exigirNoEscopo(tx, animalId, escopo);
-      await exigirAnimalAtivo(tx, animalId);
+  // Tudo é lido em lote e planejado antes de gravar: poucas queries por requisição, seja 1 animal
+  // ou 300 (o laço antigo fazia ~8 queries por animal e estourava o timeout da transação).
+  const movidos = await prisma.$transaction(async (tx) => {
+    const animais = await tx.animal.findMany({ where: { id: { in: ids } }, select: { id: true, brinco: true, dataEntrada: true } });
+    if (animais.length !== ids.length) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
-      const atual = await localizacaoAberta(tx, animalId);
+    // trava os brincos que chegam ao destino (ordem fixa evita deadlock entre movimentações)
+    const brincos = [...new Set(animais.map((a) => normalizarBrinco(a.brinco)))].sort();
+    for (const brinco of brincos) await travarBrinco(tx, input.propriedadeId, brinco);
 
-      const errosData = validarDataLocalizacao({ dataEntrada: animal.dataEntrada, desde: input.data });
-      if (errosData.length) throw new RebanhoError("VALIDACAO", `${animal.brinco}: ${errosData[0].mensagem}`, errosData[0].campo);
+    const [abertas, ultimas, saidasAtivas, ativosDestino] = await Promise.all([
+      tx.localizacaoAnimal.findMany({ where: { animalId: { in: ids }, ate: null } }),
+      escopo == null ? Promise.resolve([]) : tx.localizacaoAnimal.findMany({
+        where: { animalId: { in: ids } }, orderBy: ORDEM_HISTORICO, distinct: ["animalId"], select: { animalId: true, propriedadeId: true },
+      }),
+      tx.saidaAnimal.findMany({ where: { animalId: { in: ids }, estornadaEm: null }, select: { animalId: true } }),
+      ativosNoSitioParaBrinco(tx, input.propriedadeId),
+    ]);
 
-      // brinco por sítio: só relevante quando muda de sítio
-      if (!atual || atual.propriedadeId !== input.propriedadeId) {
-        await exigirBrincoLivre(tx, animal.brinco, input.propriedadeId, animalId, "no sítio de destino");
-      }
+    const abertaPorAnimal = new Map(abertas.map((l) => [l.animalId, l]));
+    const sitioPorAnimal = new Map(ultimas.map((l) => [l.animalId, l.propriedadeId]));
+    const inativos = new Set(saidasAtivas.map((s) => s.animalId));
 
-      const plano = planejar(() => planejarMovimentacao({
-        atual: atual ? { propriedadeId: atual.propriedadeId, loteId: atual.loteId, desde: atual.desde } : null,
-        destino: { propriedadeId: input.propriedadeId, loteId: input.loteId ?? null },
-        data: input.data,
-      }));
+    const plano = planejarMovimentacaoEmMassa({
+      animais: animais.map((a) => {
+        const atual = abertaPorAnimal.get(a.id) ?? null;
+        return {
+          id: a.id,
+          brinco: a.brinco,
+          dataEntrada: a.dataEntrada,
+          ativo: !inativos.has(a.id),
+          noEscopo: escopo == null || !sitioPorAnimal.has(a.id) || sitioPorAnimal.get(a.id) === escopo,
+          atual: atual ? { id: atual.id, propriedadeId: atual.propriedadeId, loteId: atual.loteId, desde: atual.desde } : null,
+        };
+      }),
+      destino: { propriedadeId: input.propriedadeId, loteId: input.loteId ?? null },
+      data,
+      ativosDestino: new Map(ativosDestino.map((a) => [normalizarBrinco(a.brinco), a.animalId])),
+      normalizar: normalizarBrinco,
+    });
 
-      if (plano.tipo === "SEM_MUDANCA") continue;
-
-      if (plano.fechar && atual) {
-        await tx.localizacaoAnimal.update({ where: { id: atual.id }, data: { ate: new Date(plano.fechar.ate) } });
-      }
-      const nova = await tx.localizacaoAnimal.create({
-        data: {
-          animalId, propriedadeId: plano.abrir.propriedadeId, loteId: plano.abrir.loteId,
-          desde: new Date(plano.abrir.desde), motivo: input.motivo ?? null, movimentacaoId, criadoPorId: usuarioId,
-        },
-      });
-
-      await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: nova.id, acao: "MOVIMENTACAO", usuarioId, antes: atual, depois: nova });
-      movidos += 1;
+    if (plano.erros.length) {
+      const lista = plano.erros.slice(0, 10).map((e) => `${e.brinco}: ${e.mensagem}`).join("; ");
+      const resto = plano.erros.length > 10 ? ` (e mais ${plano.erros.length - 10})` : "";
+      throw new RebanhoError(plano.erros.some((e) => e.mensagem.startsWith("brinco")) ? "BRINCO_DUPLICADO" : "VALIDACAO", `Nenhum animal foi movido. ${lista}${resto}`, "data");
     }
-  });
+    if (!plano.abrir.length) return 0;
+
+    if (plano.fechar.length) await tx.localizacaoAnimal.updateMany({ where: { id: { in: plano.fechar } }, data: { ate: data } });
+
+    const novas = plano.abrir.map((a) => ({
+      id: crypto.randomUUID(),
+      animalId: a.animalId,
+      propriedadeId: input.propriedadeId,
+      loteId: input.loteId ?? null,
+      desde: data,
+      motivo: input.motivo ?? null,
+      movimentacaoId,
+      criadoPorId: usuarioId,
+    }));
+    await tx.localizacaoAnimal.createMany({ data: novas });
+
+    await tx.auditoriaPecuaria.createMany({
+      data: plano.abrir.map((a, i) => dadosAuditoria({
+        entidade: "LocalizacaoAnimal", entidadeId: novas[i].id, animalId: a.animalId, acao: "MOVIMENTACAO", usuarioId,
+        antes: a.anteriorId ? abertaPorAnimal.get(a.animalId) : null, depois: novas[i],
+      })),
+    });
+    return novas.length;
+  }, { timeout: 30_000, maxWait: 10_000 });
 
   return { movimentacaoId, movidos };
 }
@@ -537,7 +618,7 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
       data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, papelReprodutivo: plano.abrir.papelReprodutivo, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
     });
 
-    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: novo.id, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
+    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
   });
 
   return buscarFicha(animal.id, null).then((f) => f as AnimalResumo);
@@ -546,7 +627,7 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
 // ---------- desfazer (localização / destino) ----------
 
 /** Converte MovimentacaoError de planejarDesfazer em RebanhoError (422). */
-function planejarDesfazerOuFalha(linhas: Array<{ id: string; desde: Date; ate: Date | null }>) {
+function planejarDesfazerOuFalha(linhas: Array<{ id: string; desde: Date; ate: Date | null; criadoEm: Date }>) {
   try {
     return planejarDesfazer(linhas);
   } catch (e) {
@@ -561,8 +642,8 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
   await prisma.$transaction(async (tx) => {
     await exigirAnimalAtivo(tx, animalId);
 
-    const linhas = await tx.localizacaoAnimal.findMany({ where: { animalId }, orderBy: { desde: "desc" } });
-    const plano = planejarDesfazerOuFalha(linhas.map((l) => ({ id: l.id, desde: l.desde, ate: l.ate })));
+    const linhas = await tx.localizacaoAnimal.findMany({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] });
+    const plano = planejarDesfazerOuFalha(linhas.map((l) => ({ id: l.id, desde: l.desde, ate: l.ate, criadoEm: l.criadoEm })));
 
     const referenciada = await tx.saidaAnimal.findFirst({ where: { localizacaoFechadaId: plano.remover.id } });
     if (referenciada) throw new RebanhoError("CONFLITO", "Essa movimentação já foi usada em uma saída e não pode ser desfeita");
@@ -576,7 +657,7 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     await tx.localizacaoAnimal.delete({ where: { id: removida.id } });
     const reaberta = await tx.localizacaoAnimal.update({ where: { id: anterior.id }, data: { ate: null } });
 
-    await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: removida.id, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
+    await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
@@ -588,8 +669,8 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
   await prisma.$transaction(async (tx) => {
     await exigirAnimalAtivo(tx, animalId);
 
-    const linhas = await tx.destinoAnimal.findMany({ where: { animalId }, orderBy: { desde: "desc" } });
-    const plano = planejarDesfazerOuFalha(linhas.map((l) => ({ id: l.id, desde: l.desde, ate: l.ate })));
+    const linhas = await tx.destinoAnimal.findMany({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] });
+    const plano = planejarDesfazerOuFalha(linhas.map((l) => ({ id: l.id, desde: l.desde, ate: l.ate, criadoEm: l.criadoEm })));
 
     const referenciada = await tx.saidaAnimal.findFirst({ where: { destinoFechadoId: plano.remover.id } });
     if (referenciada) throw new RebanhoError("CONFLITO", "Essa mudança de destino já foi usada em uma saída e não pode ser desfeita");
@@ -600,7 +681,7 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     await tx.destinoAnimal.delete({ where: { id: removida.id } });
     const reaberta = await tx.destinoAnimal.update({ where: { id: anterior.id }, data: { ate: null } });
 
-    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: removida.id, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
+    await auditar(tx, { entidade: "DestinoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
@@ -643,7 +724,7 @@ export async function darSaida(input: SaidaInput & { animalId: string }, usuario
       },
     });
 
-    await auditar(tx, { entidade: "SaidaAnimal", entidadeId: saida.id, acao: "SAIDA", usuarioId, depois: saida });
+    await auditar(tx, { entidade: "SaidaAnimal", entidadeId: saida.id, animalId: input.animalId, acao: "SAIDA", usuarioId, depois: saida });
   });
 
   return buscarFicha(animal.id, null).then((f) => f as AnimalResumo);
@@ -676,7 +757,7 @@ export async function estornarSaida(animalId: string, input: EstornoSaidaInput, 
       data: { estornadaEm: new Date(), estornoMotivo: input.motivo },
     });
 
-    await auditar(tx, { entidade: "SaidaAnimal", entidadeId: saida.id, acao: "ESTORNO", usuarioId, antes: saida, depois: atualizada });
+    await auditar(tx, { entidade: "SaidaAnimal", entidadeId: saida.id, animalId, acao: "ESTORNO", usuarioId, antes: saida, depois: atualizada });
   });
 
   return buscarFicha(animal.id, null).then((f) => f as AnimalResumo);
@@ -695,7 +776,7 @@ export async function registrarPesagem(input: PesagemInput & { animalId: string 
     const criada = await tx.pesagem.create({
       data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
     });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, acao: "REGISTRO", usuarioId, depois: criada });
+    await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
     return criada;
   });
 
@@ -724,7 +805,7 @@ export async function editarPesagem(id: string, input: EditarPesagemInput, usuar
         observacao: input.observacao === undefined ? undefined : input.observacao,
       },
     });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: id, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
+    await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId: existente.animalId, acao: "EDICAO", usuarioId, antes: existente, depois: salva });
     return salva;
   });
 
@@ -738,7 +819,7 @@ export async function excluirPesagem(id: string, usuarioId: number | null, escop
 
   await prisma.$transaction(async (tx) => {
     await tx.pesagem.delete({ where: { id } });
-    await auditar(tx, { entidade: "Pesagem", entidadeId: id, acao: "EXCLUSAO", usuarioId, antes: existente });
+    await auditar(tx, { entidade: "Pesagem", entidadeId: id, animalId: existente.animalId, acao: "EXCLUSAO", usuarioId, antes: existente });
   });
 }
 
@@ -755,25 +836,9 @@ export interface EntradaAuditoriaDTO {
 export async function buscarAuditoriaAnimal(animalId: string, escopo: number | null = null): Promise<EntradaAuditoriaDTO[]> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  const [localizacoes, destinos, saidas, pesagens, composicoes] = await Promise.all([
-    prisma.localizacaoAnimal.findMany({ where: { animalId }, select: { id: true } }),
-    prisma.destinoAnimal.findMany({ where: { animalId }, select: { id: true } }),
-    prisma.saidaAnimal.findMany({ where: { animalId }, select: { id: true } }),
-    prisma.pesagem.findMany({ where: { animalId }, select: { id: true } }),
-    prisma.composicaoRacial.findMany({ where: { animalId }, select: { id: true } }),
-  ]);
-
+  // por animalId: inclui o que já foi apagado (pesagem excluída, movimentação/destino desfeitos)
   const entradas = await prisma.auditoriaPecuaria.findMany({
-    where: {
-      OR: [
-        { entidade: "Animal", entidadeId: animalId },
-        { entidade: "LocalizacaoAnimal", entidadeId: { in: localizacoes.map((l) => l.id) } },
-        { entidade: "DestinoAnimal", entidadeId: { in: destinos.map((d) => d.id) } },
-        { entidade: "SaidaAnimal", entidadeId: { in: saidas.map((s) => s.id) } },
-        { entidade: "Pesagem", entidadeId: { in: pesagens.map((p) => p.id) } },
-        { entidade: "ComposicaoRacial", entidadeId: { in: [animalId, ...composicoes.map((c) => c.id)] } },
-      ],
-    },
+    where: { animalId },
     include: { usuario: { select: { nome: true } } },
     orderBy: { em: "desc" },
     take: 50,

@@ -127,7 +127,7 @@ export type EditarLoteInput = z.infer<typeof editarLoteSchema>;
 
 /** Query comum a listagens de cadastro (lotes, raças, motivos de saída) com "mostrar inativos". */
 export const incluirInativosQuerySchema = z.object({
-  incluirInativos: z.coerce.boolean().optional().default(false),
+  incluirInativos: z.enum(["true", "false"]).optional().transform((v) => v === "true"),
 });
 export type IncluirInativosQuery = z.infer<typeof incluirInativosQuerySchema>;
 

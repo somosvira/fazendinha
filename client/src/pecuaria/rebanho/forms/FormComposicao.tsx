@@ -15,11 +15,16 @@ export function FormComposicao({ animal, racas, onSalvo, onFechar }: {
   onSalvo: () => Promise<void> | void;
   onFechar: () => void;
 }) {
-  // AnimalFicha.composicao só traz sigla+fração (ver composicao.calc.ts no
-  // servidor) — reconstrói o racaId batendo a sigla contra o catálogo de raças.
   const [itens, setItens] = useState<ComposicaoItemInput[]>(
-    animal.composicao.map((c) => ({ racaId: racas.find((raca) => raca.sigla === c.sigla)?.id ?? "", fracao64: c.fracao64 })),
+    animal.composicao.map((c) => ({ racaId: c.racaId, fracao64: c.fracao64 })),
   );
+  // raças já presentes no animal continuam selecionáveis mesmo se foram desativadas no cadastro
+  const opcoes: CatalogoRaca[] = [
+    ...racas,
+    ...animal.composicao
+      .filter((c) => !racas.some((r) => r.id === c.racaId))
+      .map((c) => ({ id: c.racaId, nome: `${c.nome} (inativa)`, sigla: c.sigla, base: true })),
+  ];
   const [erro, setErro] = useState<string | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -46,7 +51,7 @@ export function FormComposicao({ animal, racas, onSalvo, onFechar }: {
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar composição"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
-      <CampoComposicao racas={racas} itens={itens} onChange={setItens} erro={erro ?? undefined} />
+      <CampoComposicao racas={opcoes} itens={itens} onChange={setItens} erro={erro ?? undefined} />
     </form>
   </PainelCadastro>;
 }

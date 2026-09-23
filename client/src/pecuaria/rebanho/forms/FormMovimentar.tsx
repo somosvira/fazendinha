@@ -22,6 +22,7 @@ export function FormMovimentar({ animalIds, propriedades, lotes, propriedadeInic
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [erroData, setErroData] = useState<string | undefined>();
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
 
@@ -32,12 +33,13 @@ export function FormMovimentar({ animalIds, propriedades, lotes, propriedadeInic
     if (emCurso.current) return;
     if (!propriedadeId) { setErro("Selecione o sítio de destino."); return; }
     setErro(null);
-    emCurso.current = true; setSalvando(true); setErroGeral(null);
+    emCurso.current = true; setSalvando(true); setErroGeral(null); setErroData(undefined);
     try {
       await movimentarAnimais({ animalIds, propriedadeId: Number(propriedadeId), loteId: loteId || null, data, motivo: motivo.trim() || null });
       await onSalvo();
     } catch (falha) {
-      if (falha instanceof RebanhoApiError) setErroGeral(falha.message);
+      if (falha instanceof RebanhoApiError && falha.campo === "data") setErroData(falha.message);
+      else if (falha instanceof RebanhoApiError) setErroGeral(falha.message);
       else setErroGeral(falha instanceof Error ? falha.message : String(falha));
     } finally { emCurso.current = false; setSalvando(false); }
   };
@@ -50,7 +52,7 @@ export function FormMovimentar({ animalIds, propriedades, lotes, propriedadeInic
       <ErrorBox erro={erroGeral ?? erro} />
       <CampoFormulario id="movimentar-propriedade" rotulo="Sítio de destino" obrigatorio>{(p) => <select {...p} required value={propriedadeId} onChange={(e) => { setPropriedadeId(e.target.value); setLoteId(""); }} className={classeInput}><option value="">Selecione</option>{propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>}</CampoFormulario>
       <CampoFormulario id="movimentar-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <select {...p} disabled={!propriedadeId} value={loteId} onChange={(e) => setLoteId(e.target.value)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>}</CampoFormulario>
-      <CampoFormulario id="movimentar-data" rotulo="Data" obrigatorio>{(p) => <input {...p} required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="movimentar-data" rotulo="Data" obrigatorio erro={erroData}>{(p) => <input {...p} required type="date" max={hoje()} value={data} onChange={(e) => setData(e.target.value)} className={classeInput} />}</CampoFormulario>
       <CampoFormulario id="movimentar-motivo" rotulo="Motivo">{(p) => <input {...p} maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: reagrupamento de lote" className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

@@ -21,7 +21,7 @@ function pillSituacao(situacao: Situacao) {
   return <Pill tone={situacao === "ATIVO" ? "green" : "neutral"}>{rotuloSituacao(situacao)}</Pill>;
 }
 
-export function ListaAnimais({ onAbrirAnimal, onNovoAnimal }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void }) {
+export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean }) {
   const sitioGlobal = useMemo(() => getPropriedadeAtiva(), []);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [itens, setItens] = useState<AnimalResumo[]>([]);
@@ -30,6 +30,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal }: { onAbrirAnimal: (
   const [erro, setErro] = useState<string | null>(null);
   const [revisao, setRevisao] = useState(0);
 
+  const [textoBusca, setTextoBusca] = useState("");
   const [busca, setBusca] = useState("");
   const [propriedadeId, setPropriedadeId] = useState<string>(sitioGlobal != null ? String(sitioGlobal) : "");
   const [loteId, setLoteId] = useState("");
@@ -66,7 +67,14 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal }: { onAbrirAnimal: (
     return () => { vigente = false; };
   }, [busca, propriedadeId, loteId, categoria, aptidao, papelReprodutivo, situacao, pagina, revisao]);
 
-  useEffect(() => { setPagina(1); setSelecionados(new Set()); }, [busca, propriedadeId, loteId, categoria, aptidao, papelReprodutivo, situacao]);
+  // busca só dispara depois de 300 ms sem digitar
+  useEffect(() => {
+    const t = setTimeout(() => { if (textoBusca !== busca) { setBusca(textoBusca); setPagina(1); setSelecionados(new Set()); } }, 300);
+    return () => clearTimeout(t);
+  }, [textoBusca, busca]);
+
+  /** Troca um filtro e volta para a página 1 no mesmo render — uma única busca. */
+  const filtrar = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPagina(1); setSelecionados(new Set()); };
 
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
   const lotesDoSitio = useMemo(() => catalogos?.lotes.filter((lote) => !propriedadeId || String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId]);
@@ -82,7 +90,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal }: { onAbrirAnimal: (
   };
   const recarregar = async () => { setRevisao((v) => v + 1); };
 
-  const COLUNAS: ColunaTabela<AnimalResumo>[] = [
+  const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
     { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => <label className="flex items-center" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item.id)} /></label> },
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <Pill>{rotuloCategoria(item.categoria)}</Pill> },
@@ -98,24 +106,26 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal }: { onAbrirAnimal: (
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ ids: [item.id], propriedadeId: item.propriedade?.id, loteId: item.lote?.id })}><ArrowRightLeft size={16} /></button>
     </div> },
   ];
+  // sem permissão de lançar: sem seleção em massa e sem ações de linha
+  const COLUNAS = podeLancar ? COLUNAS_TODAS : COLUNAS_TODAS.filter((c) => c.chave !== "selecionar" && c.chave !== "acoes");
 
   if (carregando && !itens.length && !erro) return <PaginaCarregando label="Carregando animais" />;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Animais" descricao="Busca, filtros e movimentação em massa sobre o rebanho." acao={<Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button>} />
+    <PageHeader eyebrow="Pecuária" titulo="Animais" descricao="Busca, filtros e movimentação em massa sobre o rebanho." acao={podeLancar ? <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="animais" />
     <ErrorBox erro={erro} />
     <Panel className="mt-6 overflow-clip">
       <BarraFiltros>
-        <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
-        {sitioGlobal == null && <select aria-label="Filtrar por sítio" value={propriedadeId} onChange={(e) => { setPropriedadeId(e.target.value); setLoteId(""); }} className="h-[42px] w-full min-w-0 flex-[1_1_160px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>}
-        <select aria-label="Filtrar por lote" value={loteId} onChange={(e) => setLoteId(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>
-        <select aria-label="Filtrar por categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as Categoria | "")} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todas as categorias</option>{CATEGORIAS.map((c) => <option key={c} value={c}>{rotuloCategoria(c)}</option>)}</select>
-        <select aria-label="Filtrar por aptidão" value={aptidao} onChange={(e) => setAptidao(e.target.value as Aptidao | "")} className="h-[42px] w-full min-w-0 flex-[1_1_130px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todas as aptidões</option><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>
-        <select aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onChange={(e) => setPapelReprodutivo(e.target.value as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>
-        <select aria-label="Filtrar por situação" value={situacao} onChange={(e) => setSituacao(e.target.value as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 flex-[1_1_130px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="ATIVO">Ativos</option><option value="SAIU">Saíram</option><option value="TODOS">Todas as situações</option></select>
+        <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
+        {sitioGlobal == null && <select aria-label="Filtrar por sítio" value={propriedadeId} onChange={(e) => { filtrar(setPropriedadeId)(e.target.value); setLoteId(""); }} className="h-[42px] w-full min-w-0 flex-[1_1_160px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>}
+        <select aria-label="Filtrar por lote" value={loteId} onChange={(e) => filtrar(setLoteId)(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>
+        <select aria-label="Filtrar por categoria" value={categoria} onChange={(e) => filtrar(setCategoria)(e.target.value as Categoria | "")} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todas as categorias</option>{CATEGORIAS.map((c) => <option key={c} value={c}>{rotuloCategoria(c)}</option>)}</select>
+        <select aria-label="Filtrar por aptidão" value={aptidao} onChange={(e) => filtrar(setAptidao)(e.target.value as Aptidao | "")} className="h-[42px] w-full min-w-0 flex-[1_1_130px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todas as aptidões</option><option value="LEITE">Leite</option><option value="CORTE">Corte</option></select>
+        <select aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onChange={(e) => filtrar(setPapelReprodutivo)(e.target.value as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>
+        <select aria-label="Filtrar por situação" value={situacao} onChange={(e) => filtrar(setSituacao)(e.target.value as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 flex-[1_1_130px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="ATIVO">Ativos</option><option value="SAIU">Saíram</option><option value="TODOS">Todas as situações</option></select>
       </BarraFiltros>
-      {itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+      {podeLancar && itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={selecionados.size > 0 && selecionados.size === itens.length} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Set())}>Limpar seleção</Button><Button onClick={() => setMovimentando({ ids: [...selecionados] })}>Movimentar {selecionados.size} animal{selecionados.size === 1 ? "" : "is"}</Button></>}
       </div>}

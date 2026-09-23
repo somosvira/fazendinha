@@ -37,7 +37,8 @@ function telaDaUrl(pathname: string): Tela {
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
 const URL_NOVO_ANIMAL = "/pecuaria/rebanho/animais/novo";
 
-export function RebanhoContent() {
+/** `podeLancar`: sem a flag `lancar` o módulo é só consulta — as telas escondem toda ação de escrita. */
+export function RebanhoContent({ podeLancar = true }: { podeLancar?: boolean }) {
   const [tela, setTela] = useState<Tela>(() => telaDaUrl(window.location.pathname));
 
   useEffect(() => {
@@ -48,18 +49,19 @@ export function RebanhoContent() {
 
   if (tela.tipo === "animais") {
     return <ListaAnimais
+      podeLancar={podeLancar}
       onAbrirAnimal={(id) => navegarPara(`${URL_ANIMAIS}/${id}`)}
       onNovoAnimal={() => navegarPara(URL_NOVO_ANIMAL)}
     />;
   }
   if (tela.tipo === "novo-animal") {
-    return <NovoAnimal onVoltar={() => navegarPara(URL_ANIMAIS)} />;
+    return <NovoAnimal podeLancar={podeLancar} onVoltar={() => navegarPara(URL_ANIMAIS)} />;
   }
   if (tela.tipo === "detalhe-animal") {
-    return <DetalheAnimal id={tela.id} onVoltar={() => navegarPara(URL_ANIMAIS)} />;
+    return <DetalheAnimal id={tela.id} podeLancar={podeLancar} onVoltar={() => navegarPara(URL_ANIMAIS)} />;
   }
   if (tela.tipo === "cadastros") {
-    return <Cadastros />;
+    return <Cadastros podeLancar={podeLancar} />;
   }
-  return <VisaoGeral />;
+  return <VisaoGeral podeLancar={podeLancar} />;
 }

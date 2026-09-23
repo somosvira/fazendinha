@@ -5,9 +5,18 @@
 // e popula o schema novo `pecuaria` (Animal/Raca/ComposicaoRacial/Lote/LocalizacaoAnimal/
 // DestinoAnimal/SaidaAnimal/MotivoSaida/Pesagem), sem tocar no legado.
 //
-// Idempotente por `ideagriId`: rodar 2× resulta no mesmo estado, não duplica. Compara o que
-// já existe antes de criar (localização aberta igual, saída com mesma data, pesagem por
-// ideagriId) — não recria histórico já importado.
+// CARGA ÚNICA (não sincroniza): o IDEAGRI só serve de base para a carga inicial — depois
+// disso todo movimento é feito no próprio sistema. Por isso, animal que já existe (por
+// `ideagriId`) é ignorado por inteiro: não atualiza dados fixos, não atualiza composição
+// racial e não cria localização/destino/saída/pesagem para ele. Só quando o animal não
+// existe ainda é que ele (e todo o seu histórico do JSON) é criado. Rodar de novo sobre um
+// banco já carregado é seguro — não duplica nada, mas também não traz atualizações do
+// IDEAGRI para animais já importados.
+//
+// Cada animal roda na sua própria transação, dentro de um `try/catch`: se um animal falhar,
+// o erro (brinco, ideagriId, mensagem) vai para o relatório final e o script continua para
+// os demais. Se houve alguma falha, o processo termina com código de saída 1 — os detalhes
+// aparecem no relatório (`Falhas`) impresso antes da saída.
 //
 // Ordem recomendada:
 //   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoSaida/Propriedade base
@@ -226,7 +235,10 @@ async function main() {
     return null;
   }
 
-  // ---- Animais -------------------------------------------------------------
+  // ---- Animais ---------------------------------------------------------------
+  // Carga única: animal que já existe (por `ideagriId`) é ignorado por inteiro —
+  // não atualiza dados fixos/composição e não cria localização/destino/saída/pesagem.
+  // Cada animal roda na própria transação; falha em um não impede os demais.
   const cAnimal = novoContador();
   const cLocalizacao = novoContador();
   const cDestino = novoContador();
@@ -235,145 +247,80 @@ async function main() {
   const cComposicao = novoContador();
   let semComposicao = 0;
 
+  interface Falha { brinco: string; ideagriId: number; mensagem: string }
+  const falhas: Falha[] = [];
+
+  type ResultadoAnimal =
+    | { tipo: "ignorado" }
+    | { tipo: "propriedade-nao-resolvida" }
+    | { tipo: "criado"; temComposicao: boolean; saidaCriada: boolean; pesagensCriadas: number };
+
   // brinco duplicado entre ativos do mesmo sítio: calculado no fim, sobre o estado final do banco.
 
   for (const a of dados.animais) {
-    await prisma.$transaction(async (tx) => {
-      const propriedadeId = propriedadeIdPorNome.get(a.propriedadeNome);
-      if (propriedadeId == null) {
-        avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): propriedade "${a.propriedadeNome}" não resolvida — ignorado`);
-        cAnimal.ignoradas++;
-        return;
-      }
-      const loteId = a.loteNome ? loteIdPorChave.get(`${propriedadeId}\u0000${a.loteNome}`) ?? null : null;
+    try {
+      const resultado = await prisma.$transaction<ResultadoAnimal>(async (tx) => {
+        const propriedadeId = propriedadeIdPorNome.get(a.propriedadeNome);
+        if (propriedadeId == null) {
+          avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): propriedade "${a.propriedadeNome}" não resolvida — ignorado`);
+          return { tipo: "propriedade-nao-resolvida" };
+        }
+        const loteId = a.loteNome ? loteIdPorChave.get(`${propriedadeId}\u0000${a.loteNome}`) ?? null : null;
 
-      const dadosFixos = {
-        brinco: a.brinco,
-        nome: a.nome ?? null,
-        sexo: a.sexo,
-        dataNascimento: d(a.dataNascimento),
-        nascimentoEstimado: a.nascimentoEstimado,
-        origem: a.origem,
-        dataEntrada: d(a.dataEntrada),
-        partosAntesDaEntrada: a.partosAntesDaEntrada,
-      };
+        const jaExiste = await tx.animal.findUnique({ where: { ideagriId: a.ideagriId } });
+        if (jaExiste) return { tipo: "ignorado" };
 
-      let animal = await tx.animal.findUnique({ where: { ideagriId: a.ideagriId } });
-      let criadoAgora = false;
-      if (!animal) {
-        animal = await tx.animal.create({ data: { ideagriId: a.ideagriId, ...dadosFixos } });
-        criadoAgora = true;
-        cAnimal.criadas++;
-      } else if (
-        animal.brinco !== dadosFixos.brinco || animal.nome !== dadosFixos.nome || animal.sexo !== dadosFixos.sexo ||
-        animal.dataNascimento.getTime() !== dadosFixos.dataNascimento.getTime() || animal.nascimentoEstimado !== dadosFixos.nascimentoEstimado ||
-        animal.origem !== dadosFixos.origem || animal.dataEntrada.getTime() !== dadosFixos.dataEntrada.getTime() ||
-        animal.partosAntesDaEntrada !== dadosFixos.partosAntesDaEntrada
-      ) {
-        // só atualiza (e audita) quando o IDEAGRI mudou algo — rodar de novo sem mudança não gera ruído
-        const antes = { ...animal };
-        animal = await tx.animal.update({ where: { id: animal.id }, data: dadosFixos });
-        cAnimal.atualizadas++;
-        await tx.auditoriaPecuaria.create({
-          data: {
-            entidade: "Animal",
-            entidadeId: animal.id,
-            acao: "IMPORTACAO_ATUALIZACAO",
-            antes: JSON.parse(JSON.stringify(antes)),
-            depois: JSON.parse(JSON.stringify(animal)),
-          },
-        });
-      } else {
-        cAnimal.ignoradas++;
-      }
+        const dadosFixos = {
+          brinco: a.brinco,
+          nome: a.nome ?? null,
+          sexo: a.sexo,
+          dataNascimento: d(a.dataNascimento),
+          nascimentoEstimado: a.nascimentoEstimado,
+          origem: a.origem,
+          dataEntrada: d(a.dataEntrada),
+          partosAntesDaEntrada: a.partosAntesDaEntrada,
+        };
+        const animal = await tx.animal.create({ data: { ideagriId: a.ideagriId, ...dadosFixos } });
 
-      // ---- Composição racial ------------------------------------------------
-      let compositoDesejado: FracaoRaca[] = a.composicao.map((c) => ({ sigla: c.sigla, fracao64: c.fracao64 }));
-      if (compositoDesejado.length === 0 && a.racaTexto) {
-        compositoDesejado = normalizarComposicao(parseGrauSangue(a.racaTexto));
-      }
-      if (compositoDesejado.length === 0 && (a.racaTexto ?? "").toLowerCase().includes("girolando")) {
-        compositoDesejado = [{ sigla: "GL", fracao64: 64 }];
-      }
-      // filtra raças não resolvidas (ex.: GL não semeada)
-      compositoDesejado = compositoDesejado.filter((c) => racaIdPorSigla.has(c.sigla));
-      if (compositoDesejado.length === 0) semComposicao++;
-
-      const compAtual = await tx.composicaoRacial.findMany({ where: { animalId: animal.id }, include: { raca: true } });
-      const compAtualComparavel = compAtual
-        .map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 }))
-        .sort((x, y) => x.sigla.localeCompare(y.sigla));
-      const compDesejadaComparavel = [...compositoDesejado].sort((x, y) => x.sigla.localeCompare(y.sigla));
-      const diferente = JSON.stringify(compAtualComparavel) !== JSON.stringify(compDesejadaComparavel);
-
-      if (diferente) {
-        if (compAtual.length) await tx.composicaoRacial.deleteMany({ where: { animalId: animal.id } });
-        if (compositoDesejado.length) {
+        // ---- Composição racial (só existe porque o animal é novo) -----------
+        let compositoDesejado: FracaoRaca[] = a.composicao.map((c) => ({ sigla: c.sigla, fracao64: c.fracao64 }));
+        if (compositoDesejado.length === 0 && a.racaTexto) {
+          compositoDesejado = normalizarComposicao(parseGrauSangue(a.racaTexto));
+        }
+        if (compositoDesejado.length === 0 && (a.racaTexto ?? "").toLowerCase().includes("girolando")) {
+          compositoDesejado = [{ sigla: "GL", fracao64: 64 }];
+        }
+        // filtra raças não resolvidas (ex.: GL não semeada)
+        compositoDesejado = compositoDesejado.filter((c) => racaIdPorSigla.has(c.sigla));
+        const temComposicao = compositoDesejado.length > 0;
+        if (temComposicao) {
           await tx.composicaoRacial.createMany({
             data: compositoDesejado.map((c) => ({
-              animalId: animal!.id,
+              animalId: animal.id,
               racaId: racaIdPorSigla.get(c.sigla)!,
               fracao64: c.fracao64,
               origem: a.composicao.length ? ("INFORMADA" as const) : ("CALCULADA" as const),
             })),
           });
         }
-        cComposicao.atualizadas++;
-      } else {
-        cComposicao.ignoradas++;
-      }
 
-      // ---- Localização inicial (propriedade + lote, desde = dataEntrada) ----
-      const locExistente = await tx.localizacaoAnimal.findFirst({
-        where: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
-      });
-      if (locExistente) {
-        cLocalizacao.ignoradas++;
-      } else {
-        // só cria a localização inicial se ainda não existe NENHUMA localização para o animal
-        const existeAlguma = await tx.localizacaoAnimal.count({ where: { animalId: animal.id } });
-        if (existeAlguma === 0) {
-          await tx.localizacaoAnimal.create({
-            data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
-          });
-          cLocalizacao.criadas++;
-        } else {
-          cLocalizacao.ignoradas++;
-        }
-      }
+        // ---- Localização e destino iniciais (propriedade/lote/aptidão, desde = dataEntrada) ----
+        const localizacaoInicial = await tx.localizacaoAnimal.create({
+          data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
+        });
+        const destinoInicial = await tx.destinoAnimal.create({
+          data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo: a.papelReprodutivo, desde: d(a.dataEntrada) },
+        });
 
-      // ---- Destino (aptidão + papel reprodutivo, desde = dataEntrada) -------
-      const destExistente = await tx.destinoAnimal.findFirst({
-        where: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo: a.papelReprodutivo, desde: d(a.dataEntrada) },
-      });
-      if (destExistente) {
-        cDestino.ignoradas++;
-      } else {
-        const existeAlgum = await tx.destinoAnimal.count({ where: { animalId: animal.id } });
-        if (existeAlgum === 0) {
-          await tx.destinoAnimal.create({
-            data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo: a.papelReprodutivo, desde: d(a.dataEntrada) },
-          });
-          cDestino.criadas++;
-        } else {
-          cDestino.ignoradas++;
-        }
-      }
-
-      // ---- Saída (fecha localização/destino abertos) -------------------------
-      if (a.saida) {
-        const saidaExistente = await tx.saidaAnimal.findFirst({ where: { animalId: animal.id, data: d(a.saida.data) } });
-        if (saidaExistente) {
-          cSaida.ignoradas++;
-        } else {
+        // ---- Saída (fecha a localização/destino recém-criados) ---------------
+        let saidaCriada = false;
+        if (a.saida) {
           const motivoId = resolverMotivoId(a.saida);
           // o tipo segue o do motivo resolvido (MotivoSaida é por tipo); sem motivo, deduz pelo texto
           const tipo = (motivoId ? motivoTipoPorId.get(motivoId) : undefined) ?? mapTipoSaida(a.saida.motivoNome);
 
-          const locAberta = await tx.localizacaoAnimal.findFirst({ where: { animalId: animal.id, ate: null } });
-          if (locAberta) await tx.localizacaoAnimal.update({ where: { id: locAberta.id }, data: { ate: d(a.saida.data) } });
-          const destAberto = await tx.destinoAnimal.findFirst({ where: { animalId: animal.id, ate: null } });
-          if (destAberto) await tx.destinoAnimal.update({ where: { id: destAberto.id }, data: { ate: d(a.saida.data) } });
+          await tx.localizacaoAnimal.update({ where: { id: localizacaoInicial.id }, data: { ate: d(a.saida.data) } });
+          await tx.destinoAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.saida.data) } });
 
           await tx.saidaAnimal.create({
             data: {
@@ -383,41 +330,54 @@ async function main() {
               motivoId,
               observacao: a.saida.motivoNome ? `IDEAGRI: ${a.saida.motivoNome}` : null,
               // o estorno reabre exatamente estas linhas
-              localizacaoFechadaId: locAberta?.id ?? null,
-              destinoFechadoId: destAberto?.id ?? null,
+              localizacaoFechadaId: localizacaoInicial.id,
+              destinoFechadoId: destinoInicial.id,
             },
           });
-          cSaida.criadas++;
+          saidaCriada = true;
         }
-      }
 
-      // ---- Pesagens (por ideagriId) -------------------------------------------
-      for (const p of a.pesagens) {
-        if (p.pesoKg == null) continue;
-        const existente = await tx.pesagem.findUnique({ where: { ideagriId: p.ideagriId } });
-        if (existente) {
-          cPesagem.ignoradas++;
-          continue;
+        // ---- Pesagens ----------------------------------------------------------
+        let pesagensCriadas = 0;
+        for (const p of a.pesagens) {
+          if (p.pesoKg == null) continue;
+          await tx.pesagem.create({
+            data: {
+              ideagriId: p.ideagriId,
+              animalId: animal.id,
+              data: d(p.data),
+              pesoKg: new Prisma.Decimal(p.pesoKg),
+              tipo: mapTipoPesagem(p.tipoIdeagri),
+              origem: "MANUAL",
+            },
+          });
+          pesagensCriadas++;
         }
-        await tx.pesagem.create({
-          data: {
-            ideagriId: p.ideagriId,
-            animalId: animal.id,
-            data: d(p.data),
-            pesoKg: new Prisma.Decimal(p.pesoKg),
-            tipo: mapTipoPesagem(p.tipoIdeagri),
-            origem: "MANUAL",
-          },
-        });
-        cPesagem.criadas++;
-      }
 
-      if (criadoAgora) {
         await tx.auditoriaPecuaria.create({
-          data: { entidade: "Animal", entidadeId: animal.id, acao: "IMPORTACAO", depois: JSON.parse(JSON.stringify(animal)) },
+          data: { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "IMPORTACAO", depois: JSON.parse(JSON.stringify(animal)) },
         });
+
+        return { tipo: "criado", temComposicao, saidaCriada, pesagensCriadas };
+      });
+
+      if (resultado.tipo === "criado") {
+        cAnimal.criadas++;
+        cLocalizacao.criadas++;
+        cDestino.criadas++;
+        if (resultado.temComposicao) cComposicao.criadas++;
+        else { cComposicao.ignoradas++; semComposicao++; }
+        if (resultado.saidaCriada) cSaida.criadas++;
+        cPesagem.criadas += resultado.pesagensCriadas;
+      } else {
+        // "ignorado" (já existia) e "propriedade-nao-resolvida" contam como ignorado
+        cAnimal.ignoradas++;
       }
-    });
+    } catch (e) {
+      const mensagem = e instanceof Error ? e.message : String(e);
+      falhas.push({ brinco: a.brinco, ideagriId: a.ideagriId, mensagem });
+      console.error(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): falhou — ${mensagem}`);
+    }
   }
 
   // ---- Brinco duplicado entre ativos do mesmo sítio (relatório, não bloqueia) ----
@@ -447,8 +407,8 @@ async function main() {
   console.log(`Lotes         — criados: ${cLote.criadas}, ignorados: ${cLote.ignoradas}`);
   console.log(`Raças         — criadas: ${cRaca.criadas}, ignoradas: ${cRaca.ignoradas}`);
   console.log(`Motivos saída — criados: ${cMotivo.criadas}, ignorados: ${cMotivo.ignoradas}`);
-  console.log(`Animais       — criados: ${cAnimal.criadas}, atualizados: ${cAnimal.atualizadas}, ignorados: ${cAnimal.ignoradas}`);
-  console.log(`Composição    — alterada: ${cComposicao.atualizadas}, inalterada: ${cComposicao.ignoradas}`);
+  console.log(`Animais       — criados: ${cAnimal.criadas}, ignorados (já existiam): ${cAnimal.ignoradas}`);
+  console.log(`Composição    — criada: ${cComposicao.criadas}, sem composição: ${cComposicao.ignoradas}`);
   console.log(`Localização   — criadas: ${cLocalizacao.criadas}, ignoradas: ${cLocalizacao.ignoradas}`);
   console.log(`Destino       — criados: ${cDestino.criadas}, ignorados: ${cDestino.ignoradas}`);
   console.log(`Saídas        — criadas: ${cSaida.criadas}, ignoradas: ${cSaida.ignoradas}`);
@@ -463,8 +423,14 @@ async function main() {
     console.log(`\nBrincos duplicados entre ativos do mesmo sítio (${brincosDuplicados.length}) — importado mesmo assim (dado histórico; unicidade é regra do app):`);
     for (const b of brincosDuplicados) console.log(`  - ${b}`);
   }
+  if (falhas.length) {
+    console.log(`\nFalhas (${falhas.length}) — animal não foi importado, script continuou para os demais:`);
+    for (const f of falhas) console.log(`  - brinco "${f.brinco}" (ideagriId ${f.ideagriId}): ${f.mensagem}`);
+  }
 
   await prisma.$disconnect();
+
+  if (falhas.length) process.exit(1);
 }
 
 main().catch(async (e) => {

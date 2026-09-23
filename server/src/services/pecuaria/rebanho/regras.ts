@@ -45,18 +45,38 @@ export function traduzirConflitoUnico(erro: unknown, mensagens: Record<string, s
   throw erro;
 }
 
-export async function auditar(
-  db: DbPecuaria,
-  input: { entidade: string; entidadeId: string | number; acao: string; usuarioId?: number | null; antes?: unknown; depois?: unknown },
-) {
-  await db.auditoriaPecuaria.create({
-    data: {
-      entidade: input.entidade,
-      entidadeId: String(input.entidadeId),
-      acao: input.acao,
-      usuarioId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
-      antes: input.antes == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.antes)),
-      depois: input.depois == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.depois)),
-    },
-  });
+export interface EntradaAuditoria {
+  entidade: string;
+  entidadeId: string | number;
+  acao: string;
+  /** Animal ao qual o registro pertence; obrigatório para tudo que é do animal (ver buscarAuditoriaAnimal). */
+  animalId?: string | null;
+  usuarioId?: number | null;
+  antes?: unknown;
+  depois?: unknown;
+}
+
+export function dadosAuditoria(input: EntradaAuditoria) {
+  return {
+    entidade: input.entidade,
+    entidadeId: String(input.entidadeId),
+    animalId: input.animalId ?? null,
+    acao: input.acao,
+    usuarioId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
+    antes: input.antes == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.antes)),
+    depois: input.depois == null ? Prisma.JsonNull : JSON.parse(JSON.stringify(input.depois)),
+  };
+}
+
+export async function auditar(db: DbPecuaria, input: EntradaAuditoria) {
+  await db.auditoriaPecuaria.create({ data: dadosAuditoria(input) });
+}
+
+/**
+ * Serializa a checagem-então-escrita do brinco por (sítio, brinco) até o fim da transação.
+ * Sem constraint no banco (a unicidade depende da localização aberta), duas escritas
+ * concorrentes passariam pela checagem ao mesmo tempo.
+ */
+export async function travarBrinco(db: DbPecuaria, propriedadeId: number, brincoNormalizado: string) {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-brinco:${propriedadeId}:${brincoNormalizado}`}))`;
 }

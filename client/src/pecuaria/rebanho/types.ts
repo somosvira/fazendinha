@@ -34,6 +34,8 @@ export type AnimalResumo = {
 };
 
 export type FracaoRaca = { sigla: string; fracao64: number };
+/** Item da composição na ficha: traz o id e a situação da raça (inativa continua editável). */
+export type ItemComposicaoFicha = FracaoRaca & { racaId: string; nome: string; racaAtiva: boolean };
 
 export type HistoricoLocalizacao = {
   id: string;
@@ -73,7 +75,7 @@ export type AnimalFicha = AnimalResumo & {
   nascimentoEstimado: boolean;
   partosAntesDaEntrada: number;
   observacao: string | null;
-  composicao: FracaoRaca[];
+  composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
   historicoPesagens: HistoricoPesagem[];
@@ -250,13 +252,3 @@ export type PainelGeral = {
   ultimosEventos: EventoPainel[];
 };
 
-/** Mensagens PT-BR para os códigos de `RebanhoError` (server/src/services/pecuaria/rebanho/regras.ts).
- *  A API já devolve `message` em PT-BR — isto é só o fallback quando só o código é útil. */
-export const CODIGOS_ERRO_AMIGAVEIS: Record<string, string> = {
-  NAO_ENCONTRADO: "Registro não encontrado.",
-  VALIDACAO: "Confira os dados informados.",
-  BRINCO_DUPLICADO: "Já existe um animal ativo com esse brinco nesse sítio.",
-  ANIMAL_INATIVO: "Este animal já teve saída registrada e está inativo.",
-  JA_ESTORNADA: "Não há saída ativa para estornar (ou ela já foi estornada).",
-  CONFLITO: "Não foi possível concluir: há um conflito com outro registro.",
-};

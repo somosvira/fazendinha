@@ -68,3 +68,36 @@ describe("DetalheAnimal — ações conforme situação", () => {
     expect(screen.getByRole("button", { name: "Desfazer última mudança" })).toBeTruthy();
   });
 });
+
+describe("DetalheAnimal — permissão, linha atual e composição", () => {
+  it("sem permissão de lançar não mostra nenhuma ação de escrita", async () => {
+    vi.mocked(buscarFichaAnimal).mockResolvedValue({
+      ...base,
+      historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null }],
+      historicoPesagens: [{ id: "p1", data: "2023-01-01", pesoKg: 400, tipo: "ROTINA", origem: "MANUAL" }],
+    });
+    render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} podeLancar={false} />);
+    await screen.findByText("Mimosa");
+    for (const nome of ["Editar dados", "Movimentar", "Dar saída", "Excluir cadastro", "Desfazer última movimentação"]) {
+      expect(screen.queryByRole("button", { name: nome })).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: /Excluir pesagem/ })).toBeNull();
+  });
+
+  it("localização atual é a linha aberta mesmo se não vier primeiro", async () => {
+    await montar({
+      ...base,
+      historicoLocalizacoes: [
+        { id: "loc-velha", propriedade: { id: 2, nome: "Mexicana" }, lote: null, desde: "2022-01-01", ate: "2022-01-01", motivo: null },
+        { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null },
+      ],
+    });
+    expect(screen.getByText((_, el) => el?.tagName === "P" && /^Principal/.test(el.textContent ?? ""))).toBeTruthy();
+  });
+
+  it("mostra o nome da raça e marca a inativa", async () => {
+    await montar({ ...base, composicao: [{ racaId: "r-gl", sigla: "GL", nome: "Girolando", racaAtiva: false, fracao64: 32 }] });
+    expect(screen.getByText(/Girolando \(GL\)/)).toBeTruthy();
+    expect(screen.getByText(/inativa/)).toBeTruthy();
+  });
+});

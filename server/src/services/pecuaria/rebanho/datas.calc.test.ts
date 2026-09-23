@@ -5,6 +5,7 @@ import {
   validarDataSaida,
   validarDatasAnimal,
   validarEdicaoAnimal,
+  planejarAjusteEntrada,
 } from "./datas.calc.js";
 
 describe("validarDatasAnimal", () => {
@@ -126,5 +127,56 @@ describe("validarEdicaoAnimal", () => {
       primeiroDestinoDesde: "2024-02-01",
       primeiraSaidaData: "2024-02-01",
     })).toEqual([]);
+  });
+});
+
+describe("campos dos erros de data seguem o payload", () => {
+  it("saída, pesagem e localização devolvem campo data", () => {
+    expect(validarDataSaida({ dataEntrada: "2025-01-10", dataSaida: "2025-01-01" })[0].campo).toBe("data");
+    expect(validarDataPesagem({ dataNascimento: "2025-01-10", dataPesagem: "2025-01-01" })[0].campo).toBe("data");
+    expect(validarDataLocalizacao({ dataEntrada: "2025-01-10", desde: "2025-01-01" })[0].campo).toBe("data");
+  });
+});
+
+describe("planejarAjusteEntrada", () => {
+  const base = {
+    entradaAntiga: "2025-01-10",
+    nascimentoAntigo: "2024-01-10",
+    nascimentoNovo: "2024-01-10",
+    localizacoes: [{ id: "l1", desde: "2025-01-10", ate: "2025-06-01" }, { id: "l2", desde: "2025-06-01", ate: null }],
+    destinos: [{ id: "d1", desde: "2025-01-10", ate: null }],
+    pesagens: [{ id: "p1", data: "2025-01-10", tipo: "ENTRADA" }, { id: "p2", data: "2025-03-01", tipo: "ROTINA" }],
+    primeiraSaidaData: null,
+  };
+
+  it("antecipar a entrada leva junto 1ª localização, 1º destino e pesagem de entrada", () => {
+    const plano = planejarAjusteEntrada({ ...base, entradaNova: "2024-12-01" });
+    expect(plano).toEqual({ erros: [], moverLocalizacao: "l1", moverDestino: "d1", moverPesagensEntrada: ["p1"], moverPesagensNascimento: [] });
+  });
+
+  it("adiar a entrada é permitido até o fim da 1ª localização", () => {
+    expect(planejarAjusteEntrada({ ...base, entradaNova: "2025-02-01" }).erros).toEqual([]);
+    const passou = planejarAjusteEntrada({ ...base, entradaNova: "2025-07-01" });
+    expect(passou.erros.map((e) => e.campo)).toContain("dataEntrada");
+  });
+
+  it("linha que não começava na entrada antiga não acompanha e bloqueia entrada posterior a ela", () => {
+    const plano = planejarAjusteEntrada({ ...base, localizacoes: [{ id: "l1", desde: "2025-02-01", ate: null }], entradaNova: "2025-03-01" });
+    expect(plano.moverLocalizacao).toBeNull();
+    expect(plano.erros[0].mensagem).toMatch(/início da primeira localização/);
+  });
+
+  it("nascimento novo não pode passar de uma pesagem, mas a pesagem de nascimento acompanha", () => {
+    const comNascimento = { ...base, pesagens: [...base.pesagens, { id: "p0", data: "2024-01-10", tipo: "NASCIMENTO" }] };
+    const ok = planejarAjusteEntrada({ ...comNascimento, entradaNova: "2025-01-10", nascimentoNovo: "2024-02-01" });
+    expect(ok.erros).toEqual([]);
+    expect(ok.moverPesagensNascimento).toEqual(["p0"]);
+    const ruim = planejarAjusteEntrada({ ...comNascimento, entradaNova: "2025-01-10", nascimentoNovo: "2025-04-01" });
+    expect(ruim.erros.some((e) => e.campo === "dataNascimento")).toBe(true);
+  });
+
+  it("entrada não pode passar da saída", () => {
+    const plano = planejarAjusteEntrada({ ...base, primeiraSaidaData: "2025-02-01", entradaNova: "2025-03-01", localizacoes: [], destinos: [] });
+    expect(plano.erros[0].mensagem).toMatch(/saída/);
   });
 });

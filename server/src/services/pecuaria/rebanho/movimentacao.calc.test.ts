@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MovimentacaoError, planejarDesfazer, planejarDestino, planejarMovimentacao } from "./movimentacao.calc.js";
+import { MovimentacaoError, planejarDesfazer, planejarDestino, planejarMovimentacao, planejarMovimentacaoEmMassa, type AnimalParaMover } from "./movimentacao.calc.js";
 
 describe("planejarMovimentacao", () => {
   it("sem localização atual: abre a primeira", () => {
@@ -121,5 +121,74 @@ describe("planejarDesfazer", () => {
         { id: "l2", desde: "2026-02-01", ate: "2026-03-01" },
       ]),
     ).toThrow(MovimentacaoError);
+  });
+});
+
+describe("planejarDesfazer — desempate por criadoEm", () => {
+  it("cadastro e movimentação no mesmo dia: remove a aberta e reabre a outra, em qualquer ordem de entrada", () => {
+    const fechada = { id: "cadastro", desde: "2026-09-22", ate: "2026-09-22", criadoEm: "2026-09-22T10:00:00Z" };
+    const aberta = { id: "movida", desde: "2026-09-22", ate: null, criadoEm: "2026-09-22T10:05:00Z" };
+    expect(planejarDesfazer([fechada, aberta])).toEqual({ remover: { id: "movida" }, reabrir: { id: "cadastro" } });
+    expect(planejarDesfazer([aberta, fechada])).toEqual({ remover: { id: "movida" }, reabrir: { id: "cadastro" } });
+  });
+});
+
+describe("planejarMovimentacaoEmMassa", () => {
+  const normalizar = (b: string) => b.trim().toUpperCase();
+  const animal = (id: string, brinco: string, atual: AnimalParaMover["atual"], extra: Partial<AnimalParaMover> = {}): AnimalParaMover => ({
+    id, brinco, dataEntrada: "2025-01-01", ativo: true, noEscopo: true, atual, ...extra,
+  });
+  const naMexicana = (id: string) => ({ id: `loc-${id}`, propriedadeId: 2, loteId: null, desde: "2025-01-01" });
+
+  it("fecha e abre para cada animal que muda de lugar", () => {
+    const plano = planejarMovimentacaoEmMassa({
+      animais: [animal("a", "1", naMexicana("a")), animal("b", "2", naMexicana("b"))],
+      destino: { propriedadeId: 1, loteId: null }, data: "2026-09-22", ativosDestino: new Map(), normalizar,
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.fechar).toEqual(["loc-a", "loc-b"]);
+    expect(plano.abrir).toEqual([{ animalId: "a", anteriorId: "loc-a" }, { animalId: "b", anteriorId: "loc-b" }]);
+  });
+
+  it("ignora quem já está no destino", () => {
+    const plano = planejarMovimentacaoEmMassa({
+      animais: [animal("a", "1", { id: "loc-a", propriedadeId: 1, loteId: null, desde: "2025-01-01" })],
+      destino: { propriedadeId: 1, loteId: null }, data: "2026-09-22", ativosDestino: new Map([["1", "a"]]), normalizar,
+    });
+    expect(plano.semMudanca).toEqual(["a"]);
+    expect(plano.abrir).toEqual([]);
+  });
+
+  it("brinco já ativo no destino e brinco repetido no próprio lote viram erro com o brinco", () => {
+    const plano = planejarMovimentacaoEmMassa({
+      animais: [animal("a", "10", naMexicana("a")), animal("b", " 20", naMexicana("b")), animal("c", "20", naMexicana("c"))],
+      destino: { propriedadeId: 1, loteId: null }, data: "2026-09-22", ativosDestino: new Map([["10", "outro"]]), normalizar,
+    });
+    expect(plano.erros.map((e) => [e.brinco, e.mensagem])).toEqual([
+      ["10", "brinco 10 já está ativo no sítio de destino"],
+      ["20", "brinco 20 repetido entre os animais movidos"],
+    ]);
+  });
+
+  it("mudar só de lote no mesmo sítio não checa brinco", () => {
+    const plano = planejarMovimentacaoEmMassa({
+      animais: [animal("a", "10", { id: "loc-a", propriedadeId: 1, loteId: null, desde: "2025-01-01" })],
+      destino: { propriedadeId: 1, loteId: "lote-x" }, data: "2026-09-22", ativosDestino: new Map([["10", "a"]]), normalizar,
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.abrir).toHaveLength(1);
+  });
+
+  it("recusa animal inativo, fora do escopo e data anterior à localização atual", () => {
+    const plano = planejarMovimentacaoEmMassa({
+      animais: [
+        animal("a", "1", naMexicana("a"), { ativo: false }),
+        animal("b", "2", naMexicana("b"), { noEscopo: false }),
+        animal("c", "3", { id: "loc-c", propriedadeId: 2, loteId: null, desde: "2026-09-30" }),
+      ],
+      destino: { propriedadeId: 1, loteId: null }, data: "2026-09-22", ativosDestino: new Map(), normalizar,
+    });
+    expect(plano.erros.map((e) => e.animalId)).toEqual(["a", "b", "c"]);
+    expect(plano.abrir).toEqual([]);
   });
 });

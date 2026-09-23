@@ -75,7 +75,7 @@ function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
   return "O sítio deixa de aparecer no seletor e em novos cadastros. Lotes, animais e outros registros já vinculados continuam intactos.";
 }
 
-export function Cadastros() {
+export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [aba, setAba] = useState<Aba>("lotes");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [filtroSitioLote, setFiltroSitioLote] = useState("");
@@ -148,7 +148,7 @@ export function Cadastros() {
   /* pré-seleciona o sítio ativo no seletor global (comPropriedade), quando houver, na criação de lote */
   const propriedadeInicialLote = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
-  const acao = aba === "lotes" ? <Button onClick={() => abrirNovo("lote")}><Plus size={16} /> Novo lote</Button>
+  const acao = !podeLancar ? undefined : aba === "lotes" ? <Button onClick={() => abrirNovo("lote")}><Plus size={16} /> Novo lote</Button>
     : aba === "racas" ? <Button onClick={() => abrirNovo("raca")}><Plus size={16} /> Nova raça</Button>
     : aba === "motivos" ? <Button onClick={() => abrirNovo("motivo")}><Plus size={16} /> Novo motivo de saída</Button>
     : <Button onClick={() => abrirNovo("sitio")}><Plus size={16} /> Novo sítio</Button>;
@@ -166,7 +166,7 @@ export function Cadastros() {
       { valor: "sitios", rotulo: "Sítios", icon: MapPin },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
-    <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
+    <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
       {carregando
         ? <div className="mt-5"><Loader label={`Carregando ${aba === "lotes" ? "lotes" : aba === "racas" ? "raças" : aba === "motivos" ? "motivos de saída" : "sítios"}`} /></div>
         : <>
@@ -180,22 +180,22 @@ export function Cadastros() {
                 </select>
               </label>
             </BarraFiltros>
-            <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes((l) => editar("lote", l), alternarLote)} chaveDe={(l) => l.id} onAbrir={(l) => editar("lote", l)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />
+            <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes((l) => editar("lote", l), alternarLote)} chaveDe={(l) => l.id} onAbrir={podeLancar ? (l) => editar("lote", l) : undefined} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />
           </Panel>}
 
           {aba === "racas" && <Panel className="mt-5 overflow-hidden">
             <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={(r) => editar("raca", r)} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
+            <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
           </Panel>}
 
           {aba === "motivos" && <Panel className="mt-5 overflow-hidden">
             <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Motivos de saída" itens={motivos ?? []} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={(m) => editar("motivo", m)} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
+            <TabelaFinanceira rotulo="Motivos de saída" itens={motivos ?? []} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
           </Panel>}
 
           {aba === "sitios" && <Panel className="mt-5 overflow-hidden">
             <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Sítios" itens={sitios.data} colunas={colunasSitios((s) => editar("sitio", s), alternarSitio)} chaveDe={(s) => s.id} onAbrir={(s) => editar("sitio", s)} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+            <TabelaFinanceira rotulo="Sítios" itens={sitios.data} colunas={colunasSitios((s) => editar("sitio", s), alternarSitio)} chaveDe={(s) => s.id} onAbrir={podeLancar ? (s) => editar("sitio", s) : undefined} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
           </Panel>}
         </>}
     </fieldset>

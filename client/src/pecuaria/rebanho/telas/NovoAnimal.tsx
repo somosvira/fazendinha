@@ -10,13 +10,23 @@ import { somaFracoes } from "../lib/composicao";
 import { CampoComposicao } from "../ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
-import { Button, ErrorBox, hoje, PaginaCarregando, ReviewLine } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, PageHeader, PaginaCarregando, PaginaFinanceira, ReviewLine } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
 import { NavRebanho } from "./NavRebanho";
 
 type Erros = Record<string, string>;
 
-export function NovoAnimal({ onVoltar }: { onVoltar: () => void }) {
+export function NovoAnimal({ onVoltar, podeLancar = true }: { onVoltar: () => void; podeLancar?: boolean }) {
+  if (!podeLancar) {
+    return <PaginaFinanceira>
+      <PageHeader eyebrow="Pecuária" titulo="Novo animal" descricao="O seu perfil pode consultar o rebanho, mas não pode cadastrar animais." />
+      <ErrorBox erro="Você não tem permissão para cadastrar animais." />
+    </PaginaFinanceira>;
+  }
+  return <FormNovoAnimal onVoltar={onVoltar} />;
+}
+
+function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erroCatalogos, setErroCatalogos] = useState<string | null>(null);
 

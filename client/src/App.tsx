@@ -505,7 +505,7 @@ export function App() {
         abrirId={deepLink && deepLink.tab.startsWith("pla-") ? deepLink.id : undefined}
         onAbriuEntidade={() => setDeepLink(null)} />
     : tab === "pec-rebanho"
-    ? <RebanhoContent />
+    ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : String(tab).startsWith("mil-")
     ? <CultivoContent aba={MIL[tab]} onNavMil={(s) => setTab(("mil-" + s) as Tab)} />
     : String(tab).startsWith("eqp-")

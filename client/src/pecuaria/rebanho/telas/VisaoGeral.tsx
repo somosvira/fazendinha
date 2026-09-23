@@ -21,7 +21,7 @@ function BarraProporcional({ valor, maximo }: { valor: number; maximo: number })
   return <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-mast" style={{ width: `${pct}%` }} /></div>;
 }
 
-export function VisaoGeral() {
+export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   const [painel, setPainel] = useState<PainelGeral | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -41,7 +41,7 @@ export function VisaoGeral() {
   const maxSitio = painel ? Math.max(1, ...painel.porSitio.map((s) => s.qtd)) : 1;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Rebanho" descricao="Efetivo, receptoras, sítios e últimos eventos do rebanho." acao={<Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button>} />
+    <PageHeader eyebrow="Pecuária" titulo="Rebanho" descricao="Efetivo, receptoras, sítios e últimos eventos do rebanho." acao={podeLancar ? <Button onClick={() => navegarPara(URL_NOVO_ANIMAL)}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
     {painel && <>

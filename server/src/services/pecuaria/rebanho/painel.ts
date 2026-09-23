@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { listar } from "./animais.js";
+import { listar, whereSituacao } from "./animais.js";
 
 export interface EventoPainel {
   tipo: "CADASTRO" | "SAIDA" | "ESTORNO";
@@ -20,25 +20,29 @@ export interface PainelGeralDTO {
 
 /** Visão geral do rebanho: contagens + últimos eventos, escopados por sítio quando aplicável. */
 export async function buscarPainelGeral(escopo: number | null): Promise<PainelGeralDTO> {
-  const { painel } = await listar({ situacao: "TODOS", page: 1, pageSize: 100000 }, escopo);
+  // o painel de `listar` é calculado sobre todo o conjunto filtrado; a página pedida é mínima
+  const { painel } = await listar({ situacao: "ATIVO", page: 1, pageSize: 1 }, escopo);
 
   const receptorasPct = painel.femeasAtivas > 0 ? Math.round((painel.receptorasAtivas / painel.femeasAtivas) * 1000) / 10 : 0;
 
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
 
-  const whereAnimalNoEscopo: Prisma.AnimalWhereInput = escopo != null ? { localizacoes: { some: { propriedadeId: escopo } } } : {};
+  // mesmo critério de sítio da lista: ativo pela localização aberta, quem saiu pela localização que a saída fechou
+  const animalNoEscopo = whereSituacao({ situacao: "TODOS", propriedadeId: escopo });
+  const saidaNoEscopo: Prisma.SaidaAnimalWhereInput = escopo != null ? { localizacaoFechada: { propriedadeId: escopo } } : {};
 
   const [saidas30d, cadastros, saidas, estornos] = await Promise.all([
-    prisma.saidaAnimal.count({ where: { data: { gte: cutoff }, animal: whereAnimalNoEscopo } }),
-    prisma.animal.findMany({ where: whereAnimalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, criadoEm: true } }),
-    prisma.saidaAnimal.findMany({ where: { animal: whereAnimalNoEscopo }, orderBy: { data: "desc" }, take: 10, select: { animalId: true, data: true, animal: { select: { brinco: true } } } }),
-    prisma.saidaAnimal.findMany({ where: { animal: whereAnimalNoEscopo, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
+    prisma.saidaAnimal.count({ where: { estornadaEm: null, data: { gte: cutoff }, ...saidaNoEscopo } }),
+    prisma.animal.findMany({ where: animalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, criadoEm: true } }),
+    prisma.saidaAnimal.findMany({ where: saidaNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, data: true, criadoEm: true, animal: { select: { brinco: true } } } }),
+    prisma.saidaAnimal.findMany({ where: { ...saidaNoEscopo, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
   ]);
 
+  // ordena pelo momento do registro (timestamp); exibe a data do fato
   const eventos: Array<EventoPainel & { ordenacao: Date }> = [
     ...cadastros.map((a) => ({ tipo: "CADASTRO" as const, animalId: a.id, brinco: a.brinco, ordenacao: a.criadoEm, data: a.criadoEm.toISOString().slice(0, 10) })),
-    ...saidas.map((s) => ({ tipo: "SAIDA" as const, animalId: s.animalId, brinco: s.animal.brinco, ordenacao: s.data, data: s.data.toISOString().slice(0, 10) })),
+    ...saidas.map((s) => ({ tipo: "SAIDA" as const, animalId: s.animalId, brinco: s.animal.brinco, ordenacao: s.criadoEm, data: s.data.toISOString().slice(0, 10) })),
     ...estornos.map((s) => ({ tipo: "ESTORNO" as const, animalId: s.animalId, brinco: s.animal.brinco, ordenacao: s.estornadaEm!, data: s.estornadaEm!.toISOString().slice(0, 10) })),
   ];
   eventos.sort((a, b) => b.ordenacao.getTime() - a.ordenacao.getTime());

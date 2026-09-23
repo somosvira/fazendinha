@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularCategoria, idadeEmMeses } from "./categoria.calc.js";
+import { calcularCategoria, filtroCategoria, idadeEmMeses } from "./categoria.calc.js";
 
 describe("idadeEmMeses", () => {
   it("aniversário exato de 12 meses conta os 12 meses completos", () => {
@@ -43,5 +43,30 @@ describe("calcularCategoria", () => {
   it("aceita faixas customizadas", () => {
     const faixas = { mesesBezerro: 6, mesesGarrote: 18 };
     expect(calcularCategoria({ sexo: "M", dataNascimento: "2026-01-01", partos: 0, hoje: "2026-09-22", faixas })).toBe("GARROTE");
+  });
+});
+
+describe("filtroCategoria equivale a calcularCategoria", () => {
+  const atende = (f: ReturnType<typeof filtroCategoria>, sexo: "F" | "M", nasc: Date, partos: number) =>
+    f.sexo === sexo
+    && (f.semPartos === undefined || (f.semPartos ? partos === 0 : partos > 0))
+    && (f.nascidoAte === undefined || nasc.getTime() <= f.nascidoAte.getTime())
+    && (f.nascidoApos === undefined || nasc.getTime() > f.nascidoApos.getTime());
+
+  const hojes = ["2026-09-23", "2026-03-31", "2026-02-28", "2028-02-29", "2027-03-01", "2026-12-31"];
+  const categorias = ["BEZERRA", "NOVILHA", "VACA", "BEZERRO", "GARROTE", "TOURO"] as const;
+
+  it.each(hojes)("varredura de nascimentos em 30 meses para hoje=%s", (hoje) => {
+    const h = new Date(hoje);
+    for (let dias = 0; dias <= 30 * 31; dias += 1) {
+      const nasc = new Date(h.getTime() - dias * 86_400_000);
+      for (const sexo of ["F", "M"] as const) {
+        for (const partos of [0, 1]) {
+          const esperada = calcularCategoria({ sexo, dataNascimento: nasc, partos, hoje: h });
+          const casadas = categorias.filter((c) => atende(filtroCategoria(c, h), sexo, nasc, partos));
+          expect(casadas).toEqual([esperada]);
+        }
+      }
+    }
   });
 });

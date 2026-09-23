@@ -2033,6 +2033,9 @@ model AuditoriaPecuaria {
   id           String   @id @default(uuid())
   entidade     String
   entidadeId   String
+  // Animal a que o registro se refere (também para linhas já apagadas: pesagem excluída,
+  // movimentação desfeita), para a trilha do animal não depender da linha ainda existir.
+  animalId     String?
   acao         String
   antes        Json?
   depois       Json?
@@ -2045,6 +2048,7 @@ model AuditoriaPecuaria {
   atualizadoEm DateTime @updatedAt
 
   @@index([entidade, entidadeId])
+  @@index([animalId, em])
   @@index([em])
   @@schema("pecuaria")
 }

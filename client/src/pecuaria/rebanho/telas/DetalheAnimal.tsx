@@ -32,7 +32,7 @@ function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: n
   return `${((atual.pesoKg - anterior.pesoKg) / dias).toFixed(3)} kg/dia`;
 }
 
-export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => void }) {
+export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string; onVoltar: () => void; podeLancar?: boolean }) {
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [auditoria, setAuditoria] = useState<EntradaAuditoria[] | null>(null);
@@ -52,26 +52,33 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
   const [emAcao, setEmAcao] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
-  const carregar = useCallback(async () => {
-    try { setErro(null); setAnimal(await buscarFichaAnimal(id)); }
-    catch (e) { setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+  const recarregarAuditoria = useCallback(async () => {
+    setAuditoria(await buscarAuditoriaAnimal(id).catch(() => []));
   }, [id]);
+  // ficha e auditoria andam juntas: toda ação que muda o animal também gera entrada de auditoria
+  const carregar = useCallback(async () => {
+    try {
+      setErro(null);
+      const [ficha] = await Promise.all([buscarFichaAnimal(id), recarregarAuditoria()]);
+      setAnimal(ficha);
+    } catch (e) { setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
+  }, [id, recarregarAuditoria]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
-  useEffect(() => { buscarAuditoriaAnimal(id).then(setAuditoria).catch(() => setAuditoria([])); }, [id]);
 
   if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
 
   const ativo = animal.situacao === "ATIVO";
-  const localizacaoAtual = animal.historicoLocalizacoes[0] ?? null;
-  const destinoAtual = animal.historicoDestinos[0] ?? null;
+  // a atual é a linha aberta; para quem saiu, a última fechada
+  const localizacaoAtual = animal.historicoLocalizacoes.find((l) => l.ate == null) ?? animal.historicoLocalizacoes[0] ?? null;
+  const destinoAtual = animal.historicoDestinos.find((d) => d.ate == null) ?? animal.historicoDestinos[0] ?? null;
 
   const executar = async (fn: () => Promise<AnimalFicha | void>, aoTerminar: () => void) => {
     if (emAcao) return;
     setEmAcao(true); setErroAcao(null);
     try {
       const atualizado = await fn();
-      if (atualizado) setAnimal(atualizado);
+      if (atualizado) { setAnimal(atualizado); await recarregarAuditoria(); }
       else await carregar();
       aoTerminar();
     } catch (e) { setErroAcao(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
@@ -100,7 +107,7 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
           <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
           <p className="mt-2 break-words text-sm text-ink-3">{formatarIdade(animal.idadeMeses)} · {animal.propriedade?.nome ?? "Sem sítio"}{animal.lote ? ` · ${animal.lote.nome}` : ""}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {podeLancar && <div className="flex flex-wrap gap-2">
           {ativo ? <>
             <Button secondary onClick={() => setEditandoDados(true)}>Editar dados</Button>
             <Button secondary onClick={() => setEditandoComposicao(true)}>Editar composição</Button>
@@ -110,7 +117,7 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
             <Button danger onClick={() => setDandoSaida(true)}>Dar saída</Button>
             <Button danger onClick={() => setExcluindoCadastro(true)}>Excluir cadastro</Button>
           </> : <Button onClick={() => { setErroAcao(null); setEstornandoSaida(true); }}>Estornar saída</Button>}
-        </div>
+        </div>}
       </div>
 
       <div className="grid gap-6 p-6 lg:grid-cols-2">
@@ -130,17 +137,17 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
 
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Composição racial</h2>
-          {animal.composicao.length ? <ul className="mt-4 space-y-2 text-sm">{animal.composicao.map((item) => <li key={item.sigla} className="flex items-center justify-between gap-3"><span>{catalogos?.racas.find((raca) => raca.sigla === item.sigla)?.nome ?? item.sigla} ({item.sigla})</span><strong>{fracaoReduzida(item.fracao64)}</strong></li>)}</ul> : <p className="mt-4 text-sm text-ink-3">Sem composição racial informada.</p>}
+          {animal.composicao.length ? <ul className="mt-4 space-y-2 text-sm">{animal.composicao.map((item) => <li key={item.racaId} className="flex items-center justify-between gap-3"><span>{item.nome} ({item.sigla}){!item.racaAtiva && <span className="text-ink-3"> · inativa</span>}</span><strong>{fracaoReduzida(item.fracao64)}</strong></li>)}</ul> : <p className="mt-4 text-sm text-ink-3">Sem composição racial informada.</p>}
         </section>
 
         <section>
-          <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Localização</h2>{ativo && animal.historicoLocalizacoes.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button>}</div>
+          <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Localização</h2>{podeLancar && ativo && animal.historicoLocalizacoes.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button>}</div>
           <p className="mt-4 text-sm">{localizacaoAtual ? <>{localizacaoAtual.propriedade?.nome ?? "Sem sítio"}{localizacaoAtual.lote ? ` · ${localizacaoAtual.lote.nome}` : ""} <span className="text-ink-3">desde {formatarDataBR(localizacaoAtual.desde)}</span></> : "Sem localização registrada."}</p>
           {animal.historicoLocalizacoes.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote?.nome ?? "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td></tr>)}</tbody></table></div>}
         </section>
 
         <section>
-          <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Destino</h2>{ativo && animal.historicoDestinos.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoDestino(true); }}>Desfazer última mudança</button>}</div>
+          <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Destino</h2>{podeLancar && ativo && animal.historicoDestinos.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoDestino(true); }}>Desfazer última mudança</button>}</div>
           <p className="mt-4 text-sm">{destinoAtual ? <>{rotuloAptidao(destinoAtual.aptidao)}{destinoAtual.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(destinoAtual.papelReprodutivo)}` : ""} <span className="text-ink-3">desde {formatarDataBR(destinoAtual.desde)}</span></> : "Sem destino registrado."}</p>
           {animal.historicoDestinos.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Aptidão</th><th className="py-1 pr-3 font-semibold">Papel</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoDestinos.map((dest) => <tr key={dest.id}><td className="py-1.5 pr-3">{rotuloAptidao(dest.aptidao)}</td><td className="py-1.5 pr-3">{rotuloPapelReprodutivo(dest.papelReprodutivo)}</td><td className="py-1.5 pr-3">{formatarDataBR(dest.desde)}</td><td className="py-1.5 pr-3">{dest.ate ? formatarDataBR(dest.ate) : "—"}</td></tr>)}</tbody></table></div>}
         </section>
@@ -148,7 +155,7 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
 
       <section className="border-t border-border p-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Pesagens</h2>
-        {animal.historicoPesagens.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink-3"><tr><th className="py-1.5 pr-3 font-semibold">Data</th><th className="py-1.5 pr-3 font-semibold">Peso</th><th className="py-1.5 pr-3 font-semibold">Tipo</th><th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th><th className="py-1.5 pr-3 font-semibold">Origem</th><th className="py-1.5 pr-3 font-semibold" /></tr></thead><tbody className="divide-y divide-border">{animal.historicoPesagens.map((pesagem, indice) => <tr key={pesagem.id}><td className="py-2 pr-3">{formatarDataBR(pesagem.data)}</td><td className="py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td><td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}</td><td className="py-2 pr-3">{gmdEntre(pesagem, animal.historicoPesagens[indice + 1])}</td><td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td><td className="py-2 pr-3 text-right"><div className="flex justify-end gap-1"><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => setPesagemForm({ modo: "editar", pesagem: { id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] } })}><Pencil size={16} /></button><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => { setErroAcao(null); setExcluindoPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] }); }}><Trash2 size={16} /></button></div></td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
+        {animal.historicoPesagens.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink-3"><tr><th className="py-1.5 pr-3 font-semibold">Data</th><th className="py-1.5 pr-3 font-semibold">Peso</th><th className="py-1.5 pr-3 font-semibold">Tipo</th><th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th><th className="py-1.5 pr-3 font-semibold">Origem</th><th className="py-1.5 pr-3 font-semibold" /></tr></thead><tbody className="divide-y divide-border">{animal.historicoPesagens.map((pesagem, indice) => <tr key={pesagem.id}><td className="py-2 pr-3">{formatarDataBR(pesagem.data)}</td><td className="py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td><td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}</td><td className="py-2 pr-3">{gmdEntre(pesagem, animal.historicoPesagens[indice + 1])}</td><td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td><td className="py-2 pr-3 text-right">{podeLancar && <div className="flex justify-end gap-1"><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => setPesagemForm({ modo: "editar", pesagem: { id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] } })}><Pencil size={16} /></button><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => { setErroAcao(null); setExcluindoPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] }); }}><Trash2 size={16} /></button></div>}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
       </section>
 
       <section className="border-t border-border p-6">
@@ -162,12 +169,12 @@ export function DetalheAnimal({ id, onVoltar }: { id: string; onVoltar: () => vo
       </section>
     </Panel>
 
-    {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); setEditandoDados(false); }} />}
+    {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setEditandoDados(false); }} />}
     {editandoComposicao && catalogos && <FormComposicao animal={animal} racas={catalogos.racas} onFechar={() => setEditandoComposicao(false)} onSalvo={async () => { setEditandoComposicao(false); await carregar(); }} />}
     {movimentando && catalogos && <FormMovimentar animalIds={[animal.id]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async () => { setMovimentando(false); await carregar(); }} />}
-    {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); setMudandoDestino(false); }} />}
+    {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setMudandoDestino(false); }} />}
     {pesagemForm && <FormPesagem animalId={animal.id} pesagem={pesagemForm.modo === "editar" ? pesagemForm.pesagem : null} onFechar={() => setPesagemForm(null)} onSalvo={async () => { setPesagemForm(null); await carregar(); }} />}
-    {dandoSaida && catalogos && <FormSaida animal={animal} motivos={catalogos.motivosSaida} onFechar={() => setDandoSaida(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); setDandoSaida(false); }} />}
+    {dandoSaida && catalogos && <FormSaida animal={animal} motivos={catalogos.motivosSaida} onFechar={() => setDandoSaida(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setDandoSaida(false); }} />}
 
     {estornandoSaida && <ModalMotivo titulo="Estornar saída" eyebrow={`Animal ${animal.brinco}`} labelManter="Manter saída" labelConfirmar="Confirmar estorno" confirmando={emAcao} erro={erroAcao} onFechar={() => setEstornandoSaida(false)} onConfirmar={(motivo) => { void executar(() => estornarSaidaAnimal(animal.id, { motivo }), () => setEstornandoSaida(false)); }} />}
     {excluindoCadastro && <ModalMotivo titulo="Excluir cadastro" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal receberá uma saída do tipo "Cadastro indevido" e deixará de contar como ativo. Esta ação pode ser estornada depois, reabrindo o cadastro.</p>} labelManter="Manter cadastro" labelConfirmar="Excluir cadastro" confirmando={emAcao} erro={erroAcao} onFechar={() => setExcluindoCadastro(false)} onConfirmar={(motivo) => { void executar(() => darSaidaAnimal(animal.id, { data: hoje(), tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: motivo }), () => setExcluindoCadastro(false)); }} />}
