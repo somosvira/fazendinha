@@ -7,7 +7,7 @@ import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { FormProduto } from "../financeiro/FormProduto";
 import { useSaldos, listarMovimentos, listarProdutos, listarCentrosCusto, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
-import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea } from "./navegacao";
+import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
@@ -60,6 +60,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const entradas = useMovimentos({ tipo: "ENTRADA" });
   const [busca, setBusca] = useState("");
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
+  const [soNegativos, setSoNegativos] = useState(false);
   const [ordem, setOrdem] = useState<Ordem>("nome");
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [centros, setCentros] = useState<RefDTO[]>([]);
@@ -67,8 +68,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const [erroCentros, setErroCentros] = useState<string | null>(null);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
-  // O ajuste é uma operação financeira: sem a área financeiro não há para onde levar.
-  const podeAjustar = podeAcessarArea("financeiro");
+  // O ajuste é uma operação financeira: exige a área financeiro e a permissão `lancar`.
+  const podeAjustar = podeAjustarEstoque();
 
   const carregarProdutos = useCallback(() => {
     listarProdutos({ ativo: true }).then((ps) => { setProdutos(ps); setErroProdutos(null); }).catch((e) => setErroProdutos(e instanceof Error ? e.message : String(e)));
@@ -80,6 +81,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     const filtrados = saldos.data.filter((s) => {
       if (soAbaixoMin && !s.abaixoMinimo) return false;
+      if (soNegativos && s.saldo >= 0) return false;
       if (!termo) return true;
       return s.nome.toLocaleLowerCase("pt-BR").includes(termo) || (s.categoria?.nome ?? "").toLocaleLowerCase("pt-BR").includes(termo);
     });
@@ -88,9 +90,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       if (ordem === "categoria") return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR");
       return a.nome.localeCompare(b.nome, "pt-BR");
     });
-  }, [saldos.data, busca, soAbaixoMin, ordem]);
+  }, [saldos.data, busca, soAbaixoMin, soNegativos, ordem]);
 
-  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + s.valor, 0), [saldos.data]);
+  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor), 0), [saldos.data]);
+  const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   // Sem preço no cadastro: o custo só existe depois de uma entrada valorizada no sítio.
   const nSemCusto = useMemo(() => saldos.data.filter((s) => s.custoMedio == null).length, [saldos.data]);
@@ -154,7 +157,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     } },
   ];
 
-  const filtrosAtivos = busca.trim() !== "" || soAbaixoMin;
+  const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
   const acao = <div className="flex flex-wrap gap-2">
     {podeAjustar && <Button secondary onClick={() => abrirAjusteEstoque()}><SlidersHorizontal size={16} /> Ajustar quantidade</Button>}
     <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>
@@ -168,7 +171,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     {/* Só dados de estoque: valor, alertas e as últimas entradas. */}
     <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric label="Valor em estoque" valor={brl(valorTotal)} detalhe={`${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Boxes} />
+      <div className="flex flex-col gap-1.5">
+        <Metric label="Valor em estoque" valor={brl(valorTotal)} detalhe={`${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Boxes} />
+        {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-red-800 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
+      </div>
       {nAbaixoMin > 0
         ? <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className="block rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
             <Metric label="Itens abaixo do mínimo" valor={String(nAbaixoMin)} detalhe={soAbaixoMin ? "Filtro ativo — clique para ver todos" : "Clique para filtrar a lista"} icon={AlertTriangle} tone="red" />

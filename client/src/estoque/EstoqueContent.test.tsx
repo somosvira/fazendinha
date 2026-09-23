@@ -25,8 +25,8 @@ const categoria = { id: 1, nome: "Alimentação", usoSanitario: false, usoNutric
 const saldo = (o: Record<string, unknown>) => ({ produtoId: 1, nome: "Ração", categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
 const mov = (o: Record<string, unknown>) => ({ id: 1, produtoId: 1, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, grupo: null, observacao: null, operacaoId: null, vinculo: null, ...o });
 
-function sessao(areas: string[]) {
-  localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags: [], status: "ATIVO", dono: false }));
+function sessao(areas: string[], flags: string[] = [], dono = false) {
+  localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags, status: "ATIVO", dono }));
 }
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
@@ -99,6 +99,26 @@ describe("EstoqueContent — saldos e custo médio", () => {
     const card = (await screen.findByText("Valor em estoque")).closest("section")!;
     expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 100,50");
     expect(within(card).getByText("2 produtos com movimento")).toBeTruthy();
+  });
+
+  it("card Valor em estoque ignora valores negativos e avisa (com filtro) os produtos com saldo negativo", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: -3, valor: -20 })] }));
+    render(<EstoqueContent />);
+    const card = (await screen.findByText("Valor em estoque")).closest("section")!;
+    expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 90,00");
+    const aviso = screen.getByRole("button", { name: /1 produto com saldo negativo/ });
+    const tabela = () => within(screen.getByRole("table", { name: "Saldos de estoque" }));
+    expect(tabela().getByText("Ração")).toBeTruthy();
+    fireEvent.click(aviso);
+    expect(tabela().queryByText("Ração")).toBeNull();
+    expect(tabela().getByText("Sal")).toBeTruthy();
+  });
+
+  it("sem saldo negativo não mostra o aviso", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
+    render(<EstoqueContent />);
+    await screen.findByText("Valor em estoque");
+    expect(screen.queryByText(/saldo negativo/)).toBeNull();
   });
 
   it("card Itens abaixo do mínimo filtra a lista ao clicar", async () => {
@@ -212,5 +232,26 @@ describe("EstoqueContent — atalho Ajustar quantidade", () => {
     render(<EstoqueContent />);
     await screen.findByRole("table", { name: "Saldos de estoque" });
     expect(screen.queryByRole("button", { name: /Ajustar quantidade/ })).toBeNull();
+  });
+
+  it("some para quem tem a área financeiro mas não a permissão lancar", async () => {
+    sessao(["financeiro"]);
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(screen.queryByRole("button", { name: /Ajustar quantidade/ })).toBeNull();
+  });
+
+  it("aparece com a área financeiro + lancar, e para o dono", async () => {
+    sessao(["financeiro"], ["lancar"]);
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(screen.getAllByRole("button", { name: /Ajustar quantidade/ }).length).toBeGreaterThan(0);
+    cleanup();
+    sessao([], [], true);
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(screen.getAllByRole("button", { name: /Ajustar quantidade/ }).length).toBeGreaterThan(0);
   });
 });

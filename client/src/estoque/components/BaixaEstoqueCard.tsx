@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listarSaldos, registrarMovimento, listarProdutos, type SaldoDTO, type ProdutoDTO } from "../api";
+import { listarSaldos, registrarMovimento, type SaldoDTO } from "../api";
 import { rotuloUnidade } from "../../lib/unidades";
 import type { Animal } from "../../rebanho/types";
 import { AnimalIdentity, mencaoAnimal } from "../../rebanho/components/AnimalIdentity";
@@ -26,7 +26,7 @@ const rotuloTipo = (t: Props["tipo"]) => (t === "VACINA" ? "Vacina" : "Aplicaç�
 const norm = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
-function acharProduto(produtos: ProdutoDTO[], digitado: string): ProdutoDTO | null {
+function acharProduto(produtos: SaldoDTO[], digitado: string): SaldoDTO | null {
   const n = norm(digitado);
   if (!n) return null;
   return (
@@ -56,7 +56,8 @@ export function BaixaEstoqueCard({
   onFechar,
   onBaixaFeita,
 }: Props) {
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
+  // Só entram na lista os produtos com saldo positivo neste sítio: baixa de produto
+  // que nunca teve estoque geraria saldo negativo (o servidor também recusa).
   const [saldos, setSaldos] = useState<SaldoDTO[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [produtoId, setProdutoId] = useState<number | null>(null);
@@ -75,13 +76,13 @@ export function BaixaEstoqueCard({
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([listarProdutos({ ativo: true }), listarSaldos()])
-      .then(([ps, ss]) => {
+    listarSaldos()
+      .then((ss) => {
         if (!vivo) return;
-        setProdutos(ps);
-        setSaldos(ss);
-        const match = acharProduto(ps, produtoDigitado);
-        if (match) setProdutoId(match.id);
+        const comSaldo = ss.filter((x) => x.saldo > 0);
+        setSaldos(comSaldo);
+        const match = acharProduto(comSaldo, produtoDigitado);
+        if (match) setProdutoId(match.produtoId);
       })
       .catch((e) => vivo && setErro(e.message))
       .finally(() => vivo && setCarregando(false));
@@ -90,26 +91,26 @@ export function BaixaEstoqueCard({
     };
   }, [produtoDigitado]);
 
-  const produtoSel = useMemo(
-    () => produtos.find((p) => p.id === produtoId) ?? null,
-    [produtos, produtoId],
-  );
   const saldoSel = useMemo(
     () => saldos.find((s) => s.produtoId === produtoId) ?? null,
     [saldos, produtoId],
   );
 
-  const podeDarBaixa =
-    !!produtoSel && Number(quantidade) > 0 && !salvando;
+  const qtdNum = Number(quantidade);
+  const acimaDoSaldo = !!saldoSel && qtdNum > saldoSel.saldo;
+  // Sem produto com saldo escolhido (ou nenhum produto com saldo) não há o que baixar.
+  const semSaldo = !carregando && !saldoSel && (saldos.length === 0 || (produtoDigitado.trim() !== "" && produtoId == null));
+
+  const podeDarBaixa = !!saldoSel && qtdNum > 0 && !acimaDoSaldo && !salvando;
 
   async function darBaixa() {
-    if (!produtoSel) return;
+    if (!saldoSel || !podeDarBaixa) return;
     setSalvando(true);
     setErro(null);
     try {
       // O estoque só aceita ajuste manual justificado; a baixa vira ajuste negativo.
       await registrarMovimento({
-        produtoId: produtoSel.id,
+        produtoId: saldoSel.produtoId,
         tipo: "AJUSTE",
         data,
         quantidade: -Number(quantidade),
@@ -158,43 +159,51 @@ export function BaixaEstoqueCard({
             disabled={carregando}
           >
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>
-            {produtos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome} ({p.categoriaNome ? p.categoriaNome.toLowerCase() : "sem categoria"} · {rotuloUnidade(p.unidade)})
+            {saldos.map((p) => (
+              <option key={p.produtoId} value={p.produtoId}>
+                {p.nome} ({p.categoria ? p.categoria.nome.toLowerCase() : "sem categoria"} · {rotuloUnidade(p.unidade)})
               </option>
             ))}
           </RebSelect>
         </RebField>
 
-        {produtoSel && (
+        {semSaldo && (
+          <p role="alert" className="-mt-1.5 mb-3 text-[13px] text-prejuizo">
+            Este produto não tem saldo em estoque nesta fazenda — registre uma compra ou um ajuste em Nova operação.
+          </p>
+        )}
+
+        {saldoSel && (
           <div className="-mt-1.5 mb-3 flex min-h-[26px] items-center">
-            {!saldoSel || saldoSel.saldo <= 0 ? (
-              <RebPill tone="bad">
-                Sem estoque{saldoSel ? ` (saldo: ${fmtQtd(saldoSel.saldo)} ${rotuloUnidade(produtoSel.unidade)})` : ""}
-              </RebPill>
-            ) : saldoSel.abaixoMinimo ? (
+            {saldoSel.abaixoMinimo ? (
               <RebPill tone="warn">
-                ⚠ Abaixo do mínimo — saldo {fmtQtd(saldoSel.saldo)} {rotuloUnidade(produtoSel.unidade)}
+                ⚠ Abaixo do mínimo — saldo {fmtQtd(saldoSel.saldo)} {rotuloUnidade(saldoSel.unidade)}
                 {saldoSel.minimoEstoque != null ? ` · mín ${fmtQtd(saldoSel.minimoEstoque)}` : ""}
               </RebPill>
             ) : (
               <span className="font-sans text-[13.5px] italic text-ink-3">
-                Saldo atual: {fmtQtd(saldoSel.saldo)} {rotuloUnidade(produtoSel.unidade)}
+                Saldo disponível: {fmtQtd(saldoSel.saldo)} {rotuloUnidade(saldoSel.unidade)}
               </span>
             )}
           </div>
         )}
 
-        <RebField label={<>Quantidade{produtoSel ? ` (${rotuloUnidade(produtoSel.unidade)})` : ""}</>}>
+        <RebField label={<>Quantidade{saldoSel ? ` (${rotuloUnidade(saldoSel.unidade)})` : ""}</>}>
           <input
             type="number"
             min={0}
+            max={saldoSel?.saldo}
             step="0.001"
             value={quantidade}
             onChange={(e) => setQuantidade(e.target.value)}
-            disabled={!produtoSel}
+            disabled={!saldoSel}
           />
         </RebField>
+        {acimaDoSaldo && saldoSel && (
+          <p role="alert" className="-mt-1.5 mb-3 text-[13px] text-prejuizo">
+            Quantidade acima do saldo disponível ({fmtQtd(saldoSel.saldo)} {rotuloUnidade(saldoSel.unidade)}).
+          </p>
+        )}
 
         <RebField label="Observação">
           <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />

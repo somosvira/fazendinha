@@ -33,3 +33,12 @@ export function podeAcessarArea(area: AreaId): boolean {
   const u = getUsuario();
   return temAcessoArea(u?.areas, area, !!u?.dono);
 }
+
+/** Pode abrir o ajuste de estoque (operação financeira)? Exige a área financeiro E a flag
+ *  `lancar` — mesmo critério de `podeLancar` que o App passa ao FinanceiroContent
+ *  (dono ou flag). Sem sessão gravada = acesso aberto, como em dev. */
+export function podeAjustarEstoque(): boolean {
+  const u = getUsuario();
+  if (!u) return true;
+  return podeAcessarArea("financeiro") && (!!u.dono || u.flags.includes("lancar"));
+}
