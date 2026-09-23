@@ -215,6 +215,12 @@ export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?:
   return linhas;
 }
 
+/** Para onde levar o usuário quando o movimento NÃO nasceu de uma operação financeira (saídas automáticas). */
+export type VinculoMovimento =
+  | { tipo: "LOTE"; id: number; nome: string }
+  | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null }
+  | { tipo: "TALHAO"; id: number; codigo: string };
+
 export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; propriedadeId?: number | null }) {
   const where: Prisma.MovimentoEstoqueWhereInput = {};
   where.status = statusSaldoEstoque;
@@ -223,27 +229,45 @@ export async function listarMovimentos(f?: { produtoId?: number; tipo?: string; 
   if (f?.propriedadeId) where.propriedadeId = f.propriedadeId;
   const ms = await prisma.movimentoEstoque.findMany({
     where,
-    orderBy: { data: "desc" },
+    orderBy: [{ data: "desc" }, { id: "desc" }],
     take: 200,
-    include: { produto: { include: { centrosCusto: { include: { centroCusto: true } } } }, operacao: { include: { parceiro: true } }, grupo: true },
+    include: {
+      produto: { include: { centrosCusto: { include: { centroCusto: true } } } },
+      operacao: { include: { parceiro: true } },
+      grupo: true,
+      // Origem das saídas automáticas (sem operação financeira): um único join por relação, sem N+1.
+      consumoPeriodo: { select: { grupoId: true, grupo: { select: { nome: true } } } },
+      eventoSanitario: { select: { animalId: true, animal: { select: { numero: true, nome: true } } } },
+      operacaoAgricola: { select: { talhaoId: true, talhao: { select: { codigo: true } } } },
+    },
   });
-  return ms.map((m) => ({
-    id: m.id,
-    produtoId: m.produtoId,
-    produto: m.produto.nome,
-    centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
-    tipo: m.tipo,
-    origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | NUTRICAO | SANIDADE | APLICACAO | PERDA | AJUSTE_INVENTARIO
-    status: m.status,
-    reversaoDeId: m.reversaoDeId,
-    data: iso(m.data),
-    quantidade: Number(m.quantidade),
-    custoUnitario: Number(m.custoUnitario),
-    valorTotal: Number(m.valorTotal),
-    fornecedor: m.operacao?.parceiro?.nome ?? null,
-    grupo: m.grupo?.nome ?? null,
-    observacao: m.observacao ?? null,
-  }));
+  return ms.map((m) => {
+    let vinculo: VinculoMovimento | null = null;
+    if (m.consumoPeriodo) vinculo = { tipo: "LOTE", id: m.consumoPeriodo.grupoId, nome: m.consumoPeriodo.grupo.nome };
+    else if (m.eventoSanitario) vinculo = { tipo: "ANIMAL", id: m.eventoSanitario.animalId, numero: m.eventoSanitario.animal.numero, nome: m.eventoSanitario.animal.nome };
+    else if (m.operacaoAgricola) vinculo = { tipo: "TALHAO", id: m.operacaoAgricola.talhaoId, codigo: m.operacaoAgricola.talhao.codigo };
+    return {
+      id: m.id,
+      produtoId: m.produtoId,
+      produto: m.produto.nome,
+      centrosCusto: m.produto.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
+      tipo: m.tipo,
+      origem: m.origem, // COMPRA | CONSUMO_DIRETO | TRANSFERENCIA | PRODUCAO | DEVOLUCAO | BONIFICACAO | INVENTARIO_INICIAL | NUTRICAO | SANIDADE | APLICACAO | PERDA | AJUSTE_INVENTARIO
+      status: m.status,
+      reversaoDeId: m.reversaoDeId,
+      data: iso(m.data),
+      quantidade: Number(m.quantidade),
+      custoUnitario: Number(m.custoUnitario),
+      valorTotal: Number(m.valorTotal),
+      fornecedor: m.operacao?.parceiro?.nome ?? null,
+      grupo: m.grupo?.nome ?? null,
+      observacao: m.observacao ?? null,
+      /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
+      operacaoId: m.operacaoId ?? null,
+      /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */
+      vinculo,
+    };
+  });
 }
 
 // Um mês está fechado quando o período financeiro da propriedade está FECHADO.

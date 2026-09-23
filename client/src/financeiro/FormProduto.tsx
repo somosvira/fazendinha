@@ -3,7 +3,7 @@ import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosC
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
-import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
+import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 
 // Chips informativos das marcações de uso da categoria escolhida — o
@@ -58,20 +58,20 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
-  const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
-  const [fornecedorIds, setFornecedorIds] = useState(() => new Set(produto?.fornecedores?.map((f) => f.id) ?? []));
+  const [centroCustoIds, setCentroCustoIds] = useState<number[]>(() => produto?.centroCustoIds ?? []);
+  const [fornecedorIds, setFornecedorIds] = useState<number[]>(() => produto?.fornecedores?.map((f) => f.id) ?? []);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
-  const fornecedores = parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR") && (p.ativo || fornecedorIds.has(p.id)));
-
-  const alternarFornecedor = (id: number) => setFornecedorIds((atuais) => {
-    const proximos = new Set(atuais); if (proximos.has(id)) proximos.delete(id); else proximos.add(id); return proximos;
-  });
-  const alternarCentro = (id: number) => setCentroCustoIds((atuais) => {
-    const proximos = new Set(atuais); if (proximos.has(id)) proximos.delete(id); else proximos.add(id); return proximos;
-  });
+  // Só ativos entram como opção nova; os já vinculados continuam visíveis (desabilitados
+  // e rotulados) para o usuário enxergar e poder remover o vínculo.
+  const opcoesFornecedores: MultiSelectOption<number>[] = parceiros
+    .filter((p) => papeisDoParceiro(p).includes("FORNECEDOR") && (p.ativo || fornecedorIds.includes(p.id)))
+    .map((p) => ({ value: p.id, label: p.ativo ? p.nome : `${p.nome} (inativo)`, disabled: !p.ativo }));
+  const opcoesCentros: MultiSelectOption<number>[] = centros
+    .filter((c) => c.ativo !== false || centroCustoIds.includes(c.id))
+    .map((c) => ({ value: c.id, label: c.ativo === false ? `${c.nome} (inativo)` : c.nome, disabled: c.ativo === false }));
 
   const submeter = async (e: FormEvent) => {
     e.preventDefault();
@@ -83,7 +83,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     const dados: ProdutoInput = {
       nome: nome.trim(), unidade,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: Number(categoriaId),
-      centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
+      centroCustoIds, fornecedorIds,
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
     try {
@@ -121,21 +121,30 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
           </div>
         );
       })()}
-      <CentrosCustoFieldset
-        idBase="produto-centros"
-        centros={centros}
-        selecionados={centroCustoIds}
-        onToggle={alternarCentro}
-        ajuda="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
+      <MultiSelect
+        label="Centros de custo"
+        placeholder="Nenhum centro de custo"
+        searchPlaceholder="Buscar centro de custo…"
+        emptyText="Nenhum centro de custo cadastrado."
+        helpText="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
+        error={erros.centroCustoIds}
+        contentClassName="z-[1200]"
+        options={opcoesCentros}
+        value={centroCustoIds}
+        onValueChange={setCentroCustoIds}
       />
-      <fieldset className="rounded-lg border border-border p-3" aria-describedby={erros.fornecedorIds ? "produto-fornecedores-erro" : "produto-fornecedores-ajuda"}>
-        <legend className="px-1 text-sm font-medium">Fornecedores do produto</legend>
-        <p id="produto-fornecedores-ajuda" className="mb-3 text-xs text-ink-3">Opcional. A compra continua podendo usar outro fornecedor.</p>
-        <div className="grid max-h-48 gap-2 overflow-y-auto">
-          {fornecedores.length === 0 ? <p className="text-sm text-ink-3">Nenhum parceiro com papel de fornecedor.</p> : fornecedores.map((fornecedor) => <label key={fornecedor.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fornecedorIds.has(fornecedor.id)} disabled={!fornecedor.ativo} onChange={() => alternarFornecedor(fornecedor.id)} /> <span>{fornecedor.nome}{fornecedor.ativo ? "" : " (inativo)"}</span></label>)}
-        </div>
-        {erros.fornecedorIds && <p id="produto-fornecedores-erro" role="alert" className="mt-2 text-xs text-red-700">{erros.fornecedorIds}</p>}
-      </fieldset>
+      <MultiSelect
+        label="Fornecedores do produto"
+        placeholder="Nenhum fornecedor"
+        searchPlaceholder="Buscar fornecedor…"
+        emptyText="Nenhum parceiro com papel de fornecedor."
+        helpText="Opcional. A compra continua podendo usar outro fornecedor."
+        error={erros.fornecedorIds}
+        contentClassName="z-[1200]"
+        options={opcoesFornecedores}
+        value={fornecedorIds}
+        onValueChange={setFornecedorIds}
+      />
     </form>
   </PainelCadastro>;
 }

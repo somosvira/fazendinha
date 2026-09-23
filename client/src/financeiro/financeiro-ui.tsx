@@ -49,9 +49,9 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
   return <PaginaFinanceira><PageHeader titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} /></PaginaFinanceira>;
 }
 
-export function PageHeader({ titulo, descricao, acao }: { titulo: string; descricao: string; acao?: React.ReactNode }) {
+export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
   return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">Financeiro</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">{eyebrow}</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 

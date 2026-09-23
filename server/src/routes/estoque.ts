@@ -12,10 +12,11 @@ import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propri
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
 
 type Status = 400 | 404 | 409 | 500;
-function fail(e: unknown): { status: Status; body: { error: string } } {
+function fail(e: unknown): { status: Status; body: { error: string; code?: string } } {
   if (e instanceof svc.EstoqueError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
-    return { status: map[e.code], body: { error: e.message } };
+    // `code` deixa o cliente distinguir CONFLITO (saldo mudou) de MES_FECHADO, ambos 409.
+    return { status: map[e.code], body: { error: e.message, code: e.code } };
   }
   console.error("[estoque]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };

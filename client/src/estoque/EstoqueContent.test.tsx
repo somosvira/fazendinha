@@ -1,25 +1,35 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
-vi.mock("./components/MovimentoForm", () => ({ MovimentoForm: () => null }));
 vi.mock("../financeiro/FormProduto", () => ({ FormProduto: () => null }));
 
 import { EstoqueContent } from "./EstoqueContent";
 
+type Dados = { saldos?: unknown[]; movimentos?: unknown[]; entradas?: unknown[] };
+
 // Espiona o `fetch` global (o `req()` de estoque/api.ts passa por ele) em vez de
 // mockar o módulo — `useSaldos` chama `listarSaldos` como identificador local
 // dentro do mesmo arquivo, então mockar só o export não intercepta a chamada.
-function mockFetch() {
+function mockFetch(d: Dados = {}) {
   return vi.fn((url: string) => {
-    const body = /\/estoque\/saldos/.test(url) ? [] : /\/estoque\/movimentos/.test(url) ? [] : /\/estoque\/produtos/.test(url) ? [] : /\/estoque\/centros-custo/.test(url)
-      ? []
-      : /\/estoque\/custo-vaca-dia/.test(url) ? { periodoDias: 30, custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 } : {};
+    const body = /\/estoque\/saldos/.test(url) ? d.saldos ?? []
+      : /\/estoque\/movimentos\?tipo=ENTRADA/.test(url) ? d.entradas ?? []
+      : /\/estoque\/movimentos/.test(url) ? d.movimentos ?? []
+      : [];
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
   });
 }
 
-afterEach(cleanup);
+const categoria = { id: 1, nome: "Alimentação", usoSanitario: false, usoNutricional: true, usoAgricola: false };
+const saldo = (o: Record<string, unknown>) => ({ produtoId: 1, nome: "Ração", categoria, unidade: "KG", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false, ...o });
+const mov = (o: Record<string, unknown>) => ({ id: 1, produtoId: 1, produto: "Ração", centrosCusto: [], tipo: "ENTRADA", origem: "COMPRA", status: "CONFIRMADO", reversaoDeId: null, data: "2026-09-10", quantidade: 10, custoUnitario: 6, valorTotal: 60, fornecedor: null, grupo: null, observacao: null, operacaoId: null, vinculo: null, ...o });
+
+function sessao(areas: string[]) {
+  localStorage.setItem("rionovo:usuario", JSON.stringify({ id: 1, nome: "T", email: "t@x", papel: "x", abas: [], areas, flags: [], status: "ATIVO", dono: false }));
+}
+
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch());
 });
@@ -53,26 +63,154 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
     expect(chamadasSaldos).toHaveLength(1);
     expect(String(chamadasSaldos[0][0])).not.toContain("centroCustoId");
   });
+
+  it("não mostra custo vaca/dia nem vacas em lactação (só dados de estoque)", async () => {
+    render(<EstoqueContent />);
+    await screen.findByText("Valor em estoque");
+    expect(screen.queryByText(/custo vaca/i)).toBeNull();
+    expect(screen.queryByText(/vacas em lacta/i)).toBeNull();
+    expect((fetch as unknown as ReturnType<typeof mockFetch>).mock.calls.some(([url]) => /custo-vaca-dia/.test(String(url)))).toBe(false);
+  });
 });
 
-describe("EstoqueContent — custo médio", () => {
-  it("mostra custo médio e valor (saldo × médio); sem custo, '—' e aviso de produtos sem custo apurado", async () => {
-    const saldos = [
-      { produtoId: 1, nome: "Ração", categoria: { id: 1, nome: "Alimentação", usoSanitario: false, usoNutricional: true, usoAgricola: false }, unidade: "kg", centrosCusto: [], saldo: 15, custoMedio: 6, valor: 90, minimoEstoque: null, abaixoMinimo: false },
-      { produtoId: 2, nome: "Sal", categoria: { id: 2, nome: "Mineral", usoSanitario: false, usoNutricional: true, usoAgricola: false }, unidade: "kg", centrosCusto: [], saldo: 4, custoMedio: null, valor: 0, minimoEstoque: null, abaixoMinimo: false },
-    ];
-    vi.stubGlobal("fetch", vi.fn((url: string) => {
-      const body = /\/estoque\/saldos/.test(url) ? saldos : /\/estoque\/custo-vaca-dia/.test(url) ? { periodoDias: 30, custoVacaDia: null, vacasEmLactacao: 0, totalConsumo: 0 } : [];
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
-    }));
+describe("EstoqueContent — saldos e custo médio", () => {
+  it("mostra custo médio e valor (saldo × médio); sem custo, '—' e produtos sem custo apurado no card", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [
+      saldo({}),
+      saldo({ produtoId: 2, nome: "Sal", categoria: { ...categoria, id: 2, nome: "Mineral" }, saldo: 4, custoMedio: null, valor: 0 }),
+    ] }));
     render(<EstoqueContent />);
-    const racao = (await screen.findByText("Ração")).closest("tr")!;
-    const celulas = [...racao.querySelectorAll("td")].map((td) => td.textContent?.replaceAll(" ", " "));
+    const tabela = await screen.findByRole("table", { name: "Saldos de estoque" });
+    const racao = within(tabela).getByText("Ração").closest("tr")!;
+    const celulas = [...racao.querySelectorAll("td")].map((td) => td.textContent?.replace(/\u00a0/g, " "));
     expect(celulas).toContain("R$ 6,00");
     expect(celulas).toContain("R$ 90,00");
-    const sal = screen.getByText("Sal").closest("tr")!;
+    const sal = within(tabela).getByText("Sal").closest("tr")!;
     expect([...sal.querySelectorAll("td")].filter((td) => td.textContent === "—").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("1 produto sem custo apurado — registre uma compra ou um inventário inicial com valor.")).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "Custo médio" }).getAttribute("title")).toBe("Média ponderada das entradas neste sítio");
+    const card = screen.getByText("Produtos sem custo apurado").closest("section")!;
+    expect(within(card).getByText("1")).toBeTruthy();
+    expect(within(card).getByText("Registre uma compra ou um inventário inicial com valor.")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Custo médio" })).toBeTruthy();
+  });
+
+  it("card Valor em estoque soma o valor dos saldos listados", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", valor: 10.5 })] }));
+    render(<EstoqueContent />);
+    const card = (await screen.findByText("Valor em estoque")).closest("section")!;
+    expect(card.textContent?.replace(/\u00a0/g, " ")).toContain("R$ 100,50");
+    expect(within(card).getByText("2 produtos com movimento")).toBeTruthy();
+  });
+
+  it("card Itens abaixo do mínimo filtra a lista ao clicar", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ minimoEstoque: 50, abaixoMinimo: true }), saldo({ produtoId: 2, nome: "Sal" })] }));
+    render(<EstoqueContent />);
+    const tabela = await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(within(tabela).getByText("Sal")).toBeTruthy();
+    fireEvent.click(screen.getByText("Itens abaixo do mínimo").closest("button")!);
+    expect(within(screen.getByRole("table", { name: "Saldos de estoque" })).queryByText("Sal")).toBeNull();
+    expect(within(screen.getByRole("table", { name: "Saldos de estoque" })).getByText("Ração")).toBeTruthy();
+  });
+
+  it("Últimas entradas: os 3 produtos com entrada mais recente (compra/inventário/bonificação/produção), sem estornos", async () => {
+    const saldos = [1, 2, 3, 4].map((i) => saldo({ produtoId: i, nome: `Produto ${i}` }));
+    const entradas = [
+      mov({ id: 9, produtoId: 1, produto: "Produto 1", data: "2026-09-20", operacaoId: 90, reversaoDeId: 5, origem: "AJUSTE_INVENTARIO" }), // estorno: ignora
+      mov({ id: 8, produtoId: 2, produto: "Produto 2", data: "2026-09-19", operacaoId: 80 }),
+      mov({ id: 7, produtoId: 2, produto: "Produto 2", data: "2026-09-18", operacaoId: 70 }), // produto repetido: ignora
+      mov({ id: 6, produtoId: 3, produto: "Produto 3", data: "2026-09-17", origem: "INVENTARIO_INICIAL", operacaoId: 60, quantidade: 5 }),
+      mov({ id: 5, produtoId: 1, produto: "Produto 1", data: "2026-09-16", origem: "BONIFICACAO", operacaoId: 50 }),
+      mov({ id: 4, produtoId: 4, produto: "Produto 4", data: "2026-09-15", operacaoId: 40 }), // 4º: fora
+    ];
+    vi.stubGlobal("fetch", mockFetch({ saldos, entradas }));
+    render(<EstoqueContent />);
+    const card = (await screen.findByText("Últimas entradas")).closest("section")!;
+    await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(3));
+    const links = within(card).getAllByRole("link") as HTMLAnchorElement[];
+    expect(links.map((a) => a.textContent)).toEqual(["Produto 2", "Produto 3", "Produto 1"]);
+    expect(links[0].getAttribute("href")).toBe("/financeiro/operacoes/80");
+    expect(within(card).getByText(/17\/09\/2026 · 5 kg/)).toBeTruthy();
+  });
+});
+
+describe("EstoqueContent — movimentos recentes ligados à origem", () => {
+  const movimentos = [
+    mov({ id: 1, origem: "COMPRA", operacaoId: 42, fornecedor: "Cooperativa" }),
+    mov({ id: 2, tipo: "SAIDA", origem: "NUTRICAO", vinculo: { tipo: "LOTE", id: 7, nome: "Lote A" } }),
+    mov({ id: 3, tipo: "SAIDA", origem: "SANIDADE", vinculo: { tipo: "ANIMAL", id: 9, numero: "123", nome: "Mimosa" } }),
+    mov({ id: 4, tipo: "SAIDA", origem: "APLICACAO", vinculo: { tipo: "TALHAO", id: 5, codigo: "T-05" } }),
+  ];
+  const abrir = async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos }));
+    render(<EstoqueContent />);
+    return within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+  };
+
+  it("linha com operação renderiza link para o detalhe da operação", async () => {
+    const tabela = await abrir();
+    const link = tabela.getByRole("link", { name: "OP-0042" }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("/financeiro/operacoes/42");
+    expect(tabela.getByText(/Cooperativa/)).toBeTruthy();
+  });
+
+  it("clicar no link navega sem recarregar (pushState + popstate)", async () => {
+    const tabela = await abrir();
+    const pop = vi.fn();
+    window.addEventListener("popstate", pop);
+    fireEvent.click(tabela.getByRole("link", { name: "OP-0042" }));
+    expect(window.location.pathname).toBe("/financeiro/operacoes/42");
+    expect(pop).toHaveBeenCalled();
+    window.removeEventListener("popstate", pop);
+  });
+
+  it("saídas automáticas levam ao lote, animal e talhão quando o usuário tem a área", async () => {
+    const tabela = await abrir();
+    expect(tabela.getByRole("link", { name: "Lote Lote A" }).getAttribute("href")).toBe("/pecuaria/nutricao");
+    expect(tabela.getByRole("link", { name: "Animal 123 · Mimosa" }).getAttribute("href")).toBe("/pecuaria/animal?id=9");
+    expect(tabela.getByRole("link", { name: "Talhão T-05" }).getAttribute("href")).toBe("/plantio/talhao?id=5");
+  });
+
+  it("sem a área de destino mostra texto puro com o motivo no title (dieta sem pecuária; operação sem financeiro)", async () => {
+    sessao(["agricultura"]);
+    const tabela = await abrir();
+    expect(tabela.queryByRole("link", { name: /Lote A/ })).toBeNull();
+    expect(tabela.queryByRole("link", { name: "OP-0042" })).toBeNull();
+    expect(tabela.getByText("Lote Lote A").getAttribute("title")).toBe("Sem acesso a esta área");
+    expect(tabela.getByText("OP-0042").getAttribute("title")).toBe("Sem acesso a esta área");
+    // agricultura tem acesso ao talhão
+    expect(tabela.getByRole("link", { name: "Talhão T-05" })).toBeTruthy();
+  });
+
+  it("movimento estornado/estorno é sinalizado", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, status: "REVERTIDO", operacaoId: 1 }), mov({ id: 2, tipo: "SAIDA", reversaoDeId: 1, operacaoId: 1 })] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+    expect(tabela.getByText("Estornado")).toBeTruthy();
+    expect(tabela.getByText("Estorno")).toBeTruthy();
+  });
+});
+
+describe("EstoqueContent — atalho Ajustar quantidade", () => {
+  it("abre Nova operação já com tipo=AJUSTE_ESTOQUE e o produto", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ produtoId: 33 })] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Saldos de estoque" }));
+    fireEvent.click(tabela.getByRole("button", { name: "Ajustar quantidade de Ração" }));
+    expect(window.location.pathname).toBe("/financeiro/operacoes/nova");
+    expect(new URLSearchParams(window.location.search).get("tipo")).toBe("AJUSTE_ESTOQUE");
+    expect(new URLSearchParams(window.location.search).get("produto")).toBe("33");
+  });
+
+  it("botão do cabeçalho abre o ajuste sem produto", async () => {
+    render(<EstoqueContent />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ajustar quantidade/ }));
+    expect(window.location.search).toBe("?tipo=AJUSTE_ESTOQUE");
+  });
+
+  it("some para quem não tem a área financeiro", async () => {
+    sessao(["pecuaria"]);
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(screen.queryByRole("button", { name: /Ajustar quantidade/ })).toBeNull();
   });
 });

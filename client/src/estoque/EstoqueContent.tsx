@@ -1,71 +1,74 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { AlertTriangle, Boxes, CircleHelp, PackagePlus, Pencil, Plus, SlidersHorizontal } from "lucide-react";
 import { Loader } from "../components/Loading";
+import { navegarPara } from "../router";
 import { rotuloUnidade } from "../lib/unidades";
-import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, listarProdutos, listarCentrosCusto, type MovimentoDTO, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
-import { MovimentoForm } from "./components/MovimentoForm";
-import { FormProduto } from "../financeiro/FormProduto";
-import { RebHeader } from "../rebanho/components/RebHeader";
-import { RebModal } from "@/components/rb/RebModal";
-import { RebButton } from "@/components/rb/RebButton";
-import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
-import { RebTable } from "@/components/rb/RebTable";
-import { REB_FIELD_BOXED } from "@/components/rb/RebField";
-import { RebSelect } from "@/components/rb/RebSelect";
-import { RebMain, RebPill, RebAnm, RebEmpty, RebKv, REB_CHIP_Q } from "@/components/rb/RebPrimitives";
 import { fmtMoneyExact } from "@/components/charts";
+import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
+import { FormProduto } from "../financeiro/FormProduto";
+import { useSaldos, listarMovimentos, listarProdutos, listarCentrosCusto, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
+import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea } from "./navegacao";
 
-const money = fmtMoneyExact;
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
-const TIPO_MOV: Record<MovimentoDTO["tipo"], string> = { ENTRADA: "Entrada", SAIDA: "Saída", AJUSTE: "Ajuste" };
-const SEM_CENTRO = "__sem_centro__";
-function CentrosChips({ centros }: { centros: { id: number; nome: string }[] }) {
-  if (!centros.length) return <RebPill style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ink-mute)", flex: "0 0 auto" }} />
-    Sem centro
-  </RebPill>;
-  return <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 4 }}>
-    {centros.map((c) => (
-      <RebPill key={c.id} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--outros)", flex: "0 0 auto" }} />
-        {c.nome}
-      </RebPill>
-    ))}
-  </span>;
+const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
+const SEM_ACESSO = "Sem acesso a esta área";
+
+const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "amber" | "blue" }> = {
+  ENTRADA: { rotulo: "Entrada", tom: "green" }, SAIDA: { rotulo: "Saída", tom: "amber" }, AJUSTE: { rotulo: "Ajuste", tom: "blue" },
+};
+const ROTULO_ORIGEM: Record<OrigemMovimento, string> = {
+  COMPRA: "Compra", CONSUMO_DIRETO: "Consumo direto", TRANSFERENCIA: "Transferência", PRODUCAO: "Produção própria", DEVOLUCAO: "Devolução",
+  BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", NUTRICAO: "Dieta", SANIDADE: "Sanidade", PERDA: "Perda",
+  AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola",
+};
+// Origens que colocam produto no estoque — alimentam o card "Últimas entradas".
+const ORIGENS_ENTRADA: readonly OrigemMovimento[] = ["COMPRA", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"];
+
+type Ordem = "nome" | "categoria" | "valor";
+
+/* Link interno sem recarregar a página (mesmo padrão de LinkOperacaoFinanceira);
+ * sem acesso à área de destino vira texto puro com o motivo no `title`. */
+function LinkInterno({ href, area, children }: { href: string; area: Parameters<typeof podeAcessarArea>[0]; children: React.ReactNode }) {
+  if (!podeAcessarArea(area)) return <span title={SEM_ACESSO} className="text-ink-2">{children}</span>;
+  const navegar = (evento: MouseEvent<HTMLAnchorElement>) => {
+    evento.stopPropagation();
+    if (evento.button !== 0 || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+    evento.preventDefault();
+    navegarPara(href);
+  };
+  return <a href={href} onClick={navegar} className="font-semibold text-green-800 underline underline-offset-4 hover:text-green-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">{children}</a>;
 }
 
-function useMovimentos() {
+function useMovimentos(f?: { tipo?: string }) {
   const [data, setData] = useState<MovimentoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarMovimentos().then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, []);
+  const tipo = f?.tipo;
+  const recarregar = useCallback(() => { setLoading(true); setErro(null); listarMovimentos(tipo ? { tipo } : undefined).then(setData).catch((e) => setErro(e.message)).finally(() => setLoading(false)); }, [tipo]);
   useEffect(() => { recarregar(); }, [recarregar]);
   return { data, loading, erro, recarregar };
 }
 
-type SortKey = "nome" | "tipo" | "valor";
-type SortDir = "asc" | "desc";
-
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: number | null; titulo?: string; avisoFiltro?: string } = {}) {
-  const custo = useCustoVacaDia();
   // `centroCustoIdInicial` já chega resolvido: quem chama com um centro de
   // atividade (rebanho/plantio) só monta este componente depois de resolver o
   // centro (ver RebanhoContent/PlantioContent, que usam `key` para remontar);
   // o menu `/estoque` chama sem prop nenhuma (undefined = sem filtro).
   const [centroFiltro, setCentroFiltro] = useState(centroCustoIdInicial != null ? String(centroCustoIdInicial) : "");
-  const [agrupar, setAgrupar] = useState(false);
   const saldos = useSaldos(centroFiltro ? { centroCustoId: centroFiltro } : undefined);
   const movimentos = useMovimentos();
-  const [form, setForm] = useState(false);
+  const entradas = useMovimentos({ tipo: "ENTRADA" });
   const [busca, setBusca] = useState("");
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "nome", dir: "asc" });
+  const [ordem, setOrdem] = useState<Ordem>("nome");
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [centros, setCentros] = useState<RefDTO[]>([]);
   const [erroProdutos, setErroProdutos] = useState<string | null>(null);
   const [erroCentros, setErroCentros] = useState<string | null>(null);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   const [editando, setEditando] = useState<ProdutoDTO | null>(null);
-  const [excluindo, setExcluindo] = useState<MovimentoDTO | null>(null);
+  // O ajuste é uma operação financeira: sem a área financeiro não há para onde levar.
+  const podeAjustar = podeAcessarArea("financeiro");
 
   const carregarProdutos = useCallback(() => {
     listarProdutos({ ativo: true }).then((ps) => { setProdutos(ps); setErroProdutos(null); }).catch((e) => setErroProdutos(e instanceof Error ? e.message : String(e)));
@@ -73,321 +76,161 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
 
-  function trocarSort(key: SortKey) {
-    setSort((s) => {
-      if (s.key !== key) return { key, dir: key === "valor" ? "desc" : "asc" };
-      return { key, dir: s.dir === "asc" ? "desc" : "asc" };
-    });
-  }
-
   const saldosVisiveis = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
+    const termo = busca.trim().toLocaleLowerCase("pt-BR");
     const filtrados = saldos.data.filter((s) => {
       if (soAbaixoMin && !s.abaixoMinimo) return false;
       if (!termo) return true;
-      return s.nome.toLowerCase().includes(termo) || (s.categoria?.nome ?? "").toLowerCase().includes(termo);
+      return s.nome.toLocaleLowerCase("pt-BR").includes(termo) || (s.categoria?.nome ?? "").toLocaleLowerCase("pt-BR").includes(termo);
     });
-    const mult = sort.dir === "asc" ? 1 : -1;
     return [...filtrados].sort((a, b) => {
-      switch (sort.key) {
-        case "tipo": return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") * mult || a.nome.localeCompare(b.nome, "pt-BR");
-        case "valor": return (a.valor - b.valor) * mult;
-        case "nome":
-        default: return a.nome.localeCompare(b.nome, "pt-BR") * mult;
-      }
+      if (ordem === "valor") return b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR");
+      if (ordem === "categoria") return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR");
+      return a.nome.localeCompare(b.nome, "pt-BR");
     });
-  }, [saldos.data, busca, soAbaixoMin, sort]);
+  }, [saldos.data, busca, soAbaixoMin, ordem]);
 
+  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + s.valor, 0), [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   // Sem preço no cadastro: o custo só existe depois de uma entrada valorizada no sítio.
   const nSemCusto = useMemo(() => saldos.data.filter((s) => s.custoMedio == null).length, [saldos.data]);
+  const unidadePorProduto = useMemo(() => new Map(saldos.data.map((s) => [s.produtoId, s.unidade] as const)), [saldos.data]);
 
-  // Agrupamento por centro de custo para a visão "Agrupar". Produto com vários
-  // centros aparece em cada grupo; sem centro cai no grupo "Sem centro".
-  const gruposPorCentro = useMemo(() => {
-    const map = new Map<string, { nome: string; linhas: SaldoDTO[]; valorTotal: number }>();
-    for (const s of saldosVisiveis) {
-      const alvos = s.centrosCusto.length ? s.centrosCusto.map((c) => ({ chave: String(c.id), nome: c.nome })) : [{ chave: SEM_CENTRO, nome: "Sem centro" }];
-      for (const alvo of alvos) {
-        const g = map.get(alvo.chave) ?? { nome: alvo.nome, linhas: [], valorTotal: 0 };
-        g.linhas.push(s);
-        g.valorTotal += s.valor;
-        map.set(alvo.chave, g);
-      }
+  // Últimas entradas: o movimento de ENTRADA (compra/inventário/bonificação/produção,
+  // não estornado) mais recente de cada produto listado — os 3 primeiros.
+  const ultimasEntradas = useMemo(() => {
+    const listados = new Set(saldos.data.map((s) => s.produtoId));
+    const vistos = new Set<number>();
+    const lista: MovimentoDTO[] = [];
+    for (const m of entradas.data) {
+      if (m.tipo !== "ENTRADA" || m.status !== "CONFIRMADO" || m.reversaoDeId != null || !ORIGENS_ENTRADA.includes(m.origem)) continue;
+      if (!listados.has(m.produtoId) || vistos.has(m.produtoId)) continue;
+      vistos.add(m.produtoId);
+      lista.push(m);
+      if (lista.length === 3) break;
     }
-    return [...map.entries()]
-      .map(([chave, g]) => ({ chave, ...g }))
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [saldosVisiveis]);
+    return lista;
+  }, [entradas.data, saldos.data]);
 
   function abrirEdicao(produtoId: number) {
     const p = produtos.find((x) => x.id === produtoId);
     if (p) setEditando(p);
   }
+  const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); entradas.recarregar(); carregarProdutos(); };
 
-  const recarregarTudo = () => { custo.recarregar(); saldos.recarregar(); movimentos.recarregar(); carregarProdutos(); };
-
-  const renderRow = (s: SaldoDTO) => (
-    <tr key={s.produtoId}>
-      <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
-      <td>{s.categoria?.nome ?? "Sem categoria"}</td>
-      <td><CentrosChips centros={s.centrosCusto} /></td>
-      <td>{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</td>
-      <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.custoMedio) : "—"}</td>
-      <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.valor) : "—"}</td>
-      <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</td>
-      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-        <RebButton onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</RebButton>
-      </td>
-    </tr>
-  );
-
-  // exclusão real acontece dentro do modal de confirmação
-
-  if (custo.loading && saldos.loading && movimentos.loading) {
-    return <RebMain><RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} /><Loader /></RebMain>;
-  }
-
-  const c = custo.data;
-  const custoTxt = c && c.custoVacaDia != null ? money(c.custoVacaDia) : "—";
-
-  return (
-    <RebMain>
-      <RebHeader eyebrow="Insumos e consumo" title={titulo ?? "Estoque"} />
-
-      {avisoFiltro && <p className="mt-[7px] text-sm text-amber-800">{avisoFiltro}</p>}
-      {erroProdutos && <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar produtos: {erroProdutos}</p>}
-      {erroCentros && <p className="mt-[7px] text-sm text-prejuizo">Erro ao carregar centros de custo: {erroCentros}</p>}
-
-      {/* KPI headline — custo vaca/dia (o norte da Tássila) */}
-      <RebKpiStrip cols={3}>
-        <div className="relative border-l border-[color:var(--rule-soft)] bg-transparent px-[22px] pt-1.5 pb-1 first:border-l-0 first:pl-0.5" style={{ borderLeft: "3px solid var(--leite)" }}>
-          <div className="text-sm font-semibold uppercase tracking-[.06em] text-ink-2">Custo vaca/dia</div>
-          <div className="mt-1.5 font-serif text-[32px] font-medium leading-none text-[color:var(--ink)]" style={{ fontSize: 34, color: "var(--cafe)" }}>{custoTxt}</div>
-          <div className="mt-2 text-[15px] font-medium text-ink-2">{c ? `consumo dos últimos ${c.periodoDias} dias` : "—"}</div>
-        </div>
-        <RebKpi lab="Vacas em lactação" val={c?.vacasEmLactacao ?? "—"} d="base do rateio" />
-        <RebKpi lab="Consumo no período" val={c ? money(c.totalConsumo) : "—"} valClassName="text-[20px]" d={c ? `${c.periodoDias} dias` : "—"} />
-      </RebKpiStrip>
-      {custo.erro && <p className="mt-[7px] text-sm text-prejuizo">Erro no custo: {custo.erro}</p>}
-
-      {/* Saldos */}
-      <div className="mt-1 mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-serif text-xl font-medium m-0">Saldos de estoque</h2>
-        <div className="flex items-center justify-end gap-3">
-          <span className="text-sm text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}</span>
-          <div className="flex flex-col items-stretch gap-1.5">
-            <RebButton variant="pri" onClick={() => setCadastrandoProduto(true)}>+ Cadastrar produto</RebButton>
-            <RebButton variant="pri" onClick={() => setForm(true)}>Ajustar quantidade</RebButton>
-          </div>
-        </div>
+  const colunasSaldos: ColunaTabela<SaldoDTO>[] = [
+    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold">{s.nome}</strong>{s.abaixoMinimo && <Pill tone="red">Abaixo do mínimo</Pill>}</span> },
+    { chave: "categoria", titulo: "Categoria", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
+    { chave: "centros", titulo: "Centros de custo", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
+    { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
+    { chave: "custo", titulo: "Custo médio", alinhamento: "direita", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
+    { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor) : "—"}</strong> },
+    { chave: "minimo", titulo: "Mínimo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
+    { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (s) => (
+      <div className="flex items-center justify-end gap-1">
+        {podeAjustar && <button type="button" onClick={() => abrirAjusteEstoque(s.produtoId)} aria-label={`Ajustar quantidade de ${s.nome}`} title="Ajustar quantidade" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><SlidersHorizontal size={16} /></button>}
+        <button type="button" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.some((p) => p.id === s.produtoId)} aria-label={`Editar ${s.nome}`} title="Editar produto" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"><Pencil size={16} /></button>
       </div>
-      {(saldos.data.length > 0 || centroFiltro) && (
-        <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
-          <input
-            type="search"
-            className={REB_FIELD_BOXED}
-            placeholder="Buscar por nome ou categoria…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            style={{ flex: "1 1 240px", maxWidth: 360 }}
-          />
-          <RebSelect
-            className={`${REB_FIELD_BOXED} basis-[180px] grow-0 shrink`}
-            value={centroFiltro}
-            onChange={(v) => setCentroFiltro(v)}
-            aria-label="Centro de custo"
-          >
-            <option value="">Todos os centros</option>
-            <option value="0">Sem centro</option>
-            {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </RebSelect>
-          <button
-            type="button"
-            className={REB_CHIP_Q}
-            onClick={() => setAgrupar((v) => !v)}
-            style={agrupar ? { borderColor: "var(--cafe)", color: "var(--cafe)" } : undefined}
-          >
-            Agrupar por centro
-          </button>
-          {nAbaixoMin > 0 && (
-            <button
-              type="button"
-              className={REB_CHIP_Q}
-              onClick={() => setSoAbaixoMin((v) => !v)}
-              style={soAbaixoMin ? { borderColor: "var(--neg)", color: "var(--neg)" } : undefined}
-            >
-              ⚠ Só abaixo do mínimo ({nAbaixoMin})
-            </button>
-          )}
-        </div>
-      )}
-      {saldos.loading ? <Loader />
-        : saldos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {saldos.erro}</p>
-        : saldos.data.length === 0 ? <RebEmpty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</RebEmpty>
-        : saldosVisiveis.length === 0 ? <RebEmpty>Nenhum produto bate com a busca.</RebEmpty>
-        : (
-          <>
-          {nSemCusto > 0 && <p className="mb-2 text-sm text-ink-3">{nSemCusto} {nSemCusto === 1 ? "produto sem custo apurado" : "produtos sem custo apurado"} — registre uma compra ou um inventário inicial com valor.</p>}
-          <RebTable>
-            <thead><tr>
-              <th><SortBtn label="Produto" active={sort.key === "nome"} dir={sort.dir} onClick={() => trocarSort("nome")} /></th>
-              <th><SortBtn label="Categoria" active={sort.key === "tipo"} dir={sort.dir} onClick={() => trocarSort("tipo")} /></th>
-              <th>Centros de custo</th>
-              <th>Saldo</th>
-              <th title="Média ponderada das entradas neste sítio">Custo médio</th>
-              <th title="Saldo × custo médio"><SortBtn label="Valor" active={sort.key === "valor"} dir={sort.dir} onClick={() => trocarSort("valor")} /></th>
-              <th>Mínimo</th>
-              <th></th>
-            </tr></thead>
-            {agrupar
-              ? gruposPorCentro.map((g) => (
-                  <tbody key={g.chave}>
-                    <tr className="rb-tbl-group">
-                      <td colSpan={8} style={{ background: "var(--surface-2, #f4f1ea)", fontWeight: 600 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: g.chave === SEM_CENTRO ? "var(--ink-mute)" : "var(--outros)", flex: "0 0 auto" }} />
-                          {g.nome}
-                          <span className="hint" style={{ fontWeight: 400 }}>· {g.linhas.length} {g.linhas.length === 1 ? "produto" : "produtos"} · {money(g.valorTotal)}</span>
-                        </span>
-                      </td>
-                    </tr>
-                    {g.linhas.map(renderRow)}
-                  </tbody>
-                ))
-              : <tbody>{saldosVisiveis.map(renderRow)}</tbody>}
-          </RebTable>
-          </>
-        )}
+    ) },
+  ];
 
-      {/* Movimentos */}
-      <div className="mb-2 flex items-baseline justify-between" style={{ marginTop: 26 }}>
-        <h3 className="m-0 font-serif text-lg font-medium">Movimentos recentes</h3>
-      </div>
-      {movimentos.loading ? <Loader />
-        : movimentos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {movimentos.erro}</p>
-        : movimentos.data.length === 0 ? <RebEmpty>Nenhum movimento registrado ainda.</RebEmpty>
-        : (
-          <RebTable>
-            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtde</th><th>Valor</th><th>Origem/destino</th><th></th></tr></thead>
-            <tbody>{movimentos.data.map((m) => {
-              const motivoBloqueio = m.reversaoDeId != null ? "Movimento de estorno — não pode ser estornado novamente"
-                : m.status === "REVERTIDO" ? "Movimento já estornado"
-                  : m.origem === "NUTRICAO" ? "Baixa de consumo — estorne o período na aba Nutrição"
-                    : m.origem === "SANIDADE" ? "Baixa sanitária — estorne o evento na ficha do animal"
-                      : m.origem === "APLICACAO" ? "esta saída veio de uma operação agrícola — exclua a operação na timeline do talhão, não aqui"
-                        : null;
-              return (
-              <tr key={m.id}>
-                <td>{m.data}</td>
-                <td><RebAnm>{m.produto}</RebAnm></td>
-                <td><RebPill tone={m.tipo === "SAIDA" ? "warn" : "ok"}>{TIPO_MOV[m.tipo]}</RebPill>{m.origem === "NUTRICAO" && <RebPill style={{ marginLeft: 4, background: "var(--leite)", color: "#fff" }} title="Baixa automática do consumo de dieta">Dieta</RebPill>}{m.origem === "APLICACAO" && <RebPill style={{ marginLeft: 4, background: "var(--cafe)", color: "#fff" }} title="Aplicação agrícola">Aplicação</RebPill>}</td>
-                <td>{qtd(m.quantidade)}</td>
-                <td>{money(m.valorTotal)}</td>
-                <td>{m.fornecedor ?? m.grupo ?? "—"}</td>
-                <td style={{ textAlign: "right" }}><RebButton onClick={() => setExcluindo(m)} disabled={motivoBloqueio != null} title={motivoBloqueio ?? "Excluir"}>Excluir</RebButton></td>
-              </tr>
-              );
-            })}</tbody>
-          </RebTable>
-        )}
-
-      {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
-      {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
-      {editando && <FormProduto produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
-      {excluindo && (
-        <ConfirmarExclusao
-          movimento={excluindo}
-          onCancelar={() => setExcluindo(null)}
-          onConfirmado={() => { setExcluindo(null); recarregarTudo(); }}
-        />
-      )}
-    </RebMain>
-  );
-}
-
-function ConfirmarExclusao({ movimento, onCancelar, onConfirmado }: { movimento: MovimentoDTO; onCancelar: () => void; onConfirmado: () => void }) {
-  const [aceito, setAceito] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function confirmar() {
-    setExcluindo(true); setErro(null);
-    try {
-      await excluirMovimento(movimento.id);
-      onConfirmado();
-    } catch (e: any) {
-      setErro(e.message ?? "Erro ao excluir.");
-      setExcluindo(false);
-    }
-  }
-
-  const dataFmt = new Date(movimento.data).toLocaleDateString("pt-BR");
-
-  return (
-    <RebModal
-      title=""
-      onClose={excluindo ? () => {} : onCancelar}
-      showClose={false}
-      className="max-w-[460px]"
-      actions={
-        <div className="flex w-full justify-between">
-          <RebButton onClick={onCancelar} disabled={excluindo}>Cancelar</RebButton>
-          <RebButton variant="danger" onClick={confirmar} disabled={!aceito || excluindo}>
-            {excluindo ? "Excluindo…" : "Excluir definitivamente"}
-          </RebButton>
-        </div>
-      }
-    >
-      <div className="mt-0.5 flex justify-center [&>svg]:h-11 [&>svg]:w-11 [&>svg]:text-prejuizo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-          <line x1="12" y1="9" x2="12" y2="13"/>
-          <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-      </div>
-      <h3 id="rb-confirm-title" style={{ margin: "10px 0 6px", textAlign: "center" }}>Excluir movimento?</h3>
-      <p style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13.5, margin: "0 0 18px" }}>
-        Esta ação <b style={{ color: "var(--ink-2)" }}>não pode ser desfeita</b> — é um registro financeiro.
-      </p>
-
-      <div className="mb-3.5 rounded-[10px] border border-[color:var(--rule-soft)] bg-card px-4 py-3">
-        <RebKv className="py-1.5"><span>Data</span><b>{dataFmt}</b></RebKv>
-        <RebKv className="py-1.5"><span>Produto</span><b>{movimento.produto}</b></RebKv>
-        <RebKv className="py-1.5"><span>Tipo</span><b>{TIPO_MOV[movimento.tipo]}</b></RebKv>
-        <RebKv className="py-1.5"><span>Quantidade</span><b>{qtd(movimento.quantidade)}</b></RebKv>
-        <RebKv className="py-1.5"><span>Valor</span><b>{money(movimento.valorTotal)}</b></RebKv>
-      </div>
-
-      <div className="mb-4 flex items-start gap-3 rounded-md border-l-[3px] border-prejuizo bg-[color-mix(in_srgb,var(--prejuizo)_8%,transparent)] px-3.5 py-3 text-sm leading-[1.45] text-ink-2 [&>span]:flex-none [&>span]:text-base [&>span]:leading-none [&>span]:text-prejuizo [&_b]:font-semibold [&_b]:text-foreground">
-        <span>⚠</span>
-        <div>
-          <b>Cascata financeira:</b> se este movimento gerou um lançamento no fluxo de caixa, ele <b>também será removido</b>.
-          Movimentos em mês fechado não podem ser excluídos.
-        </div>
-      </div>
-
-      <label className="flex cursor-pointer select-none items-start gap-2.5 py-2.5 font-sans text-sm text-ink-2 [&_input]:mt-px [&_input]:h-[18px] [&_input]:w-[18px] [&_input]:flex-none [&_input]:cursor-pointer [&_input]:accent-[color:var(--prejuizo)]">
-        <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} disabled={excluindo} />
-        Entendo que esta exclusão é permanente.
-      </label>
-
-      {erro && <p className="text-prejuizo" style={{ fontSize: 13, marginTop: 10, textAlign: "center" }}>{erro}</p>}
-    </RebModal>
-  );
-}
-
-function SortBtn({ label, active, dir, onClick }: { label: string; active: boolean; dir: SortDir; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", color: "inherit", font: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}
-    >
-      {label}
-      <span style={{ fontSize: 10, opacity: active ? 1 : 0.35, color: active ? "var(--cafe)" : "var(--ink-mute)", lineHeight: 1 }}>
-        {active ? (dir === "asc" ? "▲" : "▼") : "⇅"}
+  const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
+    { chave: "data", titulo: "Data", larguraMinima: 100, celula: (m) => <span className="whitespace-nowrap">{dataBR(m.data)}</span> },
+    { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold">{m.produto}</strong> },
+    { chave: "tipo", titulo: "Tipo", larguraMinima: 190, celula: (m) => (
+      <span className="flex flex-wrap items-center gap-1.5">
+        <Pill tone={TIPO_MOV[m.tipo].tom}>{TIPO_MOV[m.tipo].rotulo}</Pill>
+        <span className="text-xs text-ink-3">{ROTULO_ORIGEM[m.origem] ?? m.origem}</span>
+        {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
+        {m.status === "REVERTIDO" && <Pill tone="red">Estornado</Pill>}
       </span>
-    </button>
-  );
+    ) },
+    { chave: "qtd", titulo: "Qtde", alinhamento: "direita", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
+    { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{brl(m.valorTotal)}</span> },
+    { chave: "origem", titulo: "Origem / destino", larguraMinima: 220, celula: (m) => {
+      const destino = destinoDoMovimento(m);
+      if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? m.grupo ?? "—"}</span>;
+      return <span className="break-words"><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</span>;
+    } },
+  ];
+
+  const filtrosAtivos = busca.trim() !== "" || soAbaixoMin;
+  const acao = <div className="flex flex-wrap gap-2">
+    {podeAjustar && <Button secondary onClick={() => abrirAjusteEstoque()}><SlidersHorizontal size={16} /> Ajustar quantidade</Button>}
+    <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>
+  </div>;
+
+  return <PaginaFinanceira>
+    <PageHeader eyebrow="Estoque" titulo={titulo ?? "Estoque"} descricao="Saldos e custo médio dos produtos. Quem põe um produto no estoque é a operação: compra, inventário, produção ou ajuste." acao={acao} />
+    {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
+    <ErrorBox erro={erroProdutos ? `Erro ao carregar produtos: ${erroProdutos}` : null} />
+    <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
+
+    {/* Só dados de estoque: valor, alertas e as últimas entradas. */}
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Metric label="Valor em estoque" valor={brl(valorTotal)} detalhe={`${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Boxes} />
+      {nAbaixoMin > 0
+        ? <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className="block rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <Metric label="Itens abaixo do mínimo" valor={String(nAbaixoMin)} detalhe={soAbaixoMin ? "Filtro ativo — clique para ver todos" : "Clique para filtrar a lista"} icon={AlertTriangle} tone="red" />
+          </button>
+        : <Metric label="Itens abaixo do mínimo" valor="0" detalhe="Nenhum produto abaixo do mínimo" icon={AlertTriangle} tone="green" />}
+      <Metric label="Produtos sem custo apurado" valor={String(nSemCusto)} detalhe={nSemCusto > 0 ? "Registre uma compra ou um inventário inicial com valor." : "Todos os produtos têm custo médio"} icon={CircleHelp} />
+      <Panel className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Últimas entradas</div>
+          <div className="shrink-0 rounded-lg bg-[#eef1e9] p-2.5 text-mast"><PackagePlus size={18} /></div>
+        </div>
+        {entradas.loading && ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Carregando…</p>
+          : ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Nenhuma entrada registrada ainda.</p>
+          : <ul className="mt-3 space-y-2">{ultimasEntradas.map((m) => {
+              const destino = destinoDoMovimento(m);
+              const un = unidadePorProduto.get(m.produtoId);
+              return <li key={m.id} className="text-sm leading-5">
+                <div className="min-w-0 truncate font-semibold">{destino ? <LinkInterno href={destino.href} area={destino.area}>{m.produto}</LinkInterno> : m.produto}</div>
+                <div className="text-xs text-ink-3">{dataBR(m.data)} · {qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</div>
+              </li>;
+            })}</ul>}
+      </Panel>
+    </div>
+
+    <section className="mt-8" aria-label="Saldos de estoque">
+      <h2 className="font-serif text-xl">Saldos de estoque</h2>
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
+        <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
+        <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
+          <option value="">Todos os centros</option>
+          <option value="0">Sem centro</option>
+          {centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+        <select aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={CAMPO}>
+          <option value="nome">Ordenar por nome</option>
+          <option value="categoria">Ordenar por categoria</option>
+          <option value="valor">Ordenar por maior valor</option>
+        </select>
+        <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} whitespace-nowrap font-medium ${soAbaixoMin ? "border-red-700 text-red-800" : "text-ink-2"}`}>Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
+      </div>
+      <p className="mt-2 text-xs text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}. O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio.</p>
+      <Panel className="mt-3 overflow-hidden">
+        {saldos.loading ? <div className="p-6"><Loader /></div>
+          : saldos.erro ? <Empty>Erro: {saldos.erro}</Empty>
+          : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
+          : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
+          : <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosVisiveis} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} />}
+      </Panel>
+    </section>
+
+    <section className="mt-8" aria-label="Movimentos recentes">
+      <h2 className="font-serif text-xl">Movimentos recentes</h2>
+      <p className="mt-1 text-xs text-ink-3">Cada movimento leva à operação que o gerou; saídas automáticas levam ao lote, animal ou talhão de origem.</p>
+      <Panel className="mt-3 overflow-hidden">
+        {movimentos.loading ? <div className="p-6"><Loader /></div>
+          : movimentos.erro ? <Empty>Erro: {movimentos.erro}</Empty>
+          : movimentos.data.length === 0 ? <Empty>Nenhum movimento registrado ainda.</Empty>
+          : <TabelaFinanceira rotulo="Movimentos de estoque" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} />}
+      </Panel>
+    </section>
+
+    {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
+    {editando && <FormProduto produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
+  </PaginaFinanceira>;
 }

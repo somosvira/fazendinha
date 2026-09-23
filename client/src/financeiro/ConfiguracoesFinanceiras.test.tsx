@@ -44,6 +44,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 beforeEach(() => {
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue(config);
   vi.mocked(atualizarConta).mockResolvedValue(config.contas[0]);
   vi.mocked(atualizarParceiro).mockResolvedValue(config.parceiros[0]);
@@ -217,8 +218,12 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     await montar("produtos");
     fireEvent.click(primeiro("button", "Editar Ração 22%"));
     const painel = await screen.findByRole("dialog");
-    expect((within(painel).getByRole("checkbox", { name: /Cooperativa/ }) as HTMLInputElement).checked).toBe(true);
-    fireEvent.click(within(painel).getByRole("checkbox", { name: /Agro Minas/ }));
+    // Fornecedor já vinculado aparece como chip removível no multiselect.
+    expect(within(painel).getByRole("button", { name: "Remover Cooperativa" })).toBeTruthy();
+    expect(within(painel).getByRole("button", { name: "Remover Atividade leiteira" })).toBeTruthy();
+    fireEvent.click(within(painel).getByRole("button", { name: "Fornecedores do produto" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Agro Minas" }));
+    expect(within(painel).getByRole("button", { name: "Remover Agro Minas" })).toBeTruthy();
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar produto" }));
     await waitFor(() => expect(editarProdutoEstoque).toHaveBeenCalledWith(30, expect.objectContaining({ fornecedorIds: [7, 8] })));
   });

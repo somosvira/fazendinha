@@ -255,3 +255,13 @@ describe("GET /estoque/produtos/:id/custo-medio", () => {
     expect(mocks.obterCustoMedio).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /estoque/ajustes — erros do serviço", () => {
+  it("CONFLITO devolve 409 com code, para o cliente pedir a recarga do saldo", async () => {
+    const { EstoqueError } = await import("../services/estoque/estoque.js");
+    mocks.ajustarContagem.mockRejectedValue(new EstoqueError("CONFLITO", "O estoque mudou desde a consulta."));
+    const res = await appCom(comLancar).request("/estoque/ajustes", { method: "POST", headers: json, body: JSON.stringify({ produtoId: 1, quantidadeContada: 5, saldoEsperado: 10, observacao: "Contagem física" }) });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "O estoque mudou desde a consulta.", code: "CONFLITO" });
+  });
+});

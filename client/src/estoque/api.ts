@@ -37,17 +37,21 @@ function qs(f?: object): string {
 export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null }
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
-// ── Estoque: saldos + movimentos + custo vaca/dia ───────────────────────────
+// ── Estoque: saldos + movimentos ───────────────────────────
 export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
   valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
 export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null; }
+export type VinculoMovimento = { tipo: "LOTE"; id: number; nome: string } | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null } | { tipo: "TALHAO"; id: number; codigo: string };
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null;
+  /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
+  operacaoId: number | null;
+  /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */
+  vinculo: VinculoMovimento | null; }
 export interface MovimentoInput { produtoId: number; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; grupoId?: number; observacao?: string; centroCustoId?: number; }
 export interface MovimentoResult { id: number; operacaoId: number; }
-export interface CustoVacaDia { periodoDias: number; custoVacaDia: number | null; vacasEmLactacao: number; totalConsumo: number; }
 
 export const listarSaldos = (f?: { centroCustoId?: number | string }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f)}`);
 export const listarMovimentos = (f?: { produtoId?: number; tipo?: string }) => req<MovimentoDTO[]>(`/estoque/movimentos${qs(f)}`);
@@ -55,7 +59,6 @@ export const registrarMovimento = (p: MovimentoInput) => req<MovimentoResult>(`/
 export interface AjusteContagemInput { produtoId: number; quantidadeContada: number; saldoEsperado: number; observacao: string; }
 export const ajustarContagem = (p: AjusteContagemInput) => req<{ id: number; operacaoId: number; saldoAnterior: number; quantidadeContada: number; diferenca: number }>(`/estoque/ajustes`, { method: "POST", body: JSON.stringify(p) });
 export const excluirMovimento = (id: number) => req<{ ok: true }>(`/estoque/movimentos/${id}`, { method: "DELETE" });
-export const obterCustoVacaDia = (dias = 30) => req<CustoVacaDia>(`/estoque/custo-vaca-dia?dias=${dias}`);
 
 // Descarta uma resposta que chegou depois de o filtro/parâmetro já ter mudado
 // (ou o hook ter desmontado) — sem isso, uma busca sem filtro que só termina
@@ -74,22 +77,6 @@ export function useSaldos(f?: { centroCustoId?: number | string }) {
       .finally(() => { if (id === idRef.current) setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  useEffect(() => { buscar(); return () => { idRef.current++; }; }, [buscar]);
-  return { data, loading, erro, recarregar: buscar };
-}
-
-export function useCustoVacaDia(dias = 30) {
-  const [data, setData] = useState<CustoVacaDia | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  const idRef = useRef(0);
-  const buscar = useCallback(() => {
-    const id = ++idRef.current;
-    setLoading(true); setErro(null);
-    obterCustoVacaDia(dias).then((d) => { if (id === idRef.current) setData(d); })
-      .catch((e) => { if (id === idRef.current) setErro(e.message); })
-      .finally(() => { if (id === idRef.current) setLoading(false); });
-  }, [dias]);
   useEffect(() => { buscar(); return () => { idRef.current++; }; }, [buscar]);
   return { data, loading, erro, recarregar: buscar };
 }
