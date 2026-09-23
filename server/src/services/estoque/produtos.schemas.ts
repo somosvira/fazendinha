@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UnidadeMedida } from "@prisma/client";
 
 // Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
@@ -9,7 +10,7 @@ const idsSchema = (campo: string) =>
 
 export const produtoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
-  unidade: z.string().trim().min(1).max(12).default("un"),
+  unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   estocavel: z.boolean().default(true),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),
   categoriaId: z.number().int().positive().nullable().optional(),

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader } from "../components/Loading";
+import { rotuloUnidade } from "../lib/unidades";
 import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, listarProdutos, listarCentrosCusto, type MovimentoDTO, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
 import { MovimentoForm } from "./components/MovimentoForm";
 import { FormProduto } from "../financeiro/FormProduto";
@@ -134,10 +135,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <td><RebAnm>{s.nome} {s.abaixoMinimo && <RebPill tone="bad">⚠ abaixo do mínimo</RebPill>}</RebAnm></td>
       <td>{s.categoria?.nome ?? "Sem categoria"}</td>
       <td><CentrosChips centros={s.centrosCusto} /></td>
-      <td>{qtd(s.saldo)} {s.unidade}</td>
+      <td>{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</td>
       <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.custoMedio) : "—"}</td>
       <td title="Média ponderada das entradas neste sítio">{s.custoMedio != null ? money(s.valor) : "—"}</td>
-      <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${s.unidade}` : "—"}</td>
+      <td>{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</td>
       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
         <RebButton onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.find((p) => p.id === s.produtoId)}>Editar</RebButton>
       </td>

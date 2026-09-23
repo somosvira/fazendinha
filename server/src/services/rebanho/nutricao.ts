@@ -1,5 +1,5 @@
 import { prisma } from "../../db.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, UnidadeMedida } from "@prisma/client";
 import { z } from "zod";
 import { obterCustosMedios } from "../estoque/estoque.js";
 import { registrarMovimentacoes } from "./movimentacao.js";
@@ -193,7 +193,7 @@ const dietaItemDTO = (i: any, custoMedio: Prisma.Decimal | null) => ({
   id: i.id,
   produtoId: i.produtoId,
   produtoNome: i.produto?.nome ?? null,
-  unidade: i.unidade as string,
+  unidade: i.unidade as UnidadeMedida,
   qtdPorCabecaDia: Number(i.qtdPorCabecaDia),
   // Custo médio ponderado das entradas do produto no sítio (null sem base).
   custoMedio: custoMedio != null ? custoMedio.toNumber() : null,

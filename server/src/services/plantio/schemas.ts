@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UnidadeMedida } from "@prisma/client";
 
 // Limite compatível com colunas Decimal(12,2) — evita Postgres 22003 antes de chegar ao Prisma.
 const MAX_QTD = 9_999_999_999.99;
@@ -63,6 +64,10 @@ export const criarOperacaoSchema = z.object({
   produto: z.string().max(200).nullish(),
   observacao: z.string().max(400).nullish(),
   doseValor: z.number().finite().nonnegative().max(MAX_QTD).nullish(),
+  // Preferir doseUnidadeMedida + dosePorHectare (novos); doseUnidade (texto
+  // legado, ex.: "L/ha") é aceito e convertido quando os campos novos não vêm.
+  doseUnidadeMedida: z.nativeEnum(UnidadeMedida).nullish(),
+  dosePorHectare: z.boolean().nullish(),
   doseUnidade: z.string().max(20).nullish(),
   pragaAlvo: pragaDoenca.nullish(),
   produtoId: z.number().int().positive().nullish(),

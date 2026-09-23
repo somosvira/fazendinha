@@ -19,14 +19,14 @@ vi.mock("../../db.js", () => {
 import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js";
 import { Prisma } from "@prisma/client";
 
-const base = { id: 1, nome: "Ração", unidade: "kg", estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { id: 3, nome: "Alimentação", classificacao: "CUSTEIO", usoSanitario: false, usoNutricional: true, usoAgricola: false } };
+const base = { id: 1, nome: "Ração", unidade: "KG", estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { id: 3, nome: "Alimentação", classificacao: "CUSTEIO", usoSanitario: false, usoNutricional: true, usoAgricola: false } };
 const fornecedor = { id: 7, nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: 4, nome: "Pecuária", ativo: true };
 
 import type { ProdutoInput } from "./produtos.schemas.js";
 
 const input = (over: Partial<ProdutoInput> = {}): ProdutoInput => ({
-  nome: "Ração", unidade: "kg",
+  nome: "Ração", unidade: "KG",
   estocavel: true, minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
   ...over,
 });

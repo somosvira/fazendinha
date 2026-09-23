@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader } from "../../components/Loading";
+import { rotuloUnidade } from "../../lib/unidades";
 import { useProdutos, useFornecedores, editarProduto, editarFornecedor, type ProdutoDTO, type FornecedorDTO, type UsoProduto, type TipoPessoa } from "../api";
 import { FormProduto } from "../../financeiro/FormProduto";
 import { FornecedorForm } from "./FornecedorForm";
@@ -82,7 +83,7 @@ function Produtos() {
               <tr key={p.id}>
                 <td><RebAnm>{p.nome}</RebAnm></td>
                 <td>{p.categoriaNome ?? "Sem categoria"}</td>
-                <td>{p.unidade}</td>
+                <td>{rotuloUnidade(p.unidade)}</td>
                 <td><RebPill tone={p.ativo ? "ok" : "bad"}>{p.ativo ? "Ativo" : "Inativo"}</RebPill></td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <RebButton onClick={() => setEditando(p)}>Editar</RebButton>{" "}

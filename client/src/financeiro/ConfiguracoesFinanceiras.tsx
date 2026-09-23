@@ -8,6 +8,7 @@ import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
 import { FormCategoria, FormCentroCusto } from "./FormCadastrosGerenciais";
+import { rotuloUnidade } from "../lib/unidades";
 import { FormProduto } from "./FormProduto";
 
 type Aba = "contas" | "parceiros" | "produtos" | "categorias" | "centros";
@@ -60,7 +61,7 @@ const colunasParceiros = (editar: (p: Parceiro) => void, alternar: (p: Parceiro)
 const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) => void): ColunaTabela<Produto>[] => [
   { chave: "nome", titulo: "Produto", larguraMinima: 200, principal: true, celula: (p) => <strong className="break-words font-semibold">{p.nome}</strong> },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 140, celula: (p) => p.categoriaNome ?? "Sem categoria" },
-  { chave: "unidade", titulo: "Unidade", larguraMinima: 90, celula: (p) => p.unidade },
+  { chave: "unidade", titulo: "Unidade", larguraMinima: 90, celula: (p) => rotuloUnidade(p.unidade) },
   { chave: "centrosCusto", titulo: "Centros de custo", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.centrosCusto?.map((c) => `${c.nome}${c.ativo ? "" : " (inativo)"}`).join(" · ") || "—"}</span> },
   { chave: "fornecedores", titulo: "Fornecedores", larguraMinima: 190, celula: (p) => <span className="break-words text-ink-3">{p.fornecedores?.map((f) => `${f.nome}${f.ativo ? "" : " (inativo)"}`).join(" · ") || "Sem fornecedor"}</span> },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },

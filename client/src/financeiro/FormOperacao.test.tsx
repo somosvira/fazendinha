@@ -18,7 +18,7 @@ const config: ConfiguracoesFinanceiras = {
   ],
   categorias: [],
   centrosCusto: [],
-  produtos: [{ id: 1, nome: "Ração", unidade: "kg", estocavel: true }],
+  produtos: [{ id: 1, nome: "Ração", unidade: "KG", estocavel: true }],
 };
 
 function montar() {

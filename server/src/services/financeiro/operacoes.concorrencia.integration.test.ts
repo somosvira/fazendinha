@@ -24,7 +24,7 @@ async function fixture() {
     nome: `Fornecedor ${sufixo}`, tipo: "FORNECEDOR", papeis: { create: { papel: "FORNECEDOR" } },
   } })).id;
   parceirosCriados.push(parceiroId);
-  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "kg", estocavel: true } })).id;
+  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", estocavel: true } })).id;
   produtosCriados.push(produtoId);
   return { propriedadeId, outraPropriedadeId, contaId, parceiroId, produtoId };
 }

@@ -4,6 +4,7 @@ import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodo
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
 import { obterCustosMedios } from "../estoque/estoque.js";
 import { valorSaida } from "../estoque/estoque.calc.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
 
@@ -456,7 +457,7 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
     }));
   const estoque = operacao.movimentosEstoque
     .filter((movimento) => movimento.status === "CONFIRMADO" && !movimento.reversaoDeId && !movimento.revertidoPor)
-    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: movimento.produto.unidade, tipo: movimento.tipo }));
+    .map((movimento) => ({ id: movimento.id, produtoId: movimento.produtoId, produtoNome: movimento.produto.nome, quantidade: movimento.quantidade, unidade: rotuloUnidade(movimento.produto.unidade), tipo: movimento.tipo }));
   const impactosPorConta = new Map<number, { conta: { id: number; nome: string }; entrada: Prisma.Decimal; saida: Prisma.Decimal }>();
   for (const transacao of transacoes) for (const movimento of transacao.movimentos) {
     const atual = impactosPorConta.get(movimento.contaId) ?? { conta: movimento.conta, entrada: new Prisma.Decimal(0), saida: new Prisma.Decimal(0) };

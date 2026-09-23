@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
+import { rotuloUnidade } from "../../lib/unidades";
 import { criarDieta, editarDieta, excluirDieta, salvarItensDieta, useItensDieta, useProdutos, type DietaDTO, type DietaItemInput } from "../api";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -176,7 +177,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
                     <span style={{ fontSize: 13.5 }}>{p?.nome ?? `#${l.produtoId}`}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <input type="number" step="0.0001" min={0} value={l.qtd} onChange={(e) => setQtd(l.produtoId, e.target.value)} style={{ width: 66 }} placeholder="qtd" />
-                      <span style={{ fontSize: 12, color: "var(--ink-3)", minWidth: 22 }}>{p?.unidade}</span>
+                      <span style={{ fontSize: 12, color: "var(--ink-3)", minWidth: 22 }}>{p ? rotuloUnidade(p.unidade) : ""}</span>
                     </span>
                     <RebButton type="button" onClick={() => remover(l.produtoId)} title="Remover">✕</RebButton>
                   </div>
@@ -189,7 +190,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
               <RebSelect value={novoProduto} onChange={(v) => setNovoProduto(v)} className="flex-1">
                 <option value="">+ Adicionar produto…</option>
-                {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({p.unidade})</option>)}
+                {disponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome} ({rotuloUnidade(p.unidade)})</option>)}
               </RebSelect>
               <RebButton type="button" disabled={!novoProduto} onClick={adicionar}>Adicionar</RebButton>
             </div>

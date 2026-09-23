@@ -32,7 +32,7 @@ const tx = () => ({
   $queryRaw: mocks.queryRaw,
 });
 
-const produto = { id: 3, nome: "Ureia", unidade: "kg", ativo: true, estocavel: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
+const produto = { id: 3, nome: "Ureia", unidade: "KG", ativo: true, estocavel: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -4,7 +4,7 @@ import { patchProdutoSchema, produtoSchema } from "./produtos.schemas.js";
 describe("produtoSchema", () => {
   it("aceita produto sem fornecedor e aplica defaults", () => {
     expect(produtoSchema.parse({ nome: " Sal mineral " })).toMatchObject({
-      nome: "Sal mineral", unidade: "un", estocavel: true, centroCustoIds: [], fornecedorIds: [],
+      nome: "Sal mineral", unidade: "UN", estocavel: true, centroCustoIds: [], fornecedorIds: [],
     });
   });
 
@@ -18,7 +18,7 @@ describe("produtoSchema", () => {
   });
 
   it("aceita um produto válido", () => {
-    const r = produtoSchema.safeParse({ nome: "Mastijet", unidade: "un" });
+    const r = produtoSchema.safeParse({ nome: "Mastijet", unidade: "UN" });
     expect(r.success).toBe(true);
   });
 

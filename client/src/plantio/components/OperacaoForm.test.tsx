@@ -12,18 +12,25 @@ const rebanhoApiMocks = vi.hoisted(() => ({
   listarCentrosCusto: vi.fn(),
   produtos: [
     {
-      id: 1, nome: "Calcário dolomítico", unidade: "t",
+      id: 1, nome: "Calcário dolomítico", unidade: "T",
       estocavel: true, minimoEstoque: null, ativo: true,
       categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
       categoria: { id: 10, nome: "Fertilizantes e corretivos", usoSanitario: false, usoNutricional: false, usoAgricola: true },
       centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
     },
     {
-      id: 2, nome: "Produto sem centro único", unidade: "kg",
+      id: 2, nome: "Produto sem centro único", unidade: "KG",
       estocavel: true, minimoEstoque: null, ativo: true,
       categoriaId: 10, categoriaNome: "Fertilizantes e corretivos", classificacao: null,
       categoria: { id: 10, nome: "Fertilizantes e corretivos", usoSanitario: false, usoNutricional: false, usoAgricola: true },
       centroCustoIds: [7, 8], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }, { id: 8, nome: "Outro centro", ativo: true }],
+    },
+    {
+      id: 3, nome: "Herbicida líquido", unidade: "L",
+      estocavel: true, minimoEstoque: null, ativo: true,
+      categoriaId: 11, categoriaNome: "Defensivos", classificacao: null,
+      categoria: { id: 11, nome: "Defensivos", usoSanitario: false, usoNutricional: false, usoAgricola: true },
+      centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
     },
   ],
 }));
@@ -77,16 +84,15 @@ describe("OperacaoForm — baixa de estoque", () => {
     await waitFor(() => expect(centro.value).toBe("7"));
   });
 
-  it("mostra a baixa estimada como dose × área e permite sobrescrever com quantidade total", async () => {
+  it("mostra a baixa estimada como dose × área (mesma unidade do produto) e permite sobrescrever com quantidade total", async () => {
     render(createElement(OperacaoForm, base));
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
 
-    selectByLabel("Produto do estoque", "1");
+    selectByLabel("Produto do estoque", "1"); // Calcário dolomítico, unidade T
     fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "2" } });
+    selectByLabel("Unidade da dose", "T");
+    // checkbox "por hectare" já vem marcado por padrão
 
-    // dose "2" sem unidade — mas o campo dose é "t/ha" por rótulo; parseDose não infere
-    // unidade a partir do rótulo, então usamos texto com unidade explícita.
-    fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "2 t/ha" } });
     await screen.findByText(/Baixa estimada:/);
     expect(screen.getByText(/Baixa estimada:/).textContent).toContain("10");
     expect(screen.getByText(/Baixa estimada:/).textContent).toContain("t");
@@ -99,5 +105,40 @@ describe("OperacaoForm — baixa de estoque", () => {
       quantidadeTotal: 3,
       centroCustoId: 7,
     })));
+  });
+
+  it("200 mL/ha × 5 ha, produto em L → baixa 1 L", async () => {
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+
+    selectByLabel("Produto do estoque", "3"); // Herbicida líquido, unidade L
+    fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "200" } });
+    selectByLabel("Unidade da dose", "ML");
+    // checkbox "por hectare" já vem marcado por padrão (área do talhão = 5 ha)
+
+    await screen.findByText(/Baixa estimada:/);
+    const texto = screen.getByText(/Baixa estimada:/).textContent ?? "";
+    expect(texto).toContain("1");
+    expect(texto).toContain("L");
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(apiMocks.registrarOperacao).toHaveBeenCalledWith("1", expect.objectContaining({
+      produtoId: 3,
+      doseValor: 200,
+      doseUnidadeMedida: "ML",
+      dosePorHectare: true,
+    })));
+  });
+
+  it("dose em mL para produto em kg — bases diferentes, mostra erro e não estima baixa", async () => {
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+
+    selectByLabel("Produto do estoque", "2"); // Produto sem centro único, unidade KG
+    fireEvent.change(screen.getByPlaceholderText("Ex.: 2,5"), { target: { value: "200" } });
+    selectByLabel("Unidade da dose", "ML");
+
+    await waitFor(() => expect(screen.getByText(/não pode ser convertida/)).toBeTruthy());
+    expect(screen.queryByText(/Baixa estimada:/)).toBeNull();
   });
 });

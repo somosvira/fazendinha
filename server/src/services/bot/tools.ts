@@ -5,6 +5,7 @@ import { prisma } from "../../db.js";
 import type { ContextoConsulta } from "../consulta/tipos.js";
 import { toolsConsulta } from "./tools-consulta.js";
 import { statusSaldoEstoque } from "../estoque/estoque.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 
 export type Json = Record<string, unknown>;
 type Handler = (args: Json, ctx: ContextoConsulta) => Promise<unknown>;
@@ -44,7 +45,7 @@ const estoque: Tool = {
     for (const produto of produtos) {
       const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, status: statusSaldoEstoque, ...(ctx.propriedadeId ? { propriedadeId: ctx.propriedadeId } : {}) }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((s, m) => m.tipo === "SAIDA" ? s.minus(m.quantidade) : s.plus(m.quantidade), new Prisma.Decimal(0));
-      itens.push({ produto: produto.nome, unidade: produto.unidade, saldo: saldo.toNumber() });
+      itens.push({ produto: produto.nome, unidade: rotuloUnidade(produto.unidade), saldo: saldo.toNumber() });
     }
     return itens;
   },

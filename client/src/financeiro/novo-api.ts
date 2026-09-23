@@ -2,6 +2,7 @@ import { comPropriedade } from "../propriedadeScope";
 import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/types";
 import { prepararPublicacaoRascunho } from "./rascunhoAtivo";
 import { prepararPublicacaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
+import type { UnidadeMedida } from "../lib/unidades";
 
 export type TipoConta = "BANCO" | "CAIXA" | "APLICACAO";
 export type PapelParceiro = "CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
@@ -32,7 +33,7 @@ export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: num
 export type ProdutoCategoria = { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean };
 export type Produto = {
   id: number; nome: string;
-  unidade: string; estocavel: boolean;
+  unidade: UnidadeMedida; estocavel: boolean;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
   categoria?: ProdutoCategoria | null;
@@ -40,7 +41,7 @@ export type Produto = {
   fornecedores?: { id: number; nome: string; ativo: boolean }[];
 };
 export type ProdutoInput = {
-  nome: string; unidade: string;
+  nome: string; unidade: UnidadeMedida;
   estocavel: boolean;
   minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
 };

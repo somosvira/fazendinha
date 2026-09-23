@@ -60,7 +60,7 @@ const movimentoExistente = {
   propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
 };
 
-const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [] };
+const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -92,7 +92,7 @@ describe("criarOperacao", () => {
   it("cria SAIDA de estoque com quantidade = dose × área e grava movimentoEstoqueId", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [],
+      id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [],
     });
     mocks.movimentoCreate.mockResolvedValue({ id: 88, quantidade: new Prisma.Decimal(20) });
     mocks.operacaoCreate.mockResolvedValue({
@@ -162,7 +162,7 @@ describe("criarOperacao", () => {
   it("rejeita centroCustoId inexistente", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, unidade: "kg", centrosCusto: [],
+      id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [],
     });
     mocks.centroCustoFindFirst.mockResolvedValue(null);
 
@@ -288,7 +288,7 @@ describe("editarOperacao", () => {
       operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
     };
     const produtoDoisCentros = {
-      id: 3, nome: "Ureia", estocavel: true, unidade: "kg",
+      id: 3, nome: "Ureia", estocavel: true, unidade: "KG",
       centrosCusto: [{ centroCustoId: 10 }, { centroCustoId: 20 }],
     };
 
@@ -327,7 +327,7 @@ describe("editarOperacao", () => {
     });
 
     it("PATCH { produtoId: B } sem centroCustoId não herda o centro do produto A — resolve o centro único de B", async () => {
-      const produtoB = { id: 7, nome: "Boro", estocavel: true, unidade: "kg", centrosCusto: [{ centroCustoId: 42 }] };
+      const produtoB = { id: 7, nome: "Boro", estocavel: true, unidade: "KG", centrosCusto: [{ centroCustoId: 42 }] };
       mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
       mocks.produtoFindUnique.mockResolvedValue(produtoB);
       mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });

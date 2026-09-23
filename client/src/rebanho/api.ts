@@ -14,6 +14,7 @@ export interface AnimalForm {
 // (mesma fonte usada pelo financeiro/dashboard). Reexporta set/get p/ compat com
 // quem importava daqui (RebanhoContent, App).
 import { comPropriedade, setPropriedadeAtiva, getPropriedadeAtiva } from "../propriedadeScope";
+import type { UnidadeMedida } from "../lib/unidades";
 export { setPropriedadeAtiva, getPropriedadeAtiva };
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -421,7 +422,7 @@ export function useAnimaisDisponiveis() {
 }
 
 // ── Composição da dieta (DietaItem): quanto de cada produto por cabeça/dia ───
-export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: string; qtdPorCabecaDia: number; custoMedio: number | null; ordem: number; }
+export interface DietaItemDTO { id: number; produtoId: number; produtoNome: string | null; unidade: UnidadeMedida; qtdPorCabecaDia: number; custoMedio: number | null; ordem: number; }
 export interface DietaItemInput { produtoId: number; qtdPorCabecaDia: number; }
 export const listarItensDieta = (dietaId: number) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`);
 export const salvarItensDieta = (dietaId: number, itens: DietaItemInput[]) => req<DietaItemDTO[]>(`/rebanho/dietas/${dietaId}/itens`, { method: "PUT", body: JSON.stringify({ itens }) });
@@ -440,7 +441,7 @@ export function useItensDieta(dietaId: number | null) {
 }
 
 // ── Consumo de dieta → baixa de estoque (Fatia 2) ───────────────────────────
-export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: string; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
+export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: UnidadeMedida; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
 export interface PrevisaoConsumoDTO { grupoId: number; grupoNome: string; dietaId: number; dietaNome: string; dataInicio: string; dataFim: string; dias: number; numCabecas: number; linhas: PrevisaoLinhaDTO[]; custoTotal: number; temInsuficiencia: boolean; }
 export interface ConsumoPeriodoDTO { id: number; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
 export interface FecharConsumoResult { id: number; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }

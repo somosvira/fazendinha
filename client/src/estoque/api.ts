@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
 import { ApiError, type Categoria, type CentroCusto, type Parceiro, type Produto } from "../financeiro/novo-api";
+import type { UnidadeMedida } from "../lib/unidades";
 
 export { ApiError };
 // Tipos de referência do plano financeiro (categoria/centro de custo/parceiro) —
@@ -37,7 +38,7 @@ export interface CentrosAtividadeDTO { leite: number | null; cafe: number | null
 export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/centros-atividade");
 
 // ── Estoque: saldos + movimentos + custo vaca/dia ───────────────────────────
-export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: string; centrosCusto: { id: number; nome: string }[]; saldo: number;
+export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
@@ -101,7 +102,7 @@ export function useCustoVacaDia(dias = 30) {
 export type ProdutoDTO = Produto;
 export type UsoProduto = "sanitario" | "nutricional" | "agricola";
 export interface ProdutoInput {
-  nome: string; unidade: string;
+  nome: string; unidade: UnidadeMedida;
   estocavel?: boolean;
   minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
 }

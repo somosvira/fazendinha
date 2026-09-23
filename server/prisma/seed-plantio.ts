@@ -21,22 +21,22 @@ const RESISTENTE = /Acauã|Arara|Icatu|Catucaí|Paraíso|Asa Branca/i;
 // valor exibido = saldo × custo.
 // Custos atualizados Mar/2026. minimo=null → produto sem mínimo (ex.: mudas).
 const INSUMOS_PLANTIO = [
-  { nome: "Sulfato de amônio 21% N",        subtipo: "FERTILIZANTE", unidade: "kg", custo: 3.0,   minimo: 2_000, saldoInicial: 4_800 },
-  { nome: "Cloreto de potássio 60% K₂O",    subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.6,   minimo: 2_500, saldoInicial: 2_200 },
-  { nome: "Ureia 46% N",                    subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.5,   minimo: 1_500, saldoInicial: 1_900 },
-  { nome: "Formulado 20-00-20",             subtipo: "FERTILIZANTE", unidade: "kg", custo: 4.0,   minimo: 2_000, saldoInicial: 3_400 },
-  { nome: "MAP 11-52-00",                   subtipo: "FERTILIZANTE", unidade: "kg", custo: 5.5,   minimo: 1_000, saldoInicial: 900 },
-  { nome: "Calcário dolomítico PRNT 85%",   subtipo: "CORRETIVO",    unidade: "kg", custo: 0.3,   minimo: 8_000, saldoInicial: 18_000 },
-  { nome: "Gesso agrícola",                 subtipo: "CORRETIVO",    unidade: "kg", custo: 0.35,  minimo: 3_000, saldoInicial: 6_500 },
-  { nome: "Oxicloreto de cobre (Recop)",    subtipo: "DEFENSIVO",    unidade: "kg", custo: 26.0,  minimo: 100,   saldoInicial: 140 },
+  { nome: "Sulfato de amônio 21% N",        subtipo: "FERTILIZANTE", unidade: "KG", custo: 3.0,   minimo: 2_000, saldoInicial: 4_800 },
+  { nome: "Cloreto de potássio 60% K₂O",    subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.6,   minimo: 2_500, saldoInicial: 2_200 },
+  { nome: "Ureia 46% N",                    subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.5,   minimo: 1_500, saldoInicial: 1_900 },
+  { nome: "Formulado 20-00-20",             subtipo: "FERTILIZANTE", unidade: "KG", custo: 4.0,   minimo: 2_000, saldoInicial: 3_400 },
+  { nome: "MAP 11-52-00",                   subtipo: "FERTILIZANTE", unidade: "KG", custo: 5.5,   minimo: 1_000, saldoInicial: 900 },
+  { nome: "Calcário dolomítico PRNT 85%",   subtipo: "CORRETIVO",    unidade: "KG", custo: 0.3,   minimo: 8_000, saldoInicial: 18_000 },
+  { nome: "Gesso agrícola",                 subtipo: "CORRETIVO",    unidade: "KG", custo: 0.35,  minimo: 3_000, saldoInicial: 6_500 },
+  { nome: "Oxicloreto de cobre (Recop)",    subtipo: "DEFENSIVO",    unidade: "KG", custo: 26.0,  minimo: 100,   saldoInicial: 140 },
   { nome: "Ciproconazol + Trifloxistrobina (Priori Xtra)", subtipo: "DEFENSIVO", unidade: "L", custo: 290.0, minimo: 20, saldoInicial: 28 },
   { nome: "Epoxiconazol + Piraclostrobina (Opera)",        subtipo: "DEFENSIVO", unidade: "L", custo: 290.0, minimo: 15, saldoInicial: 18 },
-  { nome: "Tiametoxam (Actara)",            subtipo: "DEFENSIVO",    unidade: "kg", custo: 600.0, minimo: 8,     saldoInicial: 6.5 },
+  { nome: "Tiametoxam (Actara)",            subtipo: "DEFENSIVO",    unidade: "KG", custo: 600.0, minimo: 8,     saldoInicial: 6.5 },
   { nome: "Endossulfan (broca)",            subtipo: "DEFENSIVO",    unidade: "L",  custo: 45.0,  minimo: null,  saldoInicial: 0 },
   { nome: "Glifosato 480 g/L",              subtipo: "HERBICIDA",    unidade: "L",  custo: 36.0,  minimo: 30,    saldoInicial: 52 },
-  { nome: "Beauveria bassiana (biológico)", subtipo: "BIOLOGICO",    unidade: "kg", custo: 110.0, minimo: 10,    saldoInicial: 14 },
+  { nome: "Beauveria bassiana (biológico)", subtipo: "BIOLOGICO",    unidade: "KG", custo: 110.0, minimo: 10,    saldoInicial: 14 },
   { nome: "Foliar Zn + B (Stoller)",        subtipo: "FOLIAR",       unidade: "L",  custo: 70.0,  minimo: 25,    saldoInicial: 32 },
-  { nome: "Mudas Catuaí Amarelo IAC 144",   subtipo: "MUDA",         unidade: "un", custo: 1.5,   minimo: null,  saldoInicial: 480 },
+  { nome: "Mudas Catuaí Amarelo IAC 144",   subtipo: "MUDA",         unidade: "UN", custo: 1.5,   minimo: null,  saldoInicial: 480 },
 ] as const;
 
 async function main() {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ajustarContagem, listarSaldos, type SaldoDTO } from "../api";
+import { rotuloUnidade } from "../../lib/unidades";
 import { listarPropriedades } from "../../rebanho/api";
 import { getPropriedadeAtiva } from "../../propriedadeScope";
 import { FormProduto } from "../../financeiro/FormProduto";
@@ -61,8 +62,8 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
     <p role="alert">Selecione uma fazenda no menu lateral para ajustar o estoque. O Consolidado reúne saldos de fazendas diferentes.</p>
   </RebModal>;
   if (resultado) return <RebModal title="Quantidade ajustada" onClose={onSalvo} actions={<RebButton variant="pri" onClick={onSalvo}>Fechar</RebButton>}>
-    <p><strong>{produto?.nome}</strong>: estoque atualizado para <strong>{quantidade(resultado.quantidadeContada)} {produto?.unidade}</strong>.</p>
-    <p>Ajuste registrado: {resultado.diferenca > 0 ? "+" : ""}{quantidade(resultado.diferenca)} {produto?.unidade}.</p>
+    <p><strong>{produto?.nome}</strong>: estoque atualizado para <strong>{quantidade(resultado.quantidadeContada)} {produto ? rotuloUnidade(produto.unidade) : ""}</strong>.</p>
+    <p>Ajuste registrado: {resultado.diferenca > 0 ? "+" : ""}{quantidade(resultado.diferenca)} {produto ? rotuloUnidade(produto.unidade) : ""}.</p>
     <p>Sem pagamento ou compromisso financeiro. A justificativa e o histórico foram preservados.</p>
   </RebModal>;
   return <>
@@ -74,11 +75,11 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
       <RebField label="Produto">
         <select aria-label="Produto" disabled={carregando || salvando} value={produtoId} onChange={e => { setProdutoId(e.target.value); setContada(""); }}>
           <option value="">{carregando ? "Carregando estoque…" : "Selecione…"}</option>
-          {saldos.map(p => <option key={p.produtoId} value={p.produtoId}>{p.nome} ({p.unidade})</option>)}
+          {saldos.map(p => <option key={p.produtoId} value={p.produtoId}>{p.nome} ({rotuloUnidade(p.unidade)})</option>)}
         </select>
       </RebField>
       <RebButton disabled={salvando} onClick={() => setNovoProduto(true)}>Novo produto</RebButton>
-      {produto && <p className="my-4">Quantidade no sistema: <strong>{quantidade(produto.saldo)} {produto.unidade}</strong></p>}
+      {produto && <p className="my-4">Quantidade no sistema: <strong>{quantidade(produto.saldo)} {rotuloUnidade(produto.unidade)}</strong></p>}
       <RebField label="Quantidade encontrada na contagem">
         <input aria-label="Quantidade encontrada na contagem" type="number" min="0" max="9999999999.99" step="0.01" disabled={salvando} value={contada} onChange={e => setContada(e.target.value)} />
       </RebField>
@@ -86,8 +87,8 @@ export function MovimentoForm({ onFechar, onSalvo }: { onFechar: () => void; onS
         <textarea aria-label="Justificativa" minLength={5} maxLength={200} disabled={salvando} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Explique o motivo da correção de contagem" />
       </RebField>
       {produto && Number.isFinite(diferenca) && valor >= 0 && <div className="my-4 rounded-lg bg-stone-100 p-4" aria-live="polite">
-        <strong>{diferenca === 0 ? "Nenhum ajuste necessário" : `Diferença: ${diferenca > 0 ? "+" : ""}${quantidade(diferenca)} ${produto.unidade}`}</strong>
-        <p>Estoque após confirmar: {quantidade(valor)} {produto.unidade}.</p>
+        <strong>{diferenca === 0 ? "Nenhum ajuste necessário" : `Diferença: ${diferenca > 0 ? "+" : ""}${quantidade(diferenca)} ${rotuloUnidade(produto.unidade)}`}</strong>
+        <p>Estoque após confirmar: {quantidade(valor)} {rotuloUnidade(produto.unidade)}.</p>
       </div>}
       {erro && <div role="alert" className="mt-3 text-sm text-prejuizo"><p>{erro}</p><RebButton disabled={carregando || salvando} onClick={() => { void carregar(); }}>Atualizar saldo</RebButton></div>}
     </RebModal>

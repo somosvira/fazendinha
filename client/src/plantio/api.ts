@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { Talhao, ResumoTalhao, EventoTimeline, Lavoura, PlanoAdubacao, FaseFenologica, SafraDTO, TarefaPlanejada, Apontamento, IaInsight } from "./types";
 import { HOJE } from "./HOJE";
 import { comPropriedade } from "../propriedadeScope";
+import type { UnidadeMedida } from "../lib/unidades";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = comPropriedade({
@@ -71,7 +72,9 @@ export interface OperacaoInput {
   produto?: string;
   observacao?: string;
   doseValor?: number;
-  doseUnidade?: string;         // ex.: "mL/ha", "kg/ha", "t/ha"
+  doseUnidadeMedida?: UnidadeMedida;  // unidade da dose (novo) — combina com dosePorHectare
+  dosePorHectare?: boolean;           // true → dose × área do talhão; false → dose já é o total
+  doseUnidade?: string;         // legado (ex.: "mL/ha", "kg/ha", "t/ha") — aceito quando os campos novos não vêm
   pragaAlvo?: string;           // PragaDoenca (só fitossanidade)
   produtoId?: number | null;         // produto do estoque — gera baixa automática se estocável
   quantidadeTotal?: number | null;   // sobrescreve a estimativa (dose × área) quando informado

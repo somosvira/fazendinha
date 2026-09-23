@@ -4,6 +4,7 @@ import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
 import { CentrosCustoFieldset } from "@/components/CentrosCustoFieldset";
+import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 
 // Chips informativos das marcações de uso da categoria escolhida — o
 // comportamento (sanitário/nutricional/agrícola) é da categoria, não do produto.
@@ -54,7 +55,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const centros = centrosProp ?? centrosCarregados;
 
   const [nome, setNome] = useState(produto?.nome ?? "");
-  const [unidade, setUnidade] = useState(produto?.unidade ?? "un");
+  const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
   const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
@@ -77,12 +78,11 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     e.preventDefault();
     const novosErros: Record<string, string> = {};
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
-    if (!unidade.trim()) novosErros.unidade = "Informe a unidade";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
     if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
-      nome: nome.trim(), unidade: unidade.trim(),
+      nome: nome.trim(), unidade,
       estocavel,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
       centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
@@ -106,7 +106,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <input {...p} maxLength={12} value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="un, kg, L…" className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>

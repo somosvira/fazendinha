@@ -193,11 +193,11 @@ async function main() {
   await prisma.movimentoEstoque.deleteMany({});
   await prisma.produto.deleteMany({});
   const produtos = [
-    { nome: "Mastijet", unidade: "un", estocavel: true, minimoEstoque: 4 },
-    { nome: "Ração Lactação Alta", unidade: "kg", estocavel: true, minimoEstoque: 500 },
-    { nome: "Núcleo Mineral", unidade: "kg", estocavel: true, minimoEstoque: 100 },
-    { nome: "Sêmen Lance 884", unidade: "dose", estocavel: true, minimoEstoque: 10 },
-    { nome: "Antibiótico X", unidade: "mL", estocavel: true, minimoEstoque: 2 },
+    { nome: "Mastijet", unidade: "UN", estocavel: true, minimoEstoque: 4 },
+    { nome: "Ração Lactação Alta", unidade: "KG", estocavel: true, minimoEstoque: 500 },
+    { nome: "Núcleo Mineral", unidade: "KG", estocavel: true, minimoEstoque: 100 },
+    { nome: "Sêmen Lance 884", unidade: "DOSE", estocavel: true, minimoEstoque: 10 },
+    { nome: "Antibiótico X", unidade: "ML", estocavel: true, minimoEstoque: 2 },
   ] as const;
   for (const p of produtos) await prisma.produto.create({ data: p as any });
   // O cadastro não guarda preço: o custo médio nasce das entradas. Custo do

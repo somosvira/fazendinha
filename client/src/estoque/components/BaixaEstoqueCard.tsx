@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listarSaldos, registrarMovimento, listarProdutos, type SaldoDTO, type ProdutoDTO } from "../api";
+import { rotuloUnidade } from "../../lib/unidades";
 import type { Animal } from "../../rebanho/types";
 import { AnimalIdentity, mencaoAnimal } from "../../rebanho/components/AnimalIdentity";
 import { RebModal } from "@/components/rb/RebModal";
@@ -160,7 +161,7 @@ export function BaixaEstoqueCard({
             <option value="">{carregando ? "Carregando…" : "— selecionar —"}</option>
             {produtos.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nome} ({p.categoriaNome ? p.categoriaNome.toLowerCase() : "sem categoria"} · {p.unidade})
+                {p.nome} ({p.categoriaNome ? p.categoriaNome.toLowerCase() : "sem categoria"} · {rotuloUnidade(p.unidade)})
               </option>
             ))}
           </RebSelect>
@@ -172,22 +173,22 @@ export function BaixaEstoqueCard({
               <RebPill>Produto não é controlado por estoque</RebPill>
             ) : !saldoSel || saldoSel.saldo <= 0 ? (
               <RebPill tone="bad">
-                Sem estoque{saldoSel ? ` (saldo: ${fmtQtd(saldoSel.saldo)} ${produtoSel.unidade})` : ""}
+                Sem estoque{saldoSel ? ` (saldo: ${fmtQtd(saldoSel.saldo)} ${rotuloUnidade(produtoSel.unidade)})` : ""}
               </RebPill>
             ) : saldoSel.abaixoMinimo ? (
               <RebPill tone="warn">
-                ⚠ Abaixo do mínimo — saldo {fmtQtd(saldoSel.saldo)} {produtoSel.unidade}
+                ⚠ Abaixo do mínimo — saldo {fmtQtd(saldoSel.saldo)} {rotuloUnidade(produtoSel.unidade)}
                 {saldoSel.minimoEstoque != null ? ` · mín ${fmtQtd(saldoSel.minimoEstoque)}` : ""}
               </RebPill>
             ) : (
               <span className="font-sans text-[13.5px] italic text-ink-3">
-                Saldo atual: {fmtQtd(saldoSel.saldo)} {produtoSel.unidade}
+                Saldo atual: {fmtQtd(saldoSel.saldo)} {rotuloUnidade(produtoSel.unidade)}
               </span>
             )}
           </div>
         )}
 
-        <RebField label={<>Quantidade{produtoSel ? ` (${produtoSel.unidade})` : ""}</>}>
+        <RebField label={<>Quantidade{produtoSel ? ` (${rotuloUnidade(produtoSel.unidade)})` : ""}</>}>
           <input
             type="number"
             min={0}

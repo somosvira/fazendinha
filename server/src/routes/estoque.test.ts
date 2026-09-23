@@ -197,7 +197,7 @@ describe("GET /estoque/fornecedores", () => {
 });
 
 describe("POST /estoque/produtos", () => {
-  const body = { nome: "Ureia", unidade: "kg", estocavel: true, categoriaId: 1 };
+  const body = { nome: "Ureia", unidade: "KG", estocavel: true, categoriaId: 1 };
   it("sem lancar → 403", async () => {
     const res = await appCom(soAgricultura).request("/estoque/produtos", { method: "POST", headers: json, body: JSON.stringify(body) });
     expect(res.status).toBe(403);

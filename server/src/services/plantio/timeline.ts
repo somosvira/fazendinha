@@ -2,16 +2,26 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import type { EventoTimeline } from "./mock.js";
 import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
-import { planejarBaixaAplicacao } from "./aplicacao-estoque.calc.js";
+import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
+import { rotuloUnidade } from "../estoque/unidades.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
 import { estornarMovimentoTx, obterCustoMedio } from "../estoque/estoque.js";
 import { valorSaida } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
 export class PlantioEventoError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO", message: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "VALIDACAO", message: string) {
     super(message);
   }
+}
+
+// Resolve a dose efetiva (unidade + por hectare) do input: usa os campos
+// novos quando vierem, senão faz o parse do texto legado (doseUnidade).
+function resolverDose(input: { doseUnidadeMedida?: import("@prisma/client").UnidadeMedida | null; dosePorHectare?: boolean | null; doseUnidade?: string | null }) {
+  if (input.doseUnidadeMedida !== undefined && input.doseUnidadeMedida !== null) {
+    return { unidade: input.doseUnidadeMedida, porHectare: !!input.dosePorHectare };
+  }
+  return parseDoseUnidadeLegada(input.doseUnidade ?? null);
 }
 
 // ── Builder da timeline tecida do talhão ─────────────────────────────────────
@@ -173,14 +183,25 @@ async function planejarMovimento(
     const centro = await tx.centroCusto.findFirst({ where: { id: input.centroCustoId, ativo: true } });
     if (!centro) throw new PlantioEventoError("NAO_ENCONTRADO", "centro de custo não encontrado");
   }
-  const plano = planejarBaixaAplicacao({
-    produtoId: input.produtoId,
-    estocavel: produto.estocavel,
-    doseValor: input.doseValor ?? null,
-    doseUnidade: input.doseUnidade ?? null,
-    areaHa: talhao.areaHa != null ? Number(talhao.areaHa) : null,
-    quantidadeTotalInformada: input.quantidadeTotal ?? null,
-  });
+  const dose = resolverDose(input);
+  let plano;
+  try {
+    plano = planejarBaixaAplicacao({
+      produtoId: input.produtoId,
+      estocavel: produto.estocavel,
+      produtoUnidade: produto.unidade,
+      doseValor: input.doseValor ?? null,
+      doseUnidadeMedida: dose.unidade,
+      dosePorHectare: dose.porHectare,
+      areaHa: talhao.areaHa != null ? Number(talhao.areaHa) : null,
+      quantidadeTotalInformada: input.quantidadeTotal ?? null,
+    });
+  } catch {
+    throw new PlantioEventoError(
+      "VALIDACAO",
+      `A dose em ${dose.unidade ? rotuloUnidade(dose.unidade) : "unidade informada"} não pode ser convertida para ${rotuloUnidade(produto.unidade)} — escolha a unidade do produto ou informe a quantidade total`,
+    );
+  }
   if (!plano.deveBaixar) return { produto, plano: null as null };
   const centroCustoId = resolverCentroSaida({
     produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId),
@@ -233,7 +254,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
         produto: input.produto ?? (movimento?.produto.nome ?? null),
         observacao: input.observacao ?? null,
         doseValor: input.doseValor ?? null,
-        doseUnidade: input.doseUnidade ?? null,
+        doseUnidade: textoDoseUnidade(resolverDose(input).unidade, resolverDose(input).porHectare) ?? input.doseUnidade ?? null,
         pragaAlvo: input.pragaAlvo ?? null,
         produtoId: input.produtoId ?? null,
         quantidadeTotal: mov ? mov.quantidade : (input.quantidadeTotal ?? null),
@@ -281,6 +302,15 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       produto: input.produto !== undefined ? input.produto : existente.produto,
       observacao: input.observacao !== undefined ? input.observacao : existente.observacao,
       doseValor: input.doseValor !== undefined ? input.doseValor : num(existente.doseValor) ?? null,
+      // doseUnidadeMedida/dosePorHectare não são persistidos (só o texto
+      // doseUnidade é); um PATCH que não manda dose nova reconstrói os campos
+      // novos a partir do texto legado já gravado.
+      doseUnidadeMedida: input.doseUnidadeMedida !== undefined
+        ? input.doseUnidadeMedida
+        : parseDoseUnidadeLegada(existente.doseUnidade).unidade,
+      dosePorHectare: input.dosePorHectare !== undefined
+        ? input.dosePorHectare
+        : parseDoseUnidadeLegada(existente.doseUnidade).porHectare,
       doseUnidade: input.doseUnidade !== undefined ? input.doseUnidade : existente.doseUnidade,
       pragaAlvo: input.pragaAlvo !== undefined ? input.pragaAlvo : (existente.pragaAlvo as CriarOperacaoInput["pragaAlvo"]),
       produtoId: produtoIdMerged,
@@ -329,7 +359,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
         produto: merged.produto ?? (movimento?.produto.nome ?? null),
         observacao: merged.observacao ?? null,
         doseValor: merged.doseValor ?? null,
-        doseUnidade: merged.doseUnidade ?? null,
+        doseUnidade: textoDoseUnidade(merged.doseUnidadeMedida, merged.dosePorHectare) ?? merged.doseUnidade ?? null,
         pragaAlvo: merged.pragaAlvo ?? null,
         produtoId: merged.produtoId ?? null,
         quantidadeTotal,
