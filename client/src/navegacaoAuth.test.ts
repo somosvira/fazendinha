@@ -52,13 +52,13 @@ describe("returnTo", () => {
   });
 
   it("substitui rota inexistente ou não autorizada pela home permitida", () => {
-    expect(destinoDepoisDoLogin("/financeiro/operacoes", usuarioPecuaria)).toBe("/pecuaria/dashboard");
-    expect(destinoDepoisDoLogin("/pecuaria/nao-existe", usuarioPecuaria)).toBe("/pecuaria/dashboard");
+    expect(destinoDepoisDoLogin("/financeiro/operacoes", usuarioPecuaria)).toBe("/pecuaria/rebanho");
+    expect(destinoDepoisDoLogin("/milho/nao-existe", usuarioPecuaria)).toBe("/pecuaria/rebanho");
     expect(paginaInicialAutorizada(usuarioFinanceiro)).toBe("/financeiro/operacoes");
   });
 
   it("mantém compatibilidade de acesso para sessões antigas sem áreas", () => {
     const usuarioLegado = { ...usuarioPecuaria, areas: undefined } as unknown as UsuarioSessao;
-    expect(podeAcessarTab(usuarioLegado, "reb-dashboard")).toBe(true);
+    expect(podeAcessarTab(usuarioLegado, "pec-rebanho")).toBe(true);
   });
 });

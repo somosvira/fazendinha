@@ -18,8 +18,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePropriedades } from "../rebanho/api";
-import { GerenciarPropriedades } from "../rebanho/components/PropriedadeSelector";
+import { usePropriedades } from "../api/propriedades";
+import { GerenciarPropriedades } from "./PropriedadeSelector";
 
 function Chevron({ className }: { className?: string }) {
   return (

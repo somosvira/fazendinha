@@ -6,7 +6,7 @@
  *  - pathToTab: para abrir o app já na aba certa (deep-link / reload / back-forward).
  *
  * Os módulos operacionais têm sub-abas com
- * prefixo (reb-, pla-, cor-, mil-, eqp-) e viram caminhos aninhados
+ * prefixo (pec-, pla-, mil-, eqp-) e viram caminhos aninhados
  * /pecuaria/<sub>, /plantio/<sub>, etc. As abas financeiras/administração têm
  * slug fixo no mapa abaixo.
  */
@@ -27,19 +27,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   acessos: "/acessos",
   config: "/configuracoes",
   cadastros: "/financeiro/configuracoes",
-  "reb-dashboard": "/pecuaria/dashboard",
-  "reb-animal": "/pecuaria/animal",
-  "reb-reproducao": "/pecuaria/reproducao",
-  "reb-acasalamento": "/pecuaria/acasalamento",
-  "reb-fiv": "/pecuaria/fiv",
-  "reb-relatorios": "/pecuaria/relatorios",
-  "reb-sanidade": "/pecuaria/sanidade",
-  "reb-nutricao": "/pecuaria/nutricao",
-  "reb-producao": "/pecuaria/producao",
-  "reb-estoque": "/pecuaria/estoque",
-  "reb-custo": "/pecuaria/custo",
-  "reb-carteira": "/pecuaria/carteira",
-  "reb-sugestoes": "/pecuaria/sugestoes",
+  "pec-rebanho": "/pecuaria/rebanho",
   "pla-dashboard": "/plantio/dashboard",
   "pla-talhao": "/plantio/talhao",
   "pla-fenologia": "/plantio/fenologia",
@@ -49,14 +37,6 @@ const PATH_BY_TAB: Record<Tab, string> = {
   "pla-planejamento": "/plantio/planejamento",
   "pla-estoque": "/plantio/estoque",
   "pla-custo": "/plantio/custo",
-  "cor-dashboard": "/pecuaria/lotes/resumo",
-  "cor-lote": "/pecuaria/lotes",
-  "cor-pesagem": "/pecuaria/lotes/pesagens",
-  "cor-pasto": "/pecuaria/lotes/pasto",
-  "cor-sanidade": "/pecuaria/lotes/sanidade",
-  "cor-nutricao": "/pecuaria/lotes/nutricao",
-  "cor-comercial": "/pecuaria/lotes/comercializacao",
-  "cor-custo": "/pecuaria/lotes/custos",
   "eqp-dashboard": "/equipe/dashboard",
   "eqp-funcionarios": "/equipe/funcionarios",
   "eqp-ponto": "/equipe/ponto",
@@ -74,12 +54,10 @@ const TAB_BY_PATH: Record<string, Tab> = Object.fromEntries(
 ) as Record<string, Tab>;
 
 const DEFAULT_TAB_BY_PATH: Record<string, Tab> = {
-  "/pecuaria": "reb-dashboard",
+  "/pecuaria": "pec-rebanho",
   "/plantio": "pla-dashboard",
   "/milho": "mil-dashboard",
   "/equipe": "eqp-dashboard",
-  "/rebanho": "reb-dashboard",
-  "/corte": "cor-dashboard",
 };
 
 const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
@@ -89,16 +67,6 @@ const TAB_BY_PATH_LEGADO: Record<string, Tab> = {
   "/gastos": "gastos",
   "/lancar": "lancar",
   "/caixinha": "caixinha",
-  ...Object.fromEntries(
-    Object.keys(PATH_BY_TAB)
-      .filter((tab) => tab.startsWith("reb-"))
-      .map((tab) => [`/rebanho/${tab.slice(4)}`, tab as Tab]),
-  ),
-  ...Object.fromEntries(
-    Object.keys(PATH_BY_TAB)
-      .filter((tab) => tab.startsWith("cor-"))
-      .map((tab) => [`/corte/${tab.slice(4)}`, tab as Tab]),
-  ),
 };
 
 export const DEFAULT_TAB: Tab = "dashboard";
@@ -161,46 +129,6 @@ export function entradaDeNovaOperacao(estado: unknown): boolean {
   return !!estado && typeof estado === "object" && (estado as { novaOperacao?: unknown }).novaOperacao === true;
 }
 
-export const REBANHO_WORKLISTS = {
-  "secagem-atrasada": "reproducao",
-  "vazia-pos-pev": "reproducao",
-  "dg-pendente": "reproducao",
-  "parto-proximo": "reproducao",
-  "ccs-alta": "sanidade",
-  "carencia": "sanidade",
-  "producao-caindo": "producao",
-  "vacina-pendente": "sanidade",
-  "precisa-de-exame": "reproducao",
-} as const;
-
-export type RebanhoWorklistChave = keyof typeof REBANHO_WORKLISTS;
-export type RebanhoWorklistTab = (typeof REBANHO_WORKLISTS)[RebanhoWorklistChave];
-
-export interface RotaWorklistRebanho {
-  chave: RebanhoWorklistChave;
-  tab: RebanhoWorklistTab;
-}
-
-export function isRebanhoWorklistChave(chave: string): chave is RebanhoWorklistChave {
-  return Object.prototype.hasOwnProperty.call(REBANHO_WORKLISTS, chave);
-}
-
-/** Lê somente combinações canônicas de aba + chave; parâmetros extras são ignorados. */
-export function parseRotaWorklistRebanho(pathname: string, search = ""): RotaWorklistRebanho | null {
-  const tab = pathToTab(pathname);
-  if (tab !== "reb-reproducao" && tab !== "reb-sanidade" && tab !== "reb-producao") return null;
-  const chave = new URLSearchParams(search).get("worklist");
-  if (!chave || !isRebanhoWorklistChave(chave)) return null;
-  const worklistTab = REBANHO_WORKLISTS[chave];
-  return tab === `reb-${worklistTab}` ? { chave, tab: worklistTab } : null;
-}
-
-/** Monta a URL canônica e impede que uma chave seja publicada na aba errada. */
-export function buildRotaWorklistRebanho(chave: RebanhoWorklistChave, tab: RebanhoWorklistTab = REBANHO_WORKLISTS[chave]): string | null {
-  if (REBANHO_WORKLISTS[chave] !== tab) return null;
-  return `/pecuaria/${tab}?worklist=${encodeURIComponent(chave)}`;
-}
-
 /** Aba ativa -> pathname canônico para a barra de endereço. */
 export function tabToPath(tab: Tab): string {
   return PATH_BY_TAB[tab];
@@ -219,5 +147,10 @@ export function pathToTab(pathname: string): Tab | null {
   if (isNovaOperacaoFinanceira(path)) return "lancar";
   if (isNovoRelatorioFinanceiro(path) || parseRelatorioFinanceiroId(path) != null) return "relatorio";
 
-  return DEFAULT_TAB_BY_PATH[path] ?? TAB_BY_PATH[path] ?? TAB_BY_PATH_LEGADO[path] ?? null;
+  const tab = DEFAULT_TAB_BY_PATH[path] ?? TAB_BY_PATH[path] ?? TAB_BY_PATH_LEGADO[path];
+  if (tab) return tab;
+  // Pecuária legada (rebanho/corte removidos): /rebanho/*, /corte/* e as antigas
+  // subrotas /pecuaria/* (inclusive /pecuaria/lotes/*) caem no Rebanho v1.
+  if (/^\/(rebanho|corte|pecuaria)(\/|$)/.test(path)) return "pec-rebanho";
+  return null;
 }

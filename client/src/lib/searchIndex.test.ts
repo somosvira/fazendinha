@@ -11,7 +11,7 @@ describe("buscar()", () => {
     // a curadoria começa pelo Dashboard financeiro
     expect(r[0].id).toBe("fin-dashboard");
     // inclui o painel de pelo menos um módulo operacional
-    expect(r.map((c) => c.id)).toContain("reb-dashboard");
+    expect(r.map((c) => c.id)).toContain("pec-rebanho");
     expect(r.map((c) => c.id)).toContain("pla-dashboard");
   });
 
@@ -35,18 +35,11 @@ describe("buscar()", () => {
 
   it('busca é insensível a acento: "nutricao" encontra Nutrição', () => {
     const r = ids("nutricao");
-    expect(r).toContain("reb-nutricao");
     expect(r).toContain("pla-nutricao");
   });
 
-  it("sinônimo de animal: \"vaca\" encontra Animal", () => {
-    expect(ids("vaca")).toContain("reb-animal");
-  });
-
-  it("indexa Acasalamento e seus sinônimos operacionais", () => {
-    for (const termo of ["cruzamento", "touro", "genética", "consanguinidade", "plano", "pedigree"]) {
-      expect(ids(termo)).toContain("reb-acasalamento");
-    }
+  it("sinônimo de animal: \"vaca\" encontra o Rebanho", () => {
+    expect(ids("vaca")).toContain("pec-rebanho");
   });
 
   it('ranking: prefixo de label vem antes de match por sinônimo', () => {

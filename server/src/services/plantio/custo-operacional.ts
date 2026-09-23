@@ -15,7 +15,7 @@
  *
  * Núcleo PURO (calcularCustoOperacionalCafe) sem DB — testável. Wrapper
  * (agregarCustoOperacionalCafe) carrega do Prisma e monta o DTO com `nota`
- * de transparência, espelhando services/corte/custo.ts.
+ * de transparência, espelhando o custo do corte legado (removido).
  */
 import { prisma } from "../../db.js";
 

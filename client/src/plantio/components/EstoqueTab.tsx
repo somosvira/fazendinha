@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Loader } from "../../components/Loading";
 import type { TipoInsumoPlantio } from "../types";
 import { useEstoquePlantio } from "../api";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebButton } from "@/components/rb/RebButton";
 import { REB_FIELD_BOXED } from "@/components/rb/RebField";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";

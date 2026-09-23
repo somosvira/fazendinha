@@ -12,10 +12,7 @@
 // Formato do link que a IA emite: markdown `[rótulo curto](/caminho?param=valor)`.
 // As ROTAS (path) são as reais de client/src/router.ts.
 //
-// Sobre os FILTROS (query params), há duas situações:
-//   - `?worklist=` nas telas do rebanho JÁ FUNCIONA de ponta a ponta
-//     (REBANHO_WORKLISTS + parseRotaWorklistRebanho no router, aplicado no App.tsx).
-//   - os demais são um ESQUEMA PLANEJADO: o client ainda não lê query string nas telas
+// Sobre os FILTROS (query params): são um ESQUEMA PLANEJADO — o client ainda não lê query string nas telas
 //     do financeiro (navegação é useState + History API só com path). Os nomes abaixo
 //     espelham o estado real de cada tela para a implementação ser mecânica; o plano
 //     está em PLANO_CLIENT no fim do arquivo.
@@ -40,7 +37,7 @@ export interface RotaNav {
   exemplos: string[];
 }
 
-// Catálogo enxuto, focado no que o assistente de DASHBOARD/financeiro + rebanho
+// Catálogo enxuto, focado no que o assistente de DASHBOARD/financeiro + rebanho (v1)
 // realmente linka. Não é o sitemap inteiro do app de propósito — só os alvos úteis.
 export const NAV_CATALOG: RotaNav[] = [
   {
@@ -112,52 +109,11 @@ export const NAV_CATALOG: RotaNav[] = [
     exemplos: ["[Abrir as configurações financeiras](/financeiro/configuracoes)"],
   },
   {
-    path: "/pecuaria/animal",
+    path: "/pecuaria/rebanho",
     titulo: "Rebanho — lista de animais",
     quando: "Quando a resposta é sobre o rebanho/animais e o usuário pode querer ver a lista.",
-    // `id` do animal não resolve confiável por URL (cockpit espera id do banco, não o
-    // número do rebanho) — por ora o link abre a lista. Recolocar quando resolver por número.
     filtros: [],
-    exemplos: ["[Ver o rebanho](/pecuaria/animal)"],
-  },
-  {
-    path: "/pecuaria/producao",
-    titulo: "Produção de leite",
-    quando: "Pedidos de produção/controle leiteiro do rebanho.",
-    filtros: [
-      { param: "worklist", desc: "abre a tela já com a lista de trabalho aplicada", valores: ["producao-caindo"] },
-    ],
-    exemplos: [
-      "[Ver a produção de leite](/pecuaria/producao)",
-      "[Ver as vacas com produção caindo](/pecuaria/producao?worklist=producao-caindo)",
-    ],
-  },
-  {
-    path: "/pecuaria/sanidade",
-    titulo: "Sanidade / alertas do rebanho",
-    quando: "Pedidos de sanidade, CCS, mastite, carência, vacinas e alertas do rebanho.",
-    filtros: [
-      { param: "worklist", desc: "abre a tela já com a lista de trabalho aplicada", valores: ["ccs-alta", "carencia", "vacina-pendente"] },
-    ],
-    exemplos: [
-      "[Ver alertas de sanidade](/pecuaria/sanidade)",
-      "[Ver as vacas com CCS alta](/pecuaria/sanidade?worklist=ccs-alta)",
-      "[Ver o leite em carência](/pecuaria/sanidade?worklist=carencia)",
-    ],
-  },
-  {
-    path: "/pecuaria/reproducao",
-    titulo: "Reprodução do rebanho",
-    quando:
-      "Pedidos de reprodução: o que inseminar, diagnóstico de gestação pendente, secagem, partos previstos.",
-    filtros: [
-      { param: "worklist", desc: "abre a tela já com a lista de trabalho aplicada", valores: ["secagem-atrasada", "vazia-pos-pev", "dg-pendente", "parto-proximo", "precisa-de-exame"] },
-    ],
-    exemplos: [
-      "[Ver a reprodução](/pecuaria/reproducao)",
-      "[Ver os DGs pendentes](/pecuaria/reproducao?worklist=dg-pendente)",
-      "[Ver as secagens atrasadas](/pecuaria/reproducao?worklist=secagem-atrasada)",
-    ],
+    exemplos: ["[Ver o rebanho](/pecuaria/rebanho)"],
   },
 ];
 
@@ -179,7 +135,7 @@ export function navegacaoResumo(): string {
     return `- ${r.path} — ${r.titulo}: ${r.quando}${params}${ex}`;
   });
   return [
-    "REGRA DE OURO (link): SEMPRE que sua resposta trouxer dados/números que tenham uma tela correspondente na lista abaixo, TERMINE a mensagem com um deep-link markdown [rótulo curto](/caminho?param=valor) pro usuário ver os detalhes. Esse é o comportamento PADRÃO — inclua o link por padrão; só OMITA se nenhuma rota da lista casar com o assunto, ou se sua resposta for uma pergunta de esclarecimento (sem dados). Escolha a rota + filtros que melhor refletem o que você respondeu (status, categoria, mês, pessoa, animal…), usando os NOMES exatos dos dados reais que você buscou. Use SÓ caminhos e params desta lista (não invente). Até 2 links.",
+    "REGRA DE OURO (link): SEMPRE que sua resposta trouxer dados/números que tenham uma tela correspondente na lista abaixo, TERMINE a mensagem com um deep-link markdown [rótulo curto](/caminho?param=valor) pro usuário ver os detalhes. Esse é o comportamento PADRÃO — inclua o link por padrão; só OMITA se nenhuma rota da lista casar com o assunto, ou se sua resposta for uma pergunta de esclarecimento (sem dados). Escolha a rota + filtros que melhor refletem o que você respondeu (status, categoria, mês, pessoa…), usando os NOMES exatos dos dados reais que você buscou. Use SÓ caminhos e params desta lista (não invente). Até 2 links.",
     ...linhas,
   ].join("\n");
 }
@@ -190,10 +146,6 @@ export function navegacaoResumo(): string {
 // realmente aplicarem filtro (hoje o client só navega por path, sem query string):
 export const PLANO_CLIENT = `## Plano de implementação no client (filtros)
 
-O que **já funciona**: \`?worklist=<chave>\` nas telas de reprodução, sanidade e produção do
-rebanho. O router expõe \`REBANHO_WORKLISTS\` + \`parseRotaWorklistRebanho\` e o App.tsx
-aplica a lista de trabalho na montagem — esses deep-links podem ser emitidos hoje.
-
 O que **falta**: as telas do financeiro ainda não leem query string. A navegação é
 \`useState<Tab>\` + History API gravando só o path (client/src/router.ts, App.tsx), e cada
 tela inicializa os próprios filtros em \`useState\`. Para os links do financeiro aplicarem
@@ -201,7 +153,7 @@ filtro:
 
 1. **Parsear a query string na entrada** (App.tsx, junto de \`pathToTab\`): ler
    \`window.location.search\` -> objeto de filtros e passar para a tela via prop
-   (ex.: \`deepLinkFiltros\`), reaproveitando o padrão já usado pelo \`?worklist=\`.
+   (ex.: \`deepLinkFiltros\`).
 2. **Cada tela consome os params na montagem**, usando os nomes que ela já tem em estado:
    - \`CompromissosFinanceiros\` -> \`aba\` (PAGAR | RECEBER | LIQUIDADOS) e \`soVencidos\`;
    - \`OperacoesFinanceiras\` -> \`busca\`, \`tipo\`, \`status\`, \`efeito\`, \`inicio\`/\`fim\`;

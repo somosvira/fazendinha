@@ -3,7 +3,7 @@ import type { MilSub } from "../CultivoContent";
 import { insightDoMilho } from "../mock/insight";
 import { IaInsightBand } from "./IaInsight";
 import { useDashboard } from "../api";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebMain } from "@/components/rb/RebPrimitives";
 import { fmtBRL } from "@/components/charts";

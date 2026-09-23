@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Enfase } from "./IaInsight";
 import { perguntarIA, useInsights } from "../api";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebMain, REB_CHIP_Q, REB_CHIP_DEMO } from "@/components/rb/RebPrimitives";
 
 const SUGESTOES = [

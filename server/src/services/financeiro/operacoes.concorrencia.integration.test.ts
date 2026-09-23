@@ -5,7 +5,7 @@ import { listarContas } from "./contas.js";
 import { estornarOperacao, estornarTransacao, criarOperacao, liquidarCompromisso } from "./operacoes.js";
 import { FinanceiroError } from "./regras.js";
 import { operacaoSchema } from "./schemas.js";
-import { excluirMovimento, listarSaldos } from "../rebanho/estoque.js";
+import { excluirMovimento, listarSaldos } from "../estoque/estoque.js";
 
 const describeComBanco = process.env.FINANCE_DB_INTEGRATION === "1" ? describe : describe.skip;
 const propriedadesCriadas: number[] = [];

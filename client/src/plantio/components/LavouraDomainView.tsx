@@ -3,7 +3,7 @@ import type { DomainConfig } from "../domains";
 import type { ResumoTalhao, IaInsight } from "../types";
 import { getTalhao } from "../mock";
 import { IaInsightBand } from "./IaInsight";
-import { RebHeader } from "@/rebanho/components/RebHeader";
+import { RebHeader } from "@/components/rb/RebHeader";
 import { RebKpiStrip, RebKpi } from "@/components/rb/RebKpiStrip";
 import { RebTable } from "@/components/rb/RebTable";
 import { RebMain, RebAnm } from "@/components/rb/RebPrimitives";

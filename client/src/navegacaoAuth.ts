@@ -68,7 +68,7 @@ export function paginaInicialAutorizada(usuario: UsuarioSessao): string {
     const tab = aba.id as Tab;
     if (podeAcessarTab(usuario, tab)) return tabToPath(tab);
   }
-  if (temAcessoArea(usuario.areas, "pecuaria", !!usuario.dono)) return tabToPath("reb-dashboard");
+  if (temAcessoArea(usuario.areas, "pecuaria", !!usuario.dono)) return tabToPath("pec-rebanho");
   if (temAcessoArea(usuario.areas, "agricultura", !!usuario.dono)) return tabToPath("pla-dashboard");
   if (temAcessoArea(usuario.areas, "equipe", !!usuario.dono)) return tabToPath("eqp-dashboard");
   return tabToPath("config");

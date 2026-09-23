@@ -23,7 +23,7 @@ export async function listarEstoquePlantio(propriedadeId?: number | null): Promi
     where: { subtipoPlantio: { not: null }, ativo: true },
     orderBy: { nome: "asc" },
     // Escopo do sítio: só os movimentos do sítio contam pro saldo (mirror do
-    // rebanho/estoque.listarSaldos). Produto em si é cadastro compartilhado.
+    // estoque/estoque.listarSaldos). Produto em si é cadastro compartilhado.
     include: { movimentos: propriedadeId != null ? { where: { propriedadeId } } : true },
   });
 

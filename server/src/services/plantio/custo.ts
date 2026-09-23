@@ -1,6 +1,6 @@
 import { incluirClassificacao, ratearTransacao } from "../financeiro/classificacao.js";
 import { prisma } from "../../db.js";
-import { quebrarPorCategoria } from "../rebanho/custo-producao.js";
+import { quebrarPorCategoria } from "./custo.quebra.js";
 
 // ── Ponte financeira do café (espelha rebanho/custo-producao) ────────────────
 // O café da Rio Novo está em FORMAÇÃO: a maior parte do gasto cai em

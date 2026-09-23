@@ -1,5 +1,5 @@
 // Motor puro de estoque do Plantio (Prisma-free, testado por TDD).
-// Mesma convenção do rebanho (ver rebanho/estoque.calc.ts): SAIDA subtrai;
+// Mesma convenção do rebanho (ver estoque/estoque.calc.ts): SAIDA subtrai;
 // ENTRADA e AJUSTE somam (AJUSTE pode ter quantidade negativa — correção de
 // saldo). Aqui o valor em R$ é derivado do custoUnitário do produto (saldo ×
 // custo), e não da soma dos valores de movimento — o estoque do Plantio é uma

@@ -3,10 +3,9 @@ import { areaDaTab, temAcessoArea } from "./areas";
 
 describe("áreas de acesso", () => {
   it("mapeia tabs para os domínios compartilhados", () => {
-    expect(areaDaTab("reb-reproducao")).toBe("pecuaria");
+    expect(areaDaTab("pec-rebanho")).toBe("pecuaria");
     expect(areaDaTab("pla-talhao")).toBe("agricultura");
     expect(areaDaTab("mil-safras")).toBe("agricultura");
-    expect(areaDaTab("cor-lote")).toBe("pecuaria");
     expect(areaDaTab("eqp-ponto")).toBe("equipe");
     expect(areaDaTab("gastos")).toBe("financeiro");
   });

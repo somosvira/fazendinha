@@ -61,7 +61,7 @@ export async function resolverEscopoLeitura(c: Context): Promise<number | null> 
 // Garante a fundação em runtime, IDEMPOTENTE. Necessário porque prod aplica o
 // schema via `prisma db push`, que NÃO roda o SQL de seed/backfill da migration —
 // sem isto a tabela nasceria vazia e os propriedadeId ficariam NULL (a Fatia 1
-// filtraria por principal e o rebanho todo sumiria). Chamado no boot.
+// filtraria por principal e os fatos sumiriam). Chamado no boot.
 // Nome neutro (não hardcoda "Rio Novo" — sistema é revendido); o dono renomeia na UI.
 export async function garantirFundacaoPropriedade(): Promise<void> {
   const total = await prisma.propriedade.count();
@@ -70,48 +70,13 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
   }
   _principalId = null; // invalida cache; recomputa a principal (recém-criada ou existente)
   const pid = await propriedadePrincipalId();
-  await prisma.animal.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.grupo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  // Produção por grupo herda o sítio do lote; tanque geral legado cai na principal.
-  await prisma.$executeRaw`
-    UPDATE "ProducaoLote" AS p
-    SET "propriedadeId" = COALESCE(
-      (SELECT g."propriedadeId" FROM "Grupo" AS g WHERE g."id" = p."grupoId"),
-      ${pid}
-    )
-    WHERE p."propriedadeId" IS NULL
-  `;
   await prisma.movimentoEstoque.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.loteCorte.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
-  await prisma.piquete.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.talhao.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.lavoura.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.funcionario.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.safraCultivo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
   await prisma.silo.updateMany({ where: { propriedadeId: null }, data: { propriedadeId: pid } });
 
-  // `prisma db push` cria as colunas do read-model, mas não executa o SQL de
-  // backfill da migration. Mantém a tabela da Reprodução útil logo no primeiro
-  // boot após o deploy, sem depender de um novo evento por animal.
-  await prisma.$executeRaw`
-    WITH "UltimaCobertura" AS (
-      SELECT DISTINCT ON ("animalId")
-        "animalId", "data", "protocolo"
-      FROM "EventoReprodutivo"
-      WHERE "tipo" IN ('INSEMINACAO', 'COBERTURA', 'TRANSFERENCIA_EMBRIAO')
-      ORDER BY "animalId", "data" DESC, "id" DESC
-    )
-    UPDATE "ResumoAnimal" AS "resumo"
-    SET
-      "ultimaInseminacao" = "cobertura"."data",
-      "protocoloAtual" = "cobertura"."protocolo"
-    FROM "UltimaCobertura" AS "cobertura"
-    WHERE "resumo"."animalId" = "cobertura"."animalId"
-      AND (
-        "resumo"."ultimaInseminacao" IS DISTINCT FROM "cobertura"."data"
-        OR "resumo"."protocoloAtual" IS DISTINCT FROM "cobertura"."protocolo"
-      )
-  `;
 }
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────
