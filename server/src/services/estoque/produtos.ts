@@ -112,14 +112,18 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado
-      // (estoque) ou planejado (dieta) na unidade antiga — bloqueia se houver
-      // algum registro para esse produto.
+      // (estoque), planejado (dieta) ou registrado em histórico (compra/venda,
+      // aplicação sanitária, aplicação agrícola) na unidade antiga — bloqueia se
+      // houver algum registro para esse produto.
       if (produto.unidade !== undefined && produto.unidade !== anterior.unidade) {
-        const [movimentos, itensDieta] = await Promise.all([
+        const [movimentos, itensDieta, itensOperacao, eventosSanitarios, operacoesAgricolas] = await Promise.all([
           tx.movimentoEstoque.count({ where: { produtoId: id } }),
           tx.dietaItem.count({ where: { produtoId: id } }),
+          tx.itemOperacao.count({ where: { produtoId: id } }),
+          tx.eventoSanitario.count({ where: { produtoId: id, quantidadeUsada: { not: null } } }),
+          tx.operacaoAgricola.count({ where: { produtoId: id, doseValor: { not: null } } }),
         ]);
-        if (movimentos > 0 || itensDieta > 0) {
+        if (movimentos > 0 || itensDieta > 0 || itensOperacao > 0 || eventosSanitarios > 0 || operacoesAgricolas > 0) {
           throw new FinanceiroError("VALIDACAO", "Não é possível trocar a unidade de um produto com movimentos de estoque ou dietas registradas", "unidade");
         }
       }

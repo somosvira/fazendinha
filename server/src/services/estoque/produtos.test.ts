@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
-  movimentoCount: vi.fn(), dietaItemCount: vi.fn(),
+  movimentoCount: vi.fn(), dietaItemCount: vi.fn(), itemOperacaoCount: vi.fn(), eventoSanitarioCount: vi.fn(), operacaoAgricolaCount: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -14,6 +14,9 @@ vi.mock("../../db.js", () => {
     auditoriaFinanceira: { create: mocks.auditoria },
     movimentoEstoque: { count: mocks.movimentoCount },
     dietaItem: { count: mocks.dietaItemCount },
+    itemOperacao: { count: mocks.itemOperacaoCount },
+    eventoSanitario: { count: mocks.eventoSanitarioCount },
+    operacaoAgricola: { count: mocks.operacaoAgricolaCount },
   };
   mocks.transaction.mockImplementation(async (fn: (db: unknown) => unknown) => fn(tx));
   return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };
@@ -48,6 +51,9 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.centroCustoFindMany.mockResolvedValue([centro]);
     mocks.movimentoCount.mockResolvedValue(0);
     mocks.dietaItemCount.mockResolvedValue(0);
+    mocks.itemOperacaoCount.mockResolvedValue(0);
+    mocks.eventoSanitarioCount.mockResolvedValue(0);
+    mocks.operacaoAgricolaCount.mockResolvedValue(0);
   });
 
   it("cria produto sem exigir fornecedor nem centro de custo", async () => {
@@ -110,6 +116,9 @@ describe("troca de unidade com movimento/dieta registrados", () => {
     mocks.produtoUpdate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
     mocks.movimentoCount.mockResolvedValue(0);
     mocks.dietaItemCount.mockResolvedValue(0);
+    mocks.itemOperacaoCount.mockResolvedValue(0);
+    mocks.eventoSanitarioCount.mockResolvedValue(0);
+    mocks.operacaoAgricolaCount.mockResolvedValue(0);
   });
 
   it("produto sem movimento nem dieta pode trocar de unidade", async () => {
@@ -130,6 +139,33 @@ describe("troca de unidade com movimento/dieta registrados", () => {
     mocks.dietaItemCount.mockResolvedValue(1);
     await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
     expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto com item de operação (compra/venda) não pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.itemOperacaoCount.mockResolvedValue(1);
+    await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto com evento sanitário com quantidadeUsada não pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.eventoSanitarioCount.mockResolvedValue(1);
+    await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto com operação agrícola com doseValor não pode trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    mocks.operacaoAgricolaCount.mockResolvedValue(1);
+    await expect(atualizarProduto(1, { unidade: "SC" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "unidade" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("produto sem nenhum histórico continua livre para trocar de unidade", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, unidade: "KG", fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(1, { unidade: "SC" }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ unidade: "SC" }) }));
   });
 
   it("produto com movimento mas SEM trocar a unidade continua passando", async () => {

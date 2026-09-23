@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
-import { produtoSchema, patchProdutoSchema } from "../services/estoque/produtos.schemas.js";
+import { produtoSchema, patchProdutoSchema, produtosQuerySchema } from "../services/estoque/produtos.schemas.js";
 import * as refSvc from "../services/rebanho/financeiro-ref.js";
 import * as principioSvc from "../services/rebanho/principio-ativo.js";
 import { criarPrincipioSchema, atualizarPrincipioSchema, definirComposicaoSchema } from "../services/rebanho/principio-ativo.schemas.js";
@@ -46,7 +46,6 @@ function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { erro
 }
 
 // `0` = "sem centro de custo"; ausente = sem filtro.
-const usoQuerySchema = z.enum(["sanitario", "nutricional", "agricola"]);
 const saldosQuerySchema = z.object({ centroCustoId: z.coerce.number().int().nonnegative().optional() });
 const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
@@ -59,7 +58,6 @@ const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().po
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
 
-const produtosQuerySchema = z.object({ uso: usoQuerySchema.optional(), q: z.string().optional(), ativo: z.enum(["true", "false"]).optional() });
 const principiosQuerySchema = z.object({ inativos: z.string().optional() });
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.

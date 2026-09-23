@@ -9,4 +9,10 @@ describe("criarEventoSanitarioSchema", () => {
     expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", quantidadeUsada: 1 }).success).toBe(false);
     expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", produtoId: 7, quantidadeUsada: 1 }).success).toBe(true);
   });
+  it("quantidadeUsada respeita limite e granularidade de Decimal(12,3)", () => {
+    expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", produtoId: 7, quantidadeUsada: 999_999_999.999 }).success).toBe(true);
+    expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", produtoId: 7, quantidadeUsada: 1_000_000_000 }).success).toBe(false);
+    expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", produtoId: 7, quantidadeUsada: 0.0004 }).success).toBe(false);
+    expect(S.safeParse({ tipo: "VACINA", data: "2026-04-14", produto: "Brucelose", produtoId: 7, quantidadeUsada: 0.005 }).success).toBe(true);
+  });
 });
