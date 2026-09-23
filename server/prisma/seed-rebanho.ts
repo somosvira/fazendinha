@@ -204,7 +204,7 @@ async function main() {
   // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
   // todos no centro de custo "Atividade Leiteira". O Sêmen fica sem categoria de propósito.
   const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
-  const racaoCatId = await catId("Ração");
+  const racaoCatId = (await catId("Ração")) ?? (await catId("Alimentação animal"));
   const medCatId = await catId("Medicamento Animal");
   const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE } }))?.id ?? null;
   const mapaContabil: Record<string, number | null> = {
@@ -214,12 +214,14 @@ async function main() {
     "Antibiótico X": medCatId,
     // "Sêmen Lance 884": sem categoria (demonstra compra que não gera lançamento)
   };
-  for (const [nome, categoriaId] of Object.entries(mapaContabil)) {
-    if (categoriaId == null) continue;
+  // Todo insumo do rebanho pertence à atividade leiteira; a categoria só é
+  // aplicada quando existe no banco (o seed financeiro pode usar outros nomes).
+  for (const p of produtos) {
+    const categoriaId = mapaContabil[p.nome] ?? null;
     await prisma.produto.update({
-      where: { nome },
+      where: { nome: p.nome },
       data: {
-        categoriaId,
+        ...(categoriaId != null ? { categoriaId } : {}),
         ...(leiteiraId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: leiteiraId }] } } : {}),
       },
     });
