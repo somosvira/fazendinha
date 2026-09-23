@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
-import type { ProdutoInput, ProdutoPatchInput } from "./produtos.schemas.js";
+import { CATEGORIA_OBRIGATORIA, type ProdutoInput, type ProdutoPatchInput } from "./produtos.schemas.js";
 
 export const includeProduto = {
   fornecedores: {
@@ -18,7 +18,6 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     id: produto.id,
     nome: produto.nome,
     unidade: produto.unidade,
-    estocavel: produto.estocavel,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
@@ -78,8 +77,8 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
   try {
     return await prisma.$transaction(async (tx) => {
       const { fornecedorIds = [], centroCustoIds = [], produto } = separarRelacoes(input);
-      if (produto.estocavel && produto.categoriaId == null) {
-        throw new FinanceiroError("VALIDACAO", "Produto estocável precisa de uma categoria", "categoriaId");
+      if (produto.categoriaId == null) {
+        throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
       await validarFornecedores(tx, fornecedorIds, new Set());
       await validarCentrosCusto(tx, centroCustoIds, new Set());
@@ -105,10 +104,12 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
       const { fornecedorIds, centroCustoIds, produto } = separarRelacoes(input);
 
-      const estocavel = produto.estocavel ?? anterior.estocavel;
+      // Todo produto precisa de categoria. Um produto legado sem categoria só
+      // pode ser ativado/desativado sem informá-la; qualquer outra edição exige.
       const categoriaId = produto.categoriaId !== undefined ? produto.categoriaId : anterior.categoriaId;
-      if (estocavel && categoriaId == null) {
-        throw new FinanceiroError("VALIDACAO", "Produto estocável precisa de uma categoria", "categoriaId");
+      const soSituacao = Object.entries(input).every(([campo, valor]) => campo === "ativo" || valor === undefined);
+      if (categoriaId == null && !soSituacao) {
+        throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
 
       // Trocar a unidade muda a interpretação de tudo que já foi movimentado

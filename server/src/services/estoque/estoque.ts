@@ -68,6 +68,37 @@ async function filtroSitioCusto(propriedadeId: number | null): Promise<Prisma.Mo
   return propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId };
 }
 
+type DbTemEstoque = Pick<Prisma.TransactionClient, "movimentoEstoque">;
+
+// "O produto tem estoque neste sítio" = existe ao menos uma ENTRADA ou AJUSTE
+// CONFIRMADO (não estornado e que não seja ele mesmo um estorno) do produto no
+// sítio. Não é atributo do produto: quem põe um produto no estoque é a
+// operação (compra para estoque, inventário, bonificação, produção, ajuste).
+// Mesmo escopo de sítio do custo médio (movimento sem propriedade = principal;
+// propriedadeId null = consolidado, qualquer sítio).
+async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.MovimentoEstoqueWhereInput> {
+  return {
+    tipo: { in: ["ENTRADA", "AJUSTE"] },
+    status: "CONFIRMADO",
+    reversaoDeId: null,
+    ...(await filtroSitioCusto(propriedadeId)),
+  };
+}
+
+/** Baixas automáticas (dieta, sanidade, aplicação agrícola) só consomem produto que tem estoque no sítio. */
+export async function produtoTemEstoque(db: DbTemEstoque, produtoId: number, propriedadeId: number | null): Promise<boolean> {
+  const mov = await db.movimentoEstoque.findFirst({ where: { produtoId, ...(await filtroTemEstoque(propriedadeId)) }, select: { id: true } });
+  return mov != null;
+}
+
+/** Versão em lote de produtoTemEstoque: devolve o conjunto dos produtos com estoque no sítio. */
+export async function produtosComEstoque(db: DbTemEstoque, produtoIds: number[], propriedadeId: number | null): Promise<Set<number>> {
+  const ids = [...new Set(produtoIds)];
+  if (ids.length === 0) return new Set();
+  const grupos = await db.movimentoEstoque.groupBy({ by: ["produtoId"], where: { produtoId: { in: ids }, ...(await filtroTemEstoque(propriedadeId)) } });
+  return new Set(grupos.map((g) => g.produtoId));
+}
+
 /**
  * Base do custo médio (Σ quantidade, Σ valor das entradas valorizadas) por
  * produto num sítio, agregada no banco em um único groupBy. Produtos sem base
@@ -134,12 +165,16 @@ export async function obterCustoMedio(db: DbCusto, produtoId: number, propriedad
 const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
 
 export async function listarSaldos(f?: { centroCustoId?: number; propriedadeId?: number | null; uso?: "sanitario" | "nutricional" | "agricola" }) {
+  // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
+  // status) — o produto entra no estoque pela operação, não pelo cadastro.
+  // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
+  const sitio = await filtroSitioCusto(f?.propriedadeId ?? null);
   const produtos = await prisma.produto.findMany({
-    where: { estocavel: true, ativo: true, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
+    where: { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { categoria: { [USO_CAMPO[f.uso]]: true } } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
-      movimentos: { where: { status: statusSaldoEstoque, ...(f?.propriedadeId ? { propriedadeId: f.propriedadeId } : {}) } },
+      movimentos: { where: { status: statusSaldoEstoque, ...sitio } },
       centrosCusto: { include: { centroCusto: true } },
       categoria: true,
     },
@@ -278,9 +313,10 @@ export async function ajustarContagem(input: z.infer<typeof ajusteContagemSchema
   if (propriedadeId == null) throw new EstoqueError("VALIDACAO", "Selecione uma fazenda para ajustar o estoque.");
   try {
     return await prisma.$transaction(async tx => {
-      const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true, estocavel: true } });
-      if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo de estoque não encontrado");
-      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId, status: statusSaldoEstoque }, select: { tipo: true, quantidade: true } });
+      const produto = await tx.produto.findFirst({ where: { id: input.produtoId, ativo: true } });
+      if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto ativo não encontrado");
+      // Mesmo escopo de sítio de listarSaldos (sem propriedade = principal), senão o saldo esperado da tela nunca casaria.
+      const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, status: statusSaldoEstoque, ...(await filtroSitioCusto(propriedadeId)) }, select: { tipo: true, quantidade: true } });
       const saldo = movimentos.reduce((total, m) => m.tipo === "SAIDA" ? total.minus(m.quantidade) : total.plus(m.quantidade), new Prisma.Decimal(0)).toDecimalPlaces(3);
       if (!saldo.equals(new Prisma.Decimal(input.saldoEsperado).toDecimalPlaces(3))) throw new EstoqueError("CONFLITO", "O estoque mudou desde a consulta. Atualize o saldo e confira a diferença antes de confirmar.");
       const delta = new Prisma.Decimal(input.quantidadeContada).minus(saldo);

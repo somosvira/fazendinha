@@ -34,7 +34,7 @@ const config: Config = {
   categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoSanitario: false, usoNutricional: false, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
-  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", estocavel: true, minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoSanitario: false, usoNutricional: true, usoAgricola: false }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
+  produtosCadastro: [{ id: 30, nome: "Ração 22%", unidade: "KG", minimoEstoque: "500", categoriaId: 11, categoriaNome: "Insumos", categoria: { id: 11, nome: "Insumos", usoSanitario: false, usoNutricional: true, usoAgricola: false }, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
 };
 
 /* A tabela responsiva renderiza tabela E cartões (CSS decide o que aparece);
@@ -207,9 +207,9 @@ describe("ConfiguracoesFinanceiras — produtos", () => {
     const painel = await screen.findByRole("dialog");
     fireEvent.change(within(painel).getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(within(painel).getByLabelText("Unidade"), { target: { value: "KG" } });
-    fireEvent.change(within(painel).getByLabelText("Categoria padrão"), { target: { value: "11" } });
+    fireEvent.change(within(painel).getByLabelText(/^Categoria/), { target: { value: "11" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar produto" }));
-    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", fornecedorIds: [], centroCustoIds: [] })));
+    await waitFor(() => expect(criarProdutoEstoque).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11, fornecedorIds: [], centroCustoIds: [] })));
   });
 
   it("edita o produto com vários fornecedores opcionais", async () => {

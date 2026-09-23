@@ -61,7 +61,7 @@ const movimentoExistente = {
   propriedadeId: 5, operacaoId: null, reversaoDeId: null, revertidoPor: null, centroCustoId: null, consumoPeriodoId: null,
 };
 
-const produtoUreia = { id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [] };
+const produtoUreia = { id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,7 +93,7 @@ describe("criarOperacao", () => {
   it("cria SAIDA de estoque com quantidade = dose × área e grava movimentoEstoqueId", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [],
+      id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [],
     });
     mocks.movimentoCreate.mockResolvedValue({ id: 88, quantidade: new Prisma.Decimal(20) });
     mocks.operacaoCreate.mockResolvedValue({
@@ -145,6 +145,22 @@ describe("criarOperacao", () => {
     expect(Number(criado.valorTotal)).toBe(120); // 20 kg × 6
   });
 
+  it("produto sem estoque no sítio do talhão → registra a operação sem SAIDA", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
+    mocks.movimentoFindFirst.mockResolvedValue(null); // nenhuma entrada/ajuste confirmado no sítio
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });
+
+    await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
+
+    expect(mocks.movimentoFindFirst).toHaveBeenCalledWith({
+      where: { produtoId: 3, tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 5 }, { propriedadeId: null }] },
+      select: { id: true },
+    });
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ produtoId: 3 }) }));
+  });
+
   it("sem base de custo, a SAIDA sai com custo 0", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue(produtoUreia);
@@ -161,7 +177,7 @@ describe("criarOperacao", () => {
   it("rejeita centroCustoId inexistente", async () => {
     mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
     mocks.produtoFindUnique.mockResolvedValue({
-      id: 3, nome: "Ureia", estocavel: true, unidade: "KG", centrosCusto: [],
+      id: 3, nome: "Ureia", unidade: "KG", centrosCusto: [],
     });
     mocks.centroCustoFindFirst.mockResolvedValue(null);
 
@@ -322,7 +338,7 @@ describe("editarOperacao", () => {
       operacaoId: null, reversaoDeId: null, revertidoPor: null, consumoPeriodoId: null,
     };
     const produtoDoisCentros = {
-      id: 3, nome: "Ureia", estocavel: true, unidade: "KG",
+      id: 3, nome: "Ureia", unidade: "KG",
       centrosCusto: [{ centroCustoId: 10 }, { centroCustoId: 20 }],
     };
 
@@ -361,7 +377,7 @@ describe("editarOperacao", () => {
     });
 
     it("PATCH { produtoId: B } sem centroCustoId não herda o centro do produto A — resolve o centro único de B", async () => {
-      const produtoB = { id: 7, nome: "Boro", estocavel: true, unidade: "KG", centrosCusto: [{ centroCustoId: 42 }] };
+      const produtoB = { id: 7, nome: "Boro", unidade: "KG", centrosCusto: [{ centroCustoId: 42 }] };
       mocks.operacaoFindUnique.mockResolvedValue(existenteBase);
       mocks.produtoFindUnique.mockResolvedValue(produtoB);
       mocks.operacaoUpdate.mockResolvedValue({ id: 10, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10") });

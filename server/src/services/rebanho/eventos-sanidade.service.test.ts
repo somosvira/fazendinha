@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   movimentoGroupBy: vi.fn(),
   movimentoFindUnique: vi.fn(),
   movimentoFindFirst: vi.fn(),
+  // produtoTemEstoque (fora da transação): entrada/ajuste confirmado no sítio.
+  movimentoTemEstoque: vi.fn(),
   auditCreate: vi.fn(),
   queryRaw: vi.fn(),
   eventoDelete: vi.fn(),
@@ -38,7 +40,7 @@ vi.mock("../../db.js", () => ({
     propriedade: { findFirst: mocks.propriedadeFindFirst },
     exameQuarto: { findMany: mocks.exameQuartoFindMany },
     resumoAnimal: { upsert: mocks.resumoUpsert },
-    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete },
+    movimentoEstoque: { create: mocks.movimentoCreate, update: mocks.movimentoUpdate, delete: mocks.movimentoDelete, findFirst: mocks.movimentoTemEstoque },
     $transaction: mocks.transaction,
   },
 }));
@@ -78,6 +80,7 @@ beforeEach(() => {
   mocks.movimentoFindUnique.mockResolvedValue(movAnterior);
   mocks.movimentoFindFirst.mockResolvedValue(movAnterior);
   mocks.movimentoCreate.mockResolvedValue({ id: 90 });
+  mocks.movimentoTemEstoque.mockResolvedValue({ id: 1 });
   mocks.movimentoUpdate.mockResolvedValue({});
   mocks.queryRaw.mockResolvedValue([]);
   mocks.auditCreate.mockResolvedValue({});
@@ -160,6 +163,32 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
     expect(dados).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", propriedadeId: 5 }));
     expect(Number(dados.custoUnitario)).toBe(6);
     expect(Number(dados.valorTotal)).toBe(18);
+  });
+
+  it("consulta o estoque do produto no sítio do animal (entrada/ajuste confirmado, sem estorno)", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await registrarSanidade(1, aplicacao(3));
+
+    // Sítio 5 é o principal (propriedade.findFirst → 5): movimento sem propriedade também conta.
+    expect(mocks.movimentoTemEstoque).toHaveBeenCalledWith({
+      where: { produtoId: 3, tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 5 }, { propriedadeId: null }] },
+      select: { id: true },
+    });
+  });
+
+  it("registrar APLICACAO de produto sem estoque no sítio grava o evento sem baixa", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, centrosCusto: [] });
+    mocks.movimentoTemEstoque.mockResolvedValue(null);
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+
+    await registrarSanidade(1, aplicacao(3));
+
+    expect(mocks.movimentoCreate).not.toHaveBeenCalled();
+    expect(mocks.eventoCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ produtoId: 3, movimentoEstoqueId: undefined }) }));
   });
 
   it("editar quantidade estorna o movimento antigo e cria outro — nunca update in-place", async () => {

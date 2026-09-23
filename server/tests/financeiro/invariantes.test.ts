@@ -45,7 +45,8 @@ beforeEach(async () => {
   pid = (await db.propriedade.create({ data: { nome: `QA propriedade ${serial}` } })).id;
   accountId = (await db.contaFinanceira.create({ data: { nome: "Banco QA", tipo: "BANCO", propriedadeId: pid, saldoAbertura: 1000, dataSaldoAbertura: data } })).id;
   partnerId = (await db.parceiro.create({ data: { nome: `Parceiro ${serial}`, papeis: { create: [{ papel: "FORNECEDOR" }, { papel: "CLIENTE" }] } } })).id;
-  productId = (await db.produto.create({ data: { nome: `Produto ${serial}`, unidade: "KG" } })).id;
+  // Todo produto tem categoria; se ele entra no estoque quem decide é o tipo da operação.
+  productId = (await db.produto.create({ data: { nome: `Produto ${serial}`, unidade: "KG", categoria: { create: { nome: `Insumos QA ${serial}`, classificacao: "CUSTEIO" } } } })).id;
   userId = (await db.usuario.create({ data: { nome: "QA", email: `qa${serial}@example.test`, papel: "gestor", abas: [], flags: [] } })).id;
 });
 afterAll(async () => {
@@ -365,14 +366,15 @@ describe("categorias por item e relatórios", () => {
 
     // Caso positivo de centroCustoId: 0 — item estocável cujo produto tem 2 centros
     // fica sem centro efetivo (nem operação nem item definem um), então cai em "0".
-    const produtoDoisCentros = await db.produto.create({ data: { nome: `Sem centro efetivo ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: x.id }, { centroCustoId: y.id }] } } });
+    const insumos = await db.categoria.create({ data: { nome: `Insumos sem centro ${serial}`, classificacao: "CUSTEIO" } });
+    const produtoDoisCentros = await db.produto.create({ data: { nome: `Sem centro efetivo ${serial}`, unidade: "UN", categoriaId: insumos.id, centrosCusto: { create: [{ centroCustoId: x.id }, { centroCustoId: y.id }] } } });
     const semCentro = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_ESTOQUE"), valorTotal: 150, centroCustoId: undefined,
       itens: [{ produtoId: produtoDoisCentros.id, descricao: "Sem centro", quantidade: 1, unidade: "un", valorUnitario: 150, estocavel: true }],
     });
     expect(semCentro.itens[0]).toMatchObject({ centroCustoId: null, centroCustoNome: null });
     const semCentroFiltro = await analisarCategorias({ ...filtro, centroCustoId: 0 }, pid);
     expect(semCentroFiltro.total).toBe("150.00");
-    expect(semCentroFiltro.linhas).toEqual([{ operacaoId: semCentro.id, descricao: semCentro.descricao, data: filtro.inicio, categoriaId: null, categoria: "Sem categoria", centroCusto: "Sem centro de custo", classificacao: semCentro.itens[0].classificacao, valor: "150.00" }]);
+    expect(semCentroFiltro.linhas).toEqual([{ operacaoId: semCentro.id, descricao: semCentro.descricao, data: filtro.inicio, categoriaId: insumos.id, categoria: insumos.nome, centroCusto: "Sem centro de custo", classificacao: semCentro.itens[0].classificacao, valor: "150.00" }]);
     const gerencialZero = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "realizado" }, pid, { ...semFiltro, centroCustoIds: [0] });
     expect(gerencialZero.categorias?.centros).toEqual([{ centro: "(Sem centro de custo)", total: 150, pct: 100 }]);
     expect((await analisarCategorias({ ...filtro, centroCustoId: x.id }, pid)).total).toBe("500.00");
@@ -388,16 +390,23 @@ describe("categorias por item e relatórios", () => {
       .rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
     await expect(ops.criarOperacao({ ...base, centroCustoId: inativo.id, itens: [{ descricao: "Frete", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: false }] }))
       .rejects.toMatchObject({ code: "VALIDACAO", campo: "centroCustoId" });
-    // Item estocável pode ficar sem centro.
-    const ok = await ops.criarOperacao({ ...base, itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 1, unidade: "kg", valorUnitario: 100, estocavel: true }] });
-    expect(ok.itens[0]).toMatchObject({ centroCustoId: null, centroCustoNome: null });
+    // Compra para consumo direto nunca movimenta estoque: mesmo com produto (e o
+    // cliente marcando estocável), o item precisa de centro — o tipo decide.
+    await expect(ops.criarOperacao({ ...base, itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 1, unidade: "kg", valorUnitario: 100, estocavel: true }] }))
+      .rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
+    // Em compra para estoque o item com produto é estocável (mesmo que o cliente
+    // mande false) e pode ficar sem centro.
+    const ok = await ops.criarOperacao({ ...input("A_VISTA", "COMPRA_ESTOQUE"), centroCustoId: undefined, itens: [{ produtoId: productId, descricao: "Produto QA", quantidade: 1, unidade: "kg", valorUnitario: 100, estocavel: false }] });
+    expect(ok.itens[0]).toMatchObject({ estocavel: true, centroCustoId: null, centroCustoNome: null });
+    expect(ok.movimentosEstoque).toHaveLength(1);
     expect((await snapshot("depois")).operacoes).toHaveLength(before.operacoes.length + 1);
   });
 
   it("produto com 1 centro transmite ao item; com 2 centros o item fica sem centro; null explícito ignora o produto", async () => {
     const [a, b] = await Promise.all(["A", "B"].map((nome) => db.centroCusto.create({ data: { nome: `Centro ${nome} ${serial}` } })));
-    const umCentro = await db.produto.create({ data: { nome: `Um centro ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: a.id }] } } });
-    const doisCentros = await db.produto.create({ data: { nome: `Dois centros ${serial}`, unidade: "UN", centrosCusto: { create: [{ centroCustoId: a.id }, { centroCustoId: b.id }] } } });
+    const categoriaId = (await db.produto.findUniqueOrThrow({ where: { id: productId } })).categoriaId;
+    const umCentro = await db.produto.create({ data: { nome: `Um centro ${serial}`, unidade: "UN", categoriaId, centrosCusto: { create: [{ centroCustoId: a.id }] } } });
+    const doisCentros = await db.produto.create({ data: { nome: `Dois centros ${serial}`, unidade: "UN", categoriaId, centrosCusto: { create: [{ centroCustoId: a.id }, { centroCustoId: b.id }] } } });
     const op = await ops.criarOperacao({ ...input("A_VISTA"), valorTotal: 400, centroCustoId: b.id, itens: [
       { produtoId: umCentro.id, descricao: "Um", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: true },
       { produtoId: doisCentros.id, descricao: "Dois", quantidade: 1, unidade: "un", valorUnitario: 100, estocavel: true },
@@ -449,6 +458,33 @@ describe("correções da revisão", () => {
     await stock.ajustarContagem({ propriedadeId: outra.id, produtoId: productId, quantidadeContada: 25, saldoEsperado: 20, observacao: "Contagem na segunda fazenda" });
     expect((await stock.listarSaldos({ propriedadeId: pid })).find((p) => p.produtoId === productId)?.saldo).toBe(10);
     expect((await stock.listarSaldos({ propriedadeId: outra.id })).find((p) => p.produtoId === productId)?.saldo).toBe(25);
+  });
+  it("estoque lista só produto com movimento no sítio; movimento sem propriedade conta como da principal", async () => {
+    const { propriedadePrincipalId } = await import("../../src/services/propriedade.js");
+    const principal = await propriedadePrincipalId();
+    const outra = await db.propriedade.create({ data: { nome: `Sítio do estoque ${serial}` } });
+    const categoriaId = (await db.produto.findUniqueOrThrow({ where: { id: productId } })).categoriaId;
+    const novo = (nome: string) => db.produto.create({ data: { nome: `${nome} ${serial}`, unidade: "KG", categoriaId } });
+    const [semMovimento, soNaOutra, legado] = await Promise.all([novo("Sem movimento"), novo("Só na outra"), novo("Legado sem sítio")]);
+    await ops.criarOperacao({ ...input("SEM_EFEITO_FINANCEIRO", "INVENTARIO_INICIAL"), propriedadeId: outra.id, valorTotal: 50,
+      itens: [{ produtoId: soNaOutra.id, descricao: "Só na outra", quantidade: 5, unidade: "kg", valorUnitario: 10, estocavel: false }] }); // o tipo decide
+    await db.movimentoEstoque.create({ data: { produtoId: legado.id, tipo: "ENTRADA", origem: "INVENTARIO_INICIAL", data, quantidade: 3, custoUnitario: 1, valorTotal: 3, propriedadeId: null } });
+    const ids = async (propriedadeId: number | null) => (await stock.listarSaldos({ propriedadeId })).map((l) => l.produtoId);
+
+    expect(await ids(pid)).not.toEqual(expect.arrayContaining([semMovimento.id]));
+    expect(await ids(pid)).not.toEqual(expect.arrayContaining([soNaOutra.id]));
+    expect(await ids(outra.id)).toEqual(expect.arrayContaining([soNaOutra.id]));
+    expect(await ids(outra.id)).not.toEqual(expect.arrayContaining([legado.id]));
+    expect((await stock.listarSaldos({ propriedadeId: principal })).find((l) => l.produtoId === legado.id)?.saldo).toBe(3);
+    const consolidado = await ids(null);
+    expect(consolidado).toEqual(expect.arrayContaining([soNaOutra.id, legado.id]));
+    expect(consolidado).not.toEqual(expect.arrayContaining([semMovimento.id]));
+
+    expect(await stock.produtoTemEstoque(db, soNaOutra.id, outra.id)).toBe(true);
+    expect(await stock.produtoTemEstoque(db, soNaOutra.id, pid)).toBe(false);
+    expect(await stock.produtoTemEstoque(db, legado.id, principal)).toBe(true);
+    expect(await stock.produtoTemEstoque(db, semMovimento.id, null)).toBe(false);
+    expect(await stock.produtoTemEstoque(db, soNaOutra.id, null)).toBe(true);
   });
   it("custo médio ponderado: compras formam o médio, venda baixa pelo médio e estorno recalcula", async () => {
     const compra = (valorUnitario: number) => ({ ...schema.operacaoSchema.parse({

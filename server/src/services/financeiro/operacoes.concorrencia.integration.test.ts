@@ -24,7 +24,7 @@ async function fixture() {
     nome: `Fornecedor ${sufixo}`, tipo: "FORNECEDOR", papeis: { create: { papel: "FORNECEDOR" } },
   } })).id;
   parceirosCriados.push(parceiroId);
-  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", estocavel: true } })).id;
+  const produtoId = (await prisma.produto.create({ data: { nome: `Produto ${sufixo}`, unidade: "KG", categoria: { create: { nome: `Categoria concorrência ${sufixo}` } } } })).id;
   produtosCriados.push(produtoId);
   return { propriedadeId, outraPropriedadeId, contaId, parceiroId, produtoId };
 }
@@ -63,6 +63,7 @@ afterAll(async () => {
   await prisma.parceiroPapel.deleteMany({ where: { parceiroId: { in: parceirosCriados } } });
   await prisma.parceiro.deleteMany({ where: { id: { in: parceirosCriados } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtosCriados } } });
+  await prisma.categoria.deleteMany({ where: { nome: { startsWith: "Categoria concorrência " }, produtos: { none: {} } } });
 });
 
 describeComBanco("operações financeiras concorrentes com PostgreSQL", () => {

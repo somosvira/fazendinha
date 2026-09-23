@@ -25,7 +25,7 @@ vi.mock("../../db.js", () => {
 import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js";
 import { Prisma } from "@prisma/client";
 
-const base = { id: 1, nome: "Ração", unidade: "KG", estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { id: 3, nome: "Alimentação", classificacao: "CUSTEIO", usoSanitario: false, usoNutricional: true, usoAgricola: false } };
+const base = { id: 1, nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { id: 3, nome: "Alimentação", classificacao: "CUSTEIO", usoSanitario: false, usoNutricional: true, usoAgricola: false } };
 const fornecedor = { id: 7, nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: 4, nome: "Pecuária", ativo: true };
 
@@ -33,7 +33,7 @@ import type { ProdutoInput } from "./produtos.schemas.js";
 
 const input = (over: Partial<ProdutoInput> = {}): ProdutoInput => ({
   nome: "Ração", unidade: "KG",
-  estocavel: true, minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
+  minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
   ...over,
 });
 
@@ -99,14 +99,34 @@ describe("cadastro de produtos (estoque)", () => {
     expect(mocks.produtoCreate).not.toHaveBeenCalled();
   });
 
-  it("exige categoria quando o produto é estocável", async () => {
-    await expect(criarProduto(input({ categoriaId: null }), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId" });
+  it("exige categoria em todo produto no create", async () => {
+    await expect(criarProduto(input({ categoriaId: null as unknown as number }), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId", message: "Produto precisa de uma categoria" });
     expect(mocks.produtoCreate).not.toHaveBeenCalled();
   });
 
-  it("permite produto não estocável sem categoria", async () => {
-    await criarProduto(input({ estocavel: false, categoriaId: null }), 9);
-    expect(mocks.produtoCreate).toHaveBeenCalled();
+  it("cria com categoria e não grava nenhum atributo de estoque no cadastro", async () => {
+    await criarProduto(input(), 9);
+    const data = mocks.produtoCreate.mock.calls[0][0].data;
+    expect(data).toMatchObject({ categoriaId: 3 });
+    expect(data).not.toHaveProperty("estocavel");
+  });
+
+  it("patch que remove a categoria é rejeitado", async () => {
+    await expect(atualizarProduto(1, { categoriaId: null as unknown as number }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("patch de produto legado sem categoria exige informar a categoria", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, categoriaId: null, categoria: null, fornecedores: [], centrosCusto: [] });
+    await expect(atualizarProduto(1, { nome: "Ração premium" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "categoriaId" });
+    await atualizarProduto(1, { nome: "Ração premium", categoriaId: 3 }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("produto legado sem categoria ainda pode ser ativado/desativado", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, categoriaId: null, categoria: null, fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(1, { ativo: false }, 9);
+    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { ativo: false } }));
   });
 });
 

@@ -18,7 +18,7 @@ const config: ConfiguracoesFinanceiras = {
   ],
   categorias: [],
   centrosCusto: [],
-  produtos: [{ id: 1, nome: "Ração", unidade: "KG", estocavel: true }],
+  produtos: [{ id: 1, nome: "Ração", unidade: "KG" }],
 };
 
 function montar() {
@@ -769,5 +769,36 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
       expect(secao).toBe(document.activeElement);
     });
     expect(scroll).toHaveBeenCalled();
+  });
+});
+
+describe("estocável é decidido pelo tipo da operação, não pelo produto", () => {
+  const rascunhoCom = (tipo: string) => ({
+    id: 8, versao: 1, updatedAt: "2026-09-11", documentos: [],
+    dados: {
+      formulario: {
+        tipo, condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Compra de ração", valorOperacao: "",
+        itens: [{ id: 1, categoriaId: "", classificacao: "", centroCustoId: "", produtoId: "1", descricao: "Ração", quantidade: "2", unidade: "kg", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+        parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
+      },
+    },
+  });
+
+  async function itemEnviado(tipo: string) {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 8, dados: {}, versao: 2, documentos: [], updatedAt: "2026-09-11T12:00:00Z" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={config} rascunho={rascunhoCom(tipo)} onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra de ração do mês" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho", expect.objectContaining({ method: "PUT" })), { timeout: 2000 });
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === "/api/financeiro/operacoes/rascunho")!;
+    return JSON.parse(String(init.body)).dados.operacao.itens[0];
+  }
+
+  it("COMPRA_ESTOQUE com produto → item estocável", async () => {
+    expect(await itemEnviado("COMPRA_ESTOQUE")).toMatchObject({ produtoId: 1, estocavel: true });
+  });
+
+  it("COMPRA_CONSUMO_DIRETO com o mesmo produto → item não estocável", async () => {
+    expect(await itemEnviado("COMPRA_CONSUMO_DIRETO")).toMatchObject({ produtoId: 1, estocavel: false });
   });
 });

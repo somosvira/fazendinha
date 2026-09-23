@@ -192,43 +192,34 @@ async function main() {
   // devem nascer pelo fluxo de Operacao; este seed usa INVENTARIO_INICIAL.
   await prisma.movimentoEstoque.deleteMany({});
   await prisma.produto.deleteMany({});
+  // Mapeamento contábil dos produtos (ponte com o financeiro). Todo produto tem
+  // categoria (é ela que define o uso); usa a categoria real quando existe e
+  // cria a padrão com upsert se o seed financeiro ainda não rodou. Todos no
+  // centro de custo "Atividade Leiteira". Se o produto tem estoque não é do
+  // cadastro: quem põe no estoque é a operação (aqui, INVENTARIO_INICIAL).
+  const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
+  const catUpsert = async (nome: string, uso: { usoSanitario?: boolean; usoNutricional?: boolean } = {}) =>
+    (await prisma.categoria.upsert({ where: { nome }, update: {}, create: { nome, classificacao: "CUSTEIO", ...uso }, select: { id: true } })).id;
+  const racaoCatId = (await catId("Ração")) ?? (await catUpsert("Alimentação animal", { usoNutricional: true }));
+  const medCatId = await catUpsert("Medicamento Animal", { usoSanitario: true });
+  const insumosGeraisId = await catUpsert("Insumos gerais");
+  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE } }))?.id ?? null;
   const produtos = [
-    { nome: "Mastijet", unidade: "UN", estocavel: true, minimoEstoque: 4 },
-    { nome: "Ração Lactação Alta", unidade: "KG", estocavel: true, minimoEstoque: 500 },
-    { nome: "Núcleo Mineral", unidade: "KG", estocavel: true, minimoEstoque: 100 },
-    { nome: "Sêmen Lance 884", unidade: "DOSE", estocavel: true, minimoEstoque: 10 },
-    { nome: "Antibiótico X", unidade: "ML", estocavel: true, minimoEstoque: 2 },
+    { nome: "Mastijet", unidade: "UN", minimoEstoque: 4, categoriaId: medCatId },
+    { nome: "Ração Lactação Alta", unidade: "KG", minimoEstoque: 500, categoriaId: racaoCatId },
+    { nome: "Núcleo Mineral", unidade: "KG", minimoEstoque: 100, categoriaId: racaoCatId },
+    { nome: "Sêmen Lance 884", unidade: "DOSE", minimoEstoque: 10, categoriaId: insumosGeraisId },
+    { nome: "Antibiótico X", unidade: "ML", minimoEstoque: 2, categoriaId: medCatId },
   ] as const;
-  for (const p of produtos) await prisma.produto.create({ data: p as any });
+  for (const p of produtos) {
+    await prisma.produto.create({ data: {
+      ...p,
+      ...(leiteiraId != null ? { centrosCusto: { create: [{ centroCustoId: leiteiraId }] } } : {}),
+    } });
+  }
   // O cadastro não guarda preço: o custo médio nasce das entradas. Custo do
   // saldo inicial (INVENTARIO_INICIAL) dos produtos que recebem estoque abaixo.
   const custoInicial: Record<string, number> = { "Ração Lactação Alta": 2.1, "Núcleo Mineral": 5.4 };
-
-  // Mapeamento contábil dos produtos (ponte com o financeiro). Por nome → Categoria real;
-  // todos no centro de custo "Atividade Leiteira". O Sêmen fica sem categoria de propósito.
-  const catId = async (nome: string) => (await prisma.categoria.findFirst({ where: { nome } }))?.id ?? null;
-  const racaoCatId = (await catId("Ração")) ?? (await catId("Alimentação animal"));
-  const medCatId = await catId("Medicamento Animal");
-  const leiteiraId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE } }))?.id ?? null;
-  const mapaContabil: Record<string, number | null> = {
-    "Ração Lactação Alta": racaoCatId,
-    "Núcleo Mineral": racaoCatId,
-    "Mastijet": medCatId,
-    "Antibiótico X": medCatId,
-    // "Sêmen Lance 884": sem categoria (demonstra compra que não gera lançamento)
-  };
-  // Todo insumo do rebanho pertence à atividade leiteira; a categoria só é
-  // aplicada quando existe no banco (o seed financeiro pode usar outros nomes).
-  for (const p of produtos) {
-    const categoriaId = mapaContabil[p.nome] ?? null;
-    await prisma.produto.update({
-      where: { nome: p.nome },
-      data: {
-        ...(categoriaId != null ? { categoriaId } : {}),
-        ...(leiteiraId != null ? { centrosCusto: { deleteMany: {}, create: [{ centroCustoId: leiteiraId }] } } : {}),
-      },
-    });
-  }
 
   // Cadastros: parceiros fornecedores. Documento é a chave estável do seed.
   const fornecedores = [

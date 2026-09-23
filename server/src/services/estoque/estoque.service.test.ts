@@ -26,7 +26,7 @@ vi.mock("../../db.js", () => ({ prisma: {
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, excluirMovimento, estornarMovimentoTx, listarSaldos, registrarMovimento } from "./estoque.js";
+import { ajustarContagem, excluirMovimento, estornarMovimentoTx, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
@@ -38,7 +38,7 @@ const tx = () => ({
   $queryRaw: mocks.queryRaw,
 });
 
-const produto = { id: 3, nome: "Ureia", unidade: "KG", ativo: true, estocavel: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
+const produto = { id: 3, nome: "Ureia", unidade: "KG", ativo: true, centrosCusto: [{ centroCustoId: 9 }, { centroCustoId: 11 }] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -185,7 +185,71 @@ describe("estornarMovimentoTx", () => {
   });
 });
 
+describe("ajustarContagem — produto sem atributo de estoque", () => {
+  it("aceita qualquer produto ativo e lê o saldo no escopo do sítio (principal inclui movimento sem propriedade)", async () => {
+    mocks.movFindMany.mockResolvedValue([{ tipo: "ENTRADA", quantidade: new Prisma.Decimal(10) }]);
+    await ajustarContagem({ produtoId: 3, quantidadeContada: 8, saldoEsperado: 10, observacao: "Contagem física", propriedadeId: 1, usuarioId: 7 });
+    expect(mocks.produtoFindFirst).toHaveBeenCalledWith({ where: { id: 3, ativo: true } });
+    expect(mocks.movFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { produtoId: 3, status: { in: ["CONFIRMADO", "REVERTIDO"] }, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] },
+    }));
+  });
+});
+
+describe("produtoTemEstoque / produtosComEstoque", () => {
+  const where = (extra: object) => ({ tipo: { in: ["ENTRADA", "AJUSTE"] }, status: "CONFIRMADO", reversaoDeId: null, ...extra });
+
+  it("com entrada/ajuste confirmado no sítio → true; a consulta é um findFirst enxuto", async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: 10 });
+    expect(await produtoTemEstoque({ movimentoEstoque: { findFirst } } as never, 3, 2)).toBe(true);
+    expect(findFirst).toHaveBeenCalledWith({ where: { produtoId: 3, ...where({ propriedadeId: 2 }) }, select: { id: true } });
+  });
+
+  it("sem entrada no sítio → false", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    expect(await produtoTemEstoque({ movimentoEstoque: { findFirst } } as never, 3, 2)).toBe(false);
+  });
+
+  it("sítio principal também conta movimento sem propriedade; null = consolidado (qualquer sítio)", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    await produtoTemEstoque({ movimentoEstoque: { findFirst } } as never, 3, 1);
+    expect(findFirst.mock.calls[0][0].where).toEqual({ produtoId: 3, ...where({ OR: [{ propriedadeId: 1 }, { propriedadeId: null }] }) });
+    await produtoTemEstoque({ movimentoEstoque: { findFirst } } as never, 3, null);
+    expect(findFirst.mock.calls[1][0].where).toEqual({ produtoId: 3, ...where({}) });
+  });
+
+  it("em lote devolve só os produtos com entrada no sítio", async () => {
+    const groupBy = vi.fn().mockResolvedValue([{ produtoId: 4 }]);
+    const r = await produtosComEstoque({ movimentoEstoque: { groupBy } } as never, [3, 4, 4], 2);
+    expect([...r]).toEqual([4]);
+    expect(groupBy).toHaveBeenCalledWith({ by: ["produtoId"], where: { produtoId: { in: [3, 4] }, ...where({ propriedadeId: 2 }) } });
+    expect(await produtosComEstoque({ movimentoEstoque: { groupBy } } as never, [], 2)).toEqual(new Set());
+    expect(groupBy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("listarSaldos", () => {
+  it("lista só produtos ativos com algum movimento no sítio (sem filtro de estocável)", async () => {
+    mocks.produtoFindMany.mockResolvedValue([]);
+    await listarSaldos({ propriedadeId: 2 });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: { propriedadeId: 2 } } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].include.movimentos.where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, propriedadeId: 2 });
+  });
+
+  it("sítio principal inclui movimentos sem propriedade (existência e saldo)", async () => {
+    mocks.produtoFindMany.mockResolvedValue([]);
+    await listarSaldos({ propriedadeId: 1 });
+    const principal = { OR: [{ propriedadeId: 1 }, { propriedadeId: null }] };
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: principal } });
+    expect(mocks.produtoFindMany.mock.calls[0][0].include.movimentos.where).toEqual({ status: { in: ["CONFIRMADO", "REVERTIDO"] }, ...principal });
+  });
+
+  it("consolidado lista produto com movimento em qualquer sítio e mantém o filtro de uso", async () => {
+    mocks.produtoFindMany.mockResolvedValue([]);
+    await listarSaldos({ propriedadeId: null, uso: "agricola" });
+    expect(mocks.produtoFindMany.mock.calls[0][0].where).toEqual({ ativo: true, movimentos: { some: {} }, categoria: { usoAgricola: true } });
+  });
+
   const mov = (tipo: string, quantidade: string, valorTotal: string) => ({ tipo, quantidade: new Prisma.Decimal(quantidade), valorTotal: new Prisma.Decimal(valorTotal), data: new Date("2026-01-10") });
   const produtoMl = (movimentos: unknown[]) => ({ id: 3, nome: "Ivermectina", unidade: "ML", minimoEstoque: null, categoria: null, centrosCusto: [], movimentos });
 

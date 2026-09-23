@@ -352,8 +352,8 @@ async function main() {
     const data = {
       unidade: ins.unidade,
       minimoEstoque: ins.minimo,
-      categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? null,
-      estocavel: true,
+      // Todo produto tem categoria; subtipo fora do mapa cai em fertilizantes.
+      categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? catFertilizantesId,
       ativo: true,
     };
     const row = await prisma.produto.upsert({

@@ -57,7 +57,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [nome, setNome] = useState(produto?.nome ?? "");
   const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
-  const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
   const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
   const [fornecedorIds, setFornecedorIds] = useState(() => new Set(produto?.fornecedores?.map((f) => f.id) ?? []));
@@ -79,12 +78,11 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     const novosErros: Record<string, string> = {};
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
-    if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
+    if (!categoriaId) novosErros.categoriaId = "Produto precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
       nome: nome.trim(), unidade,
-      estocavel,
-      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
+      minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: Number(categoriaId),
       centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
@@ -98,10 +96,10 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   };
 
   const formId = "form-produto-financeiro";
-  return <PainelCadastro aberto eyebrow="Produto de estoque" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto eyebrow="Produto" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || carregando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
-      <p className="text-sm text-ink-3">O preço vem das compras (custo médio no estoque) e o uso do produto vem da categoria.</p>
+      <p className="text-sm text-ink-3">O preço vem das compras (custo médio no estoque) e o uso do produto vem da categoria. Quem põe o produto no estoque é a operação (compra para estoque, inventário, produção…).</p>
       <ErrorBox erro={erroGeral || null} />
       {erroCarga && <ErrorBox erro={`Não foi possível carregar fornecedores/categorias/centros de custo: ${erroCarga}`} />}
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
@@ -110,8 +108,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria padrão" erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Sem categoria</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
       {(() => {
         const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
         const chips = chipsUso(categoriaSelecionada);

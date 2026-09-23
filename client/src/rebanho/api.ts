@@ -441,7 +441,7 @@ export function useItensDieta(dietaId: number | null) {
 }
 
 // ── Consumo de dieta → baixa de estoque (Fatia 2) ───────────────────────────
-export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: UnidadeMedida; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; }
+export interface PrevisaoLinhaDTO { produtoId: number; produtoNome: string; unidade: UnidadeMedida; qtdPorCabecaDia: number; quantidade: number; custoUnitario: number; custoTotal: number; saldoAtual: number; saldoApos: number; insuficiente: boolean; semEstoque?: boolean; }
 export interface PrevisaoConsumoDTO { grupoId: number; grupoNome: string; dietaId: number; dietaNome: string; dataInicio: string; dataFim: string; dias: number; numCabecas: number; linhas: PrevisaoLinhaDTO[]; custoTotal: number; temInsuficiencia: boolean; }
 export interface ConsumoPeriodoDTO { id: number; dataInicio: string; dataFim: string; numCabecas: number; diasBase: number; custoTotal: number; numMovimentos: number; mesFechado: boolean; }
 export interface FecharConsumoResult { id: number; grupoId: number; dataInicio: string; dataFim: string; numCabecas: number; dias: number; custoTotal: number; movimentos: number; temInsuficiencia: boolean; }

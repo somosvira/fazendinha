@@ -14,7 +14,9 @@ import { converterQuantidade, rotuloUnidade } from "../estoque/unidades.js";
 
 export interface PlanejarBaixaAplicacaoIn {
   produtoId: number | null | undefined;
-  estocavel: boolean;
+  // O produto tem estoque no sítio do talhão (produtoTemEstoque, resolvido pelo
+  // service antes). O cadastro não diz se é estocado — quem põe no estoque é a operação.
+  temEstoque: boolean;
   produtoUnidade: UnidadeMedida;
   doseValor: number | null | undefined;
   doseUnidadeMedida: UnidadeMedida | null | undefined;
@@ -39,7 +41,7 @@ export function planejarBaixaAplicacao(input: PlanejarBaixaAplicacaoIn): Planeja
     quantidade = converterQuantidade(bruta, input.doseUnidadeMedida, input.produtoUnidade).toNumber();
   }
   quantidade = Math.round(quantidade * 1000) / 1000;
-  const deveBaixar = !!input.produtoId && input.estocavel && quantidade > 0;
+  const deveBaixar = !!input.produtoId && input.temEstoque && quantidade > 0;
   return { quantidade, deveBaixar };
 }
 

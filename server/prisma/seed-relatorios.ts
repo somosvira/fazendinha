@@ -52,8 +52,8 @@ async function main() {
     prisma.parceiro.create({ data: { nome: "QA Relatórios · Comprador de gado", documento: "99000000000004", tipo: "CLIENTE", papeis: { create: { papel: "CLIENTE" } } } }),
   ]);
   const [racao, medicamento] = await Promise.all([
-    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", unidade: "KG", estocavel: true, categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
-    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", unidade: "DOSE", estocavel: true, categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Ração lactação", unidade: "KG", categoriaId: alimentacao.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
+    prisma.produto.create({ data: { nome: "QA Relatórios · Vacina rebanho", unidade: "DOSE", categoriaId: sanidade.id, centrosCusto: { create: [{ centroCustoId: pecuaria.id }] } } }),
   ]);
 
   const compras = [

@@ -99,14 +99,16 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
 
   // Baixa de estoque — produto do estoque opcional, com estimativa dose × área.
   const { data: produtos } = useProdutosEstoque({ ativo: true, uso: "agricola" });
-  const produtosEstocaveis = useMemo(
-    () => produtos.filter((p) => p.estocavel && p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+  // Produtos de uso agrícola (categoria). A baixa só acontece se o produto tiver
+  // estoque no sítio do talhão — decisão do servidor, não do cadastro.
+  const produtosAgricolas = useMemo(
+    () => produtos.filter((p) => p.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [produtos],
   );
   const [centrosCusto, setCentrosCusto] = useState<RefDTO[]>([]);
   const [erroCentrosCusto, setErroCentrosCusto] = useState<string | null>(null);
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentrosCusto(cs); setErroCentrosCusto(null); }).catch((e) => setErroCentrosCusto(e instanceof Error ? e.message : String(e))); }, []);
-  const produtoSelecionado = produtosEstocaveis.find((p) => String(p.id) === produtoId);
+  const produtoSelecionado = produtosAgricolas.find((p) => String(p.id) === produtoId);
 
   const baixaEstimada = (() => {
     if (!produtoSelecionado) return null;
@@ -127,7 +129,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
 
   function selecionarProduto(id: string) {
     setProdutoId(id);
-    const p = produtosEstocaveis.find((x) => String(x.id) === id);
+    const p = produtosAgricolas.find((x) => String(x.id) === id);
     if (p) {
       if (!produto.trim()) setProduto(p.nome);
       setCentroCustoId((p.centroCustoIds ?? []).length === 1 ? String((p.centroCustoIds ?? [])[0]) : "");
@@ -317,14 +319,14 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
           )}
 
           {/* Baixa de estoque — opcional; liga o texto livre "produto" a um produto
-              cadastrado e estocável, para gerar a saída de estoque automática. */}
+              cadastrado; a saída de estoque só é gerada se ele tiver estoque no sítio. */}
           {(dominio === "fitossanidade" && tipo !== "MONITORAMENTO_MIP") ||
           (dominio === "nutricao" && (tipo === "ADUBACAO_SOLO" || tipo === "ADUBACAO_FOLIAR" || tipo === "CALAGEM" || tipo === "GESSAGEM")) ? (
             <>
               <RebField label="Produto do estoque">
                 <select className="rb-field-select" value={produtoId} onChange={(e) => selecionarProduto(e.target.value)}>
                   <option value="">— sem baixa de estoque —</option>
-                  {produtosEstocaveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  {produtosAgricolas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </RebField>
               <p className="-mt-2.5 text-xs text-ink-3">Só produtos de categorias marcadas como uso agrícola aparecem aqui (Configurações → Categorias).</p>

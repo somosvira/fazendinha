@@ -197,11 +197,13 @@ model Produto {
   id                 Int                     @id @default(autoincrement())
   nome               String                  @unique
   unidade            UnidadeMedida           @default(UN)
-  estocavel          Boolean                 @default(true)
   minimoEstoque      Decimal?                @db.Decimal(12, 2)
   ativo              Boolean                 @default(true)
   // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
   // de operação herda ao escolher este produto (classificação vem da categoria).
+  // Obrigatória no cadastro (validada no service); a coluna segue nullable por
+  // causa de produtos legados. Se o produto tem estoque não é atributo dele:
+  // quem decide é o tipo da operação (ItemOperacao.estocavel).
   categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
   categoriaId        Int?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da

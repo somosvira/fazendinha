@@ -94,6 +94,12 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     const centroUnicoDoProduto = (produto: (typeof produtos)[number] | undefined) =>
       produto && produto.centrosCusto.length === 1 ? produto.centrosCusto[0].centroCustoId : null;
     const centrosItens = input.itens.map((item) => item.centroCustoId === undefined ? centroUnicoDoProduto(produtosPorId.get(item.produtoId ?? 0)) : item.centroCustoId);
+    // Quem decide se o item entra/sai do estoque é o TIPO da operação, não o
+    // produto: em tipo com efeito de estoque, todo item com produto (ou marcado
+    // estocável pelo cliente) é estocável; nos demais tipos nenhum é. O snapshot
+    // ItemOperacao.estocavel grava essa decisão.
+    const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
+    const estocavelItens = input.itens.map((item) => temEfeitoEstoque && (item.estocavel || item.produtoId != null));
     const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
     if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
     centrosItens.forEach((id, indice) => {
@@ -101,18 +107,15 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       // Item não estocável sem centro efetivo (próprio ou da operação) não tem
       // onde parar nos relatórios; estocável pode ficar sem centro (o consumo
       // futuro decide).
-      if (!input.itens[indice].estocavel && !(id ?? input.centroCustoId)) {
+      if (!estocavelItens[indice] && !(id ?? input.centroCustoId)) {
         throw new FinanceiroError("VALIDACAO", "Informe o centro de custo deste item ou um centro padrão para a operação", `itens.${indice}.centroCustoId`);
       }
     });
-    const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
-    if (temEfeitoEstoque) {
-      for (const item of input.itens.filter((item) => item.estocavel)) {
-        if (!item.produtoId || !produtosPorId.has(item.produtoId)) {
-          throw new FinanceiroError("VALIDACAO", `O item estocável “${item.descricao}” precisa apontar para um produto ativo`);
-        }
+    input.itens.forEach((item, indice) => {
+      if (estocavelItens[indice] && (!item.produtoId || !produtosPorId.has(item.produtoId))) {
+        throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
       }
-    }
+    });
 
     const classificar = async (categoriaId: number | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
@@ -138,7 +141,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       valorTotal: item.valorTotal === undefined
         ? dinheiro(new Prisma.Decimal(item.quantidade).mul(item.valorUnitario ?? 0))
         : dinheiro(item.valorTotal),
-      estocavel: item.estocavel,
+      estocavel: estocavelItens[indice],
       ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? 0)?.categoriaId : item.categoriaId, item.classificacao),
     })));
     const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);

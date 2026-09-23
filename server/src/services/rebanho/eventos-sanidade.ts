@@ -7,7 +7,7 @@ import { recomputarQuartos } from "./quarto.recompute.js";
 import { planejarBaixaSanidade } from "./sanidade-estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx, obterBaseCusto } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
 
 export class EventoSanError extends Error { constructor(public code: "NAO_ENCONTRADO" | "CONFLITO" | "MES_FECHADO", message: string) { super(message); } }
 const iso = (x: Date | null) => (x ? new Date(x).toISOString().slice(0, 10) : null);
@@ -40,7 +40,7 @@ export async function listarSanidade(animalId: number): Promise<EventoTimelineDT
 // Plano de baixa valorizado pelo custo médio ponderado do produto no sítio.
 async function planejarComCustoMedio(tx: Prisma.TransactionClient, tipo: string, produtoId: number | null, quantidadeUsada: number | null, propriedadeId: number) {
   const baseCusto = produtoId != null ? await obterBaseCusto(tx, produtoId, propriedadeId) : null;
-  return planejarBaixaSanidade({ tipo, produtoId, quantidadeUsada, baseCusto });
+  return planejarBaixaSanidade({ tipo, produtoId, temEstoque: true, quantidadeUsada, baseCusto });
 }
 
 export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO> {
@@ -49,13 +49,15 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   const produtoId = (input as any).produtoId ?? null;
   const quantidadeUsada = (input as any).quantidadeUsada ?? null;
 
-  // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado.
+  // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado
+  // que tem estoque no sítio do animal (sem entrada no sítio → registra o evento sem baixa).
   // O produto precisa existir; custo unitário = custo médio do sítio (0 se sem base).
   const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
-  const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, quantidadeUsada, baseCusto: null }) != null;
-  const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: animal.grupo?.centroCustoId }) : null;
   const propriedadeMovimentoId = animal.propriedadeId ?? (await propriedadePrincipalId());
+  const temEstoque = produtoId != null && await produtoTemEstoque(prisma, produtoId, propriedadeMovimentoId);
+  const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, temEstoque, quantidadeUsada, baseCusto: null }) != null;
+  const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: animal.grupo?.centroCustoId }) : null;
   const data = new Date(input.data);
 
   // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
@@ -99,9 +101,10 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const quantidadeUsada = (input as any).quantidadeUsada ?? null;
   const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
-  const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, quantidadeUsada, baseCusto: null }) != null;
-  const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: existente.animal.grupo?.centroCustoId }) : null;
   const propriedadeMovimentoId = existente.animal.propriedadeId ?? (await propriedadePrincipalId());
+  const temEstoque = produtoId != null && await produtoTemEstoque(prisma, produtoId, propriedadeMovimentoId);
+  const consome = planejarBaixaSanidade({ tipo: input.tipo, produtoId, temEstoque, quantidadeUsada, baseCusto: null }) != null;
+  const centroCustoId = produto ? resolverCentroSaida({ produtoCentroIds: produto.centrosCusto.map((cc) => cc.centroCustoId), contextoCentroId: existente.animal.grupo?.centroCustoId }) : null;
   const data = new Date(input.data);
   const afetaEstoque = consome || existente.movimentoEstoqueId != null;
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;

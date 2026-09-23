@@ -5,7 +5,7 @@ import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
 import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx, obterBaseCusto } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
@@ -175,8 +175,10 @@ async function planejarMovimento(
   opts: { validarCentroAtivo?: boolean } = {},
 ) {
   if (input.produtoId == null) return null;
-  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, estocavel: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
+  const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, select: { id: true, nome: true, unidade: true, centrosCusto: { select: { centroCustoId: true } } } });
   if (!produto) throw new PlantioEventoError("NAO_ENCONTRADO", "produto do estoque não encontrado");
+  // Só baixa produto com estoque (entrada/ajuste confirmado) no sítio do talhão.
+  const temEstoque = await produtoTemEstoque(tx, produto.id, propriedadeId);
   // Só valida "ativo" quando o centro veio explícito do input (usuário
   // escolheu); um centro herdado do movimento anterior (edição sem
   // centroCustoId no PATCH) não é revalidado — senão uma edição trivial (ex.:
@@ -190,7 +192,7 @@ async function planejarMovimento(
   // Dose com unidade informada mas não reconhecida (texto legado, ex.: "lt/ha")
   // não pode virar baixa silenciosa: sem quantidade total explícita, avisa em
   // vez de gravar a operação sem consumir o estoque.
-  if (!dose.reconhecida && produto.estocavel && input.doseValor != null && input.quantidadeTotal == null) {
+  if (!dose.reconhecida && temEstoque && input.doseValor != null && input.quantidadeTotal == null) {
     throw new PlantioEventoError(
       "VALIDACAO",
       `Unidade de dose "${input.doseUnidade}" não reconhecida — informe a unidade do produto (${rotuloUnidade(produto.unidade)}) ou a quantidade total`,
@@ -200,7 +202,7 @@ async function planejarMovimento(
   try {
     plano = planejarBaixaAplicacao({
       produtoId: input.produtoId,
-      estocavel: produto.estocavel,
+      temEstoque,
       produtoUnidade: produto.unidade,
       doseValor: input.doseValor ?? null,
       doseUnidadeMedida: dose.unidade,

@@ -1,7 +1,7 @@
 import { prisma } from "../../db.js";
 import type { Prisma, UnidadeMedida } from "@prisma/client";
 import { z } from "zod";
-import { obterCustosMedios } from "../estoque/estoque.js";
+import { obterCustosMedios, produtosComEstoque } from "../estoque/estoque.js";
 import { registrarMovimentacoes } from "./movimentacao.js";
 
 export const dietaSchema = z.object({
@@ -217,10 +217,13 @@ export async function substituirItensDieta(dietaId: number, input: DietaItensInp
 
   const produtos = ids.length ? await prisma.produto.findMany({ where: { id: { in: ids } } }) : [];
   const porId = new Map(produtos.map((p) => [p.id, p]));
+  // A dieta consome do estoque: só entra produto que já tem entrada no sítio
+  // (null = consolidado, qualquer sítio). O cadastro não diz se é estocado.
+  const comEstoque = await produtosComEstoque(prisma, ids, propriedadeId);
   for (const it of input.itens) {
     const p = porId.get(it.produtoId);
     if (!p) throw new NutricaoError("NAO_ENCONTRADO", `produto ${it.produtoId} não encontrado`);
-    if (!p.estocavel) throw new NutricaoError("EM_USO", `produto "${p.nome}" não é estocável — não pode compor uma dieta`);
+    if (!comEstoque.has(p.id)) throw new NutricaoError("EM_USO", `produto "${p.nome}" sem estoque neste sítio — registre uma compra para estoque antes de usar na dieta`);
   }
 
   await prisma.$transaction(async (tx) => {

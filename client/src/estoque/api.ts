@@ -103,8 +103,8 @@ export type ProdutoDTO = Produto;
 export type UsoProduto = "sanitario" | "nutricional" | "agricola";
 export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
-  estocavel?: boolean;
-  minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
+  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  minimoEstoque?: number | null; ativo?: boolean; categoriaId: number; centroCustoIds?: number[]; fornecedorIds?: number[];
 }
 export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });

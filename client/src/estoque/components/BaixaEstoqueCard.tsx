@@ -99,9 +99,8 @@ export function BaixaEstoqueCard({
     [saldos, produtoId],
   );
 
-  const naoEstocavel = produtoSel && !produtoSel.estocavel;
   const podeDarBaixa =
-    !!produtoSel && !naoEstocavel && Number(quantidade) > 0 && !salvando;
+    !!produtoSel && Number(quantidade) > 0 && !salvando;
 
   async function darBaixa() {
     if (!produtoSel) return;
@@ -169,9 +168,7 @@ export function BaixaEstoqueCard({
 
         {produtoSel && (
           <div className="-mt-1.5 mb-3 flex min-h-[26px] items-center">
-            {naoEstocavel ? (
-              <RebPill>Produto não é controlado por estoque</RebPill>
-            ) : !saldoSel || saldoSel.saldo <= 0 ? (
+            {!saldoSel || saldoSel.saldo <= 0 ? (
               <RebPill tone="bad">
                 Sem estoque{saldoSel ? ` (saldo: ${fmtQtd(saldoSel.saldo)} ${rotuloUnidade(produtoSel.unidade)})` : ""}
               </RebPill>
@@ -195,7 +192,7 @@ export function BaixaEstoqueCard({
             step="0.001"
             value={quantidade}
             onChange={(e) => setQuantidade(e.target.value)}
-            disabled={!produtoSel || !!naoEstocavel}
+            disabled={!produtoSel}
           />
         </RebField>
 

@@ -224,7 +224,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       )}
       {saldos.loading ? <Loader />
         : saldos.erro ? <p className="mt-[7px] text-sm text-prejuizo">Erro: {saldos.erro}</p>
-        : saldos.data.length === 0 ? <RebEmpty>Nenhum produto estocável cadastrado.</RebEmpty>
+        : saldos.data.length === 0 ? <RebEmpty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</RebEmpty>
         : saldosVisiveis.length === 0 ? <RebEmpty>Nenhum produto bate com a busca.</RebEmpty>
         : (
           <>

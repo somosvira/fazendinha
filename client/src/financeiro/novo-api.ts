@@ -33,7 +33,7 @@ export type CentroCusto = { id: number; nome: string; ativo: boolean; ordem: num
 export type ProdutoCategoria = { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean };
 export type Produto = {
   id: number; nome: string;
-  unidade: UnidadeMedida; estocavel: boolean;
+  unidade: UnidadeMedida;
   minimoEstoque?: string | null; ativo?: boolean;
   categoriaId?: number | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
   categoria?: ProdutoCategoria | null;
@@ -42,8 +42,8 @@ export type Produto = {
 };
 export type ProdutoInput = {
   nome: string; unidade: UnidadeMedida;
-  estocavel: boolean;
-  minimoEstoque: number | null; categoriaId: number | null; centroCustoIds: number[]; fornecedorIds: number[];
+  // Categoria obrigatória (define o uso). Se o produto entra no estoque quem decide é a operação.
+  minimoEstoque: number | null; categoriaId: number; centroCustoIds: number[]; fornecedorIds: number[];
 };
 export type ConfiguracoesFinanceiras = { contas: Conta[]; parceiros: Parceiro[]; categorias: Categoria[]; centrosCusto: CentroCusto[]; produtos: Produto[]; produtosCadastro?: Produto[]; centrosAtividade?: { leite: number | null; cafe: number | null } };
 export type ContaHistorico = { id: number; nome: string };

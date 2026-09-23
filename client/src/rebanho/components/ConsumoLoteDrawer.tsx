@@ -85,7 +85,7 @@ export function ConsumoLoteDrawer({ lote, onFechar, onMudou }: { lote: LoteDTO; 
                 <tbody>{prev.linhas.map((l) => (
                   <tr key={l.produtoId}>
                     <td><RebAnm>{l.produtoNome}</RebAnm></td>
-                    <td>{qtd(l.quantidade)} {rotuloUnidade(l.unidade)}</td>
+                    <td>{l.semEstoque ? <span className="text-ink-3" title="Produto sem estoque neste sítio — registre uma compra para estoque">sem estoque — não baixa</span> : <>{qtd(l.quantidade)} {rotuloUnidade(l.unidade)}</>}</td>
                     <td style={{ color: l.insuficiente ? "var(--neg)" : "inherit", fontWeight: l.insuficiente ? 600 : 400 }}>{qtd(l.saldoApos)}{l.insuficiente ? " ⚠" : ""}</td>
                     <td>{money(l.custoTotal)}</td>
                   </tr>

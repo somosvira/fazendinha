@@ -151,7 +151,9 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const realizadoAgora = condicao === "A_VISTA" ? total : Number(valorAgora || 0);
   const centavosParcelas = parcelas.reduce((soma, parcela) => soma + Math.round(Number(parcela.valor || 0) * 100), 0);
   const totalParcelas = centavosParcelas / 100;
-  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => config.produtos.some((produto) => produto.id === Number(item.produtoId) && produto.estocavel)).length : 0;
+  // Quem decide se o item mexe no estoque é o tipo da operação: em tipo com
+  // estoque, todo item com produto gera movimento físico.
+  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => !!item.produtoId).length : 0;
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const entradaSimulacao = useMemo(() => ({
     itens: comItens ? itens.map((item) => item.modoValor === "TOTAL"
@@ -200,7 +202,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === Number(item.produtoId));
         const centroEfetivo = porItem ? item.centroCustoId : "";
-        return { categoriaId: item.categoriaId ? Number(item.categoriaId) : null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo ? Number(centroEfetivo) : null, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), estocavel: movimentaEstoque && !!produto?.estocavel };
+        return { categoriaId: item.categoriaId ? Number(item.categoriaId) : null, classificacao: item.classificacao || null, centroCustoId: centroEfetivo ? Number(centroEfetivo) : null, produtoId: item.produtoId ? Number(item.produtoId) : undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), estocavel: movimentaEstoque && !!item.produtoId };
       }) : [], financeiro,
     };
   }, [classificacao, categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao]);
@@ -399,8 +401,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // centro do item é sempre "").
   const itemCentroInvalido = (index: number, item: ItemForm) => {
     if (!comItens) return false;
-    const produto = config.produtos.find((p) => p.id === Number(item.produtoId));
-    const estocavel = movimentaEstoque && !!produto?.estocavel;
+    const estocavel = movimentaEstoque && !!item.produtoId;
     if (estocavel) return false;
     return !(centroEfetivoItem(item) || centroCustoId);
   };

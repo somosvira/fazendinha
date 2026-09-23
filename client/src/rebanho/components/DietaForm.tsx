@@ -114,9 +114,10 @@ export function DietaForm({ dieta, onFechar, onSalvo, onExcluido }: Props) {
 // já criada (o PUT precisa do id). Salva independente do nome/macros da dieta.
 function ComposicaoDieta({ dietaId }: { dietaId: number }) {
   const { data: itens, loading, recarregar } = useItensDieta(dietaId);
+  // Produtos de uso nutricional (categoria). Se o produto tem estoque no sítio
+  // quem valida é o servidor ao salvar — o cadastro não diz se é estocado.
   const { data: produtos } = useProdutos({ ativo: true, uso: "nutricional" });
-  const estocaveis = useMemo(() => produtos.filter((p) => p.estocavel), [produtos]);
-  const prodPorId = useMemo(() => new Map(estocaveis.map((p) => [p.id, p])), [estocaveis]);
+  const prodPorId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
   const [linhas, setLinhas] = useState<{ produtoId: number; qtd: string }[]>([]);
   const [novoProduto, setNovoProduto] = useState("");
@@ -131,7 +132,7 @@ function ComposicaoDieta({ dietaId }: { dietaId: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itensKey]);
 
-  const disponiveis = estocaveis.filter((p) => !linhas.some((l) => l.produtoId === p.id));
+  const disponiveis = produtos.filter((p) => !linhas.some((l) => l.produtoId === p.id));
   // Custo médio ponderado das entradas no sítio, vindo da composição salva
   // (produto recém-adicionado só ganha custo depois de salvar).
   const custoMedioPorProduto = useMemo(() => new Map(itens.map((i) => [i.produtoId, i.custoMedio])), [itens]);

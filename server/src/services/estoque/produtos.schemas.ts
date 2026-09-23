@@ -4,6 +4,8 @@ import { UnidadeMedida } from "@prisma/client";
 // Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
 
+export const CATEGORIA_OBRIGATORIA = "Produto precisa de uma categoria";
+
 const idsSchema = (campo: string) =>
   z.array(z.number().int().positive()).max(200)
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
@@ -11,9 +13,11 @@ const idsSchema = (campo: string) =>
 export const produtoSchema = z.object({
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
-  estocavel: z.boolean().default(true),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),
-  categoriaId: z.number().int().positive().nullable().optional(),
+  // Categoria é obrigatória: é ela que define o uso do produto (sanitário,
+  // nutricional, agrícola) e a classificação herdada pelo item da operação.
+  // Se o produto tem estoque não é do cadastro — quem decide é a operação.
+  categoriaId: z.number({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).int().positive(CATEGORIA_OBRIGATORIA),
   centroCustoIds: idsSchema("Centros de custo").default([]),
   fornecedorIds: idsSchema("Fornecedores").default([]),
 });

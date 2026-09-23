@@ -26,7 +26,7 @@ const categorias = [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO" as const
 const centros = [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: 7, nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
-  id: 99, nome: "Sal mineral", unidade: "KG", estocavel: true,
+  id: 99, nome: "Sal mineral", unidade: "KG",
   categoriaId: 11, categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
   categoria: { id: 11, nome: "Insumos", usoSanitario: false, usoNutricional: true, usoAgricola: false },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
@@ -49,12 +49,30 @@ describe("FormProduto sem props", () => {
 
     fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
     fireEvent.change(screen.getByLabelText("Unidade"), { target: { value: "KG" } });
-    fireEvent.change(screen.getByLabelText("Categoria padrão"), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText(/^Categoria/), { target: { value: "11" } });
     await screen.findByText("Uso nutricional");
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
 
-    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG" })));
+    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ nome: "Sal mineral", unidade: "KG", categoriaId: 11 })));
+    expect(mocks.criarProduto.mock.calls[0][0]).not.toHaveProperty("estocavel");
+    expect(screen.queryByLabelText(/Controla estoque/)).toBeNull();
     await waitFor(() => expect(onSalvo).toHaveBeenCalledWith(produtoCriado));
+  });
+
+  it("categoria é obrigatória: sem ela não envia e mostra o erro no campo", async () => {
+    vi.clearAllMocks();
+    mocks.listarFornecedores.mockResolvedValue(fornecedores);
+    mocks.listarCategorias.mockResolvedValue(categorias);
+    mocks.listarCentrosCusto.mockResolvedValue(centros);
+
+    render(<FormProduto produto={null} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    await screen.findByText("Cooperativa");
+
+    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Sal mineral" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+
+    expect(await screen.findByText("Produto precisa de uma categoria")).toBeTruthy();
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
   });
 
   it("mostra erro visível quando o carregamento falha", async () => {
