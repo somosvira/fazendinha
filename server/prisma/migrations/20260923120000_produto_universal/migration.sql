@@ -157,12 +157,14 @@ ALTER TABLE "Produto" ALTER COLUMN "unidade" SET DEFAULT 'UN';
 -- DropFunction: função de apoio só usada durante esta migration.
 DROP FUNCTION "_produtoUniversalMapearUnidade"(TEXT);
 
--- AlterTable: colunas de produto que saem (preço, tipo, carência, % MS)
+-- AlterTable: colunas de produto que saem (preço, tipo, carência, % MS e
+-- 'estocavel': quem decide se um item entra no estoque é o tipo da operação).
 ALTER TABLE "Produto" DROP COLUMN "carencia",
 DROP COLUMN "custoUnitario",
 DROP COLUMN "percentualMS",
 DROP COLUMN "subtipoPlantio",
-DROP COLUMN "tipo";
+DROP COLUMN "tipo",
+DROP COLUMN "estocavel";
 
 -- AlterTable: precisão alinhada entre item da operação, movimento de
 -- estoque e evento sanitário (todos passam a lidar com 3 casas de
@@ -177,3 +179,21 @@ DROP TYPE "TipoInsumoPlantio";
 
 -- DropEnum
 DROP TYPE "TipoProduto";
+
+-- Cadastros sem efeito em nenhum cálculo (princípios ativos, composição de
+-- ração, lotes/validade e locais de armazenamento) saem do sistema. Filhos
+-- primeiro; nenhuma outra tabela referencia estas.
+ALTER TABLE "ComposicaoProdutoItem" DROP CONSTRAINT "ComposicaoProdutoItem_ingredienteId_fkey";
+ALTER TABLE "ComposicaoProdutoItem" DROP CONSTRAINT "ComposicaoProdutoItem_produtoId_fkey";
+ALTER TABLE "LocalArmazenamento" DROP CONSTRAINT "LocalArmazenamento_propriedadeId_fkey";
+ALTER TABLE "LoteProduto" DROP CONSTRAINT "LoteProduto_localId_fkey";
+ALTER TABLE "LoteProduto" DROP CONSTRAINT "LoteProduto_produtoId_fkey";
+ALTER TABLE "LoteProduto" DROP CONSTRAINT "LoteProduto_propriedadeId_fkey";
+ALTER TABLE "ProdutoPrincipioAtivo" DROP CONSTRAINT "ProdutoPrincipioAtivo_principioAtivoId_fkey";
+ALTER TABLE "ProdutoPrincipioAtivo" DROP CONSTRAINT "ProdutoPrincipioAtivo_produtoId_fkey";
+
+DROP TABLE "ComposicaoProdutoItem";
+DROP TABLE "LocalArmazenamento";
+DROP TABLE "LoteProduto";
+DROP TABLE "PrincipioAtivo";
+DROP TABLE "ProdutoPrincipioAtivo";

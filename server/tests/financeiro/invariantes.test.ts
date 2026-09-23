@@ -25,7 +25,7 @@ let drafts: typeof import("../../src/services/financeiro/rascunhos.js");
 let accounts: typeof import("../../src/services/financeiro/contas.js");
 let stock: typeof import("../../src/services/estoque/estoque.js");
 let schema: typeof import("../../src/services/financeiro/schemas.js");
-let pid: number, accountId: number, partnerId: number, productId: number, userId: number;
+let pid: number, accountId: number, partnerId: number, productId: number, userId: number, centroConsumoId: number;
 let serial = 0;
 const data = new Date("2026-09-01T12:00:00Z");
 const evidence: unknown[] = [];
@@ -47,6 +47,8 @@ beforeEach(async () => {
   partnerId = (await db.parceiro.create({ data: { nome: `Parceiro ${serial}`, papeis: { create: [{ papel: "FORNECEDOR" }, { papel: "CLIENTE" }] } } })).id;
   // Todo produto tem categoria; se ele entra no estoque quem decide é o tipo da operação.
   productId = (await db.produto.create({ data: { nome: `Produto ${serial}`, unidade: "KG", categoria: { create: { nome: `Insumos QA ${serial}`, classificacao: "CUSTEIO" } } } })).id;
+  // Consumo direto não vai para o estoque: o custo precisa de um centro.
+  centroConsumoId = (await db.centroCusto.create({ data: { nome: `Consumo direto ${serial}` } })).id;
   userId = (await db.usuario.create({ data: { nome: "QA", email: `qa${serial}@example.test`, papel: "gestor", abas: [], flags: [] } })).id;
 });
 afterAll(async () => {
@@ -56,6 +58,7 @@ afterAll(async () => {
 function input(condicao = "A_PRAZO", tipo = "COMPRA_ESTOQUE") {
   return { ...schema.operacaoSchema.parse({
     tipo, data, descricao: "Compra QA 10 kg", parceiroId: partnerId,
+    ...(tipo === "COMPRA_CONSUMO_DIRETO" ? { centroCustoId: centroConsumoId } : {}),
     itens: tipo === "SERVICO" ? [] : [{ produtoId: productId, descricao: "Produto QA", quantidade: 10, unidade: "kg", valorUnitario: 10, estocavel: true }],
     valorTotal: 100,
     financeiro: condicao === "SEM_EFEITO_FINANCEIRO" ? { condicao } : condicao === "A_VISTA" ? { condicao, contaId: accountId } : condicao === "PARCIAL" ? { condicao, contaId: accountId, valorPago: 40, parcelas: [{ valor: 60, dataVencimento: "2026-10-01" }] } : { condicao, parcelas: [{ valor: 100, dataVencimento: "2026-10-01" }] },
