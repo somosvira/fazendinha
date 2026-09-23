@@ -125,8 +125,11 @@ export const editarTalhao = (id: string, input: Partial<TalhaoInput>) =>
   req<Talhao>(`/plantio/talhoes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const darBaixa = (id: string, input: { motivo: string; data?: string }) =>
   req<Talhao>(`/plantio/talhoes/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
+// `aviso`: o servidor salvou a aplicação mas não deu baixa de estoque (produto
+// sem entrada nesta fazenda) — a tela mostra isso ao usuário.
+export type EventoTimelineComAviso = EventoTimeline & { aviso?: string };
 export const registrarOperacao = (talhaoId: string, input: OperacaoInput) =>
-  req<EventoTimeline>(`/plantio/talhoes/${talhaoId}/operacoes`, { method: "POST", body: JSON.stringify(input) });
+  req<EventoTimelineComAviso>(`/plantio/talhoes/${talhaoId}/operacoes`, { method: "POST", body: JSON.stringify(input) });
 export const editarOperacao = (id: string, input: Partial<OperacaoInput>) =>
   req<EventoTimeline>(`/plantio/operacoes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 export const excluirOperacao = (id: string) =>

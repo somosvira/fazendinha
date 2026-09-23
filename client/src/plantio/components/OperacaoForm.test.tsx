@@ -8,6 +8,9 @@ const apiMocks = vi.hoisted(() => ({
   registrarOperacao: vi.fn(),
 }));
 
+const toastMocks = vi.hoisted(() => ({ warn: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock("@/components/Toast", () => ({ useToast: () => toastMocks }));
+
 const rebanhoApiMocks = vi.hoisted(() => ({
   listarCentrosCusto: vi.fn(),
   produtos: [
@@ -105,6 +108,26 @@ describe("OperacaoForm — baixa de estoque", () => {
       quantidadeTotal: 3,
       centroCustoId: 7,
     })));
+  });
+
+  it("mostra o aviso do servidor quando a aplicação foi salva sem baixa de estoque", async () => {
+    apiMocks.registrarOperacao.mockResolvedValueOnce({ id: "op-1", aviso: "Produto sem entrada nesta fazenda: a aplicação foi registrada sem baixa de estoque." });
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith(
+      "Aplicação registrada sem baixa de estoque",
+      expect.stringContaining("sem baixa de estoque"),
+    ));
+  });
+
+  it("não mostra aviso quando a resposta não traz aviso", async () => {
+    apiMocks.registrarOperacao.mockResolvedValueOnce({ id: "op-2" });
+    render(createElement(OperacaoForm, base));
+    fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(apiMocks.registrarOperacao).toHaveBeenCalled());
+    expect(toastMocks.warn).not.toHaveBeenCalled();
   });
 
   it("200 mL/ha × 5 ha, produto em L → baixa 1 L", async () => {

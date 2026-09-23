@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Talhao, TipoOperacao, PragaDoenca } from "../types";
 import { registrarOperacao, type OperacaoInput } from "../api";
+import { useToast } from "@/components/Toast";
 import { useProdutosEstoque, listarCentrosCusto, type RefDTO } from "../../estoque/api";
 import { HOJE } from "../HOJE";
 import { RebModal } from "@/components/rb/RebModal";
@@ -85,6 +86,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
   const [responsavel, setResponsavel] = useState("");
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const toast = useToast();
   const [erro, setErro] = useState<string | null>(null);
 
   // Litros de cereja (colheita)
@@ -166,7 +168,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
       const obs = [observacao.trim(), ...extras].filter(Boolean).join(" — ") || undefined;
 
       const doseValorNumerico = doseValor.trim() ? Number(doseValor.replace(",", ".")) : undefined;
-      await registrarOperacao(talhaoId, {
+      const salvo = await registrarOperacao(talhaoId, {
         // backend espera o enum em maiúsculas (FENOLOGIA/FITOSSANIDADE/NUTRICAO/COLHEITA)
         dominio: dominio.toUpperCase() as OperacaoInput["dominio"], tipo, data,
         responsavel: responsavel.trim() || undefined,
@@ -180,6 +182,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
         centroCustoId: centroCustoId ? Number(centroCustoId) : null,
       });
+      if (salvo?.aviso) toast.warn("Aplicação registrada sem baixa de estoque", salvo.aviso);
       onSalvo();
     } catch (e: any) {
       setErro(e?.message ?? "Erro ao salvar.");
