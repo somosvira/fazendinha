@@ -21,8 +21,6 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     subtipoPlantio: produto.subtipoPlantio ?? null,
     unidade: produto.unidade,
     custoUnitario: produto.custoUnitario != null ? produto.custoUnitario.toString() : null,
-    carencia: produto.carencia ?? null,
-    percentualMS: produto.percentualMS != null ? produto.percentualMS.toString() : null,
     estocavel: produto.estocavel,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,

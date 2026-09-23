@@ -72,6 +72,10 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
   { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada" },
+  { chave: "uso", titulo: "Uso", alinhamento: "centro", larguraMinima: 150, celula: (c) => {
+    const chips = [c.usoSanitario && "Sanitário", c.usoNutricional && "Nutricional", c.usoAgricola && "Agrícola"].filter(Boolean) as string[];
+    return chips.length ? <span className="flex flex-wrap justify-center gap-1">{chips.map((chip) => <Pill key={chip} tone="neutral">{chip}</Pill>)}</span> : "—";
+  } },
   { chave: "referencias", titulo: "Em uso", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },

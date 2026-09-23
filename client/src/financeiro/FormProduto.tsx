@@ -59,8 +59,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [unidade, setUnidade] = useState(produto?.unidade ?? "un");
   const [custo, setCusto] = useState(produto?.custoUnitario ?? "");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
-  const [carencia, setCarencia] = useState(produto?.carencia != null ? String(produto.carencia) : "");
-  const [percentualMS, setPercentualMS] = useState(produto?.percentualMS ?? "");
   const [estocavel, setEstocavel] = useState(produto?.estocavel ?? true);
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? String(produto.categoriaId) : "");
   const [centroCustoIds, setCentroCustoIds] = useState(() => new Set(produto?.centroCustoIds ?? []));
@@ -85,15 +83,12 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     if (!unidade.trim()) novosErros.unidade = "Informe a unidade";
     if (custo && Number(custo) < 0) novosErros.custoUnitario = "O custo não pode ser negativo";
     if (minimo && Number(minimo) < 0) novosErros.minimoEstoque = "O estoque mínimo não pode ser negativo";
-    if (carencia && Number(carencia) < 0) novosErros.carencia = "A carência não pode ser negativa";
-    if (percentualMS && Number(percentualMS) < 0) novosErros.percentualMS = "O percentual não pode ser negativo";
     if (estocavel && !categoriaId) novosErros.categoriaId = "Produto estocável precisa de uma categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     const dados: ProdutoInput = {
       nome: nome.trim(), tipo, subtipoPlantio: subtipoPlantio || null, unidade: unidade.trim(),
       custoUnitario: custo === "" ? null : Number(custo), estocavel,
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId: categoriaId ? Number(categoriaId) : null,
-      carencia: carencia === "" ? null : Number(carencia), percentualMS: percentualMS === "" ? null : Number(percentualMS),
       centroCustoIds: [...centroCustoIds], fornecedorIds: [...fornecedorIds],
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
@@ -122,10 +117,6 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-custo" rotulo="Custo de referência" erro={erros.custoUnitario} ajuda="Usado para sugerir novas operações; não altera o histórico.">{(p) => <input {...p} type="number" min="0" step="0.01" value={custo} onChange={(e) => setCusto(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-carencia" rotulo="Carência (dias)" erro={erros.carencia}>{(p) => <input {...p} type="number" min="0" step="1" value={carencia} onChange={(e) => setCarencia(e.target.value)} className={classeInput} />}</CampoFormulario>
-        <CampoFormulario id="produto-percentual-ms" rotulo="% de matéria seca" erro={erros.percentualMS}>{(p) => <input {...p} type="number" min="0" step="0.01" value={percentualMS} onChange={(e) => setPercentualMS(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={estocavel} onChange={(e) => setEstocavel(e.target.checked)} /> Controla estoque</label>
       <CampoFormulario id="produto-categoria" rotulo="Categoria padrão" erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Sem categoria</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>

@@ -450,11 +450,22 @@ async function main() {
   for (const e of dados.eventosSanitarios ?? [])
     if ((e.tipo === "APLICACAO" || e.tipo === "VACINA") && e.produto) produtosAplicados.add(e.produto);
   const centroLeiteiroId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.LEITE }, select: { id: true } }))?.id ?? null;
+  // Categoria "Medicamento Animal" (ponte com o financeiro) — cria se não existir
+  // (o seed financeiro pode rodar depois deste import).
+  const medCategoriaId = (await prisma.categoria.upsert({
+    where: { nome: "Medicamento Animal" },
+    update: {},
+    create: { nome: "Medicamento Animal", classificacao: "CUSTEIO", usoSanitario: true },
+    select: { id: true },
+  })).id;
   for (const nome of produtosAplicados) {
     await prisma.produto.upsert({
       where: { nome },
       update: {},
-      create: { nome, tipo: "MEDICAMENTO", ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}) },
+      create: {
+        nome, tipo: "MEDICAMENTO", categoriaId: medCategoriaId,
+        ...(centroLeiteiroId != null ? { centrosCusto: { create: [{ centroCustoId: centroLeiteiroId }] } } : {}),
+      },
     });
   }
 

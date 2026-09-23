@@ -37,8 +37,8 @@ describe("planejarBaixaAplicacao", () => {
     expect(r).toEqual({ quantidade: 0, deveBaixar: false });
   });
 
-  it("arredonda a quantidade para 2 casas decimais (coluna Decimal(12,2))", () => {
+  it("arredonda a quantidade para 3 casas decimais (coluna Decimal(12,3))", () => {
     const r = planejarBaixaAplicacao({ produtoId: 1, estocavel: true, doseValor: 1.2345, doseUnidade: "L/ha", areaHa: 3 });
-    expect(r).toEqual({ quantidade: 3.7, deveBaixar: true });
+    expect(r).toEqual({ quantidade: 3.704, deveBaixar: true });
   });
 });

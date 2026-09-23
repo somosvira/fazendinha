@@ -16,8 +16,6 @@ export const produtoSchema = z.object({
   subtipoPlantio: subtipoPlantioSchema.nullable().optional(),
   unidade: z.string().trim().min(1).max(12).default("un"),
   custoUnitario: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "custo muito alto").nullable().optional(),
-  carencia: z.number().int().nonnegative().max(9999, "carência muito alta").nullable().optional(),
-  percentualMS: z.number().min(0).max(100).nullable().optional(),
   estocavel: z.boolean().default(true),
   minimoEstoque: z.number().nonnegative().max(MAX_PRODUTO_VALOR, "estoque mínimo muito alto").nullable().optional(),
   categoriaId: z.number().int().positive().nullable().optional(),

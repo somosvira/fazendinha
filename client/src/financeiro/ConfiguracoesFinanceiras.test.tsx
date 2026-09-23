@@ -31,7 +31,7 @@ const config: Config = {
     { id: 7, nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
     { id: 8, nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, _count: { operacoes: 2, produtos: 1 } }],
+  categorias: [{ id: 11, nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoSanitario: false, usoNutricional: false, usoAgricola: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0, safras: 0 } }],
   produtos: [],
   produtosCadastro: [{ id: 30, nome: "Ração 22%", tipo: "RACAO", unidade: "kg", estocavel: true, custoUnitario: "2.45", minimoEstoque: "500", categoriaId: 11, ativo: true, centroCustoIds: [20], centrosCusto: [{ id: 20, nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: 7, nome: "Cooperativa", ativo: true }] }],
@@ -321,7 +321,7 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     fireEvent.change(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
     fireEvent.change(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1 }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", classificacao: "CUSTEIO", ordem: 1, usoSanitario: false, usoNutricional: false, usoAgricola: false }));
   });
 
   it("cria um centro de custo sem natureza financeira", async () => {

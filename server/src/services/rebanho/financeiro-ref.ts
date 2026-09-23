@@ -6,7 +6,7 @@ import { prisma } from "../../db.js";
 // Por padrão só ativos (selects de lançamento). O formulário de produto pede
 // também os inativos para continuar exibindo um vínculo já existente.
 export async function listarCategorias(incluirInativos = false) {
-  return prisma.categoria.findMany({ where: incluirInativos ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }], select: { id: true, nome: true, ativo: true, ordem: true, classificacao: true } });
+  return prisma.categoria.findMany({ where: incluirInativos ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }], select: { id: true, nome: true, ativo: true, ordem: true, classificacao: true, usoSanitario: true, usoNutricional: true, usoAgricola: true } });
 }
 
 export async function listarCentrosCusto(incluirInativos = false) {

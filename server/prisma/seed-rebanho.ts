@@ -193,11 +193,11 @@ async function main() {
   await prisma.movimentoEstoque.deleteMany({});
   await prisma.produto.deleteMany({});
   const produtos = [
-    { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, carencia: 96, estocavel: true, minimoEstoque: 4 },
-    { nome: "Ração Lactação Alta", tipo: "RACAO", unidade: "kg", custoUnitario: 2.1, percentualMS: 88, estocavel: true, minimoEstoque: 500 },
-    { nome: "Núcleo Mineral", tipo: "MINERAL", unidade: "kg", custoUnitario: 5.4, percentualMS: 96, estocavel: true, minimoEstoque: 100 },
+    { nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 28.5, estocavel: true, minimoEstoque: 4 },
+    { nome: "Ração Lactação Alta", tipo: "RACAO", unidade: "kg", custoUnitario: 2.1, estocavel: true, minimoEstoque: 500 },
+    { nome: "Núcleo Mineral", tipo: "MINERAL", unidade: "kg", custoUnitario: 5.4, estocavel: true, minimoEstoque: 100 },
     { nome: "Sêmen Lance 884", tipo: "INSUMO", unidade: "dose", custoUnitario: 45, estocavel: true, minimoEstoque: 10 },
-    { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", custoUnitario: 62, carencia: 120, estocavel: true, minimoEstoque: 2 },
+    { nome: "Antibiótico X", tipo: "MEDICAMENTO", unidade: "mL", custoUnitario: 62, estocavel: true, minimoEstoque: 2 },
   ] as const;
   for (const p of produtos) await prisma.produto.create({ data: p as any });
 

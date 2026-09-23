@@ -17,8 +17,8 @@ describe("produtoSchema", () => {
     expect(produtoSchema.safeParse({ nome: "Ração", centroCustoIds: [1, 1] }).success).toBe(false);
   });
 
-  it("aceita um produto válido com carência e percentual de MS", () => {
-    const r = produtoSchema.safeParse({ nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 12.5, carencia: 96 });
+  it("aceita um produto válido de medicamento", () => {
+    const r = produtoSchema.safeParse({ nome: "Mastijet", tipo: "MEDICAMENTO", unidade: "un", custoUnitario: 12.5 });
     expect(r.success).toBe(true);
   });
 
@@ -28,10 +28,6 @@ describe("produtoSchema", () => {
 
   it("rejeita tipo inválido", () => {
     expect(produtoSchema.safeParse({ nome: "Ivermectina", tipo: "VITAMINA" }).success).toBe(false);
-  });
-
-  it("rejeita percentualMS fora de 0..100", () => {
-    expect(produtoSchema.safeParse({ nome: "Ração", tipo: "RACAO", percentualMS: 120 }).success).toBe(false);
   });
 
   it("aceita subtipoPlantio válido", () => {

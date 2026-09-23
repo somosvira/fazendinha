@@ -324,6 +324,24 @@ async function main() {
   //    usada pelo seed do rebanho).
   const ccCafeId = (await prisma.centroCusto.findFirst({ where: { nome: CENTROS_ATIVIDADE.CAFE }, select: { id: true } }))?.id ?? null;
 
+  // Mapeamento contábil (ponte com o financeiro): categoria conforme o subtipo
+  // agrícola do insumo. "Fertilizantes e corretivos"/"Defensivos" — cria com
+  // upsert por nome se o seed rodar sozinho (sem o seed.ts ter passado antes).
+  const categoriaAgricolaPorSubtipo = async (nome: string) =>
+    (await prisma.categoria.upsert({
+      where: { nome },
+      update: {},
+      create: { nome, classificacao: "CUSTEIO", usoAgricola: true },
+      select: { id: true },
+    })).id;
+  const catFertilizantesId = await categoriaAgricolaPorSubtipo("Fertilizantes e corretivos");
+  const catDefensivosId = await categoriaAgricolaPorSubtipo("Defensivos");
+  const categoriaIdPorSubtipo: Record<string, number> = {
+    FERTILIZANTE: catFertilizantesId, CORRETIVO: catFertilizantesId, FOLIAR: catFertilizantesId,
+    MUDA: catFertilizantesId, BIOLOGICO: catFertilizantesId,
+    DEFENSIVO: catDefensivosId, HERBICIDA: catDefensivosId,
+  };
+
   // Data recente fixa para a ENTRADA inicial (mês não fechado — fora do range de fechamentos).
   const dataEntradaInicial = new Date("2026-03-15");
 
@@ -335,6 +353,7 @@ async function main() {
       unidade: ins.unidade,
       custoUnitario: ins.custo,
       minimoEstoque: ins.minimo,
+      categoriaId: categoriaIdPorSubtipo[ins.subtipo] ?? null,
       estocavel: true,
       ativo: true,
     };

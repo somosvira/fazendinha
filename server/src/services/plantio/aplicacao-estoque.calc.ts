@@ -30,7 +30,7 @@ export function planejarBaixaAplicacao(input: PlanejarBaixaAplicacaoIn): Planeja
   } else if (input.doseValor != null) {
     quantidade = porHectare ? input.doseValor * (input.areaHa ?? 0) : input.doseValor;
   }
-  quantidade = Math.round(quantidade * 100) / 100;
+  quantidade = Math.round(quantidade * 1000) / 1000;
   const deveBaixar = !!input.produtoId && input.estocavel && quantidade > 0;
   return { quantidade, deveBaixar };
 }

@@ -99,7 +99,7 @@ export type TipoInsumoPlantio = "FERTILIZANTE" | "DEFENSIVO" | "HERBICIDA" | "CO
 export type ProdutoDTO = Produto;
 export interface ProdutoInput {
   nome: string; tipo: TipoProduto; subtipoPlantio?: TipoInsumoPlantio | null; unidade: string;
-  custoUnitario?: number | null; carencia?: number | null; percentualMS?: number | null; estocavel?: boolean;
+  custoUnitario?: number | null; estocavel?: boolean;
   minimoEstoque?: number | null; ativo?: boolean; categoriaId?: number | null; centroCustoIds?: number[]; fornecedorIds?: number[];
 }
 export const listarProdutos = (f?: { tipo?: string; q?: string; ativo?: boolean }) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`);

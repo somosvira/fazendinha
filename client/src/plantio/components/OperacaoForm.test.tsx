@@ -13,13 +13,13 @@ const rebanhoApiMocks = vi.hoisted(() => ({
   produtos: [
     {
       id: 1, nome: "Calcário dolomítico", tipo: "INSUMO", subtipoPlantio: "CORRETIVO", unidade: "t",
-      custoUnitario: null, carencia: null, percentualMS: null, estocavel: true, minimoEstoque: null, ativo: true,
+      custoUnitario: null, estocavel: true, minimoEstoque: null, ativo: true,
       categoriaId: null, categoriaNome: null, classificacao: null,
       centroCustoIds: [7], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }],
     },
     {
       id: 2, nome: "Produto sem centro único", tipo: "INSUMO", subtipoPlantio: "FERTILIZANTE", unidade: "kg",
-      custoUnitario: null, carencia: null, percentualMS: null, estocavel: true, minimoEstoque: null, ativo: true,
+      custoUnitario: null, estocavel: true, minimoEstoque: null, ativo: true,
       categoriaId: null, categoriaNome: null, classificacao: null,
       centroCustoIds: [7, 8], centrosCusto: [{ id: 7, nome: "Talhões — insumos", ativo: true }, { id: 8, nome: "Outro centro", ativo: true }],
     },

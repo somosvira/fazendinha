@@ -18,15 +18,15 @@ vi.mock("../../db.js", () => {
 
 import { atualizarProduto, criarProduto } from "./produtos.js";
 
-const base = { id: 1, nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null, carencia: null, percentualMS: null, estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { nome: "Alimentação", classificacao: "CUSTEIO" } };
+const base = { id: 1, nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null, estocavel: true, minimoEstoque: null, categoriaId: 3, ativo: true, categoria: { nome: "Alimentação", classificacao: "CUSTEIO" } };
 const fornecedor = { id: 7, nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: 4, nome: "Pecuária", ativo: true };
 
 import type { ProdutoInput } from "./produtos.schemas.js";
 
 const input = (over: Partial<ProdutoInput> = {}): ProdutoInput => ({
-  nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null, carencia: null,
-  percentualMS: null, estocavel: true, minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
+  nome: "Ração", tipo: "RACAO", subtipoPlantio: null, unidade: "kg", custoUnitario: null,
+  estocavel: true, minimoEstoque: null, categoriaId: 3, centroCustoIds: [], fornecedorIds: [],
   ...over,
 });
 
