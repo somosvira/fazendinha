@@ -133,13 +133,29 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
     expect(saldo.type).toBe("text");
     expect(saldo.inputMode).toBe("decimal");
-    expect(saldo.value).toBe("0,00");
+    expect(saldo.value).toBe("");
+    expect(saldo.placeholder).toBe("0,00");
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("");
     expect(within(painel).getByText("R$")).toBeTruthy();
     expect(within(painel).queryByLabelText("Ordem de exibição")).toBeNull();
     expect(within(painel).getByRole("combobox", { name: "Tipo" }).getAttribute("data-slot")).toBe("select-trigger");
     expect(within(painel).getByRole("combobox", { name: "Tipo bancário" }).getAttribute("data-slot")).toBe("select-trigger");
     fireEvent.change(within(painel).getByLabelText("Titular"), { target: { value: "Fazenda 123 Rio Novo" } });
     expect((within(painel).getByLabelText("Titular") as HTMLInputElement).value).toBe("Fazenda  Rio Novo");
+  });
+
+  it("saldo de abertura seleciona o valor ao focar, para digitar por cima", async () => {
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Nova conta/ }));
+    const painel = await screen.findByRole("dialog");
+    const saldo = within(painel).getByLabelText("Saldo de abertura") as HTMLInputElement;
+    fireEvent.change(saldo, { target: { value: "1500" } });
+    fireEvent.blur(saldo);
+    expect(saldo.value).toBe("1.500,00");
+    fireEvent.focus(saldo);
+    expect(saldo.value).toBe("1500,00");
+    await waitFor(() => { expect(saldo.selectionStart).toBe(0); expect(saldo.selectionEnd).toBe(saldo.value.length); });
   });
 
   it("reordena contas pelas setas da listagem", async () => {
