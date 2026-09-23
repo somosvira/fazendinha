@@ -1010,9 +1010,6 @@ export function useProdutos(f?: { uso?: UsoProduto; q?: string; ativo?: boolean 
   return { data, loading, erro, recarregar };
 }
 
-// ── Princípios ativos, composição de ração e lotes de produto: movidos para
-// client/src/estoque/api.ts (rota /api/estoque/*) — sem uso duplicado aqui.
-
 export function useFornecedores(f?: { tipo?: string; q?: string }) {
   const [data, setData] = useState<FornecedorDTO[]>([]);
   const [loading, setLoading] = useState(true);

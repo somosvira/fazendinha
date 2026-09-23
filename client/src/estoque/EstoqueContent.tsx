@@ -4,9 +4,6 @@ import { rotuloUnidade } from "../lib/unidades";
 import { useSaldos, useCustoVacaDia, listarMovimentos, excluirMovimento, listarProdutos, listarCentrosCusto, type MovimentoDTO, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
 import { MovimentoForm } from "./components/MovimentoForm";
 import { FormProduto } from "../financeiro/FormProduto";
-import { PrincipiosAtivosSection } from "./components/PrincipiosAtivosSection";
-import { ComposicaoRacaoSection } from "./components/ComposicaoRacaoSection";
-import { LotesProdutoSection } from "./components/LotesProdutoSection";
 import { RebHeader } from "../rebanho/components/RebHeader";
 import { RebModal } from "@/components/rb/RebModal";
 import { RebButton } from "@/components/rb/RebButton";
@@ -294,10 +291,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
             })}</tbody>
           </RebTable>
         )}
-
-      <PrincipiosAtivosSection />
-      <ComposicaoRacaoSection />
-      <LotesProdutoSection />
 
       {form && <MovimentoForm onFechar={() => setForm(false)} onSalvo={() => { setForm(false); recarregarTudo(); }} />}
       {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}

@@ -54,7 +54,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
         <div className="grid gap-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={usoSanitario} onChange={(e) => setUsoSanitario(e.target.checked)} />
-            <span>Sanitário <span className="text-ink-3">— aparece na sanidade e nos princípios ativos</span></span>
+            <span>Sanitário <span className="text-ink-3">— aparece na sanidade</span></span>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={usoNutricional} onChange={(e) => setUsoNutricional(e.target.checked)} />

@@ -4,9 +4,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 
 vi.mock("./components/MovimentoForm", () => ({ MovimentoForm: () => null }));
 vi.mock("../financeiro/FormProduto", () => ({ FormProduto: () => null }));
-vi.mock("./components/PrincipiosAtivosSection", () => ({ PrincipiosAtivosSection: () => null }));
-vi.mock("./components/ComposicaoRacaoSection", () => ({ ComposicaoRacaoSection: () => null }));
-vi.mock("./components/LotesProdutoSection", () => ({ LotesProdutoSection: () => null }));
 
 import { EstoqueContent } from "./EstoqueContent";
 
