@@ -62,7 +62,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   };
 
   const formId = "form-conta";
-  return <PainelCadastro aberto={aberto} eyebrow="Conta financeira" titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto={aberto} titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : conta ? "Salvar conta" : "Criar conta"}</Button></>}>
     <form id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <p className="text-sm text-ink-3">* Campos obrigatórios</p>

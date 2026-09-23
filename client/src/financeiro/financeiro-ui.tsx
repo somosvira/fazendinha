@@ -51,7 +51,7 @@ export function PaginaSemDados({ titulo, descricao, label, erro }: { titulo: str
 
 export function PageHeader({ titulo, descricao, acao, eyebrow = "Financeiro" }: { titulo: string; descricao: string; acao?: React.ReactNode; /** rótulo acima do título; padrão "Financeiro" */ eyebrow?: string }) {
   return <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-6 pt-7 max-[900px]:pt-0">
-    <div className="min-w-0 max-w-3xl flex-[1_1_320px]"><div className="eyebrow">{eyebrow}</div><h1 className="h1 mt-2 break-words hyphens-auto">{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
+    <div className="min-w-0 max-w-3xl flex-[1_1_320px]">{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1 className={`h1 break-words hyphens-auto ${eyebrow ? "mt-2" : ""}`}>{titulo}</h1><p className="mt-2 break-words text-sm leading-6 text-ink-3">{descricao}</p></div>{acao}
   </header>;
 }
 
@@ -194,7 +194,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     {barraRolagemSuperior && temRolagem && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className="hidden overflow-x-auto md:block" onScroll={() => sincronizarRolagem("tabela")}>
+    <div ref={tabelaRef} className={`hidden overflow-x-auto md:block ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <table className="w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <caption className="sr-only">{rotulo}</caption>
         <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">

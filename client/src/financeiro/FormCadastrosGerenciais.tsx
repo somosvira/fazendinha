@@ -43,7 +43,7 @@ export function FormCategoria({ categoria, ordemInicial, onSalvo, onFechar }: { 
     finally { emCurso.current = false; setSalvando(false); }
   };
   const formId = "form-categoria";
-  return <PainelCadastro aberto eyebrow="Categoria financeira" titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={onFechar}
+  return <PainelCadastro aberto titulo={categoria ? `Editar ${categoria.nome}` : "Nova categoria"} onFechar={onFechar}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : categoria ? "Salvar categoria" : "Criar categoria"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
@@ -90,7 +90,7 @@ export function FormCentroCusto({ centro, ordemInicial, onSalvo, onFechar }: { c
     finally { emCurso.current = false; setSalvando(false); }
   };
   const formId = "form-centro-custo";
-  return <PainelCadastro aberto eyebrow="Centro de custo" titulo={centro ? `Editar ${centro.nome}` : "Novo centro de custo"} onFechar={onFechar}
+  return <PainelCadastro aberto titulo={centro ? `Editar ${centro.nome}` : "Novo centro de custo"} onFechar={onFechar}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : centro ? "Salvar centro" : "Criar centro"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />

@@ -74,7 +74,7 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
 });
 
 describe("EstoqueContent — saldos e custo médio", () => {
-  it("mostra custo médio e valor (saldo × médio); sem custo, '—' e produtos sem custo apurado no card", async () => {
+  it("mostra custo médio e valor (saldo × médio); sem custo, '—'", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [
       saldo({}),
       saldo({ produtoId: 2, nome: "Sal", categoria: { ...categoria, id: 2, nome: "Mineral" }, saldo: 4, custoMedio: null, valor: 0 }),
@@ -87,9 +87,6 @@ describe("EstoqueContent — saldos e custo médio", () => {
     expect(celulas).toContain("R$ 90,00");
     const sal = within(tabela).getByText("Sal").closest("tr")!;
     expect([...sal.querySelectorAll("td")].filter((td) => td.textContent === "—").length).toBeGreaterThanOrEqual(2);
-    const card = screen.getByText("Produtos sem custo apurado").closest("section")!;
-    expect(within(card).getByText("1")).toBeTruthy();
-    expect(within(card).getByText("Registre uma compra ou um inventário inicial com valor.")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Custo médio" })).toBeTruthy();
   });
 
@@ -121,12 +118,50 @@ describe("EstoqueContent — saldos e custo médio", () => {
     expect(screen.queryByText(/saldo negativo/)).toBeNull();
   });
 
-  it("card Itens abaixo do mínimo filtra a lista ao clicar", async () => {
+  it("mostra só 3 cards: Valor em estoque, Produtos em estoque e Últimas entradas", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({}), saldo({ produtoId: 2, nome: "Sal", saldo: 0, valor: 0 })] }));
+    render(<EstoqueContent />);
+    const card = (await screen.findByText("Produtos em estoque")).closest("section")!;
+    expect(within(card).getByText("1")).toBeTruthy();
+    expect(within(card).getByText("de 2 produtos com movimento")).toBeTruthy();
+    expect(screen.getByText("Valor em estoque")).toBeTruthy();
+    expect(screen.getByText("Últimas entradas")).toBeTruthy();
+    expect(screen.queryByText("Itens abaixo do mínimo")).toBeNull();
+    expect(screen.queryByText("Produtos sem custo apurado")).toBeNull();
+  });
+
+  it("a tabela de saldos não tem botão de editar produto", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})] }));
+    sessao(["financeiro"], ["lancar"]);
+    render(<EstoqueContent />);
+    await screen.findByRole("table", { name: "Saldos de estoque" });
+    expect(screen.queryByRole("button", { name: /^Editar/ })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Ajustar quantidade de Ração" }).length).toBeGreaterThan(0);
+  });
+
+  it("produto abaixo do mínimo mostra o ícone com a dica, não uma pill de texto", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ minimoEstoque: 50, abaixoMinimo: true })] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Saldos de estoque" }));
+    expect(tabela.queryByText("Abaixo do mínimo")).toBeNull();
+    fireEvent.click(tabela.getByRole("button", { name: "Abaixo do mínimo" }));
+    expect(await screen.findByText("Abaixo do mínimo (50 kg)")).toBeTruthy();
+  });
+
+  it("cada movimento mostra uma pill só, com a origem", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, tipo: "SAIDA", origem: "NUTRICAO" })] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Movimentos de estoque" }));
+    expect(tabela.getByText("Dieta")).toBeTruthy();
+    expect(tabela.queryByText("Saída")).toBeNull();
+  });
+
+  it("botão Só abaixo do mínimo filtra a lista ao clicar", async () => {
     vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ minimoEstoque: 50, abaixoMinimo: true }), saldo({ produtoId: 2, nome: "Sal" })] }));
     render(<EstoqueContent />);
     const tabela = await screen.findByRole("table", { name: "Saldos de estoque" });
     expect(within(tabela).getByText("Sal")).toBeTruthy();
-    fireEvent.click(screen.getByText("Itens abaixo do mínimo").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: /Só abaixo do mínimo/ }));
     expect(within(screen.getByRole("table", { name: "Saldos de estoque" })).queryByText("Sal")).toBeNull();
     expect(within(screen.getByRole("table", { name: "Saldos de estoque" })).getByText("Ração")).toBeTruthy();
   });

@@ -96,7 +96,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   };
 
   const formId = "form-produto-financeiro";
-  return <PainelCadastro aberto eyebrow="Produto" titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro aberto titulo={produto ? `Editar ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando || carregando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <p className="text-sm text-ink-3">O preço vem das compras (custo médio no estoque) e o uso do produto vem da categoria. Quem põe o produto no estoque é a operação (compra para estoque, inventário, produção…).</p>
@@ -105,10 +105,10 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
-        <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <select {...p} value={unidade} onChange={(e) => setUnidade(e.target.value as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</select>}</CampoFormulario>
+        <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="O uso do produto (sanitário, nutricional, agrícola) vem da categoria." erro={erros.categoriaId}>{(p) => <select {...p} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</select>}</CampoFormulario>
       {(() => {
         const categoriaSelecionada = categorias.find((c) => String(c.id) === categoriaId);
         const chips = chipsUso(categoriaSelecionada);
@@ -126,7 +126,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         placeholder="Nenhum centro de custo"
         searchPlaceholder="Buscar centro de custo…"
         emptyText="Nenhum centro de custo cadastrado."
-        helpText="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
+        ajuda="Onde este produto costuma ser usado. Com um só centro, as operações e as baixas de estoque o preenchem sozinhas."
         error={erros.centroCustoIds}
         contentClassName="z-[1200]"
         options={opcoesCentros}
@@ -138,7 +138,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         placeholder="Nenhum fornecedor"
         searchPlaceholder="Buscar fornecedor…"
         emptyText="Nenhum parceiro com papel de fornecedor."
-        helpText="Opcional. A compra continua podendo usar outro fornecedor."
+        ajuda="Opcional. A compra continua podendo usar outro fornecedor."
         error={erros.fornecedorIds}
         contentClassName="z-[1200]"
         options={opcoesFornecedores}

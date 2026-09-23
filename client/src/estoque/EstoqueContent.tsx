@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
-import { AlertTriangle, Boxes, CircleHelp, PackagePlus, Pencil, Plus, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, Boxes, Package, PackagePlus, Plus, SlidersHorizontal } from "lucide-react";
+import { AjudaCampo, Dica } from "@/components/Dica";
 import { Loader } from "../components/Loading";
 import { navegarPara } from "../router";
 import { rotuloUnidade } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { FormProduto } from "../financeiro/FormProduto";
-import { useSaldos, listarMovimentos, listarProdutos, listarCentrosCusto, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type ProdutoDTO, type RefDTO } from "./api";
+import { useSaldos, listarMovimentos, listarCentrosCusto, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
 import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
@@ -62,19 +63,12 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const [soAbaixoMin, setSoAbaixoMin] = useState(false);
   const [soNegativos, setSoNegativos] = useState(false);
   const [ordem, setOrdem] = useState<Ordem>("nome");
-  const [produtos, setProdutos] = useState<ProdutoDTO[]>([]);
   const [centros, setCentros] = useState<RefDTO[]>([]);
-  const [erroProdutos, setErroProdutos] = useState<string | null>(null);
   const [erroCentros, setErroCentros] = useState<string | null>(null);
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
-  const [editando, setEditando] = useState<ProdutoDTO | null>(null);
   // O ajuste é uma operação financeira: exige a área financeiro e a permissão `lancar`.
   const podeAjustar = podeAjustarEstoque();
 
-  const carregarProdutos = useCallback(() => {
-    listarProdutos({ ativo: true }).then((ps) => { setProdutos(ps); setErroProdutos(null); }).catch((e) => setErroProdutos(e instanceof Error ? e.message : String(e)));
-  }, []);
-  useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
 
   const saldosVisiveis = useMemo(() => {
@@ -95,8 +89,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor), 0), [saldos.data]);
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
-  // Sem preço no cadastro: o custo só existe depois de uma entrada valorizada no sítio.
-  const nSemCusto = useMemo(() => saldos.data.filter((s) => s.custoMedio == null).length, [saldos.data]);
+  const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
   const unidadePorProduto = useMemo(() => new Map(saldos.data.map((s) => [s.produtoId, s.unidade] as const)), [saldos.data]);
 
   // Últimas entradas: o movimento de ENTRADA (compra/inventário/bonificação/produção,
@@ -115,42 +108,36 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     return lista;
   }, [entradas.data, saldos.data]);
 
-  function abrirEdicao(produtoId: number) {
-    const p = produtos.find((x) => x.id === produtoId);
-    if (p) setEditando(p);
-  }
-  const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); entradas.recarregar(); carregarProdutos(); };
+  const recarregarTudo = () => { saldos.recarregar(); movimentos.recarregar(); entradas.recarregar(); };
 
   const colunasSaldos: ColunaTabela<SaldoDTO>[] = [
-    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold">{s.nome}</strong>{s.abaixoMinimo && <Pill tone="red">Abaixo do mínimo</Pill>}</span> },
-    { chave: "categoria", titulo: "Categoria", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
-    { chave: "centros", titulo: "Centros de custo", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
-    { chave: "saldo", titulo: "Saldo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
-    { chave: "custo", titulo: "Custo médio", alinhamento: "direita", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
-    { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor) : "—"}</strong> },
-    { chave: "minimo", titulo: "Mínimo", alinhamento: "direita", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
-    { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (s) => (
-      <div className="flex items-center justify-end gap-1">
+    { chave: "produto", titulo: "Produto", larguraMinima: 220, principal: true, celula: (s) => <span className="flex flex-wrap items-center gap-2"><strong className="break-words font-semibold">{s.nome}</strong>{s.abaixoMinimo && <Dica rotulo="Abaixo do mínimo" conteudo={`Abaixo do mínimo${s.minimoEstoque != null ? ` (${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)})` : ""}`} className="text-red-700 hover:text-red-800"><AlertTriangle size={16} aria-hidden="true" /></Dica>}</span> },
+    { chave: "categoria", titulo: "Categoria", alinhamento: "centro", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
+    { chave: "centros", titulo: "Centros de custo", alinhamento: "centro", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
+    { chave: "saldo", titulo: "Saldo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
+    { chave: "custo", titulo: "Custo médio", alinhamento: "centro", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
+    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor) : "—"}</strong> },
+    { chave: "minimo", titulo: "Mínimo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
+    ...(podeAjustar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "centro" as const, larguraMinima: 90, acoes: true, celula: (s: SaldoDTO) => (
+      <div className="flex items-center justify-center gap-1">
         {podeAjustar && <button type="button" onClick={() => abrirAjusteEstoque(s.produtoId)} aria-label={`Ajustar quantidade de ${s.nome}`} title="Ajustar quantidade" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><SlidersHorizontal size={16} /></button>}
-        <button type="button" onClick={() => abrirEdicao(s.produtoId)} disabled={!produtos.some((p) => p.id === s.produtoId)} aria-label={`Editar ${s.nome}`} title="Editar produto" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"><Pencil size={16} /></button>
       </div>
-    ) },
+    ) }] : []),
   ];
 
   const colunasMovimentos: ColunaTabela<MovimentoDTO>[] = [
-    { chave: "data", titulo: "Data", larguraMinima: 100, celula: (m) => <span className="whitespace-nowrap">{dataBR(m.data)}</span> },
+    { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 100, celula: (m) => <span className="whitespace-nowrap">{dataBR(m.data)}</span> },
     { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold">{m.produto}</strong> },
-    { chave: "tipo", titulo: "Tipo", larguraMinima: 190, celula: (m) => (
-      <span className="flex flex-wrap items-center gap-1.5">
-        <Pill tone={TIPO_MOV[m.tipo].tom}>{TIPO_MOV[m.tipo].rotulo}</Pill>
-        <span className="text-xs text-ink-3">{ROTULO_ORIGEM[m.origem] ?? m.origem}</span>
+    { chave: "tipo", titulo: "Tipo", alinhamento: "centro", larguraMinima: 190, celula: (m) => (
+      <span className="flex flex-wrap items-center justify-center gap-1.5">
+        <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>
         {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
         {m.status === "REVERTIDO" && <Pill tone="red">Estornado</Pill>}
       </span>
     ) },
-    { chave: "qtd", titulo: "Qtde", alinhamento: "direita", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
-    { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{brl(m.valorTotal)}</span> },
-    { chave: "origem", titulo: "Origem / destino", larguraMinima: 220, celula: (m) => {
+    { chave: "qtd", titulo: "Qtde", alinhamento: "centro", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
+    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{brl(m.valorTotal)}</span> },
+    { chave: "origem", titulo: "Origem / destino", alinhamento: "centro", larguraMinima: 220, celula: (m) => {
       const destino = destinoDoMovimento(m);
       if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? m.grupo ?? "—"}</span>;
       return <span className="break-words"><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</span>;
@@ -164,23 +151,17 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   </div>;
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Estoque" titulo={titulo ?? "Estoque"} descricao="Saldos e custo médio dos produtos. Quem põe um produto no estoque é a operação: compra, inventário, produção ou ajuste." acao={acao} />
+    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Saldos e custo médio dos produtos. Quem põe um produto no estoque é a operação: compra, inventário, produção ou ajuste." acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
-    <ErrorBox erro={erroProdutos ? `Erro ao carregar produtos: ${erroProdutos}` : null} />
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
     {/* Só dados de estoque: valor, alertas e as últimas entradas. */}
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="flex flex-col gap-1.5">
         <Metric label="Valor em estoque" valor={brl(valorTotal)} detalhe={`${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Boxes} />
         {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-red-800 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
       </div>
-      {nAbaixoMin > 0
-        ? <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className="block rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-            <Metric label="Itens abaixo do mínimo" valor={String(nAbaixoMin)} detalhe={soAbaixoMin ? "Filtro ativo — clique para ver todos" : "Clique para filtrar a lista"} icon={AlertTriangle} tone="red" />
-          </button>
-        : <Metric label="Itens abaixo do mínimo" valor="0" detalhe="Nenhum produto abaixo do mínimo" icon={AlertTriangle} tone="green" />}
-      <Metric label="Produtos sem custo apurado" valor={String(nSemCusto)} detalhe={nSemCusto > 0 ? "Registre uma compra ou um inventário inicial com valor." : "Todos os produtos têm custo médio"} icon={CircleHelp} />
+      <Metric label="Produtos em estoque" valor={String(nEmEstoque)} detalhe={`de ${saldos.data.length} ${saldos.data.length === 1 ? "produto" : "produtos"} com movimento`} icon={Package} />
       <Panel className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Últimas entradas</div>
@@ -200,7 +181,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     </div>
 
     <section className="mt-8" aria-label="Saldos de estoque">
-      <h2 className="font-serif text-xl">Saldos de estoque</h2>
+      <h2 className="font-serif text-xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2>
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
         <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
         <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
@@ -215,28 +196,26 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         </select>
         <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} whitespace-nowrap font-medium ${soAbaixoMin ? "border-red-700 text-red-800" : "text-ink-2"}`}>Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
       </div>
-      <p className="mt-2 text-xs text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}. O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio.</p>
+      {filtrosAtivos && <p className="mt-2 text-xs text-ink-3">{saldosVisiveis.length} de {saldos.data.length} {saldos.data.length === 1 ? "produto" : "produtos"}.</p>}
       <Panel className="mt-3 overflow-hidden">
         {saldos.loading ? <div className="p-6"><Loader /></div>
           : saldos.erro ? <Empty>Erro: {saldos.erro}</Empty>
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
-          : <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosVisiveis} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} />}
+          : <TabelaFinanceira rotulo="Saldos de estoque" itens={saldosVisiveis} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} barraRolagemSuperior />}
       </Panel>
     </section>
 
     <section className="mt-8" aria-label="Movimentos recentes">
-      <h2 className="font-serif text-xl">Movimentos recentes</h2>
-      <p className="mt-1 text-xs text-ink-3">Cada movimento leva à operação que o gerou; saídas automáticas levam ao lote, animal ou talhão de origem.</p>
+      <h2 className="font-serif text-xl">Movimentos recentes<AjudaCampo rotulo="Origem dos movimentos" texto="Cada movimento leva à operação que o gerou; saídas automáticas levam ao lote, animal ou talhão de origem." /></h2>
       <Panel className="mt-3 overflow-hidden">
         {movimentos.loading ? <div className="p-6"><Loader /></div>
           : movimentos.erro ? <Empty>Erro: {movimentos.erro}</Empty>
           : movimentos.data.length === 0 ? <Empty>Nenhum movimento registrado ainda.</Empty>
-          : <TabelaFinanceira rotulo="Movimentos de estoque" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} />}
+          : <TabelaFinanceira rotulo="Movimentos de estoque" itens={movimentos.data} colunas={colunasMovimentos} chaveDe={(m) => m.id} classeLinha={(m) => m.status === "REVERTIDO" || m.reversaoDeId != null ? "opacity-60" : ""} barraRolagemSuperior />}
       </Panel>
     </section>
 
     {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
-    {editando && <FormProduto produto={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); recarregarTudo(); }} />}
   </PaginaFinanceira>;
 }

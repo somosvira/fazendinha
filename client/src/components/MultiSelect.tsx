@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { AjudaCampo } from "@/components/Dica";
 
 export type MultiSelectValue = string | number;
 export type MultiSelectOption<T extends MultiSelectValue = MultiSelectValue> = {
@@ -14,6 +15,7 @@ export type MultiSelectOption<T extends MultiSelectValue = MultiSelectValue> = {
 export function MultiSelect<T extends MultiSelectValue>({
   label,
   helpText,
+  ajuda,
   error,
   contentClassName,
   placeholder = "Todas as opções",
@@ -26,6 +28,8 @@ export function MultiSelect<T extends MultiSelectValue>({
 }: {
   label: string;
   helpText?: string;
+  /** Ajuda em dica (ícone ao lado do rótulo) — alternativa compacta ao `helpText`. */
+  ajuda?: string;
   /** Mensagem de erro do campo — anunciada com role="alert" logo abaixo do controle. */
   error?: string;
   /** Classes extras do PopoverContent (ex.: `z-[1200]` quando o campo vive dentro de um painel/modal). */
@@ -60,7 +64,7 @@ export function MultiSelect<T extends MultiSelectValue>({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div>
+        <div className="flex items-center text-xs font-semibold uppercase tracking-[.12em] text-ink-3">{label}{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${label}`} />}</div>
         {value.length > 0 ? (
           <button type="button" onClick={() => onValueChange([])} className="text-xs font-semibold text-green-800 hover:underline">
             Limpar ({value.length})
