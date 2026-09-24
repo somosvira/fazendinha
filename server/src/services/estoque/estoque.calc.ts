@@ -179,3 +179,45 @@ export function consolidarSaldo(sitios: SaldoSitio[]): { saldo: number; valor: n
         : combinada;
   return { saldo, valor: valor.toNumber(), custoMedio };
 }
+
+export interface FaltaSaldo {
+  produtoId: number;
+  saldo: Prisma.Decimal;
+  retirada: Prisma.Decimal;
+}
+
+/**
+ * Quais produtos ficariam negativos: soma a retirada por produto (a mesma
+ * operação pode ter dois itens do mesmo produto) e compara com o saldo do
+ * sítio. Saldo ausente conta como 0.
+ */
+export function faltasDeSaldo(retiradas: { produtoId: number; quantidade: Prisma.Decimal.Value }[], saldos: Map<number, Prisma.Decimal>): FaltaSaldo[] {
+  const total = new Map<number, Prisma.Decimal>();
+  for (const r of retiradas) total.set(r.produtoId, (total.get(r.produtoId) ?? new Prisma.Decimal(0)).plus(r.quantidade));
+  const faltas: FaltaSaldo[] = [];
+  for (const [produtoId, retirada] of total) {
+    const saldo = saldos.get(produtoId) ?? new Prisma.Decimal(0);
+    if (retirada.greaterThan(saldo)) faltas.push({ produtoId, saldo, retirada });
+  }
+  return faltas;
+}
+
+/** "1.234,5" — quantidade com até 3 casas, no formato das mensagens ao usuário. */
+export const fmtQuantidade = (q: Prisma.Decimal.Value) => new Prisma.Decimal(q).toNumber().toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+
+/**
+ * Saldo de cada produto depois de estornar estes movimentos: o estorno de uma
+ * ENTRADA retira, o de uma SAIDA devolve e o de um AJUSTE aplica o sinal
+ * contrário. Usado para avisar, antes de cancelar uma entrada já consumida,
+ * que o estoque vai ficar negativo (o cancelamento não é bloqueado: a correção
+ * de uma operação exige cancelar a original antes).
+ */
+export function saldosAposEstorno(movimentos: { produtoId: number; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; quantidade: Prisma.Decimal.Value }[], saldos: Map<number, Prisma.Decimal>): Map<number, Prisma.Decimal> {
+  const apos = new Map<number, Prisma.Decimal>();
+  for (const m of movimentos) {
+    const atual = apos.get(m.produtoId) ?? saldos.get(m.produtoId) ?? new Prisma.Decimal(0);
+    const q = new Prisma.Decimal(m.quantidade);
+    apos.set(m.produtoId, m.tipo === "SAIDA" ? atual.plus(q) : atual.minus(q));
+  }
+  return apos;
+}

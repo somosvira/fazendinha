@@ -58,7 +58,8 @@ beforeEach(() => {
   mocks.auditCreate.mockResolvedValue({});
   mocks.queryRaw.mockResolvedValue([]);
   mocks.propriedadePrincipalId.mockResolvedValue(1);
-  mocks.movGroupBy.mockResolvedValue([]);
+  // Consulta de saldo (agrupada por tipo): 1000 em estoque; demais groupBy (base do custo) vazios.
+  mocks.movGroupBy.mockImplementation(async (args: { by: string[] }) => args.by.includes("tipo") ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(1000) } }] : []);
   mocks.movFindFirst.mockResolvedValue({ id: 1 }); // por padrão o produto tem estoque no sítio
 });
 
@@ -451,5 +452,23 @@ describe("calcularCustoVacaDia", () => {
     // Venda, devolução e aplicação agrícola também são SAIDA, mas não custo da vaca.
     expect(where).toMatchObject({ tipo: "SAIDA", origem: { in: ["NUTRICAO", "SANIDADE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
     expect(r).toMatchObject({ vacasEmLactacao: 2, totalConsumo: 60, custoVacaDia: 1 });
+  });
+});
+
+describe("baixa manual não passa do saldo do sítio", () => {
+  it("AJUSTE negativo maior que o saldo é recusado com SALDO_INSUFICIENTE, depois de travar o produto", async () => {
+    mocks.movGroupBy.mockImplementation(async (args: { by: string[] }) => args.by.includes("tipo")
+      ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(10) } }, { produtoId: 3, tipo: "SAIDA", _sum: { quantidade: new Prisma.Decimal(4) } }]
+      : []);
+    await expect(registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: -7, observacao: "Perda no galpão", propriedadeId: 1, usuarioId: 7 }))
+      .rejects.toMatchObject({ code: "SALDO_INSUFICIENTE", message: expect.stringContaining("há 6 kg neste sítio e são retirados 7 kg") });
+    expect(mocks.queryRaw).toHaveBeenCalled();
+    expect(mocks.movCreate).not.toHaveBeenCalled();
+  });
+
+  it("AJUSTE negativo igual ao saldo zera e passa", async () => {
+    mocks.movGroupBy.mockImplementation(async (args: { by: string[] }) => args.by.includes("tipo") ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(6) } }] : []);
+    await registrarMovimento({ produtoId: 3, tipo: "AJUSTE", data: "2026-01-10", quantidade: -6, observacao: "Perda no galpão", propriedadeId: 1, usuarioId: 7 });
+    expect(mocks.movCreate).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 # Auditoria do estoque — 24/09/2026
 
-Base: `main` @ `7e62d72` (merge do PR #297, produto universal). Corrigidos: severidade média (5–15) e alta 1, 3 e 4 (ver abaixo). O item 2 aguarda a decisão de produto; os de severidade baixa seguem só registrados.
+Base: `main` @ `7e62d72` (merge do PR #297, produto universal). Corrigidos: severidade alta (1–4) e média (5–15) — ver abaixo. Os de severidade baixa seguem só registrados.
 
 ## Como foi testado
 
@@ -17,7 +17,7 @@ Legenda: **[C]** confirmado no smoke · **[L]** encontrado lendo o código (não
 | 3 | Reabrir o fechamento de consumo **estorna** cada SAIDA (`estornarMovimentoTx`: inverso + original REVERTIDO + auditoria), desvincula do cabeçalho e só então o remove, liberando a janela para novo fechamento. `MovimentoEstoque.consumoPeriodo` passou de `onDelete: Cascade` para `SetNull` (migration `20260924130000_estoque_consumo_sem_cascata`). Fechar e reabrir gravam autor e `AuditoriaFinanceira` (`FECHADO`/`REABERTO`). O histórico acha o lote pelo `grupoId` depois de reaberto. |
 | 4 | Produto inativo com saldo ≠ 0 continua na lista de saldos (etiqueta "Inativo") e no valor em estoque; some quando o saldo zera. Pode ser ajustado (contagem/baixa manual) para zerar. Não entra em lançamento novo: sanidade, aplicação agrícola e composição de dieta recusam (o evento/operação/dieta que já o usava continua editável); compra e venda já exigiam produto ativo. |
 
-O item 2 (saídas sem conferir saldo) ficou para decisão de produto — ver a recomendação abaixo do item.
+| 2 | Venda, devolução ao fornecedor e baixa manual acima do saldo do sítio são recusadas (`SALDO_INSUFICIENTE`, 409, campo `itens.N.quantidade`), com os produtos travados (`FOR UPDATE`) antes de ler o saldo. Sanidade e aplicação agrícola gravam e devolvem `aviso` de saldo insuficiente; a dieta já avisava. O cancelamento de uma entrada já consumida continua permitido, e a revisão mostra o saldo antes/depois e destaca quem fica negativo. O formulário de venda/devolução mostra o saldo do sítio em cada item e destaca a quantidade acima dele. |
 
 ## Correções de severidade média (itens 5–15)
 
@@ -48,14 +48,14 @@ De quebra: o custo vaca/dia contava **toda** SAIDA (venda, devolução, adubo do
 - Smoke: um usuário só com a área financeiro e sem `lancar` criou uma `COMPRA_ESTOQUE` (201, OP-0023). A compra gerou ENTRADA no estoque e mudou o custo médio do milho (1,50 → 1,4998).
 - Com o mesmo usuário, `POST /estoque/ajustes` e `POST /estoque/produtos` retornaram 403, como esperado.
 
-### 2. Nenhuma saída verifica o saldo; o estoque fica negativo sem aviso [C]
+### 2. ✅ Nenhuma saída verifica o saldo; o estoque fica negativo sem aviso [C]
 - **Venda** de 999.999 kg de milho com saldo de 1.900 kg foi aceita (201): o saldo foi a **−998.099 kg** e o valor em estoque a **−R$ 1.497.148,50**.
 - **Sanidade** de 999.999 mL de vermífugo foi aceita sem aviso: saldo −998.108 mL.
 - **Cancelar uma compra** cujo estoque já foi consumido também é aceito e deixa o saldo negativo.
 - A regra "a vaca comeu, não bloqueia" está documentada só para a dieta ([nutricao.consumo.ts](../server/src/services/rebanho/nutricao.consumo.ts)), que pelo menos avisa na prévia (`insuficiente`). Venda, devolução, sanidade, aplicação e estorno não validam nem avisam.
 - O card "Valor em estoque" soma valores negativos.
 
-**Recomendação (pendente de decisão).** O financeiro trata os dois casos de forma diferente:
+**Decisão (aprovada e implementada).** O financeiro trata os dois casos de forma diferente:
 - **Liquidação** nunca supera o pendente (regra 6 do contrato): é um bloqueio duro sobre um número digitado no escritório.
 - **Conta bancária** pode ficar negativa: `SALDO_INSUFICIENTE` existe em `FinanceiroError`, mas nenhum fluxo o lança, porque cheque especial existe de verdade.
 - **Estoque físico negativo não existe**: é sempre entrada faltando ou digitação errada.

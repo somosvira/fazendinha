@@ -1022,3 +1022,30 @@ describe("painel de revisão — movimentos de estoque", () => {
     expect(screen.getByText("Nenhum movimento físico de estoque será gerado.")).toBeTruthy();
   });
 });
+
+describe("venda e devolução mostram o saldo do sítio de cada item", () => {
+  afterEach(() => setPropriedadeAtiva(null));
+  const saldos = [{ produtoId: 1, nome: "Ração", ativo: true, categoria: null, unidade: "KG", centrosCusto: [], saldo: 5, custoMedio: 2, valor: 10, minimoEstoque: null, abaixoMinimo: false }];
+  const fetchComSaldos = () => vi.fn(async (url: unknown) => ({ ok: true, status: 200, json: async () => (String(url).includes("/estoque/saldos") ? saldos : {}) }));
+
+  it("indica o saldo e destaca a quantidade acima dele", async () => {
+    setPropriedadeAtiva(1);
+    vi.stubGlobal("fetch", fetchComSaldos());
+    render(<FormOperacao config={config} tipoInicial="VENDA" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+    expect(await screen.findByText("Em estoque neste sítio: 5 kg.")).toBeTruthy();
+    const quantidade = screen.getByLabelText("Quantidade do item 1");
+    fireEvent.change(quantidade, { target: { value: "8" } });
+    expect(screen.getByText("Acima do saldo: há 5 kg neste sítio.")).toBeTruthy();
+    expect(quantidade.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("compra não mostra saldo", async () => {
+    setPropriedadeAtiva(1);
+    vi.stubGlobal("fetch", fetchComSaldos());
+    render(<FormOperacao config={config} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Produto do item 1"), { target: { value: "1" } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText(/neste sítio/)).toBeNull();
+  });
+});

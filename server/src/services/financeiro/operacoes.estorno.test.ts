@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   auditoriaCreate: vi.fn(),
   contaFindFirst: vi.fn(),
   queryRaw: vi.fn(),
+  movimentoEstoqueGroupByDireto: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -36,7 +37,7 @@ vi.mock("../../db.js", () => {
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
-  return { prisma: { $transaction: mocks.transaction, operacao: { findFirst: mocks.operacaoFindFirstDireto } } };
+  return { prisma: { $transaction: mocks.transaction, operacao: { findFirst: mocks.operacaoFindFirstDireto }, movimentoEstoque: { groupBy: mocks.movimentoEstoqueGroupByDireto }, propriedade: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) } } };
 });
 
 import { estornarOperacao, estornarTransacao, liquidarCompromisso, obterOperacao, simularParcelas } from "./operacoes.js";
@@ -194,8 +195,23 @@ describe("resumoCancelamento (via obterOperacao)", () => {
       documentos: [],
     });
 
+    mocks.movimentoEstoqueGroupByDireto.mockResolvedValue([{ produtoId: 4, tipo: "ENTRADA", _sum: { quantidade: decimal("10") } }]);
     const operacao = await obterOperacao(9);
 
-    expect(operacao.resumoCancelamento.estoque).toEqual([{ id: 31, produtoId: 4, produtoNome: "Ração bovina", quantidade: decimal("10"), unidade: "kg", tipo: "ENTRADA" }]);
+    expect(operacao.resumoCancelamento.estoque).toEqual([{ id: 31, produtoId: 4, produtoNome: "Ração bovina", quantidade: decimal("10"), unidade: "kg", tipo: "ENTRADA", saldoAtual: "10", saldoAposCancelamento: "0", ficaNegativo: false }]);
+  });
+
+  it("avisa quando cancelar uma entrada já consumida deixa o saldo negativo (sem bloquear)", async () => {
+    mocks.operacaoFindFirstDireto.mockResolvedValue({
+      id: 9, propriedadeId: 1, parceiro: null, itens: [], compromissos: [], transacoes: [], documentos: [],
+      movimentosEstoque: [{ id: 31, status: "CONFIRMADO", tipo: "ENTRADA", produtoId: 4, quantidade: decimal("10"), reversaoDeId: null, revertidoPor: null, produto: { id: 4, nome: "Ração bovina", unidade: "KG" } }],
+    });
+    // Entraram 10, já saíram 7: sobram 3; estornar a entrada deixa −7.
+    mocks.movimentoEstoqueGroupByDireto.mockResolvedValue([
+      { produtoId: 4, tipo: "ENTRADA", _sum: { quantidade: decimal("10") } },
+      { produtoId: 4, tipo: "SAIDA", _sum: { quantidade: decimal("7") } },
+    ]);
+    const operacao = await obterOperacao(9);
+    expect(operacao.resumoCancelamento.estoque[0]).toMatchObject({ saldoAtual: "3", saldoAposCancelamento: "-7", ficaNegativo: true });
   });
 });

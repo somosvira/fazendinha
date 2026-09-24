@@ -7,7 +7,7 @@ import { recomputarQuartos } from "./quarto.recompute.js";
 import { planejarBaixaSanidade } from "./sanidade-estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque, saldosNoSitio, mensagemSaldoInsuficiente } from "../estoque/estoque.js";
 
 export class EventoSanError extends Error { constructor(public code: "NAO_ENCONTRADO" | "CONFLITO" | "MES_FECHADO", message: string) { super(message); } }
 const PRODUTO_INATIVO = "Produto inativo: não pode ser usado em novos lançamentos (reative o produto no cadastro)";
@@ -55,6 +55,16 @@ async function planejarComCustoMedio(tx: Prisma.TransactionClient, tipo: string,
   return planejarBaixaSanidade({ tipo, produtoId, temEstoque: true, quantidadeUsada, baseCusto });
 }
 
+// Consumo no campo não é bloqueado por falta de saldo (o animal já foi tratado
+// e o evento carrega a carência do leite); o estoque fica negativo e o usuário
+// é avisado para registrar a entrada que falta. Lido antes de gravar a SAIDA.
+async function avisoSaldoInsuficiente(tx: Prisma.TransactionClient, produto: { id: number; nome: string; unidade: Parameters<typeof mensagemSaldoInsuficiente>[0]["unidade"] } | null, quantidade: Prisma.Decimal, propriedadeId: number): Promise<string | null> {
+  if (!produto) return null;
+  const saldo = (await saldosNoSitio(tx, [produto.id], propriedadeId)).get(produto.id)!;
+  if (!quantidade.greaterThan(saldo)) return null;
+  return `${mensagemSaldoInsuficiente(produto, saldo, quantidade)} O evento foi salvo e o estoque ficou negativo — registre a compra ou o inventário que falta.`;
+}
+
 export async function registrarSanidade(animalId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO & { aviso?: string }> {
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { id: true, propriedadeId: true, grupo: { select: { centroCustoId: true } } } });
   if (!animal) throw new EventoSanError("NAO_ENCONTRADO", "animal não encontrado");
@@ -64,7 +74,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   // Baixa automática de estoque quando a APLICACAO/VACINA consome um produto vinculado
   // que tem estoque no sítio do animal (sem entrada no sítio → registra o evento sem baixa).
   // O produto precisa existir; custo unitário = custo médio do sítio (0 se sem base).
-  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
+  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, nome: true, unidade: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
   if (produto && !produto.ativo) throw new EventoSanError("CONFLITO", PRODUTO_INATIVO);
   const propriedadeMovimentoId = animal.propriedadeId ?? (await propriedadePrincipalId());
@@ -76,9 +86,11 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
   // Campos escalares do evento (exclui os auxiliares que não são colunas diretas).
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
 
+  let avisoSaldo: string | null = null;
   const e = await prisma.$transaction(async (tx) => {
     if (consome) await assertPeriodoAberto(tx, propriedadeMovimentoId, data);
     const plano = consome ? await planejarComCustoMedio(tx, input.tipo, produtoId, quantidadeUsada, propriedadeMovimentoId) : null;
+    if (plano) avisoSaldo = await avisoSaldoInsuficiente(tx, produto, new Prisma.Decimal(plano.quantidade), propriedadeMovimentoId);
     // SAIDA de consumo NÃO gera Lancamento (a compra ENTRADA já lançou no financeiro).
     const mov = plano
       ? await tx.movimentoEstoque.create({
@@ -100,7 +112,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
     });
   });
   await recomputarSanidade(animalId);
-  const aviso = avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque);
+  const aviso = avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque) ?? avisoSaldo;
   return aviso ? { ...toTimeline(e), aviso } : toTimeline(e);
 }
 export async function editarSanidade(eventoId: number, input: CriarEventoSanitarioInput, propriedadeId: number | null = null, usuarioId: number | null = null): Promise<EventoTimelineDTO & { aviso?: string }> {
@@ -113,7 +125,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
 
   const produtoId = (input as any).produtoId ?? null;
   const quantidadeUsada = (input as any).quantidadeUsada ?? null;
-  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
+  const produto = produtoId != null ? await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, nome: true, unidade: true, ativo: true, centrosCusto: { select: { centroCustoId: true } } } }) : null;
   if (produtoId != null && !produto) throw new EventoSanError("NAO_ENCONTRADO", "produto do estoque não encontrado");
   // Editar um evento que já usava o produto (agora inativo) continua permitido; trocar para um inativo, não.
   if (produto && !produto.ativo && produto.id !== existente.produtoId) throw new EventoSanError("CONFLITO", PRODUTO_INATIVO);
@@ -137,6 +149,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   const { produtoId: _pid, quantidadeUsada: _q, dtFim, ...resto } = input as any;
   const observacaoEstorno = `Estorno: evento sanitário #${eventoId} editado`;
 
+  let avisoSaldo: string | null = null;
   const atualizado = await prisma.$transaction(async (tx) => {
     if (afetaEstoque) {
       await assertPeriodoAberto(tx, propriedadeMovimentoId, data);
@@ -159,6 +172,8 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
     if (consome && mudouBaixa) {
       if (anterior) await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: observacaoEstorno });
       const plano = (await planejarComCustoMedio(tx, input.tipo, produtoId, quantidadeUsada, propriedadeMovimentoId))!;
+      // Depois do estorno da baixa anterior: o saldo já conta a devolução.
+      avisoSaldo = await avisoSaldoInsuficiente(tx, produto, new Prisma.Decimal(plano.quantidade), propriedadeMovimentoId);
       movimentoEstoqueId = (await tx.movimentoEstoque.create({ data: {
         produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
         quantidade: plano.quantidade, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal,
@@ -179,7 +194,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
   });
   await recomputarSanidade(existente.animalId);
   // Só avisa quando a falta de estoque foi apurada agora (produto/quantidade mudaram).
-  const aviso = decisaoEstavel == null ? avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque) : null;
+  const aviso = (decisaoEstavel == null ? avisoSemEstoque(input.tipo, produtoId, quantidadeUsada, temEstoque) : null) ?? avisoSaldo;
   return aviso ? { ...toTimeline(atualizado), aviso } : toTimeline(atualizado);
 }
 

@@ -158,15 +158,18 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [saldosErro, setSaldosErro] = useState<string | null>(null);
   const saldosPedidoRef = useRef(0);
   const ehAjuste = tipo === TIPO_AJUSTE;
+  // Venda e devolução não podem retirar mais do que o sítio tem (o servidor
+  // recusa); o formulário mostra o saldo de cada item para evitar a surpresa.
+  const retiraEstoque = tipo === "VENDA" || tipo === "DEVOLUCAO";
   // Sem sítio ativo e com mais de um sítio, o saldo lido soma todos os sítios mas o
   // ajuste é gravado em um só: o `saldoEsperado` nunca bateria (loop de CONFLITO).
   const [totalSitios, setTotalSitios] = useState<number | null>(null);
   useEffect(() => {
-    if (!ehAjuste || getPropriedadeAtiva() != null || totalSitios !== null) return;
+    if (!(ehAjuste || retiraEstoque) || getPropriedadeAtiva() != null || totalSitios !== null) return;
     let ativo = true;
     listarPropriedades().then((lista) => { if (ativo) setTotalSitios(Array.isArray(lista) ? lista.filter((p) => p.ativo).length : 0); }).catch(() => undefined);
     return () => { ativo = false; };
-  }, [ehAjuste, totalSitios]);
+  }, [ehAjuste, retiraEstoque, totalSitios]);
   const ajusteConsolidado = ehAjuste && getPropriedadeAtiva() == null && (totalSitios ?? 0) >= 2;
 
   const carregarSaldos = async () => {
@@ -182,10 +185,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     }
   };
   useEffect(() => {
-    if (ehAjuste && saldos === null) void carregarSaldos();
+    if ((ehAjuste || retiraEstoque) && saldos === null) void carregarSaldos();
     // Só ao entrar no tipo Ajuste; recargas seguintes são explícitas ("Atualizar saldo").
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ehAjuste]);
+  }, [ehAjuste, retiraEstoque]);
+  // Sem sítio ativo e com vários sítios o saldo lido é a soma de todos: não serve de referência.
+  const saldosDoSitio = retiraEstoque && saldos && !(getPropriedadeAtiva() == null && (totalSitios ?? 0) >= 2)
+    ? new Map(saldos.map((s) => [s.produtoId, s.saldo] as const)) : null;
   const saldoProduto = saldos?.find((saldo) => String(saldo.produtoId) === ajusteProdutoId) ?? null;
   const contadaNumero = quantidadeContada.trim() === "" ? NaN : Number(quantidadeContada);
   const contadaMilesimos = Math.round(contadaNumero * 1000);
@@ -571,9 +577,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         // mesmo tratamento da validação local: no modo Único esse select nem
         // existe na tela, então o campo e o foco vão para o centro da operação.
         const ehErroDeCentro = /^itens\.\d+\.centroCustoId$/.test(falha.campo);
-        const mapeado = ehErroDeCentro ? mapearCampoCentro(falha.campo) : { campo: falha.campo, elementId: `campo-${falha.campo}` };
+        const ehErroDeItem = /^itens\.\d+\./.test(falha.campo);
+        const mapeado = ehErroDeCentro ? mapearCampoCentro(falha.campo) : { campo: falha.campo, elementId: `campo-${falha.campo.replaceAll(".", "-")}` };
         setCampoInvalido(mapeado.campo);
-        if (ehErroDeCentro) {
+        if (ehErroDeCentro || ehErroDeItem) {
           const elemento = document.getElementById(mapeado.elementId);
           elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
           elemento?.focus?.();
@@ -637,7 +644,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
             {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao itens={itens} setItens={setItens} saldosDoSitio={saldosDoSitio} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} /> :<section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         <section><h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Classificação</h3>
           {comItens && <div role="radiogroup" aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
             <span className="text-ink-3">Centro de custo:</span>
@@ -672,7 +679,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ itens, setItens, saldosDoSitio, config, ultimosPrecos, custosMedios, movimentaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido }: { itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; saldosDoSitio: Map<number, number> | null; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -682,6 +689,12 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, m
       const ultimo = ultimosPrecos[item.id]?.produtoId === item.produtoId ? ultimosPrecos[item.id] : null;
       const custoMedio = !ultimo && item.produtoId ? custosMedios[item.id] : undefined;
       const campoCentro = `itens.${indice}.centroCustoId`;
+      const campoQuantidade = `itens.${indice}.quantidade`;
+      const quantidadeInvalida = campoInvalido === campoQuantidade;
+      // Só para produto que tem estoque no sítio: o que nunca entrou (ou item sem
+      // produto, como leite em texto livre) é vendido sem mexer no estoque.
+      const saldoItem = saldosDoSitio && item.produtoId ? saldosDoSitio.get(Number(item.produtoId)) ?? null : null;
+      const acimaDoSaldo = saldoItem != null && Number(item.quantidade) > saldoItem;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} className={`rounded-xl border p-4 outline-none ${invalido ? "border-red-400 bg-red-50/40 ring-2 ring-red-200" : "border-border bg-[#faf9f4]"}`}>
         <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <button type="button" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-red-700 hover:bg-red-50"><Trash2 size={16} /></button>}</div>
@@ -696,7 +709,7 @@ function ItensOperacao({ itens, setItens, config, ultimosPrecos, custosMedios, m
           {porItem && <label className="text-sm font-medium">Centro de custo<select id={`campo-itens-${indice}-centroCustoId`} aria-label={`Centro de custo do item ${indice + 1}`} aria-invalid={centroInvalido || undefined} aria-describedby={centroInvalido ? `erro-${campoCentro}` : undefined} className={SELECT + (centroInvalido ? " border-red-400 ring-2 ring-red-200" : "")} value={item.centroCustoId} onChange={(e) => { atualizarItem(item.id, { centroCustoId: e.target.value }); limparCampoInvalido(campoCentro); }}><option value="">Padrão da operação{centroCustoOperacao ? ` (${config.centrosCusto.find((c) => String(c.id) === centroCustoOperacao)?.nome ?? ""})` : ""}</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</select>{centroInvalido && <CampoErro id={`erro-${campoCentro}`}>Informe o centro de custo deste item ou um centro padrão para a operação.</CampoErro>}</label>}
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
-          <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-[#d8cfbb] bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>
+          <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><input id={`campo-itens-${indice}-quantidade`} aria-label={`Quantidade do item ${indice + 1}`} aria-invalid={quantidadeInvalida || acimaDoSaldo || undefined} aria-describedby={saldoItem != null ? `saldo-item-${item.id}` : undefined} required min="0.001" step="0.001" type="number" className={`min-w-0 flex-1 rounded-l-lg border bg-white px-3 py-2.5 font-normal outline-none focus:border-[#6f7d68] focus:ring-2 focus:ring-[#6f7d68]/15 ${quantidadeInvalida || acimaDoSaldo ? "border-red-400 ring-2 ring-red-200" : "border-[#d8cfbb]"}`} value={item.quantidade} onChange={(e) => { atualizarItem(item.id, { quantidade: e.target.value }); limparCampoInvalido(campoQuantidade); }} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-[#d8cfbb] bg-[#f0ede4] px-3 text-sm text-ink-3">{unidade || "un"}</span></div>{saldoItem != null && <p id={`saldo-item-${item.id}`} className={`mt-1 text-xs font-normal ${acimaDoSaldo ? "text-red-700" : "text-ink-3"}`}>{acimaDoSaldo ? `Acima do saldo: há ${fmtQuantidade(saldoItem)} ${unidade || "un"} neste sítio.` : `Em estoque neste sítio: ${fmtQuantidade(saldoItem)} ${unidade || "un"}.`}</p>}</label>
           <label className="text-sm font-medium">Base do valor<select aria-label={`Base do valor do item ${indice + 1}`} className={SELECT} value={item.modoValor} onChange={(e) => atualizarItem(item.id, { modoValor: e.target.value as ModoValor })}><option value="UNITARIO">Valor unitário</option><option value="TOTAL">Valor total do item</option></select></label>
           {item.modoValor === "UNITARIO" ? <label className="text-sm font-medium">Valor unitário *<input aria-label={`Valor unitário do item ${indice + 1}`} required min="0" step="0.0001" type="number" className={CAMPO} value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, { valorUnitario: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorUnitario: normalizarPreco(e.target.value) })} />{ultimo && <span className="mt-1 block text-xs font-normal text-ink-3">Última compra: {brlPreciso(ultimo.valorUnitario)} em {dataCurta(ultimo.data)}{ultimo.parceiro ? ` (${ultimo.parceiro.nome})` : ""}</span>}{!ultimo && custoMedio != null && <span className="mt-1 block text-xs font-normal text-ink-3">Custo médio atual: {brlPreciso(custoMedio)}</span>}</label> : <label className="text-sm font-medium">Valor total do item *<input aria-label={`Valor total do item ${indice + 1}`} required min="0" step="0.01" type="number" className={CAMPO} value={item.valorTotal} onChange={(e) => atualizarItem(item.id, { valorTotal: e.target.value })} onBlur={(e) => atualizarItem(item.id, { valorTotal: normalizarMoeda(e.target.value) })} /></label>}
           <div className="self-end rounded-lg border border-[#e5dfd0] bg-white px-3 py-2.5 text-sm"><span className="text-ink-3">Total do item</span><strong className="float-right">{brl(totalItem(item))}</strong></div>

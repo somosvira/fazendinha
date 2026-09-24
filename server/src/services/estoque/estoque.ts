@@ -1,14 +1,14 @@
 import { prisma } from "../../db.js";
 import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
 import { z } from "zod";
-import { saldoProduto, custoVacaDia, custoMedioDaBase, consolidarSaldo, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
+import { saldoProduto, custoVacaDia, custoMedioDaBase, consolidarSaldo, faltasDeSaldo, fmtQuantidade, valorSaidaDaBase, ORIGENS_CUSTO_MEDIO, type BaseCusto, type MovIn } from "./estoque.calc.js";
 import { auditar } from "../financeiro/regras.js";
 import { propriedadePrincipalId, escopoPadraoLeitura } from "../propriedade.js";
 import { resolverCentroSaida } from "./centro.calc.js";
 import { rotuloUnidade } from "./unidades.js";
 
 export class EstoqueError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO" | "SALDO_INSUFICIENTE", m: string) {
     super(m);
   }
 }
@@ -93,6 +93,47 @@ async function filtroTemEstoque(propriedadeId: number | null): Promise<Prisma.Mo
       await filtroSitioCusto(propriedadeId),
     ],
   };
+}
+
+type DbSaldo = Pick<Prisma.TransactionClient, "movimentoEstoque">;
+
+/**
+ * Saldo físico atual por produto num sítio (Σ ENTRADA + Σ AJUSTE − Σ SAIDA),
+ * agregado no banco. Mesmo escopo e status de listarSaldos (original estornado
+ * e seu inverso se anulam). Produto sem movimento sai com 0.
+ */
+export async function saldosNoSitio(db: DbSaldo, produtoIds: number[], propriedadeId: number | null): Promise<Map<number, Prisma.Decimal>> {
+  const ids = [...new Set(produtoIds)];
+  const saldos = new Map(ids.map((id) => [id, new Prisma.Decimal(0)] as const));
+  if (ids.length === 0) return saldos;
+  const grupos = await db.movimentoEstoque.groupBy({
+    by: ["produtoId", "tipo"],
+    where: { produtoId: { in: ids }, status: statusSaldoEstoque, ...(await filtroSitioCusto(propriedadeId)) },
+    _sum: { quantidade: true },
+  });
+  for (const g of grupos) {
+    const q = g._sum.quantidade ?? new Prisma.Decimal(0);
+    const atual = saldos.get(g.produtoId) ?? new Prisma.Decimal(0);
+    saldos.set(g.produtoId, g.tipo === "SAIDA" ? atual.minus(q) : atual.plus(q));
+  }
+  return saldos;
+}
+
+/**
+ * Trava as linhas dos produtos até o fim da transação (ordem fixa, sem
+ * deadlock entre duas retiradas): duas vendas ou baixas simultâneas do mesmo
+ * produto não leem o mesmo saldo antes de gravar.
+ */
+export async function travarProdutos(tx: Prisma.TransactionClient, produtoIds: number[]) {
+  const ids = [...new Set(produtoIds)].sort((a, b) => a - b);
+  if (ids.length === 0) return;
+  await tx.$queryRaw`SELECT "id" FROM "Produto" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
+}
+
+/** Mensagem única de saldo insuficiente (bloqueio de retirada e aviso de consumo). */
+export function mensagemSaldoInsuficiente(produto: { nome: string; unidade: Parameters<typeof rotuloUnidade>[0] }, saldo: Prisma.Decimal, retirada: Prisma.Decimal.Value) {
+  const un = rotuloUnidade(produto.unidade);
+  return `Saldo insuficiente de ${produto.nome}: há ${fmtQuantidade(saldo)} ${un} neste sítio e são retirados ${fmtQuantidade(retirada)} ${un}.`;
 }
 
 /** Baixas automáticas (dieta, sanidade, aplicação agrícola) só consomem produto que tem estoque no sítio. */
@@ -394,8 +435,14 @@ async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: Movimen
     if (await mesFechado(tx, propriedadeId, data)) throw new EstoqueError("MES_FECHADO", "período financeiro fechado");
     // Baixa manual só de produto que já entrou no estoque do sítio — senão o
     // saldo nasceria negativo de um produto que a fazenda nunca estocou.
-    if (new Prisma.Decimal(input.quantidade).isNegative() && !(await produtoTemEstoque(tx, produto.id, propriedadeId))) {
-      throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
+    if (new Prisma.Decimal(input.quantidade).isNegative()) {
+      if (!(await produtoTemEstoque(tx, produto.id, propriedadeId))) {
+        throw new EstoqueError("VALIDACAO", "Este produto não tem estoque neste sítio — registre uma compra ou um inventário antes de dar baixa");
+      }
+      // Baixa manual é lançamento de escritório: não passa do saldo do sítio.
+      await travarProdutos(tx, [produto.id]);
+      const [falta] = faltasDeSaldo([{ produtoId: produto.id, quantidade: new Prisma.Decimal(input.quantidade).abs() }], await saldosNoSitio(tx, [produto.id], propriedadeId));
+      if (falta) throw new EstoqueError("SALDO_INSUFICIENTE", `${mensagemSaldoInsuficiente(produto, falta.saldo, falta.retirada)} Confira a contagem ou registre antes a entrada que falta.`);
     }
     const centro = centroCustoId != null ? await tx.centroCusto.findUnique({ where: { id: centroCustoId }, select: { nome: true } }) : null;
     const saida = new Prisma.Decimal(input.quantidade).isNegative();

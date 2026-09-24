@@ -163,3 +163,19 @@ describe("OperacaoFinanceiraDetalhe — revisão do cancelamento", () => {
     expect(dialog.getByText(/Banco principal: impacto no saldo \+R\$\s?80,00/)).toBeTruthy();
   });
 });
+
+describe("OperacaoFinanceiraDetalhe — cancelar entrada já consumida", () => {
+  it("a revisão avisa que o saldo vai ficar negativo, sem bloquear o cancelamento", async () => {
+    obterOperacao.mockResolvedValue({
+      ...operacaoComResumo,
+      resumoCancelamento: { ...operacaoComResumo.resumoCancelamento!, estoque: [{ id: 1, produtoId: 1, produtoNome: "Ração", quantidade: "30", unidade: "kg", tipo: "ENTRADA", saldoAtual: "5", saldoAposCancelamento: "-25", ficaNegativo: true }] },
+    });
+    render(<OperacaoFinanceiraDetalhe operacaoId={6} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />);
+    await screen.findByRole("heading", { name: "Compra de ração" });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar operação" }));
+    const dialog = within(screen.getByRole("dialog", { name: "Cancelar operação" }));
+    expect(dialog.getByText(/o saldo neste sítio passa de 5 para -25 kg/)).toBeTruthy();
+    fireEvent.change(dialog.getByLabelText("Motivo do cancelamento"), { target: { value: "Preço errado, vou corrigir" } });
+    expect((dialog.getByRole("button", { name: "Confirmar cancelamento" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
