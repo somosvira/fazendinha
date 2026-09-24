@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listarAnimais).mockResolvedValue(vazio as never);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [categoriaVaca], semCategoria: 0 });
-  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosSaida: [], propriedades: [], lotes: [] } as Catalogos);
+  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
 });
 
 describe("ListaAnimais", () => {

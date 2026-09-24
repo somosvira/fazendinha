@@ -1,16 +1,16 @@
 // Ficha do animal — página cheia no layout de OperacaoFinanceiraDetalhe.tsx:
 // voltar, cabeçalho bg-[#f4f2e9] com brinco + pills, ações no topo, seções em
-// grid (dados, composição, localização, destino, pesagens, saída, auditoria).
+// grid (dados, composição, localização, destino, pesagens, baixa, auditoria).
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
-  buscarAuditoriaAnimal, buscarFichaAnimal, darSaidaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
-  estornarSaidaAnimal, excluirPesagem, listarCategorias, obterCatalogos, RebanhoApiError, removerCategoriaManual,
+  buscarAuditoriaAnimal, buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
+  estornarBaixaAnimal, excluirPesagem, listarCategorias, obterCatalogos, RebanhoApiError, removerCategoriaManual,
 } from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos, EntradaAuditoria, Pesagem } from "../types";
-import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoSaida } from "../lib/rotulos";
+import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloClasseMotivo, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
 import { CategoriaPill, ModalMotivo } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormComposicao } from "../forms/FormComposicao";
@@ -18,7 +18,7 @@ import { FormMovimentar } from "../forms/FormMovimentar";
 import { FormDestino } from "../forms/FormDestino";
 import { FormAlterarCategoria } from "../forms/FormAlterarCategoria";
 import { FormPesagem } from "../forms/FormPesagem";
-import { FormSaida } from "../forms/FormSaida";
+import { FormBaixa } from "../forms/FormBaixa";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, Panel, Pill } from "../../../financeiro/financeiro-ui";
@@ -54,8 +54,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   const [alterandoCategoria, setAlterandoCategoria] = useState(false);
   const [voltandoAutomatico, setVoltandoAutomatico] = useState(false);
   const [pesagemForm, setPesagemForm] = useState<{ modo: "novo" } | { modo: "editar"; pesagem: Pesagem } | null>(null);
-  const [dandoSaida, setDandoSaida] = useState(false);
-  const [estornandoSaida, setEstornandoSaida] = useState(false);
+  const [dandoBaixa, setDandoBaixa] = useState(false);
+  const [estornandoBaixa, setEstornandoBaixa] = useState(false);
   const [excluindoCadastro, setExcluindoCadastro] = useState(false);
   const [desfazendoLocalizacao, setDesfazendoLocalizacao] = useState(false);
   const [desfazendoDestino, setDesfazendoDestino] = useState(false);
@@ -129,9 +129,9 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             <Button secondary onClick={() => setAlterandoCategoria(true)}>Alterar categoria</Button>
             {animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => { setErroAcao(null); setVoltandoAutomatico(true); }}>Voltar ao automático</Button>}
             <Button secondary onClick={() => setPesagemForm({ modo: "novo" })}>Registrar pesagem</Button>
-            <Button danger onClick={() => setDandoSaida(true)}>Dar saída</Button>
+            <Button danger onClick={() => setDandoBaixa(true)}>Dar baixa</Button>
             <Button danger onClick={() => setExcluindoCadastro(true)}>Excluir cadastro</Button>
-          </> : <Button onClick={() => { setErroAcao(null); setEstornandoSaida(true); }}>Estornar saída</Button>}
+          </> : <Button onClick={() => { setErroAcao(null); setEstornandoBaixa(true); }}>Estornar baixa</Button>}
         </div>}
       </div>
 
@@ -179,8 +179,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       </section>
 
       <section className="border-t border-border p-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Saída</h2>
-        {animal.saida ? <div className="mt-4 space-y-1 text-sm"><p><strong>{rotuloTipoSaida(animal.saida.tipo)}</strong> em {formatarDataBR(animal.saida.data)}{animal.saida.motivo ? ` · ${animal.saida.motivo}` : ""}</p>{animal.saida.observacao && <p className="text-ink-3">{animal.saida.observacao}</p>}{animal.saida.estornadaEm && <p className="text-ink-3">Estornada em {formatarDataBR(animal.saida.estornadaEm)}{animal.saida.estornoMotivo ? ` · ${animal.saida.estornoMotivo}` : ""}</p>}</div> : <p className="mt-4 text-sm text-ink-3">Nenhuma saída registrada.</p>}
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Baixa</h2>
+        {animal.baixa ? <div className="mt-4 space-y-1 text-sm"><p><strong>{rotuloTipoBaixa(animal.baixa.tipo)}</strong> em {formatarDataBR(animal.baixa.data)}{animal.baixa.motivo ? ` · ${animal.baixa.motivo.nome} (${rotuloClasseMotivo(animal.baixa.motivo.classe).toLowerCase()})` : ""}</p>{animal.baixa.observacao && <p className="text-ink-3">{animal.baixa.observacao}</p>}{animal.baixa.estornadaEm && <p className="text-ink-3">Estornada em {formatarDataBR(animal.baixa.estornadaEm)}{animal.baixa.estornoMotivo ? ` · ${animal.baixa.estornoMotivo}` : ""}</p>}</div> : <p className="mt-4 text-sm text-ink-3">Nenhuma baixa registrada.</p>}
       </section>
 
       <section className="border-t border-border p-6">
@@ -200,11 +200,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
       onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setAlterandoCategoria(false); }}
     />}
     {pesagemForm && <FormPesagem animalId={animal.id} pesagem={pesagemForm.modo === "editar" ? pesagemForm.pesagem : null} onFechar={() => setPesagemForm(null)} onSalvo={async () => { setPesagemForm(null); await carregar(); }} />}
-    {dandoSaida && catalogos && <FormSaida animal={animal} motivos={catalogos.motivosSaida} onFechar={() => setDandoSaida(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setDandoSaida(false); }} />}
+    {dandoBaixa && catalogos && <FormBaixa animal={animal} motivos={catalogos.motivosBaixa} onFechar={() => setDandoBaixa(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setDandoBaixa(false); }} />}
 
     {voltandoAutomatico && <ModalMotivo titulo="Voltar ao automático" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal passa a ser {animal.categoriaCalculada?.nome ?? "Sem categoria"} pelo cálculo.</p>} labelManter="Manter categoria" labelConfirmar="Confirmar" confirmando={emAcao} erro={erroAcao} onFechar={() => setVoltandoAutomatico(false)} onConfirmar={(motivo) => { void executar(() => removerCategoriaManual(animal.id, { motivo }), () => setVoltandoAutomatico(false)); }} />}
-    {estornandoSaida && <ModalMotivo titulo="Estornar saída" eyebrow={`Animal ${animal.brinco}`} labelManter="Manter saída" labelConfirmar="Confirmar estorno" confirmando={emAcao} erro={erroAcao} onFechar={() => setEstornandoSaida(false)} onConfirmar={(motivo) => { void executar(() => estornarSaidaAnimal(animal.id, { motivo }), () => setEstornandoSaida(false)); }} />}
-    {excluindoCadastro && <ModalMotivo titulo="Excluir cadastro" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal receberá uma saída do tipo "Cadastro indevido" e deixará de contar como ativo. Esta ação pode ser estornada depois, reabrindo o cadastro.</p>} labelManter="Manter cadastro" labelConfirmar="Excluir cadastro" confirmando={emAcao} erro={erroAcao} onFechar={() => setExcluindoCadastro(false)} onConfirmar={(motivo) => { void executar(() => darSaidaAnimal(animal.id, { data: hoje(), tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: motivo }), () => setExcluindoCadastro(false)); }} />}
+    {estornandoBaixa && <ModalMotivo titulo="Estornar baixa" eyebrow={`Animal ${animal.brinco}`} labelManter="Manter baixa" labelConfirmar="Confirmar estorno" confirmando={emAcao} erro={erroAcao} onFechar={() => setEstornandoBaixa(false)} onConfirmar={(motivo) => { void executar(() => estornarBaixaAnimal(animal.id, { motivo }), () => setEstornandoBaixa(false)); }} />}
+    {excluindoCadastro && <ModalMotivo titulo="Excluir cadastro" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal receberá uma baixa do tipo "Cadastro indevido" e deixará de contar como ativo. Esta ação pode ser estornada depois, reabrindo o cadastro.</p>} labelManter="Manter cadastro" labelConfirmar="Excluir cadastro" confirmando={emAcao} erro={erroAcao} onFechar={() => setExcluindoCadastro(false)} onConfirmar={(motivo) => { void executar(() => darBaixaAnimal(animal.id, { data: hoje(), tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: motivo }), () => setExcluindoCadastro(false)); }} />}
 
     <ConfirmDialog open={desfazendoLocalizacao} title="Desfazer última movimentação?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>A localização atual será removida e a anterior será reaberta.</p></>} confirmLabel="Desfazer movimentação" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setDesfazendoLocalizacao(false)} onConfirm={() => { void executar(() => desfazerLocalizacaoAnimal(animal.id), () => setDesfazendoLocalizacao(false)); }} />
     <ConfirmDialog open={desfazendoDestino} title="Desfazer última mudança de destino?" message={<>{erroAcao && <p className="mb-2 text-red-700">{erroAcao}</p>}<p>O destino atual será removido e o anterior será reaberto.</p></>} confirmLabel="Desfazer mudança" cancelLabel="Manter" tone="danger" processando={emAcao} onCancel={() => setDesfazendoDestino(false)} onConfirm={() => { void executar(() => desfazerDestinoAnimal(animal.id), () => setDesfazendoDestino(false)); }} />

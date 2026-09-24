@@ -89,7 +89,7 @@ export function Metric({ label, valor, detalhe, icon: Icon, tone = "default" }: 
  * opcional. Os botões param a propagação para não disparar o `onAbrir` da
  * linha (que também abre a edição). Compartilhada por todos os cadastros no
  * padrão Financeiro (contas, parceiros, categorias, centros de custo e, na
- * Pecuária, lotes/raças/motivos de saída). */
+ * Pecuária, lotes/raças/motivos de baixa). */
 export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDescer, podeSubir = false, podeDescer = false }: { nome: string; ativo: boolean; onEditar: () => void; onAlternar: () => void; onSubir?: () => void; onDescer?: () => void; podeSubir?: boolean; podeDescer?: boolean }) {
   const parar = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   const cls = "rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink";

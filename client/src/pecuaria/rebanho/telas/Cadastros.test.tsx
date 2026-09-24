@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";
 import {
-  criarCategoria, criarRaca, editarMotivoSaida, editarRaca, listarCategorias, listarMotivosSaida, listarRacas,
+  criarCategoria, criarMotivoBaixa, criarRaca, editarMotivoBaixa, editarRaca, listarCategorias, listarMotivosBaixa, listarRacas,
   reordenarCategorias, restaurarPadroesCategorias, simularCategorias,
 } from "../api";
-import type { CategoriaDTO, Raca } from "../types";
+import type { CategoriaDTO, MotivoBaixa, Raca } from "../types";
 
 /* Mantém RebanhoApiError real (os forms usam instanceof) e substitui só as chamadas. */
 vi.mock("../api", async (importOriginal) => ({
@@ -14,9 +14,9 @@ vi.mock("../api", async (importOriginal) => ({
   listarRacas: vi.fn(),
   criarRaca: vi.fn(),
   editarRaca: vi.fn(),
-  listarMotivosSaida: vi.fn(),
-  criarMotivoSaida: vi.fn(),
-  editarMotivoSaida: vi.fn(),
+  listarMotivosBaixa: vi.fn(),
+  criarMotivoBaixa: vi.fn(),
+  editarMotivoBaixa: vi.fn(),
   listarCategorias: vi.fn(),
   criarCategoria: vi.fn(),
   editarCategoria: vi.fn(),
@@ -28,6 +28,12 @@ vi.mock("../api", async (importOriginal) => ({
 const racasMock: Raca[] = [
   { id: "r1", nome: "Holandesa", sigla: "HOL", base: true, ativo: true },
   { id: "r2", nome: "Gir", sigla: "GIR", base: false, ativo: false },
+];
+
+const motivosMock: MotivoBaixa[] = [
+  { id: "m1", nome: "Morte por doença", classe: "MORTE", ativo: true },
+  { id: "m2", nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO", ativo: true },
+  { id: "m3", nome: "Problema locomotor", classe: "DESCARTE_INVOLUNTARIO", ativo: false },
 ];
 
 const categoriasMock: CategoriaDTO[] = [
@@ -45,7 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(listarRacas).mockResolvedValue(racasMock);
-  vi.mocked(listarMotivosSaida).mockResolvedValue([]);
+  vi.mocked(listarMotivosBaixa).mockResolvedValue([]);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: categoriasMock, semCategoria: 0 });
   vi.mocked(simularCategorias).mockResolvedValue({ afetados: 0, mudancas: [], semCategoria: 0 });
   vi.mocked(editarRaca).mockImplementation((id, patch) => Promise.resolve({ ...racasMock.find((r) => r.id === id)!, ...patch }));
@@ -62,6 +68,14 @@ async function montarRacas() {
   await screen.findAllByText("Vaca");
   fireEvent.click(screen.getByRole("button", { name: "Raças" }));
   await screen.findAllByText("Holandesa");
+}
+
+async function montarMotivos() {
+  vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
+  render(<Cadastros />);
+  await screen.findAllByText("Vaca");
+  fireEvent.click(screen.getByRole("button", { name: "Motivos de baixa" }));
+  await screen.findAllByText("Morte por doença");
 }
 
 describe("Cadastros do rebanho — categorias", () => {
@@ -213,5 +227,52 @@ describe("Cadastros do rebanho — raças", () => {
     expect(await screen.findByRole("heading", { name: "Desativar Holandesa?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     await waitFor(() => expect(editarRaca).toHaveBeenCalledWith("r1", { ativo: false }));
+  });
+});
+
+describe("Cadastros do rebanho — motivos de baixa", () => {
+  it("lista motivos com a classe traduzida, ordenados por classe (voluntário, involuntário, morte) e depois nome", async () => {
+    await montarMotivos();
+    const tabela = screen.getByRole("table", { name: "Motivos de baixa" });
+    const linhas = within(tabela).getAllByRole("row").slice(1); // pula o cabeçalho
+    expect(linhas.map((linha) => within(linha).getByText(/Baixa produção|Problema locomotor|Morte por doença/).textContent)).toEqual([
+      "Baixa produção", "Problema locomotor", "Morte por doença",
+    ]);
+    const linhaVoluntario = within(tabela).getByText("Baixa produção").closest("tr")!;
+    expect(within(linhaVoluntario).getByText("Descarte voluntário")).toBeTruthy();
+    const linhaMorte = within(tabela).getByText("Morte por doença").closest("tr")!;
+    expect(within(linhaMorte).getByText("Morte")).toBeTruthy();
+    expect(within(within(tabela).getByText("Problema locomotor").closest("tr")!).getByText("Inativo")).toBeTruthy();
+  });
+
+  it("cria motivo de baixa enviando nome e classe", async () => {
+    vi.mocked(criarMotivoBaixa).mockResolvedValue(motivosMock[0]);
+    await montarMotivos();
+    fireEvent.click(screen.getByRole("button", { name: /Novo motivo de baixa/ }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Nome do motivo"), { target: { value: "Idade avançada" } });
+    fireEvent.change(within(painel).getByLabelText("Classe"), { target: { value: "DESCARTE_INVOLUNTARIO" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar motivo" }));
+    await waitFor(() => expect(criarMotivoBaixa).toHaveBeenCalledWith({ nome: "Idade avançada", classe: "DESCARTE_INVOLUNTARIO" }));
+  });
+
+  it("editar carrega o nome e a classe atuais do motivo", async () => {
+    await montarMotivos();
+    fireEvent.click(primeiro("button", "Editar Morte por doença"));
+    const painel = await screen.findByRole("dialog");
+    expect((within(painel).getByLabelText("Classe") as HTMLSelectElement).value).toBe("MORTE");
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar motivo" }));
+    await waitFor(() => expect(editarMotivoBaixa).toHaveBeenCalledWith("m1", { nome: "Morte por doença", classe: "MORTE" }));
+  });
+
+  it("desativar pede confirmação e reativar não", async () => {
+    await montarMotivos();
+    fireEvent.click(primeiro("button", "Reativar Problema locomotor"));
+    await waitFor(() => expect(editarMotivoBaixa).toHaveBeenCalledWith("m3", { ativo: true }));
+
+    fireEvent.click(primeiro("button", "Desativar Baixa produção"));
+    expect(await screen.findByRole("heading", { name: "Desativar Baixa produção?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
+    await waitFor(() => expect(editarMotivoBaixa).toHaveBeenCalledWith("m2", { ativo: false }));
   });
 });

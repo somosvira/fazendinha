@@ -1,16 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSexo, rotuloSituacao, rotuloTipoSaida } from "./rotulos";
+import { formatarDataBR, formatarIdade, motivoAceito, rotuloAptidao, rotuloClasseMotivo, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSexo, rotuloSituacao, rotuloTipoBaixa } from "./rotulos";
 
 describe("rotulos", () => {
-  it("traduz aptidão, papel reprodutivo, situação e tipo de saída", () => {
+  it("traduz aptidão, papel reprodutivo, situação e tipo de baixa", () => {
     expect(rotuloAptidao("LEITE")).toBe("Leite");
     expect(rotuloAptidao(null)).toBe("—");
     expect(rotuloPapelReprodutivo("RECEPTORA")).toBe("Receptora");
     expect(rotuloPapelReprodutivo("NENHUM")).toBe("—");
     expect(rotuloPapelReprodutivo(null)).toBe("—");
     expect(rotuloSituacao("ATIVO")).toBe("Ativo");
-    expect(rotuloTipoSaida("VENDA")).toBe("Venda");
-    expect(rotuloTipoSaida("DESCONHECIDO")).toBe("DESCONHECIDO");
+    expect(rotuloSituacao("BAIXADO")).toBe("Baixado");
+    expect(rotuloTipoBaixa("VENDA")).toBe("Venda");
+    expect(rotuloTipoBaixa("DESCONHECIDO")).toBe("DESCONHECIDO");
+    expect(rotuloClasseMotivo("DESCARTE_VOLUNTARIO")).toBe("Descarte voluntário");
+    expect(rotuloClasseMotivo("DESCARTE_INVOLUNTARIO")).toBe("Descarte involuntário");
+    expect(rotuloClasseMotivo("MORTE")).toBe("Morte");
+  });
+
+  it("motivoAceito segue CLASSES_POR_TIPO: descarte para venda/abate/doação, morte só para morte, nenhum para extravio/cadastro indevido", () => {
+    expect(motivoAceito("VENDA", "DESCARTE_VOLUNTARIO")).toBe(true);
+    expect(motivoAceito("VENDA", "DESCARTE_INVOLUNTARIO")).toBe(true);
+    expect(motivoAceito("VENDA", "MORTE")).toBe(false);
+    expect(motivoAceito("ABATE", "DESCARTE_VOLUNTARIO")).toBe(true);
+    expect(motivoAceito("DOACAO", "DESCARTE_INVOLUNTARIO")).toBe(true);
+    expect(motivoAceito("MORTE", "MORTE")).toBe(true);
+    expect(motivoAceito("MORTE", "DESCARTE_VOLUNTARIO")).toBe(false);
+    expect(motivoAceito("EXTRAVIO", "DESCARTE_VOLUNTARIO")).toBe(false);
+    expect(motivoAceito("CADASTRO_INDEVIDO", "MORTE")).toBe(false);
   });
 
   it("formata idade em anos e meses", () => {

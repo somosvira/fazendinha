@@ -4,22 +4,23 @@
 import { comPropriedade } from "../../propriedadeScope";
 import type {
   AnimalFicha,
+  BaixaInput,
   CadastrarAnimalInput,
   Catalogos,
   CategoriaRef,
   CriarCategoriaInput,
   CriarLoteInput,
-  CriarMotivoSaidaInput,
+  CriarMotivoBaixaInput,
   CriarRacaInput,
   DefinirCategoriaManualInput,
   EditarAnimalInput,
   EditarCategoriaInput,
   EditarLoteInput,
-  EditarMotivoSaidaInput,
+  EditarMotivoBaixaInput,
   EditarPesagemInput,
   EditarRacaInput,
   EntradaAuditoria,
-  EstornoSaidaInput,
+  EstornoBaixaInput,
   FiltrosMovimentacoes,
   ItemComposicao,
   ListarCategoriasResultado,
@@ -27,7 +28,7 @@ import type {
   ListarMovimentacoesResultado,
   ListarResultado,
   Lote,
-  MotivoSaida,
+  MotivoBaixa,
   MovimentacaoDetalhe,
   MovimentarInput,
   MudarDestinoInput,
@@ -38,7 +39,6 @@ import type {
   RegraCategoriaProposta,
   RemoverCategoriaManualInput,
   ResultadoSimulacaoCategorias,
-  SaidaInput,
   SubstituirComposicaoInput,
 } from "./types";
 
@@ -107,11 +107,11 @@ export const desfazerLocalizacaoAnimal = (id: string) =>
 export const desfazerDestinoAnimal = (id: string) =>
   req<AnimalFicha>(`/animais/${id}/destino/desfazer`, { method: "POST" });
 
-export const darSaidaAnimal = (id: string, input: SaidaInput) =>
-  req<AnimalFicha>(`/animais/${id}/saida`, { method: "POST", body: JSON.stringify(input) });
+export const darBaixaAnimal = (id: string, input: BaixaInput) =>
+  req<AnimalFicha>(`/animais/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
 
-export const estornarSaidaAnimal = (id: string, input: EstornoSaidaInput) =>
-  req<AnimalFicha>(`/animais/${id}/saida/estorno`, { method: "POST", body: JSON.stringify(input) });
+export const estornarBaixaAnimal = (id: string, input: EstornoBaixaInput) =>
+  req<AnimalFicha>(`/animais/${id}/baixa/estorno`, { method: "POST", body: JSON.stringify(input) });
 
 // ---------- categoria manual do animal (vale sobre o cálculo até ser removida) ----------
 
@@ -170,16 +170,16 @@ export const criarRaca = (input: CriarRacaInput) => req<Raca>("/racas", { method
 export const editarRaca = (id: string, input: EditarRacaInput) =>
   req<Raca>(`/racas/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 
-// ---------- motivos de saída ----------
+// ---------- motivos de baixa ----------
 
-export const listarMotivosSaida = (opts?: { incluirInativos?: boolean }) =>
-  req<MotivoSaida[]>(comIncluirInativos("/motivos-saida", opts?.incluirInativos));
+export const listarMotivosBaixa = (opts?: { incluirInativos?: boolean }) =>
+  req<MotivoBaixa[]>(comIncluirInativos("/motivos-baixa", opts?.incluirInativos));
 
-export const criarMotivoSaida = (input: CriarMotivoSaidaInput) =>
-  req<MotivoSaida>("/motivos-saida", { method: "POST", body: JSON.stringify(input) });
+export const criarMotivoBaixa = (input: CriarMotivoBaixaInput) =>
+  req<MotivoBaixa>("/motivos-baixa", { method: "POST", body: JSON.stringify(input) });
 
-export const editarMotivoSaida = (id: string, input: EditarMotivoSaidaInput) =>
-  req<MotivoSaida>(`/motivos-saida/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const editarMotivoBaixa = (id: string, input: EditarMotivoBaixaInput) =>
+  req<MotivoBaixa>(`/motivos-baixa/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 
 // ---------- categorias configuráveis (Cadastros > Categorias) ----------
 

@@ -38,7 +38,7 @@ const lotesMock: Lote[] = [
 const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(role, { name })[0];
 
 const catalogosMock: Catalogos = {
-  racas: [], motivosSaida: [],
+  racas: [], motivosBaixa: [],
   propriedades: [{ id: 1, nome: "Sede", apelido: null }],
   lotes: [{ id: "l1", nome: "Lote 1", propriedadeId: 1 }, { id: "l2", nome: "Lote 2", propriedadeId: 1 }],
 };

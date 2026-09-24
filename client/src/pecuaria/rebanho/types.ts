@@ -8,8 +8,9 @@ export type CategoriaOrigem = "AUTOMATICA" | "MANUAL" | "SEM_CATEGORIA";
 export type Aptidao = "LEITE" | "CORTE";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
-export type Situacao = "ATIVO" | "SAIU";
-export type TipoSaida = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "CADASTRO_INDEVIDO" | "OUTRO";
+export type Situacao = "ATIVO" | "BAIXADO";
+export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "CADASTRO_INDEVIDO";
+export type ClasseMotivoBaixa = "DESCARTE_VOLUNTARIO" | "DESCARTE_INVOLUNTARIO" | "MORTE";
 export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA";
 export type OrigemPesagem = "MANUAL" | "BALANCA";
 
@@ -67,18 +68,18 @@ export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo:
 /** Item de `historicoCategoriasManuais` na ficha — mais recente primeiro. */
 export type HistoricoCategoriaManual = { id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null };
 
-export type SaidaAnimalResumo = {
+export type BaixaAnimalResumo = {
   id: string;
   data: string;
-  tipo: string;
-  motivo: string | null;
+  tipo: TipoBaixa;
+  motivo: { nome: string; classe: ClasseMotivoBaixa } | null;
   observacao: string | null;
   estornadaEm: string | null;
   estornoMotivo: string | null;
 };
 
 /** Ficha completa do animal — é o que a API devolve em toda escrita sobre um
- *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, saída,
+ *  animal (cadastrar, editar, movimentar, mudar destino, desfazer, baixa,
  *  estorno), não só em GET /animais/:id. */
 export type AnimalFicha = AnimalResumo & {
   brincoEletronico: string | null;
@@ -92,7 +93,7 @@ export type AnimalFicha = AnimalResumo & {
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];
-  saida: SaidaAnimalResumo | null;
+  baixa: BaixaAnimalResumo | null;
 };
 
 export type ComposicaoItemInput = { racaId: string; fracao64: number };
@@ -150,14 +151,14 @@ export type MudarDestinoInput = {
   data: string;
 };
 
-export type SaidaInput = {
+export type BaixaInput = {
   data: string;
-  tipo: TipoSaida;
+  tipo: TipoBaixa;
   motivoId?: string | null;
   observacao?: string | null;
 };
 
-export type EstornoSaidaInput = { motivo: string };
+export type EstornoBaixaInput = { motivo: string };
 
 export type PesagemInput = {
   data: string;
@@ -290,34 +291,34 @@ export type Raca = { id: string; nome: string; sigla: string; base: boolean; ati
 export type CriarRacaInput = { nome: string; sigla: string; base?: boolean };
 export type EditarRacaInput = Partial<{ nome: string; sigla: string; base: boolean; ativo: boolean }>;
 
-export type MotivoSaida = { id: string; nome: string; tipo: TipoSaida; ativo: boolean };
-export type CriarMotivoSaidaInput = { nome: string; tipo: TipoSaida };
-export type EditarMotivoSaidaInput = Partial<{ nome: string; tipo: TipoSaida; ativo: boolean }>;
+export type MotivoBaixa = { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean };
+export type CriarMotivoBaixaInput = { nome: string; classe: ClasseMotivoBaixa };
+export type EditarMotivoBaixaInput = Partial<{ nome: string; classe: ClasseMotivoBaixa; ativo: boolean }>;
 
 export type Propriedade = { id: number; nome: string; apelido: string | null };
 
 /** GET /pecuaria/rebanho/catalogos — listas leves (só ativos) para preencher
- *  selects; não confundir com as listagens de cadastro (Raca/MotivoSaida/Lote
+ *  selects; não confundir com as listagens de cadastro (Raca/MotivoBaixa/Lote
  *  acima), que trazem `ativo` e servem à tela de Cadastros. */
 export type CatalogoRaca = { id: string; nome: string; sigla: string; base: boolean };
-export type CatalogoMotivoSaida = { id: string; nome: string; tipo: TipoSaida };
+export type CatalogoMotivoBaixa = { id: string; nome: string; classe: ClasseMotivoBaixa };
 export type CatalogoLote = { id: string; nome: string; propriedadeId: number };
 export type Catalogos = {
   racas: CatalogoRaca[];
-  motivosSaida: CatalogoMotivoSaida[];
+  motivosBaixa: CatalogoMotivoBaixa[];
   propriedades: Propriedade[];
   lotes: CatalogoLote[];
 };
 
 /** GET /pecuaria/rebanho/painel — números da Visão geral. */
-export type EventoPainel = { tipo: "CADASTRO" | "SAIDA" | "ESTORNO"; animalId: string; brinco: string; data: string };
+export type EventoPainel = { tipo: "CADASTRO" | "BAIXA" | "ESTORNO"; animalId: string; brinco: string; data: string };
 export type PainelGeral = {
   ativos: number;
   /** `categoriaId` nulo = "Sem categoria" */
   porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
   porSitio: Array<{ propriedadeId: number | null; nome: string; qtd: number }>;
   receptorasPct: number;
-  saidas30d: number;
+  baixas30d: number;
   ultimosEventos: EventoPainel[];
 };
 

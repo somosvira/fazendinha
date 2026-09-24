@@ -1,5 +1,5 @@
 // Rótulos PT-BR e formatação pura para a UI do rebanho. Sem I/O.
-import type { Aptidao, CategoriaDTO, PapelReprodutivo, Situacao, TipoSaida } from "../types";
+import type { Aptidao, CategoriaDTO, ClasseMotivoBaixa, PapelReprodutivo, Situacao, TipoBaixa } from "../types";
 
 export const ROTULO_APTIDAO: Record<Aptidao, string> = {
   LEITE: "Leite",
@@ -14,17 +14,41 @@ export const ROTULO_PAPEL_REPRODUTIVO: Record<PapelReprodutivo, string> = {
 
 export const ROTULO_SITUACAO: Record<Situacao, string> = {
   ATIVO: "Ativo",
-  SAIU: "Saiu",
+  BAIXADO: "Baixado",
 };
 
-export const ROTULO_TIPO_SAIDA: Record<TipoSaida, string> = {
+export const ROTULO_TIPO_BAIXA: Record<TipoBaixa, string> = {
   VENDA: "Venda",
   ABATE: "Abate",
   MORTE: "Morte",
   DOACAO: "Doação",
+  EXTRAVIO: "Extravio",
   CADASTRO_INDEVIDO: "Cadastro indevido",
-  OUTRO: "Outro",
 };
+
+export const ROTULO_CLASSE_MOTIVO: Record<ClasseMotivoBaixa, string> = {
+  DESCARTE_VOLUNTARIO: "Descarte voluntário",
+  DESCARTE_INVOLUNTARIO: "Descarte involuntário",
+  MORTE: "Morte",
+};
+
+/** Classes de motivo aceitas por cada tipo de baixa — espelha
+ *  server/src/services/pecuaria/rebanho/motivos.ts. VENDA/ABATE/DOACAO aceitam
+ *  descarte (voluntário ou involuntário); MORTE só aceita motivos de morte;
+ *  EXTRAVIO e CADASTRO_INDEVIDO não têm motivo de catálogo. */
+export const CLASSES_POR_TIPO: Record<TipoBaixa, ClasseMotivoBaixa[]> = {
+  VENDA: ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO"],
+  ABATE: ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO"],
+  DOACAO: ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO"],
+  MORTE: ["MORTE"],
+  EXTRAVIO: [],
+  CADASTRO_INDEVIDO: [],
+};
+
+/** Um motivo da classe `classe` pode ser escolhido para uma baixa do tipo `tipo`? */
+export function motivoAceito(tipo: TipoBaixa, classe: ClasseMotivoBaixa): boolean {
+  return CLASSES_POR_TIPO[tipo].includes(classe);
+}
 
 export function rotuloAptidao(a: Aptidao | null): string {
   return a ? ROTULO_APTIDAO[a] ?? a : "—";
@@ -35,8 +59,11 @@ export function rotuloPapelReprodutivo(p: PapelReprodutivo | null): string {
 export function rotuloSituacao(s: Situacao): string {
   return ROTULO_SITUACAO[s] ?? s;
 }
-export function rotuloTipoSaida(t: string): string {
-  return (ROTULO_TIPO_SAIDA as Record<string, string>)[t] ?? t;
+export function rotuloTipoBaixa(t: string): string {
+  return (ROTULO_TIPO_BAIXA as Record<string, string>)[t] ?? t;
+}
+export function rotuloClasseMotivo(c: string): string {
+  return (ROTULO_CLASSE_MOTIVO as Record<string, string>)[c] ?? c;
 }
 export function rotuloSexo(s: "F" | "M"): string {
   return s === "F" ? "Fêmea" : "Macho";

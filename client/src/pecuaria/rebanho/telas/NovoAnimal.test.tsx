@@ -23,7 +23,7 @@ vi.mock("../../../propriedadeScope", async (importOriginal) => ({
 
 const catalogos: Catalogos = {
   racas: [{ id: "raca-1", nome: "Nelore", sigla: "NE", base: true }],
-  motivosSaida: [],
+  motivosBaixa: [],
   propriedades: [{ id: 1, nome: "Sede", apelido: null }],
   lotes: [{ id: "lote-1", nome: "Lote A", propriedadeId: 1 }],
 };
@@ -68,7 +68,7 @@ describe("NovoAnimal", () => {
       dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
       lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
       brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,
-      composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [], saida: null,
+      composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
     });
     await montar();
     fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "1234" } });

@@ -1,6 +1,6 @@
 // Visão geral do Rebanho — GET /pecuaria/rebanho/painel. Métricas, "Por
 // categoria"/"Por sítio" (listas divide-y com barra proporcional) e "Últimos
-// cadastros e saídas", no padrão de VisaoGeralFinanceira.tsx.
+// cadastros e baixas", no padrão de VisaoGeralFinanceira.tsx.
 
 import { useEffect, useState } from "react";
 import { ChevronRight, MapPin, Plus, TrendingDown, Users } from "lucide-react";
@@ -14,7 +14,7 @@ import { NavRebanho } from "./NavRebanho";
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
 const URL_NOVO_ANIMAL = "/pecuaria/rebanho/animais/novo";
 
-const ROTULO_EVENTO: Record<string, string> = { CADASTRO: "Cadastro", SAIDA: "Saída", ESTORNO: "Estorno de saída" };
+const ROTULO_EVENTO: Record<string, string> = { CADASTRO: "Cadastro", BAIXA: "Baixa", ESTORNO: "Estorno de baixa" };
 
 function BarraProporcional({ valor, maximo }: { valor: number; maximo: number }) {
   const pct = maximo > 0 ? Math.round((valor / maximo) * 100) : 0;
@@ -49,7 +49,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
         <Metric label="Animais ativos" valor={painel.ativos.toLocaleString("pt-BR")} detalhe="Efetivo atual do rebanho" icon={Users} />
         <Metric label="Receptoras" valor={`${painel.receptorasPct.toLocaleString("pt-BR")}%`} detalhe="Das fêmeas ativas" icon={Users} />
         <Metric label="Sítios com animais" valor={String(painel.porSitio.length)} detalhe="Sítios com pelo menos um animal ativo" icon={MapPin} />
-        <Metric label="Saídas em 30 dias" valor={String(painel.saidas30d)} detalhe="Vendas, abates, mortes e demais saídas" icon={TrendingDown} />
+        <Metric label="Baixas em 30 dias" valor={String(painel.baixas30d)} detalhe="Vendas, abates, mortes e demais baixas" icon={TrendingDown} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -64,7 +64,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
       </div>
 
       <Panel className="mt-6 overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Últimos cadastros e saídas</h2><button onClick={() => navegarPara(URL_ANIMAIS)} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div>
+        <div className="flex items-center justify-between gap-3 border-b border-border p-5"><h2 className="font-serif text-xl">Últimos cadastros e baixas</h2><button onClick={() => navegarPara(URL_ANIMAIS)} className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-green-800">Ver todos <ChevronRight size={15} /></button></div>
         {painel.ultimosEventos.length ? <div className="divide-y divide-border">{painel.ultimosEventos.map((evento, indice) => <button key={`${evento.animalId}-${indice}`} onClick={() => navegarPara(`${URL_ANIMAIS}/${evento.animalId}`)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-2"><div className="min-w-0"><strong className="break-words">{evento.brinco}</strong><div className="mt-1 text-xs text-ink-3">{ROTULO_EVENTO[evento.tipo] ?? evento.tipo}</div></div><span className="shrink-0 text-xs text-ink-3">{formatarDataBR(evento.data)}</span></button>)}</div> : <Empty>Nenhum evento recente.</Empty>}
       </Panel>
     </>}

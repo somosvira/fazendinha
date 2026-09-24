@@ -65,7 +65,7 @@ export function Paginacao({ paginaAtual, totalPaginas, totalItens, itensPorPagin
 /** Sub-abas sublinhadas genéricas — mesmo visual das abas de Configurações
  *  financeiras e da navegação principal do Rebanho (`NavRebanho`), mas
  *  parametrizadas para uso local dentro de uma tela (ex.: Lotes · Raças ·
- *  Motivos de saída em Cadastros). */
+ *  Motivos de baixa em Cadastros). */
 export function SubAbas<T extends string>({ abas, ativa, onSelecionar }: {
   abas: { valor: T; rotulo: string; icon?: LucideIcon }[];
   ativa: T;
@@ -117,8 +117,8 @@ export function CampoComposicao({ racas, itens, onChange, erro }: {
 
 /** Modal de ação irreversível com motivo obrigatório (>= 5 caracteres) — mesmo
  *  padrão do estorno em OperacaoFinanceiraDetalhe.tsx: caixa de impacto (op.),
- *  textarea de motivo e botões Manter/Confirmar. Usado em saída, estorno de
- *  saída e "excluir cadastro" do animal. */
+ *  textarea de motivo e botões Manter/Confirmar. Usado em baixa, estorno de
+ *  baixa e "excluir cadastro" do animal. */
 export function ModalMotivo({ titulo, eyebrow, impacto, labelMotivo = "Motivo", labelManter, labelConfirmar, confirmando, erro, onConfirmar, onFechar }: {
   titulo: string;
   eyebrow: string;

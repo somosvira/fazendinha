@@ -13,7 +13,7 @@ vi.mock("../api", async (importOriginal) => ({
 
 const catalogos: Catalogos = {
   racas: [],
-  motivosSaida: [],
+  motivosBaixa: [],
   propriedades: [{ id: 1, nome: "Sede", apelido: null }],
   lotes: [{ id: "lote-1", nome: "Lote A", propriedadeId: 1 }, { id: "lote-2", nome: "Lote B", propriedadeId: 1 }],
 };

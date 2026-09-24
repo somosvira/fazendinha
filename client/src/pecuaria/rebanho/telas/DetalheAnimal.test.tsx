@@ -26,7 +26,7 @@ afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(buscarAuditoriaAnimal).mockResolvedValue([]);
-  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosSaida: [], propriedades: [], lotes: [] } as Catalogos);
+  vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: categoriasMock, semCategoria: 0 });
 });
 
@@ -37,7 +37,7 @@ const base: AnimalFicha = {
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 1, observacao: null,
   composicao: [], historicoLocalizacoes: [{ id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null }],
   historicoDestinos: [{ id: "dest-1", aptidao: "LEITE", papelReprodutivo: "RECEPTORA", desde: "2022-01-01", ate: null }],
-  historicoPesagens: [], historicoCategoriasManuais: [], saida: null,
+  historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
 };
 
 async function montar(animal: AnimalFicha) {
@@ -49,20 +49,30 @@ async function montar(animal: AnimalFicha) {
 describe("DetalheAnimal — ações conforme situação", () => {
   it("animal ativo mostra todas as ações de edição e não mostra estornar", async () => {
     await montar(base);
-    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar saída", "Excluir cadastro"]) {
+    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
       expect(screen.getByRole("button", { name: nome })).toBeTruthy();
     }
-    expect(screen.queryByRole("button", { name: "Estornar saída" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Estornar baixa" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Voltar ao automático" })).toBeNull();
   });
 
-  it("animal que saiu só mostra Estornar saída, e oculta as demais ações", async () => {
-    const saiu: AnimalFicha = { ...base, situacao: "SAIU", saida: { id: "saida-1", data: "2026-01-10", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null } };
-    await montar(saiu);
-    expect(screen.getByRole("button", { name: "Estornar saída" })).toBeTruthy();
-    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar saída", "Excluir cadastro"]) {
+  it("animal baixado só mostra Estornar baixa, e oculta as demais ações", async () => {
+    const baixado: AnimalFicha = { ...base, situacao: "BAIXADO", baixa: { id: "baixa-1", data: "2026-01-10", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null } };
+    await montar(baixado);
+    expect(screen.getByRole("button", { name: "Estornar baixa" })).toBeTruthy();
+    for (const nome of ["Editar dados", "Editar composição", "Movimentar", "Mudar destino", "Alterar categoria", "Registrar pesagem", "Dar baixa", "Excluir cadastro"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
     }
+  });
+
+  it("mostra tipo, data e motivo (com classe) da baixa registrada", async () => {
+    const baixado: AnimalFicha = {
+      ...base, situacao: "BAIXADO",
+      baixa: { id: "baixa-1", data: "2026-09-12", tipo: "VENDA", motivo: { nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO" }, observacao: null, estornadaEm: null, estornoMotivo: null },
+    };
+    await montar(baixado);
+    expect(screen.getByText("Venda")).toBeTruthy();
+    expect(screen.getByText(/em 12\/09\/2026 · Baixa produção \(descarte voluntário\)/)).toBeTruthy();
   });
 
   it("só oferece desfazer localização/destino quando há pelo menos duas linhas de histórico", async () => {
@@ -90,7 +100,7 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
     });
     render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} podeLancar={false} />);
     await screen.findByText("Mimosa");
-    for (const nome of ["Editar dados", "Movimentar", "Alterar categoria", "Dar saída", "Excluir cadastro", "Desfazer última movimentação"]) {
+    for (const nome of ["Editar dados", "Movimentar", "Alterar categoria", "Dar baixa", "Excluir cadastro", "Desfazer última movimentação"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
     }
     expect(screen.queryByRole("button", { name: /Excluir pesagem/ })).toBeNull();

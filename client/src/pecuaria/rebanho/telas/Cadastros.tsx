@@ -1,4 +1,4 @@
-// Cadastros do Rebanho — sub-abas locais Categorias · Raças · Motivos de saída, no padrão
+// Cadastros do Rebanho — sub-abas locais Categorias · Raças · Motivos de baixa, no padrão
 // visual de ConfiguracoesFinanceiras.tsx (tabela + AcoesLinha + ConfirmDialog + PainelCadastro
 // para o form). Cada aba carrega sua própria lista (services/pecuaria/rebanho/*). Lotes têm tela
 // própria (ListaLotes.tsx).
@@ -19,12 +19,12 @@ import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFina
 import { BarraFiltros, SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import {
-  criarCategoria, editarCategoria, editarMotivoSaida, editarRaca, listarCategorias, listarMotivosSaida, listarRacas,
+  criarCategoria, editarCategoria, editarMotivoBaixa, editarRaca, listarCategorias, listarMotivosBaixa, listarRacas,
   reordenarCategorias, restaurarPadroesCategorias, simularCategorias, RebanhoApiError,
 } from "../api";
-import type { CategoriaDTO, MotivoSaida, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
-import { rotuloSexo, rotuloTipoSaida } from "../lib/rotulos";
-import { FormMotivoSaida } from "../cadastros/FormMotivoSaida";
+import type { CategoriaDTO, ClasseMotivoBaixa, MotivoBaixa, Raca, RegraCategoriaProposta, ResultadoSimulacaoCategorias } from "../types";
+import { rotuloClasseMotivo, rotuloSexo } from "../lib/rotulos";
+import { FormMotivoBaixa } from "../cadastros/FormMotivoBaixa";
 import { FormRaca } from "../cadastros/FormRaca";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 
@@ -34,7 +34,7 @@ type Painel = { entidade: EntidadePainel; modo: "novo" } | { entidade: EntidadeP
 type PainelCategoria = { modo: "novo" } | { modo: "editar"; categoria: CategoriaDTO } | null;
 type Confirmacao =
   | { tipo: "raca"; item: Raca }
-  | { tipo: "motivo"; item: MotivoSaida }
+  | { tipo: "motivo"; item: MotivoBaixa }
   | null;
 /** confirmação de impacto de uma mudança nas categorias — `aplicar` já vem fechada sobre a ação */
 type ConfirmacaoCategoria = { resultado: ResultadoSimulacaoCategorias; aplicar: () => Promise<unknown> } | null;
@@ -73,23 +73,30 @@ const colunasRacas = (editar: (r: Raca) => void, alternar: (r: Raca) => void): C
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (r) => <AcoesLinha nome={r.nome} ativo={r.ativo} onEditar={() => editar(r)} onAlternar={() => alternar(r)} /> },
 ];
 
-const colunasMotivos = (editar: (m: MotivoSaida) => void, alternar: (m: MotivoSaida) => void): ColunaTabela<MotivoSaida>[] => [
+const colunasMotivos = (editar: (m: MotivoBaixa) => void, alternar: (m: MotivoBaixa) => void): ColunaTabela<MotivoBaixa>[] => [
   { chave: "motivo", titulo: "Motivo", larguraMinima: 210, principal: true, celula: (m) => <strong className="break-words">{m.nome}</strong> },
-  { chave: "tipo", titulo: "Tipo", larguraMinima: 140, celula: (m) => rotuloTipoSaida(m.tipo) },
+  { chave: "classe", titulo: "Classe", larguraMinima: 150, celula: (m) => rotuloClasseMotivo(m.classe) },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (m) => <Pill tone={m.ativo ? "green" : "neutral"}>{m.ativo ? "Ativo" : "Inativo"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (m) => <AcoesLinha nome={m.nome} ativo={m.ativo} onEditar={() => editar(m)} onAlternar={() => alternar(m)} /> },
 ];
 
+/** ordem das classes na tabela de motivos: descarte voluntário, descarte involuntário, morte. */
+const ORDEM_CLASSE: ClasseMotivoBaixa[] = ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE"];
+function compararMotivos(a: MotivoBaixa, b: MotivoBaixa): number {
+  const diferenca = ORDEM_CLASSE.indexOf(a.classe) - ORDEM_CLASSE.indexOf(b.classe);
+  return diferenca !== 0 ? diferenca : a.nome.localeCompare(b.nome, "pt-BR");
+}
+
 function mensagemDesativar(confirmacao: NonNullable<Confirmacao>): string {
   if (confirmacao.tipo === "raca") return "A raça deixa de aparecer para novos cadastros e composições raciais. Composições já registradas continuam intactas.";
-  return "O motivo deixa de aparecer para novas saídas. Saídas já registradas continuam intactas.";
+  return "O motivo deixa de aparecer para novas baixas. Baixas já registradas continuam intactas.";
 }
 
 export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [aba, setAba] = useState<Aba>("categorias");
   const [mostrarInativos, setMostrarInativos] = useState(false);
   const [racas, setRacas] = useState<Raca[] | null>(null);
-  const [motivos, setMotivos] = useState<MotivoSaida[] | null>(null);
+  const [motivos, setMotivos] = useState<MotivoBaixa[] | null>(null);
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<Confirmacao>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -105,7 +112,7 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const [aplicando, setAplicando] = useState(false);
 
   const carregarRacas = useCallback(() => listarRacas({ incluirInativos: mostrarInativos }).then(setRacas).catch((e) => setErro(e.message)), [mostrarInativos]);
-  const carregarMotivos = useCallback(() => listarMotivosSaida({ incluirInativos: mostrarInativos }).then(setMotivos).catch((e) => setErro(e.message)), [mostrarInativos]);
+  const carregarMotivos = useCallback(() => listarMotivosBaixa({ incluirInativos: mostrarInativos }).then(setMotivos).catch((e) => setErro(e.message)), [mostrarInativos]);
   /** sempre traz ativas e inativas — a simulação precisa da lista completa; "Mostrar inativas" só filtra a tabela. */
   const carregarCategorias = useCallback(() => listarCategorias({ incluirInativos: true }).then((r) => { setCategorias(r.itens); setSemCategoriaAtual(r.semCategoria); }).catch((e) => setErro(mensagemErro(e))), []);
 
@@ -134,13 +141,13 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const editar = (entidade: EntidadePainel, item: { id: string | number }) => { if (!emCurso.current) setPainel({ entidade, modo: "editar", id: item.id }); };
 
   const alternarRaca = (r: Raca) => { if (emCurso.current) return; if (r.ativo) { setConfirmando({ tipo: "raca", item: r }); return; } void executar(() => editarRaca(r.id, { ativo: true })); };
-  const alternarMotivo = (m: MotivoSaida) => { if (emCurso.current) return; if (m.ativo) { setConfirmando({ tipo: "motivo", item: m }); return; } void executar(() => editarMotivoSaida(m.id, { ativo: true })); };
+  const alternarMotivo = (m: MotivoBaixa) => { if (emCurso.current) return; if (m.ativo) { setConfirmando({ tipo: "motivo", item: m }); return; } void executar(() => editarMotivoBaixa(m.id, { ativo: true })); };
 
   const confirmarDesativacao = () => {
     if (!confirmando) return;
     void executar(async () => {
       if (confirmando.tipo === "raca") await editarRaca(confirmando.item.id, { ativo: false });
-      else await editarMotivoSaida(confirmando.item.id, { ativo: false });
+      else await editarMotivoBaixa(confirmando.item.id, { ativo: false });
       setConfirmando(null);
     });
   };
@@ -229,24 +236,25 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
   const acao = !podeLancar ? undefined
     : aba === "categorias" ? <div className="flex flex-wrap gap-2"><Button secondary onClick={restaurarPadroes}>Restaurar padrões</Button><Button onClick={() => setPainelCategoria({ modo: "novo" })}><Plus size={16} /> Nova categoria</Button></div>
     : aba === "racas" ? <Button onClick={() => abrirNovo("raca")}><Plus size={16} /> Nova raça</Button>
-    : <Button onClick={() => abrirNovo("motivo")}><Plus size={16} /> Novo motivo de saída</Button>;
+    : <Button onClick={() => abrirNovo("motivo")}><Plus size={16} /> Novo motivo de baixa</Button>;
 
   const carregando = (aba === "racas" && racas === null) || (aba === "motivos" && motivos === null) || (aba === "categorias" && categorias === null);
   const bloqueado = processando || simulando || aplicando;
+  const motivosExibidos = [...(motivos ?? [])].sort(compararMotivos);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças e motivos de saída usados pelo rebanho." acao={acao} />
+    <PageHeader eyebrow="Pecuária" titulo="Cadastros" descricao="Categorias, raças e motivos de baixa usados pelo rebanho." acao={acao} />
     <NavRebanho ativa="cadastros" />
     <ErrorBox erro={painelCategoria ? null : erro} />
     <SubAbas abas={[
       { valor: "categorias", rotulo: "Categorias", icon: Tags },
       { valor: "racas", rotulo: "Raças", icon: Dna },
-      { valor: "motivos", rotulo: "Motivos de saída", icon: LogOut },
+      { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
     <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
       {carregando
-        ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : "motivos de saída"}`} /></div>
+        ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : "motivos de baixa"}`} /></div>
         : <>
           {aba === "categorias" && <>
             <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras, na ordem da tabela — a primeira que casa vence, dentro de cada sexo. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
@@ -264,13 +272,13 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
 
           {aba === "motivos" && <Panel className="mt-5 overflow-hidden">
             <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Motivos de saída" itens={motivos ?? []} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
+            <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
           </Panel>}
         </>}
     </fieldset>
 
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
-    {painel?.entidade === "motivo" && <FormMotivoSaida key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
+    {painel?.entidade === "motivo" && <FormMotivoBaixa key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painelCategoria && <FormCategoria key={chavePainelCategoria} categoria={categoriaSelecionada} salvando={simulando || aplicando} erro={erro} onSalvar={salvarCategoria} onFechar={() => { if (!simulando && !aplicando) setPainelCategoria(null); }} />}
 
     <ConfirmDialog
