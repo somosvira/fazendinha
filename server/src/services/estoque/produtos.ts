@@ -58,6 +58,18 @@ function separarRelacoes<T extends { fornecedorIds?: number[]; centroCustoIds?: 
   return { fornecedorIds, centroCustoIds, produto };
 }
 
+const NOME_DUPLICADO = "Já existe um produto com este nome";
+
+// O @unique de Produto.nome diferencia maiúsculas de minúsculas; "Vermífugo" e
+// "vermífugo" viravam dois produtos com estoques separados.
+async function exigirNomeLivre(db: DbFinanceiro, nome: string, ignorarId?: number) {
+  const existente = await db.produto.findFirst({
+    where: { nome: { equals: nome.trim(), mode: "insensitive" }, ...(ignorarId != null ? { id: { not: ignorarId } } : {}) },
+    select: { id: true },
+  });
+  if (existente) throw new FinanceiroError("CONFLITO", NOME_DUPLICADO, "nome");
+}
+
 const USO_CAMPO = { sanitario: "usoSanitario", nutricional: "usoNutricional", agricola: "usoAgricola" } as const;
 
 export async function listarProdutos(f?: { uso?: "sanitario" | "nutricional" | "agricola"; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
@@ -80,6 +92,7 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
       if (produto.categoriaId == null) {
         throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
       }
+      await exigirNomeLivre(tx, produto.nome);
       await validarFornecedores(tx, fornecedorIds, new Set());
       await validarCentrosCusto(tx, centroCustoIds, new Set());
       const criado = await tx.produto.create({
@@ -94,7 +107,7 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
       await auditar(tx, { entidade: "Produto", entidadeId: criado.id, acao: "CRIADO", usuarioId, depois: dto });
       return dto;
     });
-  } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+  } catch (erro) { traduzirConflitoUnico(erro, { nome: NOME_DUPLICADO }); }
 }
 
 export async function atualizarProduto(id: number, input: ProdutoPatchInput, usuarioId?: number | null) {
@@ -129,6 +142,7 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
         }
       }
 
+      if (produto.nome !== undefined) await exigirNomeLivre(tx, produto.nome, id);
       if (fornecedorIds !== undefined) {
         await validarFornecedores(tx, fornecedorIds, new Set(anterior.fornecedores.map((v) => v.fornecedorId)));
       }
@@ -154,7 +168,7 @@ export async function atualizarProduto(id: number, input: ProdutoPatchInput, usu
       await auditar(tx, { entidade: "Produto", entidadeId: id, acao: "ATUALIZADO", usuarioId, antes, depois });
       return depois;
     });
-  } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
+  } catch (erro) { traduzirConflitoUnico(erro, { nome: NOME_DUPLICADO }); }
 }
 
 // ── Sugestão de preço na compra ─────────────────────────────────────────────

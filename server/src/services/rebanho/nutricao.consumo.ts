@@ -2,7 +2,7 @@ import { prisma } from "../../db.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { saldoProduto, valorSaidaDaBase, type MovIn } from "../estoque/estoque.calc.js";
-import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
+import { filtroSitioCusto, obterBasesCusto, produtosComEstoque, statusSaldoEstoque } from "../estoque/estoque.js";
 import { consumoEsperado, diasNoPeriodo } from "./nutricao.consumo.calc.js";
 import { NutricaoError } from "./nutricao.js";
 import { propriedadePrincipalId } from "../propriedade.js";
@@ -55,9 +55,12 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
     dias,
   );
 
+  // Tudo no sítio do lote (saldo, custo e "tem estoque"), com a convenção do
+  // estoque: movimento sem propriedade conta como da principal.
+  const sitioLote = grupo.propriedadeId ?? (await propriedadePrincipalId());
   // Saldo atual de cada produto envolvido (Σ entradas − Σ saídas).
   const produtoIds = itens.map((i) => i.produtoId);
-  const movs = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtoIds }, ...(propriedadeId != null ? { propriedadeId } : {}) }, select: { produtoId: true, tipo: true, quantidade: true, valorTotal: true, data: true } });
+  const movs = await prisma.movimentoEstoque.findMany({ where: { produtoId: { in: produtoIds }, status: statusSaldoEstoque, ...(await filtroSitioCusto(sitioLote)) }, select: { produtoId: true, tipo: true, quantidade: true, valorTotal: true, data: true } });
   const saldoPorProduto = new Map<number, number>();
   for (const pid of produtoIds) {
     const doProduto: MovIn[] = movs.filter((m) => m.produtoId === pid).map((m) => ({ tipo: m.tipo, quantidade: Number(m.quantidade), valorTotal: Number(m.valorTotal), data: iso(m.data) }));
@@ -65,7 +68,6 @@ async function resolverConsumo(grupoId: number, dataInicio: string, dataFim: str
   }
 
   // Custo das saídas = custo médio ponderado das entradas no sítio do lote.
-  const sitioLote = grupo.propriedadeId ?? (await propriedadePrincipalId());
   const custos = await obterBasesCusto(prisma, produtoIds, sitioLote);
   // Só baixa produto que tem estoque (alguma entrada/ajuste) no sítio do lote;
   // sem isso a linha aparece na prévia mas não gera SAIDA.

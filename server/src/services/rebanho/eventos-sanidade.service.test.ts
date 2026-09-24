@@ -160,7 +160,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
     await registrarSanidade(1, aplicacao(3));
 
     const dados = mocks.movimentoCreate.mock.calls[0][0].data;
-    expect(dados).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", propriedadeId: 5 }));
+    expect(dados).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", propriedadeId: 5, animalId: 1 }));
     expect(Number(dados.custoUnitario)).toBe(6);
     expect(Number(dados.valorTotal)).toBe(18);
   });
@@ -205,7 +205,7 @@ describe("eventos de sanidade — baixa pelo custo médio e estorno em vez de ed
     expect(mocks.movimentoUpdate).toHaveBeenCalledWith({ where: { id: 77 }, data: { status: "REVERTIDO" } });
     const [inverso, novo] = mocks.movimentoCreate.mock.calls.map((c) => c[0].data);
     expect(inverso).toEqual(expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: 77 }));
-    expect(novo).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE" }));
+    expect(novo).toEqual(expect.objectContaining({ tipo: "SAIDA", origem: "SANIDADE", animalId: 1 }));
     expect(Number(novo.quantidade)).toBe(4);
     expect(Number(novo.valorTotal)).toBe(24);
     expect(mocks.movimentoDelete).not.toHaveBeenCalled();

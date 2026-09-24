@@ -169,7 +169,7 @@ async function assertPeriodoAberto(tx: Prisma.TransactionClient, propriedadeId: 
 async function planejarMovimento(
   tx: Prisma.TransactionClient,
   input: CriarOperacaoInput | EditarOperacaoInput,
-  talhao: { areaHa: Prisma.Decimal | number | null; codigo?: string },
+  talhao: { id?: number; areaHa: Prisma.Decimal | number | null; codigo?: string },
   data: Date,
   propriedadeId: number,
   opts: { validarCentroAtivo?: boolean; temEstoque?: boolean } = {},
@@ -239,6 +239,7 @@ async function planejarMovimento(
       valorTotal,
       propriedadeId,
       centroCustoId,
+      talhaoId: talhao.id ?? null,
       observacao: `Aplicação em ${talhao.codigo ?? "talhão"}`,
     },
   };

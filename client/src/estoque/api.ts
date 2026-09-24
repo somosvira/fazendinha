@@ -39,13 +39,18 @@ export const obterCentrosAtividade = () => req<CentrosAtividadeDTO>("/estoque/ce
 
 // ── Estoque: saldos + movimentos ───────────────────────────
 export interface SaldoDTO { produtoId: number; nome: string; categoria: { id: number; nome: string; usoSanitario: boolean; usoNutricional: boolean; usoAgricola: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: number; nome: string }[]; saldo: number;
-  /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
+  /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor) ou sem a flag verValores. */
   custoMedio: number | null;
-  /** saldo × custoMedio (0 quando custoMedio é null). */
-  valor: number; minimoEstoque: number | null; abaixoMinimo: boolean; }
-export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO";
+  /** saldo × custo médio de cada sítio, somado na visão consolidada (0 sem base; null sem a flag verValores). */
+  valor: number | null; minimoEstoque: number | null; abaixoMinimo: boolean; }
+export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "PRODUCAO" | "DEVOLUCAO" | "BONIFICACAO" | "INVENTARIO_INICIAL" | "NUTRICAO" | "SANIDADE" | "PERDA" | "AJUSTE_INVENTARIO" | "APLICACAO" | "VENDA";
 export type VinculoMovimento = { tipo: "LOTE"; id: number; nome: string } | { tipo: "ANIMAL"; id: number; numero: string; nome: string | null } | { tipo: "TALHAO"; id: number; codigo: string };
-export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null; data: string; quantidade: number; custoUnitario: number; valorTotal: number; fornecedor: string | null; grupo: string | null; observacao: string | null;
+export interface MovimentoDTO { id: number; produtoId: number; produto: string; centrosCusto: { id: number; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: number | null;
+  /** Origem do movimento que este estorno desfaz; null quando não é estorno. */
+  origemEstornada: OrigemMovimento | null;
+  data: string; quantidade: number;
+  /** null sem a flag verValores. */
+  custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; grupo: string | null; observacao: string | null;
   /** Operação financeira de origem (compra, ajuste, inventário…); null nas saídas automáticas. */
   operacaoId: number | null;
   /** Lote/animal/talhão de origem das saídas automáticas (dieta/sanidade/aplicação); null nos demais. */

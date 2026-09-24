@@ -2,7 +2,7 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
-import { obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
+import { estornarMovimentoTx, obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
@@ -104,6 +104,11 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     // nunca foi estocado não gera SAIDA a custo 0 nem saldo negativo — o item
     // vira não estocável e segue a regra de centro de custo efetivo.
     const temEfeitoEstoque = incluiEstoque.has(input.tipo) || retiraEstoque.has(input.tipo) || input.tipo === "AJUSTE_ESTOQUE";
+    // O saldo não tem data de corte: uma entrada datada no futuro já contaria
+    // hoje (e mexeria no custo médio). Mesma regra do ajuste manual de estoque.
+    if (temEfeitoEstoque && input.data.getTime() > Date.now()) {
+      throw new FinanceiroError("VALIDACAO", "Operações que movimentam estoque não podem ter data futura", "data");
+    }
     const retira = retiraEstoque.has(input.tipo);
     const comEstoqueNoSitio = retira ? await produtosComEstoque(tx, produtosIds, input.propriedadeId) : null;
     const estocavelItens = input.itens.map((item) => {
@@ -196,7 +201,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       const tipoMovimento = retiraEstoque.has(input.tipo) ? "SAIDA" : input.tipo === "AJUSTE_ESTOQUE" ? "AJUSTE" : "ENTRADA";
       const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
-          : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : "AJUSTE_INVENTARIO";
+          : input.tipo === "DEVOLUCAO" ? "DEVOLUCAO" : input.tipo === "VENDA" ? "VENDA" : "AJUSTE_INVENTARIO";
       const itensEstoque = operacao.itens.filter((item) => item.estocavel && item.produtoId);
       // SAIDA (venda/devolução) baixa pelo custo médio do sítio, nunca pelo
       // preço de venda; ENTRADA/AJUSTE valorizam pelo próprio item.
@@ -397,17 +402,10 @@ export async function estornarOperacao(id: number, motivo: string, contexto: Con
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
       await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`, contexto);
     }
+    // Mesmo estorno de estoque dos demais domínios: movimento inverso com autor,
+    // original REVERTIDO e AuditoriaFinanceira por movimento.
     for (const movimento of operacao.movimentosEstoque.filter((item) => item.status === "CONFIRMADO" && !item.reversaoDeId && !item.revertidoPor)) {
-      await tx.movimentoEstoque.create({ data: {
-        produtoId: movimento.produtoId,
-        tipo: movimento.tipo === "ENTRADA" ? "SAIDA" : movimento.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
-        origem: "AJUSTE_INVENTARIO", data: new Date(),
-        quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
-        custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
-        propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
-        reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}`,
-      } });
-      await tx.movimentoEstoque.update({ where: { id: movimento.id }, data: { status: "REVERTIDO" } });
+      await estornarMovimentoTx(tx, movimento.id, { usuarioId: contexto.usuarioId, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${id}: ${motivo}` });
     }
     await tx.compromissoFinanceiro.updateMany({ where: { operacaoId: id, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });
     const cancelada = await tx.operacao.update({ where: { id }, data: { status: "CANCELADA" } });

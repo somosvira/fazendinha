@@ -9,7 +9,7 @@ import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, Metric, PageHe
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
 import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
-import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque } from "./navegacao";
+import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, podeVerValores } from "./navegacao";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "rounded-lg border border-border bg-white px-3 py-2 text-sm";
@@ -21,8 +21,21 @@ const TIPO_MOV: Record<MovimentoDTO["tipo"], { rotulo: string; tom: "green" | "a
 const ROTULO_ORIGEM: Record<OrigemMovimento, string> = {
   COMPRA: "Compra", CONSUMO_DIRETO: "Consumo direto", TRANSFERENCIA: "Transferência", PRODUCAO: "Produção própria", DEVOLUCAO: "Devolução",
   BONIFICACAO: "Bonificação", INVENTARIO_INICIAL: "Inventário inicial", NUTRICAO: "Dieta", SANIDADE: "Sanidade", PERDA: "Perda",
-  AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola",
+  AJUSTE_INVENTARIO: "Ajuste de estoque", APLICACAO: "Aplicação agrícola", VENDA: "Venda",
 };
+// Origens que algum fluxo grava hoje. CONSUMO_DIRETO, TRANSFERENCIA e PERDA
+// seguem no rótulo (dados antigos), mas não no filtro — filtrar por elas sempre
+// daria lista vazia.
+const ORIGENS_FILTRO: readonly OrigemMovimento[] = ["COMPRA", "VENDA", "DEVOLUCAO", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO", "NUTRICAO", "SANIDADE", "APLICACAO", "AJUSTE_INVENTARIO"];
+
+// Direção física do movimento: SAIDA tira, ENTRADA põe, AJUSTE traz o próprio
+// sinal. Estornos são gravados como ajuste — sem o sinal não dá para saber se
+// o estorno devolveu ou retirou do estoque.
+const quantidadeComSinal = (m: Pick<MovimentoDTO, "tipo" | "quantidade">) => (m.tipo === "SAIDA" ? -Math.abs(m.quantidade) : m.quantidade);
+const qtdComSinal = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${qtd(Math.abs(n))}`;
+const rotuloMovimento = (m: MovimentoDTO) => m.reversaoDeId != null && m.origemEstornada
+  ? `Estorno de ${(ROTULO_ORIGEM[m.origemEstornada] ?? m.origemEstornada).toLocaleLowerCase("pt-BR")}`
+  : ROTULO_ORIGEM[m.origem] ?? m.origem;
 // Origens que colocam produto no estoque — alimentam o card "Últimas entradas".
 const ORIGENS_ENTRADA: readonly OrigemMovimento[] = ["COMPRA", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"];
 
@@ -105,6 +118,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const [cadastrandoProduto, setCadastrandoProduto] = useState(false);
   // O ajuste é uma operação financeira: exige a área financeiro e a permissão `lancar`.
   const podeAjustar = podeAjustarEstoque();
+  // Sem a flag verValores o servidor manda custo e valor nulos; as colunas somem.
+  const verValores = podeVerValores();
 
   useEffect(() => { listarCentrosCusto().then((cs) => { setCentros(cs); setErroCentros(null); }).catch((e) => setErroCentros(e instanceof Error ? e.message : String(e))); }, []);
 
@@ -117,7 +132,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       return s.nome.toLocaleLowerCase("pt-BR").includes(termo) || (s.categoria?.nome ?? "").toLocaleLowerCase("pt-BR").includes(termo);
     });
     return [...filtrados].sort((a, b) => {
-      if (ordem === "valor") return b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR");
+      if (ordem === "valor") return (b.valor ?? 0) - (a.valor ?? 0) || a.nome.localeCompare(b.nome, "pt-BR");
       if (ordem === "categoria") return (a.categoria?.nome ?? "").localeCompare(b.categoria?.nome ?? "", "pt-BR") || a.nome.localeCompare(b.nome, "pt-BR");
       return a.nome.localeCompare(b.nome, "pt-BR");
     });
@@ -131,7 +146,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   // Total encolheu (estorno, novo filtro no servidor): volta à última página existente.
   useEffect(() => { if (!movimentos.loading && paginaMov > totalPaginasMov) setPaginaMov(totalPaginasMov); }, [movimentos.loading, paginaMov, totalPaginasMov]);
   const filtrosMovAtivos = buscaMovAplicada !== "" || origemMov !== "" || centroMov !== "" || periodoMov.inicio !== "" || periodoMov.fim !== "";
-  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor), 0), [saldos.data]);
+  const valorTotal = useMemo(() => saldos.data.reduce((soma, s) => soma + Math.max(0, s.valor ?? 0), 0), [saldos.data]);
   const nNegativos = useMemo(() => saldos.data.filter((s) => s.saldo < 0).length, [saldos.data]);
   const nAbaixoMin = useMemo(() => saldos.data.filter((s) => s.abaixoMinimo).length, [saldos.data]);
   const nEmEstoque = useMemo(() => saldos.data.filter((s) => s.saldo > 0).length, [saldos.data]);
@@ -160,8 +175,10 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "categoria", titulo: "Categoria", alinhamento: "centro", larguraMinima: 140, celula: (s) => s.categoria?.nome ?? "Sem categoria" },
     { chave: "centros", titulo: "Centros de custo", alinhamento: "centro", larguraMinima: 180, celula: (s) => <span className="break-words text-ink-3">{s.centrosCusto.map((c) => c.nome).join(" · ") || "Sem centro"}</span> },
     { chave: "saldo", titulo: "Saldo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{qtd(s.saldo)} {rotuloUnidade(s.unidade)}</span> },
-    { chave: "custo", titulo: "Custo médio", alinhamento: "centro", larguraMinima: 120, celula: (s) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
-    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (s) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null ? brl(s.valor) : "—"}</strong> },
+    ...(verValores ? [
+      { chave: "custo", titulo: "Custo médio", alinhamento: "centro" as const, larguraMinima: 120, celula: (s: SaldoDTO) => <span className="whitespace-nowrap">{s.custoMedio != null ? fmtMoneyExact(s.custoMedio) : "—"}</span> },
+      { chave: "valor", titulo: "Valor", alinhamento: "centro" as const, larguraMinima: 120, celula: (s: SaldoDTO) => <strong className="whitespace-nowrap font-semibold">{s.custoMedio != null && s.valor != null ? brl(s.valor) : "—"}</strong> },
+    ] : []),
     { chave: "minimo", titulo: "Mínimo", alinhamento: "centro", larguraMinima: 110, celula: (s) => <span className="whitespace-nowrap">{s.minimoEstoque != null ? `${qtd(s.minimoEstoque)} ${rotuloUnidade(s.unidade)}` : "—"}</span> },
     ...(podeAjustar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "centro" as const, larguraMinima: 90, acoes: true, celula: (s: SaldoDTO) => (
       <div className="flex items-center justify-center gap-1">
@@ -175,13 +192,16 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "produto", titulo: "Produto", larguraMinima: 200, principal: true, celula: (m) => <strong className="break-words font-semibold">{m.produto}</strong> },
     { chave: "tipo", titulo: "Tipo", alinhamento: "centro", larguraMinima: 190, celula: (m) => (
       <span className="flex flex-wrap items-center justify-center gap-1.5">
-        <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={TIPO_MOV[m.tipo].tom}>{ROTULO_ORIGEM[m.origem] ?? m.origem}</Pill></span>
-        {m.reversaoDeId != null && <Pill tone="red">Estorno</Pill>}
+        <span title={TIPO_MOV[m.tipo].rotulo}><Pill tone={m.reversaoDeId != null ? "red" : TIPO_MOV[m.tipo].tom}>{rotuloMovimento(m)}</Pill></span>
         {m.status === "REVERTIDO" && <Pill tone="red">Estornado</Pill>}
       </span>
     ) },
-    { chave: "qtd", titulo: "Qtde", alinhamento: "centro", larguraMinima: 110, celula: (m) => { const un = unidadePorProduto.get(m.produtoId); return <span className="whitespace-nowrap">{qtd(m.quantidade)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>; } },
-    { chave: "valor", titulo: "Valor", alinhamento: "centro", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{brl(m.valorTotal)}</span> },
+    { chave: "qtd", titulo: "Qtde", alinhamento: "centro", larguraMinima: 110, celula: (m) => {
+      const un = unidadePorProduto.get(m.produtoId);
+      const n = quantidadeComSinal(m);
+      return <span title={n < 0 ? "Saiu do estoque" : "Entrou no estoque"} className={`whitespace-nowrap font-medium ${n < 0 ? "text-red-800" : "text-green-800"}`}>{qtdComSinal(n)}{un ? ` ${rotuloUnidade(un)}` : ""}</span>;
+    } },
+    ...(verValores ? [{ chave: "valor", titulo: "Valor", alinhamento: "centro" as const, larguraMinima: 120, celula: (m: MovimentoDTO) => <span className="whitespace-nowrap">{m.valorTotal != null ? brl(Math.sign(quantidadeComSinal(m)) * Math.abs(m.valorTotal)) : "—"}</span> }] : []),
     { chave: "origem", titulo: "Origem / destino", alinhamento: "centro", larguraMinima: 220, celula: (m) => {
       const destino = destinoDoMovimento(m);
       if (!destino) return <span className="break-words text-ink-3">{m.fornecedor ?? m.grupo ?? "—"}</span>;
@@ -204,7 +224,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Metric label="Valor em estoque" valor={brl(valorTotal)} icon={Boxes} />
+          {verValores && <Metric label="Valor em estoque" valor={brl(valorTotal)} icon={Boxes} />}
           {nNegativos > 0 && <button type="button" aria-pressed={soNegativos} onClick={() => setSoNegativos((v) => !v)} className="self-start text-left text-xs text-red-800 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{nNegativos} {nNegativos === 1 ? "produto com saldo negativo" : "produtos com saldo negativo"}{soNegativos ? " — filtro ativo, clique para ver todos" : ""}</button>}
         </div>
         <Metric label="Produtos em estoque" valor={String(nEmEstoque)} icon={Package} />
@@ -228,7 +248,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     </div>
 
     <section className="mt-10" aria-label="Saldos de estoque">
-      <h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas neste sítio; valor = saldo × custo médio." /></h2>
+      <h2 className="font-serif text-2xl">Saldos de estoque<AjudaCampo rotulo="Como o valor é calculado" texto="O custo médio é a média ponderada das entradas de cada sítio; valor = saldo × custo médio. Com todos os sítios, o valor é a soma dos sítios." /></h2>
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))_auto]">
         <input type="search" aria-label="Buscar produto" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou categoria…" className={CAMPO} />
         <select aria-label="Filtrar por centro de custo" value={centroFiltro} onChange={(e) => setCentroFiltro(e.target.value)} className={CAMPO}>
@@ -239,7 +259,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <select aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={CAMPO}>
           <option value="nome">Ordenar por nome</option>
           <option value="categoria">Ordenar por categoria</option>
-          <option value="valor">Ordenar por maior valor</option>
+          {verValores && <option value="valor">Ordenar por maior valor</option>}
         </select>
         <button type="button" aria-pressed={soAbaixoMin} onClick={() => setSoAbaixoMin((v) => !v)} className={`${CAMPO} inline-flex items-center gap-2 whitespace-nowrap font-medium ${soAbaixoMin ? "border-red-700 text-red-800" : "text-ink-2"}`}><IconeAbaixoMinimo />Só abaixo do mínimo{nAbaixoMin > 0 ? ` (${nAbaixoMin})` : ""}</button>
       </div>
@@ -261,7 +281,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <label className="relative w-full min-w-0 flex-[2_1_260px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" aria-hidden="true" /><input type="search" aria-label="Buscar movimento" value={buscaMov} onChange={(e) => setBuscaMov(e.target.value)} placeholder="Buscar por produto, operação ou fornecedor…" className={`${CAMPO} w-full pl-9`} /></label>
         <select aria-label="Filtrar por origem" value={origemMov} onChange={(e) => { setOrigemMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
           <option value="">Todas as origens</option>
-          {Object.entries(ROTULO_ORIGEM).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}
+          {ORIGENS_FILTRO.map((chave) => <option key={chave} value={chave}>{ROTULO_ORIGEM[chave]}</option>)}
         </select>
         <select aria-label="Filtrar histórico por centro de custo" value={centroMov} onChange={(e) => { setCentroMov(e.target.value); setPaginaMov(1); }} className={`${CAMPO} min-w-0 flex-[1_1_160px]`}>
           <option value="">Todos os centros</option>

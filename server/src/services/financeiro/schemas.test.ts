@@ -27,6 +27,11 @@ describe("schema de criação de operação", () => {
     expect(parse(0).success).toBe(false);
   });
 
+  it("recusa TRANSFERENCIA_ESTOQUE: não há transferência implementada e a operação nasceria sem efeito", () => {
+    const resultado = operacaoSchema.safeParse({ ...base, tipo: "TRANSFERENCIA_ESTOQUE", valorTotal: 0, financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" } });
+    expect(resultado.success).toBe(false);
+  });
+
   it("aceita serviço com valor total e sem item físico", () => {
     const resultado = operacaoSchema.safeParse({ ...base, tipo: "SERVICO", valorTotal: 500, itens: [] });
     expect(resultado.success).toBe(true);

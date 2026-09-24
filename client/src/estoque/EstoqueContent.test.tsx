@@ -308,12 +308,42 @@ describe("EstoqueContent — histórico ligado à origem", () => {
     expect(tabela.getByRole("link", { name: "Talhão T-05" })).toBeTruthy();
   });
 
-  it("movimento estornado/estorno é sinalizado", async () => {
-    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, status: "REVERTIDO", operacaoId: 1 }), mov({ id: 2, tipo: "SAIDA", reversaoDeId: 1, operacaoId: 1 })] }));
+  it("movimento estornado/estorno é sinalizado, com a origem que o estorno desfaz", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [mov({ id: 1, status: "REVERTIDO", operacaoId: 1 }), mov({ id: 2, tipo: "SAIDA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 1, origemEstornada: "COMPRA", operacaoId: 1 })] }));
     render(<EstoqueContent />);
     const tabela = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
     expect(tabela.getByText("Estornado")).toBeTruthy();
-    expect(tabela.getByText("Estorno")).toBeTruthy();
+    expect(tabela.getByText("Estorno de compra")).toBeTruthy();
+  });
+
+  it("quantidade mostra a direção: entrada com +, saída e estorno de entrada com −", async () => {
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({})], movimentos: [
+      mov({ id: 1, tipo: "ENTRADA", quantidade: 10 }),
+      mov({ id: 2, tipo: "SAIDA", origem: "VENDA", quantidade: 4 }),
+      mov({ id: 3, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 9, origemEstornada: "SANIDADE", quantidade: 2 }),
+      mov({ id: 4, tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", quantidade: -3 }),
+    ] }));
+    render(<EstoqueContent />);
+    const tabela = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
+    expect(tabela.getByText("+10 kg")).toBeTruthy();
+    expect(tabela.getByText("−4 kg")).toBeTruthy();
+    expect(tabela.getByText("Venda")).toBeTruthy();
+    expect(tabela.getByText("+2 kg")).toBeTruthy();
+    expect(tabela.getByText("Estorno de sanidade")).toBeTruthy();
+    expect(tabela.getByText("−3 kg")).toBeTruthy();
+    // Valor acompanha o sinal da quantidade (saída negativa, entrada positiva).
+    const linhaVenda = tabela.getByText("−4 kg").closest("tr")!;
+    expect(within(linhaVenda).getByText(/^-R\$/)).toBeTruthy();
+  });
+
+  it("filtro de origem oferece Venda e não oferece origens que nenhum fluxo grava", async () => {
+    render(<EstoqueContent />);
+    const filtro = await screen.findByLabelText("Filtrar por origem");
+    const opcoes = within(filtro).getAllByRole("option").map((o) => o.textContent);
+    expect(opcoes).toContain("Venda");
+    expect(opcoes).not.toContain("Perda");
+    expect(opcoes).not.toContain("Transferência");
+    expect(opcoes).not.toContain("Consumo direto");
   });
 });
 
@@ -361,5 +391,20 @@ describe("EstoqueContent — atalho Ajustar quantidade", () => {
     render(<EstoqueContent />);
     await screen.findByRole("table", { name: "Saldos de estoque" });
     expect(screen.getAllByRole("button", { name: /Ajustar quantidade/ }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("EstoqueContent — sem a flag verValores", () => {
+  it("esconde card, colunas e ordenação por valor", async () => {
+    sessao(["pecuaria"], []);
+    vi.stubGlobal("fetch", mockFetch({ saldos: [saldo({ custoMedio: null, valor: null })], movimentos: [mov({ custoUnitario: null, valorTotal: null })] }));
+    render(<EstoqueContent />);
+    const saldos = within(await screen.findByRole("table", { name: "Saldos de estoque" }));
+    expect(saldos.queryByText("Custo médio")).toBeNull();
+    expect(saldos.queryByText("Valor")).toBeNull();
+    expect(screen.queryByText("Valor em estoque")).toBeNull();
+    expect(screen.queryByRole("option", { name: "Ordenar por maior valor" })).toBeNull();
+    const historico = within(await screen.findByRole("table", { name: "Histórico de movimentos" }));
+    expect(historico.queryByText("Valor")).toBeNull();
   });
 });

@@ -52,6 +52,16 @@ const operacaoComResumo: Operacao = {
 };
 
 describe("OperacaoFinanceiraDetalhe", () => {
+  it("ajuste de estoque de saída mostra a quantidade do item com sinal negativo", async () => {
+    obterOperacao.mockResolvedValue({
+      ...operacao, id: 24, tipo: "AJUSTE_ESTOQUE", descricao: "Contagem de setembro", valorTotal: "4.51", parceiro: null, transacoes: [],
+      itens: [{ id: 5, descricao: "Ajuste (saída): Vermífugo", quantidade: "10", unidade: "mL", valorUnitario: "0.451", valorTotal: "4.51", estocavel: true, produtoId: 2 }],
+      movimentosEstoque: [{ id: 29, tipo: "AJUSTE", status: "CONFIRMADO", quantidade: "-10", valorTotal: "-4.51", produtoId: 2, itemOperacaoId: 5 }],
+    });
+    render(<OperacaoFinanceiraDetalhe operacaoId={24} onVoltar={vi.fn()} onAbrir={vi.fn()} onCorrigir={vi.fn()} podeLancar />);
+    expect(await screen.findByText(/^-10 mL ×/)).toBeTruthy();
+  });
+
   it("abre uma página própria e revisa os efeitos antes de cancelar", async () => {
     obterOperacao.mockResolvedValue(operacao);
     estornarOperacao.mockResolvedValue({ ...operacao, status: "CANCELADA" });

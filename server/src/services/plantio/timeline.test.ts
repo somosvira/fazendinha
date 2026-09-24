@@ -108,7 +108,7 @@ describe("criarOperacao", () => {
 
     expect(mocks.movimentoCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        tipo: "SAIDA", origem: "APLICACAO", propriedadeId: 5,
+        tipo: "SAIDA", origem: "APLICACAO", propriedadeId: 5, talhaoId: 1, // vínculo sobrevive à exclusão da operação
         quantidade: expect.objectContaining({ toString: expect.any(Function) }),
       }),
     }));

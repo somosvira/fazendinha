@@ -138,3 +138,44 @@ export function valorSaidaPreciso({ quantidadeSaida, quantidadeBase, valorBase }
 export function valorSaidaDaBase(quantidadeSaida: Prisma.Decimal | number | string, base: BaseCusto | null | undefined) {
   return valorSaidaPreciso({ quantidadeSaida, quantidadeBase: base?.quantidade ?? 0, valorBase: base?.valor ?? 0 });
 }
+
+export interface SaldoSitio {
+  /** Saldo físico do produto no sítio (Σ entradas − Σ saídas). */
+  saldo: number;
+  /** Base do custo médio do sítio; null = sem entrada valorizada. */
+  base: BaseCusto | null;
+}
+
+/**
+ * Saldo, valor e custo médio de um produto somando sítios. Cada sítio tem o seu
+ * custo médio, então o valor total é a soma dos valores de cada sítio (saldo do
+ * sítio × base do sítio) — aplicar um custo médio combinado ao saldo total não
+ * bateria com a soma das telas de cada sítio. Com um sítio só, é o cálculo de
+ * sempre.
+ *
+ * custoMedio (exibição, 4 casas): com um sítio, o da base; com vários e saldo
+ * positivo, valor ÷ saldo (custo médio do que está em estoque, coerente com a
+ * coluna Valor); sem saldo positivo, a média das bases somadas. null quando
+ * nenhum sítio tem base.
+ */
+export function consolidarSaldo(sitios: SaldoSitio[]): { saldo: number; valor: number; custoMedio: Prisma.Decimal | null } {
+  let saldo = 0;
+  let valor = new Prisma.Decimal(0);
+  let baseQtd = new Prisma.Decimal(0);
+  let baseValor = new Prisma.Decimal(0);
+  for (const s of sitios) {
+    saldo += s.saldo;
+    if (s.base == null) continue;
+    valor = valor.plus(valorSaidaDaBase(new Prisma.Decimal(s.saldo), s.base).valorTotal);
+    baseQtd = baseQtd.plus(s.base.quantidade);
+    baseValor = baseValor.plus(s.base.valor);
+  }
+  saldo = Math.round(saldo * 1000) / 1000;
+  const combinada = custoMedioDaBase({ quantidade: baseQtd, valor: baseValor });
+  const comBase = sitios.filter((s) => s.base != null);
+  const custoMedio = combinada == null ? null
+    : comBase.length === 1 ? custoMedioDaBase(comBase[0].base!)
+      : saldo > 0 ? valor.div(saldo).toDecimalPlaces(4)
+        : combinada;
+  return { saldo, valor: valor.toNumber(), custoMedio };
+}

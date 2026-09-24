@@ -157,7 +157,10 @@ export const operacaoSchema = z.object({
   classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
-    "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
+    // TRANSFERENCIA_ESTOQUE segue no enum do banco (e nos relatórios, para
+    // operações antigas), mas não é aceito: não há transferência entre sítios
+    // implementada e a operação nasceria sem nenhum efeito de estoque.
+    "AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
   ]),
   data: dataIso,
   descricao: z.string().trim().min(2).max(240),

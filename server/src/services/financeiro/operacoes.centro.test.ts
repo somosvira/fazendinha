@@ -167,6 +167,7 @@ describe("custo da SAIDA de venda — criarOperacao", () => {
     });
     const dados = mocks.movimentoEstoqueCreate.mock.calls[0][0].data;
     expect(dados.tipo).toBe("SAIDA");
+    expect(dados.origem).toBe("VENDA"); // não "AJUSTE_INVENTARIO"
     expect(Number(dados.custoUnitario)).toBe(6);
     expect(Number(dados.valorTotal)).toBe(30);
   });
@@ -265,5 +266,26 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
     } as never);
     expect(mocks.movimentoEstoqueGroupBy).not.toHaveBeenCalled();
     expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 43, tipo: "ENTRADA" });
+  });
+});
+
+describe("data futura em operação com efeito de estoque — criarOperacao", () => {
+  const amanha = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+  it("compra para estoque com data futura é recusada antes de gravar", async () => {
+    mocks.produto.mockResolvedValue([{ id: 42, ativo: true, categoriaId: null, centrosCusto: [] }]);
+    await expect(criarOperacao({
+      tipo: "COMPRA_ESTOQUE", data: amanha(), descricao: "Compra", propriedadeId: 1,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+      itens: [{ descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 70, estocavel: true, produtoId: 42 }],
+    })).rejects.toMatchObject({ code: "VALIDACAO", campo: "data" });
+    expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
+  });
+
+  it("serviço (sem efeito de estoque) com data futura continua aceito", async () => {
+    mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
+    await expect(criarOperacao({
+      tipo: "SERVICO", data: amanha(), descricao: "Manutenção agendada", propriedadeId: 1, valorTotal: 100, centroCustoId: 3,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" }, itens: [],
+    })).resolves.toBeTruthy();
   });
 });

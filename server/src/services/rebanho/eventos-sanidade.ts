@@ -83,7 +83,7 @@ export async function registrarSanidade(animalId: number, input: CriarEventoSani
           data: {
             produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
             quantidade: plano.quantidade, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal,
-            propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId,
+            propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId, animalId,
             observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${animalId})`,
           },
         })
@@ -158,7 +158,7 @@ export async function editarSanidade(eventoId: number, input: CriarEventoSanitar
       movimentoEstoqueId = (await tx.movimentoEstoque.create({ data: {
         produtoId: plano.produtoId, tipo: "SAIDA", origem: "SANIDADE", data,
         quantidade: plano.quantidade, custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal,
-        propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId,
+        propriedadeId: propriedadeMovimentoId, centroCustoId, criadoPorId: usuarioId, animalId: existente.animalId,
         observacao: `Consumo em ${input.tipo.toLowerCase()} (animal ${existente.animalId})`,
       } })).id;
     } else if (!consome && movimentoEstoqueId != null) {

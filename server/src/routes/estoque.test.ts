@@ -273,3 +273,30 @@ describe("POST /estoque/ajustes — erros do serviço", () => {
     expect(await res.json()).toEqual({ error: "O estoque mudou desde a consulta.", code: "CONFLITO" });
   });
 });
+
+describe("valores sem a flag verValores", () => {
+  const semValores = { ...base, flags: ["lancar"] };
+  const saldo = { produtoId: 1, nome: "Ração", saldo: 10, custoMedio: 2, valor: 20 };
+  const movimento = { id: 1, produto: "Ração", quantidade: 10, custoUnitario: 2, valorTotal: 20, fornecedor: "Coop" };
+
+  it("saldos e movimentos saem sem custo e valor; o resto continua", async () => {
+    mocks.listarSaldos.mockResolvedValue([saldo]);
+    mocks.listarMovimentos.mockResolvedValue({ itens: [movimento], total: 1 });
+    const app = appCom(semValores);
+    expect(await (await app.request("/estoque/saldos")).json()).toEqual([{ ...saldo, custoMedio: null, valor: null }]);
+    expect(await (await app.request("/estoque/movimentos")).json()).toEqual({ itens: [{ ...movimento, custoUnitario: null, valorTotal: null }], total: 1 });
+  });
+
+  it("custo médio e último preço não são consultados", async () => {
+    const app = appCom(semValores);
+    expect(await (await app.request("/estoque/produtos/1/custo-medio")).json()).toEqual({ custoMedio: null });
+    expect(await (await app.request("/estoque/produtos/1/ultimo-preco")).json()).toBeNull();
+    expect(mocks.obterCustoMedio).not.toHaveBeenCalled();
+    expect(mocks.obterUltimoPreco).not.toHaveBeenCalled();
+  });
+
+  it("com a flag, os valores vêm inteiros", async () => {
+    mocks.listarSaldos.mockResolvedValue([saldo]);
+    expect(await (await appCom(semLancar).request("/estoque/saldos")).json()).toEqual([saldo]);
+  });
+});

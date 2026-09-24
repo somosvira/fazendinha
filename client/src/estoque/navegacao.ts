@@ -42,3 +42,11 @@ export function podeAjustarEstoque(): boolean {
   if (!u) return true;
   return podeAcessarArea("financeiro") && (!!u.dono || u.flags.includes("lancar"));
 }
+
+/** Vê custo e valor do estoque? O servidor já manda null sem a flag `verValores`;
+ *  aqui só decide se as colunas aparecem. Sem sessão gravada = acesso aberto. */
+export function podeVerValores(): boolean {
+  const u = getUsuario();
+  if (!u) return true;
+  return !!u.dono || u.flags.includes("verValores");
+}

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   produtoFindUnique: vi.fn(),
   produtoFindFirst: vi.fn(),
   centroFindFirst: vi.fn(),
+  centroFindUnique: vi.fn(),
   periodoFindUnique: vi.fn(),
   movFindMany: vi.fn(),
   movCount: vi.fn(),
@@ -18,20 +19,22 @@ const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   transaction: vi.fn(),
   propriedadePrincipalId: vi.fn(),
+  animalCount: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
   produto: { findMany: mocks.produtoFindMany },
+  animal: { count: mocks.animalCount },
   movimentoEstoque: { groupBy: mocks.movGroupBy, findMany: mocks.movFindMany, count: mocks.movCount },
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
+import { ajustarContagem, calcularCustoVacaDia, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   produto: { findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst },
-  centroCusto: { findFirst: mocks.centroFindFirst },
+  centroCusto: { findFirst: mocks.centroFindFirst, findUnique: mocks.centroFindUnique },
   periodoFinanceiro: { findUnique: mocks.periodoFindUnique },
   movimentoEstoque: { findMany: mocks.movFindMany, groupBy: mocks.movGroupBy, findFirst: mocks.movFindFirst, create: mocks.movCreate, update: mocks.movUpdate },
   operacao: { create: mocks.opCreate },
@@ -47,6 +50,7 @@ beforeEach(() => {
   mocks.produtoFindUnique.mockResolvedValue(produto);
   mocks.produtoFindFirst.mockResolvedValue(produto);
   mocks.centroFindFirst.mockResolvedValue({ id: 11, ativo: true });
+  mocks.centroFindUnique.mockResolvedValue({ nome: "Agronomia" });
   mocks.periodoFindUnique.mockResolvedValue(null);
   mocks.opCreate.mockResolvedValue({ id: 50, itens: [{ id: 51 }] });
   mocks.movCreate.mockResolvedValue({ id: 100, quantidade: new Prisma.Decimal(1) });
@@ -65,6 +69,15 @@ describe("ajustarContagem", () => {
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "AJUSTE", origem: "AJUSTE_INVENTARIO", centroCustoId: 11, quantidade: -2, criadoPorId: 7, propriedadeId: 1 }) });
     expect(mocks.opCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ tipo: "AJUSTE_ESTOQUE", criadoPorId: 7 }) }));
     expect(mocks.auditCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "Operacao", entidadeId: "50", acao: "AJUSTE_CONTAGEM", usuarioId: 7 }) });
+  });
+
+  it("o item da operação de ajuste leva categoria, centro e a direção do ajuste", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...produto, categoria: { id: 4, nome: "Fertilizantes", classificacao: "CUSTEIO" } });
+    mocks.movFindMany.mockResolvedValue([{ tipo: "ENTRADA", quantidade: new Prisma.Decimal(10) }]);
+    await ajustarContagem({ produtoId: 3, quantidadeContada: 8, saldoEsperado: 10, observacao: "Contagem física", propriedadeId: 1, centroCustoId: 11, usuarioId: 7 });
+    const item = mocks.opCreate.mock.calls[0][0].data.itens.create;
+    expect(item).toMatchObject({ descricao: "Ajuste (saída): Ureia", categoriaId: 4, categoriaNome: "Fertilizantes", classificacao: "CUSTEIO", centroCustoId: 11, centroCustoNome: "Agronomia" });
+    expect(item.quantidade.toString()).toBe("2");
   });
 
   it("saldo real de 1,005 (3 casas) casa com saldoEsperado: 1.005 informado pelo client — antes dava CONFLITO por arredondar a 2 casas", async () => {
@@ -166,6 +179,16 @@ describe("estornarMovimentoTx", () => {
     expect(data.tipo).toBe("AJUSTE");
     expect(Number(data.quantidade)).toBe(3);
     expect(Number(data.valorTotal)).toBe(6);
+  });
+  it("copia o vínculo operacional (lote, animal, talhão) para o inverso", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "SANIDADE", operacaoId: null, grupoId: 4, animalId: 9, talhaoId: null });
+    await estornarMovimentoTx(tx() as never, 40, { usuarioId: 7 });
+    expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ grupoId: 4, animalId: 9, talhaoId: null, criadoPorId: 7 }) });
+  });
+  it("dono sintético (id 0) não vira criadoPorId", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "SANIDADE", operacaoId: null });
+    await estornarMovimentoTx(tx() as never, 40, { usuarioId: 0 });
+    expect(mocks.movCreate.mock.calls[0][0].data.criadoPorId).toBeNull();
   });
 });
 
@@ -289,6 +312,24 @@ describe("listarSaldos", () => {
     expect(linha.valor).toBe(11.7); // 25.995 × 11,25 ÷ 25.000 = 11,698 → 11,70 (não 13,00)
   });
 
+  it("consolidado soma o valor de cada sítio pela base do próprio sítio", async () => {
+    // Sítio 1: 911 mL com base 0,451; sítio 2: 100 mL com base 2,00.
+    const m = (propriedadeId: number | null, quantidade: string, valorTotal: string) => ({ ...mov("ENTRADA", quantidade, valorTotal), propriedadeId });
+    mocks.produtoFindMany.mockResolvedValue([produtoMl([m(1, "1011", "456"), { ...mov("SAIDA", "100", "45.1"), propriedadeId: null }, m(2, "100", "200")])]);
+    mocks.movGroupBy.mockImplementation(async ({ where }) => {
+      const sitio = where.AND[0];
+      return sitio.propriedadeId === 2
+        ? [{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(200) } }]
+        : [{ produtoId: 3, _sum: { quantidade: new Prisma.Decimal(1011), valorTotal: new Prisma.Decimal(456) } }];
+    });
+    const [linha] = await listarSaldos({ propriedadeId: null });
+    expect(linha.saldo).toBe(1011);
+    // 911 × 456 ÷ 1011 = 410,90 + 100 × 2 = 200 → 610,90 (não 1011 × custo combinado)
+    expect(linha.valor).toBe(610.9);
+    expect(linha.custoMedio).toBe(0.6043); // 610,90 ÷ 1011 = 0,60425…
+    expect(mocks.movGroupBy).toHaveBeenCalledTimes(2);
+  });
+
   it("sem base de custo, valor 0 e custoMedio null", async () => {
     mocks.produtoFindMany.mockResolvedValue([produtoMl([mov("AJUSTE", "10", "0")])]);
     mocks.movGroupBy.mockResolvedValue([]);
@@ -298,7 +339,7 @@ describe("listarSaldos", () => {
 });
 
 describe("listarMovimentos — origem para navegação", () => {
-  const base = { produtoId: 3, produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, grupo: null, observacao: null, operacaoId: null, consumoPeriodo: null, eventoSanitario: null, operacaoAgricola: null };
+  const base = { produtoId: 3, produto: { nome: "Ureia", centrosCusto: [] }, tipo: "SAIDA", origem: "NUTRICAO", status: "CONFIRMADO", reversaoDeId: null, data: new Date("2026-09-01"), quantidade: new Prisma.Decimal(2), custoUnitario: new Prisma.Decimal(3), valorTotal: new Prisma.Decimal(6), operacao: null, grupo: null, observacao: null, operacaoId: null, consumoPeriodo: null, animal: null, talhao: null, reversaoDe: null };
 
   it("usa o mesmo escopo de sítio de listarSaldos (principal inclui movimento sem propriedade)", async () => {
     mocks.movFindMany.mockResolvedValue([]);
@@ -321,8 +362,8 @@ describe("listarMovimentos — origem para navegação", () => {
   it("resolve lote, animal e talhão das saídas automáticas com uma única consulta", async () => {
     mocks.movFindMany.mockResolvedValue([
       { ...base, id: 2, consumoPeriodo: { grupoId: 7, grupo: { nome: "Lote A" } } },
-      { ...base, id: 3, origem: "SANIDADE", eventoSanitario: { animalId: 9, animal: { numero: "123", nome: "Mimosa" } } },
-      { ...base, id: 4, origem: "APLICACAO", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
+      { ...base, id: 3, origem: "SANIDADE", animal: { id: 9, numero: "123", nome: "Mimosa" } },
+      { ...base, id: 4, origem: "APLICACAO", talhao: { id: 5, codigo: "T-05" } },
     ]);
     const { itens: ms } = await listarMovimentos();
     expect(ms.map((m) => m.operacaoId)).toEqual([null, null, null]);
@@ -330,14 +371,24 @@ describe("listarMovimentos — origem para navegação", () => {
     expect(ms[1].vinculo).toEqual({ tipo: "ANIMAL", id: 9, numero: "123", nome: "Mimosa" });
     expect(ms[2].vinculo).toEqual({ tipo: "TALHAO", id: 5, codigo: "T-05" });
     expect(mocks.movFindMany).toHaveBeenCalledTimes(1);
-    expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ consumoPeriodo: expect.anything(), eventoSanitario: expect.anything(), operacaoAgricola: expect.anything() });
+    expect(mocks.movFindMany.mock.calls[0][0].include).toMatchObject({ consumoPeriodo: expect.anything(), animal: expect.anything(), talhao: expect.anything() });
+  });
+
+  it("o estorno de uma baixa automática mantém o vínculo e informa a origem que desfaz", async () => {
+    // Evento sanitário já excluído: o vínculo vem do próprio movimento (animalId).
+    mocks.movFindMany.mockResolvedValue([
+      { ...base, id: 5, tipo: "ENTRADA", origem: "AJUSTE_INVENTARIO", reversaoDeId: 3, reversaoDe: { origem: "SANIDADE" }, animal: { id: 9, numero: "123", nome: null } },
+    ]);
+    const { itens: [m] } = await listarMovimentos();
+    expect(m.vinculo).toEqual({ tipo: "ANIMAL", id: 9, numero: "123", nome: null });
+    expect(m.origemEstornada).toBe("SANIDADE");
   });
 
   it("omite vínculo e observação automática de área que o leitor não tem", async () => {
     const linhas = [
       { ...base, id: 2, grupo: { nome: "Lote A" }, observacao: "Consumo do lote", consumoPeriodo: { grupoId: 7, grupo: { nome: "Lote A" } } },
-      { ...base, id: 3, origem: "SANIDADE", observacao: "Consumo em aplicacao (animal 9)", eventoSanitario: { animalId: 9, animal: { numero: "123", nome: "Mimosa" } } },
-      { ...base, id: 4, origem: "APLICACAO", observacao: "Aplicação em T-05", operacaoAgricola: { talhaoId: 5, talhao: { codigo: "T-05" } } },
+      { ...base, id: 3, origem: "SANIDADE", observacao: "Consumo em aplicacao (animal 9)", animal: { id: 9, numero: "123", nome: "Mimosa" } },
+      { ...base, id: 4, origem: "APLICACAO", observacao: "Aplicação em T-05", talhao: { id: 5, codigo: "T-05" } },
     ];
     mocks.movFindMany.mockResolvedValue(linhas);
     const { itens: soFinanceiro } = await listarMovimentos({ vinculosVisiveis: { pecuaria: false, agricultura: false } });
@@ -375,5 +426,17 @@ describe("listarMovimentos — origem para navegação", () => {
     expect(where.AND).toEqual(expect.arrayContaining([{ produto: { centrosCusto: { some: { centroCustoId: 4 } } } }]));
     const busca = where.AND.find((c: any) => c.OR);
     expect(busca.OR).toHaveLength(2);
+  });
+});
+
+describe("calcularCustoVacaDia", () => {
+  it("conta só dieta e sanidade, no escopo do sítio (principal inclui movimento sem propriedade)", async () => {
+    mocks.animalCount.mockResolvedValue(2);
+    mocks.movFindMany.mockResolvedValue([{ valorTotal: new Prisma.Decimal(60), data: new Date() }]);
+    const r = await calcularCustoVacaDia(30, 1);
+    const where = mocks.movFindMany.mock.calls[0][0].where;
+    // Venda, devolução e aplicação agrícola também são SAIDA, mas não custo da vaca.
+    expect(where).toMatchObject({ tipo: "SAIDA", origem: { in: ["NUTRICAO", "SANIDADE"] }, status: "CONFIRMADO", reversaoDeId: null, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] });
+    expect(r).toMatchObject({ vacasEmLactacao: 2, totalConsumo: 60, custoVacaDia: 1 });
   });
 });

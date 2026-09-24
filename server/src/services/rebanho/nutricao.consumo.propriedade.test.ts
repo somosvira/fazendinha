@@ -78,7 +78,19 @@ describe("consumo de dieta por propriedade", () => {
       where: { grupoId: 10, status: "ATIVO", propriedadeId: 7 },
     });
     expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { produtoId: { in: [4] }, propriedadeId: 7 },
+      where: { produtoId: { in: [4] }, status: { in: ["CONFIRMADO", "REVERTIDO"] }, propriedadeId: 7 },
+    }));
+  });
+
+  it("saldo da prévia segue o sítio do lote; na principal inclui movimento sem propriedade", async () => {
+    mocks.grupoFindFirst.mockResolvedValue({
+      id: 10, nome: "Alta", propriedadeId: 1,
+      dieta: { id: 2, nome: "Lactação", itens: [{ produtoId: 4, unidade: "kg", qtdPorCabecaDia: 2, produto: { id: 4, nome: "Ração", centrosCusto: [] } }] },
+    });
+    // Consolidado (sem sítio no request): o saldo não soma outros sítios, é o do lote.
+    await previsaoConsumo(10, "2026-07-01", "2026-07-02", null);
+    expect(mocks.movimentoFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { produtoId: { in: [4] }, status: { in: ["CONFIRMADO", "REVERTIDO"] }, OR: [{ propriedadeId: 1 }, { propriedadeId: null }] },
     }));
   });
 

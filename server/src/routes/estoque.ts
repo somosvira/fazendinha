@@ -10,7 +10,7 @@ import { listarParceiros } from "../services/financeiro/parceiros.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { resolverEscopoLeitura, resolverEscopoEscrita } from "../services/propriedade.js";
 import { exigePermissao, getUsuario } from "../middleware/permissao.js";
-import { temArea } from "../services/auth/papeis.js";
+import { temArea, temPermissao } from "../services/auth/papeis.js";
 
 type Status = 400 | 404 | 409 | 500;
 function fail(e: unknown): { status: Status; body: { error: string; code?: string } } {
@@ -41,7 +41,7 @@ const movimentosQuerySchema = z.object({
   produtoId: z.coerce.number().int().positive().optional(),
   tipo: z.enum(["ENTRADA", "SAIDA", "AJUSTE"]).optional(),
   q: z.string().trim().max(80).optional(),
-  origem: z.enum(["COMPRA", "CONSUMO_DIRETO", "TRANSFERENCIA", "PRODUCAO", "DEVOLUCAO", "BONIFICACAO", "INVENTARIO_INICIAL", "NUTRICAO", "SANIDADE", "APLICACAO", "PERDA", "AJUSTE_INVENTARIO"]).optional(),
+  origem: z.enum(["COMPRA", "CONSUMO_DIRETO", "TRANSFERENCIA", "PRODUCAO", "DEVOLUCAO", "BONIFICACAO", "INVENTARIO_INICIAL", "NUTRICAO", "SANIDADE", "APLICACAO", "PERDA", "AJUSTE_INVENTARIO", "VENDA"]).optional(),
   centroCustoId: z.coerce.number().int().min(0).optional(),
   de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -54,11 +54,16 @@ const ultimoPrecoQuerySchema = z.object({ parceiroId: z.coerce.number().int().po
 const usuarioId = (c: Parameters<typeof getUsuario>[0]) => getUsuario(c)?.id ?? null;
 const parseAtivo = (v?: string) => (v === "true" ? true : v === "false" ? false : undefined);
 
+// Sem a flag `verValores` as leituras saem sem custo/valor (null). Sem sessão
+// (dev sem usuários) vale acesso aberto, como no resto da API.
+const podeVerValores = (c: Parameters<typeof getUsuario>[0]) => { const u = getUsuario(c); return !u || temPermissao(u, "verValores"); };
+
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
   .get("/estoque/saldos", zValidator("query", saldosQuerySchema), async (c) => {
     const { centroCustoId } = c.req.valid("query");
-    return c.json(await svc.listarSaldos({ centroCustoId, propriedadeId: await resolverEscopoLeitura(c) }));
+    const saldos = await svc.listarSaldos({ centroCustoId, propriedadeId: await resolverEscopoLeitura(c) });
+    return c.json(podeVerValores(c) ? saldos : saldos.map((s) => ({ ...s, custoMedio: null, valor: null })));
   })
   .get("/estoque/movimentos", zValidator("query", movimentosQuerySchema), async (c) => {
     const { produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina } = c.req.valid("query");
@@ -66,7 +71,8 @@ export const estoqueRouter = new Hono()
     // (animal/lote/talhão) das saídas automáticas só vai para quem tem a área.
     const u = getUsuario(c);
     const vinculosVisiveis = u ? { pecuaria: temArea(u, "pecuaria"), agricultura: temArea(u, "agricultura") } : undefined;
-    return c.json(await svc.listarMovimentos({ produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis }));
+    const resultado = await svc.listarMovimentos({ produtoId, tipo, q, origem, centroCustoId, de, ate, pagina, porPagina, propriedadeId: await resolverEscopoLeitura(c), vinculosVisiveis });
+    return c.json(podeVerValores(c) ? resultado : { ...resultado, itens: resultado.itens.map((m) => ({ ...m, custoUnitario: null, valorTotal: null })) });
   })
   .post("/estoque/ajustes", exigePermissao("lancar"), zValidator("json", svc.ajusteContagemSchema), async (c) => {
     try {
@@ -96,6 +102,7 @@ export const estoqueRouter = new Hono()
   .get("/estoque/produtos/:id/ultimo-preco", zValidator("param", idParamSchema), zValidator("query", ultimoPrecoQuerySchema), async (c) => {
     const { id } = c.req.valid("param");
     const { parceiroId } = c.req.valid("query");
+    if (!podeVerValores(c)) return c.json(null);
     return c.json(await produtosSvc.obterUltimoPreco(id, { parceiroId, propriedadeId: await resolverEscopoLeitura(c) }));
   })
   // Sem compra anterior, a sugestão de preço na compra recorre ao custo médio
@@ -103,6 +110,7 @@ export const estoqueRouter = new Hono()
   // não preenche o campo automaticamente (ver FormOperacao.tsx).
   .get("/estoque/produtos/:id/custo-medio", zValidator("param", idParamSchema), async (c) => {
     const { id } = c.req.valid("param");
+    if (!podeVerValores(c)) return c.json({ custoMedio: null });
     const custoMedio = await svc.obterCustoMedio(prisma, id, await resolverEscopoLeitura(c));
     return c.json({ custoMedio: custoMedio ? custoMedio.toNumber() : null });
   })

@@ -194,29 +194,29 @@ model ContaFinanceira {
 }
 
 model Produto {
-  id                 Int                     @id @default(autoincrement())
-  nome               String                  @unique
-  unidade            UnidadeMedida           @default(UN)
-  minimoEstoque      Decimal?                @db.Decimal(12, 2)
-  ativo              Boolean                 @default(true)
+  id                Int                  @id @default(autoincrement())
+  nome              String               @unique
+  unidade           UnidadeMedida        @default(UN)
+  minimoEstoque     Decimal?             @db.Decimal(12, 2)
+  ativo             Boolean              @default(true)
   // Mapeamento contábil (ponte com o financeiro): categoria padrão que o item
   // de operação herda ao escolher este produto (classificação vem da categoria).
   // Obrigatória no cadastro (validada no service); a coluna segue nullable por
   // causa de produtos legados. Se o produto tem estoque não é atributo dele:
   // quem decide é o tipo da operação (ItemOperacao.estocavel).
-  categoria          Categoria?              @relation(fields: [categoriaId], references: [id])
-  categoriaId        Int?
+  categoria         Categoria?           @relation(fields: [categoriaId], references: [id])
+  categoriaId       Int?
   // Centros de custo onde este produto pode ser usado (N:N). Um só → o item da
   // operação e a saída de estoque herdam automaticamente; vários → escolha na hora.
-  centrosCusto       ProdutoCentroCusto[]
-  movimentos         MovimentoEstoque[]
-  itensOperacao      ItemOperacao[]
-  eventosSanitarios  EventoSanitario[]
-  dietaItens         DietaItem[]
-  fornecedores       ProdutoFornecedor[]
-  aplicacoes         OperacaoAgricola[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  centrosCusto      ProdutoCentroCusto[]
+  movimentos        MovimentoEstoque[]
+  itensOperacao     ItemOperacao[]
+  eventosSanitarios EventoSanitario[]
+  dietaItens        DietaItem[]
+  fornecedores      ProdutoFornecedor[]
+  aplicacoes        OperacaoAgricola[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 }
 
 // Registro de chuva (pluviômetro) — mm por dia. Só o pluviômetro: sem estação meteorológica,
@@ -1306,6 +1306,7 @@ model Animal {
   linhasFolhaCampo     LinhaFolhaCampo[]
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
+  movimentosEstoque    MovimentoEstoque[]
 
   @@index([status])
   @@index([finalidade])
@@ -1920,6 +1921,7 @@ enum OrigemMovimentoEstoque {
   APLICACAO
   PERDA
   AJUSTE_INVENTARIO
+  VENDA
 }
 
 enum StatusMovimentoEstoque {
@@ -1966,6 +1968,13 @@ model MovimentoEstoque {
   eventoSanitario  EventoSanitario?
   // Operação agrícola (aplicação/adubação) que gerou esta SAIDA (origem APLICACAO).
   operacaoAgricola OperacaoAgricola?
+  // Snapshot do vínculo operacional (animal da sanidade, talhão da aplicação).
+  // Sobrevive à exclusão do evento de origem e é copiado para o estorno — sem
+  // ele, o histórico perde de onde veio a baixa quando o evento é excluído.
+  animal           Animal?                @relation(fields: [animalId], references: [id], onDelete: SetNull)
+  animalId         Int?
+  talhao           Talhao?                @relation(fields: [talhaoId], references: [id], onDelete: SetNull)
+  talhaoId         Int?
   observacao       String?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -1977,6 +1986,8 @@ model MovimentoEstoque {
   @@index([consumoPeriodoId])
   @@index([propriedadeId])
   @@index([centroCustoId])
+  @@index([animalId])
+  @@index([talhaoId])
 }
 
 // Um fechamento de consumo de dieta por lote por período. Agrupa as N SAIDAs
@@ -2141,43 +2152,44 @@ model PlanoAdubacao {
 
 // Talhão — unidade individual da lavoura. Espelha Animal do rebanho.
 model Talhao {
-  id               Int                  @id @default(autoincrement())
-  codigo           String               @unique
-  nome             String?
-  variedade        VariedadeCafe        @relation(fields: [variedadeId], references: [id])
-  variedadeId      Int
-  lavoura          Lavoura?             @relation(fields: [lavouraId], references: [id])
-  lavouraId        Int?
+  id                Int                  @id @default(autoincrement())
+  codigo            String               @unique
+  nome              String?
+  variedade         VariedadeCafe        @relation(fields: [variedadeId], references: [id])
+  variedadeId       Int
+  lavoura           Lavoura?             @relation(fields: [lavouraId], references: [id])
+  lavouraId         Int?
   // Espaçamento como string ("3,80 × 0,60 m") preserva a forma usada pelo
   // produtor; plantasHa é derivado mas guardado pra agilidade nos queries.
-  espacamento      String?
-  plantasHa        Int
-  areaHa           Decimal              @db.Decimal(7, 2)
-  anoPlantio       Int
-  altitude         Int?
-  exposicao        String?
-  declive          Decimal?             @db.Decimal(4, 1)
-  irrigado         Boolean              @default(false)
-  estado           EstadoTalhao         @default(ATIVO)
-  dataPlantio      DateTime             @db.Date
-  ultimaRecepa     DateTime?            @db.Date
-  dataBaixa        DateTime?            @db.Date
-  motivoBaixa      String?
-  observacao       String?
-  resumo           ResumoTalhao?
-  operacoes        OperacaoAgricola[]
-  inspecoes        InspecaoMIP[]
-  amostrasSolo     AmostraSolo[]
-  amostrasFoliar   AmostraFoliar[]
-  passadasColheita PassadaColheita[]
-  safras           SafraTalhao[]
-  tarefasAgricolas TarefaAgricola[]
-  apontamentos     ApontamentoMaquina[]
+  espacamento       String?
+  plantasHa         Int
+  areaHa            Decimal              @db.Decimal(7, 2)
+  anoPlantio        Int
+  altitude          Int?
+  exposicao         String?
+  declive           Decimal?             @db.Decimal(4, 1)
+  irrigado          Boolean              @default(false)
+  estado            EstadoTalhao         @default(ATIVO)
+  dataPlantio       DateTime             @db.Date
+  ultimaRecepa      DateTime?            @db.Date
+  dataBaixa         DateTime?            @db.Date
+  motivoBaixa       String?
+  observacao        String?
+  resumo            ResumoTalhao?
+  operacoes         OperacaoAgricola[]
+  inspecoes         InspecaoMIP[]
+  amostrasSolo      AmostraSolo[]
+  amostrasFoliar    AmostraFoliar[]
+  passadasColheita  PassadaColheita[]
+  safras            SafraTalhao[]
+  tarefasAgricolas  TarefaAgricola[]
+  apontamentos      ApontamentoMaquina[]
   // Escopo de propriedade (Fatia 4B). Nullable + default principal.
-  propriedade      Propriedade?         @relation(fields: [propriedadeId], references: [id])
-  propriedadeId    Int?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  propriedade       Propriedade?         @relation(fields: [propriedadeId], references: [id])
+  propriedadeId     Int?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  movimentosEstoque MovimentoEstoque[]
 
   @@index([estado])
   @@index([lavouraId])

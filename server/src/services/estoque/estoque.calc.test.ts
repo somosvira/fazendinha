@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { saldoProduto, custoVacaDia, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, type MovIn, type MovCustoIn } from "./estoque.calc.js";
+import { saldoProduto, custoVacaDia, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, type MovIn, type MovCustoIn } from "./estoque.calc.js";
 
 const HOJE = "2026-06-17";
 
@@ -182,5 +182,29 @@ describe("valorSaidaPreciso", () => {
     expect(base.custoMedio).toBeNull();
     expect(valorSaidaPreciso({ quantidadeSaida: 3, quantidadeBase: base.quantidade, valorBase: base.valor })).toEqual({ custoUnitario: D(0), valorTotal: D(0) });
     expect(valorSaidaDaBase(3, null)).toEqual({ custoUnitario: D(0), valorTotal: D(0) });
+  });
+});
+
+describe("consolidarSaldo", () => {
+  const base = (quantidade: string, valor: string) => ({ quantidade: new Prisma.Decimal(quantidade), valor: new Prisma.Decimal(valor) });
+  it("um sítio: mesmo cálculo de sempre", () => {
+    const r = consolidarSaldo([{ saldo: 25995, base: base("25000", "11.25") }]);
+    expect(r.saldo).toBe(25995);
+    expect(r.valor).toBe(11.7);
+    expect(r.custoMedio!.toNumber()).toBe(0.0005);
+  });
+  it("vários sítios: valor é a soma dos sítios e o custo médio é valor ÷ saldo", () => {
+    const r = consolidarSaldo([{ saldo: 911, base: base("1011", "456") }, { saldo: 100, base: base("100", "200") }]);
+    expect(r).toMatchObject({ saldo: 1011, valor: 610.9 });
+    expect(r.custoMedio!.toNumber()).toBe(0.6043);
+  });
+  it("sítio sem base entra no saldo com valor 0; nenhum com base → custo null", () => {
+    expect(consolidarSaldo([{ saldo: 5, base: null }, { saldo: 10, base: base("10", "30") }])).toMatchObject({ saldo: 15, valor: 30 });
+    expect(consolidarSaldo([{ saldo: 5, base: null }])).toEqual({ saldo: 5, valor: 0, custoMedio: null });
+  });
+  it("saldo total não positivo usa a média das bases somadas para exibir", () => {
+    const r = consolidarSaldo([{ saldo: -5, base: base("10", "10") }, { saldo: 0, base: base("10", "30") }]);
+    expect(r.valor).toBe(-5);
+    expect(r.custoMedio!.toNumber()).toBe(2);
   });
 });

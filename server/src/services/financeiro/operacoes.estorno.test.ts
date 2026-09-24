@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   operacaoFindFirstDireto: vi.fn(),
   operacaoUpdate: vi.fn(),
   movimentoEstoqueCreate: vi.fn(),
+  movimentoEstoqueFindFirst: vi.fn(),
   movimentoEstoqueUpdate: vi.fn(),
   auditoriaCreate: vi.fn(),
   contaFindFirst: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock("../../db.js", () => {
     compromissoFinanceiro: { findUniqueOrThrow: mocks.compromissoFindUniqueOrThrow, findUnique: mocks.compromissoFindUnique, update: mocks.compromissoUpdate, updateMany: mocks.compromissoUpdateMany },
     liquidacao: { create: mocks.liquidacaoCreate },
     operacao: { findFirst: mocks.operacaoFindFirst, update: mocks.operacaoUpdate },
-    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate },
+    movimentoEstoque: { create: mocks.movimentoEstoqueCreate, update: mocks.movimentoEstoqueUpdate, findFirst: mocks.movimentoEstoqueFindFirst },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
     contaFinanceira: { findFirst: mocks.contaFindFirst },
     $queryRaw: mocks.queryRaw,
@@ -130,14 +131,20 @@ describe("estornarOperacao", () => {
       id: 10, status: "CONFIRMADA", propriedadeId: 1, operacaoId: 5, parceiroId: null, valorTotal: decimal("50"), revertidaPor: null,
       movimentos: [{ contaId: 3, direcao: "SAIDA", valor: decimal("50") }], liquidacoes: [],
     });
-    mocks.movimentoEstoqueCreate.mockResolvedValue({});
+    mocks.movimentoEstoqueFindFirst.mockResolvedValue({ ...operacaoBase.movimentosEstoque[0], operacaoId: 5, origem: "COMPRA", centroCustoId: null, grupoId: null, animalId: null, talhaoId: null });
+    mocks.movimentoEstoqueCreate.mockResolvedValue({ id: 31 });
     mocks.movimentoEstoqueUpdate.mockResolvedValue({});
 
     await estornarOperacao(5, "Compra cancelada pelo fornecedor", { propriedadeId: 1, usuarioId: 1 });
 
     expect(mocks.transacaoCreate).toHaveBeenCalledTimes(1); // reversão da transação
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data.tipo).toBe("SAIDA"); // inverte a ENTRADA original
+    expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({
+      tipo: "SAIDA", reversaoDeId: 30, criadoPorId: 1, operacaoId: 5, // inverte a ENTRADA original, com autor
+      observacao: "Cancelamento da operação #5: Compra cancelada pelo fornecedor",
+    });
+    // Mesmo estorno dos demais domínios: auditoria por movimento de estoque.
+    expect(mocks.auditoriaCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ entidade: "MovimentoEstoque", entidadeId: "30", acao: "ESTORNO_MOVIMENTO", usuarioId: 1 }) });
     expect(mocks.movimentoEstoqueUpdate).toHaveBeenCalledWith({ where: { id: 30 }, data: { status: "REVERTIDO" } });
     expect(mocks.compromissoUpdateMany).toHaveBeenCalledWith({ where: { operacaoId: 5, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });
     expect(mocks.operacaoUpdate).toHaveBeenCalledWith({ where: { id: 5 }, data: { status: "CANCELADA" } });

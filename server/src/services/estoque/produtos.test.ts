@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
+  produtoCreate: vi.fn(), produtoFindUnique: vi.fn(), produtoFindFirst: vi.fn(), produtoUpdate: vi.fn(), produtoFindMany: vi.fn(),
   parceiroFindMany: vi.fn(), centroCustoFindMany: vi.fn(), auditoria: vi.fn(), transaction: vi.fn(), itemFindFirst: vi.fn(),
   movimentoCount: vi.fn(), dietaItemCount: vi.fn(), itemOperacaoCount: vi.fn(), eventoSanitarioCount: vi.fn(), operacaoAgricolaCount: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
   const tx = {
-    produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, update: mocks.produtoUpdate },
+    produto: { create: mocks.produtoCreate, findUnique: mocks.produtoFindUnique, findFirst: mocks.produtoFindFirst, update: mocks.produtoUpdate },
     parceiro: { findMany: mocks.parceiroFindMany },
     centroCusto: { findMany: mocks.centroCustoFindMany },
     auditoriaFinanceira: { create: mocks.auditoria },
@@ -42,6 +42,7 @@ describe("cadastro de produtos (estoque)", () => {
     vi.clearAllMocks();
     mocks.produtoCreate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
     mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
+    mocks.produtoFindFirst.mockResolvedValue(null); // nenhum outro produto com o mesmo nome
     mocks.produtoUpdate.mockImplementation(async ({ data }) => ({
       ...base, ...data,
       fornecedores: (data.fornecedores?.create ?? []).map(({ fornecedorId }: { fornecedorId: number }) => ({ fornecedor: { ...fornecedor, id: fornecedorId } })),
@@ -229,5 +230,29 @@ describe("obterUltimoPreco", () => {
     mocks.itemFindFirst.mockResolvedValue(null);
     expect(await obterUltimoPreco(12)).toBeNull();
     expect(mocks.itemFindFirst).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("nome de produto sem diferenciar maiúsculas", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
+    mocks.produtoCreate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
+    mocks.produtoUpdate.mockImplementation(async ({ data }) => ({ ...base, ...data, fornecedores: [], centrosCusto: [] }));
+  });
+
+  it("recusa criar produto cujo nome só difere na caixa de um existente", async () => {
+    mocks.produtoFindFirst.mockResolvedValue({ id: 2 });
+    await expect(criarProduto(input({ nome: "ração" }), 9)).rejects.toMatchObject({ code: "CONFLITO", campo: "nome" });
+    expect(mocks.produtoFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { nome: { equals: "ração", mode: "insensitive" } } }));
+    expect(mocks.produtoCreate).not.toHaveBeenCalled();
+  });
+
+  it("renomear ignora o próprio produto e recusa o nome de outro", async () => {
+    mocks.produtoFindFirst.mockResolvedValue(null);
+    await atualizarProduto(1, { nome: "RAÇÃO" }, 9);
+    expect(mocks.produtoFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { nome: { equals: "RAÇÃO", mode: "insensitive" }, id: { not: 1 } } }));
+    mocks.produtoFindFirst.mockResolvedValue({ id: 2 });
+    await expect(atualizarProduto(1, { nome: "Sal mineral" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
   });
 });
