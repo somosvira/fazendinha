@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  avaliarCategoria, calcularCategoriaAutomatica, condicaoDaRegra, descreverRegra, filtroCategoria, idadeEmMeses,
-  nascimentoLimiteParaIdade, regraCasa, validarDataCategoriaManual, validarRegra, type RegraCategoria,
+  avaliarCategoria, calcularCategoriaAutomatica, condicaoDaRegra, condicoesSemCategoria, descreverRegra, faixaNascimentoParaIdade,
+  filtroCategoria, idadeEmMeses, idadeNaFaixa, nascimentoLimiteParaIdade, regraCasa, validarDataCategoriaManual, validarRegra,
+  type CondicaoRegra, type RegraCategoria,
 } from "./categoria.calc.js";
 
 // os padrões de fábrica (categorias do IDEAGRI), como na migration pecuaria_categorias
@@ -164,5 +165,102 @@ describe("validarDataCategoriaManual (R4)", () => {
   it("aceita data igual ou posterior ao fim da última manual fechada", () => {
     expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-02-01", ate: "2026-05-01" }, data: "2026-05-01" })).toBeNull();
     expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-02-01", ate: "2026-05-01" }, data: "2026-06-01" })).toBeNull();
+  });
+});
+
+// avalia uma CondicaoRegra em memória, como o `where` do banco faria (whereCondicao em categorias.ts)
+function casaCondicao(c: CondicaoRegra, a: { sexo: "F" | "M"; dataNascimento: string; partos: number }): boolean {
+  const nasc = Date.parse(a.dataNascimento);
+  if (c.sexo !== a.sexo) return false;
+  if (c.semPartos === true && a.partos !== 0) return false;
+  if (c.semPartos === false && !(a.partos > 0)) return false;
+  if (c.nascidoAte && !(nasc <= c.nascidoAte.getTime())) return false;
+  if (c.nascidoApos && !(nasc > c.nascidoApos.getTime())) return false;
+  return true;
+}
+
+const diasDe = (de: string, ate: string) => {
+  const out: string[] = [];
+  for (let d = Date.parse(de); d <= Date.parse(ate); d += 86_400_000) out.push(new Date(d).toISOString().slice(0, 10));
+  return out;
+};
+
+describe("condicoesSemCategoria (filtro 'sem categoria')", () => {
+  it("usa todas as regras automáticas ativas, dos dois sexos (inativas e só manuais ficam fora)", () => {
+    const regras = [...PADROES, r("off", "Desligada", "F", 5, { ativo: false, idadeMinMeses: 1 })];
+    expect(condicoesSemCategoria(regras, HOJE)).toEqual([PADROES[0], PADROES[1], PADROES[2], PADROES[3]].map((x) => condicaoDaRegra(x, HOJE)));
+  });
+
+  it("nenhuma condição casa ⇔ avaliarCategoria dá SEM_CATEGORIA (regras com lacunas, bordas de idade)", () => {
+    // lacunas: fêmea sem parto de 12 a 23 meses, macho com menos de 6 meses; ordem embaralhada
+    const regras: RegraCategoria[] = [
+      r("f-velha", "Velha", "F", 5, { idadeMinMeses: 24, partos: "SEM" }),
+      r("vaca", "Vaca", "F", 10, { partos: "COM" }),
+      r("bez", "Bezerra", "F", 20, { idadeMaxMeses: 12, partos: "SEM" }),
+      r("m-6", "Garrote", "M", 30, { idadeMinMeses: 6 }),
+      r("desl", "Desligada", "M", 1, { ativo: false }),
+      r("man", "Só manual", "M", 2, { automatica: false }),
+    ];
+    const condicoes = condicoesSemCategoria(regras, HOJE);
+    let sem = 0;
+    let com = 0;
+    const nascimentos = [...diasDe("2024-08-20", "2024-10-05"), ...diasDe("2025-08-20", "2025-10-05"), ...diasDe("2026-02-20", "2026-04-05")];
+    for (const dataNascimento of nascimentos) {
+      for (const [sexo, partos] of [["F", 0], ["F", 1], ["M", 0]] as const) {
+        const a = { sexo, dataNascimento, partos };
+        const esperado = avaliarCategoria(a, regras, null, HOJE).origem === "SEM_CATEGORIA";
+        const doFiltro = !condicoes.some((c) => casaCondicao(c, a));
+        expect({ a, sem: doFiltro }).toEqual({ a, sem: esperado });
+        if (esperado) sem += 1; else com += 1;
+      }
+    }
+    expect(sem).toBeGreaterThan(20);
+    expect(com).toBeGreaterThan(20);
+  });
+
+  it("regra sem critério tira o sexo inteiro de 'sem categoria'", () => {
+    const [f, m] = [animal("F", "2026-01-01"), animal("M", "2026-01-01")];
+    const condicoes = condicoesSemCategoria(PADROES, HOJE);
+    expect(condicoes.some((c) => casaCondicao(c, m))).toBe(true);
+    expect(condicoes.some((c) => casaCondicao(c, f))).toBe(true);
+    expect(condicoesSemCategoria([], HOJE)).toEqual([]);
+  });
+});
+
+describe("faixaNascimentoParaIdade (filtro de idade)", () => {
+  it("sem extremos não restringe; mínimo 0 também não", () => {
+    expect(faixaNascimentoParaIdade(HOJE, undefined, undefined)).toEqual({});
+    expect(faixaNascimentoParaIdade(HOJE, 0, null)).toEqual({});
+  });
+
+  it("extremos inclusivos: 12 a 12 meses em 24/09/2026 = nascidos de 25/08/2025 a 24/09/2025", () => {
+    const { nascidoAte, nascidoApos } = faixaNascimentoParaIdade(HOJE, 12, 12);
+    expect(nascidoAte!.toISOString().slice(0, 10)).toBe("2025-09-24");
+    expect(nascidoApos!.toISOString().slice(0, 10)).toBe("2025-08-24"); // exclusivo: 13 meses completos
+  });
+
+  it("nascimento dentro dos limites ⇔ idadeEmMeses na faixa (fins de mês, 29/02, mesmo dia e um dia fora)", () => {
+    const hojes = ["2026-09-24", "2025-02-28", "2025-03-01", "2028-02-29", "2026-03-31", "2026-01-31", "2026-12-01"];
+    const faixas: Array<[number | undefined, number | undefined]> = [[11, 13], [12, 12], [0, 0], [undefined, 11], [13, undefined], [0, 1], [23, 25]];
+    for (const hoje of hojes) {
+      const h = Date.parse(hoje);
+      const nascimentos = diasDe(new Date(h - 800 * 86_400_000).toISOString().slice(0, 10), hoje);
+      for (const [min, max] of faixas) {
+        const { nascidoAte, nascidoApos } = faixaNascimentoParaIdade(hoje, min, max);
+        for (const nasc of nascimentos) {
+          const t = Date.parse(nasc);
+          const doFiltro = (!nascidoAte || t <= nascidoAte.getTime()) && (!nascidoApos || t > nascidoApos.getTime());
+          const esperado = idadeNaFaixa(idadeEmMeses(nasc, hoje), min, max);
+          if (doFiltro !== esperado) expect({ hoje, min, max, nasc, doFiltro }).toEqual({ hoje, min, max, nasc, doFiltro: esperado });
+        }
+      }
+    }
+  });
+
+  it("idadeNaFaixa", () => {
+    expect(idadeNaFaixa(12, 12, 12)).toBe(true);
+    expect(idadeNaFaixa(11, 12, undefined)).toBe(false);
+    expect(idadeNaFaixa(14, null, 13)).toBe(false);
+    expect(idadeNaFaixa(0, undefined, undefined)).toBe(true);
   });
 });

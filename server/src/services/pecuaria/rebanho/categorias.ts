@@ -6,7 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, hojeFazendaDate, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
 import {
-  avaliarCategoria, descreverRegra, filtroCategoria, validarRegra,
+  avaliarCategoria, condicoesSemCategoria, descreverRegra, filtroCategoria, validarRegra,
   type CategoriaRef, type CondicaoRegra, type CriterioPartos, type RegraCategoria, type Sexo,
 } from "./categoria.calc.js";
 import type { CriarCategoriaInput, EditarCategoriaInput, RegraPropostaInput } from "./schemas.js";
@@ -65,6 +65,19 @@ export function whereCategoria(categoriaId: string | undefined, regras: RegraCat
     OR: [
       manual,
       { AND: [{ categoriasManuais: { none: { ate: null } } }, whereCondicao(f.automatica.incluir), ...f.automatica.excluir.map((e) => ({ NOT: whereCondicao(e) }))] },
+    ],
+  };
+}
+
+/**
+ * `where` do Prisma equivalente a `avaliarCategoria(...).origem === "SEM_CATEGORIA"`: sem manual
+ * aberta e nenhuma regra automática ativa casa (a negação da união dos `whereCategoria`).
+ */
+export function whereSemCategoria(regras: RegraCategoria[], hoje: Date): Prisma.AnimalWhereInput {
+  return {
+    AND: [
+      { categoriasManuais: { none: { ate: null } } },
+      ...condicoesSemCategoria(regras, hoje).map((c) => ({ NOT: whereCondicao(c) })),
     ],
   };
 }

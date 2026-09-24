@@ -21,6 +21,7 @@ import {
   criarMotivoBaixaSchema, editarMotivoBaixaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
   criarCategoriaSchema, editarCategoriaSchema, simularCategoriasSchema, reordenarCategoriasSchema, restaurarPadroesSchema,
   categoriaManualSchema, removerCategoriaManualSchema,
+  gmdPeriodoQuerySchema, painelQuerySchema, auditoriaAnimalQuerySchema, auditoriaCadastroQuerySchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
 
 function usuarioId(c: Context): number | null {
@@ -110,10 +111,11 @@ export const rebanhoRouter = new Hono()
       return c.json(await animais.cadastrar({ ...body, propriedadeId }, usuarioId(c)), 201);
     } catch (e) { return falha(c, e); }
   })
-  .get("/animais/:id", idParam, async (c) => {
+  .get("/animais/:id", idParam, validarQuery(gmdPeriodoQuerySchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      return c.json(await animais.buscarFicha(c.req.valid("param").id, escopo));
+      const { periodoDias } = c.req.valid("query");
+      return c.json(await animais.buscarFicha(c.req.valid("param").id, escopo, periodoDias));
     } catch (e) { return falha(c, e); }
   })
   .patch("/animais/:id", idParam, validar(editarAnimalSchema), async (c) => {
@@ -128,10 +130,11 @@ export const rebanhoRouter = new Hono()
       return c.json(await animais.substituirComposicao(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
-  .get("/animais/:id/auditoria", idParam, async (c) => {
+  .get("/animais/:id/auditoria", idParam, validarQuery(auditoriaAnimalQuerySchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo));
+      const { page, pageSize } = c.req.valid("query");
+      return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo, page, pageSize));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/movimentar", validar(movimentarSchema), async (c) => {
@@ -211,6 +214,13 @@ export const rebanhoRouter = new Hono()
     try {
       const escopo = await resolverEscopoLeitura(c);
       return c.json(await lotes.buscarLote(c.req.valid("param").id, escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/lotes/:id/resumo", idParam, validarQuery(gmdPeriodoQuerySchema), async (c) => {
+    try {
+      const escopo = await resolverEscopoLeitura(c);
+      const { periodoDias } = c.req.valid("query");
+      return c.json(await lotes.buscarResumoLote(c.req.valid("param").id, periodoDias, escopo));
     } catch (e) { return falha(c, e); }
   })
   .get("/lotes/:id/movimentacoes", idParam, validarQuery(paginaQuerySchema), async (c) => {
@@ -305,10 +315,17 @@ export const rebanhoRouter = new Hono()
       return c.json(await motivos.editarMotivoBaixa(c.req.valid("param").id, c.req.valid("json"), usuarioId(c)));
     } catch (e) { return falha(c, e); }
   })
-  .get("/painel", async (c) => {
+  .get("/painel", validarQuery(painelQuerySchema), async (c) => {
     try {
       const escopo = await resolverEscopoLeitura(c);
-      return c.json(await painel.buscarPainelGeral(escopo));
+      const { periodoDias } = c.req.valid("query");
+      return c.json(await painel.buscarPainelGeral(escopo, periodoDias));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/auditoria", validarQuery(auditoriaCadastroQuerySchema), async (c) => {
+    try {
+      const { entidade, entidadeId, page, pageSize } = c.req.valid("query");
+      return c.json(await animais.buscarAuditoriaCadastro(entidade, entidadeId, page, pageSize));
     } catch (e) { return falha(c, e); }
   })
   .get("/catalogos", async (c) => {

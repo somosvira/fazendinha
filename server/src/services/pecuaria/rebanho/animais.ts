@@ -8,15 +8,21 @@ import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataBaixa, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
 import { validarComposicao } from "./composicao.calc.js";
 import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError, type LinhaHistorico } from "./movimentacao.calc.js";
-import { avaliarCategoria, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
-import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria } from "./categorias.js";
+import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
 import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho } from "./mappers.js";
+import { resumoPeso } from "./peso.calc.js";
+import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
 import type {
   CadastrarAnimalInput, EditarAnimalInput, MovimentarInput, MudarDestinoInput,
   BaixaInput, EstornoBaixaInput, PesagemInput, EditarPesagemInput, ListarFiltrosInput,
   SubstituirComposicaoInput, CategoriaManualInput, RemoverCategoriaManualInput,
 } from "./schemas.js";
+
+/** Entidades de cadastro que `/auditoria` (fora do animal) pode consultar. */
+export const ENTIDADES_AUDITORIA_CADASTRO = ["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal"] as const;
+export type EntidadeAuditoriaCadastro = (typeof ENTIDADES_AUDITORIA_CADASTRO)[number];
 
 // ---------- helpers de leitura (escopados por propriedade quando informado) ----------
 
@@ -390,7 +396,7 @@ export async function removerCategoriaManual(animalId: string, input: RemoverCat
 
 // ---------- ficha ----------
 
-export async function buscarFicha(id: string, propriedadeEscopo: number | null): Promise<AnimalFicha> {
+export async function buscarFicha(id: string, propriedadeEscopo: number | null, periodoDias: number | null = 90): Promise<AnimalFicha> {
   const animal = await prisma.animal.findUnique({ where: { id } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
@@ -399,8 +405,9 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
     prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
     prisma.baixaAnimal.findMany({
-      where: { animalId: id }, include: { motivo: true, localizacaoFechada: { include: { propriedade: true, lote: true } }, destinoFechado: true },
-      orderBy: { data: "desc" },
+      where: { animalId: id },
+      include: { motivo: true, localizacaoFechada: { include: { propriedade: true, lote: true } }, destinoFechado: true, criadoPor: { select: { nome: true } } },
+      orderBy: [{ data: "desc" }, { criadoEm: "desc" }],
     }),
     composicaoDaFicha(prisma, id),
     prisma.categoriaManualAnimal.findMany({ where: { animalId: id }, include: { categoria: { select: { id: true, nome: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
@@ -442,8 +449,17 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
     destino: destinoFicha,
     composicao,
     ultimoPeso,
+    pesagemAnterior: pesagens[1] ? { pesoKg: Number(pesagens[1].pesoKg), data: pesagens[1].data } : null,
     situacao: baixaAtual ? "BAIXADO" : "ATIVO",
     idadeNaBaixa: baixaAtual != null,
+    noLocalDesde: locAtual ? locAtual.desde : null,
+    baixa: baixaAtual ? { data: baixaAtual.data, tipo: baixaAtual.tipo } : null,
+  });
+
+  const peso = resumoPeso(pesagens.map((p) => ({ pesoKg: Number(p.pesoKg), data: p.data })), {
+    hoje: hojeFazendaDate(),
+    periodoDias,
+    ateData: baixaAtual ? baixaAtual.data : null,
   });
 
   return {
@@ -481,6 +497,14 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
       motivo: baixas[0].motivo ? { nome: baixas[0].motivo.nome, classe: baixas[0].motivo.classe } : null, observacao: baixas[0].observacao,
       estornadaEm: baixas[0].estornadaEm ? baixas[0].estornadaEm.toISOString() : null, estornoMotivo: baixas[0].estornoMotivo,
     } : null),
+    // todas as baixas do animal, inclusive as estornadas (já ordenadas: data desc, criadoEm desc)
+    historicoBaixas: baixas.map((b) => ({
+      id: b.id, data: b.data.toISOString().slice(0, 10), tipo: b.tipo,
+      motivo: b.motivo ? { nome: b.motivo.nome, classe: b.motivo.classe } : null, observacao: b.observacao,
+      estornadaEm: b.estornadaEm ? b.estornadaEm.toISOString() : null, estornoMotivo: b.estornoMotivo,
+      criadoPor: b.criadoPor?.nome ?? null,
+    })),
+    peso,
   };
 }
 
@@ -528,14 +552,101 @@ export function whereSituacao(input: {
 }
 
 
+// ---------- filtros da lista (tudo no banco: a paginação e o painel usam o mesmo `where`) ----------
+
+type FiltrosAnimal = Pick<ListarFiltrosInput,
+  "sexo" | "origem" | "racaId" | "categoriaOrigem" | "tipoBaixa" | "baixaDe" | "baixaAte" | "situacao">;
+
+/**
+ * Filtros de atributo do animal (não dependem de "hoje"). Os da baixa valem para a baixa em
+ * vigor (não estornada); com `situacao=ATIVO` não há baixa em vigor, então são ignorados em vez
+ * de zerar a lista — o cliente pode manter o filtro montado ao trocar de aba.
+ */
+export function whereAtributos(f: FiltrosAnimal): Prisma.AnimalWhereInput[] {
+  const partes: Prisma.AnimalWhereInput[] = [];
+  if (f.sexo) partes.push({ sexo: f.sexo });
+  if (f.origem) partes.push({ origem: f.origem });
+  if (f.racaId) partes.push({ composicao: { some: { racaId: f.racaId } } });
+  if (f.categoriaOrigem === "MANUAL") partes.push({ categoriasManuais: { some: { ate: null } } });
+  if (f.situacao !== "ATIVO" && (f.tipoBaixa || f.baixaDe || f.baixaAte)) {
+    partes.push({
+      baixas: {
+        some: {
+          estornadaEm: null,
+          ...(f.tipoBaixa ? { tipo: f.tipoBaixa } : {}),
+          ...(f.baixaDe || f.baixaAte ? { data: { ...(f.baixaDe ? { gte: new Date(f.baixaDe) } : {}), ...(f.baixaAte ? { lte: new Date(f.baixaAte) } : {}) } } : {}),
+        },
+      },
+    });
+  }
+  return partes;
+}
+
+/** Faixa de idade de hoje como limites de `dataNascimento` (mesma borda de `idadeEmMeses`). */
+export function whereIdadeHoje(hoje: Date, idadeMinMeses: number | undefined, idadeMaxMeses: number | undefined): Prisma.AnimalWhereInput {
+  const { nascidoAte, nascidoApos } = faixaNascimentoParaIdade(hoje, idadeMinMeses, idadeMaxMeses);
+  if (!nascidoAte && !nascidoApos) return {};
+  return { dataNascimento: { ...(nascidoAte ? { lte: nascidoAte } : {}), ...(nascidoApos ? { gt: nascidoApos } : {}) } };
+}
+
+/**
+ * Animais com baixa em vigor cuja idade NA DATA DA BAIXA está na faixa. A referência muda por
+ * linha (a data da baixa), o que o `where` do Prisma não expressa: a idade é calculada no SQL
+ * transcrevendo `idadeEmMeses` (meses de calendário, menos 1 se o dia do mês ainda não chegou,
+ * nunca negativa) — o teste de integração confere a paridade nas bordas.
+ */
+async function baixadosNaFaixaDeIdade(idadeMinMeses: number | undefined, idadeMaxMeses: number | undefined): Promise<string[]> {
+  const min = idadeMinMeses ?? 0;
+  const max = idadeMaxMeses ?? 2_147_483_647;
+  const linhas = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT b."animalId" AS id
+    FROM "pecuaria"."BaixaAnimal" b
+    JOIN "pecuaria"."Animal" a ON a."id" = b."animalId"
+    WHERE b."estornadaEm" IS NULL
+      AND GREATEST(0,
+            (EXTRACT(YEAR FROM b."data") - EXTRACT(YEAR FROM a."dataNascimento"))::int * 12
+          + (EXTRACT(MONTH FROM b."data") - EXTRACT(MONTH FROM a."dataNascimento"))::int
+          - CASE WHEN EXTRACT(DAY FROM b."data") < EXTRACT(DAY FROM a."dataNascimento") THEN 1 ELSE 0 END
+        ) BETWEEN ${min}::int AND ${max}::int`;
+  return linhas.map((l) => l.id);
+}
+
+/**
+ * Filtro de idade coerente com o que a lista mostra (K5): o ativo pela idade de hoje; o baixado
+ * pela idade na data da baixa em vigor (ex.: "bezerras de 0 a 12 meses que morreram" acha a
+ * bezerra que morreu com 3 meses há dois anos, que é o que a coluna de idade dela mostra).
+ */
+async function whereIdade(situacao: ListarFiltrosInput["situacao"], hoje: Date, idadeMinMeses: number | undefined, idadeMaxMeses: number | undefined): Promise<Prisma.AnimalWhereInput> {
+  // sem máximo e mínimo 0 (ou nenhum): qualquer idade serve
+  if (!idadeMinMeses && idadeMaxMeses == null) return {};
+  const ativos = whereIdadeHoje(hoje, idadeMinMeses, idadeMaxMeses);
+  if (situacao === "ATIVO") return ativos;
+  const baixados: Prisma.AnimalWhereInput = { id: { in: await baixadosNaFaixaDeIdade(idadeMinMeses, idadeMaxMeses) } };
+  if (situacao === "BAIXADO") return baixados;
+  return { OR: [{ AND: [{ baixas: { none: { estornadaEm: null } } }, ativos] }, baixados] };
+}
+
+const CAMPO_ORDEM = { brinco: "brinco", nascimento: "dataNascimento", entrada: "dataEntrada" } as const;
+
+/** Ordem da lista: o campo escolhido e, para desempate estável entre páginas, brinco e id. */
+export function ordemListagem(ordenar: ListarFiltrosInput["ordenar"], direcao: ListarFiltrosInput["direcao"]): Prisma.AnimalOrderByWithRelationInput[] {
+  const campo = CAMPO_ORDEM[ordenar];
+  return [
+    { [campo]: direcao },
+    ...(campo === "brinco" ? [] : [{ brinco: "asc" as const }]),
+    { id: "asc" as const },
+  ];
+}
+
 const ORDEM_HISTORICO = [{ desde: "desc" as const }, { criadoEm: "desc" as const }];
 
 const INCLUDE_RESUMO = {
   localizacoes: { orderBy: ORDEM_HISTORICO, take: 1, include: { propriedade: true, lote: true } },
   destinos: { orderBy: ORDEM_HISTORICO, take: 1 },
-  baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true } },
+  baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true, tipo: true } },
   composicao: { include: { raca: true } },
-  pesagens: { orderBy: { data: "desc" as const }, take: 1 },
+  // 2 mais recentes: a última pesagem (ultimoPeso) e a anterior a ela (gmdRecente)
+  pesagens: { orderBy: { data: "desc" as const }, take: 2 },
   categoriasManuais: SELECT_MANUAL_ABERTA,
 } satisfies Prisma.AnimalInclude;
 
@@ -556,12 +667,19 @@ function resumoDe(animal: AnimalComResumo, regras: RegraCategoria[], hoje: Date)
     destino: destino ? { aptidao: destino.aptidao, papelReprodutivo: destino.papelReprodutivo } : null,
     composicao: animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })),
     ultimoPeso: animal.pesagens[0] ? { pesoKg: Number(animal.pesagens[0].pesoKg), data: animal.pesagens[0].data } : null,
+    pesagemAnterior: animal.pesagens[1] ? { pesoKg: Number(animal.pesagens[1].pesoKg), data: animal.pesagens[1].data } : null,
     situacao: baixa ? "BAIXADO" : "ATIVO",
     idadeNaBaixa: baixa != null,
+    noLocalDesde: loc ? loc.desde : null,
+    baixa: baixa ? { data: baixa.data, tipo: baixa.tipo } : null,
   });
 }
 
-export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: number | null): Promise<{ itens: AnimalResumo[]; total: number; painel: PainelRebanho }> {
+/** Filtros de `listar`: os com default no schema podem faltar para quem chama direto (ex.: painel). */
+type ListarEntrada = Omit<ListarFiltrosInput, "semCategoria" | "ordenar" | "direcao">
+  & Partial<Pick<ListarFiltrosInput, "semCategoria" | "ordenar" | "direcao">>;
+
+export async function listar(filtros: ListarEntrada, propriedadeEscopo: number | null): Promise<{ itens: AnimalResumo[]; total: number; painel: PainelRebanho }> {
   // o escopo do request (seletor global de sítio) prevalece; o filtro só refina dentro dele
   if (propriedadeEscopo != null && filtros.propriedadeId != null && filtros.propriedadeId !== propriedadeEscopo) {
     return { itens: [], total: 0, painel: agregarPainel([]) };
@@ -578,7 +696,11 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
         aptidao: filtros.aptidao ?? null,
         papelReprodutivo: filtros.papelReprodutivo ?? null,
       }),
+      // categoria/sem categoria contam em "hoje" para todos (inclusive baixados), como sempre fez o filtro de categoria
       whereCategoria(filtros.categoriaId, regras, hoje),
+      filtros.semCategoria ? whereSemCategoria(regras, hoje) : {},
+      ...whereAtributos(filtros),
+      await whereIdade(filtros.situacao, hoje, filtros.idadeMinMeses, filtros.idadeMaxMeses),
       filtros.busca ? { OR: [
         { brinco: { contains: filtros.busca, mode: "insensitive" } },
         { nome: { contains: filtros.busca, mode: "insensitive" } },
@@ -593,7 +715,7 @@ export async function listar(filtros: ListarFiltrosInput, propriedadeEscopo: num
     prisma.animal.findMany({
       where,
       include: INCLUDE_RESUMO,
-      orderBy: [{ brinco: "asc" }, { id: "asc" }],
+      orderBy: ordemListagem(filtros.ordenar ?? "brinco", filtros.direcao ?? "asc"),
       skip: (filtros.page - 1) * filtros.pageSize,
       take: filtros.pageSize,
     }),
@@ -1131,26 +1253,66 @@ export interface EntradaAuditoriaDTO {
   em: string;
   acao: string;
   entidade: string;
+  entidadeId: string;
   usuarioNome: string | null;
   resumo: string;
+  alteracoes: CampoAlteracao[];
 }
 
-export async function buscarAuditoriaAnimal(animalId: string, escopo: number | null = null): Promise<EntradaAuditoriaDTO[]> {
-  await exigirNoEscopo(prisma, animalId, escopo);
-
-  // por animalId: inclui o que já foi apagado (pesagem excluída, movimentação/destino desfeitos)
-  const entradas = await prisma.auditoriaPecuaria.findMany({
-    where: { animalId },
-    include: { usuario: { select: { nome: true } } },
-    orderBy: { em: "desc" },
-    take: 50,
-  });
-
-  return entradas.map((e) => ({
+function mapearEntradaAuditoria(e: {
+  em: Date; acao: string; entidade: string; entidadeId: string; antes: unknown; depois: unknown;
+  usuario: { nome: string } | null;
+}): EntradaAuditoriaDTO {
+  return {
     em: e.em.toISOString(),
     acao: e.acao,
     entidade: e.entidade,
+    entidadeId: e.entidadeId,
     usuarioNome: e.usuario?.nome ?? null,
     resumo: resumoAuditoria(e.entidade, e.acao),
-  }));
+    alteracoes: diferencas(e.entidade, e.antes, e.depois),
+  };
+}
+
+export async function buscarAuditoriaAnimal(
+  animalId: string, escopo: number | null = null, page = 1, pageSize = 20,
+): Promise<{ itens: EntradaAuditoriaDTO[]; total: number }> {
+  await exigirNoEscopo(prisma, animalId, escopo);
+
+  // por animalId: inclui o que já foi apagado (pesagem excluída, movimentação/destino desfeitos)
+  const where = { animalId };
+  const [total, entradas] = await Promise.all([
+    prisma.auditoriaPecuaria.count({ where }),
+    prisma.auditoriaPecuaria.findMany({
+      where,
+      include: { usuario: { select: { nome: true } } },
+      orderBy: { em: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { itens: entradas.map(mapearEntradaAuditoria), total };
+}
+
+/**
+ * Auditoria de uma entidade de cadastro (não presa a um animal) — Lote, Raça, Motivo de baixa ou
+ * Categoria. Sem escopo de sítio: essas entidades são compartilhadas, como os próprios cadastros.
+ */
+export async function buscarAuditoriaCadastro(
+  entidade: EntidadeAuditoriaCadastro, entidadeId: string | undefined, page = 1, pageSize = 20,
+): Promise<{ itens: EntradaAuditoriaDTO[]; total: number }> {
+  const where = { entidade, ...(entidadeId ? { entidadeId } : {}) };
+  const [total, entradas] = await Promise.all([
+    prisma.auditoriaPecuaria.count({ where }),
+    prisma.auditoriaPecuaria.findMany({
+      where,
+      include: { usuario: { select: { nome: true } } },
+      orderBy: { em: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  return { itens: entradas.map(mapearEntradaAuditoria), total };
 }

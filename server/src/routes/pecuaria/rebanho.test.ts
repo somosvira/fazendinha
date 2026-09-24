@@ -15,6 +15,11 @@ const mocks = vi.hoisted(() => ({
   leitura: vi.fn(),
   darBaixa: vi.fn(),
   estornarBaixa: vi.fn(),
+  buscarFicha: vi.fn(),
+  buscarAuditoriaAnimal: vi.fn(),
+  buscarAuditoriaCadastro: vi.fn(),
+  buscarResumoLote: vi.fn(),
+  buscarPainelGeral: vi.fn(),
 }));
 
 vi.mock("../../services/propriedade.js", () => {
@@ -29,6 +34,9 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   desfazerMovimentacao: mocks.desfazerMovimentacao,
   darBaixa: mocks.darBaixa,
   estornarBaixa: mocks.estornarBaixa,
+  buscarFicha: mocks.buscarFicha,
+  buscarAuditoriaAnimal: mocks.buscarAuditoriaAnimal,
+  buscarAuditoriaCadastro: mocks.buscarAuditoriaCadastro,
 }));
 vi.mock("../../services/pecuaria/rebanho/categorias.js", () => ({
   listarCategorias: vi.fn(),
@@ -47,6 +55,7 @@ vi.mock("../../services/pecuaria/rebanho/lotes.js", () => ({
   listarLotes: vi.fn(),
   criarLote: vi.fn(),
   editarLote: vi.fn(),
+  buscarResumoLote: mocks.buscarResumoLote,
 }));
 vi.mock("../../services/pecuaria/rebanho/racas.js", () => ({
   listarRacas: vi.fn(),
@@ -59,7 +68,7 @@ vi.mock("../../services/pecuaria/rebanho/motivos.js", () => ({
   editarMotivoBaixa: vi.fn(),
 }));
 vi.mock("../../services/pecuaria/rebanho/painel.js", () => ({
-  buscarPainelGeral: vi.fn(),
+  buscarPainelGeral: mocks.buscarPainelGeral,
 }));
 
 import { rebanhoRouter } from "./rebanho.js";
@@ -89,6 +98,10 @@ beforeEach(() => {
   mocks.leitura.mockResolvedValue(1);
   mocks.listar.mockResolvedValue({ itens: [], total: 0 });
   mocks.desfazerLocalizacao.mockResolvedValue({ ok: true });
+  mocks.buscarAuditoriaAnimal.mockResolvedValue({ itens: [], total: 0 });
+  mocks.buscarAuditoriaCadastro.mockResolvedValue({ itens: [], total: 0 });
+  mocks.buscarResumoLote.mockResolvedValue({ ativos: 0 });
+  mocks.buscarPainelGeral.mockResolvedValue({ ativos: 0 });
 });
 
 describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
@@ -253,5 +266,160 @@ describe("rebanhoRouter — X-Propriedade-Id inválido vira 400, não 500 (S2)",
     const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }));
     expect(res.status).toBe(400);
     expect(mocks.estornarBaixa).not.toHaveBeenCalled();
+  });
+});
+
+describe("rebanhoRouter — ficha do animal: `periodoDias` do GMD", () => {
+  it("sem query: usa o default 90", async () => {
+    mocks.buscarFicha.mockResolvedValue({ id: ID });
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarFicha).toHaveBeenCalledWith(ID, 1, 90);
+  });
+
+  it.each([["30", 30], ["90", 90], ["180", 180], ["365", 365]])("periodoDias=%s vira o número %i", async (query, esperado) => {
+    mocks.buscarFicha.mockResolvedValue({ id: ID });
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}?periodoDias=${query}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarFicha).toHaveBeenCalledWith(ID, 1, esperado);
+  });
+
+  it("periodoDias=entrada vira null (sem limite inferior — desde a entrada)", async () => {
+    mocks.buscarFicha.mockResolvedValue({ id: ID });
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}?periodoDias=entrada`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarFicha).toHaveBeenCalledWith(ID, 1, null);
+  });
+
+  it("periodoDias fora do conjunto aceito é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}?periodoDias=45`);
+    expect(res.status).toBe(422);
+    expect(mocks.buscarFicha).not.toHaveBeenCalled();
+  });
+});
+
+describe("rebanhoRouter — auditoria do animal: paginação", () => {
+  it("sem query: usa os defaults (page 1, pageSize 20)", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 1, 20);
+  });
+
+  it("repassa page/pageSize da query", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?page=3&pageSize=5`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 3, 5);
+  });
+
+  it("pageSize acima do limite é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?pageSize=999`);
+    expect(res.status).toBe(422);
+  });
+});
+
+describe("rebanhoRouter — GET /auditoria (cadastros)", () => {
+  it("entidade obrigatória: sem ela é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request("/auditoria");
+    expect(res.status).toBe(422);
+    expect(mocks.buscarAuditoriaCadastro).not.toHaveBeenCalled();
+  });
+
+  it("entidade fora da lista permitida é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request("/auditoria?entidade=Animal");
+    expect(res.status).toBe(422);
+  });
+
+  it("com entidade válida: repassa entidade, entidadeId e paginação; não é escopado por sítio", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/auditoria?entidade=Lote&entidadeId=${ID}&page=2&pageSize=10`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaCadastro).toHaveBeenCalledWith("Lote", ID, 2, 10);
+    expect(mocks.leitura).not.toHaveBeenCalled();
+  });
+
+  it.each(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal"])("aceita a entidade de cadastro %s", async (entidade) => {
+    const res = await app(usuario({ flags: [] })).request(`/auditoria?entidade=${entidade}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaCadastro).toHaveBeenCalledWith(entidade, undefined, 1, 20);
+  });
+
+  it("é leitura: não exige `lancar`", async () => {
+    const res = await app(usuario({ flags: [] })).request("/auditoria?entidade=Raca");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("rebanhoRouter — resumo do lote (GMD/peso/categorias)", () => {
+  it("sem query: periodoDias default 90, escopado por sítio", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/lotes/${ID}/resumo`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarResumoLote).toHaveBeenCalledWith(ID, 90, 1);
+  });
+
+  it("periodoDias=entrada vira null", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/lotes/${ID}/resumo?periodoDias=entrada`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarResumoLote).toHaveBeenCalledWith(ID, null, 1);
+  });
+
+  it("lote não encontrado no escopo vira 404", async () => {
+    mocks.buscarResumoLote.mockRejectedValue(new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado"));
+    const res = await app(usuario({ flags: [] })).request(`/lotes/${ID}/resumo`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("rebanhoRouter — painel: `periodoDias` das baixas", () => {
+  it("sem query: usa o default 30", async () => {
+    const res = await app(usuario({ flags: [] })).request("/painel");
+    expect(res.status).toBe(200);
+    expect(mocks.buscarPainelGeral).toHaveBeenCalledWith(1, 30);
+  });
+
+  it("periodoDias=365 é aceito", async () => {
+    const res = await app(usuario({ flags: [] })).request("/painel?periodoDias=365");
+    expect(res.status).toBe(200);
+    expect(mocks.buscarPainelGeral).toHaveBeenCalledWith(1, 365);
+  });
+
+  it("painel não aceita periodoDias=entrada (não é uma janela de GMD)", async () => {
+    const res = await app(usuario({ flags: [] })).request("/painel?periodoDias=entrada");
+    expect(res.status).toBe(422);
+  });
+});
+
+describe("rebanhoRouter — GET /movimentacoes?animalId=", () => {
+  it("repassa animalId no filtro", async () => {
+    mocks.listarMovimentacoes.mockResolvedValue({ itens: [], total: 0 });
+    const res = await app(usuario({ flags: [] })).request(`/movimentacoes?animalId=${ID}`);
+    expect(res.status).toBe(200);
+    expect(mocks.listarMovimentacoes).toHaveBeenCalledWith(
+      { animalId: ID, incluirDesfeitas: true, page: 1, pageSize: 20 }, 1,
+    );
+  });
+});
+
+describe("rebanhoRouter — filtros novos de GET /animais", () => {
+  it("a query string chega convertida ao service", async () => {
+    const res = await app(usuario({ flags: [] })).request(
+      "/animais?sexo=F&origem=NASCIDO&idadeMinMeses=11&idadeMaxMeses=13&semCategoria=true&situacao=TODOS&tipoBaixa=MORTE&baixaDe=2026-01-01&ordenar=entrada&direcao=desc",
+    );
+    expect(res.status).toBe(200);
+    expect(mocks.listar).toHaveBeenCalledWith(expect.objectContaining({
+      sexo: "F", origem: "NASCIDO", idadeMinMeses: 11, idadeMaxMeses: 13, semCategoria: true, situacao: "TODOS",
+      tipoBaixa: "MORTE", baixaDe: "2026-01-01", ordenar: "entrada", direcao: "desc",
+    }), 1);
+  });
+
+  it("'sem categoria' com categoria escolhida é 422, apontando o campo", async () => {
+    const res = await app(usuario({ flags: [] })).request(`/animais?semCategoria=true&categoriaId=${ID}`);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ code: "VALIDACAO", campo: "semCategoria" });
+    expect(mocks.listar).not.toHaveBeenCalled();
+  });
+
+  it("faixa de idade invertida é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request("/animais?idadeMinMeses=13&idadeMaxMeses=12");
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ campo: "idadeMaxMeses" });
   });
 });

@@ -99,3 +99,57 @@ describe("S2 — teto INT4 em propriedadeId", () => {
     expect(listarFiltrosSchema.safeParse({ propriedadeId: "1" }).success).toBe(true);
   });
 });
+
+describe("listarFiltrosSchema (filtros novos de Animais)", () => {
+  const UUID = "0b8f5b8e-6f0c-4f6a-9d7e-2f1b1d3c4e5a";
+
+  it("defaults: ordem por brinco asc, sem 'sem categoria'", () => {
+    const f = listarFiltrosSchema.parse({});
+    expect(f).toMatchObject({ ordenar: "brinco", direcao: "asc", semCategoria: false, situacao: "ATIVO", page: 1, pageSize: 20 });
+  });
+
+  it("converte a query string: idades viram número, 'true' vira booleano", () => {
+    const f = listarFiltrosSchema.parse({
+      sexo: "F", origem: "NASCIDO", racaId: UUID, idadeMinMeses: "11", idadeMaxMeses: "13",
+      semCategoria: "true", tipoBaixa: "MORTE", baixaDe: "2026-01-01", baixaAte: "2026-01-31",
+      ordenar: "nascimento", direcao: "desc", situacao: "BAIXADO",
+    });
+    expect(f).toMatchObject({
+      sexo: "F", origem: "NASCIDO", racaId: UUID, idadeMinMeses: 11, idadeMaxMeses: 13, semCategoria: true,
+      tipoBaixa: "MORTE", baixaDe: "2026-01-01", baixaAte: "2026-01-31", ordenar: "nascimento", direcao: "desc",
+    });
+    expect(listarFiltrosSchema.parse({ semCategoria: "false" }).semCategoria).toBe(false);
+    expect(listarFiltrosSchema.parse({ categoriaOrigem: "MANUAL" }).categoriaOrigem).toBe("MANUAL");
+  });
+
+  it("recusa valores fora do contrato", () => {
+    for (const q of [
+      { sexo: "X" }, { origem: "HERDADO" }, { racaId: "abc" }, { idadeMinMeses: "-1" }, { idadeMaxMeses: "1.5" },
+      { idadeMinMeses: "abc" }, { categoriaOrigem: "AUTOMATICA" }, { semCategoria: "1" }, { tipoBaixa: "SAIDA" },
+      { baixaDe: "2026-13-01" }, { ordenar: "peso" }, { direcao: "up" },
+    ]) {
+      expect({ q, ok: listarFiltrosSchema.safeParse(q).success }).toEqual({ q, ok: false });
+    }
+  });
+
+  it("'sem categoria' não combina com categoria escolhida nem com categoria forçada", () => {
+    const r1 = listarFiltrosSchema.safeParse({ semCategoria: "true", categoriaId: UUID });
+    expect(r1.success).toBe(false);
+    expect(r1.error?.issues[0].path).toEqual(["semCategoria"]);
+    expect(listarFiltrosSchema.safeParse({ semCategoria: "true", categoriaOrigem: "MANUAL" }).success).toBe(false);
+    // categoria escolhida + forçada é válido (os forçados para ela)
+    expect(listarFiltrosSchema.safeParse({ categoriaId: UUID, categoriaOrigem: "MANUAL" }).success).toBe(true);
+    expect(listarFiltrosSchema.safeParse({ semCategoria: "false", categoriaId: UUID }).success).toBe(true);
+  });
+
+  it("faixas invertidas são recusadas; extremos iguais valem", () => {
+    const idade = listarFiltrosSchema.safeParse({ idadeMinMeses: "13", idadeMaxMeses: "12" });
+    expect(idade.success).toBe(false);
+    expect(idade.error?.issues[0].path).toEqual(["idadeMaxMeses"]);
+    expect(listarFiltrosSchema.safeParse({ idadeMinMeses: "12", idadeMaxMeses: "12" }).success).toBe(true);
+    const baixa = listarFiltrosSchema.safeParse({ baixaDe: "2026-02-01", baixaAte: "2026-01-31" });
+    expect(baixa.success).toBe(false);
+    expect(baixa.error?.issues[0].path).toEqual(["baixaAte"]);
+    expect(listarFiltrosSchema.safeParse({ baixaDe: "2026-02-01", baixaAte: "2026-02-01" }).success).toBe(true);
+  });
+});

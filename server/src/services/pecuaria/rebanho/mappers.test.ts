@@ -99,7 +99,7 @@ describe("agregarPainel", () => {
   const base = (over: Partial<AnimalResumo>): AnimalResumo => ({
     id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
     dataEntrada: "2023-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Principal" }, lote: null,
-    aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO", ...over,
+    aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, gmdRecente: null, noLocalDesde: null, baixa: null, situacao: "ATIVO", ...over,
   });
 
   it("conta só ativos, por categoria (na ordem da configuração, sem categoria por último) e por sítio, e receptoras entre fêmeas", () => {
@@ -129,6 +129,7 @@ describe("resumoAuditoria", () => {
   });
 
   it("cai num rótulo genérico para combinações não mapeadas", () => {
-    expect(resumoAuditoria("Raca", "CADASTRO")).toBe("Raca — CADASTRO");
+    expect(resumoAuditoria("Raca", "CADASTRO")).toBe("Raça cadastrada");
+    expect(resumoAuditoria("Raca", "XPTO")).toBe("Raca — XPTO");
   });
 });

@@ -109,6 +109,8 @@ export type DesfazerMovimentacaoInput = z.infer<typeof desfazerMovimentacaoSchem
 export const listarMovimentacoesSchema = z.object({
   loteId: z.string().uuid().optional(),
   propriedadeId: propriedadeIdOpcional,
+  /** filtra as movimentações que têm esse animal nos itens (inclusive as desfeitas, se `incluirDesfeitas`) */
+  animalId: z.string().uuid().optional(),
   dataDe: z.string().date().optional(),
   dataAte: z.string().date().optional(),
   incluirDesfeitas: z.enum(["true", "false"]).optional().default("true").transform((v) => v === "true"),
@@ -120,6 +122,36 @@ export type ListarMovimentacoesInput = z.infer<typeof listarMovimentacoesSchema>
 export const paginaQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
 });
+
+/**
+ * Janela do GMD (peso/ficha e resumo do lote): 30/90/180/365 dias, ou "entrada" — sem limite
+ * inferior (todo o histórico até a referência), que vira `periodoDias: null` para `resumoPeso`.
+ * Default 90 (Definições do plano da v1).
+ */
+const periodoDiasCampo = z.union([z.enum(["30", "90", "180", "365"]), z.literal("entrada")])
+  .optional().default("90")
+  .transform((v) => (v === "entrada" ? null : Number(v)));
+export const gmdPeriodoQuerySchema = z.object({ periodoDias: periodoDiasCampo });
+export type GmdPeriodoQuery = z.infer<typeof gmdPeriodoQuerySchema>;
+
+/** Janela do painel (contagem de baixas): 30/90/180/365 dias, default 30 — sem "entrada" (não faz sentido aqui). */
+const periodoDiasPainelCampo = z.enum(["30", "90", "180", "365"]).optional().default("30").transform(Number);
+export const painelQuerySchema = z.object({ periodoDias: periodoDiasPainelCampo });
+export type PainelQuery = z.infer<typeof painelQuerySchema>;
+
+export const auditoriaAnimalQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+export type AuditoriaAnimalQuery = z.infer<typeof auditoriaAnimalQuerySchema>;
+
+export const auditoriaCadastroQuerySchema = z.object({
+  entidade: z.enum(["Lote", "Raca", "MotivoBaixa", "CategoriaAnimal"]),
+  entidadeId: z.string().uuid().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+export type AuditoriaCadastroQuery = z.infer<typeof auditoriaCadastroQuerySchema>;
 
 export const pesagemSchema = z.object({
   animalId: z.string().uuid().optional(),
@@ -140,6 +172,11 @@ export const editarPesagemSchema = z.object({
 });
 export type EditarPesagemInput = z.infer<typeof editarPesagemSchema>;
 
+/** Booleano de query string: só "true" liga; ausente/"false" = false. */
+const booleanoQuery = z.enum(["true", "false"]).optional().transform((v) => v === "true");
+/** Meses (idade) vindos da query string. */
+const mesesQuery = z.coerce.number().int().min(0).max(600);
+
 export const listarFiltrosSchema = z.object({
   propriedadeId: propriedadeIdOpcional,
   loteId: z.string().uuid().optional(),
@@ -150,8 +187,38 @@ export const listarFiltrosSchema = z.object({
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
   situacao: z.enum(["ATIVO", "BAIXADO", "TODOS"]).optional().default("ATIVO"),
   busca: z.string().trim().max(120).optional(),
+  sexo: z.enum(["F", "M"]).optional(),
+  origem: z.enum(["NASCIDO", "COMPRADO"]).optional(),
+  /** a composição racial do animal contém esta raça (qualquer fração) */
+  racaId: z.string().uuid().optional(),
+  /** idade em meses completos (`idadeEmMeses`), extremos inclusivos; baixado: idade na data da baixa (K5) */
+  idadeMinMeses: mesesQuery.optional(),
+  idadeMaxMeses: mesesQuery.optional(),
+  /** só animais com categoria forçada (troca manual aberta) */
+  categoriaOrigem: z.enum(["MANUAL"]).optional(),
+  /** sem manual aberta e nenhuma regra automática ativa casa */
+  semCategoria: booleanoQuery,
+  /** filtros da baixa em vigor (não estornada); ignorados com `situacao=ATIVO` */
+  tipoBaixa: tipoBaixaSchema.optional(),
+  baixaDe: dataISO.optional(),
+  baixaAte: dataISO.optional(),
+  ordenar: z.enum(["brinco", "nascimento", "entrada"]).optional().default("brinco"),
+  direcao: z.enum(["asc", "desc"]).optional().default("asc"),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(200).optional().default(20),
+}).superRefine((f, ctx) => {
+  if (f.semCategoria && f.categoriaId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["semCategoria"], message: "“Sem categoria” não combina com uma categoria escolhida" });
+  }
+  if (f.semCategoria && f.categoriaOrigem) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["semCategoria"], message: "“Sem categoria” não combina com “categoria forçada”" });
+  }
+  if (f.idadeMinMeses != null && f.idadeMaxMeses != null && f.idadeMinMeses > f.idadeMaxMeses) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["idadeMaxMeses"], message: "A idade máxima não pode ser menor que a mínima" });
+  }
+  if (f.baixaDe && f.baixaAte && f.baixaDe > f.baixaAte) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["baixaAte"], message: "A data final da baixa não pode ser anterior à inicial" });
+  }
 });
 export type ListarFiltrosInput = z.infer<typeof listarFiltrosSchema>;
 

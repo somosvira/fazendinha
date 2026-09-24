@@ -9,14 +9,16 @@ import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
 import {
-  cadastrar, darBaixa, definirCategoriaManual, desfazerLocalizacao, desfazerMovimentacao, estornarBaixa, listar, movimentar,
+  buscarFicha, cadastrar, darBaixa, definirCategoriaManual, desfazerLocalizacao, desfazerMovimentacao,
+  estornarBaixa, listar, movimentar, registrarPesagem,
 } from "./animais.js";
 import { carregarRegras, criarCategoria, manualDe, SELECT_MANUAL_ABERTA } from "./categorias.js";
-import { avaliarCategoria, nascimentoLimiteParaIdade } from "./categoria.calc.js";
-import { criarLote, editarLote } from "./lotes.js";
+import { avaliarCategoria, idadeEmMeses, idadeNaFaixa, nascimentoLimiteParaIdade } from "./categoria.calc.js";
+import { criarLote, editarLote, buscarResumoLote } from "./lotes.js";
 import { buscarMovimentacao } from "./movimentacoes.js";
+import { diasEntre, gmdEntre } from "./peso.calc.js";
 import { hojeFazenda, hojeFazendaDate, RebanhoError, travarAnimais } from "./regras.js";
-import { cadastrarAnimalSchema, criarCategoriaSchema, listarFiltrosSchema } from "./schemas.js";
+import { cadastrarAnimalSchema, criarCategoriaSchema, listarFiltrosSchema, pesagemSchema } from "./schemas.js";
 
 const describeComBanco = process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 
@@ -26,6 +28,7 @@ const DIA_MS = 86_400_000;
 const propriedadesCriadas: number[] = [];
 const animaisCriados: string[] = [];
 const categoriasCriadas: string[] = [];
+const racasCriadas: string[] = [];
 let seq = 0;
 
 /** 'YYYY-MM-DD' `dias` antes de hoje (fuso da fazenda). */
@@ -129,7 +132,7 @@ async function emFilaNaTrava<A, B>(animalId: string, primeira: () => Promise<A>,
 }
 
 afterAll(async () => {
-  if (!propriedadesCriadas.length && !categoriasCriadas.length) return;
+  if (!propriedadesCriadas.length && !categoriasCriadas.length && !racasCriadas.length) return;
   const propriedadeId = { in: propriedadesCriadas };
   // animais que passaram por um sítio do teste (inclui algum cadastro que falhou no meio de um assert)
   const porSitio = await prisma.animal.findMany({ where: { localizacoes: { some: { propriedadeId } } }, select: { id: true } });
@@ -137,7 +140,7 @@ afterAll(async () => {
   const animalId = { in: ids };
   const movs = await prisma.movimentacao.findMany({ where: { OR: [{ propriedadeDestinoId: propriedadeId }, { animais: { some: { animalId } } }] }, select: { id: true } });
   const lotes = await prisma.lote.findMany({ where: { propriedadeId }, select: { id: true } });
-  const entidades = [...movs.map((m) => m.id), ...lotes.map((l) => l.id), ...categoriasCriadas, ...ids];
+  const entidades = [...movs.map((m) => m.id), ...lotes.map((l) => l.id), ...categoriasCriadas, ...racasCriadas, ...ids];
 
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ animalId }, { entidadeId: { in: entidades } }] } });
   await prisma.baixaAnimal.deleteMany({ where: { animalId } });
@@ -151,6 +154,7 @@ afterAll(async () => {
   await prisma.animal.deleteMany({ where: { id: animalId } });
   await prisma.lote.deleteMany({ where: { propriedadeId } });
   await prisma.categoriaAnimal.deleteMany({ where: { id: { in: categoriasCriadas } } });
+  await prisma.raca.deleteMany({ where: { id: { in: racasCriadas } } });
   await prisma.propriedade.deleteMany({ where: { id: propriedadeId } });
 });
 
@@ -402,5 +406,229 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     // lote inativo não recebe animal (trava FOR SHARE dentro da transação)
     await expect(movimentar({ animalIds: [animal.id], propriedadeId: a, loteId: lote.id, data: HOJE }, null, null))
       .rejects.toMatchObject({ code: "NAO_ENCONTRADO", campo: "loteId" });
+  });
+
+  it("peso e GMD na ficha (buscarFicha) batem com as pesagens registradas, e com o resumo (gmdRecente)", async () => {
+    const s = await sitio("peso");
+    const animal = await novoAnimal(s);
+    const p1 = diasAntes(60);
+    const p2 = diasAntes(10);
+    await registrarPesagem({ ...pesagemSchema.parse({ data: p1, pesoKg: 200, tipo: "ROTINA" }), animalId: animal.id }, null, null);
+    await registrarPesagem({ ...pesagemSchema.parse({ data: p2, pesoKg: 230, tipo: "ROTINA" }), animalId: animal.id }, null, null);
+
+    const ficha = await buscarFicha(animal.id, null, 90);
+    expect(ficha.peso.ultimo).toEqual({ kg: 230, data: p2 });
+    const gmdEsperado = gmdEntre({ data: p1, pesoKg: 200 }, { data: p2, pesoKg: 230 });
+    expect(ficha.peso.gmdRecente).toBe(gmdEsperado);
+    // só 2 pesagens no histórico inteiro: "recente" e "desde a entrada" são o mesmo cálculo
+    expect(ficha.peso.gmdDesdeEntrada).toBe(gmdEsperado);
+    expect(ficha.peso.gmdPeriodo).toEqual({ dias: diasEntre(p1, p2), valor: gmdEsperado, pesagens: 2 });
+    // o resumo (topo da ficha, mesmo campo que aparece na lista) usa o mesmo cálculo
+    expect(ficha.gmdRecente).toBe(gmdEsperado);
+  });
+
+  it("baixado: peso/GMD da ficha usam só as pesagens até a data da baixa", async () => {
+    const s = await sitio("peso-baixado");
+    const animal = await novoAnimal(s);
+    const p1 = diasAntes(40);
+    const dataBaixa = diasAntes(20);
+    await registrarPesagem({ ...pesagemSchema.parse({ data: p1, pesoKg: 200, tipo: "ROTINA" }), animalId: animal.id }, null, null);
+    await darBaixa({ animalId: animal.id, data: dataBaixa, tipo: "MORTE" }, null, null);
+
+    const ficha = await buscarFicha(animal.id, null, 90);
+    expect(ficha.situacao).toBe("BAIXADO");
+    expect(ficha.peso.ultimo).toEqual({ kg: 200, data: p1 });
+    // só 1 pesagem: sem GMD nenhum
+    expect(ficha.peso.gmdRecente).toBeNull();
+    expect(ficha.peso.gmdPeriodo).toEqual({ dias: null, valor: null, pesagens: 1 });
+  });
+
+  it("resumo do lote (buscarResumoLote) agrega peso/GMD só dos animais ativos que estão nele hoje", async () => {
+    const s = await sitio("resumo-lote");
+    const lote = await criarLote({ nome: `Resumo ${RUN}`, propriedadeId: s }, null);
+    const comDuasPesagens = await novoAnimal(s, { loteId: lote.id, sexo: "F" });
+    const comUmaPesagem = await novoAnimal(s, { loteId: lote.id, sexo: "M" });
+    const semPesagem = await novoAnimal(s, { loteId: lote.id, sexo: "F" });
+    const foraDoLote = await novoAnimal(s, { loteId: lote.id, sexo: "F" });
+    // sai do lote antes do resumo: não deve entrar em "ativos" nem nas médias
+    await movimentar({ animalIds: [foraDoLote.id], propriedadeId: s, loteId: null, data: HOJE }, null, null);
+
+    await registrarPesagem({ ...pesagemSchema.parse({ data: diasAntes(90), pesoKg: 200, tipo: "ROTINA" }), animalId: comDuasPesagens.id }, null, null);
+    await registrarPesagem({ ...pesagemSchema.parse({ data: diasAntes(10), pesoKg: 230, tipo: "ROTINA" }), animalId: comDuasPesagens.id }, null, null);
+    await registrarPesagem({ ...pesagemSchema.parse({ data: diasAntes(20), pesoKg: 300, tipo: "ROTINA" }), animalId: comUmaPesagem.id }, null, null);
+
+    const resumo = await buscarResumoLote(lote.id, 90, s);
+    expect(resumo.ativos).toBe(3);
+    expect(resumo.porSexo).toEqual({ F: 2, M: 1 });
+    expect(resumo.idadeMediaMeses).not.toBeNull();
+    // peso: último de cada um com peso (230, 300); semPesagem fica de fora da média
+    expect(resumo.peso.minKg).toBe(230);
+    expect(resumo.peso.maxKg).toBe(300);
+    expect(resumo.peso.medioKg).toBe(265);
+    expect(resumo.peso.semPeso).toBe(1);
+    // GMD do período: só quem tem 2 pesagens (comDuasPesagens)
+    expect(resumo.gmd.comGmd).toBe(1);
+    expect(resumo.gmd.periodoDias).toBe(90);
+    expect(resumo.gmd.medio).toBe(gmdEntre({ data: diasAntes(90), pesoKg: 200 }, { data: diasAntes(10), pesoKg: 230 }));
+    expect(semPesagem).toBeTruthy(); // usado só para criar o animal sem pesagem
+  });
+
+  it("resumo do lote em sítio errado (fora do escopo) é NAO_ENCONTRADO", async () => {
+    const a = await sitio("resumo-a");
+    const b = await sitio("resumo-b");
+    const lote = await criarLote({ nome: `Escopo ${RUN}`, propriedadeId: a }, null);
+    await expect(buscarResumoLote(lote.id, 90, b)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+  });
+  it("filtros novos de Animais no banco (sem categoria, idade, forçada, sexo/origem/raça, baixa, ordem) batem com o cálculo em memória", async () => {
+    const p = await sitio("filtros");
+    const hoje = hojeFazendaDate();
+    const borda = (ref: Date, k: number, maisDias = 0) => iso(new Date(nascimentoLimiteParaIdade(ref, k).getTime() + maisDias * DIA_MS));
+    const sigla = () => Array.from({ length: 3 }, () => String.fromCharCode(65 + crypto.randomInt(26))).join("");
+    const [racaA, racaB] = await Promise.all([1, 2].map((n) => prisma.raca.create({ data: { nome: `Raça filtro ${n} ${RUN}`, sigla: sigla() } })));
+    racasCriadas.push(racaA.id, racaB.id);
+
+    // "sem categoria" precisa de lacunas nas regras: desliga temporariamente Novilha (F sem parto ≥ 12)
+    // e o Em crescimento do macho (sem critério), e cria uma regra estreita de macho (12–23 meses)
+    const desligar = await prisma.categoriaAnimal.findMany({ where: { chavePadrao: { in: ["F_NOVILHA", "M_EM_CRESCIMENTO"] }, ativo: true }, select: { id: true } });
+    const reprodutor = await prisma.categoriaAnimal.findUniqueOrThrow({ where: { chavePadrao: "M_REPRODUTOR" } });
+    const garrote = await criarCategoria(criarCategoriaSchema.parse({ nome: `Garrote teste ${RUN}`, sexo: "M", automatica: true, idadeMinMeses: 12, idadeMaxMeses: 24 }), null);
+    categoriasCriadas.push(garrote.id);
+    await prisma.categoriaAnimal.updateMany({ where: { id: { in: desligar.map((d) => d.id) } }, data: { ativo: false } });
+    try {
+      // ---- ativos nas bordas de idade (idade = k no dia da borda; k - 1 um dia depois) ----
+      type Caso = { sexo: "F" | "M"; nasc: string; partos?: number; comprado?: boolean; racas?: string[]; manual?: string };
+      const casos: Caso[] = [
+        ...[1, 5, 11, 12, 13, 23, 24, 25].flatMap((k) => [{ sexo: "F" as const, nasc: borda(hoje, k) }, { sexo: "F" as const, nasc: borda(hoje, k, 1) }]),
+        ...[5, 11, 12, 13, 24, 30].flatMap((k) => [{ sexo: "M" as const, nasc: borda(hoje, k) }, { sexo: "M" as const, nasc: borda(hoje, k, 1) }]),
+        { sexo: "F", nasc: borda(hoje, 30), partos: 2, comprado: true, racas: [racaA.id] },
+        { sexo: "F", nasc: borda(hoje, 14), comprado: true, racas: [racaA.id, racaB.id] },
+        { sexo: "M", nasc: borda(hoje, 8), comprado: true, racas: [racaB.id] },
+        // manuais: uma que cairia em "sem categoria" e outra sobre uma automática
+        { sexo: "M", nasc: borda(hoje, 40), manual: reprodutor.id, racas: [racaA.id] },
+        { sexo: "M", nasc: borda(hoje, 5), manual: garrote.id },
+      ];
+      const ativos: string[] = [];
+      for (const c of casos) {
+        const entrada = c.comprado ? diasAntes(10) : c.nasc;
+        const animal = await novoAnimal(p, {
+          brinco: brincoUnico(c.sexo), sexo: c.sexo, origem: c.comprado ? "COMPRADO" : "NASCIDO", dataNascimento: c.nasc, dataEntrada: entrada,
+          partosAntesDaEntrada: c.partos ?? 0,
+          composicao: (c.racas ?? []).map((racaId, _i, todas) => ({ racaId, fracao64: 64 / todas.length })),
+        });
+        if (c.manual) await definirCategoriaManual(animal.id, { categoriaId: c.manual, data: HOJE, motivo: "Teste de filtro" }, null, null);
+        ativos.push(animal.id);
+      }
+      // manual de fêmea sobre uma automática (Vaca)
+      const vaca = await prisma.categoriaAnimal.findUniqueOrThrow({ where: { chavePadrao: "F_VACA" } });
+      await definirCategoriaManual(ativos[0], { categoriaId: vaca.id, data: HOJE, motivo: "Teste de filtro" }, null, null);
+
+      // ---- baixados: idade na data da baixa (K5) ≠ idade de hoje ----
+      const dataBaixa = new Date(diasAntes(400));
+      const baixas: Array<{ k: number; mais: number; tipo: "MORTE" | "VENDA"; data: Date; estornar?: boolean }> = [
+        { k: 2, mais: 0, tipo: "MORTE", data: dataBaixa },
+        { k: 3, mais: 0, tipo: "MORTE", data: dataBaixa },
+        { k: 3, mais: 1, tipo: "VENDA", data: dataBaixa },
+        { k: 12, mais: 0, tipo: "VENDA", data: new Date(diasAntes(100)) },
+        { k: 12, mais: 1, tipo: "MORTE", data: new Date(diasAntes(100)) },
+        { k: 2, mais: 0, tipo: "MORTE", data: dataBaixa, estornar: true }, // estornada: continua ativo
+      ];
+      const baixados: string[] = [];
+      for (const b of baixas) {
+        const nasc = borda(b.data, b.k, b.mais);
+        const animal = await novoAnimal(p, { brinco: brincoUnico("X"), sexo: "F", origem: "NASCIDO", dataNascimento: nasc, dataEntrada: nasc });
+        await darBaixa({ animalId: animal.id, data: iso(b.data), tipo: b.tipo }, null, null);
+        if (b.estornar) {
+          await estornarBaixa(animal.id, { motivo: "Teste de filtro" }, null, null);
+          ativos.push(animal.id);
+        } else baixados.push(animal.id);
+      }
+
+      // ---- o que o cálculo em memória diz de cada animal ----
+      const regras = await carregarRegras();
+      const linhas = await prisma.animal.findMany({
+        where: { id: { in: [...ativos, ...baixados] } },
+        select: {
+          id: true, sexo: true, origem: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA,
+          composicao: { select: { racaId: true } }, baixas: { where: { estornadaEm: null }, select: { data: true, tipo: true } },
+        },
+      });
+      const porId = new Map(linhas.map((a) => [a.id, a]));
+      const idadeRef = (id: string) => {
+        const a = porId.get(id)!;
+        return idadeEmMeses(a.dataNascimento, a.baixas[0]?.data ?? hoje);
+      };
+      const origemCategoria = (id: string) => {
+        const a = porId.get(id)!;
+        return avaliarCategoria({ sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje).origem;
+      };
+
+      const buscar = async (q: Record<string, unknown>) => {
+        const { itens, total, painel } = await listar(listarFiltrosSchema.parse({ pageSize: 200, ...q }), p);
+        expect(total).toBe(itens.length);
+        // o painel é calculado com o mesmo `where` da lista
+        expect(painel.totalAtivos).toBe(itens.filter((i) => i.situacao === "ATIVO").length);
+        return itens.map((i) => i.id).sort();
+      };
+      const ordenados = (ids: string[]) => [...ids].sort();
+      const confere = async (q: Record<string, unknown>, esperado: string[], minimo = 1) => {
+        expect({ q, ids: await buscar(q) }).toEqual({ q, ids: ordenados(esperado) });
+        expect(esperado.length).toBeGreaterThanOrEqual(minimo); // o caso precisa exercitar algo
+      };
+
+      // sem categoria: ativos (em "hoje"), e não pode ser todo mundo
+      const semCategoria = ativos.filter((id) => origemCategoria(id) === "SEM_CATEGORIA");
+      await confere({ semCategoria: "true" }, semCategoria, 5);
+      expect(semCategoria.length).toBeLessThan(ativos.length - 5);
+      await confere({ semCategoria: "true", sexo: "M" }, semCategoria.filter((id) => porId.get(id)!.sexo === "M"), 2);
+
+      // forçada (manual aberta)
+      await confere({ categoriaOrigem: "MANUAL" }, ativos.filter((id) => origemCategoria(id) === "MANUAL"), 2);
+
+      // idade: ativos pela idade de hoje, bordas 11/12/13 no mesmo dia e um dia fora
+      const faixas: Array<[number | undefined, number | undefined]> = [[11, 13], [12, 12], [0, 0], [0, 5], [24, undefined], [undefined, 11], [13, 24]];
+      for (const [min, max] of faixas) {
+        const q = { ...(min != null ? { idadeMinMeses: String(min) } : {}), ...(max != null ? { idadeMaxMeses: String(max) } : {}) };
+        await confere(q, ativos.filter((id) => idadeNaFaixa(idadeRef(id), min, max)));
+        // baixados: idade na data da baixa
+        await confere({ ...q, situacao: "BAIXADO" }, baixados.filter((id) => idadeNaFaixa(idadeRef(id), min, max)), 0);
+        await confere({ ...q, situacao: "TODOS" }, [...ativos, ...baixados].filter((id) => idadeNaFaixa(idadeRef(id), min, max)), 0);
+      }
+      // a idade do baixado é a da baixa, não a de hoje: de 2 a 3 meses acha as 3 bezerras (hoje com mais de 13)
+      await confere({ situacao: "BAIXADO", idadeMinMeses: "2", idadeMaxMeses: "3" }, baixados.filter((id) => idadeRef(id) >= 2 && idadeRef(id) <= 3), 3);
+      await confere({ situacao: "BAIXADO", idadeMinMeses: "11", idadeMaxMeses: "11" }, baixados.filter((id) => idadeRef(id) === 11), 1);
+
+      // sexo, origem, raça na composição
+      await confere({ sexo: "M" }, ativos.filter((id) => porId.get(id)!.sexo === "M"));
+      await confere({ origem: "COMPRADO" }, ativos.filter((id) => porId.get(id)!.origem === "COMPRADO"), 3);
+      await confere({ racaId: racaA.id }, ativos.filter((id) => porId.get(id)!.composicao.some((c) => c.racaId === racaA.id)), 3);
+      await confere({ racaId: racaB.id, sexo: "F" }, ativos.filter((id) => porId.get(id)!.sexo === "F" && porId.get(id)!.composicao.some((c) => c.racaId === racaB.id)), 1);
+
+      // baixa em vigor: tipo e período; com situacao=ATIVO os filtros de baixa são ignorados
+      const baixa = (id: string) => porId.get(id)!.baixas[0];
+      await confere({ situacao: "BAIXADO", tipoBaixa: "MORTE" }, baixados.filter((id) => baixa(id).tipo === "MORTE"), 3);
+      await confere({ situacao: "TODOS", tipoBaixa: "VENDA" }, baixados.filter((id) => baixa(id).tipo === "VENDA"), 2);
+      await confere({ situacao: "BAIXADO", baixaDe: diasAntes(100), baixaAte: diasAntes(100) }, baixados.filter((id) => iso(baixa(id).data) === diasAntes(100)), 2);
+      await confere({ situacao: "BAIXADO", baixaAte: diasAntes(101), tipoBaixa: "MORTE" }, baixados.filter((id) => baixa(id).tipo === "MORTE" && iso(baixa(id).data) <= diasAntes(101)), 2);
+      expect(await buscar({ tipoBaixa: "MORTE", baixaDe: diasAntes(500) })).toEqual(await buscar({}));
+
+      // ordem: páginas pequenas emendadas = a lista inteira, sem repetir, no sentido pedido
+      for (const [ordenar, direcao, campo] of [["nascimento", "desc", "dataNascimento"], ["entrada", "asc", "dataEntrada"], ["brinco", "desc", null]] as const) {
+        const tudo = await listar(listarFiltrosSchema.parse({ situacao: "TODOS", ordenar, direcao, pageSize: 200 }), p);
+        const emendado: string[] = [];
+        for (let page = 1; emendado.length < tudo.total; page += 1) {
+          const { itens } = await listar(listarFiltrosSchema.parse({ situacao: "TODOS", ordenar, direcao, pageSize: 7, page }), p);
+          expect(itens.length).toBeGreaterThan(0);
+          emendado.push(...itens.map((i) => i.id));
+        }
+        expect(emendado).toEqual(tudo.itens.map((i) => i.id));
+        expect(new Set(emendado).size).toBe(emendado.length);
+        expect(emendado.length).toBe(ativos.length + baixados.length);
+        const valores = tudo.itens.map((i) => (campo ? i[campo] : i.brinco));
+        const sentido = direcao === "asc" ? 1 : -1;
+        if (campo) for (let i = 1; i < valores.length; i += 1) expect(sentido * valores[i].localeCompare(valores[i - 1])).toBeGreaterThanOrEqual(0);
+      }
+    } finally {
+      await prisma.categoriaAnimal.updateMany({ where: { id: { in: desligar.map((d) => d.id) } }, data: { ativo: true } });
+    }
   });
 });

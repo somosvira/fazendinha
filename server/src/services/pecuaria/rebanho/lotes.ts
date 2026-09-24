@@ -1,5 +1,8 @@
 import { prisma } from "../../../db.js";
-import { auditar, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
+import { auditar, hojeFazendaDate, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
+import { avaliarCategoria, idadeEmMeses, type CategoriaRef } from "./categoria.calc.js";
+import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA } from "./categorias.js";
+import { agregarPesoLote, resumoPeso, type ItemPesoLote } from "./peso.calc.js";
 import type { CriarLoteInput, EditarLoteInput } from "./schemas.js";
 
 export interface LoteDTO {
@@ -98,4 +101,82 @@ export async function editarLote(id: string, input: EditarLoteInput, usuarioId: 
 
   const contagem = await contarAnimaisAtivosPorLote(prisma, [id]);
   return { id: atualizado.id, nome: atualizado.nome, propriedadeId: atualizado.propriedadeId, propriedade: existente.propriedade, ativo: atualizado.ativo, observacao: atualizado.observacao, animaisAtivos: contagem.get(id) ?? 0 };
+}
+
+// ---------- resumo do lote (GMD, peso, categorias — só os animais ativos que estão nele hoje) ----------
+
+export interface ResumoLoteDTO {
+  ativos: number;
+  porSexo: { F: number; M: number };
+  /** `categoriaId` nulo = sem categoria; ordenado pela ordem de avaliação das regras (mesma forma de `PainelGeralDTO.porCategoria`) */
+  porCategoria: Array<{ categoriaId: string | null; categoria: string; qtd: number }>;
+  idadeMediaMeses: number | null;
+  peso: { medioKg: number | null; minKg: number | null; maxKg: number | null; semPeso: number };
+  gmd: { medio: number | null; comGmd: number; periodoDias: number | null };
+}
+
+/**
+ * Resumo do lote: só os animais ATIVOS com a localização aberta nele hoje (quem já saiu entra no
+ * histórico de movimentações, não na média). Duas consultas — animais e as pesagens deles — sem
+ * N+1 por animal.
+ */
+export async function buscarResumoLote(id: string, periodoDias: number | null, escopo: number | null): Promise<ResumoLoteDTO> {
+  const lote = await prisma.lote.findUnique({ where: { id } });
+  if (!lote || (escopo != null && lote.propriedadeId !== escopo)) throw new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado");
+
+  const hoje = hojeFazendaDate();
+  const [animais, regras] = await Promise.all([
+    prisma.animal.findMany({
+      where: { localizacoes: { some: { ate: null, loteId: id } }, baixas: { none: { estornadaEm: null } } },
+      select: { id: true, sexo: true, dataNascimento: true, partosAntesDaEntrada: true, categoriasManuais: SELECT_MANUAL_ABERTA },
+    }),
+    carregarRegras(),
+  ]);
+
+  const ids = animais.map((a) => a.id);
+  const pesagens = ids.length
+    ? await prisma.pesagem.findMany({ where: { animalId: { in: ids } }, orderBy: [{ animalId: "asc" }, { data: "desc" }], select: { animalId: true, data: true, pesoKg: true } })
+    : [];
+  const pesagensPorAnimal = new Map<string, Array<{ data: Date; pesoKg: number }>>();
+  for (const p of pesagens) {
+    const lista = pesagensPorAnimal.get(p.animalId) ?? [];
+    lista.push({ data: p.data, pesoKg: Number(p.pesoKg) });
+    pesagensPorAnimal.set(p.animalId, lista);
+  }
+
+  let femeas = 0;
+  let machos = 0;
+  let somaIdadeMeses = 0;
+  const ordem = new Map(regras.map((r) => [r.id, r.ordem]));
+  const porCategoriaMap = new Map<string, { categoria: CategoriaRef | null; total: number }>();
+  const itensPeso: ItemPesoLote[] = [];
+
+  for (const a of animais) {
+    if (a.sexo === "F") femeas += 1; else machos += 1;
+    somaIdadeMeses += idadeEmMeses(a.dataNascimento, hoje);
+
+    const { categoria } = avaliarCategoria(
+      { sexo: a.sexo, dataNascimento: a.dataNascimento, partos: a.partosAntesDaEntrada }, regras, manualDe(a.categoriasManuais), hoje,
+    );
+    const chave = categoria?.id ?? "";
+    const atual = porCategoriaMap.get(chave);
+    porCategoriaMap.set(chave, { categoria, total: (atual?.total ?? 0) + 1 });
+
+    const resumo = resumoPeso(pesagensPorAnimal.get(a.id) ?? [], { hoje, periodoDias });
+    itensPeso.push({ ultimoKg: resumo.ultimo?.kg ?? null, gmdPeriodo: resumo.gmdPeriodo.valor });
+  }
+
+  const agregado = agregarPesoLote(itensPeso);
+  const porCategoria = [...porCategoriaMap.values()]
+    .sort((x, y) => (x.categoria ? ordem.get(x.categoria.id) ?? 1e9 : 2e9) - (y.categoria ? ordem.get(y.categoria.id) ?? 1e9 : 2e9))
+    .map((c) => ({ categoriaId: c.categoria?.id ?? null, categoria: c.categoria?.nome ?? "Sem categoria", qtd: c.total }));
+
+  return {
+    ativos: animais.length,
+    porSexo: { F: femeas, M: machos },
+    porCategoria,
+    idadeMediaMeses: animais.length ? Math.round((somaIdadeMeses / animais.length) * 10) / 10 : null,
+    peso: agregado.peso,
+    gmd: { ...agregado.gmd, periodoDias },
+  };
 }

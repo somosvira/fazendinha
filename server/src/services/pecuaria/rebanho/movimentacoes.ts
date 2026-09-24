@@ -123,6 +123,9 @@ export async function listarMovimentacoes(filtros: ListarMovimentacoesInput, esc
       escopo != null ? noSitio(escopo) : {},
       filtros.propriedadeId != null ? noSitio(filtros.propriedadeId) : {},
       filtros.loteId ? { OR: [{ loteDestinoId: filtros.loteId }, { animais: { some: { origemLoteId: filtros.loteId } } }] } : {},
+      // itens (MovimentacaoAnimal) nunca são apagados — inclui a movimentação mesmo desfeita
+      // quando `incluirDesfeitas` (a flag abaixo cuida de excluir as desfeitas se for o caso)
+      filtros.animalId ? { animais: { some: { animalId: filtros.animalId } } } : {},
       filtros.dataDe || filtros.dataAte ? { data: { ...(filtros.dataDe ? { gte: new Date(filtros.dataDe) } : {}), ...(filtros.dataAte ? { lte: new Date(filtros.dataAte) } : {}) } } : {},
       filtros.incluirDesfeitas ? {} : { desfeitaEm: null },
     ],

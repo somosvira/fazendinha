@@ -222,3 +222,36 @@ export function filtroCategoria(categoriaId: string, regras: RegraCategoria[], h
   if (anteriores.some(condicaoTotal)) return { categoriaId, automatica: null };
   return { categoriaId, automatica: { incluir: condicaoDaRegra(alvo, hoje), excluir: anteriores } };
 }
+
+/**
+ * Filtro "sem categoria" (listagem): o animal não tem manual aberta e NENHUMA regra automática
+ * ativa casa com ele. `avaliarCategoria` pega a primeira regra que casa (em `ordem`), mas a ordem
+ * só decide QUAL categoria vale — "casa alguma" é a mesma união em qualquer ordem. Por isso aqui
+ * entram as condições de todas as regras automáticas ativas (dos dois sexos; `sexo` já faz parte
+ * de cada condição, então uma regra sem critério exclui o sexo inteiro).
+ */
+export function condicoesSemCategoria(regras: RegraCategoria[], hoje: Date | string): CondicaoRegra[] {
+  return (["F", "M"] as const).flatMap((sexo) => regrasAutomaticas(regras, sexo).map((r) => condicaoDaRegra(r, hoje)));
+}
+
+/**
+ * Faixa de idade em meses completos (`idadeEmMeses`), ambos os extremos inclusivos, como faixa de
+ * nascimento em `hoje`: idade ≥ min ⇔ nascimento ≤ limite(min); idade ≤ max ⇔ idade < max + 1 ⇔
+ * nascimento > limite(max + 1). `min` 0 não restringe nada (a idade nunca é negativa — um
+ * nascimento "no futuro" teria idade 0 no cálculo e também passa).
+ */
+export function faixaNascimentoParaIdade(
+  hoje: Date | string,
+  idadeMinMeses: number | null | undefined,
+  idadeMaxMeses: number | null | undefined,
+): { nascidoAte?: Date; nascidoApos?: Date } {
+  return {
+    ...(idadeMinMeses != null && idadeMinMeses > 0 ? { nascidoAte: nascimentoLimiteParaIdade(hoje, idadeMinMeses) } : {}),
+    ...(idadeMaxMeses != null ? { nascidoApos: nascimentoLimiteParaIdade(hoje, idadeMaxMeses + 1) } : {}),
+  };
+}
+
+/** A idade está na faixa [min, max] (meses completos, extremos inclusivos)? Espelho em memória de `faixaNascimentoParaIdade`. */
+export function idadeNaFaixa(idadeMeses: number, idadeMinMeses: number | null | undefined, idadeMaxMeses: number | null | undefined): boolean {
+  return (idadeMinMeses == null || idadeMeses >= idadeMinMeses) && (idadeMaxMeses == null || idadeMeses <= idadeMaxMeses);
+}

@@ -1,5 +1,11 @@
+import type { TipoBaixa } from "@prisma/client";
 import { idadeEmMeses, type AvaliacaoCategoria, type CategoriaRef, type OrigemCategoria } from "./categoria.calc.js";
 import { normalizarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
+import { gmdEntre } from "./peso.calc.js";
+
+function iso(v: Date | string): string {
+  return typeof v === "string" ? v.slice(0, 10) : v.toISOString().slice(0, 10);
+}
 
 export interface AnimalResumo {
   id: string;
@@ -24,6 +30,12 @@ export interface AnimalResumo {
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" | null;
   composicaoRotulo: string;
   ultimoPeso: { kg: number; data: string } | null;
+  /** GMD entre a última pesagem e a anterior (kg/dia, 3 casas) — `null` sem as duas */
+  gmdRecente: number | null;
+  /** `desde` da localização aberta — `null` quando o animal não tem uma (baixado) */
+  noLocalDesde: string | null;
+  /** a baixa que vale (a mais recente não estornada) — `null` quando o animal está ativo */
+  baixa: { data: string; tipo: TipoBaixa } | null;
   situacao: "ATIVO" | "BAIXADO";
 }
 
@@ -46,9 +58,15 @@ export function mapearAnimalResumo(input: {
   destino: { aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA" } | null;
   composicao: FracaoRaca[];
   ultimoPeso: { pesoKg: number; data: Date } | null;
+  /** pesagem imediatamente anterior à última (para `gmdRecente`) — omitido quando não relevante (ex.: painel) */
+  pesagemAnterior?: { pesoKg: number; data: Date } | null;
   situacao: "ATIVO" | "BAIXADO";
   /** ver `AnimalResumo.idadeNaBaixa` — default false (a maioria das chamadas é para animal ativo) */
   idadeNaBaixa?: boolean;
+  /** ver `AnimalResumo.noLocalDesde` */
+  noLocalDesde?: Date | string | null;
+  /** ver `AnimalResumo.baixa` */
+  baixa?: { data: Date | string; tipo: TipoBaixa } | null;
 }): AnimalResumo {
   const { animal } = input;
   return {
@@ -70,6 +88,11 @@ export function mapearAnimalResumo(input: {
     papelReprodutivo: input.destino?.papelReprodutivo ?? null,
     composicaoRotulo: rotuloComposicao(normalizarComposicao(input.composicao)),
     ultimoPeso: input.ultimoPeso ? { kg: Number(input.ultimoPeso.pesoKg), data: input.ultimoPeso.data.toISOString().slice(0, 10) } : null,
+    gmdRecente: input.ultimoPeso && input.pesagemAnterior
+      ? gmdEntre({ data: input.pesagemAnterior.data, pesoKg: Number(input.pesagemAnterior.pesoKg) }, { data: input.ultimoPeso.data, pesoKg: Number(input.ultimoPeso.pesoKg) })
+      : null,
+    noLocalDesde: input.noLocalDesde != null ? iso(input.noLocalDesde) : null,
+    baixa: input.baixa ? { data: iso(input.baixa.data), tipo: input.baixa.tipo } : null,
     situacao: input.situacao,
   };
 }
@@ -79,6 +102,24 @@ export interface ItemComposicaoFicha extends FracaoRaca {
   racaId: string;
   nome: string;
   racaAtiva: boolean;
+}
+
+export interface FichaPeso {
+  ultimo: { kg: number; data: string } | null;
+  gmdRecente: number | null;
+  gmdDesdeEntrada: number | null;
+  gmdPeriodo: { dias: number | null; valor: number | null; pesagens: number };
+}
+
+export interface HistoricoBaixaFicha {
+  id: string;
+  data: string;
+  tipo: TipoBaixa;
+  motivo: { nome: string; classe: string } | null;
+  observacao: string | null;
+  estornadaEm: string | null;
+  estornoMotivo: string | null;
+  criadoPor: string | null;
 }
 
 export interface AnimalFicha extends AnimalResumo {
@@ -92,7 +133,11 @@ export interface AnimalFicha extends AnimalResumo {
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null }>;
   historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
-  baixa: { id: string; data: string; tipo: string; motivo: { nome: string; classe: string } | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
+  /** mantido por compatibilidade — a baixa que vale, igual a `AnimalResumo.baixa` mas com id/motivo/observação */
+  baixa: { id: string; data: string; tipo: TipoBaixa; motivo: { nome: string; classe: string } | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
+  /** todas as baixas do animal, inclusive as estornadas (data desc, criadoEm desc) */
+  historicoBaixas: HistoricoBaixaFicha[];
+  peso: FichaPeso;
 }
 
 export interface PainelRebanho {
@@ -147,6 +192,14 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "DestinoAnimal:DESFAZER": "Mudança de destino desfeita",
   "BaixaAnimal:BAIXA": "Baixa registrada",
   "BaixaAnimal:ESTORNO": "Baixa estornada",
+  "Lote:CADASTRO": "Lote cadastrado",
+  "Lote:EDICAO": "Lote editado",
+  "Raca:CADASTRO": "Raça cadastrada",
+  "Raca:EDICAO": "Raça editada",
+  "CategoriaAnimal:CADASTRO": "Categoria cadastrada",
+  "CategoriaAnimal:EDICAO": "Categoria editada",
+  "CategoriaAnimal:REORDENACAO": "Ordem das categorias alterada",
+  "CategoriaAnimal:RESTAURAR_PADROES": "Categorias restauradas para o padrão",
   "MotivoBaixa:CADASTRO": "Motivo de baixa cadastrado",
   "MotivoBaixa:EDICAO": "Motivo de baixa editado",
   "Pesagem:REGISTRO": "Pesagem registrada",

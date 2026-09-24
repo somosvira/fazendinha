@@ -9,14 +9,28 @@ export interface MotivoBaixaDTO {
   nome: string;
   classe: ClasseMotivoBaixa;
   ativo: boolean;
+  /** baixas em vigor (não estornadas) que usam este motivo */
+  baixasValendo: number;
 }
 
-const dto = (m: { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean }): MotivoBaixaDTO => ({
+const dto = (m: { id: string; nome: string; classe: ClasseMotivoBaixa; ativo: boolean }, baixasValendo = 0): MotivoBaixaDTO => ({
   id: m.id,
   nome: m.nome,
   classe: m.classe,
   ativo: m.ativo,
+  baixasValendo,
 });
+
+async function contarBaixasValendoPorMotivo(db: DbPecuaria, motivoIds: string[]): Promise<Map<string, number>> {
+  if (motivoIds.length === 0) return new Map();
+  const baixas = await db.baixaAnimal.findMany({ where: { motivoId: { in: motivoIds }, estornadaEm: null }, select: { motivoId: true } });
+  const contagem = new Map<string, number>();
+  for (const b of baixas) {
+    if (!b.motivoId) continue;
+    contagem.set(b.motivoId, (contagem.get(b.motivoId) ?? 0) + 1);
+  }
+  return contagem;
+}
 
 // A ordem por `classe` segue a declaração do enum no schema (descarte voluntário, involuntário, morte).
 export async function listarMotivosBaixa(incluirInativos = false): Promise<MotivoBaixaDTO[]> {
@@ -24,7 +38,8 @@ export async function listarMotivosBaixa(incluirInativos = false): Promise<Motiv
     where: incluirInativos ? {} : { ativo: true },
     orderBy: [{ classe: "asc" }, { nome: "asc" }],
   });
-  return motivos.map(dto);
+  const contagem = await contarBaixasValendoPorMotivo(prisma, motivos.map((m) => m.id));
+  return motivos.map((m) => dto(m, contagem.get(m.id) ?? 0));
 }
 
 // Sem @@unique no schema: o nome é único no catálogo inteiro (não só dentro da classe).
@@ -80,5 +95,6 @@ export async function editarMotivoBaixa(id: string, input: EditarMotivoBaixaInpu
     return salvo;
   });
 
-  return dto(atualizado);
+  const contagem = await contarBaixasValendoPorMotivo(prisma, [id]);
+  return dto(atualizado, contagem.get(id) ?? 0);
 }
