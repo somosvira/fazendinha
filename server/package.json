@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "seed": "tsx --env-file=.env prisma/seed.ts",
     "seed:pecuaria": "tsx --env-file=.env prisma/seed-pecuaria.ts",
+    "seed:rebanho": "tsx --env-file=.env prisma/seed-rebanho-demo.ts",
     "seed:plantio": "tsx --env-file=.env prisma/seed-plantio.ts",
     "seed:plantios": "tsx --env-file=.env prisma/seed-plantios-reais.ts",
     "seed:ponto": "tsx --env-file=.env prisma/seed-ponto.ts",
