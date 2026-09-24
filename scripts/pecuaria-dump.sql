@@ -24,10 +24,14 @@ SET WIDTH LINHA 2000;
 
 /* ── ANIMAIS ───────────────────────────────────────────────────────────────────
  * @A@ cdanimal | numero | nome | sexo | dtNascimento | dtEntFazenda | brincoEletronico |
- *     sisbov | numPartoEntrada | dtBaixa | cdMotivoBaixa | motivoBaixa | setor | grupo | racaTexto | cdCategoria
+ *     sisbov | numPartoEntrada | dtBaixa | cdMotivoBaixa | motivoBaixa | setor | grupo | racaTexto |
+ *     cdCategoria | cdTipoBaixa
  * racaTexto (ANIMALINFO_CADASTRO.RACA, ex. "3/4 HO, GL") é só fallback p/ quem não tem ANIMALRACA.
  * cdCategoria (ANIMAL.CDCATEGORIA, 1–7 da tabela CATEGORIA) vira categoria manual no import
  * quando diverge da calculada pelas regras (ex.: reprodutor, vaca sem parto importado).
+ * cdTipoBaixa (ANIMAL.CDTIPOBAIXA, FK p/ TIPOBAIXA — independente de CDMOTIVOBAIXA) distingue
+ * descarte voluntário/involuntário de morte; o importador cruza os dois (build-pecuaria-json.mjs
+ * não interpreta, só repassa).
  */
 SELECT '@A@' || CAST(a.CDANIMAL AS VARCHAR(12))
   || '~|~' || COALESCE(a.NUMERO,'')
@@ -45,6 +49,7 @@ SELECT '@A@' || CAST(a.CDANIMAL AS VARCHAR(12))
   || '~|~' || COALESCE(c.GRUPO,'')
   || '~|~' || COALESCE(c.RACA,'')
   || '~|~' || COALESCE(CAST(a.CDCATEGORIA AS VARCHAR(4)),'')
+  || '~|~' || COALESCE(CAST(a.CDTIPOBAIXA AS VARCHAR(4)),'')
   AS "LINHA"
 FROM ANIMAL a
   LEFT JOIN MOTIVOBAIXA mb ON mb.CDMOTIVOBAIXA = a.CDMOTIVOBAIXA
@@ -81,6 +86,16 @@ SELECT '@MB@' || CAST(mb.CDMOTIVOBAIXA AS VARCHAR(8))
   AS "LINHA"
 FROM MOTIVOBAIXA mb
 ORDER BY mb.CDMOTIVOBAIXA;
+
+/* ── CATÁLOGO TIPOBAIXA ────────────────────────────────────────────────────────
+ * @TB@ cdtipobaixa | descricao
+ * 3 linhas fixas do IDEAGRI: 1 Voluntária, 2 Descarte involuntário, 3 Morte.
+ */
+SELECT '@TB@' || CAST(tb.CDTIPOBAIXA AS VARCHAR(4))
+  || '~|~' || COALESCE(tb.DESCRICAO,'')
+  AS "LINHA"
+FROM TIPOBAIXA tb
+ORDER BY tb.CDTIPOBAIXA;
 
 /* ── CATÁLOGO RACA ─────────────────────────────────────────────────────────────
  * @RC@ cdraca | sigla | descricao

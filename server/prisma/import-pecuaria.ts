@@ -3,12 +3,12 @@
 // Consome `server/prisma/pecuaria_v1.json` (gerado por `scripts/build-pecuaria-json.mjs`
 // a partir do dump do IDEAGRI — ver `scripts/pecuaria-dump.sql` / `scripts/extract-pecuaria.sh`)
 // e popula o schema novo `pecuaria` (Animal/Raca/ComposicaoRacial/Lote/LocalizacaoAnimal/
-// DestinoAnimal/SaidaAnimal/MotivoSaida/Pesagem), sem tocar no legado.
+// DestinoAnimal/BaixaAnimal/MotivoBaixa/Pesagem), sem tocar no legado.
 //
 // CARGA ÚNICA (não sincroniza): o IDEAGRI só serve de base para a carga inicial — depois
 // disso todo movimento é feito no próprio sistema. Por isso, animal que já existe (por
 // `ideagriId`) é ignorado por inteiro: não atualiza dados fixos, não atualiza composição
-// racial e não cria localização/destino/saída/pesagem para ele. Só quando o animal não
+// racial e não cria localização/destino/baixa/pesagem para ele. Só quando o animal não
 // existe ainda é que ele (e todo o seu histórico do JSON) é criado. Rodar de novo sobre um
 // banco já carregado é seguro — não duplica nada, mas também não traz atualizações do
 // IDEAGRI para animais já importados.
@@ -19,7 +19,7 @@
 // aparecem no relatório (`Falhas`) impresso antes da saída.
 //
 // Ordem recomendada:
-//   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoSaida/Propriedade base
+//   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoBaixa/Propriedade base
 //   2) `pnpm --filter rionovo-server run import:pecuaria` → importa server/prisma/pecuaria_v1.json
 //   3) `pnpm --filter rionovo-server run validar:pecuaria`
 //
@@ -28,11 +28,12 @@
 // IDEAGRI (que não tinha essa regra).
 
 import { readFileSync } from "node:fs";
-import { Prisma, type TipoSaidaAnimal } from "@prisma/client";
+import { Prisma, type TipoBaixa, type ClasseMotivoBaixa } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { parseGrauSangue, normalizarComposicao, type FracaoRaca } from "../src/services/pecuaria/rebanho/composicao.calc.js";
 import { avaliarCategoria } from "../src/services/pecuaria/rebanho/categoria.calc.js";
 import { carregarRegras } from "../src/services/pecuaria/rebanho/categorias.js";
+import { motivoAceito } from "../src/services/pecuaria/rebanho/baixa.calc.js";
 
 // ---- Contrato do JSON (scripts/build-pecuaria-json.mjs) -------------------
 
@@ -41,8 +42,10 @@ interface ComposicaoJson {
   fracao64: number;
 }
 
-interface SaidaJson {
+interface BaixaJson {
   data: string;
+  /** ANIMAL.CDTIPOBAIXA (1 Voluntária, 2 Descarte involuntário, 3 Morte); null quando não informado */
+  tipoIdeagri: number | null;
   motivoIdeagriId: number | null;
   motivoNome: string | null;
 }
@@ -72,7 +75,7 @@ interface AnimalJson {
   aptidao: "LEITE" | "CORTE";
   composicao: ComposicaoJson[];
   racaTexto?: string | null;
-  saida: SaidaJson | null;
+  baixa: BaixaJson | null;
   pesagens: PesagemJson[];
 }
 
@@ -81,7 +84,9 @@ interface PecuariaJson {
   propriedades: { nome: string }[];
   lotes: { nome: string; propriedadeNome: string; ideagriGrupo?: string | null }[];
   racas: { ideagriId: number; sigla: string; nome: string }[];
-  motivosSaida: { ideagriId: number; nome: string }[];
+  motivosBaixa: { ideagriId: number; nome: string }[];
+  /** catálogo TIPOBAIXA (1 Voluntária, 2 Descarte involuntário, 3 Morte) — só referência, não consumido diretamente */
+  tiposBaixa: { ideagriId: number; nome: string }[];
   animais: AnimalJson[];
 }
 
@@ -95,18 +100,33 @@ function mapTipoPesagem(tipoIdeagri: string | null): "NASCIMENTO" | "ENTRADA" | 
   return "ROTINA";
 }
 
-// tipo de saída a partir do nome do motivo (fallback quando não há ideagriId batendo em MotivoSaida)
-function mapTipoSaida(motivoNome: string | null): TipoSaidaAnimal {
-  const n = (motivoNome ?? "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// Nomes de MOTIVOBAIXA que só repetem o tipo da baixa (não informam causa/destino além do óbvio) —
+// não viram MotivoBaixa no catálogo e nunca são linkados a uma baixa (mapBaixaIdeagri já cobre o tipo).
+function tipoRepetidoPeloNome(motivoNome: string | null): TipoBaixa | null {
+  const n = semAcento(motivoNome ?? "");
   if (n.includes("venda")) return "VENDA";
   if (n.includes("abate")) return "ABATE";
-  if (n.includes("doacao") || n.includes("doação")) return "DOACAO";
-  if (n.includes("desconhecida") || n.includes("indefinida")) return "OUTRO";
+  if (n.includes("doacao")) return "DOACAO";
   if (n.includes("cadastro indevido")) return "CADASTRO_INDEVIDO";
-  return "MORTE";
+  return null;
+}
+
+/**
+ * Deriva o `TipoBaixa` e se o motivo do catálogo deve ser usado, a partir do nome do motivo
+ * (ANIMAL.CDMOTIVOBAIXA → MOTIVOBAIXA.DESCRICAO) e do tipo do IDEAGRI (ANIMAL.CDTIPOBAIXA,
+ * independente do motivo). Quando o nome já repete o tipo (venda/abate/doação/cadastro indevido),
+ * o motivo não agrega nada — `usarMotivo: false`. Nos demais casos o tipo vem do CDTIPOBAIXA:
+ * 3 = morte, 1 ou 2 = descarte (tratado como venda), null = sem informação (catálogo do IDEAGRI
+ * é majoritariamente causas de morte) — e o motivo é usado como causa/observação.
+ */
+export function mapBaixaIdeagri(motivoNome: string | null, tipoIdeagri: number | null): { tipo: TipoBaixa; usarMotivo: boolean } {
+  const repetido = tipoRepetidoPeloNome(motivoNome);
+  if (repetido) return { tipo: repetido, usarMotivo: false };
+  if (tipoIdeagri === 3) return { tipo: "MORTE", usarMotivo: true };
+  if (tipoIdeagri === 1 || tipoIdeagri === 2) return { tipo: "VENDA", usarMotivo: true };
+  return { tipo: "MORTE", usarMotivo: true };
 }
 
 const d = (s: string): Date => new Date(`${s}T00:00:00Z`);
@@ -197,43 +217,83 @@ async function main() {
     avisos.push(`Raça desconhecida criada automaticamente: sigla "${sigla}"`);
   }
 
-  // ---- Motivos de saída: por ideagriId, fallback por nome -----------------
+  // ---- Motivos de baixa: por ideagriId, fallback por nome ------------------
+  // Nomes que só repetem o tipo (venda/abate/doação/cadastro indevido) não viram MotivoBaixa —
+  // mapBaixaIdeagri já resolve o tipo por eles; o catálogo fica só com causas/descartes de fato.
   const motivoIdPorIdeagriId = new Map<number, string>();
   const motivoIdPorNome = new Map<string, string>();
+  const motivoClassePorId = new Map<string, ClasseMotivoBaixa>();
   const cMotivo = novoContador();
-  const motivosExistentes = await prisma.motivoSaida.findMany();
-  const motivoTipoPorId = new Map<string, TipoSaidaAnimal>(motivosExistentes.map((m) => [m.id, m.tipo]));
+  let motivosPuladosPorTipo = 0;
+  const motivosExistentes = await prisma.motivoBaixa.findMany();
   for (const m of motivosExistentes) {
     if (m.ideagriId != null) motivoIdPorIdeagriId.set(m.ideagriId, m.id);
     motivoIdPorNome.set(m.nome.trim().toLowerCase(), m.id);
+    motivoClassePorId.set(m.id, m.classe);
   }
-  for (const m of dados.motivosSaida) {
+
+  // classe do motivo novo = tipoIdeagri mais comum entre os animais do JSON que o usam
+  // (1→DESCARTE_VOLUNTARIO, 2→DESCARTE_INVOLUNTARIO, 3→MORTE; empate prefere o menor código; sem uso → MORTE)
+  const contagemTipoPorMotivoIdeagri = new Map<number, Partial<Record<1 | 2 | 3, number>>>();
+  for (const a of dados.animais) {
+    if (!a.baixa || a.baixa.motivoIdeagriId == null || a.baixa.tipoIdeagri == null) continue;
+    const t = a.baixa.tipoIdeagri;
+    if (t !== 1 && t !== 2 && t !== 3) continue;
+    const mapa = contagemTipoPorMotivoIdeagri.get(a.baixa.motivoIdeagriId) ?? {};
+    mapa[t] = (mapa[t] ?? 0) + 1;
+    contagemTipoPorMotivoIdeagri.set(a.baixa.motivoIdeagriId, mapa);
+  }
+  function classeMajoritaria(motivoIdeagriId: number): ClasseMotivoBaixa {
+    const contagem = contagemTipoPorMotivoIdeagri.get(motivoIdeagriId) ?? {};
+    const ordem: Array<[1 | 2 | 3, ClasseMotivoBaixa]> = [
+      [1, "DESCARTE_VOLUNTARIO"],
+      [2, "DESCARTE_INVOLUNTARIO"],
+      [3, "MORTE"],
+    ];
+    let melhor: ClasseMotivoBaixa = "MORTE";
+    let melhorCount = 0;
+    for (const [tipoIdeagri, classe] of ordem) {
+      const c = contagem[tipoIdeagri] ?? 0;
+      if (c > melhorCount) {
+        melhorCount = c;
+        melhor = classe;
+      }
+    }
+    return melhorCount > 0 ? melhor : "MORTE";
+  }
+
+  for (const m of dados.motivosBaixa) {
+    if (tipoRepetidoPeloNome(m.nome)) {
+      motivosPuladosPorTipo++;
+      continue;
+    }
     if (motivoIdPorIdeagriId.has(m.ideagriId)) {
       cMotivo.ignoradas++;
       continue;
     }
     const porNome = m.nome ? motivoIdPorNome.get(m.nome.trim().toLowerCase()) : undefined;
     if (porNome) {
-      // já existe por nome (seed) — só linka o ideagriId
-      const salvo = await prisma.motivoSaida.update({ where: { id: porNome }, data: { ideagriId: m.ideagriId } });
+      // já existe por nome (seed) — só linka o ideagriId; classe existente não muda
+      const salvo = await prisma.motivoBaixa.update({ where: { id: porNome }, data: { ideagriId: m.ideagriId } });
       motivoIdPorIdeagriId.set(m.ideagriId, salvo.id);
+      motivoClassePorId.set(salvo.id, salvo.classe);
       cMotivo.ignoradas++;
       continue;
     }
-    const tipo = mapTipoSaida(m.nome);
-    const criado = await prisma.motivoSaida.create({ data: { ideagriId: m.ideagriId, nome: m.nome ?? `Motivo ${m.ideagriId}`, tipo, ativo: true } });
+    const classe = classeMajoritaria(m.ideagriId);
+    const criado = await prisma.motivoBaixa.create({ data: { ideagriId: m.ideagriId, nome: m.nome ?? `Motivo ${m.ideagriId}`, classe, ativo: true } });
     motivoIdPorIdeagriId.set(m.ideagriId, criado.id);
-    motivoTipoPorId.set(criado.id, criado.tipo);
+    motivoClassePorId.set(criado.id, criado.classe);
     motivoIdPorNome.set(criado.nome.trim().toLowerCase(), criado.id);
     cMotivo.criadas++;
   }
 
-  function resolverMotivoId(saida: SaidaJson): string | null {
-    if (saida.motivoIdeagriId != null && motivoIdPorIdeagriId.has(saida.motivoIdeagriId)) {
-      return motivoIdPorIdeagriId.get(saida.motivoIdeagriId)!;
+  function resolverMotivoId(baixa: BaixaJson): string | null {
+    if (baixa.motivoIdeagriId != null && motivoIdPorIdeagriId.has(baixa.motivoIdeagriId)) {
+      return motivoIdPorIdeagriId.get(baixa.motivoIdeagriId)!;
     }
-    if (saida.motivoNome) {
-      const id = motivoIdPorNome.get(saida.motivoNome.trim().toLowerCase());
+    if (baixa.motivoNome) {
+      const id = motivoIdPorNome.get(baixa.motivoNome.trim().toLowerCase());
       if (id) return id;
     }
     return null;
@@ -241,15 +301,16 @@ async function main() {
 
   // ---- Animais ---------------------------------------------------------------
   // Carga única: animal que já existe (por `ideagriId`) é ignorado por inteiro —
-  // não atualiza dados fixos/composição e não cria localização/destino/saída/pesagem.
+  // não atualiza dados fixos/composição e não cria localização/destino/baixa/pesagem.
   // Cada animal roda na própria transação; falha em um não impede os demais.
   const cAnimal = novoContador();
   const cLocalizacao = novoContador();
   const cDestino = novoContador();
-  const cSaida = novoContador();
+  const cBaixa = novoContador();
   const cPesagem = novoContador();
   const cComposicao = novoContador();
   let semComposicao = 0;
+  let baixasSemMotivo = 0;
 
   interface Falha { brinco: string; ideagriId: number; mensagem: string }
   const falhas: Falha[] = [];
@@ -257,7 +318,7 @@ async function main() {
   type ResultadoAnimal =
     | { tipo: "ignorado" }
     | { tipo: "propriedade-nao-resolvida" }
-    | { tipo: "criado"; temComposicao: boolean; saidaCriada: boolean; pesagensCriadas: number };
+    | { tipo: "criado"; temComposicao: boolean; baixaCriada: boolean; pesagensCriadas: number };
 
   // brinco duplicado entre ativos do mesmo sítio: calculado no fim, sobre o estado final do banco.
 
@@ -324,29 +385,34 @@ async function main() {
           data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo: a.papelReprodutivo, desde: d(a.dataEntrada) },
         });
 
-        // ---- Saída (fecha a localização/destino recém-criados) ---------------
-        let saidaCriada = false;
-        if (a.saida) {
-          const motivoId = resolverMotivoId(a.saida);
-          // o tipo segue o do motivo resolvido (MotivoSaida é por tipo); sem motivo, deduz pelo texto
-          const tipo = (motivoId ? motivoTipoPorId.get(motivoId) : undefined) ?? mapTipoSaida(a.saida.motivoNome);
+        // ---- Baixa (fecha a localização/destino recém-criados) ---------------
+        let baixaCriada = false;
+        if (a.baixa) {
+          const { tipo, usarMotivo } = mapBaixaIdeagri(a.baixa.motivoNome, a.baixa.tipoIdeagri);
+          let motivoId = usarMotivo ? resolverMotivoId(a.baixa) : null;
+          // motivo resolvido mas de classe incompatível com o tipo (ex.: causa de morte numa baixa por venda) — não usa
+          if (motivoId) {
+            const classe = motivoClassePorId.get(motivoId);
+            if (!classe || !motivoAceito(tipo, classe)) motivoId = null;
+          }
+          if (!motivoId) baixasSemMotivo++;
 
-          await tx.localizacaoAnimal.update({ where: { id: localizacaoInicial.id }, data: { ate: d(a.saida.data) } });
-          await tx.destinoAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.saida.data) } });
+          await tx.localizacaoAnimal.update({ where: { id: localizacaoInicial.id }, data: { ate: d(a.baixa.data) } });
+          await tx.destinoAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.baixa.data) } });
 
-          await tx.saidaAnimal.create({
+          await tx.baixaAnimal.create({
             data: {
               animalId: animal.id,
-              data: d(a.saida.data),
+              data: d(a.baixa.data),
               tipo,
               motivoId,
-              observacao: a.saida.motivoNome ? `IDEAGRI: ${a.saida.motivoNome}` : null,
+              observacao: a.baixa.motivoNome ? `IDEAGRI: ${a.baixa.motivoNome}` : null,
               // o estorno reabre exatamente estas linhas
               localizacaoFechadaId: localizacaoInicial.id,
               destinoFechadoId: destinoInicial.id,
             },
           });
-          saidaCriada = true;
+          baixaCriada = true;
         }
 
         // ---- Pesagens ----------------------------------------------------------
@@ -382,7 +448,7 @@ async function main() {
           data: { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "IMPORTACAO", depois: JSON.parse(JSON.stringify(animal)) },
         });
 
-        return { tipo: "criado", temComposicao, saidaCriada, pesagensCriadas };
+        return { tipo: "criado", temComposicao, baixaCriada, pesagensCriadas };
       });
 
       if (resultado.tipo === "criado") {
@@ -391,7 +457,7 @@ async function main() {
         cDestino.criadas++;
         if (resultado.temComposicao) cComposicao.criadas++;
         else { cComposicao.ignoradas++; semComposicao++; }
-        if (resultado.saidaCriada) cSaida.criadas++;
+        if (resultado.baixaCriada) cBaixa.criadas++;
         cPesagem.criadas += resultado.pesagensCriadas;
       } else {
         // "ignorado" (já existia) e "propriedade-nao-resolvida" contam como ignorado
@@ -409,12 +475,12 @@ async function main() {
     where: { ate: null },
     select: { propriedadeId: true, animal: { select: { id: true, brinco: true } } },
   });
-  const saidasAbertas = new Set(
-    (await prisma.saidaAnimal.findMany({ where: { estornadaEm: null }, select: { animalId: true } })).map((s) => s.animalId),
+  const baixasAbertas = new Set(
+    (await prisma.baixaAnimal.findMany({ where: { estornadaEm: null }, select: { animalId: true } })).map((s) => s.animalId),
   );
   const porSitioBrinco = new Map<string, number>();
   for (const l of localizacoesAbertas) {
-    if (saidasAbertas.has(l.animal.id)) continue;
+    if (baixasAbertas.has(l.animal.id)) continue;
     const chave = `${l.propriedadeId}\u0000${l.animal.brinco.trim().toUpperCase()}`;
     porSitioBrinco.set(chave, (porSitioBrinco.get(chave) ?? 0) + 1);
   }
@@ -430,12 +496,12 @@ async function main() {
   console.log(`Propriedades  — criadas: ${cProp.criadas}, ignoradas: ${cProp.ignoradas}`);
   console.log(`Lotes         — criados: ${cLote.criadas}, ignorados: ${cLote.ignoradas}`);
   console.log(`Raças         — criadas: ${cRaca.criadas}, ignoradas: ${cRaca.ignoradas}`);
-  console.log(`Motivos saída — criados: ${cMotivo.criadas}, ignorados: ${cMotivo.ignoradas}`);
+  console.log(`Motivos baixa — criados: ${cMotivo.criadas}, ignorados: ${cMotivo.ignoradas}, pulados (só repetem o tipo): ${motivosPuladosPorTipo}`);
   console.log(`Animais       — criados: ${cAnimal.criadas}, ignorados (já existiam): ${cAnimal.ignoradas}`);
   console.log(`Composição    — criada: ${cComposicao.criadas}, sem composição: ${cComposicao.ignoradas}`);
   console.log(`Localização   — criadas: ${cLocalizacao.criadas}, ignoradas: ${cLocalizacao.ignoradas}`);
   console.log(`Destino       — criados: ${cDestino.criadas}, ignorados: ${cDestino.ignoradas}`);
-  console.log(`Saídas        — criadas: ${cSaida.criadas}, ignoradas: ${cSaida.ignoradas}`);
+  console.log(`Baixas        — criadas: ${cBaixa.criadas}, ignoradas: ${cBaixa.ignoradas}, sem motivo resolvido: ${baixasSemMotivo}`);
   console.log(`Pesagens      — criadas: ${cPesagem.criadas}, ignoradas: ${cPesagem.ignoradas}`);
   console.log(`Animais sem composição racial: ${semComposicao}`);
   console.log(`Categorias manuais (categoria do IDEAGRI diferente da calculada): ${categoriasManuaisCriadas}`);

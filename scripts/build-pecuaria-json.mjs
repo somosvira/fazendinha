@@ -170,6 +170,7 @@ export function parseLinhaAnimal(linha) {
     grupo: txt(f[13]),
     racaTexto: txt(f[14]),
     ideagriCategoria: num(f[15]),
+    tipoBaixaIdeagri: num(f[16]),
   };
 }
 
@@ -194,8 +195,8 @@ export function montarAnimal(a, racasDoAnimal, pesagens) {
     papelReprodutivo: papelReprodutivoDe(a.setor),
     aptidao: aptidaoDe(composicao, a.racaTexto),
     composicao,
-    saida: a.dataBaixa
-      ? { data: a.dataBaixa, motivoIdeagriId: a.motivoIdeagriId, motivoNome: a.motivoNome }
+    baixa: a.dataBaixa
+      ? { data: a.dataBaixa, tipoIdeagri: a.tipoBaixaIdeagri ?? null, motivoIdeagriId: a.motivoIdeagriId, motivoNome: a.motivoNome }
       : null,
     pesagens: (pesagens ?? []).slice().sort((x, y) => x.data.localeCompare(y.data) || x.ideagriId - y.ideagriId),
   };
@@ -208,7 +209,8 @@ export function construir(texto, geradoEm) {
   const animaisBrutos = [];
   const racasPorAnimal = new Map();
   const pesagensPorAnimal = new Map();
-  const motivos = new Map();
+  const motivosBaixa = new Map();
+  const tiposBaixa = new Map();
   const racas = new Map();
   const push = (m, k, v) => (m.has(k) ? m.get(k).push(v) : m.set(k, [v]));
 
@@ -220,7 +222,10 @@ export function construir(texto, geradoEm) {
       push(racasPorAnimal, num(f[0]), { sigla, percentual: num(f[4]) });
     } else if (l.startsWith("@MB@")) {
       const f = l.slice(4).split(SEP);
-      motivos.set(num(f[0]), { ideagriId: num(f[0]), nome: txt(f[1]) });
+      motivosBaixa.set(num(f[0]), { ideagriId: num(f[0]), nome: txt(f[1]) });
+    } else if (l.startsWith("@TB@")) {
+      const f = l.slice(4).split(SEP);
+      tiposBaixa.set(num(f[0]), { ideagriId: num(f[0]), nome: txt(f[1]) });
     } else if (l.startsWith("@RC@")) {
       const f = l.slice(4).split(SEP);
       racas.set(num(f[0]), { ideagriId: num(f[0]), sigla: txt(f[1]), nome: txt(f[2]) });
@@ -260,7 +265,8 @@ export function construir(texto, geradoEm) {
     propriedades,
     lotes,
     racas: [...racas.values()].sort((a, b) => a.ideagriId - b.ideagriId),
-    motivosSaida: [...motivos.values()].sort((a, b) => a.ideagriId - b.ideagriId),
+    motivosBaixa: [...motivosBaixa.values()].sort((a, b) => a.ideagriId - b.ideagriId),
+    tiposBaixa: [...tiposBaixa.values()].sort((a, b) => a.ideagriId - b.ideagriId),
     animais,
   };
 }
@@ -279,7 +285,7 @@ function main() {
     process.exit(1);
   }
   writeFileSync(destino, `${JSON.stringify(json, null, 2)}\n`, "utf8");
-  const ativos = json.animais.filter((a) => !a.saida).length;
+  const ativos = json.animais.filter((a) => !a.baixa).length;
   console.log(
     `✓ ${destino}: ${json.animais.length} animais (${ativos} ativos), ${json.propriedades.length} propriedades, ` +
       `${json.lotes.length} lotes, ${json.animais.reduce((t, a) => t + a.pesagens.length, 0)} pesagens`,

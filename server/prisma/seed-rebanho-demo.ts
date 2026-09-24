@@ -1,9 +1,9 @@
 // Seed de demonstração do Rebanho (pecuária v1) para teste manual da interface.
 //
-// Passa pelos próprios services (cadastrar, movimentar, mudarDestino, darSaida...), então
+// Passa pelos próprios services (cadastrar, movimentar, mudarDestino, darBaixa...), então
 // histórico, auditoria e categoria saem exatamente como sairiam pela tela. Cobre todas as
 // entidades do schema `pecuaria`: Raca, ComposicaoRacial, Lote, Animal, LocalizacaoAnimal,
-// DestinoAnimal, Movimentacao (com desfazer), SaidaAnimal (com estorno), MotivoSaida, Pesagem,
+// DestinoAnimal, Movimentacao (com desfazer), BaixaAnimal (com estorno), MotivoBaixa, Pesagem,
 // CategoriaManualAnimal (troca manual sobre as categorias padrão) e AuditoriaPecuaria.
 //
 // Datas relativas a hoje, para as categorias (bezerra/novilha/garrote...) não envelhecerem.
@@ -13,11 +13,11 @@ import { prisma } from "../src/db.js";
 import { RebanhoError } from "../src/services/pecuaria/rebanho/regras.js";
 import {
   cadastrar, movimentar, mudarDestino, desfazerLocalizacao, desfazerDestino, desfazerMovimentacao,
-  darSaida, estornarSaida, registrarPesagem, editarPesagem, excluirPesagem, definirCategoriaManual,
+  darBaixa, estornarBaixa, registrarPesagem, editarPesagem, excluirPesagem, definirCategoriaManual,
 } from "../src/services/pecuaria/rebanho/animais.js";
 import { criarLote, editarLote } from "../src/services/pecuaria/rebanho/lotes.js";
 import { criarRaca, editarRaca } from "../src/services/pecuaria/rebanho/racas.js";
-import { criarMotivoSaida, editarMotivoSaida } from "../src/services/pecuaria/rebanho/motivos.js";
+import { criarMotivoBaixa, editarMotivoBaixa } from "../src/services/pecuaria/rebanho/motivos.js";
 import type { CadastrarAnimalInput } from "../src/services/pecuaria/rebanho/schemas.js";
 
 const USUARIO = null; // sem usuários no banco de dev: autoria vazia, como o dono sintético
@@ -57,12 +57,11 @@ async function main() {
   };
   const comp = (...partes: Array<[string, number]>) => partes.map(([sigla, fracao64]) => ({ racaId: raca(sigla), fracao64 }));
 
-  // motivo novo usado numa saída + motivo criado e desativado
-  const descarte = await criarMotivoSaida({ nome: "Descarte reprodutivo", tipo: "VENDA" }, USUARIO);
-  const cobra = await criarMotivoSaida({ nome: "Picada de cobra", tipo: "MORTE" }, USUARIO);
-  await editarMotivoSaida(cobra.id, { ativo: false }, USUARIO);
+  // motivo novo criado e desativado
+  const cobra = await criarMotivoBaixa({ nome: "Picada de cobra", classe: "MORTE" }, USUARIO);
+  await editarMotivoBaixa(cobra.id, { ativo: false }, USUARIO);
 
-  const motivos = await prisma.motivoSaida.findMany({ where: { ativo: true } });
+  const motivos = await prisma.motivoBaixa.findMany({ where: { ativo: true } });
   const motivo = (nome: string) => {
     const m = motivos.find((x) => x.nome === nome);
     if (!m) throw new Error(`Motivo "${nome}" não existe — rode seed:pecuaria antes`);
@@ -206,18 +205,18 @@ async function main() {
   await pesar("T601", atras(3), 702);
   await pesar("T602", atras(3), 715);
 
-  // ---------- saídas ----------
+  // ---------- baixas ----------
   await pesar("G503", atras(1), 452, "SAIDA");
-  await darSaida({ animalId: ids.G503, data: atras(1), tipo: "VENDA", motivoId: motivo("Venda"), observacao: "Vendido ao frigorífico regional, 15 @" }, USUARIO);
+  await darBaixa({ animalId: ids.G503, data: atras(1), tipo: "VENDA", motivoId: motivo("Baixa produção"), observacao: "Vendido ao frigorífico regional, 15 @" }, USUARIO);
   await pesar("G504", atras(0, 20), 470, "SAIDA");
-  await darSaida({ animalId: ids.G504, data: atras(0, 20), tipo: "ABATE", motivoId: motivo("Abate"), observacao: "Abate para consumo da fazenda" }, USUARIO);
-  await darSaida({ animalId: ids.V105, data: atras(2), tipo: "MORTE", motivoId: motivo("Pneumonia") }, USUARIO);
-  await darSaida({ animalId: ids.V106, data: atras(0, 21), tipo: "VENDA", motivoId: descarte.id, observacao: "Idade avançada, 3 IAs sem prenhez" }, USUARIO);
-  // saída estornada: V107 volta a ficar ativa na lactação
-  await darSaida({ animalId: ids.V107, data: atras(0, 10), tipo: "VENDA", motivoId: motivo("Venda") }, USUARIO);
-  await estornarSaida(ids.V107, { motivo: "Venda cancelada pelo comprador" }, USUARIO);
+  await darBaixa({ animalId: ids.G504, data: atras(0, 20), tipo: "ABATE", motivoId: motivo("Idade avançada"), observacao: "Abate para consumo da fazenda" }, USUARIO);
+  await darBaixa({ animalId: ids.V105, data: atras(2), tipo: "MORTE", motivoId: motivo("Pneumonia") }, USUARIO);
+  await darBaixa({ animalId: ids.V106, data: atras(0, 21), tipo: "VENDA", motivoId: motivo("Infertilidade / repetição de cio"), observacao: "Idade avançada, 3 IAs sem prenhez" }, USUARIO);
+  // baixa estornada: V107 volta a ficar ativa na lactação
+  await darBaixa({ animalId: ids.V107, data: atras(0, 10), tipo: "VENDA", motivoId: motivo("Excedente de animais") }, USUARIO);
+  await estornarBaixa(ids.V107, { motivo: "Venda cancelada pelo comprador" }, USUARIO);
   // cadastro indevido e recadastro com o mesmo brinco no mesmo sítio
-  await darSaida({ animalId: b403Errado, data: atras(0), tipo: "CADASTRO_INDEVIDO", motivoId: motivo("Cadastro indevido"), observacao: "Data de nascimento errada, recadastrado" }, USUARIO);
+  await darBaixa({ animalId: b403Errado, data: atras(0), tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: "Data de nascimento errada, recadastrado" }, USUARIO);
   await novo({ brinco: "B403", sexo: "F", dataNascimento: atras(2), origem: "NASCIDO", dataEntrada: atras(2),
     propriedadeId: P, loteId: bezerreiro, aptidao: "LEITE", composicao: comp(["HO", 48], ["GO", 16]) });
 
@@ -234,13 +233,13 @@ async function main() {
   await definirCategoriaManual(ids.R303, { categoriaId: await categoria("Vaca", "F"), data: atras(0, 3), motivo: "Pariu na semana passada; parto ainda não lançado" }, USUARIO);
 
   // ---------- resumo ----------
-  const [animais, saidasAtivas, pesagens, auditoria] = await Promise.all([
+  const [animais, baixasAtivas, pesagens, auditoria] = await Promise.all([
     prisma.animal.count(),
-    prisma.saidaAnimal.count({ where: { estornadaEm: null } }),
+    prisma.baixaAnimal.count({ where: { estornadaEm: null } }),
     prisma.pesagem.count(),
     prisma.auditoriaPecuaria.count(),
   ]);
-  console.log(`Seed do rebanho ok: ${animais} animais (${animais - saidasAtivas} ativos, ${saidasAtivas} com saída), ${pesagens} pesagens, ${auditoria} registros de auditoria.`);
+  console.log(`Seed do rebanho ok: ${animais} animais (${animais - baixasAtivas} ativos, ${baixasAtivas} com baixa), ${pesagens} pesagens, ${auditoria} registros de auditoria.`);
 }
 
 main()

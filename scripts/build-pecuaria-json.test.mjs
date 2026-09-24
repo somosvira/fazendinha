@@ -62,8 +62,9 @@ test("aptidão CORTE só com Nelore majoritário", () => {
 test("construir: ponta a ponta, determinístico", () => {
   const dump = [
     "@MB@3~|~DoaÃ§Ã£o",
+    "@TB@1~|~VoluntÃ¡ria",
     "@RC@1~|~HO~|~HolandÃªs",
-    "@A@20~|~1044~|~BOA FÃ\u0089~|~F~|~2020-01-01~|~2021-03-01~|~~|~~|~1~|~2024-02-02~|~3~|~DoaÃ§Ã£o~|~SÃ£o Francisco- Receptoras~|~Lote 1~|~Nelore",
+    "@A@20~|~1044~|~BOA FÃ\u0089~|~F~|~2020-01-01~|~2021-03-01~|~~|~~|~1~|~2024-02-02~|~3~|~DoaÃ§Ã£o~|~SÃ£o Francisco- Receptoras~|~Lote 1~|~Nelore~|~~|~1",
     "@A@10~|~030~|~~|~M~|~~|~2024-01-01~|~~|~~|~0~|~~|~~|~~|~Principal - Leite~|~~|~3/4 HO, GL",
     "@RACA@10~|~1~|~HO~|~Holandês~|~75",
     "@RACA@10~|~2~|~GL~|~Gir Leiteiro~|~25",
@@ -83,10 +84,20 @@ test("construir: ponta a ponta, determinístico", () => {
   assert.equal(b.papelReprodutivo, "RECEPTORA");
   assert.equal(b.aptidao, "CORTE");
   assert.equal(b.racaTexto, "Nelore");
-  assert.deepEqual(b.saida, { data: "2024-02-02", motivoIdeagriId: 3, motivoNome: "Doação" });
+  assert.deepEqual(b.baixa, { data: "2024-02-02", tipoIdeagri: 1, motivoIdeagriId: 3, motivoNome: "Doação" });
   assert.deepEqual(j.propriedades, [{ nome: "Principal" }, { nome: "São Francisco" }]);
   assert.deepEqual(j.lotes, [{ nome: "Lote 1", propriedadeNome: "São Francisco", ideagriGrupo: "Lote 1" }]);
   assert.deepEqual(j.racas, [{ ideagriId: 1, sigla: "HO", nome: "Holandês" }]);
+  assert.deepEqual(j.motivosBaixa, [{ ideagriId: 3, nome: "Doação" }]);
+  assert.deepEqual(j.tiposBaixa, [{ ideagriId: 1, nome: "Voluntária" }]);
   assert.deepEqual(construir(dump, "2026-09-22"), j);
   assert.ok(!JSON.stringify(j).includes("Ã"));
+});
+
+test("baixa fica nula sem cdTipoBaixa e null explícito quando dataBaixa presente sem tipo", () => {
+  const dump = [
+    "@A@30~|~040~|~~|~F~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~2024-03-01~|~~|~~|~Principal~|~~|~Nelore~|~~|~",
+  ].join("\n");
+  const j = construir(dump, "2026-09-22");
+  assert.deepEqual(j.animais[0].baixa, { data: "2024-03-01", tipoIdeagri: null, motivoIdeagriId: null, motivoNome: null });
 });

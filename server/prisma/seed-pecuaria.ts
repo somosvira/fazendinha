@@ -36,43 +36,54 @@ async function main() {
     }
   }
 
-  // Motivos de saída
-  // VENDA, ABATE, MORTE (com subtypes), DOACAO, CADASTRO_INDEVIDO
+  // Motivos de baixa
+  // Classificação por tipo de saída: DESCARTE_VOLUNTARIO, DESCARTE_INVOLUNTARIO, MORTE
   const motivos = [
-    // VENDA
-    { nome: "Venda", tipo: "VENDA" },
-    // ABATE
-    { nome: "Abate", tipo: "ABATE" },
-    // DOACAO
-    { nome: "Doação", tipo: "DOACAO" },
-    // CADASTRO_INDEVIDO
-    { nome: "Cadastro indevido", tipo: "CADASTRO_INDEVIDO" },
+    // DESCARTE_VOLUNTARIO
+    { nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO" },
+    { nome: "Idade avançada", classe: "DESCARTE_VOLUNTARIO" },
+    { nome: "Excedente de animais", classe: "DESCARTE_VOLUNTARIO" },
+    { nome: "Bezerro macho", classe: "DESCARTE_VOLUNTARIO" },
+    { nome: "Temperamento / ordenha difícil", classe: "DESCARTE_VOLUNTARIO" },
+    // DESCARTE_INVOLUNTARIO
+    { nome: "Infertilidade / repetição de cio", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Aborto", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Mastite crônica", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Casco / locomoção", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Úbere / tetos", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Doença crônica", classe: "DESCARTE_INVOLUNTARIO" },
+    { nome: "Lesão / acidente", classe: "DESCARTE_INVOLUNTARIO" },
     // MORTE
-    { nome: "Acidente", tipo: "MORTE" },
-    { nome: "Anaplasmose", tipo: "MORTE" },
-    { nome: "Babesia bovis", tipo: "MORTE" },
-    { nome: "Clostridioses", tipo: "MORTE" },
-    { nome: "Doenças bacterianas", tipo: "MORTE" },
-    { nome: "Pneumonia", tipo: "MORTE" },
-    { nome: "Mastite ambiental", tipo: "MORTE" },
-    { nome: "Prolapso uterino", tipo: "MORTE" },
-    { nome: "Complicações pós-parto", tipo: "MORTE" },
-    { nome: "Intoxicação com ureia", tipo: "MORTE" },
-    { nome: "Desconhecida/Indefinida", tipo: "MORTE" },
-    { nome: "Outras", tipo: "MORTE" },
+    { nome: "Acidente", classe: "MORTE" },
+    { nome: "Anaplasmose", classe: "MORTE" },
+    { nome: "Babesia bovis", classe: "MORTE" },
+    { nome: "Clostridioses", classe: "MORTE" },
+    { nome: "Doenças bacterianas", classe: "MORTE" },
+    { nome: "Pneumonia", classe: "MORTE" },
+    { nome: "Mastite ambiental", classe: "MORTE" },
+    { nome: "Prolapso uterino", classe: "MORTE" },
+    { nome: "Complicações pós-parto", classe: "MORTE" },
+    { nome: "Intoxicação com ureia", classe: "MORTE" },
+    { nome: "Desconhecida/Indefinida", classe: "MORTE" },
+    { nome: "Outras", classe: "MORTE" },
+    { nome: "Tripanossoma", classe: "MORTE" },
+    { nome: "Peritonite", classe: "MORTE" },
+    { nome: "Septicemia", classe: "MORTE" },
+    { nome: "Intoxicação por plantas tóxicas", classe: "MORTE" },
+    { nome: "Botulismo", classe: "MORTE" },
   ];
 
   let motivosCount = 0;
   for (const motivo of motivos) {
-    const existente = await prisma.motivoSaida.findFirst({ where: { nome: motivo.nome } });
+    const existente = await prisma.motivoBaixa.findFirst({ where: { nome: motivo.nome } });
     if (existente) {
-      await prisma.motivoSaida.update({
+      await prisma.motivoBaixa.update({
         where: { id: existente.id },
-        data: { tipo: motivo.tipo as any, ativo: true },
+        data: { classe: motivo.classe as any, ativo: true },
       });
     } else {
-      await prisma.motivoSaida.create({
-        data: { nome: motivo.nome, tipo: motivo.tipo as any, ativo: true },
+      await prisma.motivoBaixa.create({
+        data: { nome: motivo.nome, classe: motivo.classe as any, ativo: true },
       });
       motivosCount++;
     }
@@ -97,7 +108,7 @@ async function main() {
     }
   }
 
-  console.log(`Seed pecuaria ok: ${racasCount} raças, ${motivosCount} motivos de saída, ${propriedadesCount} propriedades criadas.`);
+  console.log(`Seed pecuaria ok: ${racasCount} raças, ${motivosCount} motivos de baixa, ${propriedadesCount} propriedades criadas.`);
 }
 
 main()

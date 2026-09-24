@@ -1,6 +1,6 @@
 // Seed completo de desenvolvimento. Não altera o schema nem apaga o banco:
 // `prisma migrate reset` faz o reset e chama este arquivo automaticamente.
-// A pecuária v1 recebe só os catálogos (raças, motivos de saída); a carga de
+// A pecuária v1 recebe só os catálogos (raças, motivos de baixa); a carga de
 // animais é o `import:pecuaria` (JSON do IDEAGRI), rodado à parte.
 import { execFileSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
