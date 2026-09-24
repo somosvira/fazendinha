@@ -193,3 +193,72 @@ export function planejarMovimentacaoEmMassa(input: {
   }
   return plano;
 }
+
+// ---------- desfazer uma movimentação inteira (tudo ou nada) ----------
+
+export interface LinhaDaMovimentacao {
+  /** linha de LocalizacaoAnimal aberta pela movimentação */
+  id: string;
+  animalId: string;
+  brinco: string;
+}
+
+export interface PlanoDesfazerMovimentacao {
+  erros: Array<{ animalId: string; brinco: string; mensagem: string }>;
+  passos: Array<{ animalId: string; remover: string; reabrir: string }>;
+}
+
+/**
+ * Desfazer a movimentação só é seguro se, para cada animal, a linha que ela abriu ainda
+ * for a localização atual (nada aconteceu depois), houver uma linha anterior para reabrir,
+ * o animal estiver ativo e nenhuma saída tiver usado essa linha. Um animal bloqueado
+ * bloqueia a movimentação inteira — quem chama não grava nada se houver erro.
+ */
+export function planejarDesfazerMovimentacao(input: {
+  linhas: LinhaDaMovimentacao[];
+  historicoPorAnimal: Map<string, LinhaHistorico[]>;
+  animaisInativos: Set<string>;
+  linhasUsadasEmSaida: Set<string>;
+}): PlanoDesfazerMovimentacao {
+  const plano: PlanoDesfazerMovimentacao = { erros: [], passos: [] };
+  for (const linha of input.linhas) {
+    const erro = (mensagem: string) => plano.erros.push({ animalId: linha.animalId, brinco: linha.brinco, mensagem });
+    if (input.animaisInativos.has(linha.animalId)) { erro("o animal saiu do rebanho depois"); continue; }
+    if (input.linhasUsadasEmSaida.has(linha.id)) { erro("essa localização já foi usada numa saída"); continue; }
+    let passo: PlanoDesfazer;
+    try {
+      passo = planejarDesfazer(input.historicoPorAnimal.get(linha.animalId) ?? []);
+    } catch (e) {
+      if (e instanceof MovimentacaoError) { erro("não há localização anterior para voltar"); continue; }
+      throw e;
+    }
+    if (passo.remover.id !== linha.id) { erro("o animal já foi movimentado de novo"); continue; }
+    plano.passos.push({ animalId: linha.animalId, remover: passo.remover.id, reabrir: passo.reabrir.id });
+  }
+  return plano;
+}
+
+// ---------- leitura do histórico a partir dos itens (MovimentacaoAnimal) ----------
+
+export interface ItemParaHistorico {
+  origemLoteId: string | null;
+  /** rótulo da origem, ex.: "Bezerreiro (Principal)" ou "Principal, sem lote" */
+  origemRotulo: string | null;
+}
+
+/**
+ * Vista de uma movimentação a partir de um lote: ENTRADA quando o destino é o lote (conta todos os
+ * animais), SAÍDA quando algum animal saiu dele (conta só esses). Null quando o lote não participa.
+ */
+export function direcaoNoLote(loteDestinoId: string | null, itens: ItemParaHistorico[], loteId: string): { direcao: "ENTRADA" | "SAIDA"; quantidade: number } | null {
+  if (loteDestinoId === loteId) return { direcao: "ENTRADA", quantidade: itens.length };
+  const saindo = itens.filter((i) => i.origemLoteId === loteId).length;
+  return saindo > 0 ? { direcao: "SAIDA", quantidade: saindo } : null;
+}
+
+/** Origens distintas, na ordem em que aparecem, com a contagem quando mais de um animal veio do mesmo lugar. */
+export function resumirOrigens(itens: ItemParaHistorico[]): string[] {
+  const contagem = new Map<string, number>();
+  for (const i of itens) if (i.origemRotulo) contagem.set(i.origemRotulo, (contagem.get(i.origemRotulo) ?? 0) + 1);
+  return [...contagem].map(([rotulo, n]) => (n > 1 ? `${rotulo} · ${n} animais` : rotulo));
+}

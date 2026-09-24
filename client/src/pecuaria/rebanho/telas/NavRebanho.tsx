@@ -4,11 +4,12 @@
 
 import { navegarPara } from "../../../router";
 
-export type SecaoRebanho = "visao-geral" | "animais" | "cadastros";
+export type SecaoRebanho = "visao-geral" | "animais" | "lotes" | "cadastros";
 
 const SECOES: { valor: SecaoRebanho; rotulo: string; href: string }[] = [
   { valor: "visao-geral", rotulo: "Visão geral", href: "/pecuaria/rebanho" },
   { valor: "animais", rotulo: "Animais", href: "/pecuaria/rebanho/animais" },
+  { valor: "lotes", rotulo: "Lotes", href: "/pecuaria/rebanho/lotes" },
   { valor: "cadastros", rotulo: "Cadastros", href: "/pecuaria/rebanho/cadastros" },
 ];
 

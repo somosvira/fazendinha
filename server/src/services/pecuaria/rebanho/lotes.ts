@@ -50,6 +50,13 @@ export async function listarLotes(propriedadeId: number | null, incluirInativos 
   }));
 }
 
+export async function buscarLote(id: string, escopo: number | null): Promise<LoteDTO> {
+  const lote = await prisma.lote.findUnique({ where: { id }, include: { propriedade: { select: { id: true, nome: true } } } });
+  if (!lote || (escopo != null && lote.propriedadeId !== escopo)) throw new RebanhoError("NAO_ENCONTRADO", "Lote não encontrado");
+  const contagem = await contarAnimaisAtivosPorLote(prisma, [id]);
+  return { id: lote.id, nome: lote.nome, propriedadeId: lote.propriedadeId, propriedade: lote.propriedade, ativo: lote.ativo, observacao: lote.observacao, animaisAtivos: contagem.get(id) ?? 0 };
+}
+
 export async function criarLote(input: CriarLoteInput, usuarioId: number | null): Promise<LoteDTO> {
   const propriedade = await prisma.propriedade.findFirst({ where: { id: input.propriedadeId, ativo: true } });
   if (!propriedade) throw new RebanhoError("NAO_ENCONTRADO", "Propriedade não encontrada ou inativa", "propriedadeId");

@@ -16,11 +16,14 @@ import type {
   EditarRacaInput,
   EntradaAuditoria,
   EstornoSaidaInput,
+  FiltrosMovimentacoes,
   ItemComposicao,
   ListarFiltros,
+  ListarMovimentacoesResultado,
   ListarResultado,
   Lote,
   MotivoSaida,
+  MovimentacaoDetalhe,
   MovimentarInput,
   MudarDestinoInput,
   PainelGeral,
@@ -115,10 +118,31 @@ export const excluirPesagem = (id: string) => req<{ ok: boolean }>(`/pesagens/${
 export const listarLotes = (opts?: { incluirInativos?: boolean }) =>
   req<Lote[]>(comIncluirInativos("/lotes", opts?.incluirInativos));
 
+export const buscarLote = (id: string) => req<Lote>(`/lotes/${id}`);
+
 export const criarLote = (input: CriarLoteInput) => req<Lote>("/lotes", { method: "POST", body: JSON.stringify(input) });
 
 export const editarLote = (id: string, input: EditarLoteInput) =>
   req<Lote>(`/lotes/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+
+export const listarMovimentacoesDoLote = (id: string, page = 1) =>
+  req<ListarMovimentacoesResultado>(`/lotes/${id}/movimentacoes?page=${page}`);
+
+/** "Desfazer movimentação": desfaz a movimentação inteira (todos os animais movidos por ela), reabrindo a localização anterior de cada um. */
+export const desfazerMovimentacao = (id: string, motivo: string) =>
+  req<{ desfeitos: number }>(`/movimentacoes/${id}/desfazer`, { method: "POST", body: JSON.stringify({ motivo }) });
+
+/** Histórico geral (aba Lotes · Histórico) — sem `loteId`, cobre todos os lotes/sítios visíveis. */
+export const listarMovimentacoes = (filtros: FiltrosMovimentacoes = {}) => {
+  const params = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(filtros)) {
+    if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
+  }
+  const query = params.toString();
+  return req<ListarMovimentacoesResultado>(`/movimentacoes${query ? `?${query}` : ""}`);
+};
+
+export const buscarMovimentacao = (id: string) => req<MovimentacaoDetalhe>(`/movimentacoes/${id}`);
 
 // ---------- raças ----------
 

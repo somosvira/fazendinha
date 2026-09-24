@@ -7,6 +7,10 @@ import type { UsuarioContexto } from "../../services/auth/sessao.js";
 const mocks = vi.hoisted(() => ({
   listar: vi.fn(),
   desfazerLocalizacao: vi.fn(),
+  desfazerMovimentacao: vi.fn(),
+  movimentacoesDoLote: vi.fn(),
+  listarMovimentacoes: vi.fn(),
+  buscarMovimentacao: vi.fn(),
   leitura: vi.fn(),
 }));
 
@@ -17,6 +21,12 @@ vi.mock("../../services/propriedade.js", () => ({
 vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   listar: mocks.listar,
   desfazerLocalizacao: mocks.desfazerLocalizacao,
+  desfazerMovimentacao: mocks.desfazerMovimentacao,
+}));
+vi.mock("../../services/pecuaria/rebanho/movimentacoes.js", () => ({
+  listarMovimentacoesDoLote: mocks.movimentacoesDoLote,
+  listarMovimentacoes: mocks.listarMovimentacoes,
+  buscarMovimentacao: mocks.buscarMovimentacao,
 }));
 vi.mock("../../services/pecuaria/rebanho/lotes.js", () => ({
   listarLotes: vi.fn(),
@@ -99,9 +109,55 @@ describe("rebanhoRouter — gate de permissão `lancar` (achado 2)", () => {
     ["lotes", () => app(usuario({ flags: [] })).request(`/lotes/${ID}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" })],
     ["raças", () => app(usuario({ flags: [] })).request("/racas", jsonBody({}))],
     ["motivos de saída", () => app(usuario({ flags: [] })).request("/motivos-saida", jsonBody({}))],
+    ["desfazer movimentação", () => app(usuario({ flags: [] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }))],
   ])("também bloqueia escrita em %s sem `lancar`", async (_nome, fazerRequisicao) => {
     const res = await fazerRequisicao();
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "sem permissão" });
+  });
+});
+
+describe("rebanhoRouter — movimentações do lote", () => {
+  it("histórico do lote é leitura: não exige `lancar` e repassa a página", async () => {
+    mocks.movimentacoesDoLote.mockResolvedValue({ itens: [], total: 0 });
+    const res = await app(usuario({ flags: [] })).request(`/lotes/${ID}/movimentacoes?page=2`);
+    expect(res.status).toBe(200);
+    expect(mocks.movimentacoesDoLote).toHaveBeenCalledWith(ID, 1, 2);
+  });
+
+  it("desfazer movimentação exige motivo", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({}));
+    expect(res.status).toBe(422);
+    expect(mocks.desfazerMovimentacao).not.toHaveBeenCalled();
+  });
+
+  it("desfazer movimentação com `lancar` chama o service com o motivo", async () => {
+    mocks.desfazerMovimentacao.mockResolvedValue({ desfeitos: 2 });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }));
+    expect(res.status).toBe(200);
+    expect(mocks.desfazerMovimentacao).toHaveBeenCalledWith(ID, "engano", 7, 1);
+  });
+});
+
+describe("rebanhoRouter — histórico geral de movimentações", () => {
+  it("lista com filtros convertidos e sem exigir `lancar`", async () => {
+    mocks.listarMovimentacoes.mockResolvedValue({ itens: [], total: 0 });
+    const res = await app(usuario({ flags: [] })).request(`/movimentacoes?loteId=${ID}&dataDe=2026-01-01&incluirDesfeitas=false&page=2`);
+    expect(res.status).toBe(200);
+    expect(mocks.listarMovimentacoes).toHaveBeenCalledWith(
+      { loteId: ID, dataDe: "2026-01-01", incluirDesfeitas: false, page: 2, pageSize: 20 }, 1,
+    );
+  });
+
+  it("data inválida é 422", async () => {
+    const res = await app(usuario({ flags: [] })).request("/movimentacoes?dataDe=ontem");
+    expect(res.status).toBe(422);
+  });
+
+  it("detalhe da movimentação repassa id e escopo", async () => {
+    mocks.buscarMovimentacao.mockResolvedValue({ id: ID, animais: [] });
+    const res = await app(usuario({ flags: [] })).request(`/movimentacoes/${ID}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarMovimentacao).toHaveBeenCalledWith(ID, 1);
   });
 });

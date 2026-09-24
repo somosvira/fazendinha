@@ -10,12 +10,13 @@ import * as lotes from "../../services/pecuaria/rebanho/lotes.js";
 import * as racas from "../../services/pecuaria/rebanho/racas.js";
 import * as motivos from "../../services/pecuaria/rebanho/motivos.js";
 import * as painel from "../../services/pecuaria/rebanho/painel.js";
+import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
   saidaSchema, estornoSaidaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
   criarLoteSchema, editarLoteSchema, incluirInativosQuerySchema,
   substituirComposicaoSchema, criarRacaSchema, editarRacaSchema,
-  criarMotivoSaidaSchema, editarMotivoSaidaSchema,
+  criarMotivoSaidaSchema, editarMotivoSaidaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
 } from "../../services/pecuaria/rebanho/schemas.js";
 
 function usuarioId(c: Context): number | null {
@@ -166,6 +167,36 @@ export const rebanhoRouter = new Hono()
   .get("/lotes", validarQuery(incluirInativosQuerySchema), async (c) => {
     const escopo = await resolverEscopoLeitura(c);
     return c.json(await lotes.listarLotes(escopo, c.req.valid("query").incluirInativos));
+  })
+  .get("/lotes/:id", idParam, async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await lotes.buscarLote(c.req.valid("param").id, escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/lotes/:id/movimentacoes", idParam, validarQuery(paginaQuerySchema), async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await movimentacoes.listarMovimentacoesDoLote(c.req.valid("param").id, escopo, c.req.valid("query").page));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/movimentacoes", validarQuery(listarMovimentacoesSchema), async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await movimentacoes.listarMovimentacoes(c.req.valid("query"), escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .get("/movimentacoes/:id", idParam, async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await movimentacoes.buscarMovimentacao(c.req.valid("param").id, escopo));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/movimentacoes/:id/desfazer", idParam, validar(desfazerMovimentacaoSchema), async (c) => {
+    const escopo = await resolverEscopoLeitura(c);
+    try {
+      return c.json(await animais.desfazerMovimentacao(c.req.valid("param").id, c.req.valid("json").motivo, usuarioId(c), escopo));
+    } catch (e) { return falha(c, e); }
   })
   .post("/lotes", validar(criarLoteSchema), async (c) => {
     const body = c.req.valid("json");

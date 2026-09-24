@@ -26,6 +26,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   relatorio: "/financeiro/relatorios",
   acessos: "/acessos",
   config: "/configuracoes",
+  sitios: "/configuracoes/sitios",
   cadastros: "/financeiro/configuracoes",
   "pec-rebanho": "/pecuaria/rebanho",
   "pla-dashboard": "/plantio/dashboard",
@@ -125,16 +126,27 @@ export function isCadastrosRebanho(pathname: string): boolean {
   return /^\/pecuaria\/rebanho\/cadastros\/?$/i.test(pathname);
 }
 
+export function isListaLotesRebanho(pathname: string): boolean {
+  return /^\/pecuaria\/rebanho\/lotes\/?$/i.test(pathname);
+}
+
 /** Extrai o id (uuid) de `/pecuaria/rebanho/animais/:id` — null para a lista, "novo" ou qualquer outra subrota. */
 export function parseAnimalId(pathname: string): string | null {
   const match = /^\/pecuaria\/rebanho\/animais\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i.exec(pathname);
   return match ? match[1] : null;
 }
 
+/** Extrai o id (uuid) de `/pecuaria/rebanho/lotes/:id` — null para a lista ou qualquer outra subrota. */
+export function parseLoteId(pathname: string): string | null {
+  const match = /^\/pecuaria\/rebanho\/lotes\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i.exec(pathname);
+  return match ? match[1] : null;
+}
+
 /** Subpáginas do Rebanho que a aba "pec-rebanho" precisa manter na barra de endereço. */
 export function isSubrotaRebanho(tab: Tab, pathname: string): boolean {
   if (tab !== "pec-rebanho") return false;
-  return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname) || parseAnimalId(pathname) != null;
+  return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname)
+    || isListaLotesRebanho(pathname) || parseAnimalId(pathname) != null || parseLoteId(pathname) != null;
 }
 
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";

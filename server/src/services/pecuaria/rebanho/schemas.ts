@@ -79,6 +79,26 @@ export const estornoSaidaSchema = z.object({
 });
 export type EstornoSaidaInput = z.infer<typeof estornoSaidaSchema>;
 
+export const desfazerMovimentacaoSchema = z.object({
+  motivo: z.string().trim().min(1).max(300),
+});
+export type DesfazerMovimentacaoInput = z.infer<typeof desfazerMovimentacaoSchema>;
+
+export const listarMovimentacoesSchema = z.object({
+  loteId: z.string().uuid().optional(),
+  propriedadeId: z.coerce.number().int().positive().optional(),
+  dataDe: z.string().date().optional(),
+  dataAte: z.string().date().optional(),
+  incluirDesfeitas: z.enum(["true", "false"]).optional().default("true").transform((v) => v === "true"),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+export type ListarMovimentacoesInput = z.infer<typeof listarMovimentacoesSchema>;
+
+export const paginaQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+});
+
 export const pesagemSchema = z.object({
   animalId: z.string().uuid().optional(),
   data: dataISO,

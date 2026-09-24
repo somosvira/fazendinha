@@ -6,16 +6,18 @@
 import type { ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, rodape }: {
+export function PainelCadastro({ aberto, titulo, eyebrow, onFechar, children, rodape, largura = "sm:max-w-lg" }: {
   aberto: boolean;
   titulo: string;
   eyebrow: string;
   onFechar: () => void;
   children: ReactNode;
   rodape: ReactNode;
+  /** classe Tailwind de largura máxima do painel — mais largo para conteúdo com tabela (ex.: seletor de animais). */
+  largura?: string;
 }) {
   return <Sheet open={aberto} onOpenChange={(v) => { if (!v) onFechar(); }}>
-    <SheetContent side="right" overlayClassName="z-[1100]" className="z-[1100] flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-lg">
+    <SheetContent side="right" overlayClassName="z-[1100]" className={`z-[1100] flex w-full flex-col gap-0 overflow-y-auto p-0 ${largura}`}>
       <SheetHeader className="border-b border-border p-5 text-left">
         <div className="eyebrow">{eyebrow}</div>
         <SheetTitle className="mt-1 font-serif text-2xl font-normal">{titulo}</SheetTitle>

@@ -11,6 +11,7 @@ import { BarraFiltros, Paginacao } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
+import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { NavRebanho } from "./NavRebanho";
 
@@ -96,7 +97,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <Pill>{rotuloCategoria(item.categoria)}</Pill> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
     { chave: "sitio", titulo: "Sítio", larguraMinima: 140, celula: (item) => item.propriedade?.nome ?? "—" },
-    { chave: "lote", titulo: "Lote", larguraMinima: 120, celula: (item) => item.lote?.nome ?? "—" },
+    { chave: "lote", titulo: "Lote", larguraMinima: 120, celula: (item) => item.lote
+      ? <button type="button" onClick={(e) => { e.stopPropagation(); navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`); }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</button>
+      : "—" },
     { chave: "aptidao", titulo: "Aptidão", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
@@ -127,7 +130,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
       </BarraFiltros>
       {podeLancar && itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={selecionados.size > 0 && selecionados.size === itens.length} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
-        {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Set())}>Limpar seleção</Button><Button onClick={() => setMovimentando({ ids: [...selecionados] })}>Movimentar {selecionados.size} animal{selecionados.size === 1 ? "" : "is"}</Button></>}
+        {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Set())}>Limpar seleção</Button><Button onClick={() => setMovimentando({ ids: [...selecionados] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button></>}
       </div>}
       {erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
         <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} barraRolagemSuperior />

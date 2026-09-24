@@ -751,8 +751,10 @@ model Propriedade {
   updatedAt             DateTime                      @updatedAt
 
   // Pecuária v1 (schema pecuaria)
-  pecLotes        Lote[]
-  pecLocalizacoes LocalizacaoAnimal[]
+  pecLotes               Lote[]
+  pecLocalizacoes        LocalizacaoAnimal[]
+  pecMovimentacoes       Movimentacao[]
+  pecOrigensMovimentacao MovimentacaoAnimal[]
 
   @@schema("public")
 }
@@ -1708,17 +1710,18 @@ model Usuario {
   updatedAt                DateTime                      @updatedAt
 
   // Pecuária v1 (schema pecuaria)
-  pecAnimaisCriados      Animal[]            @relation("AnimalCriadoPor")
-  pecRacasCriadas        Raca[]              @relation("RacaCriadoPor")
-  pecComposicoesCriadas  ComposicaoRacial[]  @relation("ComposicaoRacialCriadoPor")
-  pecLotesCriados        Lote[]              @relation("LoteCriadoPor")
-  pecLocalizacoesCriadas LocalizacaoAnimal[] @relation("LocalizacaoAnimalCriadoPor")
-  pecDestinosCriados     DestinoAnimal[]     @relation("DestinoAnimalCriadoPor")
-  pecSaidasCriadas       SaidaAnimal[]       @relation("SaidaAnimalCriadoPor")
-  pecMotivosSaidaCriados MotivoSaida[]       @relation("MotivoSaidaCriadoPor")
-  pecPesagensCriadas     Pesagem[]           @relation("PesagemCriadoPor")
-  pecAuditoriasCriadas   AuditoriaPecuaria[] @relation("AuditoriaPecuariaCriadoPor")
-  pecAuditoriasAutor     AuditoriaPecuaria[] @relation("AuditoriaPecuariaUsuario")
+  pecAnimaisCriados       Animal[]            @relation("AnimalCriadoPor")
+  pecRacasCriadas         Raca[]              @relation("RacaCriadoPor")
+  pecComposicoesCriadas   ComposicaoRacial[]  @relation("ComposicaoRacialCriadoPor")
+  pecLotesCriados         Lote[]              @relation("LoteCriadoPor")
+  pecLocalizacoesCriadas  LocalizacaoAnimal[] @relation("LocalizacaoAnimalCriadoPor")
+  pecMovimentacoesCriadas Movimentacao[]      @relation("MovimentacaoCriadoPor")
+  pecDestinosCriados      DestinoAnimal[]     @relation("DestinoAnimalCriadoPor")
+  pecSaidasCriadas        SaidaAnimal[]       @relation("SaidaAnimalCriadoPor")
+  pecMotivosSaidaCriados  MotivoSaida[]       @relation("MotivoSaidaCriadoPor")
+  pecPesagensCriadas      Pesagem[]           @relation("PesagemCriadoPor")
+  pecAuditoriasCriadas    AuditoriaPecuaria[] @relation("AuditoriaPecuariaCriadoPor")
+  pecAuditoriasAutor      AuditoriaPecuaria[] @relation("AuditoriaPecuariaUsuario")
 
   @@schema("public")
 }
@@ -1843,11 +1846,12 @@ model Animal {
   criadoPor            Usuario?     @relation("AnimalCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm         DateTime     @updatedAt
 
-  composicao   ComposicaoRacial[]
-  localizacoes LocalizacaoAnimal[]
-  destinos     DestinoAnimal[]
-  saidas       SaidaAnimal[]
-  pesagens     Pesagem[]
+  composicao    ComposicaoRacial[]
+  localizacoes  LocalizacaoAnimal[]
+  destinos      DestinoAnimal[]
+  saidas        SaidaAnimal[]
+  pesagens      Pesagem[]
+  movimentacoes MovimentacaoAnimal[]
 
   @@index([brinco])
   @@schema("pecuaria")
@@ -1905,7 +1909,9 @@ model Lote {
   criadoPor     Usuario?    @relation("LoteCriadoPor", fields: [criadoPorId], references: [id])
   atualizadoEm  DateTime    @updatedAt
 
-  localizacoes LocalizacaoAnimal[]
+  localizacoes       LocalizacaoAnimal[]
+  movimentacoes      Movimentacao[]
+  saidasMovimentacao MovimentacaoAnimal[]
 
   @@unique([propriedadeId, nome])
   @@schema("pecuaria")
@@ -1914,28 +1920,83 @@ model Lote {
 // Onde o animal está (sítio + lote opcional), com histórico. Linha com `ate`
 // nulo = localização atual; no máximo uma aberta por animal (índice parcial na migration).
 model LocalizacaoAnimal {
-  id                String        @id @default(uuid())
+  id                String              @id @default(uuid())
   animalId          String
-  animal            Animal        @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal            Animal              @relation(fields: [animalId], references: [id], onDelete: Restrict)
   propriedadeId     Int
-  propriedade       Propriedade   @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade       Propriedade         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   loteId            String?
-  lote              Lote?         @relation(fields: [loteId], references: [id], onDelete: Restrict)
-  desde             DateTime      @db.Date
-  ate               DateTime?     @db.Date
-  motivo            String?
-  // agrupa as linhas de uma movimentação em massa
+  lote              Lote?               @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  desde             DateTime            @db.Date
+  ate               DateTime?           @db.Date
+  // movimentação que abriu esta linha (1 ou N animais); vazio = linha inicial do cadastro/carga
   movimentacaoId    String?
-  criadoEm          DateTime      @default(now())
+  movimentacao      Movimentacao?       @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+  criadoEm          DateTime            @default(now())
   criadoPorId       Int?
-  criadoPor         Usuario?      @relation("LocalizacaoAnimalCriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoEm      DateTime      @updatedAt
-  saidasQueFecharam SaidaAnimal[] @relation("SaidaLocalizacaoFechada")
+  criadoPor         Usuario?            @relation("LocalizacaoAnimalCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm      DateTime            @updatedAt
+  saidasQueFecharam SaidaAnimal[]       @relation("SaidaLocalizacaoFechada")
+  itemMovimentacao  MovimentacaoAnimal?
 
   @@index([animalId, ate])
   @@index([propriedadeId, ate])
   @@index([loteId, ate])
   @@index([movimentacaoId])
+  @@schema("pecuaria")
+}
+
+// Uma movimentação: 1 ou N animais levados ao mesmo destino na mesma data. Cada animal
+// ganha uma LocalizacaoAnimal apontando para cá. Desfazer remove essas linhas, reabre as
+// anteriores e marca `desfeitaEm` — a movimentação fica como histórico, como um estorno.
+model Movimentacao {
+  id                   String      @id @default(uuid())
+  data                 DateTime    @db.Date
+  propriedadeDestinoId Int
+  propriedadeDestino   Propriedade @relation(fields: [propriedadeDestinoId], references: [id], onDelete: Restrict)
+  loteDestinoId        String?
+  loteDestino          Lote?       @relation(fields: [loteDestinoId], references: [id], onDelete: Restrict)
+  motivo               String?
+  // quantos animais foram movidos (fixo; desfazer animal a animal não altera)
+  quantidade           Int
+  desfeitaEm           DateTime?
+  desfeitaMotivo       String?
+  criadoEm             DateTime    @default(now())
+  criadoPorId          Int?
+  criadoPor            Usuario?    @relation("MovimentacaoCriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoEm         DateTime    @updatedAt
+
+  localizacoes LocalizacaoAnimal[]
+  animais      MovimentacaoAnimal[]
+
+  @@index([loteDestinoId, data])
+  @@index([propriedadeDestinoId, data])
+  @@index([data])
+  @@schema("pecuaria")
+}
+
+// Itens da movimentação: um por animal movido, com a origem (onde estava) gravada. Nunca é
+// apagado — desfazer marca `desfeitoEm`, e `localizacaoId` fica nulo quando a linha aberta pela
+// movimentação é removida. É o registro permanente de quem foi movido, de onde e para onde.
+model MovimentacaoAnimal {
+  id                  String             @id @default(uuid())
+  movimentacaoId      String
+  movimentacao        Movimentacao       @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+  animalId            String
+  animal              Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  origemPropriedadeId Int?
+  origemPropriedade   Propriedade?       @relation(fields: [origemPropriedadeId], references: [id], onDelete: Restrict)
+  origemLoteId        String?
+  origemLote          Lote?              @relation(fields: [origemLoteId], references: [id], onDelete: Restrict)
+  localizacaoId       String?            @unique
+  localizacao         LocalizacaoAnimal? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
+  desfeitoEm          DateTime?
+  criadoEm            DateTime           @default(now())
+
+  @@unique([movimentacaoId, animalId])
+  @@index([animalId])
+  @@index([origemLoteId])
+  @@index([origemPropriedadeId])
   @@schema("pecuaria")
 }
 

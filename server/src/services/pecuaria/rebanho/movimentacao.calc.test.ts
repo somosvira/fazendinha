@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MovimentacaoError, planejarDesfazer, planejarDestino, planejarMovimentacao, planejarMovimentacaoEmMassa, type AnimalParaMover } from "./movimentacao.calc.js";
+import { MovimentacaoError, direcaoNoLote, planejarDesfazer, planejarDesfazerMovimentacao, planejarDestino, resumirOrigens, planejarMovimentacao, planejarMovimentacaoEmMassa, type AnimalParaMover } from "./movimentacao.calc.js";
 
 describe("planejarMovimentacao", () => {
   it("sem localização atual: abre a primeira", () => {
@@ -190,5 +190,84 @@ describe("planejarMovimentacaoEmMassa", () => {
     });
     expect(plano.erros.map((e) => e.animalId)).toEqual(["a", "b", "c"]);
     expect(plano.abrir).toEqual([]);
+  });
+});
+
+describe("planejarDesfazerMovimentacao", () => {
+  // animal a1: estava em L0 (fechada) e a movimentação abriu L1 (aberta)
+  const historico = (animal: string, aberta: string, extra: Array<{ id: string; desde: string; ate: string | null }> = []) => [
+    { id: `${animal}-0`, desde: "2026-01-01", ate: "2026-03-01" },
+    { id: aberta, desde: "2026-03-01", ate: extra.length ? "2026-04-01" : null },
+    ...extra,
+  ];
+  const base = {
+    animaisInativos: new Set<string>(),
+    linhasUsadasEmSaida: new Set<string>(),
+  };
+
+  it("caso feliz: remove a linha da movimentação e reabre a anterior de cada animal", () => {
+    const plano = planejarDesfazerMovimentacao({
+      ...base,
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }, { id: "a2-1", animalId: "a2", brinco: "20" }],
+      historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")], ["a2", historico("a2", "a2-1")]]),
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.passos).toEqual([
+      { animalId: "a1", remover: "a1-1", reabrir: "a1-0" },
+      { animalId: "a2", remover: "a2-1", reabrir: "a2-0" },
+    ]);
+  });
+
+  it("animal movido de novo depois bloqueia (tudo ou nada)", () => {
+    const plano = planejarDesfazerMovimentacao({
+      ...base,
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }, { id: "a2-1", animalId: "a2", brinco: "20" }],
+      historicoPorAnimal: new Map([
+        ["a1", historico("a1", "a1-1")],
+        ["a2", historico("a2", "a2-1", [{ id: "a2-2", desde: "2026-04-01", ate: null }])],
+      ]),
+    });
+    expect(plano.erros).toEqual([{ animalId: "a2", brinco: "20", mensagem: "o animal já foi movimentado de novo" }]);
+  });
+
+  it("animal que saiu ou linha usada numa saída bloqueiam", () => {
+    const plano = planejarDesfazerMovimentacao({
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }, { id: "a2-1", animalId: "a2", brinco: "20" }],
+      historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")], ["a2", historico("a2", "a2-1")]]),
+      animaisInativos: new Set(["a1"]),
+      linhasUsadasEmSaida: new Set(["a2-1"]),
+    });
+    expect(plano.erros.map((e) => e.mensagem)).toEqual(["o animal saiu do rebanho depois", "essa localização já foi usada numa saída"]);
+  });
+
+  it("sem linha anterior (só a da movimentação) bloqueia", () => {
+    const plano = planejarDesfazerMovimentacao({
+      ...base,
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }],
+      historicoPorAnimal: new Map([["a1", [{ id: "a1-1", desde: "2026-03-01", ate: null }]]]),
+    });
+    expect(plano.erros[0].mensagem).toBe("não há localização anterior para voltar");
+  });
+});
+
+describe("direcaoNoLote e resumirOrigens", () => {
+  const itens = [
+    { origemLoteId: "L1", origemRotulo: "Bezerreiro (Principal)" },
+    { origemLoteId: "L1", origemRotulo: "Bezerreiro (Principal)" },
+    { origemLoteId: "L2", origemRotulo: "Recria (Mexicana)" },
+  ];
+
+  it("destino no lote é entrada com todos os animais", () => {
+    expect(direcaoNoLote("L9", itens, "L9")).toEqual({ direcao: "ENTRADA", quantidade: 3 });
+  });
+
+  it("lote de origem vê saída só dos animais que saíram dele", () => {
+    expect(direcaoNoLote("L9", itens, "L1")).toEqual({ direcao: "SAIDA", quantidade: 2 });
+    expect(direcaoNoLote("L9", itens, "L3")).toBeNull();
+  });
+
+  it("resume origens com contagem", () => {
+    expect(resumirOrigens(itens)).toEqual(["Bezerreiro (Principal) · 2 animais", "Recria (Mexicana)"]);
+    expect(resumirOrigens([{ origemLoteId: null, origemRotulo: null }])).toEqual([]);
   });
 });

@@ -24,7 +24,7 @@ const base: AnimalFicha = {
   dataNascimento: "2022-01-01", dataEntrada: "2022-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
   lote: null, aptidao: "LEITE", papelReprodutivo: "RECEPTORA", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 1, observacao: null,
-  composicao: [], historicoLocalizacoes: [{ id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: null, motivo: null }],
+  composicao: [], historicoLocalizacoes: [{ id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null }],
   historicoDestinos: [{ id: "dest-1", aptidao: "LEITE", papelReprodutivo: "RECEPTORA", desde: "2022-01-01", ate: null }],
   historicoPesagens: [], saida: null,
 };
@@ -60,7 +60,7 @@ describe("DetalheAnimal — ações conforme situação", () => {
     cleanup();
     const comHistorico: AnimalFicha = {
       ...base,
-      historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro sítio" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null }],
+      historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro sítio" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null, movimentacaoId: null }],
       historicoDestinos: [...base.historicoDestinos, { id: "dest-0", aptidao: "CORTE", papelReprodutivo: "NENHUM", desde: "2021-01-01", ate: "2022-01-01" }],
     };
     await montar(comHistorico);
@@ -73,7 +73,7 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
   it("sem permissão de lançar não mostra nenhuma ação de escrita", async () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue({
       ...base,
-      historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null }],
+      historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null, movimentacaoId: null }],
       historicoPesagens: [{ id: "p1", data: "2023-01-01", pesoKg: 400, tipo: "ROTINA", origem: "MANUAL" }],
     });
     render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} podeLancar={false} />);
@@ -88,8 +88,8 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
     await montar({
       ...base,
       historicoLocalizacoes: [
-        { id: "loc-velha", propriedade: { id: 2, nome: "Mexicana" }, lote: null, desde: "2022-01-01", ate: "2022-01-01", motivo: null },
-        { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null },
+        { id: "loc-velha", propriedade: { id: 2, nome: "Mexicana" }, lote: null, desde: "2022-01-01", ate: "2022-01-01", motivo: null, movimentacaoId: null },
+        { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null },
       ],
     });
     expect(screen.getByText((_, el) => el?.tagName === "P" && /^Principal/.test(el.textContent ?? ""))).toBeTruthy();

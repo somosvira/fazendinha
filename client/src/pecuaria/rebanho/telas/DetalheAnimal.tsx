@@ -21,7 +21,14 @@ import { FormSaida } from "../forms/FormSaida";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, Panel, Pill } from "../../../financeiro/financeiro-ui";
+import { navegarPara } from "../../../router";
 import { NavRebanho } from "./NavRebanho";
+
+/** Nome do lote como link para a página do lote — usado no cabeçalho e no histórico de localização.
+ *  Nenhuma das duas linhas onde aparece tem `onClick` no `<tr>`/container, então não precisa de stopPropagation. */
+function LinkLote({ id, nome }: { id: string; nome: string }) {
+  return <button type="button" onClick={() => navegarPara(`/pecuaria/rebanho/lotes/${id}`)} className="break-words font-semibold text-mast hover:underline">{nome}</button>;
+}
 
 const ROTULO_TIPO_PESAGEM: Record<string, string> = { NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída" };
 
@@ -105,7 +112,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}</Pill>}
           </div>
           <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
-          <p className="mt-2 break-words text-sm text-ink-3">{formatarIdade(animal.idadeMeses)} · {animal.propriedade?.nome ?? "Sem sítio"}{animal.lote ? ` · ${animal.lote.nome}` : ""}</p>
+          <p className="mt-2 break-words text-sm text-ink-3">{formatarIdade(animal.idadeMeses)} · {animal.propriedade?.nome ?? "Sem sítio"}{animal.lote && <> · <LinkLote id={animal.lote.id} nome={animal.lote.nome} /></>}</p>
         </div>
         {podeLancar && <div className="flex flex-wrap gap-2">
           {ativo ? <>
@@ -143,7 +150,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
         <section>
           <div className="flex items-center justify-between gap-3"><h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Localização</h2>{podeLancar && ativo && animal.historicoLocalizacoes.length >= 2 && <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button>}</div>
           <p className="mt-4 text-sm">{localizacaoAtual ? <>{localizacaoAtual.propriedade?.nome ?? "Sem sítio"}{localizacaoAtual.lote ? ` · ${localizacaoAtual.lote.nome}` : ""} <span className="text-ink-3">desde {formatarDataBR(localizacaoAtual.desde)}</span></> : "Sem localização registrada."}</p>
-          {animal.historicoLocalizacoes.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote?.nome ?? "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td></tr>)}</tbody></table></div>}
+          {animal.historicoLocalizacoes.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Sítio</th><th className="py-1 pr-3 font-semibold">Lote</th><th className="py-1 pr-3 font-semibold">Desde</th><th className="py-1 pr-3 font-semibold">Até</th></tr></thead><tbody className="divide-y divide-border">{animal.historicoLocalizacoes.map((loc) => <tr key={loc.id}><td className="py-1.5 pr-3">{loc.propriedade?.nome ?? "—"}</td><td className="py-1.5 pr-3">{loc.lote ? <LinkLote id={loc.lote.id} nome={loc.lote.nome} /> : "—"}</td><td className="py-1.5 pr-3">{formatarDataBR(loc.desde)}</td><td className="py-1.5 pr-3">{loc.ate ? formatarDataBR(loc.ate) : "—"}</td></tr>)}</tbody></table></div>}
         </section>
 
         <section>

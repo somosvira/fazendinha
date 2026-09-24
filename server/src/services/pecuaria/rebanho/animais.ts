@@ -4,7 +4,7 @@ import { auditar, dadosAuditoria, traduzirConflitoUnico, travarBrinco, RebanhoEr
 import { brincoDisponivel, normalizarBrinco } from "./brinco.calc.js";
 import { validarDatasAnimal, validarDataSaida, validarDataPesagem, validarDataDestino, planejarAjusteEntrada } from "./datas.calc.js";
 import { validarComposicao } from "./composicao.calc.js";
-import { planejarDestino, planejarDesfazer, planejarMovimentacaoEmMassa, ordenarHistoricoDesc, MovimentacaoError } from "./movimentacao.calc.js";
+import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planejarMovimentacaoEmMassa, MovimentacaoError } from "./movimentacao.calc.js";
 import { filtroCategoria } from "./categoria.calc.js";
 import { planejarSaida, planejarEstornoSaida, SaidaError } from "./saida.calc.js";
 import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho } from "./mappers.js";
@@ -299,7 +299,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado");
 
   const [localizacoes, destinos, pesagens, saidas, composicao] = await Promise.all([
-    prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
+    prisma.localizacaoAnimal.findMany({ where: { animalId: id }, include: { propriedade: true, lote: true, movimentacao: { select: { motivo: true } } }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.destinoAnimal.findMany({ where: { animalId: id }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }] }),
     prisma.pesagem.findMany({ where: { animalId: id }, orderBy: { data: "desc" } }),
     prisma.saidaAnimal.findMany({ where: { animalId: id }, include: { motivo: true }, orderBy: { data: "desc" } }),
@@ -344,7 +344,8 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null):
       lote: l.lote ? { id: l.lote.id, nome: l.lote.nome } : null,
       desde: l.desde.toISOString().slice(0, 10),
       ate: l.ate ? l.ate.toISOString().slice(0, 10) : null,
-      motivo: l.motivo,
+      motivo: l.movimentacao?.motivo ?? null,
+      movimentacaoId: l.movimentacaoId,
     })),
     historicoDestinos: destinos.map((d) => ({
       id: d.id, aptidao: d.aptidao, papelReprodutivo: d.papelReprodutivo,
@@ -568,23 +569,40 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
 
     if (plano.fechar.length) await tx.localizacaoAnimal.updateMany({ where: { id: { in: plano.fechar } }, data: { ate: data } });
 
+    // o cabeçalho (data, destino, motivo) é o evento; cada animal ganha uma linha apontando para ele
+    const cabecalho = await tx.movimentacao.create({
+      data: {
+        id: movimentacaoId, data, propriedadeDestinoId: input.propriedadeId, loteDestinoId: input.loteId ?? null,
+        motivo: input.motivo ?? null, quantidade: plano.abrir.length, criadoPorId: usuarioId,
+      },
+    });
+
     const novas = plano.abrir.map((a) => ({
       id: crypto.randomUUID(),
       animalId: a.animalId,
       propriedadeId: input.propriedadeId,
       loteId: input.loteId ?? null,
       desde: data,
-      motivo: input.motivo ?? null,
       movimentacaoId,
       criadoPorId: usuarioId,
     }));
     await tx.localizacaoAnimal.createMany({ data: novas });
+    // itens: registro permanente de quem foi movido e de onde (sobrevive ao desfazer)
+    await tx.movimentacaoAnimal.createMany({
+      data: plano.abrir.map((a, i) => {
+        const origem = abertaPorAnimal.get(a.animalId);
+        return { movimentacaoId, animalId: a.animalId, origemPropriedadeId: origem?.propriedadeId ?? null, origemLoteId: origem?.loteId ?? null, localizacaoId: novas[i].id };
+      }),
+    });
 
     await tx.auditoriaPecuaria.createMany({
-      data: plano.abrir.map((a, i) => dadosAuditoria({
-        entidade: "LocalizacaoAnimal", entidadeId: novas[i].id, animalId: a.animalId, acao: "MOVIMENTACAO", usuarioId,
-        antes: a.anteriorId ? abertaPorAnimal.get(a.animalId) : null, depois: novas[i],
-      })),
+      data: [
+        dadosAuditoria({ entidade: "Movimentacao", entidadeId: movimentacaoId, acao: "MOVIMENTACAO", usuarioId, depois: cabecalho }),
+        ...plano.abrir.map((a, i) => dadosAuditoria({
+          entidade: "LocalizacaoAnimal", entidadeId: novas[i].id, animalId: a.animalId, acao: "MOVIMENTACAO", usuarioId,
+          antes: a.anteriorId ? abertaPorAnimal.get(a.animalId) : null, depois: novas[i],
+        })),
+      ],
     });
     return novas.length;
   }, { timeout: 30_000, maxWait: 10_000 });
@@ -658,9 +676,98 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     const reaberta = await tx.localizacaoAnimal.update({ where: { id: anterior.id }, data: { ate: null } });
 
     await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
+
+    // desfeita animal a animal até o último: a movimentação inteira passa a constar como desfeita
+    if (removida.movimentacaoId) {
+      await tx.movimentacaoAnimal.updateMany({ where: { movimentacaoId: removida.movimentacaoId, animalId }, data: { desfeitoEm: new Date() } });
+      const restantes = await tx.localizacaoAnimal.count({ where: { movimentacaoId: removida.movimentacaoId } });
+      if (restantes === 0) {
+        await tx.movimentacao.update({ where: { id: removida.movimentacaoId }, data: { desfeitaEm: new Date(), desfeitaMotivo: "Desfeita animal a animal" } });
+      }
+    }
   });
 
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
+}
+
+/**
+ * Desfaz a movimentação inteira: para cada animal, apaga a linha que ela abriu e reabre a
+ * anterior; a movimentação fica marcada como desfeita (histórico, como um estorno). Tudo ou
+ * nada — se um animal já foi movido de novo, saiu ou teve a linha usada numa saída, nada muda.
+ */
+export async function desfazerMovimentacao(id: string, motivo: string, usuarioId: number | null, escopo: number | null = null): Promise<{ desfeitos: number }> {
+  const mov = await prisma.movimentacao.findUnique({ where: { id } });
+  if (!mov || (escopo != null && mov.propriedadeDestinoId !== escopo)) throw new RebanhoError("NAO_ENCONTRADO", "Movimentação não encontrada");
+  if (mov.desfeitaEm) throw new RebanhoError("JA_ESTORNADA", "Essa movimentação já foi desfeita");
+
+  return prisma.$transaction(async (tx) => {
+    const linhas = await tx.localizacaoAnimal.findMany({ where: { movimentacaoId: id }, include: { animal: { select: { brinco: true } } } });
+    if (!linhas.length) throw new RebanhoError("CONFLITO", "Essa movimentação não tem mais animais para desfazer");
+    const animalIds = linhas.map((l) => l.animalId);
+
+    const [historico, saidasAtivas, usadasEmSaida] = await Promise.all([
+      tx.localizacaoAnimal.findMany({ where: { animalId: { in: animalIds } } }),
+      tx.saidaAnimal.findMany({ where: { animalId: { in: animalIds }, estornadaEm: null }, select: { animalId: true } }),
+      tx.saidaAnimal.findMany({ where: { localizacaoFechadaId: { in: linhas.map((l) => l.id) } }, select: { localizacaoFechadaId: true } }),
+    ]);
+    const porId = new Map(historico.map((h) => [h.id, h]));
+    const historicoPorAnimal = new Map<string, Array<{ id: string; desde: Date; ate: Date | null; criadoEm: Date }>>();
+    for (const h of historico) {
+      const lista = historicoPorAnimal.get(h.animalId) ?? [];
+      lista.push({ id: h.id, desde: h.desde, ate: h.ate, criadoEm: h.criadoEm });
+      historicoPorAnimal.set(h.animalId, lista);
+    }
+
+    const plano = planejarDesfazerMovimentacao({
+      linhas: linhas.map((l) => ({ id: l.id, animalId: l.animalId, brinco: l.animal.brinco })),
+      historicoPorAnimal,
+      animaisInativos: new Set(saidasAtivas.map((s) => s.animalId)),
+      linhasUsadasEmSaida: new Set(usadasEmSaida.map((s) => s.localizacaoFechadaId).filter((v): v is string => v != null)),
+    });
+    if (plano.erros.length) {
+      const lista = plano.erros.slice(0, 10).map((e) => `${e.brinco}: ${e.mensagem}`).join("; ");
+      const resto = plano.erros.length > 10 ? ` (e mais ${plano.erros.length - 10})` : "";
+      throw new RebanhoError("CONFLITO", `Nada foi desfeito. ${lista}${resto}`);
+    }
+
+    // o brinco pode ter sido reutilizado no sítio de origem enquanto o animal esteve fora;
+    // trava (sítio, brinco) em ordem fixa e lê os ativos de cada sítio uma vez só
+    const brincoPorAnimal = new Map(linhas.map((l) => [l.animalId, l.animal.brinco]));
+    const porSitio = new Map<number, string[]>();
+    for (const p of plano.passos) {
+      const sitio = porId.get(p.reabrir)!.propriedadeId;
+      porSitio.set(sitio, [...(porSitio.get(sitio) ?? []), p.animalId]);
+    }
+    for (const [sitio, ids] of [...porSitio].sort((a, b) => a[0] - b[0])) {
+      const brincos = [...new Set(ids.map((a) => normalizarBrinco(brincoPorAnimal.get(a)!)))].sort();
+      for (const brinco of brincos) await travarBrinco(tx, sitio, brinco);
+      const ativos = await ativosNoSitioParaBrinco(tx, sitio);
+      for (const animalId of ids) {
+        const brinco = brincoPorAnimal.get(animalId)!;
+        if (!brincoDisponivel({ brinco, propriedadeId: sitio, ativosNoSitio: ativos, ignorarAnimalId: animalId })) {
+          throw new RebanhoError("BRINCO_DUPLICADO", `Nada foi desfeito. Já existe um animal ativo com o brinco ${normalizarBrinco(brinco)} no sítio anterior`);
+        }
+      }
+    }
+
+    // apaga antes de reabrir: o índice parcial não admite duas linhas abertas por animal
+    await tx.localizacaoAnimal.deleteMany({ where: { id: { in: plano.passos.map((p) => p.remover) } } });
+    await tx.localizacaoAnimal.updateMany({ where: { id: { in: plano.passos.map((p) => p.reabrir) } }, data: { ate: null } });
+    const agora = new Date();
+    await tx.movimentacaoAnimal.updateMany({ where: { movimentacaoId: id, desfeitoEm: null }, data: { desfeitoEm: agora } });
+    const desfeita = await tx.movimentacao.update({ where: { id }, data: { desfeitaEm: agora, desfeitaMotivo: motivo } });
+
+    await tx.auditoriaPecuaria.createMany({
+      data: [
+        dadosAuditoria({ entidade: "Movimentacao", entidadeId: id, acao: "DESFAZER", usuarioId, antes: mov, depois: desfeita }),
+        ...plano.passos.map((p) => dadosAuditoria({
+          entidade: "LocalizacaoAnimal", entidadeId: p.remover, animalId: p.animalId, acao: "DESFAZER", usuarioId,
+          antes: { removida: porId.get(p.remover), anteriorFechada: porId.get(p.reabrir) }, depois: { reaberta: { ...porId.get(p.reabrir), ate: null } },
+        })),
+      ],
+    });
+    return { desfeitos: plano.passos.length };
+  }, { timeout: 30_000, maxWait: 10_000 });
 }
 
 export async function desfazerDestino(animalId: string, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {

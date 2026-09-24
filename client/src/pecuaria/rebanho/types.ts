@@ -44,6 +44,8 @@ export type HistoricoLocalizacao = {
   desde: string;
   ate: string | null;
   motivo: string | null;
+  /** movimentação (lote -> lote) que abriu esta linha; null quando a linha veio de cadastro/saída. */
+  movimentacaoId: string | null;
 };
 
 export type HistoricoDestino = {
@@ -217,6 +219,60 @@ export type Lote = {
 };
 export type CriarLoteInput = { nome: string; propriedadeId: number; observacao?: string | null };
 export type EditarLoteInput = Partial<{ nome: string; ativo: boolean; observacao: string | null }>;
+
+/** GET /lotes/:id/movimentacoes e GET /movimentacoes — histórico de movimentações entre
+ *  lotes/sítios. Na vista de um lote (`/lotes/:id/movimentacoes`), `direcao` vem preenchida
+ *  (entrou/saiu daquele lote); na lista geral sem filtro de lote, vem `null`. */
+export type MovimentacaoResumo = {
+  id: string;
+  data: string;
+  direcao: "ENTRADA" | "SAIDA" | null;
+  /** animais desta movimentação que entraram no (ou saíram do) lote filtrado — igual a
+   *  `quantidadeTotal` quando não há um lote no filtro */
+  quantidade: number;
+  /** total de animais da movimentação (pode incluir animais de outros lotes) */
+  quantidadeTotal: number;
+  /** lotes/sítios de onde os animais vieram (vazio se a origem não existe mais) */
+  origens: string[];
+  destino: { propriedade: PropriedadeRef; lote: LoteRef | null };
+  motivo: string | null;
+  criadoPor: string | null;
+  criadoEm: string;
+  desfeitaEm: string | null;
+  desfeitaMotivo: string | null;
+  podeDesfazer: boolean;
+};
+/** Nome usado antes de existir a listagem geral — mantido como alias para não reescrever
+ *  quem já consumia o histórico de um lote específico. */
+export type MovimentacaoDoLote = MovimentacaoResumo;
+export type ListarMovimentacoesResultado = { itens: MovimentacaoResumo[]; total: number };
+
+export type FiltrosMovimentacoes = {
+  loteId?: string;
+  propriedadeId?: number;
+  dataDe?: string;
+  dataAte?: string;
+  /** default true no servidor */
+  incluirDesfeitas?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+/** GET /movimentacoes/:id — animal mantido mesmo quando a movimentação foi desfeita. */
+export type AnimalDaMovimentacao = {
+  animalId: string;
+  brinco: string;
+  nome: string | null;
+  categoria: Categoria;
+  /** lote/sítio de onde este animal veio, formatado (null se a origem não existe mais) */
+  origem: string | null;
+  /** NO_DESTINO: a linha aberta pela movimentação ainda é a atual · SAIU_DO_DESTINO: moveu de
+   *  novo ou saiu do rebanho · DESFEITO: esta movimentação foi desfeita */
+  situacao: "NO_DESTINO" | "SAIU_DO_DESTINO" | "DESFEITO";
+  desfeitoEm: string | null;
+};
+
+export type MovimentacaoDetalhe = MovimentacaoResumo & { animais: AnimalDaMovimentacao[] };
 
 export type Raca = { id: string; nome: string; sigla: string; base: boolean; ativo: boolean };
 export type CriarRacaInput = { nome: string; sigla: string; base?: boolean };

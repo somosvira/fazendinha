@@ -76,7 +76,7 @@ export interface AnimalFicha extends AnimalResumo {
   partosAntesDaEntrada: number;
   observacao: string | null;
   composicao: ItemComposicaoFicha[];
-  historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null }>;
+  historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null; movimentacaoId: string | null }>;
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
   historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
   saida: { id: string; data: string; tipo: string; motivo: string | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
@@ -127,6 +127,8 @@ const RESUMOS_AUDITORIA: Record<string, string> = {
   "ComposicaoRacial:EDICAO": "Composição racial alterada",
   "LocalizacaoAnimal:MOVIMENTACAO": "Movimentação de localização/lote",
   "LocalizacaoAnimal:DESFAZER": "Movimentação de localização desfeita",
+  "Movimentacao:MOVIMENTACAO": "Movimentação registrada",
+  "Movimentacao:DESFAZER": "Movimentação desfeita",
   "DestinoAnimal:MUDANCA_DESTINO": "Mudança de destino/aptidão",
   "DestinoAnimal:DESFAZER": "Mudança de destino desfeita",
   "SaidaAnimal:SAIDA": "Saída registrada",
