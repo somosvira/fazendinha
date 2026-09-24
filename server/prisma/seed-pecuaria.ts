@@ -1,7 +1,10 @@
 // Seed de catálogos do novo schema `pecuaria`:
 // - Raças (base + composta)
 // - Motivos de saída
-// - Propriedades
+//
+// Não cria Propriedade: em produção quem cria os sítios é a própria carga do IDEAGRI
+// (server/prisma/import-pecuaria.ts, pelo nome que vem no JSON); em dev, os 4 sítios de
+// demonstração ficam em seed-rebanho-demo.ts (só para a demo, nunca em produção).
 //
 // Idempotente por chave natural (upsert).
 
@@ -89,26 +92,7 @@ async function main() {
     }
   }
 
-  // Propriedades
-  const propriedades = [
-    { nome: "Principal", apelido: "Principal", principal: true },
-    { nome: "Mexicana", apelido: "Mexicana", principal: false },
-    { nome: "Carlos Alves", apelido: "Carlos Alves", principal: false },
-    { nome: "São Francisco", apelido: "São Francisco", principal: false },
-  ];
-
-  let propriedadesCount = 0;
-  for (const prop of propriedades) {
-    const existe = await prisma.propriedade.findUnique({ where: { nome: prop.nome } });
-    if (!existe) {
-      await prisma.propriedade.create({
-        data: { nome: prop.nome, apelido: prop.apelido, principal: prop.principal, ativo: true },
-      });
-      propriedadesCount++;
-    }
-  }
-
-  console.log(`Seed pecuaria ok: ${racasCount} raças, ${motivosCount} motivos de baixa, ${propriedadesCount} propriedades criadas.`);
+  console.log(`Seed pecuaria ok: ${racasCount} raças, ${motivosCount} motivos de baixa criados.`);
 }
 
 main()

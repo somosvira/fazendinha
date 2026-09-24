@@ -208,6 +208,13 @@ async function main() {
     }
   }
 
+  // ---- 12) brinco eletrônico e SISBOV (informativo) -------------------------
+  console.log(`\n12) Brinco eletrônico e SISBOV`);
+  const comBrincoEletronico = await prisma.animal.count({ where: { brincoEletronico: { not: null } } });
+  const comSisbov = await prisma.animal.count({ where: { sisbov: { not: null } } });
+  info(`animais com brincoEletronico preenchido: ${comBrincoEletronico} / ${totalAnimais}`);
+  info(`animais com SISBOV preenchido: ${comSisbov} / ${totalAnimais}`);
+
   console.log(`\n=== ${falhas === 0 ? "Validação OK" : `${falhas} checagem(ns) crítica(s) com FALHA`} ===`);
   await prisma.$disconnect();
   if (falhas > 0) process.exit(1);

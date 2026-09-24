@@ -18,7 +18,9 @@
  *  - aptidao = CORTE se Nelore (sigla NE / nome "Nelore") ocupa > 32/64 da composição;
  *    sem ANIMALRACA, usa o racaTexto ("1/2 NE, GO", "Nelore"); senão LEITE (fazenda leiteira);
  *  - composição: PERCENTUAL (0–100) → fracao64 = round(pct*64/100); se a soma passar de 64,
- *    o maior componente é reduzido até 64.
+ *    o maior componente é reduzido até 64;
+ *  - periodoAberto = período ANIMALPERIODO mais recente com DATAFIM vazio (1 Doadora, 2 Receptora,
+ *    3 Descarte); a interpretação do tipo e o fallback pro papel do setor ficam com o importador.
  * Determinístico: tudo ordenado por ideagriId / nome.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -174,7 +176,19 @@ export function parseLinhaAnimal(linha) {
   };
 }
 
-export function montarAnimal(a, racasDoAnimal, pesagens) {
+// [{ideagriId, cdanimal, tipo, dataInicio, dataFim}] do animal → o período reprodutivo ABERTO
+// mais recente (dataFim vazio), ou null se não houver nenhum aberto. TIPO: 1 Doadora, 2 Receptora,
+// 3 Descarte (interpretação fica com o importador — o builder só repassa tipo + dataInicio).
+export function periodoAbertoDe(periodos) {
+  const abertos = (periodos ?? []).filter((p) => !p.dataFim);
+  if (abertos.length === 0) return null;
+  const [primeiro] = abertos
+    .slice()
+    .sort((x, y) => (y.dataInicio ?? "").localeCompare(x.dataInicio ?? "") || y.ideagriId - x.ideagriId);
+  return { tipo: primeiro.tipo, dataInicio: primeiro.dataInicio };
+}
+
+export function montarAnimal(a, racasDoAnimal, pesagens, periodos) {
   const { propriedadeNome } = parseSetor(a.setor);
   const composicao = composicaoEm64(racasDoAnimal ?? []);
   const nascimentoEstimado = !a.dataNascimento;
@@ -188,11 +202,14 @@ export function montarAnimal(a, racasDoAnimal, pesagens) {
     nascimentoEstimado,
     origem: nascimentoEstimado ? "COMPRADO" : origemDe(a.dataNascimento, a.dataEntrada),
     dataEntrada: a.dataEntrada ?? dataNascimento,
+    brincoEletronico: a.brincoEletronico ?? null,
+    sisbov: a.sisbov ?? null,
     partosAntesDaEntrada: a.partosAntesDaEntrada,
     ideagriCategoria: a.ideagriCategoria ?? null,
     propriedadeNome,
     loteNome: a.grupo,
     papelReprodutivo: papelReprodutivoDe(a.setor),
+    periodoAberto: periodoAbertoDe(periodos),
     aptidao: aptidaoDe(composicao, a.racaTexto),
     composicao,
     baixa: a.dataBaixa
@@ -209,6 +226,7 @@ export function construir(texto, geradoEm) {
   const animaisBrutos = [];
   const racasPorAnimal = new Map();
   const pesagensPorAnimal = new Map();
+  const periodosPorAnimal = new Map();
   const motivosBaixa = new Map();
   const tiposBaixa = new Map();
   const racas = new Map();
@@ -234,6 +252,11 @@ export function construir(texto, geradoEm) {
       push(pesagensPorAnimal, num(f[1]), {
         ideagriId: num(f[0]), data: txt(f[2]), pesoKg: num(f[3]), tipoIdeagri: txt(f[4]),
       });
+    } else if (l.startsWith("@AP@")) {
+      const f = l.slice(4).split(SEP);
+      push(periodosPorAnimal, num(f[1]), {
+        ideagriId: num(f[0]), tipo: num(f[2]), dataInicio: txt(f[3]), dataFim: txt(f[4]),
+      });
     }
   }
 
@@ -245,7 +268,7 @@ export function construir(texto, geradoEm) {
   const animais = animaisBrutos
     .filter((a) => a.ideagriId != null)
     .sort((x, y) => x.ideagriId - y.ideagriId)
-    .map((a) => montarAnimal(a, racasPorAnimal.get(a.ideagriId), pesagensPorAnimal.get(a.ideagriId)));
+    .map((a) => montarAnimal(a, racasPorAnimal.get(a.ideagriId), pesagensPorAnimal.get(a.ideagriId), periodosPorAnimal.get(a.ideagriId)));
 
   const propriedades = [...new Set(animais.map((a) => a.propriedadeNome))]
     .sort((a, b) => a.localeCompare(b, "pt-BR"))

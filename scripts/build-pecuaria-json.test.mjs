@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   decodificarDump, corrigirMojibake, parseSetor, papelReprodutivoDe, origemDe,
-  composicaoEm64, aptidaoDe, fracaoNeloreTexto, construir,
+  composicaoEm64, aptidaoDe, fracaoNeloreTexto, periodoAbertoDe, construir,
 } from "./build-pecuaria-json.mjs";
 
 test("parseSetor separa sítio da função pelo primeiro hífen", () => {
@@ -100,4 +100,56 @@ test("baixa fica nula sem cdTipoBaixa e null explícito quando dataBaixa present
   ].join("\n");
   const j = construir(dump, "2026-09-22");
   assert.deepEqual(j.animais[0].baixa, { data: "2024-03-01", tipoIdeagri: null, motivoIdeagriId: null, motivoNome: null });
+});
+
+test("brinco eletrônico e SISBOV chegam no animal", () => {
+  const dump = [
+    "@A@50~|~500~|~~|~F~|~2020-01-01~|~2020-01-01~|~982000100000500~|~BR105000000500~|~0~|~~|~~|~~|~Principal~|~~|~Nelore~|~~|~",
+  ].join("\n");
+  const j = construir(dump, "2026-09-22");
+  assert.equal(j.animais[0].brincoEletronico, "982000100000500");
+  assert.equal(j.animais[0].sisbov, "BR105000000500");
+});
+
+test("brinco eletrônico e SISBOV vazios viram null", () => {
+  const dump = "@A@60~|~600~|~~|~M~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~~|~~|~~|~Principal~|~~|~Nelore~|~~|~";
+  const j = construir(dump, "2026-09-22");
+  assert.equal(j.animais[0].brincoEletronico, null);
+  assert.equal(j.animais[0].sisbov, null);
+});
+
+test("periodoAbertoDe: só o mais recente entre os abertos (dataFim vazio); sem período aberto vira null", () => {
+  assert.equal(periodoAbertoDe([]), null);
+  assert.equal(periodoAbertoDe(undefined), null);
+  assert.equal(
+    periodoAbertoDe([{ ideagriId: 1, tipo: 1, dataInicio: "2020-01-01", dataFim: "2021-01-01" }]),
+    null,
+  ); // só tem período fechado
+  assert.deepEqual(
+    periodoAbertoDe([
+      { ideagriId: 1, tipo: 2, dataInicio: "2020-01-01", dataFim: null },
+      { ideagriId: 2, tipo: 1, dataInicio: "2023-05-01", dataFim: null },
+    ]),
+    { tipo: 1, dataInicio: "2023-05-01" },
+  );
+});
+
+test("construir: período reprodutivo aberto (@AP@) vira periodoAberto no animal", () => {
+  const dump = [
+    "@A@70~|~700~|~~|~F~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~~|~~|~~|~Principal~|~~|~Nelore~|~~|~",
+    "@AP@1~|~70~|~2~|~2024-01-10~|~",
+  ].join("\n");
+  const j = construir(dump, "2026-09-22");
+  assert.deepEqual(j.animais[0].periodoAberto, { tipo: 2, dataInicio: "2024-01-10" });
+});
+
+test("construir: período com dataFim (fechado) não vira periodoAberto; animal sem período fica null", () => {
+  const dump = [
+    "@A@71~|~701~|~~|~F~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~~|~~|~~|~Principal~|~~|~Nelore~|~~|~",
+    "@AP@2~|~71~|~1~|~2022-01-01~|~2022-06-01",
+    "@A@72~|~702~|~~|~F~|~2020-01-01~|~2020-01-01~|~~|~~|~0~|~~|~~|~~|~Principal~|~~|~Nelore~|~~|~",
+  ].join("\n");
+  const j = construir(dump, "2026-09-22");
+  assert.equal(j.animais[0].periodoAberto, null); // 71
+  assert.equal(j.animais[1].periodoAberto, null); // 72, sem nenhuma linha @AP@
 });

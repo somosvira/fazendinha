@@ -7,7 +7,10 @@
 // CategoriaManualAnimal (troca manual sobre as categorias padrão) e AuditoriaPecuaria.
 //
 // Datas relativas a hoje, para as categorias (bezerra/novilha/garrote...) não envelhecerem.
-// Pré-requisito: `seed:pecuaria` (raças, motivos e sítios). Não roda duas vezes (checa o brinco V101).
+// Pré-requisito: `seed:pecuaria` (raças e motivos — não cria mais sítios, ver P1 do plano de
+// correções). Os 4 sítios de demonstração são criados aqui mesmo, só se ainda não existirem, e
+// sem mexer em `principal` quando já existe um sítio principal (produção real cria o(s) sítio(s)
+// pela carga do IDEAGRI, não por esta seed). Não roda duas vezes (checa o brinco V101).
 
 import { prisma } from "../src/db.js";
 import { RebanhoError } from "../src/services/pecuaria/rebanho/regras.js";
@@ -35,11 +38,22 @@ async function main() {
     return;
   }
 
-  // ---------- catálogos (vindos do seed:pecuaria) ----------
-  const sitios = await prisma.propriedade.findMany({ where: { nome: { in: ["Principal", "Mexicana", "Carlos Alves", "São Francisco"] } } });
+  // ---------- sítios de demonstração (só aqui — seed:pecuaria não cria mais Propriedade) ----------
+  const NOMES_SITIOS_DEMO = ["Principal", "Mexicana", "Carlos Alves", "São Francisco"];
+  let precisaPrincipal = (await prisma.propriedade.count({ where: { principal: true } })) === 0;
+  for (const nome of NOMES_SITIOS_DEMO) {
+    const existente = await prisma.propriedade.findUnique({ where: { nome } });
+    if (existente) continue;
+    const principal = precisaPrincipal;
+    await prisma.propriedade.create({ data: { nome, apelido: nome, principal, ativo: true } });
+    if (principal) precisaPrincipal = false; // só o primeiro sítio criado nesta seed vira principal
+  }
+
+  // ---------- catálogos (vindos do seed:pecuaria + sítios recém-garantidos acima) ----------
+  const sitios = await prisma.propriedade.findMany({ where: { nome: { in: NOMES_SITIOS_DEMO } } });
   const sitio = (nome: string) => {
     const s = sitios.find((p) => p.nome === nome);
-    if (!s) throw new Error(`Sítio "${nome}" não existe — rode seed:pecuaria antes`);
+    if (!s) throw new Error(`Sítio "${nome}" não existe (defensivo — deveria ter sido criado acima)`);
     return s.id;
   };
   const P = sitio("Principal"), M = sitio("Mexicana"), C = sitio("Carlos Alves"), S = sitio("São Francisco");

@@ -2,8 +2,8 @@
  * Consumido por scripts/build-pecuaria-json.mjs → server/prisma/pecuaria_v1.json.
  * Orquestrado por scripts/extract-pecuaria.sh (isql.exe numa CÓPIA do DADOS777.FDB).
  *
- * Convenções (iguais às de rebanho-dump.sql):
- *  - cada linha sai prefixada (@A@/@RACA@/@MB@/@RC@/@P@) e os campos separados por '~|~';
+ * Convenções:
+ *  - cada linha sai prefixada (@A@/@RACA@/@MB@/@RC@/@P@/@AP@) e os campos separados por '~|~';
  *  - datas 'YYYY-MM-DD' (CAST de DATE para VARCHAR no Firebird);
  *  - NÃO selecionar colunas blob (OBSERVACAO etc.) — quebram o isql (SU$APPENDBLOBTOFILE);
  *  - chaves estáveis = códigos internos do IDEAGRI (CDANIMAL, CDRACA, CDMOTIVOBAIXA, CDPESO),
@@ -126,3 +126,23 @@ FROM PESO p
 WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1
   AND p.DTPESO IS NOT NULL AND p.PESO IS NOT NULL
 ORDER BY p.CDPESO;
+
+/* ── PERÍODOS REPRODUTIVOS (ANIMALPERIODO) ─────────────────────────────────────
+ * @AP@ cdanimalperiodo | cdanimal | tipo | dataInicio | dataFim
+ * VALIDAR NA 1ª EXECUÇÃO: ANIMALPERIODO.TIPO (1 Doadora, 2 Receptora, 3 Descarte, conforme o
+ * mapa do IDEAGRI) — confirmar que os códigos batem antes de confiar no importador.
+ * Só o período ABERTO (DATAFIM IS NULL) interessa à carga inicial: define o papelReprodutivo
+ * inicial do DestinoAnimal (a interpretação do TIPO fica com o importador, não com este dump).
+ * Período fechado é histórico e fica para quando a v2 (Reprodução) chegar.
+ */
+SELECT '@AP@' || CAST(ap.CDANIMALPERIODO AS VARCHAR(12))
+  || '~|~' || CAST(ap.CDANIMAL AS VARCHAR(12))
+  || '~|~' || COALESCE(CAST(ap.TIPO AS VARCHAR(4)),'')
+  || '~|~' || COALESCE(CAST(ap.DATAINICIO AS VARCHAR(12)),'')
+  || '~|~' || COALESCE(CAST(ap.DATAFIM AS VARCHAR(12)),'')
+  AS "LINHA"
+FROM ANIMALPERIODO ap
+  JOIN ANIMAL a ON a.CDANIMAL = ap.CDANIMAL
+WHERE a.TIPOANIMAL='A' AND a.ANIMALREBANHO=1
+  AND ap.DATAFIM IS NULL
+ORDER BY ap.CDANIMAL, ap.DATAINICIO DESC;

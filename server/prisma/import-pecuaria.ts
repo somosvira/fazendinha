@@ -19,8 +19,9 @@
 // aparecem no relatório (`Falhas`) impresso antes da saída.
 //
 // Ordem recomendada:
-//   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoBaixa/Propriedade base
+//   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoBaixa (não cria Propriedade)
 //   2) `pnpm --filter rionovo-server run import:pecuaria` → importa server/prisma/pecuaria_v1.json
+//      (Propriedade é criada aqui mesmo, pelo nome que vem no JSON — ver bloco "Propriedades" abaixo)
 //   3) `pnpm --filter rionovo-server run validar:pecuaria`
 //
 // Regra de unicidade de brinco (ativos por sítio) é do app (services/pecuaria/rebanho), não
@@ -34,6 +35,7 @@ import { parseGrauSangue, normalizarComposicao, type FracaoRaca } from "../src/s
 import { avaliarCategoria } from "../src/services/pecuaria/rebanho/categoria.calc.js";
 import { carregarRegras } from "../src/services/pecuaria/rebanho/categorias.js";
 import { motivoAceito } from "../src/services/pecuaria/rebanho/baixa.calc.js";
+import { normalizarBrinco } from "../src/services/pecuaria/rebanho/brinco.calc.js";
 
 // ---- Contrato do JSON (scripts/build-pecuaria-json.mjs) -------------------
 
@@ -57,6 +59,13 @@ interface PesagemJson {
   tipoIdeagri: string | null;
 }
 
+/** ANIMALPERIODO aberto (DATAFIM null) mais recente do animal — só tipo + início, ver periodoAbertoDe() no builder. */
+interface PeriodoAbertoJson {
+  /** ANIMALPERIODO.TIPO: 1 Doadora, 2 Receptora, 3 Descarte (interpretado por papelDoPeriodo() abaixo). */
+  tipo: number | null;
+  dataInicio: string;
+}
+
 interface AnimalJson {
   ideagriId: number;
   brinco: string;
@@ -66,12 +75,17 @@ interface AnimalJson {
   nascimentoEstimado: boolean;
   origem: "NASCIDO" | "COMPRADO";
   dataEntrada: string;
+  /** ANIMAL.BRINCOELETRONICO / SISBOV — normalizados (trim, vazio → null) pelo builder; @unique no schema. */
+  brincoEletronico: string | null;
+  sisbov: string | null;
   partosAntesDaEntrada: number;
   /** ANIMAL.CDCATEGORIA (1–7); vira categoria manual quando diverge do cálculo */
   ideagriCategoria?: number | null;
   propriedadeNome: string;
   loteNome: string | null;
   papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA";
+  /** Reserva (aberto) — só define o papel inicial quando presente; ver papelDoPeriodo(). */
+  periodoAberto: PeriodoAbertoJson | null;
   aptidao: "LEITE" | "CORTE";
   composicao: ComposicaoJson[];
   racaTexto?: string | null;
@@ -131,6 +145,19 @@ export function mapBaixaIdeagri(motivoNome: string | null, tipoIdeagri: number |
 
 const d = (s: string): Date => new Date(`${s}T00:00:00Z`);
 
+/**
+ * ANIMALPERIODO.TIPO → papelReprodutivo inicial do DestinoAnimal (C5): 1 Doadora, 2 Receptora.
+ * 3 (Descarte) ainda não tem representação no schema v1 — vira NENHUM por ora (Descarte entra na v4).
+ * Tipo desconhecido ou período ausente devolve `null`: quem chama cai no fallback do setor (heurística do builder).
+ */
+function papelDoPeriodo(periodo: PeriodoAbertoJson | null): "NENHUM" | "RECEPTORA" | "DOADORA" | null {
+  if (!periodo) return null;
+  if (periodo.tipo === 1) return "DOADORA";
+  if (periodo.tipo === 2) return "RECEPTORA";
+  if (periodo.tipo === 3) return "NENHUM"; // Descarte entra na v4
+  return null;
+}
+
 interface Contadores {
   criadas: number;
   atualizadas: number;
@@ -141,6 +168,10 @@ const novoContador = (): Contadores => ({ criadas: 0, atualizadas: 0, ignoradas:
 async function main() {
   const dados: PecuariaJson = JSON.parse(readFileSync(new URL("./pecuaria_v1.json", import.meta.url), "utf-8"));
   console.log(`Lendo carga da pecuária (geradoEm ${dados.geradoEm}): ${dados.animais.length} animais.`);
+  // categoria calculada na carga usa a data da extração, não a data de hoje (senão animais perto
+  // de uma borda de idade — ex. 12 meses — ganhariam categoria manual errada por causa do atraso
+  // entre a extração e a rodada do importador).
+  const geradoEmData = d(dados.geradoEm);
 
   const avisos: string[] = [];
   const brincosDuplicados: string[] = [];
@@ -311,6 +342,8 @@ async function main() {
   const cComposicao = novoContador();
   let semComposicao = 0;
   let baixasSemMotivo = 0;
+  let fracoesRacaPerdidas = 0; // itens de composição com sigla não resolvida (raça não semeada nem no JSON)
+  let papelPorPeriodo = 0; // DestinoAnimal.papelReprodutivo inicial veio do ANIMALPERIODO aberto, não do setor
 
   interface Falha { brinco: string; ideagriId: number; mensagem: string }
   const falhas: Falha[] = [];
@@ -343,6 +376,27 @@ async function main() {
         const jaExiste = await tx.animal.findUnique({ where: { ideagriId: a.ideagriId } });
         if (jaExiste) return { tipo: "ignorado" };
 
+        // ---- Brinco eletrônico / SISBOV: @unique no schema — conflito não aborta o animal,
+        // ele entra sem o dado conflitante e o conflito vira aviso (dado histórico do IDEAGRI,
+        // que não tinha essa restrição). Processado em ordem, então um conflito entre dois
+        // animais do próprio JSON também é pego aqui (o primeiro já foi commitado).
+        let brincoEletronico = a.brincoEletronico;
+        if (brincoEletronico) {
+          const conflito = await tx.animal.findFirst({ where: { brincoEletronico }, select: { brinco: true } });
+          if (conflito) {
+            avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): brincoEletronico "${brincoEletronico}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
+            brincoEletronico = null;
+          }
+        }
+        let sisbov = a.sisbov;
+        if (sisbov) {
+          const conflito = await tx.animal.findFirst({ where: { sisbov }, select: { brinco: true } });
+          if (conflito) {
+            avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): SISBOV "${sisbov}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
+            sisbov = null;
+          }
+        }
+
         const dadosFixos = {
           brinco: a.brinco,
           nome: a.nome ?? null,
@@ -351,6 +405,8 @@ async function main() {
           nascimentoEstimado: a.nascimentoEstimado,
           origem: a.origem,
           dataEntrada: d(a.dataEntrada),
+          brincoEletronico,
+          sisbov,
           partosAntesDaEntrada: a.partosAntesDaEntrada,
         };
         const animal = await tx.animal.create({ data: { ideagriId: a.ideagriId, ...dadosFixos } });
@@ -363,7 +419,13 @@ async function main() {
         if (compositoDesejado.length === 0 && (a.racaTexto ?? "").toLowerCase().includes("girolando")) {
           compositoDesejado = [{ sigla: "GL", fracao64: 64 }];
         }
-        // filtra raças não resolvidas (ex.: GL não semeada)
+        // raça referenciada na composição mas sem Raca correspondente (nem semeada, nem criada
+        // automaticamente acima) — não trunca em silêncio: avisa por animal e conta no relatório.
+        const racaNaoResolvida = compositoDesejado.filter((c) => !racaIdPorSigla.has(c.sigla));
+        for (const c of racaNaoResolvida) {
+          avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): raça "${c.sigla}" não resolvida — fração ${c.fracao64}/64 perdida da composição`);
+        }
+        fracoesRacaPerdidas += racaNaoResolvida.length;
         compositoDesejado = compositoDesejado.filter((c) => racaIdPorSigla.has(c.sigla));
         const temComposicao = compositoDesejado.length > 0;
         if (temComposicao) {
@@ -378,11 +440,16 @@ async function main() {
         }
 
         // ---- Localização e destino iniciais (propriedade/lote/aptidão, desde = dataEntrada) ----
+        // papelReprodutivo: prefere o ANIMALPERIODO aberto (fonte melhor que o nome do setor);
+        // sem período resolvido, cai na heurística do builder (papelReprodutivoDe, pelo SETOR).
+        const papelPeriodo = papelDoPeriodo(a.periodoAberto);
+        if (papelPeriodo != null) papelPorPeriodo++;
+        const papelReprodutivo = papelPeriodo ?? a.papelReprodutivo;
         const localizacaoInicial = await tx.localizacaoAnimal.create({
           data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
         });
         const destinoInicial = await tx.destinoAnimal.create({
-          data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo: a.papelReprodutivo, desde: d(a.dataEntrada) },
+          data: { animalId: animal.id, aptidao: a.aptidao, papelReprodutivo, desde: d(a.dataEntrada) },
         });
 
         // ---- Baixa (fecha a localização/destino recém-criados) ---------------
@@ -435,7 +502,7 @@ async function main() {
         // ---- Categoria do IDEAGRI: manual quando diverge do cálculo pelas regras da fazenda ----
         const categoriaIdeagri = a.ideagriCategoria != null ? categoriaPorIdeagri.get(a.ideagriCategoria) : undefined;
         if (categoriaIdeagri && categoriaIdeagri.sexo === a.sexo) {
-          const calculada = avaliarCategoria({ sexo: a.sexo, dataNascimento: d(a.dataNascimento), partos: a.partosAntesDaEntrada }, regrasCategoria, null, new Date()).calculada;
+          const calculada = avaliarCategoria({ sexo: a.sexo, dataNascimento: d(a.dataNascimento), partos: a.partosAntesDaEntrada }, regrasCategoria, null, geradoEmData).calculada;
           if (calculada?.id !== categoriaIdeagri.id) {
             await tx.categoriaManualAnimal.create({
               data: { animalId: animal.id, categoriaId: categoriaIdeagri.id, desde: d(a.dataEntrada), motivo: "Categoria do IDEAGRI na carga" },
@@ -481,7 +548,7 @@ async function main() {
   const porSitioBrinco = new Map<string, number>();
   for (const l of localizacoesAbertas) {
     if (baixasAbertas.has(l.animal.id)) continue;
-    const chave = `${l.propriedadeId}\u0000${l.animal.brinco.trim().toUpperCase()}`;
+    const chave = `${l.propriedadeId}\u0000${normalizarBrinco(l.animal.brinco)}`;
     porSitioBrinco.set(chave, (porSitioBrinco.get(chave) ?? 0) + 1);
   }
   for (const [chave, count] of porSitioBrinco) {
@@ -504,6 +571,8 @@ async function main() {
   console.log(`Baixas        — criadas: ${cBaixa.criadas}, ignoradas: ${cBaixa.ignoradas}, sem motivo resolvido: ${baixasSemMotivo}`);
   console.log(`Pesagens      — criadas: ${cPesagem.criadas}, ignoradas: ${cPesagem.ignoradas}`);
   console.log(`Animais sem composição racial: ${semComposicao}`);
+  console.log(`Frações de composição perdidas (raça não resolvida): ${fracoesRacaPerdidas}`);
+  console.log(`Papel reprodutivo inicial vindo do ANIMALPERIODO aberto: ${papelPorPeriodo}`);
   console.log(`Categorias manuais (categoria do IDEAGRI diferente da calculada): ${categoriasManuaisCriadas}`);
 
   if (avisos.length) {
