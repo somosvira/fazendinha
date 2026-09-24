@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ToastProvider } from "@/components/Toast";
 import { ListaLotes } from "./ListaLotes";
-import { RebanhoApiError, criarLote, editarLote, listarAnimais, listarLotes, listarMovimentacoes, movimentarAnimais, obterCatalogos } from "../api";
+import { RebanhoApiError, criarLote, desfazerMovimentacao, editarLote, listarAnimais, listarLotes, listarMovimentacoes, movimentarAnimais, obterCatalogos } from "../api";
 import type { Catalogos, Lote } from "../types";
 
 /* Mantém RebanhoApiError real (os forms usam instanceof) e substitui só as chamadas. */
@@ -15,6 +16,7 @@ vi.mock("../api", async (importOriginal) => ({
   obterCatalogos: vi.fn(),
   movimentarAnimais: vi.fn(),
   listarMovimentacoes: vi.fn(),
+  desfazerMovimentacao: vi.fn(),
 }));
 
 vi.mock("../../../api/propriedades", () => ({
@@ -54,8 +56,12 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-async function montar(onAbrirLote: (id: string) => void = vi.fn()) {
-  render(<ListaLotes onAbrirLote={onAbrirLote} />);
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>;
+}
+
+async function montar(onAbrirLote: (id: string) => void = vi.fn(), podeLancar = true) {
+  render(<ListaLotes onAbrirLote={onAbrirLote} podeLancar={podeLancar} />, { wrapper: Wrapper });
   await screen.findAllByText("Lote 1");
 }
 
@@ -135,7 +141,7 @@ describe("Lotes do rebanho", () => {
   it("'Movimentar animais' abre o seletor e depois o formulário com destino livre", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({
       itens: [{
-        id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: { id: "cat-vaca", nome: "Vaca" }, categoriaOrigem: "AUTOMATICA" as const, categoriaCalculada: { id: "cat-vaca", nome: "Vaca" }, idadeMeses: 30,
+        id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: { id: "cat-vaca", nome: "Vaca" }, categoriaOrigem: "AUTOMATICA" as const, categoriaCalculada: { id: "cat-vaca", nome: "Vaca" }, idadeMeses: 30, idadeNaBaixa: false,
         dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
         propriedade: { id: 1, nome: "Sede" }, lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM",
         composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
@@ -159,6 +165,54 @@ describe("Lotes do rebanho", () => {
     // move e desfazer recarregam as duas seções (lotes + histórico)
     await waitFor(() => expect(listarLotes).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledTimes(2));
+  });
+
+  it("movimentar mostra o toast com Desfazer, igual ao da página do lote (K8)", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({
+      itens: [{
+        id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: { id: "cat-vaca", nome: "Vaca" }, categoriaOrigem: "AUTOMATICA" as const, categoriaCalculada: { id: "cat-vaca", nome: "Vaca" }, idadeMeses: 30, idadeNaBaixa: false,
+        dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
+        propriedade: { id: 1, nome: "Sede" }, lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM",
+        composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
+      }],
+      total: 1,
+      painel: { totalAtivos: 1, porCategoria: [], porSitio: [], femeasAtivas: 1, receptorasAtivas: 0 },
+    });
+    vi.mocked(movimentarAnimais).mockResolvedValue({ movimentacaoId: "mov-1", movidos: 1 });
+    vi.mocked(desfazerMovimentacao).mockResolvedValue({ desfeitos: 1 });
+    await montar();
+    fireEvent.click(screen.getByRole("button", { name: /Movimentar animais/ }));
+    expect(await screen.findByRole("heading", { name: "Selecionar animais" })).toBeTruthy();
+    await screen.findAllByText("0001");
+    fireEvent.click(primeiro("checkbox", "Selecionar 0001"));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar (1)" }));
+    fireEvent.change(screen.getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
+
+    await screen.findByText("1 animal movimentado");
+    fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    await waitFor(() => expect(desfazerMovimentacao).toHaveBeenCalledWith("mov-1", "Desfeito logo após a movimentação"));
+  });
+
+  it("usuário só de leitura mantém os filtros de Lotes utilizáveis, com as ações de escrita desabilitadas (K7)", async () => {
+    const { container } = render(<ListaLotes onAbrirLote={vi.fn()} podeLancar={false} />, { wrapper: Wrapper });
+    await screen.findAllByText("Lote 1");
+
+    const checkboxFiltro = screen.getByRole("checkbox", { name: "Mostrar inativos" }) as HTMLInputElement;
+    expect(checkboxFiltro.disabled).toBe(false);
+    fireEvent.click(checkboxFiltro);
+    await waitFor(() => expect(listarLotes).toHaveBeenCalledWith({ incluirInativos: true }));
+
+    const filtroSitio = screen.getByLabelText("Filtrar por sítio") as HTMLSelectElement;
+    expect(filtroSitio.disabled).toBe(false);
+
+    // os controles de escrita (edição/ativação de lote) ficam num fieldset desabilitado à parte dos filtros
+    const fieldsetEscrita = container.querySelector("fieldset");
+    expect(fieldsetEscrita).not.toBeNull();
+    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(true);
+
+    expect(screen.queryByRole("button", { name: /Novo lote/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Movimentar animais/ })).toBeNull();
   });
 });
 

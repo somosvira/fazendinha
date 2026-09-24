@@ -14,7 +14,7 @@ afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
 const animal: AnimalFicha = {
-  id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: null, categoriaOrigem: "SEM_CATEGORIA", categoriaCalculada: null, idadeMeses: 40,
+  id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: null, categoriaOrigem: "SEM_CATEGORIA", categoriaCalculada: null, idadeMeses: 40, idadeNaBaixa: false,
   dataNascimento: "2022-01-01", dataEntrada: "2022-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
   lote: null, aptidao: null, papelReprodutivo: null, composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,

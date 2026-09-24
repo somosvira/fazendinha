@@ -20,7 +20,7 @@ const catVaca = { id: "cat-vaca", nome: "Vaca" };
 
 function criarAnimal(overrides: Partial<AnimalResumo>): AnimalResumo {
   return {
-    id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 30,
+    id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 30, idadeNaBaixa: false,
     dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
     propriedade: { id: 1, nome: "Sede" }, lote: { id: "lote-1", nome: "Lote A" }, aptidao: "LEITE", papelReprodutivo: "NENHUM",
     composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",

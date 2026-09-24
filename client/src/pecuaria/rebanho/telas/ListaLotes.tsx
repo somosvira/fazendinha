@@ -10,7 +10,7 @@ import { Loader } from "@/components/Loading";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { BarraFiltros } from "../ui";
+import { BarraFiltros, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { editarLote, listarLotes, listarMovimentacoes, obterCatalogos } from "../api";
 import type { AnimalResumo, Catalogos, Lote } from "../types";
@@ -91,6 +91,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
     setHistoricoRefresh((t) => t + 1);
     await carregarLotes();
   }, [carregarLotes]);
+  const aoMovimentar = useAoMovimentarComToast(recarregarAmbos);
 
   const executar = async (acao: () => Promise<unknown>) => {
     if (emCurso.current) return;
@@ -131,16 +132,17 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
     <Panel className="mt-5 overflow-hidden">
       <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Lotes</h2></div>
+      {/* filtros ficam fora do fieldset de escrita — quem só pode ver continua podendo filtrar (K7) */}
+      <BarraFiltros>
+        <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={processando} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
+        <label className="flex items-center gap-2 text-sm font-medium">Sítio
+          <select aria-label="Filtrar por sítio" disabled={processando} value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
+            <option value="">Todos</option>
+            {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
+          </select>
+        </label>
+      </BarraFiltros>
       <fieldset disabled={processando || !podeLancar} aria-busy={processando} className="min-w-0">
-        <BarraFiltros>
-          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label>
-          <label className="flex items-center gap-2 text-sm font-medium">Sítio
-            <select aria-label="Filtrar por sítio" value={filtroSitio} onChange={(e) => setFiltroSitio(e.target.value)} className="rounded-lg border border-border bg-white p-2 text-sm font-normal">
-              <option value="">Todos</option>
-              {sitiosAtivos.map((s) => <option key={s.id} value={s.id}>{s.apelido || s.nome}</option>)}
-            </select>
-          </label>
-        </BarraFiltros>
         {lotes === null
           ? <div className="p-6"><Loader label="Carregando lotes" /></div>
           : <TabelaFinanceira rotulo="Lotes" itens={lotesFiltrados} colunas={colunasLotes(editar, alternar)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
@@ -203,7 +205,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       propriedades={catalogos.propriedades}
       lotes={catalogos.lotes}
       onFechar={() => setMovimentando(null)}
-      onSalvo={async () => { setMovimentando(null); await recarregarAmbos(); }}
+      onSalvo={async (resultado) => { setMovimentando(null); await aoMovimentar(resultado); }}
     />}
 
     {movimentacaoAbertaId && <DetalheMovimentacao

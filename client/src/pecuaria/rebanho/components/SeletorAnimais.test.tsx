@@ -22,7 +22,7 @@ const catVaca = { id: "cat-vaca", nome: "Vaca" };
 
 function criarAnimal(overrides: Partial<AnimalResumo>): AnimalResumo {
   return {
-    id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 30,
+    id: "a1", brinco: "0001", nome: null, sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 30, idadeNaBaixa: false,
     dataNascimento: "2023-01-01", dataEntrada: "2023-01-01", origem: "NASCIDO",
     propriedade: { id: 1, nome: "Sede" }, lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM",
     composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
@@ -75,15 +75,30 @@ describe("SeletorAnimais", () => {
     await waitFor(() => expect(screen.queryByText(/selecionados? no total/)).toBeNull());
   });
 
-  it("excluirLoteId remove o lote do filtro de origem e some os animais que estão nele", async () => {
-    const itens = [criarAnimal({ id: "a1", brinco: "0001", lote: { id: "lote-2", nome: "Lote B" } }), criarAnimal({ id: "a2", brinco: "0002", lote: null })];
-    vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 2, painel: painelVazio });
+  it("excluirLoteId é enviado à API e remove o lote do filtro de origem", async () => {
+    // o filtro é feito no servidor: o mock só devolve quem não está no lote-2, simulando a API
+    const itens = [criarAnimal({ id: "a2", brinco: "0002", lote: null })];
+    vi.mocked(listarAnimais).mockImplementation((filtros: ListarFiltros) => {
+      expect(filtros.excluirLoteId).toBe("lote-2");
+      return Promise.resolve({ itens, total: 2, painel: painelVazio });
+    });
 
     render(<SeletorAnimais excluirLoteId="lote-2" onConfirmar={vi.fn()} onCancelar={vi.fn()} />);
     await screen.findAllByText("0002");
     expect(screen.queryByText("0001")).toBeNull();
     expect(within(screen.getByLabelText("Filtrar por lote de origem")).queryByRole("option", { name: "Lote B" })).toBeNull();
     expect(within(screen.getByLabelText("Filtrar por lote de origem")).getByRole("option", { name: "Lote A" })).toBeTruthy();
+  });
+
+  it("mantém a paginação visível mesmo quando a página atual vem vazia, desde que total > 0 (U1)", async () => {
+    // cenário do bug: o servidor filtrou pelo excluirLoteId e devolveu total > 0, mas esta
+    // página específica não tem itens — a paginação não pode sumir nem mostrar "nenhum animal"
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [], total: 21, painel: painelVazio });
+
+    render(<SeletorAnimais excluirLoteId="lote-2" onConfirmar={vi.fn()} onCancelar={vi.fn()} />);
+    await screen.findByRole("navigation", { name: "Paginação de animais" });
+    expect(screen.getByText(/de 21 animais/)).toBeTruthy();
+    expect(screen.queryByText("Nenhum animal ativo encontrado com os filtros selecionados.")).toBeNull();
   });
 
   it("onConfirmar recebe os animais selecionados", async () => {

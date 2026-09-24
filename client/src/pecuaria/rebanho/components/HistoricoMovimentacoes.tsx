@@ -4,7 +4,7 @@
 // DetalheLote.tsx) e muda `recarregarToken` quando os filtros mudam, para a paginação voltar
 // à página 1. Uma linha desfeita continua na lista (o histórico nunca apaga nada).
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader } from "../../../components/Loading";
 import { Button, Empty, Pill } from "../../../financeiro/financeiro-ui";
 import { RebanhoApiError } from "../api";
@@ -50,16 +50,17 @@ export function HistoricoMovimentacoes({
   // filtros mudaram (recarregarToken) — volta para a primeira página
   useEffect(() => { setPagina(1); }, [recarregarToken]);
 
-  const recarregar = useCallback(async (paginaAlvo: number) => {
+  // descarta a resposta se a página/token mudaram enquanto a busca estava em voo (mesmo padrão
+  // de ListaAnimais.tsx) — sem isso, trocar de filtro rápido pode mostrar o resultado anterior
+  useEffect(() => {
+    let vigente = true;
     setCarregando(true); setErro(null);
-    try {
-      const resultado = await carregar(paginaAlvo);
-      setItens(resultado.itens); setTotal(resultado.total);
-    } catch (e) { setErro(mensagemErro(e)); }
-    finally { setCarregando(false); }
-  }, [carregar]);
-
-  useEffect(() => { void recarregar(pagina); }, [recarregar, pagina, recarregarToken]);
+    carregar(pagina)
+      .then((resultado) => { if (vigente) { setItens(resultado.itens); setTotal(resultado.total); } })
+      .catch((e) => { if (vigente) setErro(mensagemErro(e)); })
+      .finally(() => { if (vigente) setCarregando(false); });
+    return () => { vigente = false; };
+  }, [carregar, pagina, recarregarToken]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
 

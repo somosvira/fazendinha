@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ToastProvider } from "@/components/Toast";
 import { DetalheAnimal } from "./DetalheAnimal";
-import { buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, listarCategorias, obterCatalogos, removerCategoriaManual } from "../api";
+import {
+  buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, desfazerMovimentacao, editarAnimal, editarPesagem, listarCategorias,
+  movimentarAnimais, obterCatalogos, removerCategoriaManual,
+} from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos } from "../types";
 
 vi.mock("../api", async (importOriginal) => ({
@@ -13,6 +17,10 @@ vi.mock("../api", async (importOriginal) => ({
   listarCategorias: vi.fn(),
   definirCategoriaManual: vi.fn(),
   removerCategoriaManual: vi.fn(),
+  editarAnimal: vi.fn(),
+  editarPesagem: vi.fn(),
+  movimentarAnimais: vi.fn(),
+  desfazerMovimentacao: vi.fn(),
 }));
 
 const catVaca = { id: "cat-vaca", nome: "Vaca" };
@@ -31,7 +39,7 @@ beforeEach(() => {
 });
 
 const base: AnimalFicha = {
-  id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 40,
+  id: "animal-1", brinco: "1234", nome: "Mimosa", sexo: "F", categoria: catVaca, categoriaOrigem: "AUTOMATICA", categoriaCalculada: catVaca, idadeMeses: 40, idadeNaBaixa: false,
   dataNascimento: "2022-01-01", dataEntrada: "2022-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
   lote: null, aptidao: "LEITE", papelReprodutivo: "RECEPTORA", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
   brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 1, observacao: null,
@@ -40,9 +48,13 @@ const base: AnimalFicha = {
   historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
 };
 
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return <ToastProvider>{children}</ToastProvider>;
+}
+
 async function montar(animal: AnimalFicha) {
   vi.mocked(buscarFichaAnimal).mockResolvedValue(animal);
-  render(<DetalheAnimal id={animal.id} onVoltar={vi.fn()} />);
+  render(<DetalheAnimal id={animal.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
   await screen.findByText(animal.nome ?? animal.brinco);
 }
 
@@ -96,9 +108,9 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue({
       ...base,
       historicoLocalizacoes: [...base.historicoLocalizacoes, { id: "loc-0", propriedade: { id: 2, nome: "Outro" }, lote: null, desde: "2021-01-01", ate: "2022-01-01", motivo: null, movimentacaoId: null }],
-      historicoPesagens: [{ id: "p1", data: "2023-01-01", pesoKg: 400, tipo: "ROTINA", origem: "MANUAL" }],
+      historicoPesagens: [{ id: "p1", data: "2023-01-01", pesoKg: 400, tipo: "ROTINA", origem: "MANUAL", observacao: null }],
     });
-    render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} podeLancar={false} />);
+    render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} podeLancar={false} />, { wrapper: Wrapper });
     await screen.findByText("Mimosa");
     for (const nome of ["Editar dados", "Movimentar", "Alterar categoria", "Dar baixa", "Excluir cadastro", "Desfazer última movimentação"]) {
       expect(screen.queryByRole("button", { name: nome })).toBeNull();
@@ -190,5 +202,74 @@ describe("DetalheAnimal — categoria", () => {
     });
     expect(screen.getByText("Erro de cadastro")).toBeTruthy();
     expect(screen.getByText("Corrigido")).toBeTruthy();
+  });
+});
+
+describe("DetalheAnimal — editar dados (R1)", () => {
+  it("trocar o sexo para macho zera partos antes da entrada, mesmo já tendo partos", async () => {
+    vi.mocked(editarAnimal).mockResolvedValue({ ...base, sexo: "M", partosAntesDaEntrada: 0 });
+    await montar(base); // base.sexo === "F", partosAntesDaEntrada: 1
+    fireEvent.click(screen.getByRole("button", { name: "Editar dados" }));
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByLabelText("Partos antes da entrada")).toBeTruthy();
+    fireEvent.change(within(painel).getByLabelText("Sexo"), { target: { value: "M" } });
+    expect(within(painel).queryByLabelText("Partos antes da entrada")).toBeNull();
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar dados" }));
+    await waitFor(() => expect(editarAnimal).toHaveBeenCalledWith("animal-1", expect.objectContaining({ sexo: "M", partosAntesDaEntrada: 0 })));
+  });
+});
+
+describe("DetalheAnimal — pesagens (K1)", () => {
+  it("mostra a observação da pesagem na tabela e a carrega ao editar", async () => {
+    await montar({
+      ...base,
+      historicoPesagens: [{ id: "p1", data: "2023-06-01", pesoKg: 410, tipo: "ROTINA", origem: "MANUAL", observacao: "Balança descalibrada" }],
+    });
+    expect(screen.getByText("Balança descalibrada")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Editar pesagem/ }));
+    const painel = await screen.findByRole("dialog");
+    expect((within(painel).getByLabelText("Observação") as HTMLTextAreaElement).value).toBe("Balança descalibrada");
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar pesagem" }));
+    await waitFor(() => expect(editarPesagem).toHaveBeenCalledWith("p1", expect.objectContaining({ observacao: "Balança descalibrada" })));
+  });
+});
+
+describe("DetalheAnimal — ficha de baixado (K4/K5)", () => {
+  it("mostra o último sítio/lote/aptidão e a idade na baixa quando idadeNaBaixa", async () => {
+    const baixado: AnimalFicha = {
+      ...base, situacao: "BAIXADO", idadeMeses: 40, idadeNaBaixa: true,
+      propriedade: { id: 1, nome: "Sede" }, lote: { id: "lote-1", nome: "Lote 1" }, aptidao: "LEITE", papelReprodutivo: "RECEPTORA",
+      baixa: { id: "baixa-1", data: "2026-01-10", tipo: "VENDA", motivo: null, observacao: null, estornadaEm: null, estornoMotivo: null },
+    };
+    await montar(baixado);
+    // pills de aptidão/papel também marcam "na baixa", então busca a linha do cabeçalho pelo <p>
+    const linhaCabecalho = screen.getByText((_, el) => el?.tagName === "P" && /na baixa/.test(el.textContent ?? "") && /último sítio/.test(el.textContent ?? ""));
+    expect(linhaCabecalho.textContent).toContain("último sítio: Sede");
+    expect(linhaCabecalho.textContent).toContain("último lote: ");
+    expect(screen.getByText("Lote 1")).toBeTruthy();
+  });
+
+  it("animal ativo não mostra os rótulos de 'último'/'na baixa'", async () => {
+    await montar({ ...base, idadeNaBaixa: false });
+    expect(screen.queryByText(/último sítio/)).toBeNull();
+    expect(screen.queryByText(/na baixa/)).toBeNull();
+  });
+});
+
+describe("DetalheAnimal — movimentar (K8)", () => {
+  it("mostra o toast com Desfazer após movimentar, igual ao da página do lote", async () => {
+    vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [{ id: 1, nome: "Sede", apelido: null }], lotes: [] } as Catalogos);
+    vi.mocked(movimentarAnimais).mockResolvedValue({ movimentacaoId: "mov-1", movidos: 1 });
+    vi.mocked(desfazerMovimentacao).mockResolvedValue({ desfeitos: 1 });
+    await montar(base);
+    fireEvent.click(screen.getByRole("button", { name: "Movimentar" }));
+    const painel = await screen.findByRole("dialog");
+    fireEvent.change(within(painel).getByLabelText("Sítio de destino"), { target: { value: "1" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Movimentar" }));
+
+    await screen.findByText("1 animal movimentado");
+    fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    await waitFor(() => expect(desfazerMovimentacao).toHaveBeenCalledWith("mov-1", "Desfeito logo após a movimentação"));
   });
 });

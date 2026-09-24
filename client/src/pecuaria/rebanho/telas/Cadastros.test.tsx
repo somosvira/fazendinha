@@ -78,6 +78,25 @@ async function montarMotivos() {
   await screen.findAllByText("Morte por doença");
 }
 
+describe("Cadastros do rebanho — permissão de leitura (K7)", () => {
+  it("usuário só de leitura mantém os filtros de cada aba utilizáveis, com a tabela desabilitada", async () => {
+    const { container } = render(<Cadastros podeLancar={false} />);
+    await screen.findAllByText("Vaca");
+
+    const filtroCategorias = screen.getByRole("checkbox", { name: "Mostrar inativas" }) as HTMLInputElement;
+    expect(filtroCategorias.disabled).toBe(false);
+    fireEvent.click(filtroCategorias);
+    await waitFor(() => expect(within(screen.getByRole("table", { name: "Categorias" })).getByText("Reprodutor")).toBeTruthy());
+
+    const fieldsetEscrita = container.querySelector("fieldset");
+    expect(fieldsetEscrita).not.toBeNull();
+    expect((fieldsetEscrita as HTMLFieldSetElement).disabled).toBe(true);
+
+    expect(screen.queryByRole("button", { name: /Nova categoria/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Restaurar padrões" })).toBeNull();
+  });
+});
+
 describe("Cadastros do rebanho — categorias", () => {
   it("lista categorias ativas na ordem, com regra e selo Padrão; inativas só aparecem com o filtro", async () => {
     await montarCategorias();

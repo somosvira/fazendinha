@@ -4,13 +4,41 @@
 // de lá, não recriadas aqui). Mesmo padrão visual: ver docs/design do plano
 // "Pecuária v1 — interface completa no padrão do Financeiro".
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
+import { useToast } from "../../components/Toast";
 import { Button, ErrorBox, Modal, Pill } from "../../financeiro/financeiro-ui";
 import { classeInput } from "../../financeiro/PainelCadastro";
+import { desfazerMovimentacao, RebanhoApiError } from "./api";
 import { PRESETS_FRACAO, somaFracoes } from "./lib/composicao";
 import type { CatalogoRaca, CategoriaOrigem, CategoriaRef, ComposicaoItemInput } from "./types";
+
+function mensagemErro(e: unknown): string {
+  return e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Toast "N animais movimentados" com ação "Desfazer", igual ao que já existia só em
+ * DetalheLote.tsx — extraído para ListaAnimais.tsx, ListaLotes.tsx e DetalheAnimal.tsx
+ * mostrarem o mesmo aviso (K8). Quem chama só precisa recarregar seus próprios dados
+ * (animais, painel, histórico…) depois de mover; o desfazer usa o mesmo `recarregar`.
+ */
+export function useAoMovimentarComToast(recarregar: () => Promise<void>) {
+  const toast = useToast();
+  return useCallback(async (resultado: { movimentacaoId: string; movidos: number }) => {
+    await recarregar();
+    toast.success(
+      `${resultado.movidos} ${resultado.movidos === 1 ? "animal movimentado" : "animais movimentados"}`,
+      undefined,
+      { action: { label: "Desfazer", onClick: () => {
+        void desfazerMovimentacao(resultado.movimentacaoId, "Desfeito logo após a movimentação")
+          .then(() => recarregar())
+          .catch((e) => toast.error("Não foi possível desfazer", mensagemErro(e)));
+      } } },
+    );
+  }, [recarregar, toast]);
+}
 
 /** Pill de categoria do animal: nome calculado/manual + selo "Manual" quando há troca manual
  *  aberta, com o cálculo automático no `title` (tooltip) para comparação rápida. */

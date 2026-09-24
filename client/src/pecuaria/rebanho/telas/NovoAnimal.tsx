@@ -59,6 +59,8 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   const alterarOrigem = (novaOrigem: Origem) => { setOrigem(novaOrigem); if (novaOrigem === "NASCIDO") setDataEntrada(dataNascimento); };
   const alterarDataNascimento = (valor: string) => { setDataNascimento(valor); if (origem === "NASCIDO") setDataEntrada(valor); };
   const alterarPropriedade = (valor: string) => { setPropriedadeId(valor); setLoteId(""); };
+  // papel reprodutivo e partos só fazem sentido para fêmea (R1) — trocar para macho zera os dois
+  const alterarSexo = (novoSexo: Sexo) => { setSexo(novoSexo); if (novoSexo === "M") { setPapelReprodutivo("NENHUM"); setPartosAntesDaEntrada("0"); } };
 
   const lotesDoSitio: CatalogoLote[] = useMemo(() => catalogos?.lotes.filter((lote) => String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId]);
   const propriedadeNome = catalogos?.propriedades.find((p) => String(p.id) === propriedadeId)?.nome;
@@ -122,7 +124,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nome" rotulo="Nome">{(p) => <input {...p} maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
-            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+            <CampoFormulario id="novo-animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
             <CampoFormulario id="novo-animal-brinco-eletronico" rotulo="Brinco eletrônico">{(p) => <input {...p} maxLength={40} value={brincoEletronico} onChange={(e) => setBrincoEletronico(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-sisbov" rotulo="SISBOV">{(p) => <input {...p} maxLength={40} value={sisbov} onChange={(e) => setSisbov(e.target.value)} className={classeInput} />}</CampoFormulario>
           </div>

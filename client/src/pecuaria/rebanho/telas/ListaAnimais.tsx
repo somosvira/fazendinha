@@ -2,12 +2,12 @@
 // no padrão de OperacoesFinanceiras.tsx. Seleção múltipla habilita
 // "Movimentar N animais"; ações de linha são Editar e Movimentar.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightLeft, Pencil, Plus, Search } from "lucide-react";
 import { listarAnimais, buscarFichaAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
 import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, PapelReprodutivo, Situacao } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSituacao } from "../lib/rotulos";
-import { BarraFiltros, CategoriaPill, Paginacao } from "../ui";
+import { BarraFiltros, CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormMovimentar } from "../forms/FormMovimentar";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -81,25 +81,36 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
   const lotesDoSitio = useMemo(() => catalogos?.lotes.filter((lote) => !propriedadeId || String(lote.propriedadeId) === propriedadeId) ?? [], [catalogos, propriedadeId]);
 
-  const alternarSelecao = (animal: AnimalResumo) => setSelecionados((atual) => { const novo = new Map(atual); if (novo.has(animal.id)) novo.delete(animal.id); else novo.set(animal.id, animal); return novo; });
-  const todosDaPaginaSelecionados = itens.length > 0 && itens.every((item) => selecionados.has(item.id));
+  // baixados não entram na seleção em massa (K3) — ela é sempre uma movimentação, e baixado não se movimenta
+  const itensSelecionaveis = useMemo(() => itens.filter((item) => item.situacao === "ATIVO"), [itens]);
+  const alternarSelecao = (animal: AnimalResumo) => { if (animal.situacao !== "ATIVO") return; setSelecionados((atual) => { const novo = new Map(atual); if (novo.has(animal.id)) novo.delete(animal.id); else novo.set(animal.id, animal); return novo; }); };
+  const todosDaPaginaSelecionados = itensSelecionaveis.length > 0 && itensSelecionaveis.every((item) => selecionados.has(item.id));
   const alternarSelecaoTodos = () => setSelecionados((atual) => {
     const novo = new Map(atual);
-    if (todosDaPaginaSelecionados) itens.forEach((item) => novo.delete(item.id));
-    else itens.forEach((item) => novo.set(item.id, item));
+    if (todosDaPaginaSelecionados) itensSelecionaveis.forEach((item) => novo.delete(item.id));
+    else itensSelecionaveis.forEach((item) => novo.set(item.id, item));
     return novo;
   });
 
+  // guarda o id do último clique: uma resposta de um clique anterior que chega depois é ignorada (U3)
+  const edicaoSolicitadaRef = useRef<string | null>(null);
   const editar = async (id: string) => {
+    edicaoSolicitadaRef.current = id;
     setCarregandoEdicaoId(id); setErro(null);
-    try { setEditando(await buscarFichaAnimal(id)); }
-    catch (e) { setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e)); }
-    finally { setCarregandoEdicaoId(null); }
+    try {
+      const ficha = await buscarFichaAnimal(id);
+      if (edicaoSolicitadaRef.current === id) setEditando(ficha);
+    } catch (e) {
+      if (edicaoSolicitadaRef.current === id) setErro(e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e));
+    } finally {
+      if (edicaoSolicitadaRef.current === id) setCarregandoEdicaoId(null);
+    }
   };
   const recarregar = async () => { setRevisao((v) => v + 1); };
+  const aoMovimentar = useAoMovimentarComToast(recarregar);
 
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
-    { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => <label className="flex items-center" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> },
+    { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex items-center" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
     { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
@@ -111,7 +122,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
-    { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+    { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-50" aria-label={`Editar ${item.brinco}`} title="Editar dados" disabled={carregandoEdicaoId === item.id} onClick={() => { void editar(item.id); }}><Pencil size={16} /></button>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], propriedadeId: item.propriedade?.id, loteId: item.lote?.id })}><ArrowRightLeft size={16} /></button>
     </div> },
@@ -135,7 +146,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
         <select aria-label="Filtrar por papel reprodutivo" value={papelReprodutivo} onChange={(e) => filtrar(setPapelReprodutivo)(e.target.value as PapelReprodutivo | "")} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="">Todos os papéis</option><option value="NENHUM">Nenhum</option><option value="RECEPTORA">Receptora</option><option value="DOADORA">Doadora</option></select>
         <select aria-label="Filtrar por situação" value={situacao} onChange={(e) => filtrar(setSituacao)(e.target.value as Situacao | "TODOS")} className="h-[42px] w-full min-w-0 flex-[1_1_130px] rounded-lg border border-border bg-white px-3 text-sm sm:w-auto"><option value="ATIVO">Ativos</option><option value="BAIXADO">Baixados</option><option value="TODOS">Todas as situações</option></select>
       </BarraFiltros>
-      {podeLancar && itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+      {podeLancar && itensSelecionaveis.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button><Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button></>}
       </div>}
@@ -146,6 +157,6 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true }:
     </Panel>
 
     {editando && <FormDadosAnimal animal={editando} onFechar={() => setEditando(null)} onSalvo={async () => { setEditando(null); await recarregar(); }} />}
-    {movimentando && catalogos && <FormMovimentar animais={movimentando.animais} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={movimentando.propriedadeId} loteInicial={movimentando.loteId} onFechar={() => setMovimentando(null)} onSalvo={async () => { setMovimentando(null); setSelecionados(new Map()); await recarregar(); }} />}
+    {movimentando && catalogos && <FormMovimentar animais={movimentando.animais} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={movimentando.propriedadeId} loteInicial={movimentando.loteId} onFechar={() => setMovimentando(null)} onSalvo={async (resultado) => { setMovimentando(null); setSelecionados(new Map()); await aoMovimentar(resultado); }} />}
   </PaginaFinanceira>;
 }

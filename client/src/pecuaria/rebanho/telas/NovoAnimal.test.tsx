@@ -62,9 +62,36 @@ describe("NovoAnimal", () => {
     expect(entrada.disabled).toBe(false);
   });
 
+  it("trocar o sexo para macho esconde e zera papel reprodutivo e partos (R1)", async () => {
+    vi.mocked(cadastrarAnimal).mockResolvedValue({
+      id: "animal-2", brinco: "boi-1", nome: null, sexo: "M", categoria: null, categoriaOrigem: "SEM_CATEGORIA", categoriaCalculada: null, idadeMeses: 0, idadeNaBaixa: false,
+      dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
+      lote: null, aptidao: "CORTE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
+      brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,
+      composicao: [], historicoLocalizacoes: [], historicoDestinos: [], historicoPesagens: [], historicoCategoriasManuais: [], baixa: null,
+    });
+    await montar();
+    // fêmea: papel e partos aparecem; troca o papel antes de trocar de sexo
+    expect(screen.getByLabelText("Papel reprodutivo")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Papel reprodutivo"), { target: { value: "RECEPTORA" } });
+    fireEvent.change(screen.getByLabelText("Partos antes da entrada"), { target: { value: "2" } });
+
+    fireEvent.change(screen.getByLabelText("Sexo"), { target: { value: "M" } });
+    expect(screen.queryByLabelText("Papel reprodutivo")).toBeNull();
+    expect(screen.queryByLabelText("Partos antes da entrada")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: "boi-1" } });
+    fireEvent.change(screen.getByLabelText("Data de nascimento"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledWith(expect.objectContaining({
+      sexo: "M", papelReprodutivo: "NENHUM", partosAntesDaEntrada: 0,
+    })));
+  });
+
   it("filtra o lote pelo sítio selecionado e envia o cadastro completo", async () => {
     vi.mocked(cadastrarAnimal).mockResolvedValue({
-      id: "animal-1", brinco: "1234", nome: null, sexo: "F", categoria: { id: "cat-crescimento", nome: "Em crescimento" }, categoriaOrigem: "AUTOMATICA", categoriaCalculada: { id: "cat-crescimento", nome: "Em crescimento" }, idadeMeses: 0,
+      id: "animal-1", brinco: "1234", nome: null, sexo: "F", categoria: { id: "cat-crescimento", nome: "Em crescimento" }, categoriaOrigem: "AUTOMATICA", categoriaCalculada: { id: "cat-crescimento", nome: "Em crescimento" }, idadeMeses: 0, idadeNaBaixa: false,
       dataNascimento: "2026-01-01", dataEntrada: "2026-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Sede" },
       lote: null, aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO",
       brincoEletronico: null, sisbov: null, nascimentoEstimado: false, partosAntesDaEntrada: 0, observacao: null,

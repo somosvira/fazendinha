@@ -7,15 +7,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowRightLeft } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
-import { useToast } from "@/components/Toast";
 import {
-  buscarLote, desfazerMovimentacao, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
+  buscarLote, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
 } from "../api";
 import type { AnimalResumo, Catalogos, Lote, PainelServidor } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { CategoriaPill, Paginacao } from "../ui";
+import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { NavRebanho } from "./NavRebanho";
 import { mensagemDesativar } from "./ListaLotes";
 import { FormLote } from "../cadastros/FormLote";
@@ -35,7 +34,6 @@ type Movimentando = {
 } | null;
 
 export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; podeLancar?: boolean; onVoltar: () => void }) {
-  const toast = useToast();
   const [lote, setLote] = useState<Lote | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -83,18 +81,10 @@ export function DetalheLote({ id, podeLancar = true, onVoltar }: { id: string; p
     await Promise.all([carregarLote(), carregarAnimais(1)]);
   }, [carregarLote, carregarAnimais]);
 
+  const aoMovimentarComToast = useAoMovimentarComToast(recarregarTudo);
   const aoMovimentar = async (resultado: { movimentacaoId: string; movidos: number }) => {
     setMovimentando(null);
-    await recarregarTudo();
-    toast.success(
-      `${resultado.movidos} ${resultado.movidos === 1 ? "animal movimentado" : "animais movimentados"}`,
-      undefined,
-      { action: { label: "Desfazer", onClick: () => {
-        void desfazerMovimentacao(resultado.movimentacaoId, "Desfeito logo após a movimentação")
-          .then(() => recarregarTudo())
-          .catch((e) => toast.error("Não foi possível desfazer", e instanceof Error ? e.message : String(e)));
-      } } },
-    );
+    await aoMovimentarComToast(resultado);
   };
 
   const alternarSelecao = (animal: AnimalResumo) => setSelecionados((atual) => { const novo = new Map(atual); if (novo.has(animal.id)) novo.delete(animal.id); else novo.set(animal.id, animal); return novo; });

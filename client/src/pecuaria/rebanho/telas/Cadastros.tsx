@@ -252,30 +252,36 @@ export function Cadastros({ podeLancar = true }: { podeLancar?: boolean }) {
       { valor: "motivos", rotulo: "Motivos de baixa", icon: LogOut },
     ]} ativa={aba} onSelecionar={trocarAba} />
 
-    <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
-      {carregando
-        ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : "motivos de baixa"}`} /></div>
-        : <>
-          {aba === "categorias" && <>
-            <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras, na ordem da tabela — a primeira que casa vence, dentro de cada sexo. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
-            {semCategoriaAtual > 0 && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{semCategoriaAtual} {semCategoriaAtual === 1 ? "animal ativo" : "animais ativos"} sem categoria — nenhuma regra casou.</div>}
-            <Panel className="mt-4 overflow-hidden">
-              <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativas</label></BarraFiltros>
+    {carregando
+      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : "motivos de baixa"}`} /></div>
+      // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver
+      // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
+      : <>
+        {aba === "categorias" && <>
+          <p className="mt-5 max-w-3xl text-sm text-ink-3">As categorias são calculadas por estas regras, na ordem da tabela — a primeira que casa vence, dentro de cada sexo. Itens marcados "Padrão" vêm do IDEAGRI. Uma troca manual feita na ficha do animal tem prioridade sobre o cálculo até ser desfeita.</p>
+          {semCategoriaAtual > 0 && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{semCategoriaAtual} {semCategoriaAtual === 1 ? "animal ativo" : "animais ativos"} sem categoria — nenhuma regra casou.</div>}
+          <Panel className="mt-4 overflow-hidden">
+            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativas</label></BarraFiltros>
+            <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
               <TabelaFinanceira rotulo="Categorias" itens={categoriasExibidas} colunas={colunasCategorias(categoriasExibidas, (c) => setPainelCategoria({ modo: "editar", categoria: c }), alternarCategoria, moverCategoria)} chaveDe={(c) => c.id} onAbrir={podeLancar ? (c) => setPainelCategoria({ modo: "editar", categoria: c }) : undefined} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
-            </Panel>
-          </>}
-
-          {aba === "racas" && <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
-          </Panel>}
-
-          {aba === "motivos" && <Panel className="mt-5 overflow-hidden">
-            <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
-            <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
-          </Panel>}
+            </fieldset>
+          </Panel>
         </>}
-    </fieldset>
+
+        {aba === "racas" && <Panel className="mt-5 overflow-hidden">
+          <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+          <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+            <TabelaFinanceira rotulo="Raças" itens={racas ?? []} colunas={colunasRacas((r) => editar("raca", r), alternarRaca)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
+          </fieldset>
+        </Panel>}
+
+        {aba === "motivos" && <Panel className="mt-5 overflow-hidden">
+          <BarraFiltros><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" disabled={bloqueado} checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />Mostrar inativos</label></BarraFiltros>
+          <fieldset disabled={bloqueado || !podeLancar} aria-busy={bloqueado} className="min-w-0">
+            <TabelaFinanceira rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
+          </fieldset>
+        </Panel>}
+      </>}
 
     {painel?.entidade === "raca" && <FormRaca key={chavePainel} raca={racaSelecionada} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}
     {painel?.entidade === "motivo" && <FormMotivoBaixa key={chavePainel} motivo={motivoSelecionado} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />}

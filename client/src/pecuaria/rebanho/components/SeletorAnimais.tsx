@@ -44,6 +44,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
       busca: busca.trim() || undefined,
       propriedadeId: propriedadeId ? Number(propriedadeId) : undefined,
       loteId: loteId || undefined,
+      excluirLoteId,
       situacao: "ATIVO",
       page: pagina,
       pageSize: ITENS_POR_PAGINA,
@@ -52,7 +53,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
       .catch((e) => { if (vigente) setErro(e instanceof Error ? e.message : String(e)); })
       .finally(() => { if (vigente) setCarregando(false); });
     return () => { vigente = false; };
-  }, [busca, propriedadeId, loteId, pagina]);
+  }, [busca, propriedadeId, loteId, excluirLoteId, pagina]);
 
   // busca só dispara depois de 300 ms sem digitar
   useEffect(() => {
@@ -60,8 +61,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
     return () => clearTimeout(t);
   }, [textoBusca, busca]);
 
-  // filtra o lote excluído fora da lista, mesmo quando "Todos os lotes" está selecionado
-  const itensExibidos = useMemo(() => itens.filter((a) => !excluirLoteId || a.lote?.id !== excluirLoteId), [itens, excluirLoteId]);
+  // o filtro do lote excluído já vem aplicado pelo servidor (excluirLoteId) — itens e total já refletem isso
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
   const lotesDoSitio = useMemo(
     () => (catalogos?.lotes ?? []).filter((lote) => (!propriedadeId || String(lote.propriedadeId) === propriedadeId) && lote.id !== excluirLoteId),
@@ -75,11 +75,11 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
     return novo;
   });
 
-  const todosDaPaginaSelecionados = itensExibidos.length > 0 && itensExibidos.every((a) => selecionados.has(a.id));
+  const todosDaPaginaSelecionados = itens.length > 0 && itens.every((a) => selecionados.has(a.id));
   const alternarTodosDaPagina = () => setSelecionados((atual) => {
     const novo = new Map(atual);
-    if (todosDaPaginaSelecionados) itensExibidos.forEach((a) => novo.delete(a.id));
-    else itensExibidos.forEach((a) => novo.set(a.id, a));
+    if (todosDaPaginaSelecionados) itens.forEach((a) => novo.delete(a.id));
+    else itens.forEach((a) => novo.set(a.id, a));
     return novo;
   });
 
@@ -104,13 +104,16 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
           <select aria-label="Filtrar por sítio" value={propriedadeId} onChange={(e) => { filtrar(setPropriedadeId)(e.target.value); setLoteId(""); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.apelido ?? prop.nome}</option>)}</select>
           <select aria-label="Filtrar por lote de origem" value={loteId} onChange={(e) => filtrar(setLoteId)(e.target.value)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</select>
         </BarraFiltros>
-        {itensExibidos.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
+        {itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
           <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos da página" checked={todosDaPaginaSelecionados} onChange={alternarTodosDaPagina} /> Selecionar todos da página</label>
           {quantidade > 0 && <span className="text-ink-3">{quantidade} {quantidade === 1 ? "animal selecionado" : "animais selecionados"} no total</span>}
         </div>}
-        {carregando && !itensExibidos.length ? <div className="p-6"><Loader label="Carregando animais" /></div>
-          : itensExibidos.length ? <>
-            <TabelaFinanceira rotulo="Animais" itens={itensExibidos} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => alternar(item)} classeLinha={(item) => selecionados.has(item.id) ? "bg-[#eef1e9]" : ""} />
+        {carregando && !itens.length ? <div className="p-6"><Loader label="Carregando animais" /></div>
+          // total > 0 mantém a paginação visível mesmo que esta página específica venha vazia
+          : total > 0 ? <>
+            {itens.length > 0
+              ? <TabelaFinanceira rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => alternar(item)} classeLinha={(item) => selecionados.has(item.id) ? "bg-[#eef1e9]" : ""} />
+              : <Empty>Nenhum animal nesta página.</Empty>}
             <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-seletor-animais" />
           </> : <Empty>Nenhum animal ativo encontrado com os filtros selecionados.</Empty>}
       </div>

@@ -28,6 +28,8 @@ export type AnimalResumo = {
   /** o que as regras dariam — difere de `categoria` quando há troca manual */
   categoriaCalculada: CategoriaRef | null;
   idadeMeses: number;
+  /** true quando idade/categoria foram calculadas na data da baixa (animal baixado) em vez de hoje */
+  idadeNaBaixa: boolean;
   dataNascimento: string;
   dataEntrada: string;
   origem: Origem;
@@ -63,7 +65,7 @@ export type HistoricoDestino = {
   ate: string | null;
 };
 
-export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string };
+export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null };
 
 /** Item de `historicoCategoriasManuais` na ficha — mais recente primeiro. */
 export type HistoricoCategoriaManual = { id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null };
@@ -191,6 +193,8 @@ export type Pesagem = {
 export type ListarFiltros = {
   propriedadeId?: number;
   loteId?: string;
+  /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
+  excluirLoteId?: string;
   categoriaId?: string;
   aptidao?: Aptidao;
   papelReprodutivo?: PapelReprodutivo;

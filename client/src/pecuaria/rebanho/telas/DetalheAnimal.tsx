@@ -11,7 +11,7 @@ import {
 } from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos, EntradaAuditoria, Pesagem } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloClasseMotivo, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
-import { CategoriaPill, ModalMotivo } from "../ui";
+import { CategoriaPill, ModalMotivo, useAoMovimentarComToast } from "../ui";
 import { FormDadosAnimal } from "../forms/FormDadosAnimal";
 import { FormComposicao } from "../forms/FormComposicao";
 import { FormMovimentar } from "../forms/FormMovimentar";
@@ -77,6 +77,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
+  const aoMovimentar = useAoMovimentarComToast(carregar);
 
   if (!animal) return <div className="shell-wide pagina-carregando"><button onClick={onVoltar} className="mt-6 mb-5 inline-flex shrink-0 items-center gap-2 self-start text-sm font-semibold text-ink-2"><ArrowLeft size={17} /> Voltar para animais</button><ErrorBox erro={erro} />{!erro && <Loader label="Carregando animal" full />}</div>;
 
@@ -113,11 +114,14 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
             <span className="eyebrow">{animal.brinco}</span>
             <Pill tone={ativo ? "green" : "neutral"}>{rotuloSituacao(animal.situacao)}</Pill>
             <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
-            {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}</Pill>}
-            {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}</Pill>}
+            {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
+            {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
           </div>
           <h1 className="mt-2 break-words font-serif text-[clamp(22px,5vw,30px)] leading-tight">{animal.nome || animal.brinco}</h1>
-          <p className="mt-2 break-words text-sm text-ink-3">{formatarIdade(animal.idadeMeses)} · {animal.propriedade?.nome ?? "Sem sítio"}{animal.lote && <> · <LinkLote id={animal.lote.id} nome={animal.lote.nome} /></>}</p>
+          <p className="mt-2 break-words text-sm text-ink-3">
+            {formatarIdade(animal.idadeMeses)}{animal.idadeNaBaixa ? " na baixa" : ""} · {!ativo && "último sítio: "}{animal.propriedade?.nome ?? "Sem sítio"}
+            {animal.lote && <> · {!ativo && "último lote: "}<LinkLote id={animal.lote.id} nome={animal.lote.nome} /></>}
+          </p>
           {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
         </div>
         {podeLancar && <div className="flex flex-wrap gap-2">
@@ -175,7 +179,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
       <section className="border-t border-border p-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-3">Pesagens</h2>
-        {animal.historicoPesagens.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink-3"><tr><th className="py-1.5 pr-3 font-semibold">Data</th><th className="py-1.5 pr-3 font-semibold">Peso</th><th className="py-1.5 pr-3 font-semibold">Tipo</th><th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th><th className="py-1.5 pr-3 font-semibold">Origem</th><th className="py-1.5 pr-3 font-semibold" /></tr></thead><tbody className="divide-y divide-border">{animal.historicoPesagens.map((pesagem, indice) => <tr key={pesagem.id}><td className="py-2 pr-3">{formatarDataBR(pesagem.data)}</td><td className="py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td><td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}</td><td className="py-2 pr-3">{gmdEntre(pesagem, animal.historicoPesagens[indice + 1])}</td><td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td><td className="py-2 pr-3 text-right">{podeLancar && <div className="flex justify-end gap-1"><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => setPesagemForm({ modo: "editar", pesagem: { id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] } })}><Pencil size={16} /></button><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => { setErroAcao(null); setExcluindoPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] }); }}><Trash2 size={16} /></button></div>}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
+        {animal.historicoPesagens.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-ink-3"><tr><th className="py-1.5 pr-3 font-semibold">Data</th><th className="py-1.5 pr-3 font-semibold">Peso</th><th className="py-1.5 pr-3 font-semibold">Tipo</th><th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th><th className="py-1.5 pr-3 font-semibold">Origem</th><th className="py-1.5 pr-3 font-semibold" /></tr></thead><tbody className="divide-y divide-border">{animal.historicoPesagens.map((pesagem, indice) => <tr key={pesagem.id}><td className="py-2 pr-3">{formatarDataBR(pesagem.data)}</td><td className="py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td><td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}{pesagem.observacao && <div className="mt-0.5 break-words text-xs text-ink-3">{pesagem.observacao}</div>}</td><td className="py-2 pr-3">{gmdEntre(pesagem, animal.historicoPesagens[indice + 1])}</td><td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td><td className="py-2 pr-3 text-right">{podeLancar && <div className="flex justify-end gap-1"><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => setPesagemForm({ modo: "editar", pesagem: { id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao } })}><Pencil size={16} /></button><button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => { setErroAcao(null); setExcluindoPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] }); }}><Trash2 size={16} /></button></div>}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
       </section>
 
       <section className="border-t border-border p-6">
@@ -191,7 +195,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true }: { id: string;
 
     {editandoDados && <FormDadosAnimal animal={animal} onFechar={() => setEditandoDados(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setEditandoDados(false); }} />}
     {editandoComposicao && catalogos && <FormComposicao animal={animal} racas={catalogos.racas} onFechar={() => setEditandoComposicao(false)} onSalvo={async () => { setEditandoComposicao(false); await carregar(); }} />}
-    {movimentando && catalogos && <FormMovimentar animais={[animal]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async () => { setMovimentando(false); await carregar(); }} />}
+    {movimentando && catalogos && <FormMovimentar animais={[animal]} propriedades={catalogos.propriedades} lotes={catalogos.lotes} propriedadeInicial={animal.propriedade?.id} loteInicial={animal.lote?.id} onFechar={() => setMovimentando(false)} onSalvo={async (resultado) => { setMovimentando(false); await aoMovimentar(resultado); }} />}
     {mudandoDestino && <FormDestino animal={animal} onFechar={() => setMudandoDestino(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); await recarregarAuditoria(); setMudandoDestino(false); }} />}
     {alterandoCategoria && <FormAlterarCategoria
       animal={animal}

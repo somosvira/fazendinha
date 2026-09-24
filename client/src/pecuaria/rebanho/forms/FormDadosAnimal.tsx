@@ -40,6 +40,11 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
     setDataNascimento(valor);
     if (origem === "NASCIDO") setDataEntrada(valor);
   };
+  // partos antes da entrada só faz sentido para fêmea (R1) — trocar para macho zera o campo
+  const alterarSexo = (novoSexo: Sexo) => {
+    setSexo(novoSexo);
+    if (novoSexo === "M") setPartosAntesDaEntrada("0");
+  };
 
   const validar = (): Erros => {
     const novosErros: Erros = {};
@@ -94,7 +99,7 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
         <CampoFormulario id="animal-brinco-eletronico" rotulo="Brinco eletrônico" erro={erros.brincoEletronico}>{(p) => <input {...p} maxLength={40} value={brincoEletronico} onChange={(e) => setBrincoEletronico(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="animal-sisbov" rotulo="SISBOV" erro={erros.sisbov}>{(p) => <input {...p} maxLength={40} value={sisbov} onChange={(e) => setSisbov(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      <CampoFormulario id="animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
+      <CampoFormulario id="animal-sexo" rotulo="Sexo" obrigatorio>{(p) => <select {...p} value={sexo} onChange={(e) => alterarSexo(e.target.value as Sexo)} className={classeInput}><option value="F">Fêmea</option><option value="M">Macho</option></select>}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <input {...p} required type="date" max={hoje()} value={dataNascimento} onChange={(e) => alterarDataNascimento(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="animal-nascimento-estimado" rotulo="Nascimento estimado">{(p) => <label className="mt-1.5 flex h-[42px] items-center gap-2"><input id={p.id} type="checkbox" aria-label={p["aria-label"]} checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} /><span className="text-sm font-normal text-ink-3">A data é uma estimativa</span></label>}</CampoFormulario>
