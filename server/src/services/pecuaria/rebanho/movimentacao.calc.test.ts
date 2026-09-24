@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MovimentacaoError, direcaoNoLote, planejarDesfazer, planejarDesfazerMovimentacao, planejarDestino, resumirOrigens, planejarMovimentacao, planejarMovimentacaoEmMassa, type AnimalParaMover } from "./movimentacao.calc.js";
+import { MovimentacaoError, direcaoNoLote, linhasUsadasEmBaixaAtiva, planejarDesfazer, planejarDesfazerMovimentacao, planejarDestino, resumirOrigens, planejarMovimentacao, planejarMovimentacaoEmMassa, type AnimalParaMover } from "./movimentacao.calc.js";
 
 describe("planejarMovimentacao", () => {
   it("sem localização atual: abre a primeira", () => {
@@ -202,7 +202,7 @@ describe("planejarDesfazerMovimentacao", () => {
   ];
   const base = {
     animaisInativos: new Set<string>(),
-    linhasUsadasEmBaixa: new Set<string>(),
+    baixasDasLinhas: [],
   };
 
   it("caso feliz: remove a linha da movimentação e reabre a anterior de cada animal", () => {
@@ -235,9 +235,33 @@ describe("planejarDesfazerMovimentacao", () => {
       linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }, { id: "a2-1", animalId: "a2", brinco: "20" }],
       historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")], ["a2", historico("a2", "a2-1")]]),
       animaisInativos: new Set(["a1"]),
-      linhasUsadasEmBaixa: new Set(["a2-1"]),
+      baixasDasLinhas: [{ localizacaoFechadaId: "a2-1", estornadaEm: null }],
     });
     expect(plano.erros.map((e) => e.mensagem)).toEqual(["o animal saiu do rebanho depois", "essa localização já foi usada numa baixa"]);
+  });
+
+  it("baixa estornada não bloqueia: a linha que ela fechou volta a poder ser desfeita (A5)", () => {
+    const plano = planejarDesfazerMovimentacao({
+      ...base,
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }],
+      historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")]]),
+      baixasDasLinhas: [{ localizacaoFechadaId: "a1-1", estornadaEm: "2026-05-01T12:00:00Z" }],
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.passos).toEqual([{ animalId: "a1", remover: "a1-1", reabrir: "a1-0" }]);
+  });
+
+  it("baixa estornada seguida de nova baixa ativa na mesma linha continua bloqueando", () => {
+    const plano = planejarDesfazerMovimentacao({
+      ...base,
+      linhas: [{ id: "a1-1", animalId: "a1", brinco: "10" }],
+      historicoPorAnimal: new Map([["a1", historico("a1", "a1-1")]]),
+      baixasDasLinhas: [
+        { localizacaoFechadaId: "a1-1", estornadaEm: new Date("2026-05-01") },
+        { localizacaoFechadaId: "a1-1", estornadaEm: null },
+      ],
+    });
+    expect(plano.erros.map((e) => e.mensagem)).toEqual(["essa localização já foi usada numa baixa"]);
   });
 
   it("sem linha anterior (só a da movimentação) bloqueia", () => {
@@ -247,6 +271,17 @@ describe("planejarDesfazerMovimentacao", () => {
       historicoPorAnimal: new Map([["a1", [{ id: "a1-1", desde: "2026-03-01", ate: null }]]]),
     });
     expect(plano.erros[0].mensagem).toBe("não há localização anterior para voltar");
+  });
+});
+
+describe("linhasUsadasEmBaixaAtiva", () => {
+  it("só conta baixas não estornadas e ignora baixa sem linha", () => {
+    expect(linhasUsadasEmBaixaAtiva([
+      { localizacaoFechadaId: "L1", estornadaEm: null },
+      { localizacaoFechadaId: "L2", estornadaEm: new Date("2026-05-01") },
+      { localizacaoFechadaId: null, estornadaEm: null },
+    ])).toEqual(new Set(["L1"]));
+    expect(linhasUsadasEmBaixaAtiva([])).toEqual(new Set());
   });
 });
 

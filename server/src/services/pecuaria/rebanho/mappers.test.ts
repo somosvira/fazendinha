@@ -33,6 +33,24 @@ describe("mapearAnimalResumo", () => {
     expect(resumo.composicaoRotulo).toBe("3/4 HO, 1/4 GO");
     expect(resumo.ultimoPeso).toEqual({ kg: 120.5, data: "2024-11-01" });
     expect(resumo.situacao).toBe("ATIVO");
+    expect(resumo.idadeNaBaixa).toBe(false);
+  });
+
+  it("K5: idadeNaBaixa é repassado quando informado (animal baixado, idade calculada na data da baixa)", () => {
+    const resumo = mapearAnimalResumo({
+      animal: animalBase,
+      categoria: { categoria: { id: "c-ec", nome: "Em crescimento" }, origem: "AUTOMATICA", calculada: { id: "c-ec", nome: "Em crescimento" } },
+      hoje: new Date("2024-06-01"),
+      propriedade: null,
+      lote: null,
+      destino: null,
+      composicao: [],
+      ultimoPeso: null,
+      situacao: "BAIXADO",
+      idadeNaBaixa: true,
+    });
+    expect(resumo.idadeNaBaixa).toBe(true);
+    expect(resumo.idadeMeses).toBe(4); // 2024-01-15 → 2024-06-01
   });
 
   it("mantém a situação BAIXADO repassada", () => {
@@ -79,7 +97,7 @@ describe("agregarPainel", () => {
   const EC_F = { id: "c-ecf", nome: "Em crescimento" };
   const REPRODUTOR = { id: "c-rep", nome: "Reprodutor" };
   const base = (over: Partial<AnimalResumo>): AnimalResumo => ({
-    id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, dataNascimento: "2023-01-01",
+    id: "x", brinco: "1", nome: null, sexo: "F", categoria: VACA, categoriaOrigem: "AUTOMATICA", categoriaCalculada: VACA, idadeMeses: 40, idadeNaBaixa: false, dataNascimento: "2023-01-01",
     dataEntrada: "2023-01-01", origem: "NASCIDO", propriedade: { id: 1, nome: "Principal" }, lote: null,
     aptidao: "LEITE", papelReprodutivo: "NENHUM", composicaoRotulo: "", ultimoPeso: null, situacao: "ATIVO", ...over,
   });

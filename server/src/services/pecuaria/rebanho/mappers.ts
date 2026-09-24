@@ -13,6 +13,8 @@ export interface AnimalResumo {
   /** o que as regras dariam — difere de `categoria` quando há troca manual */
   categoriaCalculada: CategoriaRef | null;
   idadeMeses: number;
+  /** true quando idade/categoria foram avaliadas na data da baixa, não em hoje (animal baixado, K5) */
+  idadeNaBaixa: boolean;
   dataNascimento: string;
   dataEntrada: string;
   origem: "NASCIDO" | "COMPRADO";
@@ -45,6 +47,8 @@ export function mapearAnimalResumo(input: {
   composicao: FracaoRaca[];
   ultimoPeso: { pesoKg: number; data: Date } | null;
   situacao: "ATIVO" | "BAIXADO";
+  /** ver `AnimalResumo.idadeNaBaixa` — default false (a maioria das chamadas é para animal ativo) */
+  idadeNaBaixa?: boolean;
 }): AnimalResumo {
   const { animal } = input;
   return {
@@ -56,6 +60,7 @@ export function mapearAnimalResumo(input: {
     categoriaOrigem: input.categoria.origem,
     categoriaCalculada: input.categoria.calculada,
     idadeMeses: idadeEmMeses(animal.dataNascimento, input.hoje),
+    idadeNaBaixa: input.idadeNaBaixa ?? false,
     dataNascimento: animal.dataNascimento.toISOString().slice(0, 10),
     dataEntrada: animal.dataEntrada.toISOString().slice(0, 10),
     origem: animal.origem,
@@ -85,7 +90,7 @@ export interface AnimalFicha extends AnimalResumo {
   composicao: ItemComposicaoFicha[];
   historicoLocalizacoes: Array<{ id: string; propriedade: { id: number; nome: string } | null; lote: { id: string; nome: string } | null; desde: string; ate: string | null; motivo: string | null; movimentacaoId: string | null }>;
   historicoDestinos: Array<{ id: string; aptidao: "LEITE" | "CORTE"; papelReprodutivo: "NENHUM" | "RECEPTORA" | "DOADORA"; desde: string; ate: string | null }>;
-  historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string }>;
+  historicoPesagens: Array<{ id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null }>;
   historicoCategoriasManuais: Array<{ id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null }>;
   baixa: { id: string; data: string; tipo: string; motivo: { nome: string; classe: string } | null; observacao: string | null; estornadaEm: string | null; estornoMotivo: string | null } | null;
 }

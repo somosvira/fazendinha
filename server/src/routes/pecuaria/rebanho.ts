@@ -1,8 +1,9 @@
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
-import { resolverEscopoLeitura, resolverEscopoEscrita } from "../../services/propriedade.js";
+import { resolverEscopoLeitura, resolverEscopoEscrita, PropriedadeError } from "../../services/propriedade.js";
 import { getUsuario, exigePermissao } from "../../middleware/permissao.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import * as animais from "../../services/pecuaria/rebanho/animais.js";
@@ -27,10 +28,31 @@ function usuarioId(c: Context): number | null {
   return u && u.id > 0 ? u.id : null;
 }
 
+/**
+ * Erros do banco que são corrida entre duas escritas (duplo clique, duas abas), não bug: viram
+ * 409 para a tela pedir recarga, em vez de 500.
+ * - P2002: violação de único — inclusive os índices parciais "uma linha aberta por animal";
+ * - P2025: o registro sumiu/mudou entre a leitura e a escrita;
+ * - P2034: conflito de escrita ou deadlock detectado pelo Postgres.
+ */
+const MENSAGENS_CONFLITO_PRISMA: Record<string, string> = {
+  P2002: "Registro alterado ao mesmo tempo por outra pessoa. Recarregue e tente de novo.",
+  P2025: "O registro foi alterado ou removido por outra pessoa. Recarregue e tente de novo.",
+  P2034: "Registro alterado ao mesmo tempo por outra pessoa. Recarregue e tente de novo.",
+};
+
 function falha(c: Context, erro: unknown) {
   if (erro instanceof RebanhoError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
     return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
+  }
+  // X-Propriedade-Id malformado ou fora da faixa do Postgres (S2) — sem isto o valor passaria
+  // pro Prisma e voltaria como erro cru de banco (500)
+  if (erro instanceof PropriedadeError && erro.code === "ESCOPO_INVALIDO") {
+    return c.json({ error: erro.message, code: erro.code }, 400);
+  }
+  if (erro instanceof Prisma.PrismaClientKnownRequestError && MENSAGENS_CONFLITO_PRISMA[erro.code]) {
+    return c.json({ error: MENSAGENS_CONFLITO_PRISMA[erro.code], code: "CONFLITO" }, 409);
   }
   console.error("[pecuaria/rebanho]", erro);
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
@@ -76,47 +98,47 @@ export const rebanhoRouter = new Hono()
       return c.json({ error: erro.message, code: "VALIDACAO", campo: String(erro.path[0] ?? "") }, 422);
     }
   }), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.listar(c.req.valid("query"), escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais", validar(cadastrarAnimalSchema), async (c) => {
     const body = c.req.valid("json");
-    const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
     try {
+      const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await animais.cadastrar({ ...body, propriedadeId }, usuarioId(c)), 201);
     } catch (e) { return falha(c, e); }
   })
   .get("/animais/:id", idParam, async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.buscarFicha(c.req.valid("param").id, escopo));
     } catch (e) { return falha(c, e); }
   })
   .patch("/animais/:id", idParam, validar(editarAnimalSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.editar(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .put("/animais/:id/composicao", idParam, validar(substituirComposicaoSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.substituirComposicao(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .get("/animais/:id/auditoria", idParam, async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.buscarAuditoriaAnimal(c.req.valid("param").id, escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/movimentar", validar(movimentarSchema), async (c) => {
     const body = c.req.valid("json");
-    const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
-    const escopoOrigem = await resolverEscopoLeitura(c);
     try {
+      const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
+      const escopoOrigem = await resolverEscopoLeitura(c);
       return c.json(await animais.movimentar({ ...body, propriedadeId }, usuarioId(c), escopoOrigem));
     } catch (e) { return falha(c, e); }
   })
@@ -143,20 +165,20 @@ export const rebanhoRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/:id/baixa/estorno", idParam, validar(estornoBaixaSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.estornarBaixa(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/:id/categoria", idParam, validar(categoriaManualSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.definirCategoriaManual(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/:id/categoria/remover", idParam, validar(removerCategoriaManualSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.removerCategoriaManual(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
@@ -167,62 +189,64 @@ export const rebanhoRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .patch("/pesagens/:id", idParam, validar(editarPesagemSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.editarPesagem(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .delete("/pesagens/:id", idParam, async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       await animais.excluirPesagem(c.req.valid("param").id, usuarioId(c), escopo);
       return c.json({ ok: true });
     } catch (e) { return falha(c, e); }
   })
   .get("/lotes", validarQuery(incluirInativosQuerySchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
-    return c.json(await lotes.listarLotes(escopo, c.req.valid("query").incluirInativos));
+    try {
+      const escopo = await resolverEscopoLeitura(c);
+      return c.json(await lotes.listarLotes(escopo, c.req.valid("query").incluirInativos));
+    } catch (e) { return falha(c, e); }
   })
   .get("/lotes/:id", idParam, async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await lotes.buscarLote(c.req.valid("param").id, escopo));
     } catch (e) { return falha(c, e); }
   })
   .get("/lotes/:id/movimentacoes", idParam, validarQuery(paginaQuerySchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await movimentacoes.listarMovimentacoesDoLote(c.req.valid("param").id, escopo, c.req.valid("query").page));
     } catch (e) { return falha(c, e); }
   })
   .get("/movimentacoes", validarQuery(listarMovimentacoesSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await movimentacoes.listarMovimentacoes(c.req.valid("query"), escopo));
     } catch (e) { return falha(c, e); }
   })
   .get("/movimentacoes/:id", idParam, async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await movimentacoes.buscarMovimentacao(c.req.valid("param").id, escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/movimentacoes/:id/desfazer", idParam, validar(desfazerMovimentacaoSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await animais.desfazerMovimentacao(c.req.valid("param").id, c.req.valid("json").motivo, usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
   .post("/lotes", validar(criarLoteSchema), async (c) => {
     const body = c.req.valid("json");
-    const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
     try {
+      const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
       return c.json(await lotes.criarLote({ ...body, propriedadeId }, usuarioId(c)), 201);
     } catch (e) { return falha(c, e); }
   })
   .patch("/lotes/:id", idParam, validar(editarLoteSchema), async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await lotes.editarLote(c.req.valid("param").id, c.req.valid("json"), usuarioId(c), escopo));
     } catch (e) { return falha(c, e); }
   })
@@ -282,8 +306,8 @@ export const rebanhoRouter = new Hono()
     } catch (e) { return falha(c, e); }
   })
   .get("/painel", async (c) => {
-    const escopo = await resolverEscopoLeitura(c);
     try {
+      const escopo = await resolverEscopoLeitura(c);
       return c.json(await painel.buscarPainelGeral(escopo));
     } catch (e) { return falha(c, e); }
   })

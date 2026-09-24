@@ -4,10 +4,10 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { RebanhoError } from "./regras.js";
+import { hojeFazendaDate, RebanhoError } from "./regras.js";
 import { avaliarCategoria, type CategoriaRef } from "./categoria.calc.js";
 import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA } from "./categorias.js";
-import { direcaoNoLote, resumirOrigens } from "./movimentacao.calc.js";
+import { direcaoNoLote, linhasUsadasEmBaixaAtiva, resumirOrigens } from "./movimentacao.calc.js";
 import type { ListarMovimentacoesInput } from "./schemas.js";
 
 export interface MovimentacaoResumoDTO {
@@ -74,7 +74,8 @@ const noSitio = (propriedadeId: number): Prisma.MovimentacaoWhereInput => ({
 
 /**
  * Dá para desfazer se nada aconteceu depois: todo animal ainda não desfeito continua na linha
- * aberta pela movimentação, está ativo e essa linha não foi usada numa saída.
+ * aberta pela movimentação, está ativo e essa linha não foi usada numa baixa ativa (baixa
+ * estornada não bloqueia — mesma regra de `desfazerMovimentacao`).
  */
 async function calcularPodeDesfazer(movs: MovComItens[]): Promise<Set<string>> {
   const ativos = movs.flatMap((m) => (m.desfeitaEm ? [] : m.animais.filter((a) => !a.desfeitoEm)));
@@ -82,10 +83,10 @@ async function calcularPodeDesfazer(movs: MovComItens[]): Promise<Set<string>> {
   const linhas = ativos.map((a) => a.localizacaoId).filter((v): v is string => v != null);
   const [inativos, usadas] = await Promise.all([
     animalIds.length ? prisma.baixaAnimal.findMany({ where: { animalId: { in: animalIds }, estornadaEm: null }, select: { animalId: true } }) : [],
-    linhas.length ? prisma.baixaAnimal.findMany({ where: { localizacaoFechadaId: { in: linhas } }, select: { localizacaoFechadaId: true } }) : [],
+    linhas.length ? prisma.baixaAnimal.findMany({ where: { localizacaoFechadaId: { in: linhas } }, select: { localizacaoFechadaId: true, estornadaEm: true } }) : [],
   ]);
   const inativosSet = new Set(inativos.map((s) => s.animalId));
-  const usadasSet = new Set(usadas.map((s) => s.localizacaoFechadaId));
+  const usadasSet = linhasUsadasEmBaixaAtiva(usadas);
   const pode = new Set<string>();
   for (const m of movs) {
     if (m.desfeitaEm) continue;
@@ -160,7 +161,7 @@ export async function buscarMovimentacao(id: string, escopo: number | null): Pro
   });
   const porId = new Map(animais.map((a) => [a.id, a]));
   const [pode, regras] = await Promise.all([calcularPodeDesfazer([mov]), carregarRegras()]);
-  const hoje = new Date();
+  const hoje = hojeFazendaDate();
 
   return {
     ...mapearResumo(mov, pode.has(mov.id), null),

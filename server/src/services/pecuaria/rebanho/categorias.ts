@@ -4,7 +4,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { auditar, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
+import { auditar, hojeFazendaDate, traduzirConflitoUnico, RebanhoError, type DbPecuaria } from "./regras.js";
 import {
   avaliarCategoria, descreverRegra, filtroCategoria, validarRegra,
   type CategoriaRef, type CondicaoRegra, type CriterioPartos, type RegraCategoria, type Sexo,
@@ -108,7 +108,7 @@ export interface ResultadoSimulacao {
 
 /** Compara as regras atuais com as propostas, sem gravar. As trocas manuais continuam valendo. */
 async function simularContra(propostas: RegraCategoria[]): Promise<ResultadoSimulacao> {
-  const hoje = new Date();
+  const hoje = hojeFazendaDate();
   const [regras, animais] = await Promise.all([carregarRegras(), animaisAtivos()]);
   const antes = contar(animais, regras, hoje).atual;
   const depois = contar(animais, propostas, hoje);
@@ -144,7 +144,7 @@ export interface CategoriaDTO extends RegraCategoria {
 }
 
 export async function listarCategorias(incluirInativas = false): Promise<{ itens: CategoriaDTO[]; semCategoria: number }> {
-  const hoje = new Date();
+  const hoje = hojeFazendaDate();
   const [linhas, animais, manuais] = await Promise.all([
     prisma.categoriaAnimal.findMany({ where: incluirInativas ? {} : { ativo: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }] }),
     animaisAtivos(),
@@ -256,6 +256,15 @@ export async function restaurarPadroes(simular: boolean, usuarioId: number | nul
   await prisma.$transaction(async (tx) => {
     for (const p of CATEGORIAS_PADRAO) {
       const dados = { nome: p.nome, sexo: p.sexo, automatica: p.automatica, idadeMinMeses: p.idadeMinMeses, idadeMaxMeses: p.idadeMaxMeses, partos: p.partos, ordem: p.ordem, ativo: true };
+      // mesma trava de editarCategoria (R5): se o padrão mudaria de sexo e há manual aberta
+      // apontando pra ele, os animais ficariam com uma categoria de outro sexo
+      const existente = porChave.get(p.chavePadrao);
+      if (existente && existente.sexo !== p.sexo) {
+        const manuais = await tx.categoriaManualAnimal.count({ where: { categoriaId: existente.id, ate: null } });
+        if (manuais > 0) {
+          throw new RebanhoError("CONFLITO", `${manuais} animal(is) têm a categoria "${existente.nome}" manual; volte-os ao automático antes de restaurar os padrões`, "sexo");
+        }
+      }
       // um nome de fábrica pode estar ocupado por uma categoria do usuário: libera renomeando a do usuário
       const ocupante = await tx.categoriaAnimal.findFirst({ where: { sexo: p.sexo, nome: p.nome, OR: [{ chavePadrao: null }, { chavePadrao: { not: p.chavePadrao } }] } });
       if (ocupante) await tx.categoriaAnimal.update({ where: { id: ocupante.id }, data: { nome: `${ocupante.nome} (antiga)` } });

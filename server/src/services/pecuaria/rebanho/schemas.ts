@@ -1,6 +1,25 @@
 import { z } from "zod";
+import { hojeFazenda } from "./regras.js";
 
 const dataISO = z.string().date();
+
+/**
+ * Data de um fato lançado pelo usuário (nascimento, entrada, movimentação, destino, baixa,
+ * pesagem, categoria manual — R3/R6): nunca no futuro, no fuso da fazenda (`hojeFazenda()`,
+ * não `new Date()`/UTC). Comparação lexicográfica: 'YYYY-MM-DD' ordena igual a Date.
+ */
+export const dataNaoFutura = dataISO.refine((v) => v <= hojeFazenda(), "A data não pode estar no futuro");
+
+// Postgres Int4 (colunas `propriedadeId`/`ordem`): fora da faixa, o banco rejeita com erro cru
+// em vez de uma mensagem de validação (S2).
+const INT4_MIN = -2147483648;
+const INT4_MAX = 2147483647;
+const propriedadeIdObrigatorio = z.number().int().positive().max(INT4_MAX);
+const propriedadeIdOpcional = z.coerce.number().int().positive().max(INT4_MAX).optional();
+const ordemInt = z.number().int().min(INT4_MIN).max(INT4_MAX);
+
+/** Peso lançado pelo usuário (R7): mínimo 0,01 kg (evita 0,00 por arredondamento) e sempre com 2 casas. */
+const pesoKgSchema = z.number().min(0.01).max(9999.99).transform((v) => Math.round(v * 100) / 100);
 
 export const composicaoItemSchema = z.object({
   racaId: z.string().uuid(),
@@ -13,18 +32,18 @@ export const cadastrarAnimalSchema = z.object({
   brincoEletronico: z.string().trim().max(40).nullable().optional(),
   sisbov: z.string().trim().max(40).nullable().optional(),
   sexo: z.enum(["F", "M"]),
-  dataNascimento: dataISO,
+  dataNascimento: dataNaoFutura,
   nascimentoEstimado: z.boolean().optional().default(false),
   origem: z.enum(["NASCIDO", "COMPRADO"]),
-  dataEntrada: dataISO,
+  dataEntrada: dataNaoFutura,
   partosAntesDaEntrada: z.number().int().min(0).optional().default(0),
   observacao: z.string().trim().max(500).nullable().optional(),
-  propriedadeId: z.number().int().positive(),
+  propriedadeId: propriedadeIdObrigatorio,
   loteId: z.string().uuid().nullable().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional().default("NENHUM"),
   composicao: z.array(composicaoItemSchema).optional().default([]),
-  pesoEntradaKg: z.number().positive().max(9999.99).nullable().optional(),
+  pesoEntradaKg: pesoKgSchema.nullable().optional(),
 });
 export type CadastrarAnimalInput = z.infer<typeof cadastrarAnimalSchema>;
 
@@ -34,10 +53,10 @@ export const editarAnimalSchema = z.object({
   brincoEletronico: z.string().trim().max(40).nullable().optional(),
   sisbov: z.string().trim().max(40).nullable().optional(),
   sexo: z.enum(["F", "M"]).optional(),
-  dataNascimento: dataISO.optional(),
+  dataNascimento: dataNaoFutura.optional(),
   nascimentoEstimado: z.boolean().optional(),
   origem: z.enum(["NASCIDO", "COMPRADO"]).optional(),
-  dataEntrada: dataISO.optional(),
+  dataEntrada: dataNaoFutura.optional(),
   partosAntesDaEntrada: z.number().int().min(0).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
@@ -49,10 +68,10 @@ export const substituirComposicaoSchema = z.object({
 export type SubstituirComposicaoInput = z.infer<typeof substituirComposicaoSchema>;
 
 export const movimentarSchema = z.object({
-  animalIds: z.array(z.string().uuid()).min(1),
-  propriedadeId: z.number().int().positive(),
+  animalIds: z.array(z.string().uuid()).min(1).max(2000).refine((v) => new Set(v).size === v.length, "IDs de animais repetidos"),
+  propriedadeId: propriedadeIdObrigatorio,
   loteId: z.string().uuid().nullable().optional(),
-  data: dataISO,
+  data: dataNaoFutura,
   motivo: z.string().trim().max(300).nullable().optional(),
 });
 export type MovimentarInput = z.infer<typeof movimentarSchema>;
@@ -61,7 +80,7 @@ export const mudarDestinoSchema = z.object({
   animalId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional().default("NENHUM"),
-  data: dataISO,
+  data: dataNaoFutura,
 });
 export type MudarDestinoInput = z.infer<typeof mudarDestinoSchema>;
 
@@ -70,7 +89,7 @@ export const classeMotivoBaixaSchema = z.enum(["DESCARTE_VOLUNTARIO", "DESCARTE_
 
 export const baixaSchema = z.object({
   animalId: z.string().uuid().optional(),
-  data: dataISO,
+  data: dataNaoFutura,
   tipo: tipoBaixaSchema,
   motivoId: z.string().uuid().nullable().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
@@ -89,7 +108,7 @@ export type DesfazerMovimentacaoInput = z.infer<typeof desfazerMovimentacaoSchem
 
 export const listarMovimentacoesSchema = z.object({
   loteId: z.string().uuid().optional(),
-  propriedadeId: z.coerce.number().int().positive().optional(),
+  propriedadeId: propriedadeIdOpcional,
   dataDe: z.string().date().optional(),
   dataAte: z.string().date().optional(),
   incluirDesfeitas: z.enum(["true", "false"]).optional().default("true").transform((v) => v === "true"),
@@ -104,8 +123,8 @@ export const paginaQuerySchema = z.object({
 
 export const pesagemSchema = z.object({
   animalId: z.string().uuid().optional(),
-  data: dataISO,
-  pesoKg: z.number().positive().max(9999.99),
+  data: dataNaoFutura,
+  pesoKg: pesoKgSchema,
   tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA"]),
   origem: z.enum(["MANUAL", "BALANCA"]).optional().default("MANUAL"),
   observacao: z.string().trim().max(500).nullable().optional(),
@@ -113,8 +132,8 @@ export const pesagemSchema = z.object({
 export type PesagemInput = z.infer<typeof pesagemSchema>;
 
 export const editarPesagemSchema = z.object({
-  data: dataISO.optional(),
-  pesoKg: z.number().positive().max(9999.99).optional(),
+  data: dataNaoFutura.optional(),
+  pesoKg: pesoKgSchema.optional(),
   tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA"]).optional(),
   origem: z.enum(["MANUAL", "BALANCA"]).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
@@ -122,8 +141,10 @@ export const editarPesagemSchema = z.object({
 export type EditarPesagemInput = z.infer<typeof editarPesagemSchema>;
 
 export const listarFiltrosSchema = z.object({
-  propriedadeId: z.coerce.number().int().positive().optional(),
+  propriedadeId: propriedadeIdOpcional,
   loteId: z.string().uuid().optional(),
+  /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */
+  excluirLoteId: z.string().uuid().optional(),
   categoriaId: z.string().uuid().optional(),
   aptidao: z.enum(["LEITE", "CORTE"]).optional(),
   papelReprodutivo: z.enum(["NENHUM", "RECEPTORA", "DOADORA"]).optional(),
@@ -136,7 +157,7 @@ export type ListarFiltrosInput = z.infer<typeof listarFiltrosSchema>;
 
 export const criarLoteSchema = z.object({
   nome: z.string().trim().min(1).max(120),
-  propriedadeId: z.number().int().positive(),
+  propriedadeId: propriedadeIdObrigatorio,
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type CriarLoteInput = z.infer<typeof criarLoteSchema>;
@@ -201,7 +222,7 @@ export const criarCategoriaSchema = z.object({
   idadeMinMeses: meses.nullable().optional(),
   idadeMaxMeses: meses.nullable().optional(),
   partos: criterioPartos.optional().default("QUALQUER"),
-  ordem: z.number().int().optional(),
+  ordem: ordemInt.optional(),
 });
 export type CriarCategoriaInput = z.infer<typeof criarCategoriaSchema>;
 
@@ -212,7 +233,7 @@ export const editarCategoriaSchema = z.object({
   idadeMinMeses: meses.nullable().optional(),
   idadeMaxMeses: meses.nullable().optional(),
   partos: criterioPartos.optional(),
-  ordem: z.number().int().optional(),
+  ordem: ordemInt.optional(),
   ativo: z.boolean().optional(),
 });
 export type EditarCategoriaInput = z.infer<typeof editarCategoriaSchema>;
@@ -224,7 +245,7 @@ export const regraPropostaSchema = z.object({
   sexo: sexoBovino,
   automatica: z.boolean(),
   ativo: z.boolean(),
-  ordem: z.number().int(),
+  ordem: ordemInt,
   idadeMinMeses: meses.nullable().optional(),
   idadeMaxMeses: meses.nullable().optional(),
   partos: criterioPartos,
@@ -232,12 +253,14 @@ export const regraPropostaSchema = z.object({
 export type RegraPropostaInput = z.infer<typeof regraPropostaSchema>;
 
 export const simularCategoriasSchema = z.object({ regras: z.array(regraPropostaSchema).max(200) });
-export const reordenarCategoriasSchema = z.object({ ids: z.array(z.string().uuid()).min(1) });
+export const reordenarCategoriasSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500).refine((v) => new Set(v).size === v.length, "IDs de categoria repetidos"),
+});
 export const restaurarPadroesSchema = z.object({ simular: z.boolean().optional().default(false) });
 
 export const categoriaManualSchema = z.object({
   categoriaId: z.string().uuid(),
-  data: z.string().date(),
+  data: dataNaoFutura,
   motivo: z.string().trim().min(1).max(300),
 });
 export type CategoriaManualInput = z.infer<typeof categoriaManualSchema>;

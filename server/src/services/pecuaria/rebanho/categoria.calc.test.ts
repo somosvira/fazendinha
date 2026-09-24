@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   avaliarCategoria, calcularCategoriaAutomatica, condicaoDaRegra, descreverRegra, filtroCategoria, idadeEmMeses,
-  nascimentoLimiteParaIdade, regraCasa, validarRegra, type RegraCategoria,
+  nascimentoLimiteParaIdade, regraCasa, validarDataCategoriaManual, validarRegra, type RegraCategoria,
 } from "./categoria.calc.js";
 
 // os padrões de fábrica (categorias do IDEAGRI), como na migration pecuaria_categorias
@@ -23,6 +23,36 @@ describe("idadeEmMeses", () => {
     expect(idadeEmMeses("2025-09-24", HOJE)).toBe(12);
     expect(idadeEmMeses("2025-09-25", HOJE)).toBe(11);
     expect(idadeEmMeses("2027-01-01", HOJE)).toBe(0);
+  });
+
+  describe("nascido em 29/02 (ano bissexto)", () => {
+    const NASC = "2024-02-29";
+
+    it("só completa o ano em 01/03 nos anos sem 29/02; em ano bissexto, no próprio 29/02", () => {
+      expect(idadeEmMeses(NASC, "2025-02-28")).toBe(11);
+      expect(idadeEmMeses(NASC, "2025-03-01")).toBe(12);
+      expect(idadeEmMeses(NASC, "2028-02-28")).toBe(47);
+      expect(idadeEmMeses(NASC, "2028-02-29")).toBe(48);
+    });
+
+    it("nascimentoLimiteParaIdade tem a mesma borda que idadeEmMeses", () => {
+      // 2025-02-28: com 12 meses só quem nasceu até 28/02/2024 — o de 29/02 ainda tem 11
+      expect(nascimentoLimiteParaIdade("2025-02-28", 12).toISOString().slice(0, 10)).toBe("2024-02-28");
+      expect(nascimentoLimiteParaIdade("2025-03-01", 12).toISOString().slice(0, 10)).toBe("2024-03-01");
+      expect(nascimentoLimiteParaIdade("2028-02-29", 48).toISOString().slice(0, 10)).toBe(NASC);
+    });
+
+    it("para todo nascimento em volta de 29/02: nascimento ≤ limite ⇔ idade ≥ meses", () => {
+      const casos: Array<[string, number]> = [["2025-02-28", 12], ["2025-03-01", 12], ["2028-02-29", 48], ["2028-02-28", 48], ["2024-03-29", 1]];
+      for (const [hoje, meses] of casos) {
+        const limite = nascimentoLimiteParaIdade(hoje, meses).getTime();
+        for (let d = Date.UTC(2024, 1, 15); d <= Date.UTC(2024, 2, 15); d += 86_400_000) {
+          const nasc = new Date(d);
+          expect({ hoje, meses, nasc: nasc.toISOString().slice(0, 10), casa: d <= limite })
+            .toEqual({ hoje, meses, nasc: nasc.toISOString().slice(0, 10), casa: idadeEmMeses(nasc, hoje) >= meses });
+        }
+      }
+    });
   });
 });
 
@@ -99,5 +129,40 @@ describe("filtroCategoria (espelho do cálculo para o banco)", () => {
     // coerência regra × condição num caso de borda
     const f = animal("F", limite.toISOString().slice(0, 10));
     expect(regraCasa(PADROES[2], f, HOJE)).toBe(true);
+  });
+});
+
+describe("validarDataCategoriaManual (R4)", () => {
+  it("bloqueia data anterior à entrada do animal", () => {
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: null, data: "2025-12-31" }))
+      .toBe("A data não pode ser anterior à entrada do animal");
+  });
+
+  it("aceita data igual à entrada, sem manual anterior", () => {
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: null, data: "2026-01-01" })).toBeNull();
+  });
+
+  it("bloqueia data anterior ao início da manual aberta", () => {
+    const erro = validarDataCategoriaManual({
+      dataEntrada: "2026-01-01", ultima: { desde: "2026-03-01", ate: null }, data: "2026-02-15",
+    });
+    expect(erro).toBe("A data não pode ser anterior à troca manual atual");
+  });
+
+  it("aceita data igual ou posterior ao início da manual aberta", () => {
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-03-01", ate: null }, data: "2026-03-01" })).toBeNull();
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-03-01", ate: null }, data: "2026-04-01" })).toBeNull();
+  });
+
+  it("bloqueia data anterior ao fim da última manual já fechada (não sobrepõe períodos)", () => {
+    const erro = validarDataCategoriaManual({
+      dataEntrada: "2026-01-01", ultima: { desde: "2026-02-01", ate: "2026-05-01" }, data: "2026-04-01",
+    });
+    expect(erro).toBe("A data não pode ser anterior ao fim da última categoria manual");
+  });
+
+  it("aceita data igual ou posterior ao fim da última manual fechada", () => {
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-02-01", ate: "2026-05-01" }, data: "2026-05-01" })).toBeNull();
+    expect(validarDataCategoriaManual({ dataEntrada: "2026-01-01", ultima: { desde: "2026-02-01", ate: "2026-05-01" }, data: "2026-06-01" })).toBeNull();
   });
 });

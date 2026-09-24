@@ -78,6 +78,9 @@ export async function editarLote(id: string, input: EditarLoteInput, usuarioId: 
 
   const atualizado = await prisma.$transaction(async (tx) => {
     if (input.ativo === false && existente.ativo) {
+      // FOR UPDATE espera quem está pondo animal no lote (FOR SHARE em travarLoteAtivo) terminar,
+      // e a contagem abaixo, lida depois, já enxerga esse animal
+      await tx.$queryRaw`SELECT "id" FROM "pecuaria"."Lote" WHERE "id" = ${id} FOR UPDATE`;
       const contagem = await contarAnimaisAtivosPorLote(tx, [id]);
       const ativos = contagem.get(id) ?? 0;
       if (ativos > 0) {

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
+import { hojeFazendaDate } from "./regras.js";
 import { listar, whereSituacao } from "./animais.js";
 
 export interface EventoPainel {
@@ -26,18 +27,22 @@ export async function buscarPainelGeral(escopo: number | null): Promise<PainelGe
 
   const receptorasPct = painel.femeasAtivas > 0 ? Math.round((painel.receptorasAtivas / painel.femeasAtivas) * 1000) / 10 : 0;
 
-  const cutoff = new Date();
+  // corte de 30 dias no fuso da fazenda, não em UTC (R3/R6)
+  const cutoff = hojeFazendaDate();
   cutoff.setDate(cutoff.getDate() - 30);
 
   // mesmo critério de sítio da lista: ativo pela localização aberta, quem foi baixado pela localização que a baixa fechou
   const animalNoEscopo = whereSituacao({ situacao: "TODOS", propriedadeId: escopo });
   const baixaNoEscopo: Prisma.BaixaAnimalWhereInput = escopo != null ? { localizacaoFechada: { propriedadeId: escopo } } : {};
+  // CADASTRO_INDEVIDO é o "excluir cadastro" (interno), não uma baixa de verdade — não conta
+  // em "baixas em 30 dias" nem aparece nos últimos eventos, nem quando estornada (K6)
+  const baixaSemCadastroIndevido: Prisma.BaixaAnimalWhereInput = { ...baixaNoEscopo, tipo: { not: "CADASTRO_INDEVIDO" } };
 
   const [baixas30d, cadastros, baixas, estornos] = await Promise.all([
-    prisma.baixaAnimal.count({ where: { estornadaEm: null, data: { gte: cutoff }, ...baixaNoEscopo } }),
+    prisma.baixaAnimal.count({ where: { estornadaEm: null, data: { gte: cutoff }, ...baixaSemCadastroIndevido } }),
     prisma.animal.findMany({ where: animalNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { id: true, brinco: true, criadoEm: true } }),
-    prisma.baixaAnimal.findMany({ where: baixaNoEscopo, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, data: true, criadoEm: true, animal: { select: { brinco: true } } } }),
-    prisma.baixaAnimal.findMany({ where: { ...baixaNoEscopo, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
+    prisma.baixaAnimal.findMany({ where: baixaSemCadastroIndevido, orderBy: { criadoEm: "desc" }, take: 10, select: { animalId: true, data: true, criadoEm: true, animal: { select: { brinco: true } } } }),
+    prisma.baixaAnimal.findMany({ where: { ...baixaSemCadastroIndevido, estornadaEm: { not: null } }, orderBy: { estornadaEm: "desc" }, take: 10, select: { animalId: true, estornadaEm: true, animal: { select: { brinco: true } } } }),
   ]);
 
   // ordena pelo momento do registro (timestamp); exibe a data do fato

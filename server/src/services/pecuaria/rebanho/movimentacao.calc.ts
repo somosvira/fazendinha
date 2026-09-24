@@ -208,23 +208,41 @@ export interface PlanoDesfazerMovimentacao {
   passos: Array<{ animalId: string; remover: string; reabrir: string }>;
 }
 
+/** Baixa que fechou uma linha de localização (o suficiente para saber se ainda a protege). */
+export interface BaixaDaLinha {
+  localizacaoFechadaId: string | null;
+  estornadaEm: Date | string | null;
+}
+
+/**
+ * Linhas de localização presas a uma baixa **ativa**. Baixa estornada não prende nada: o
+ * estorno já reabriu a linha, e o vínculo cai sozinho se ela for apagada (FK ON DELETE SET NULL).
+ */
+export function linhasUsadasEmBaixaAtiva(baixas: BaixaDaLinha[]): Set<string> {
+  const usadas = new Set<string>();
+  for (const b of baixas) if (b.estornadaEm == null && b.localizacaoFechadaId) usadas.add(b.localizacaoFechadaId);
+  return usadas;
+}
+
 /**
  * Desfazer a movimentação só é seguro se, para cada animal, a linha que ela abriu ainda
  * for a localização atual (nada aconteceu depois), houver uma linha anterior para reabrir,
- * o animal estiver ativo e nenhuma baixa tiver usado essa linha. Um animal bloqueado
+ * o animal estiver ativo e nenhuma baixa ativa tiver usado essa linha. Um animal bloqueado
  * bloqueia a movimentação inteira — quem chama não grava nada se houver erro.
  */
 export function planejarDesfazerMovimentacao(input: {
   linhas: LinhaDaMovimentacao[];
   historicoPorAnimal: Map<string, LinhaHistorico[]>;
   animaisInativos: Set<string>;
-  linhasUsadasEmBaixa: Set<string>;
+  /** baixas que fecharam alguma das linhas (estornadas incluídas; são ignoradas aqui) */
+  baixasDasLinhas: BaixaDaLinha[];
 }): PlanoDesfazerMovimentacao {
   const plano: PlanoDesfazerMovimentacao = { erros: [], passos: [] };
+  const usadasEmBaixa = linhasUsadasEmBaixaAtiva(input.baixasDasLinhas);
   for (const linha of input.linhas) {
     const erro = (mensagem: string) => plano.erros.push({ animalId: linha.animalId, brinco: linha.brinco, mensagem });
     if (input.animaisInativos.has(linha.animalId)) { erro("o animal saiu do rebanho depois"); continue; }
-    if (input.linhasUsadasEmBaixa.has(linha.id)) { erro("essa localização já foi usada numa baixa"); continue; }
+    if (usadasEmBaixa.has(linha.id)) { erro("essa localização já foi usada numa baixa"); continue; }
     let passo: PlanoDesfazer;
     try {
       passo = planejarDesfazer(input.historicoPorAnimal.get(linha.animalId) ?? []);

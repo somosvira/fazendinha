@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
+import { Prisma } from "@prisma/client";
 import type { UsuarioContexto } from "../../services/auth/sessao.js";
 
 // Só o gate de permissão (achado 2) é exercitado aqui — os services reais ficam
@@ -16,10 +17,12 @@ const mocks = vi.hoisted(() => ({
   estornarBaixa: vi.fn(),
 }));
 
-vi.mock("../../services/propriedade.js", () => ({
-  resolverEscopoLeitura: mocks.leitura,
-  resolverEscopoEscrita: vi.fn(),
-}));
+vi.mock("../../services/propriedade.js", () => {
+  class PropriedadeError extends Error {
+    constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO" | "ESCOPO_INVALIDO", message: string) { super(message); }
+  }
+  return { PropriedadeError, resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: vi.fn() };
+});
 vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   listar: mocks.listar,
   desfazerLocalizacao: mocks.desfazerLocalizacao,
@@ -60,6 +63,8 @@ vi.mock("../../services/pecuaria/rebanho/painel.js", () => ({
 }));
 
 import { rebanhoRouter } from "./rebanho.js";
+import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
+import { PropriedadeError } from "../../services/propriedade.js";
 
 const ID = "11111111-1111-1111-1111-111111111111";
 
@@ -191,5 +196,62 @@ describe("rebanhoRouter — histórico geral de movimentações", () => {
     const res = await app(usuario({ flags: [] })).request(`/movimentacoes/${ID}`);
     expect(res.status).toBe(200);
     expect(mocks.buscarMovimentacao).toHaveBeenCalledWith(ID, 1);
+  });
+});
+
+describe("rebanhoRouter — escritas simultâneas viram 409, não 500 (A2)", () => {
+  const erroPrisma = (code: string) => new Prisma.PrismaClientKnownRequestError("corrida", { code, clientVersion: "6", meta: {} });
+
+  it("P2002 (índice parcial de linha aberta, duplo clique) vira 409 CONFLITO", async () => {
+    mocks.darBaixa.mockRejectedValue(erroPrisma("P2002"));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Registro alterado ao mesmo tempo por outra pessoa. Recarregue e tente de novo.", code: "CONFLITO" });
+  });
+
+  it("P2025 (registro sumiu entre a leitura e a escrita) vira 409 CONFLITO", async () => {
+    mocks.desfazerMovimentacao.mockRejectedValue(erroPrisma("P2025"));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/movimentacoes/${ID}/desfazer`, jsonBody({ motivo: "engano" }));
+    expect(res.status).toBe(409);
+    const corpo = await res.json();
+    expect(corpo.code).toBe("CONFLITO");
+    expect(corpo.error).toMatch(/Recarregue/);
+  });
+
+  it("P2034 (deadlock/conflito de escrita) vira 409 CONFLITO", async () => {
+    mocks.estornarBaixa.mockRejectedValue(erroPrisma("P2034"));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }));
+    expect(res.status).toBe(409);
+  });
+
+  it("linha fechada por outra transação (exigirAfetadas) sai como 409 com a mensagem do service", async () => {
+    mocks.desfazerLocalizacao.mockRejectedValue(new RebanhoError("CONFLITO", "O animal foi alterado enquanto você salvava. Recarregue e tente de novo."));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/localizacao/desfazer`, { method: "POST" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "O animal foi alterado enquanto você salvava. Recarregue e tente de novo.", code: "CONFLITO" });
+  });
+
+  it("outro erro do Prisma continua 500", async () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.darBaixa.mockRejectedValue(erroPrisma("P2003"));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa`, jsonBody({ data: "2026-09-01", tipo: "VENDA" }));
+    expect(res.status).toBe(500);
+    erro.mockRestore();
+  });
+});
+
+describe("rebanhoRouter — X-Propriedade-Id inválido vira 400, não 500 (S2)", () => {
+  it("resolverEscopoLeitura rejeitando com ESCOPO_INVALIDO vira 400 numa leitura", async () => {
+    mocks.leitura.mockRejectedValue(new PropriedadeError("ESCOPO_INVALIDO", "X-Propriedade-Id inválido: informe um número inteiro positivo"));
+    const res = await app(usuario({ flags: [] })).request("/animais");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "X-Propriedade-Id inválido: informe um número inteiro positivo", code: "ESCOPO_INVALIDO" });
+  });
+
+  it("resolverEscopoLeitura rejeitando com ESCOPO_INVALIDO vira 400 numa escrita", async () => {
+    mocks.leitura.mockRejectedValue(new PropriedadeError("ESCOPO_INVALIDO", "X-Propriedade-Id inválido: informe um número inteiro positivo"));
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa/estorno`, jsonBody({ motivo: "engano" }));
+    expect(res.status).toBe(400);
+    expect(mocks.estornarBaixa).not.toHaveBeenCalled();
   });
 });

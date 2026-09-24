@@ -44,12 +44,16 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     }
   }
 
-  // Dev local porta aberta: sem SHARED_ACCESS_TOKEN e sem nenhum usuário no banco.
+  // Dev local porta aberta: sem SHARED_ACCESS_TOKEN e sem nenhum usuário no banco — nunca em
+  // produção (S4): lá, tabela vazia é bootstrap incompleto, não convite a entrar sem login.
   if (!env.SHARED_ACCESS_TOKEN) {
     const total = await prisma.usuario.count();
     if (total === 0) {
-      c.set("usuario", donoSintetico());
-      return next();
+      if (env.NODE_ENV !== "production") {
+        c.set("usuario", donoSintetico());
+        return next();
+      }
+      return c.json({ error: "Autenticação não configurada: nenhum usuário cadastrado. Rode o bootstrap do dono ou defina SHARED_ACCESS_TOKEN." }, 503);
     }
   }
 

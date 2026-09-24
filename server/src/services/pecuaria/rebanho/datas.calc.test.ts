@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  validarDataLocalizacao,
   validarDataPesagem,
   validarDataBaixa,
   validarDatasAnimal,
-  validarEdicaoAnimal,
   planejarAjusteEntrada,
 } from "./datas.calc.js";
 
@@ -37,6 +35,27 @@ describe("validarDataBaixa", () => {
   it("aceita baixa no mesmo dia da entrada", () => {
     expect(validarDataBaixa({ dataEntrada: "2026-01-01", dataBaixa: "2026-01-01" })).toEqual([]);
   });
+
+  it("R2: bloqueia baixa anterior à última pesagem, com a data no formato dd/mm/aaaa", () => {
+    const erros = validarDataBaixa({ dataEntrada: "2026-01-01", dataBaixa: "2026-03-01", ultimaPesagemData: "2026-03-15" });
+    expect(erros).toHaveLength(1);
+    expect(erros[0].campo).toBe("data");
+    expect(erros[0].mensagem).toBe("A baixa não pode ser anterior à última pesagem (15/03/2026)");
+  });
+
+  it("R2: aceita baixa no mesmo dia ou depois da última pesagem", () => {
+    expect(validarDataBaixa({ dataEntrada: "2026-01-01", dataBaixa: "2026-03-15", ultimaPesagemData: "2026-03-15" })).toEqual([]);
+    expect(validarDataBaixa({ dataEntrada: "2026-01-01", dataBaixa: "2026-03-16", ultimaPesagemData: "2026-03-15" })).toEqual([]);
+  });
+
+  it("R2: sem pesagem registrada, não valida contra ela", () => {
+    expect(validarDataBaixa({ dataEntrada: "2026-01-01", dataBaixa: "2026-01-02", ultimaPesagemData: null })).toEqual([]);
+  });
+
+  it("R2: acumula os dois erros quando a baixa é anterior à entrada e à pesagem", () => {
+    const erros = validarDataBaixa({ dataEntrada: "2026-03-01", dataBaixa: "2026-01-01", ultimaPesagemData: "2026-02-01" });
+    expect(erros).toHaveLength(2);
+  });
 });
 
 describe("validarDataPesagem", () => {
@@ -53,16 +72,6 @@ describe("validarDataPesagem", () => {
   });
 });
 
-describe("validarDataLocalizacao", () => {
-  it("bloqueia início antes da entrada", () => {
-    expect(validarDataLocalizacao({ dataEntrada: "2026-01-01", desde: "2025-01-01" })).toHaveLength(1);
-  });
-
-  it("bloqueia início depois da baixa", () => {
-    expect(validarDataLocalizacao({ dataEntrada: "2026-01-01", dataBaixa: "2026-02-01", desde: "2026-03-01" })).toHaveLength(1);
-  });
-});
-
 describe("validarDataDestino", () => {
   it("bloqueia mudança de destino antes da entrada", async () => {
     const { validarDataDestino } = await import("./datas.calc.js");
@@ -71,70 +80,10 @@ describe("validarDataDestino", () => {
   });
 });
 
-describe("validarEdicaoAnimal", () => {
-  const base = {
-    sexo: "F" as const,
-    dataNascimento: "2024-01-01",
-    origem: "COMPRADO" as const,
-    dataEntrada: "2024-02-01",
-    partosAntesDaEntrada: 0,
-    primeiraLocalizacaoDesde: null,
-    primeiroDestinoDesde: null,
-    primeiraPesagemData: null,
-    primeiraBaixaData: null,
-  };
-
-  it("aceita quando não há histórico e datas são consistentes", () => {
-    expect(validarEdicaoAnimal(base)).toEqual([]);
-  });
-
-  it("bloqueia entrada antes do nascimento", () => {
-    const erros = validarEdicaoAnimal({ ...base, dataEntrada: "2023-01-01" });
-    expect(erros[0].campo).toBe("dataEntrada");
-  });
-
-  it("nascido deve ter entrada === nascimento", () => {
-    const erros = validarEdicaoAnimal({ ...base, origem: "NASCIDO", dataEntrada: "2024-02-01", dataNascimento: "2024-01-01" });
-    expect(erros).toHaveLength(1);
-    expect(erros[0].campo).toBe("dataEntrada");
-  });
-
-  it("bloqueia entrada depois do início da primeira localização", () => {
-    const erros = validarEdicaoAnimal({ ...base, dataEntrada: "2024-03-01", primeiraLocalizacaoDesde: "2024-02-15" });
-    expect(erros[0].campo).toBe("dataEntrada");
-  });
-
-  it("bloqueia entrada depois do início do primeiro destino", () => {
-    const erros = validarEdicaoAnimal({ ...base, dataEntrada: "2024-03-01", primeiroDestinoDesde: "2024-02-15" });
-    expect(erros[0].campo).toBe("dataEntrada");
-  });
-
-  it("bloqueia nascimento depois da primeira pesagem", () => {
-    const erros = validarEdicaoAnimal({ ...base, dataNascimento: "2024-03-01", dataEntrada: "2024-03-01", primeiraPesagemData: "2024-02-15" });
-    expect(erros[0].campo).toBe("dataNascimento");
-  });
-
-  it("bloqueia entrada depois da primeira baixa", () => {
-    const erros = validarEdicaoAnimal({ ...base, dataEntrada: "2024-03-01", primeiraBaixaData: "2024-02-15" });
-    expect(erros[0].campo).toBe("dataEntrada");
-  });
-
-  it("aceita entrada exatamente no início da primeira localização/destino/baixa", () => {
-    expect(validarEdicaoAnimal({
-      ...base,
-      dataEntrada: "2024-02-01",
-      primeiraLocalizacaoDesde: "2024-02-01",
-      primeiroDestinoDesde: "2024-02-01",
-      primeiraBaixaData: "2024-02-01",
-    })).toEqual([]);
-  });
-});
-
 describe("campos dos erros de data seguem o payload", () => {
-  it("baixa, pesagem e localização devolvem campo data", () => {
+  it("baixa e pesagem devolvem campo data", () => {
     expect(validarDataBaixa({ dataEntrada: "2025-01-10", dataBaixa: "2025-01-01" })[0].campo).toBe("data");
     expect(validarDataPesagem({ dataNascimento: "2025-01-10", dataPesagem: "2025-01-01" })[0].campo).toBe("data");
-    expect(validarDataLocalizacao({ dataEntrada: "2025-01-10", desde: "2025-01-01" })[0].campo).toBe("data");
   });
 });
 
@@ -178,5 +127,22 @@ describe("planejarAjusteEntrada", () => {
   it("entrada não pode passar da baixa", () => {
     const plano = planejarAjusteEntrada({ ...base, primeiraBaixaData: "2025-02-01", entradaNova: "2025-03-01", localizacoes: [], destinos: [] });
     expect(plano.erros[0].mensagem).toMatch(/baixa/);
+  });
+
+  it("R4: entrada não pode passar de uma categoria manual já registrada", () => {
+    const plano = planejarAjusteEntrada({
+      ...base, primeiraCategoriaManualDesde: "2025-02-01", entradaNova: "2025-03-01", localizacoes: [], destinos: [],
+    });
+    expect(plano.erros[0].mensagem).toMatch(/categoria manual/);
+    expect(plano.erros[0].campo).toBe("dataEntrada");
+  });
+
+  it("R4: aceita entrada exatamente na data da categoria manual (ou antes)", () => {
+    expect(planejarAjusteEntrada({
+      ...base, primeiraCategoriaManualDesde: "2025-01-10", entradaNova: "2025-01-10", localizacoes: [], destinos: [],
+    }).erros).toEqual([]);
+    expect(planejarAjusteEntrada({
+      ...base, primeiraCategoriaManualDesde: "2025-02-01", entradaNova: "2024-12-01", localizacoes: [], destinos: [],
+    }).erros).toEqual([]);
   });
 });

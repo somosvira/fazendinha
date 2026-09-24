@@ -45,16 +45,30 @@ export async function escopoPadraoLeitura(): Promise<number | null> {
   return total <= 1 ? propriedadePrincipalId() : null;
 }
 
+// Postgres Int4 (coluna `Propriedade.id`): um id fora da faixa passaria direto para o Prisma e
+// voltaria como erro cru de banco (500) em vez de uma rejeição clara (S2).
+const INT4_MAX = 2147483647;
+
+/**
+ * `X-Propriedade-Id`/`?propriedadeId=` explícito, mas não numérico ou fora da faixa do Postgres
+ * (S2): antes esse valor passava direto pro Prisma (que ou ignorava — `Number.isInteger(NaN)` é
+ * false — ou estourava com erro cru de banco). Agora rejeita cedo com uma mensagem clara.
+ */
+function parseEscopoIdHeader(raw: string): number {
+  const id = Number(raw);
+  if (!Number.isInteger(id) || id < 1 || id > INT4_MAX) {
+    throw new PropriedadeError("ESCOPO_INVALIDO", "X-Propriedade-Id inválido: informe um número inteiro positivo");
+  }
+  return id;
+}
+
 // Escopo de LEITURA a partir do request (header X-Propriedade-Id ou ?propriedadeId=):
 //   explícito            → aquele id
 //   ausente + 1 sítio    → a principal (invisível)
 //   ausente + N sítios   → null (consolidado, sem filtro)
 export async function resolverEscopoLeitura(c: Context): Promise<number | null> {
   const raw = c.req.header("X-Propriedade-Id") ?? c.req.query("propriedadeId");
-  if (raw != null && raw !== "") {
-    const id = Number(raw);
-    if (Number.isInteger(id)) return id;
-  }
+  if (raw != null && raw !== "") return parseEscopoIdHeader(raw);
   return escopoPadraoLeitura();
 }
 
@@ -81,7 +95,7 @@ export async function garantirFundacaoPropriedade(): Promise<void> {
 
 // ── Cadastro de propriedades (Fatia 1) ──────────────────────────────────────
 export class PropriedadeError extends Error {
-  constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO", m: string) {
+  constructor(public code: "NAO_ENCONTRADO" | "NOME_DUPLICADO" | "ESCOPO_INVALIDO", m: string) {
     super(m);
   }
 }
@@ -129,9 +143,6 @@ export async function editarPropriedade(id: number, input: PropriedadeInput): Pr
 export async function resolverEscopoEscrita(c: Context, explicitoId?: number | null): Promise<number> {
   if (explicitoId != null) return explicitoId;
   const raw = c.req.header("X-Propriedade-Id") ?? c.req.query("propriedadeId");
-  if (raw != null && raw !== "") {
-    const id = Number(raw);
-    if (Number.isInteger(id)) return id;
-  }
+  if (raw != null && raw !== "") return parseEscopoIdHeader(raw);
   return propriedadePrincipalId();
 }

@@ -98,6 +98,38 @@ export function avaliarCategoria(animal: AnimalParaCategoria, regras: RegraCateg
   return { categoria: calculada, origem: calculada ? "AUTOMATICA" : "SEM_CATEGORIA", calculada };
 }
 
+// ---------- validação da troca manual de categoria (R4) ----------
+
+export interface UltimaCategoriaManual {
+  /** início da última troca manual já registrada (aberta ou fechada) */
+  desde: Date | string;
+  /** null = ainda aberta */
+  ate: Date | string | null;
+}
+
+/**
+ * A nova troca manual não pode começar antes da entrada do animal nem sobrepor uma troca já
+ * registrada: se a última estiver aberta, a nova data não pode ficar antes do início dela (é
+ * outra troca a partir de hoje, não uma correção retroativa); se estiver fechada, não pode
+ * ficar antes do fim dela (senão haveria dois períodos manuais se sobrepondo).
+ */
+export function validarDataCategoriaManual(input: {
+  dataEntrada: Date | string;
+  ultima: UltimaCategoriaManual | null;
+  data: Date | string;
+}): string | null {
+  const t = (v: Date | string) => (typeof v === "string" ? new Date(v) : v).getTime();
+  if (t(input.data) < t(input.dataEntrada)) return "A data não pode ser anterior à entrada do animal";
+  if (input.ultima) {
+    const aberta = input.ultima.ate == null;
+    const limite = aberta ? input.ultima.desde : input.ultima.ate!;
+    if (t(input.data) < t(limite)) {
+      return aberta ? "A data não pode ser anterior à troca manual atual" : "A data não pode ser anterior ao fim da última categoria manual";
+    }
+  }
+  return null;
+}
+
 // ---------- validação de uma regra ----------
 
 export interface ErroRegra {

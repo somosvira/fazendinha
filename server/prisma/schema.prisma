@@ -2110,11 +2110,13 @@ model BaixaAnimal {
   estornadaEm          DateTime?
   estornoMotivo        String?
   // linhas de histórico que ESTA baixa fechou — o estorno reabre exatamente essas
-  // (não dá para deduzir pela data: uma movimentação no mesmo dia também fecha linha com o mesmo `ate`)
+  // (não dá para deduzir pela data: uma movimentação no mesmo dia também fecha linha com o mesmo `ate`).
+  // SetNull: a baixa ativa é protegida pelo app (desfazer recusa); a estornada perde o vínculo
+  // quando a linha é apagada por um desfazer posterior (a auditoria guarda o antes).
   localizacaoFechadaId String?
-  localizacaoFechada   LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: Restrict)
+  localizacaoFechada   LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
   destinoFechadoId     String?
-  destinoFechado       DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: Restrict)
+  destinoFechado       DestinoAnimal?     @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
   criadoEm             DateTime           @default(now())
   criadoPorId          Int?
   criadoPor            Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
