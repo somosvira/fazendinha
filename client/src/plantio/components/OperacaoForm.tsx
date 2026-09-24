@@ -182,7 +182,7 @@ export function OperacaoForm({ talhaoId, talhao, dominioFixo, onFechar, onSalvo 
         quantidadeTotal: quantidadeTotal.trim() ? Number(quantidadeTotal.replace(",", ".")) : null,
         centroCustoId: centroCustoId ? Number(centroCustoId) : null,
       });
-      if (salvo?.aviso) toast.warn("Aplicação registrada sem baixa de estoque", salvo.aviso);
+      if (salvo?.aviso) toast.warn("Aplicação registrada — atenção ao estoque", salvo.aviso);
       onSalvo();
     } catch (e: any) {
       setErro(e?.message ?? "Erro ao salvar.");

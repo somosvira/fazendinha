@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   movimentoEstoqueFindMany: vi.fn(),
   movimentoEstoqueGroupBy: vi.fn(),
   auditoriaCreate: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock("../../db.js", () => {
@@ -25,6 +27,7 @@ vi.mock("../../db.js", () => {
     operacao: { create: mocks.operacaoCreate, findUniqueOrThrow: mocks.operacaoFindUniqueOrThrow },
     movimentoEstoque: { create: mocks.movimentoEstoqueCreate, findMany: mocks.movimentoEstoqueFindMany, groupBy: mocks.movimentoEstoqueGroupBy },
     auditoriaFinanceira: { create: mocks.auditoriaCreate },
+    $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
   return { prisma: { $transaction: mocks.transaction, propriedade: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) } } };
@@ -157,9 +160,11 @@ describe("custo da SAIDA de venda — criarOperacao", () => {
     mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
     // Duas consultas distintas: "tem estoque no sítio" (sem _sum) e a base do
     // custo médio agregada no banco (compras 10×5 + 10×7 → 20 / R$ 120).
-    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown }) => args._sum
-      ? [{ produtoId: 42, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]
-      : [{ produtoId: 42 }]);
+    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown; by: string[] }) => args.by.includes("tipo")
+      ? [{ produtoId: 42, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(20) } }] // saldo do sítio
+      : args._sum
+        ? [{ produtoId: 42, _sum: { quantidade: new Prisma.Decimal(20), valorTotal: new Prisma.Decimal(120) } }]
+        : [{ produtoId: 42 }]);
     await criarOperacao({
       tipo: "VENDA", data: new Date("2026-09-10T00:00:00Z"), descricao: "Venda de ração", propriedadeId: 1,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
@@ -197,12 +202,14 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
   beforeEach(() => {
     // Produto 42 teve entrada no sítio; 43 nunca teve.
     mocks.produto.mockResolvedValue([
-      { id: 42, ativo: true, categoriaId: null, centrosCusto: [] },
-      { id: 43, ativo: true, categoriaId: null, centrosCusto: [] },
+      { id: 42, nome: "Ração", unidade: "SC", ativo: true, categoriaId: null, centrosCusto: [] },
+      { id: 43, nome: "Bezerro", unidade: "UN", ativo: true, categoriaId: null, centrosCusto: [] },
     ]);
     mocks.centro.mockResolvedValue([{ id: 3, nome: "Pecuária" }]);
-    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown; where: { produtoId: { in: number[] } } }) =>
-      args._sum ? [] : args.where.produtoId.in.filter((id) => id === 42).map((produtoId) => ({ produtoId })));
+    // Saldo do 42 no sítio: 10 sc.
+    mocks.movimentoEstoqueGroupBy.mockImplementation(async (args: { _sum?: unknown; by: string[]; where: { produtoId: { in: number[] } } }) =>
+      args.by.includes("tipo") ? args.where.produtoId.in.filter((id) => id === 42).map((produtoId) => ({ produtoId, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(10) } }))
+        : args._sum ? [] : args.where.produtoId.in.filter((id) => id === 42).map((produtoId) => ({ produtoId })));
   });
 
   it("consulta o estoque de todos os produtos em lote, uma vez, no escopo do sítio", async () => {
@@ -210,7 +217,7 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
       { descricao: "Ração", quantidade: 1, unidade: "sc", valorTotal: 10, produtoId: 42 },
       { descricao: "Bezerro", quantidade: 1, unidade: "un", valorTotal: 10, produtoId: 43, centroCustoId: 3 },
     ]);
-    const temEstoque = mocks.movimentoEstoqueGroupBy.mock.calls.filter(([args]) => !args._sum);
+    const temEstoque = mocks.movimentoEstoqueGroupBy.mock.calls.filter(([args]) => !args._sum && !args.by.includes("tipo"));
     expect(temEstoque).toHaveLength(1);
     expect(temEstoque[0][0].where).toMatchObject({ produtoId: { in: [42, 43] }, status: "CONFIRMADO", reversaoDeId: null });
   });
@@ -248,6 +255,36 @@ describe("VENDA/DEVOLUCAO só retiram do estoque produto que teve entrada no sí
     } as never);
     expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
     expect(mocks.movimentoEstoqueCreate.mock.calls[0][0].data).toMatchObject({ produtoId: 42, tipo: "SAIDA", origem: "DEVOLUCAO" });
+  });
+
+  it("venda acima do saldo do sítio é recusada, apontando o item, e nada é gravado", async () => {
+    await expect(venda([{ descricao: "Ração", quantidade: 12, unidade: "sc", valorTotal: 120, produtoId: 42 }]))
+      .rejects.toMatchObject({ code: "SALDO_INSUFICIENTE", campo: "itens.0.quantidade", message: expect.stringContaining("há 10 sc neste sítio e são retirados 12 sc") });
+    expect(mocks.operacaoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
+  });
+
+  it("dois itens do mesmo produto somam a retirada", async () => {
+    await expect(venda([
+      { descricao: "Ração A", quantidade: 6, unidade: "sc", valorTotal: 60, produtoId: 42 },
+      { descricao: "Ração B", quantidade: 6, unidade: "sc", valorTotal: 60, produtoId: 42 },
+    ])).rejects.toMatchObject({ code: "SALDO_INSUFICIENTE" });
+  });
+
+  it("retirada exatamente igual ao saldo passa; os produtos são travados antes de ler o saldo", async () => {
+    await venda([{ descricao: "Ração", quantidade: 10, unidade: "sc", valorTotal: 100, produtoId: 42 }]);
+    expect(mocks.movimentoEstoqueCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.queryRaw).toHaveBeenCalledTimes(1);
+    const saldo = mocks.movimentoEstoqueGroupBy.mock.calls.find(([args]) => args.by.includes("tipo"))!;
+    expect(mocks.queryRaw.mock.invocationCallOrder[0]).toBeLessThan(mocks.movimentoEstoqueGroupBy.mock.invocationCallOrder[mocks.movimentoEstoqueGroupBy.mock.calls.indexOf(saldo)]);
+  });
+
+  it("DEVOLUCAO acima do saldo também é recusada", async () => {
+    await expect(criarOperacao({
+      tipo: "DEVOLUCAO", data: new Date("2026-09-10T00:00:00Z"), descricao: "Devolução", propriedadeId: 1,
+      financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
+      itens: [{ descricao: "Ração", quantidade: 11, unidade: "sc", valorTotal: 10, produtoId: 42 }],
+    } as never)).rejects.toMatchObject({ code: "SALDO_INSUFICIENTE" });
   });
 
   it("venda sem produto (leite em texto livre) continua válida com centro de custo, sem movimento", async () => {

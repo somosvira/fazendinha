@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { saldoProduto, custoVacaDia, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, type MovIn, type MovCustoIn } from "./estoque.calc.js";
+import { saldoProduto, custoVacaDia, custoMedioProduto, valorSaidaPreciso, valorSaidaDaBase, entraNoCustoMedio, consolidarSaldo, faltasDeSaldo, saldosAposEstorno, type MovIn, type MovCustoIn } from "./estoque.calc.js";
 
 const HOJE = "2026-06-17";
 
@@ -206,5 +206,31 @@ describe("consolidarSaldo", () => {
     const r = consolidarSaldo([{ saldo: -5, base: base("10", "10") }, { saldo: 0, base: base("10", "30") }]);
     expect(r.valor).toBe(-5);
     expect(r.custoMedio!.toNumber()).toBe(2);
+  });
+});
+
+describe("faltasDeSaldo", () => {
+  const D = (v: string | number) => new Prisma.Decimal(v);
+  it("soma a retirada por produto e aponta só quem passa do saldo", () => {
+    const saldos = new Map([[1, D(10)], [2, D(5)]]);
+    const faltas = faltasDeSaldo([{ produtoId: 1, quantidade: 6 }, { produtoId: 1, quantidade: 5 }, { produtoId: 2, quantidade: 5 }], saldos);
+    expect(faltas.map((f) => [f.produtoId, f.saldo.toNumber(), f.retirada.toNumber()])).toEqual([[1, 10, 11]]);
+  });
+  it("produto sem saldo conhecido conta como 0; retirada igual ao saldo não falta", () => {
+    expect(faltasDeSaldo([{ produtoId: 3, quantidade: "0.001" }], new Map())).toHaveLength(1);
+    expect(faltasDeSaldo([{ produtoId: 1, quantidade: 10 }], new Map([[1, D(10)]]))).toEqual([]);
+  });
+});
+
+describe("saldosAposEstorno", () => {
+  const D = (v: string | number) => new Prisma.Decimal(v);
+  it("estorno de entrada retira, de saída devolve, de ajuste inverte o sinal", () => {
+    const apos = saldosAposEstorno([
+      { produtoId: 1, tipo: "ENTRADA", quantidade: 10 },
+      { produtoId: 2, tipo: "SAIDA", quantidade: 4 },
+      { produtoId: 3, tipo: "AJUSTE", quantidade: -2 },
+      { produtoId: 1, tipo: "AJUSTE", quantidade: 1 },
+    ], new Map([[1, D(3)], [2, D(0)], [3, D(5)]]));
+    expect([...apos].map(([id, s]) => [id, s.toNumber()])).toEqual([[1, -8], [2, 4], [3, 7]]);
   });
 });

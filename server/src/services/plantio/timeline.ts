@@ -5,7 +5,7 @@ import type { CriarOperacaoInput, EditarOperacaoInput } from "./schemas.js";
 import { parseDoseUnidadeLegada, planejarBaixaAplicacao, textoDoseUnidade } from "./aplicacao-estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import { resolverCentroSaida } from "../estoque/centro.calc.js";
-import { estornarMovimentoTx, obterBaseCusto, produtoTemEstoque } from "../estoque/estoque.js";
+import { estornarMovimentoTx, mensagemSaldoInsuficiente, obterBaseCusto, produtoTemEstoque, saldosNoSitio } from "../estoque/estoque.js";
 import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { propriedadePrincipalId } from "../propriedade.js";
 
@@ -253,8 +253,17 @@ async function planejarMovimento(
 export const AVISO_SEM_ESTOQUE_APLICACAO = "Operação salva sem baixa de estoque: este produto não tem estoque neste sítio (nenhuma compra ou inventário registrado).";
 
 type EventoComAviso = EventoTimeline & { aviso?: string };
-const comAviso = (evento: EventoTimeline, semEstoque: boolean | undefined): EventoComAviso =>
-  semEstoque ? { ...evento, aviso: AVISO_SEM_ESTOQUE_APLICACAO } : evento;
+const comAviso = (evento: EventoTimeline, semEstoque: boolean | undefined, avisoSaldo: string | null = null): EventoComAviso =>
+  semEstoque ? { ...evento, aviso: AVISO_SEM_ESTOQUE_APLICACAO } : avisoSaldo ? { ...evento, aviso: avisoSaldo } : evento;
+
+// Aplicação feita no campo não é bloqueada por falta de saldo: grava a SAIDA,
+// o estoque fica negativo e o usuário é avisado para registrar a entrada que
+// falta. Lido antes de gravar a SAIDA (numa edição, depois de estornar a anterior).
+async function avisoSaldoInsuficiente(tx: Prisma.TransactionClient, produto: { id: number; nome: string; unidade: Parameters<typeof mensagemSaldoInsuficiente>[0]["unidade"] }, quantidade: Prisma.Decimal, propriedadeId: number) {
+  const saldo = (await saldosNoSitio(tx, [produto.id], propriedadeId)).get(produto.id)!;
+  if (!quantidade.greaterThan(saldo)) return null;
+  return `${mensagemSaldoInsuficiente(produto, saldo, quantidade)} A operação foi salva e o estoque ficou negativo — registre a compra ou o inventário que falta.`;
+}
 
 export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput, usuarioId: number | null = null): Promise<EventoComAviso> {
   const talhao = await prisma.talhao.findUnique({
@@ -268,10 +277,12 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
   const data = new Date(input.data);
 
   let semEstoque = false;
+  let avisoSaldo: string | null = null;
   const o = await prisma.$transaction(async (tx) => {
     await assertPeriodoAberto(tx, propriedadeId, data);
     const movimento = await planejarMovimento(tx, input, talhao, data, propriedadeId);
     semEstoque = movimento?.semEstoque ?? false;
+    if (movimento?.plano) avisoSaldo = await avisoSaldoInsuficiente(tx, movimento.produto, movimento.plano.quantidade, propriedadeId);
     const mov = movimento?.plano ? await tx.movimentoEstoque.create({ data: { ...movimento.plano, criadoPorId: usuarioId } }) : null;
     return tx.operacaoAgricola.create({
       data: {
@@ -293,7 +304,7 @@ export async function criarOperacao(talhaoId: number, input: CriarOperacaoInput,
       },
     });
   });
-  return comAviso(operacaoToTimeline(o), semEstoque);
+  return comAviso(operacaoToTimeline(o), semEstoque, avisoSaldo);
 }
 
 export async function editarOperacao(operacaoId: number, input: EditarOperacaoInput, usuarioId: number | null = null): Promise<EventoComAviso> {
@@ -312,6 +323,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
   const data = new Date(dataMerged);
 
   let semEstoque = false;
+  let avisoSaldo: string | null = null;
   const o = await prisma.$transaction(async (tx) => {
     await assertPeriodoAberto(tx, propriedadeId, data);
     if (existente.data.getTime() !== data.getTime()) await assertPeriodoAberto(tx, propriedadeId, existente.data);
@@ -385,6 +397,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       if (anterior) {
         await estornarMovimentoTx(tx, anterior.id, { usuarioId, observacao: `Estorno: operação agrícola #${operacaoId} editada` });
       }
+      avisoSaldo = await avisoSaldoInsuficiente(tx, movimento!.produto, plano.quantidade, propriedadeId);
       const criado = await tx.movimentoEstoque.create({ data: { ...plano, criadoPorId: usuarioId } });
       movimentoEstoqueId = criado.id;
       quantidadeTotal = criado.quantidade;
@@ -413,7 +426,7 @@ export async function editarOperacao(operacaoId: number, input: EditarOperacaoIn
       },
     });
   });
-  return comAviso(operacaoToTimeline(o), semEstoque);
+  return comAviso(operacaoToTimeline(o), semEstoque, avisoSaldo);
 }
 
 export async function excluirOperacao(operacaoId: number, usuarioId: number | null = null): Promise<void> {

@@ -2,8 +2,8 @@ import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTran
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
-import { estornarMovimentoTx, obterBasesCusto, produtosComEstoque } from "../estoque/estoque.js";
-import { valorSaidaDaBase } from "../estoque/estoque.calc.js";
+import { estornarMovimentoTx, mensagemSaldoInsuficiente, obterBasesCusto, produtosComEstoque, saldosNoSitio, travarProdutos } from "../estoque/estoque.js";
+import { faltasDeSaldo, saldosAposEstorno, valorSaidaDaBase } from "../estoque/estoque.calc.js";
 import { rotuloUnidade } from "../estoque/unidades.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
@@ -132,6 +132,20 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         throw new FinanceiroError("VALIDACAO", `O item “${item.descricao}” movimenta estoque e precisa apontar para um produto ativo`);
       }
     });
+    // Venda e devolução ao fornecedor não retiram mais do que o sítio tem —
+    // mesmo espírito da liquidação, que nunca supera o pendente. Estoque físico
+    // negativo é sempre entrada faltando ou digitação errada. Os produtos ficam
+    // travados até o fim da transação para duas retiradas não lerem o mesmo saldo.
+    if (retira) {
+      const retiradas = input.itens.flatMap((item, indice) => estocavelItens[indice] && item.produtoId ? [{ produtoId: item.produtoId, quantidade: new Prisma.Decimal(item.quantidade), indice }] : []);
+      const ids = retiradas.map((r) => r.produtoId);
+      await travarProdutos(tx, ids);
+      const [falta] = faltasDeSaldo(retiradas, await saldosNoSitio(tx, ids, input.propriedadeId));
+      if (falta) {
+        const indice = retiradas.find((r) => r.produtoId === falta.produtoId)!.indice;
+        throw new FinanceiroError("SALDO_INSUFICIENTE", `${mensagemSaldoInsuficiente(produtosPorId.get(falta.produtoId)!, falta.saldo, falta.retirada)} Registre antes a compra ou o inventário que falta.`, `itens.${indice}.quantidade`);
+      }
+    }
 
     const classificar = async (categoriaId: number | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
@@ -488,7 +502,18 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
 export async function obterOperacao(id: number, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacao });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
-  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
+  const resumo = resumoCancelamento(operacao);
+  // Cancelar uma entrada já consumida é permitido (a correção exige cancelar a
+  // original), mas a revisão avisa quais produtos vão ficar negativos no sítio.
+  const saldos = await saldosNoSitio(prisma, resumo.estoque.map((m) => m.produtoId), operacao.propriedadeId);
+  const apos = saldosAposEstorno(resumo.estoque, saldos);
+  const estoque = resumo.estoque.map((m) => ({
+    ...m,
+    saldoAtual: (saldos.get(m.produtoId) ?? new Prisma.Decimal(0)).toString(),
+    saldoAposCancelamento: apos.get(m.produtoId)!.toString(),
+    ficaNegativo: apos.get(m.produtoId)!.isNegative(),
+  }));
+  return { ...operacao, compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: { ...resumo, estoque } };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {

@@ -571,3 +571,20 @@ describe("produto inativo na aplicação agrícola", () => {
     await expect(editarOperacao(10, { observacao: "revisado" } as any)).resolves.toBeTruthy();
   });
 });
+
+describe("aplicação acima do saldo do sítio", () => {
+  it("grava a SAIDA e devolve aviso de saldo insuficiente (não bloqueia)", async () => {
+    mocks.talhaoFindUnique.mockResolvedValue(talhaoBase);
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, nome: "Ureia", unidade: "KG", ativo: true, centrosCusto: [] });
+    // Saldo do sítio: 15 kg (a base do custo segue 100 kg por R$ 200).
+    mocks.movimentoGroupBy.mockImplementation(async ({ by, where }: { by: string[]; where: { produtoId: { in: number[] } } }) => by.includes("tipo")
+      ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: new Prisma.Decimal(15) } }]
+      : where.produtoId.in.map((produtoId) => ({ produtoId, _sum: { quantidade: new Prisma.Decimal(100), valorTotal: new Prisma.Decimal(200) } })));
+    mocks.movimentoCreate.mockResolvedValue({ id: 88, quantidade: new Prisma.Decimal(20) });
+    mocks.operacaoCreate.mockResolvedValue({ id: 1, talhaoId: 1, tipo: "ADUBACAO_SOLO", data: new Date("2026-01-10"), produto: "Ureia", observacao: null, responsavel: null });
+    const r = await criarOperacao(1, { dominio: "NUTRICAO", tipo: "ADUBACAO_SOLO", data: "2026-01-10", doseValor: 2, doseUnidade: "kg/ha", produtoId: 3 } as any);
+    expect(mocks.movimentoCreate).toHaveBeenCalled(); // 2 kg/ha × 10 ha = 20 kg, gravado mesmo assim
+    expect(r.aviso).toContain("há 15 kg neste sítio e são retirados 20 kg");
+    expect(r.aviso).toContain("estoque ficou negativo");
+  });
+});

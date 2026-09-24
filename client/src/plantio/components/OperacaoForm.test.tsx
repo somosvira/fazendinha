@@ -116,7 +116,7 @@ describe("OperacaoForm — baixa de estoque", () => {
     fireEvent.change(screen.getByLabelText("Tipo de operação"), { target: { value: "CALAGEM" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(toastMocks.warn).toHaveBeenCalledWith(
-      "Aplicação registrada sem baixa de estoque",
+      "Aplicação registrada — atenção ao estoque",
       expect.stringContaining("sem baixa de estoque"),
     ));
   });

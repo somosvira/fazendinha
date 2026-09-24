@@ -356,3 +356,28 @@ describe("produto inativo na sanidade", () => {
     await expect(editarSanidade(50, aplicacao)).rejects.toMatchObject({ code: "CONFLITO" });
   });
 });
+
+describe("sanidade acima do saldo do sítio", () => {
+  it("salva o evento com a baixa e devolve aviso de saldo insuficiente", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, nome: "Vermífugo", unidade: "ML", ativo: true, centrosCusto: [] });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+    // Saldo 1 mL; a base do custo continua a padrão.
+    mocks.movimentoGroupBy.mockImplementation(async ({ by }: { by: string[] }) => by.includes("tipo")
+      ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: D(1) } }] : basesCusto);
+    const r = await registrarSanidade(1, { tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo", produtoId: 3, quantidadeUsada: 3 } as any);
+    expect(mocks.movimentoCreate).toHaveBeenCalled();
+    expect(mocks.eventoCreate).toHaveBeenCalled();
+    expect(r.aviso).toContain("há 1 mL neste sítio e são retirados 3 mL");
+  });
+
+  it("com saldo suficiente não avisa", async () => {
+    mocks.animalFindFirst.mockResolvedValue({ id: 1, propriedadeId: 5, grupo: null });
+    mocks.produtoFindUnique.mockResolvedValue({ id: 3, nome: "Vermífugo", unidade: "ML", ativo: true, centrosCusto: [] });
+    mocks.eventoCreate.mockResolvedValue({ id: 100, animalId: 1, tipo: "APLICACAO", data: new Date("2026-02-05") });
+    mocks.movimentoGroupBy.mockImplementation(async ({ by }: { by: string[] }) => by.includes("tipo")
+      ? [{ produtoId: 3, tipo: "ENTRADA", _sum: { quantidade: D(50) } }] : basesCusto);
+    const r = await registrarSanidade(1, { tipo: "APLICACAO", data: "2026-02-05", produto: "Vermífugo", produtoId: 3, quantidadeUsada: 3 } as any);
+    expect(r.aviso).toBeUndefined();
+  });
+});
