@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Check, X } from "lucide-react";
 import { Loader } from "../components/Loading";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor ?? 0));
 export const dataBR = (valor: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(valor));
@@ -103,6 +104,17 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
       <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
     </div>
   </nav>;
+}
+
+/* Filtro de listagem no padrão visual do app (Radix Select estilizado), no
+ * lugar do <select> nativo. O Radix não aceita value "", então a opção "todos"
+ * (valor "") trafega por um sentinela interno. */
+const FILTRO_TODOS = "__todos__";
+export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
+  return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
+    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:min-w-[170px] [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
+    <SelectContent>{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
+  </Select>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
@@ -227,7 +239,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
                por role="button" quebraria a semântica de tabela para leitores de tela */
             {...(onAbrir ? { onClick: () => onAbrir(item), tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(item); } } } : {})}
             className={`${onAbrir ? "cursor-pointer hover:bg-[#faf9f4]" : ""} ${classeLinha?.(item) ?? ""}`}
-          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-top ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
+          >{colunas.map((coluna) => <td key={coluna.chave} className={`p-4 align-middle ${alinhaCelula(coluna.alinhamento)}`}>{coluna.celula(item)}</td>)}</tr>)}
         </tbody>
       </table>
     </div>

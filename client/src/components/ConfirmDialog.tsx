@@ -22,7 +22,6 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
   cancelTone = "neutral",
   tone = "neutral",
-  dangerFilled = false,
   processando = false,
   onConfirm,
   onCancel,
@@ -35,7 +34,6 @@ export function ConfirmDialog({
   cancelLabel?: string;
   cancelTone?: "neutral" | "safe";
   tone?: ConfirmTone;
-  dangerFilled?: boolean;
   processando?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -77,10 +75,10 @@ export function ConfirmDialog({
           </Button>
           <Button
             ref={confirmRef}
-            variant={tone === "danger" ? (dangerFilled ? "destructive" : "outline") : "default"}
+            variant={tone === "danger" ? "destructive" : "default"}
             className={
               tone === "danger"
-                ? `h-auto px-3 py-1.5 text-xs tracking-[0.04em] ${dangerFilled ? "" : "hover:border-destructive hover:text-destructive"}`
+                ? "h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
                 : "h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
             }
             onClick={onConfirm}

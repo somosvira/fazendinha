@@ -128,7 +128,6 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       cancelLabel="Continuar rascunho"
       cancelTone="safe"
       tone="danger"
-      dangerFilled
       processando={iniciando}
       onCancel={() => { setConfirmarNovo(false); void abrirNovo(true); }}
       onDismiss={() => setConfirmarNovo(false)}
